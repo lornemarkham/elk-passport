@@ -549,7 +549,7 @@ Idea
   ↓
 IMP
   ↓
-docs/implementation-specs/pending/
+project-management/implementation-specs/pending/
   ↓
 Claude implementation
   ↓

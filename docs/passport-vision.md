@@ -128,7 +128,7 @@ Idea
   ↓
 IMP (implementation specification)
   ↓
-docs/implementation-specs/pending/
+project-management/implementation-specs/pending/
   ↓
 Claude implementation
   ↓
