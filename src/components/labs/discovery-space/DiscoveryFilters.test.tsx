@@ -32,12 +32,15 @@ function DiscoveryFiltersHarness() {
   const [filters, setFilters] = useState<DiscoveryFilterState>(
     createEmptyFilterState(),
   );
+  const [query, setQuery] = useState("");
   const resultCount = filterExperiences(SEED_EXPERIENCES, filters).length;
 
   return (
     <DiscoveryFilters
       filters={filters}
       onChange={setFilters}
+      query={query}
+      onQueryChange={setQuery}
       resultCount={resultCount}
       isOpen
       onToggleOpen={() => {}}

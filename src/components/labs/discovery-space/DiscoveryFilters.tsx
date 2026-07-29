@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import {
   createEmptyFilterState,
@@ -10,6 +10,8 @@ import {
 export interface DiscoveryFiltersProps {
   filters: DiscoveryFilterState;
   onChange: (next: DiscoveryFilterState) => void;
+  query: string;
+  onQueryChange: (next: string) => void;
   resultCount: number;
   isOpen: boolean;
   onToggleOpen: () => void;
@@ -17,6 +19,10 @@ export interface DiscoveryFiltersProps {
   availableActivities: string[];
   availableSeasons: string[];
   availableCompanions: string[];
+  /** Exposes the toggle button as a stable focus anchor — DiscoverySpace
+   * refocuses it after a card leaves the active field so keyboard focus
+   * never silently drops to <body> (IMP-004 accessibility requirements). */
+  ref?: Ref<HTMLButtonElement>;
 }
 
 const ENERGY_LEVELS = [1, 2, 3, 4, 5];
@@ -138,6 +144,8 @@ function SingleSelectGroup({
 export function DiscoveryFilters({
   filters,
   onChange,
+  query,
+  onQueryChange,
   resultCount,
   isOpen,
   onToggleOpen,
@@ -145,6 +153,7 @@ export function DiscoveryFilters({
   availableActivities,
   availableSeasons,
   availableCompanions,
+  ref,
 }: DiscoveryFiltersProps) {
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; onRemove: () => void }[] = [];
@@ -223,6 +232,7 @@ export function DiscoveryFilters({
   return (
     <div className="pointer-events-none fixed top-6 left-6 z-[1000] w-full max-w-xs">
       <button
+        ref={ref}
         type="button"
         onClick={onToggleOpen}
         aria-expanded={isOpen}
@@ -234,6 +244,19 @@ export function DiscoveryFilters({
 
       {isOpen && (
         <div className="pointer-events-auto mt-3 max-h-[80vh] space-y-5 overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0b0b]/90 p-5 backdrop-blur-md">
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-medium tracking-[0.15em] text-white/40 uppercase">
+              Search
+            </span>
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Try 'campfire' or 'sunset'..."
+              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/85 placeholder:text-white/30 focus:border-white/25 focus:outline-none"
+            />
+          </label>
+
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-white/50">
               {resultCount} discover{resultCount === 1 ? "y" : "ies"}
