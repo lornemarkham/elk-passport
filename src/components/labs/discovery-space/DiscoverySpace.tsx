@@ -182,6 +182,7 @@ export function DiscoverySpace() {
               key={experience.id}
               experience={experience}
               layout={experience.layout}
+              dragConstraintsRef={containerRef}
               onInspect={handleInspect}
               onSave={handleSave}
               onReject={handleReject}

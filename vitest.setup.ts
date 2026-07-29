@@ -46,3 +46,22 @@ afterEach(() => {
   cleanup();
   globalThis.localStorage.clear();
 });
+
+// jsdom does not implement matchMedia at all. usePrefersReducedMotion (used
+// directly by DiscoveryCard as of IMP-005, not just indirectly via
+// usePeripheralTemptation) calls it unconditionally on mount, so any test
+// rendering a real DiscoveryCard needs this to exist. Defaults to "not
+// reduced" — the sensible default for a test environment with no real user
+// preference to read.
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = (query: string): MediaQueryList => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+}

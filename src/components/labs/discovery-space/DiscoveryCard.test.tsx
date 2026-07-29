@@ -41,6 +41,7 @@ function renderCard(
       onShelf={onShelf}
       pointerXPercent={motionValue(-1000)}
       pointerYPercent={motionValue(-1000)}
+      dragConstraintsRef={{ current: null }}
       {...overrides}
     />,
   );
