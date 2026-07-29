@@ -45,7 +45,14 @@ export type DiscoveryCommand =
   | { type: "EXPERIENCE_SHELF"; experienceId: string }
   | { type: "EXPERIENCE_RESTORE"; experienceId: string }
   | { type: "DISCOVERY_BROADEN"; strategy: DiscoveryBroadenStrategy }
-  | { type: "DISCOVERY_RESET" };
+  | { type: "DISCOVERY_RESET" }
+  | {
+      type: "HYDRATE_PERSISTED";
+      savedExperienceIds: string[];
+      shelvedExperienceIds: string[];
+      filters: DiscoveryFilterState;
+      query: string;
+    };
 
 export function createInitialDiscoveryState(sessionId: string): DiscoveryState {
   return {
@@ -201,6 +208,22 @@ export function discoveryReducer(
         rejectedExperienceIds: [],
         shelvedExperienceIds: [],
         lastRemoved: null,
+      };
+
+    // Applies persisted Mood Board/shelved/filters/query state loaded from
+    // localStorage. Deliberately a dispatched command applied *after* the
+    // initial render (see useDiscoveryEngine) rather than read during state
+    // initialization — reading localStorage synchronously during the first
+    // render produces a different result on the server (no localStorage)
+    // than on the client (real persisted data), which is a server/client
+    // hydration mismatch, not a design choice.
+    case "HYDRATE_PERSISTED":
+      return {
+        ...state,
+        savedExperienceIds: command.savedExperienceIds,
+        shelvedExperienceIds: command.shelvedExperienceIds,
+        filters: command.filters,
+        query: command.query,
       };
 
     default:

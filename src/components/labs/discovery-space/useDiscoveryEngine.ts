@@ -38,18 +38,28 @@ const persistence = createLocalDiscoveryPersistence();
  * "Compass is the single source of discovery truth" architecture decision.
  */
 export function useDiscoveryEngine() {
-  const [state, dispatch] = useReducer(discoveryReducer, undefined, () => {
-    const initial = createInitialDiscoveryState(createSessionId());
+  // Deliberately the *same* initial state on server and client — reading
+  // localStorage inside this lazy initializer would make it run during SSR
+  // (no persisted data) and differently during client hydration (real
+  // persisted data), producing a server/client mismatch on the very first
+  // render for any returning visitor with a Mood Board. Persisted state is
+  // applied after mount instead, via the effect below.
+  const [state, dispatch] = useReducer(discoveryReducer, undefined, () =>
+    createInitialDiscoveryState(createSessionId()),
+  );
+
+  useEffect(() => {
     const persisted = persistence.load();
-    if (!persisted) return initial;
-    return {
-      ...initial,
+    if (!persisted) return;
+    dispatch({
+      type: "HYDRATE_PERSISTED",
       savedExperienceIds: persisted.savedExperienceIds,
       shelvedExperienceIds: persisted.shelvedExperienceIds,
       filters: persisted.filters,
       query: persisted.query,
-    };
-  });
+    });
+    // Runs once, after the client has hydrated — not on every state change.
+  }, []);
 
   // Persist only the durable slice (Mood Board, shelved, last filters) —
   // rejected items and lastRemoved are session-scoped by design.
