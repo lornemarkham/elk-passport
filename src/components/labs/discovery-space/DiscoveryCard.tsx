@@ -6,6 +6,7 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
+import { Clock, Heart, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCursorPan } from "@/components/passport/useCursorPan";
 import { CardTemptation } from "./temptation/CardTemptation";
@@ -19,7 +20,12 @@ import type {
 interface DiscoveryCardProps {
   experience: Experience;
   layout: FieldLayout;
-  onSelect: (experience: Experience) => void;
+  /** Card-body inspection — must not save, reject, or shelf on its own
+   * (IMP-004 acceptance criteria). */
+  onInspect: (experience: Experience) => void;
+  onSave: (experience: Experience) => void;
+  onReject: (experience: Experience) => void;
+  onShelf: (experience: Experience) => void;
   pointerXPercent: MotionValue<number>;
   pointerYPercent: MotionValue<number>;
   /** Lifts hover state up for Peripheral Temptation eligibility — see DiscoverySpace. */
@@ -71,10 +77,37 @@ const LIFE_PRESETS: Record<
   },
 };
 
+/** A small, always-reachable action button — never hover-only, so touch and
+ * keyboard users have the same access as mouse users (IMP-004 accessibility
+ * requirements). Visually quiet at rest, clear on hover/focus. */
+function CardActionButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: (event: React.MouseEvent) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="focus-visible:ring-ring/50 flex size-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/70 opacity-70 backdrop-blur-md transition-all hover:border-white/30 hover:bg-black/70 hover:text-white hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function DiscoveryCard({
   experience,
   layout,
-  onSelect,
+  onInspect,
+  onSave,
+  onReject,
+  onShelf,
   pointerXPercent,
   pointerYPercent,
   onHoverChange,
@@ -112,20 +145,16 @@ export function DiscoveryCard({
   const hoverShadow = `0 ${20 + depth * 18}px ${52 + depth * 26}px rgba(0,0,0,${(0.42 + depth * 0.14).toFixed(2)})`;
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
       layoutId={experience.id}
       // "position" only — the field card and its Mood Board counterpart are
       // very different shapes (tall card vs. wide row); letting Framer
       // Motion interpolate the box itself produces a grotesque stretch
       // mid-flight. Position-only travel + crossfade reads far cleaner.
       layout="position"
-      onClick={() => onSelect(experience)}
       onHoverStart={() => onHoverChange?.(true)}
       onHoverEnd={() => onHoverChange?.(false)}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="absolute cursor-pointer text-left"
+      className="absolute text-left"
       style={{
         top: `${top}%`,
         left: `${left}%`,
@@ -243,7 +272,23 @@ export function DiscoveryCard({
               : undefined
           }
         />
-        <div className="relative flex h-full flex-col justify-end gap-1 p-4">
+
+        {/* Card-body inspection surface — covers the card but must never
+            save/reject/shelf on its own (IMP-004 acceptance criteria).
+            Transparent; the visible layers above render through it. */}
+        <button
+          type="button"
+          onClick={() => onInspect(experience)}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          aria-label={`View details for ${experience.name}`}
+          className="absolute inset-0 z-0 cursor-pointer bg-transparent text-left"
+        />
+
+        <div
+          aria-hidden
+          className="relative z-0 flex h-full flex-col justify-end gap-1 p-4"
+        >
           <p className="font-heading text-base leading-snug font-medium tracking-[-0.01em] text-white/90 sm:text-lg">
             {experience.name}
           </p>
@@ -251,7 +296,40 @@ export function DiscoveryCard({
             {experience.tagline}
           </p>
         </div>
+
+        {/* Always-reachable actions — sit above the inspect surface so they
+            intercept their own clicks; never hover-gated (touch/keyboard
+            parity, IMP-004 "Mobile and accessibility"). */}
+        <div className="absolute top-2.5 right-2.5 z-10 flex gap-1.5">
+          <CardActionButton
+            label={`Save ${experience.name} to your Mood Board`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSave(experience);
+            }}
+          >
+            <Heart className="size-3.5" />
+          </CardActionButton>
+          <CardActionButton
+            label={`Shelf ${experience.name} for later`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onShelf(experience);
+            }}
+          >
+            <Clock className="size-3.5" />
+          </CardActionButton>
+          <CardActionButton
+            label={`Not interested in ${experience.name} right now`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onReject(experience);
+            }}
+          >
+            <X className="size-3.5" />
+          </CardActionButton>
+        </div>
       </motion.div>
-    </motion.button>
+    </motion.div>
   );
 }
