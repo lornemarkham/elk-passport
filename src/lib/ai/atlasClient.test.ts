@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getLocalRecommendation } from "@/lib/ai/local-recommender";
+import { getLocalRecommendation } from "@/lib/ai/atlasClient";
 import { TODAYS_INTENTS, type PlanInput } from "@/lib/schemas";
 
 function inputFor(intent: PlanInput["intent"]): PlanInput {
@@ -15,7 +15,7 @@ function inputFor(intent: PlanInput["intent"]): PlanInput {
 }
 
 // getLocalRecommendation now calls the real Atlas API (see
-// src/lib/ai/local-recommender.ts) — fetch is mocked here so this stays a
+// src/lib/ai/atlasClient.ts) — fetch is mocked here so this stays a
 // fast, offline unit test rather than requiring a live Atlas server.
 const fakePlace = {
   kind: "Place",

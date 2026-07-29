@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { planInputSchema } from "@/lib/schemas";
-import { getLocalRecommendation } from "@/lib/ai/local-recommender";
+import { getLocalRecommendation } from "@/lib/ai/atlasClient";
 import { getAiRecommendation } from "@/lib/ai/openai-recommender";
 
 export async function POST(request: Request) {

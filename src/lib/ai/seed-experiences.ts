@@ -2,7 +2,7 @@ import type { AdventureBlock, TodaysIntent } from "@/lib/schemas";
 
 /**
  * Archetypal day templates used by the local recommender (see
- * ./local-recommender.ts) when no OPENAI_API_KEY is configured, and as the
+ * ./atlasClient.ts) when no OPENAI_API_KEY is configured, and as the
  * few-shot grounding for the OpenAI path when it is.
  *
  * These are deliberately generic archetypes, not real named venues — Passport
