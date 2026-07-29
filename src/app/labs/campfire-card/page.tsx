@@ -11,7 +11,7 @@ export default function CampfireCardPage() {
       <div className="w-full max-w-xs">
         <PassportVideoCard
           title="Campfire"
-          videoSrc="/video/campfire-summer.mp4"
+          videoSrc="/video/discovery/campfire-summer.mp4"
         />
       </div>
     </div>

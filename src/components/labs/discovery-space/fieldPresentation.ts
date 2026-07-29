@@ -34,7 +34,7 @@ export const FIELD_PRESENTATION: Record<string, FieldPresentation> = {
     glow: "from-amber-200/14 to-transparent",
     life: "ember",
     temptation: "ember",
-    video: "/video/campfire-summer.mp4",
+    video: "/video/discovery/campfire-summer.mp4",
     layout: {
       top: 8,
       left: 12,
@@ -97,6 +97,7 @@ export const FIELD_PRESENTATION: Record<string, FieldPresentation> = {
   "bbq-feast": {
     glow: "from-amber-200/14 to-transparent",
     life: "ember",
+    video: "/video/discovery/steak-summer.mp4",
     layout: {
       top: 15,
       left: 30,
@@ -144,6 +145,7 @@ export const FIELD_PRESENTATION: Record<string, FieldPresentation> = {
   winery: {
     glow: "from-violet-200/14 to-transparent",
     life: "still",
+    video: "/video/discovery/winery-summer.mp4",
     layout: {
       top: 72,
       left: 40,
@@ -176,6 +178,7 @@ export const FIELD_PRESENTATION: Record<string, FieldPresentation> = {
     glow: "from-teal-200/14 to-transparent",
     life: "still",
     temptation: "ripple",
+    video: "/video/discovery/paddle-board-summer.mp4",
     layout: {
       top: 40,
       left: 55,
@@ -237,6 +240,7 @@ export const FIELD_PRESENTATION: Record<string, FieldPresentation> = {
   "mountain-bike": {
     glow: "from-emerald-200/12 to-transparent",
     life: "still",
+    video: "/video/discovery/mountain-biking-summer.mp4",
     layout: {
       top: 28,
       left: 20,

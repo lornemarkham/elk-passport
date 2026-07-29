@@ -26,7 +26,7 @@ export const SEED_EXPERIENCES: Experience[] = [
     tier: 1,
     heroMedia: {
       type: "video",
-      src: "/video/campfire-summer.mp4",
+      src: "/video/discovery/campfire-summer.mp4",
       alt: "A campfire burning at dusk beside a lake.",
     },
     moods: ["relaxing", "romantic", "cozy"],
