@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { campfire } from "./campfire";
 import { LivingExperience } from "./LivingExperience";
 
@@ -9,9 +10,14 @@ import { LivingExperience } from "./LivingExperience";
  * centered.
  */
 export function MotionLab() {
+  const stageRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[radial-gradient(60%_60%_at_50%_40%,#171210_0%,#08070a_100%)]">
-      <LivingExperience experience={campfire} />
+    <div
+      ref={stageRef}
+      className="flex min-h-dvh items-center justify-center bg-[radial-gradient(60%_60%_at_50%_40%,#171210_0%,#08070a_100%)]"
+    >
+      <LivingExperience experience={campfire} dragConstraintsRef={stageRef} />
     </div>
   );
 }
