@@ -8,14 +8,20 @@ import {
 } from "framer-motion";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type RefObject,
 } from "react";
 import type { ExperienceDefinition } from "./types";
+import { mapPersonalityToParams } from "./mapPersonalityToParams";
 import { usePersonalityEngine } from "./usePersonalityEngine";
 import { usePhysicsBody } from "./usePhysicsBody";
+import {
+  useWorldObject,
+  useStageRef,
+  useStageReducedMotion,
+} from "./world/WorldStage";
 import { WorldTrailLayer } from "./WorldTrailLayer";
 import { ParticleField } from "./ParticleField";
 import { BeaconSweep } from "./BeaconSweep";
@@ -27,39 +33,56 @@ const TOSS_VELOCITY_THRESHOLD = 250;
 
 export function LivingCard({
   experience,
-  dragConstraintsRef,
 }: {
   experience: ExperienceDefinition;
-  dragConstraintsRef: RefObject<HTMLDivElement | null>;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [tossTrigger, setTossTrigger] = useState(0);
 
+  const stageRef = useStageRef();
+  const prefersReducedMotion = useStageReducedMotion();
+
+  const params = useMemo(
+    () =>
+      mapPersonalityToParams(
+        experience.personality,
+        experience.identity.physics,
+      ),
+    [experience],
+  );
+
+  // Real, persistent stage position — Phase 1's core shift away from
+  // "always relative to origin." Home is {0,0}: the object's own natural
+  // (flexbox-centered) layout position, so this composes with existing
+  // layout for free — no absolute stage coordinates to compute yet.
+  const worldObject = useWorldObject(params.awarenessRadiusPx);
+
+  useEffect(() => {
+    worldObject.reportRect(
+      () => cardRef.current?.getBoundingClientRect() ?? null,
+    );
+  }, [worldObject]);
+
   // The stage element, for the world-trail portal target. Refs can't be
   // read during render, so this is tracked as state, set once after mount.
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
-    const timeout = window.setTimeout(
-      () => setStageEl(dragConstraintsRef.current),
-      0,
-    );
+    const timeout = window.setTimeout(() => setStageEl(stageRef.current), 0);
     return () => window.clearTimeout(timeout);
-  }, [dragConstraintsRef]);
+  }, [stageRef]);
 
   const {
-    params,
     combined,
     leanXSpring,
     leanYSpring,
     justNoticed,
     surpriseTick,
     flourishTick,
-    prefersReducedMotion,
     handlePointerEnter,
     handlePointerLeave,
     triggerFlourish,
-  } = usePersonalityEngine(experience, cardRef);
+  } = usePersonalityEngine(params, worldObject, prefersReducedMotion);
 
   const {
     tilt,
@@ -72,12 +95,18 @@ export function LivingCard({
     handleDragEnd: handlePhysicsDragEnd,
     deposits,
     expireDeposit,
-  } = usePhysicsBody(params, cardRef, dragConstraintsRef);
+  } = usePhysicsBody(params, cardRef, stageRef);
 
   const { identity } = experience;
 
   const liftY = useTransform(combined, [0, 1], [0, -14]);
   const liftScale = useTransform(combined, [0, 1], [1, 1.014]);
+  // The engagement lift and the object's own world position both want the
+  // "y" channel — sum them, the same pattern already used for glow offset.
+  const totalY = useTransform<number, number>(
+    [worldObject.y, liftY],
+    ([world, lift]) => world + lift,
+  );
   const totalScaleX = useTransform<number, number>(
     [liftScale, bodyScaleX],
     ([lift, body]) => lift * body,
@@ -129,11 +158,17 @@ export function LivingCard({
     triggerFlourish();
   };
 
+  const onDragStart = () => {
+    setIsDragging(true);
+    worldObject.setDragging(true);
+  };
+
   const handleDragEnd = (
     _event: PointerEvent | MouseEvent | TouchEvent,
     info: PanInfo,
   ) => {
     setIsDragging(false);
+    worldObject.setDragging(false);
     handlePhysicsDragEnd();
     if (
       Math.hypot(info.velocity.x, info.velocity.y) > TOSS_VELOCITY_THRESHOLD
@@ -153,14 +188,13 @@ export function LivingCard({
       onMouseEnter={onPointerEnter}
       onMouseLeave={handlePointerLeave}
       drag={!prefersReducedMotion}
-      dragConstraints={dragConstraintsRef}
+      dragConstraints={stageRef}
       dragElastic={dragElastic}
       dragTransition={{
         bounceStiffness: params.dragStiffness,
         bounceDamping: params.dragDamping,
       }}
-      dragSnapToOrigin
-      onDragStart={() => setIsDragging(true)}
+      onDragStart={onDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
       whileDrag={{ scale: dragGrabScale }}
@@ -168,7 +202,8 @@ export function LivingCard({
         prefersReducedMotion
           ? undefined
           : {
-              y: liftY,
+              x: worldObject.x,
+              y: totalY,
               scaleX: totalScaleX,
               scaleY: totalScaleY,
               rotate: tilt,
