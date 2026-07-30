@@ -3,42 +3,37 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject,
 } from "react";
 import { useMotionValue, useSpring, useTransform } from "framer-motion";
+import { mapPersonalityToParams } from "./mapPersonalityToParams";
+import type { ExperienceDefinition } from "./types";
 
-/** How far out (in px, beyond the card's own edge) the cursor's approach starts registering at all. */
-const AWARENESS_RADIUS_PX = 260;
-
-/** Proximity above this counts as "nearby" for notice/breathing-tier purposes. */
 const NEAR_THRESHOLD = 0.06;
-
-/** How long a just-departed hover stays warm before letting go — the "Linger" phase, distinct from the spring-driven "soft exhale" that follows it. */
-const LINGER_MS = 650;
-
-/**
- * The pause before the fire visibly reacts to an approaching cursor — "not
- * instantly, not dramatically, almost like someone looked up." Without this,
- * a continuous proximity ramp just looks like a hover effect with a bigger
- * radius, which is exactly what Sprint 1 felt flat doing.
- */
-const NOTICE_DELAY_MS = 320;
 const NOTICE_PULSE_MS = 500;
 
-/** A rare, randomized, not-user-triggered beat — "I wonder if that always happens." */
-const SURPRISE_MIN_MS = 14000;
-const SURPRISE_MAX_MS = 26000;
-
 /**
- * The non-visual "attention" system behind Campfire's personality: how close
- * the cursor is, whether it's actually hovering, whether the fire has just
- * noticed someone approaching, and an occasional unprompted surprise beat.
- * Kept separate from rendering so LivingExperience stays about composing a
- * performance, not managing timers.
+ * The reusable behavior system. Every experience runs through this exact
+ * hook — the only thing that differs between Campfire and Helicopter is the
+ * `MotionParams` derived from their personality, not the code that consumes
+ * them. This is what makes it an engine rather than five bespoke effects.
  */
-export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
+export function usePersonalityEngine(
+  experience: ExperienceDefinition,
+  cardRef: RefObject<HTMLDivElement | null>,
+) {
+  const params = useMemo(
+    () =>
+      mapPersonalityToParams(
+        experience.personality,
+        experience.identity.physics,
+      ),
+    [experience],
+  );
+
   const rectRef = useRef<DOMRect | null>(null);
   const isNearRef = useRef(false);
   const lingerTimeoutRef = useRef<number | null>(null);
@@ -50,19 +45,36 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
   const [isFocused, setIsFocused] = useState(false);
   const [justNoticed, setJustNoticed] = useState(false);
   const [surpriseTick, setSurpriseTick] = useState(0);
+  const [flourishTick, setFlourishTick] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () =>
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
 
+  // Attention: how close the cursor is, continuously.
   const proximity = useMotionValue(0);
   const proximitySpring = useSpring(proximity, {
-    stiffness: 90,
-    damping: 18,
+    stiffness: params.followStiffness,
+    damping: 20,
     mass: 0.6,
   });
 
+  // Curiosity: which way the cursor is, so the core can lean toward it — not just glow at it.
+  const leanX = useMotionValue(0);
+  const leanY = useMotionValue(0);
+  const leanXSpring = useSpring(leanX, {
+    stiffness: params.leanStiffness,
+    damping: params.leanDamping,
+    mass: 0.5,
+  });
+  const leanYSpring = useSpring(leanY, {
+    stiffness: params.leanStiffness,
+    damping: params.leanDamping,
+    mass: 0.5,
+  });
+
+  // Focus: real hover, reached through a spring so its decay is the "soft exhale."
   const focus = useMotionValue(0);
   const focusSpring = useSpring(focus, {
     stiffness: 55,
@@ -75,7 +87,6 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
     ([p, f]) => Math.max(p, f),
   );
 
-  // Reduced-motion preference — subscribe only, never set synchronously in the effect body.
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const handleChange = (event: MediaQueryListEvent) =>
@@ -84,7 +95,6 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
     return () => query.removeEventListener("change", handleChange);
   }, []);
 
-  // Every pending timer must die with the component.
   useEffect(() => {
     return () => {
       if (lingerTimeoutRef.current !== null)
@@ -98,14 +108,14 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
     };
   }, []);
 
-  // The surprise scheduler: reschedules itself at a new random interval each
-  // time, so it never settles into a detectable rhythm.
+  // Mystery: reschedules at a new random interval every time, so it never settles into a detectable rhythm.
   useEffect(() => {
     if (prefersReducedMotion) return;
 
     const scheduleNext = () => {
       const delay =
-        SURPRISE_MIN_MS + Math.random() * (SURPRISE_MAX_MS - SURPRISE_MIN_MS);
+        params.surpriseMinMs +
+        Math.random() * (params.surpriseMaxMs - params.surpriseMinMs);
       surpriseTimeoutRef.current = window.setTimeout(() => {
         setSurpriseTick((tick) => tick + 1);
         scheduleNext();
@@ -117,7 +127,7 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
       if (surpriseTimeoutRef.current !== null)
         window.clearTimeout(surpriseTimeoutRef.current);
     };
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, params.surpriseMinMs, params.surpriseMaxMs]);
 
   useEffect(() => {
     const measure = () => {
@@ -136,15 +146,23 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
 
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
-      const distance = Math.hypot(
-        event.clientX - centerX,
-        event.clientY - centerY,
-      );
+      const dx = event.clientX - centerX;
+      const dy = event.clientY - centerY;
+      const distance = Math.hypot(dx, dy);
       const halfDiagonal = Math.hypot(rect.width / 2, rect.height / 2);
       const edgeDistance = Math.max(0, distance - halfDiagonal);
-      const normalized = 1 - Math.min(1, edgeDistance / AWARENESS_RADIUS_PX);
+      const normalized =
+        1 - Math.min(1, edgeDistance / params.awarenessRadiusPx);
 
       proximity.set(normalized);
+
+      // Curiosity: lean toward the cursor's actual direction, strongest up close, capped at leanDistancePx.
+      if (params.leanDistancePx > 0 && distance > 0) {
+        const unitX = dx / distance;
+        const unitY = dy / distance;
+        leanX.set(unitX * params.leanDistancePx * normalized);
+        leanY.set(unitY * params.leanDistancePx * normalized);
+      }
 
       const near = normalized > NEAR_THRESHOLD;
       if (near !== isNearRef.current) {
@@ -159,9 +177,8 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
               NOTICE_PULSE_MS,
             );
             noticeTimeoutRef.current = null;
-          }, NOTICE_DELAY_MS);
+          }, params.noticeDelayMs);
         } else if (noticeTimeoutRef.current !== null) {
-          // Cursor passed by before the fire ever "looked up" — patient, not reactive to every twitch.
           window.clearTimeout(noticeTimeoutRef.current);
           noticeTimeoutRef.current = null;
         }
@@ -173,7 +190,16 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
       window.removeEventListener("resize", measure);
       window.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [proximity, prefersReducedMotion, cardRef]);
+  }, [
+    proximity,
+    leanX,
+    leanY,
+    prefersReducedMotion,
+    cardRef,
+    params.awarenessRadiusPx,
+    params.leanDistancePx,
+    params.noticeDelayMs,
+  ]);
 
   const handlePointerEnter = useCallback(() => {
     if (lingerTimeoutRef.current !== null) {
@@ -185,22 +211,36 @@ export function useCampfireLife(cardRef: RefObject<HTMLDivElement | null>) {
   }, [focus]);
 
   const handlePointerLeave = useCallback(() => {
+    // Warmer personalities linger longer before letting go — the "soft exhale" lasts as long as the warmth does.
+    const lingerMs = 300 + params.settleSoftness * 700;
     lingerTimeoutRef.current = window.setTimeout(() => {
       focus.set(0);
       setIsFocused(false);
       lingerTimeoutRef.current = null;
-    }, LINGER_MS);
-  }, [focus]);
+    }, lingerMs);
+  }, [focus, params.settleSoftness]);
+
+  /** Rolls against Playfulness — call at a moment worth rewarding (a hover, a toss). Not every roll lands. */
+  const triggerFlourish = useCallback(() => {
+    if (Math.random() < params.flourishChance) {
+      setFlourishTick((tick) => tick + 1);
+    }
+  }, [params.flourishChance]);
 
   return {
+    params,
     combined,
+    leanXSpring,
+    leanYSpring,
     focusSpring,
     isNear,
     isFocused,
     justNoticed,
     surpriseTick,
+    flourishTick,
     prefersReducedMotion,
     handlePointerEnter,
     handlePointerLeave,
+    triggerFlourish,
   };
 }
