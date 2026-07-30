@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { EXPERIENCES } from "./engine/experiences";
 import { LivingCard } from "./engine/LivingCard";
 import { DebugPanel } from "./engine/DebugPanel";
+import { mapPersonalityToParams } from "./engine/mapPersonalityToParams";
 import type { Personality } from "./engine/types";
 
 /**
@@ -26,6 +27,10 @@ export function MotionLab() {
   const liveExperience = useMemo(
     () => ({ ...selected, personality }),
     [selected, personality],
+  );
+  const params = useMemo(
+    () => mapPersonalityToParams(personality, selected.identity.physics),
+    [personality, selected.identity.physics],
   );
 
   const handlePersonalityChange = (next: Personality) => {
@@ -70,6 +75,7 @@ export function MotionLab() {
 
       <DebugPanel
         personality={personality}
+        params={params}
         onChange={handlePersonalityChange}
         onReset={handleReset}
         open={debugOpen}

@@ -31,6 +31,23 @@ export interface MotionParams {
   dragMass: number;
   dragStiffness: number;
   dragDamping: number;
+  dragElastic: number;
+
+  // Body deformation under drag — how the card itself moves, not just where.
+  // Shaped primarily by PhysicsCharacter (what kind of thing this is), scaled
+  // by Energy/Chaos (how much, this time).
+  tiltMaxDeg: number;
+  tiltLagStiffness: number;
+  tiltLagDamping: number;
+  skewSensitivity: number;
+  squashAmount: number;
+
+  // World-space trail — when material detaches from the object and is left
+  // behind in the environment, driven by Energy (how easily) and Chaos (how
+  // widely it scatters).
+  detachThresholdPxPerS: number;
+  trailEmissionRate: number;
+  trailWorldSpreadPx: number;
 
   // Playfulness — reward for interacting with it at all.
   flourishChance: number;
@@ -75,6 +92,25 @@ export function mapPersonalityToParams(
           ? [22, 14]
           : [26, 12];
 
+  // What kind of body this is, before personality scales "how much." A rigid
+  // machine barely tilts and never lags; a liquid tilts modestly but keeps
+  // rotating long after the card stops; an agile thing tilts hard and tracks
+  // velocity almost instantly.
+  const [
+    tiltMaxBase,
+    tiltLagStiffnessBase,
+    tiltLagDampingBase,
+    skewBase,
+    squashBase,
+  ] =
+    physics === "rigid"
+      ? [7, 220, 30, 0.03, 0.012]
+      : physics === "liquid"
+        ? [11, 45, 5, 0.06, 0.015]
+        : physics === "agile"
+          ? [28, 260, 16, 0.22, 0.05]
+          : [16, 70, 12, 0.14, 0.03]; // floaty
+
   return {
     awarenessRadiusPx: lerp(90, 460, t(p.attention)),
     noticeDelayMs: lerp(900, 30, t(p.attention)),
@@ -94,6 +130,18 @@ export function mapPersonalityToParams(
     dragMass: lerp(0.25, 2.6, t(p.gravity)),
     dragStiffness: lerp(stiffnessMax, stiffnessMin, t(p.gravity)),
     dragDamping: lerp(dampingMax, dampingMin, t(p.gravity)),
+    dragElastic:
+      0.36 - Math.min(0.3, (lerp(0.25, 2.6, t(p.gravity)) / 2.6) * 0.3),
+
+    tiltMaxDeg: tiltMaxBase * lerp(0.55, 1, t(p.energy)),
+    tiltLagStiffness: tiltLagStiffnessBase,
+    tiltLagDamping: tiltLagDampingBase,
+    skewSensitivity: skewBase * lerp(0.4, 1, t(p.chaos)),
+    squashAmount: squashBase * lerp(0.5, 1, t(p.energy)),
+
+    detachThresholdPxPerS: lerp(900, 220, t(p.energy)),
+    trailEmissionRate: lerp(0.5, 4, t(p.energy)) * lerp(0.6, 1.3, t(p.chaos)),
+    trailWorldSpreadPx: lerp(20, 90, t(p.chaos)),
 
     flourishChance: t(p.playfulness),
     flourishScale: lerp(0.4, 2.2, t(p.playfulness)),

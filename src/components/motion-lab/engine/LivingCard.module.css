@@ -220,6 +220,49 @@
   border-radius: 50%;
 }
 
+/* --- World-space trail (Sprint 004) --- */
+/* Rendered via a portal into the stage, not the card — so a deposited
+   particle keeps existing exactly where it was left, even after the card
+   has moved away. Reuses the same drift keyframes as `.particle`; only the
+   positioning anchor (top/left in real pixels vs. bottom/left in percent of
+   the card) differs. */
+.worldTrailLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+
+.worldParticle {
+  position: absolute;
+  border-radius: 50%;
+  left: var(--start-x);
+  top: var(--start-y);
+  width: var(--size);
+  height: var(--size);
+  opacity: 0;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+.worldParticle.rise {
+  animation-name: particleRise;
+  animation-timing-function: ease-in;
+}
+.worldParticle.fall {
+  animation-name: particleFall;
+  animation-timing-function: ease-in;
+}
+.worldParticle.outward {
+  animation-name: particleOutward;
+  animation-timing-function: ease-out;
+}
+.worldParticle.static {
+  animation-name: particleGlint;
+  animation-timing-function: ease-in-out;
+}
+
 .wineSwirl {
   position: absolute;
   left: 50%;

@@ -6,9 +6,17 @@ import {
   useTransform,
   type PanInfo,
 } from "framer-motion";
-import { useRef, useState, type CSSProperties, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 import type { ExperienceDefinition } from "./types";
 import { usePersonalityEngine } from "./usePersonalityEngine";
+import { usePhysicsBody } from "./usePhysicsBody";
+import { WorldTrailLayer } from "./WorldTrailLayer";
 import { ParticleField } from "./ParticleField";
 import { BeaconSweep } from "./BeaconSweep";
 import { HeatHaze } from "./HeatHaze";
@@ -28,6 +36,17 @@ export function LivingCard({
   const [isDragging, setIsDragging] = useState(false);
   const [tossTrigger, setTossTrigger] = useState(0);
 
+  // The stage element, for the world-trail portal target. Refs can't be
+  // read during render, so this is tracked as state, set once after mount.
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setStageEl(dragConstraintsRef.current),
+      0,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [dragConstraintsRef]);
+
   const {
     params,
     combined,
@@ -42,10 +61,39 @@ export function LivingCard({
     triggerFlourish,
   } = usePersonalityEngine(experience, cardRef);
 
+  const {
+    tilt,
+    skew,
+    scaleX: bodyScaleX,
+    scaleY: bodyScaleY,
+    glowLagX,
+    glowLagY,
+    handleDrag,
+    handleDragEnd: handlePhysicsDragEnd,
+    deposits,
+    expireDeposit,
+  } = usePhysicsBody(params, cardRef, dragConstraintsRef);
+
   const { identity } = experience;
 
   const liftY = useTransform(combined, [0, 1], [0, -14]);
   const liftScale = useTransform(combined, [0, 1], [1, 1.014]);
+  const totalScaleX = useTransform<number, number>(
+    [liftScale, bodyScaleX],
+    ([lift, body]) => lift * body,
+  );
+  const totalScaleY = useTransform<number, number>(
+    [liftScale, bodyScaleY],
+    ([lift, body]) => lift * body,
+  );
+  const glowOffsetX = useTransform<number, number>(
+    [leanXSpring, glowLagX],
+    ([lean, lag]) => lean + lag,
+  );
+  const glowOffsetY = useTransform<number, number>(
+    [leanYSpring, glowLagY],
+    ([lean, lag]) => lean + lag,
+  );
   const brightness = useTransform(
     combined,
     [0, 1],
@@ -86,6 +134,7 @@ export function LivingCard({
     info: PanInfo,
   ) => {
     setIsDragging(false);
+    handlePhysicsDragEnd();
     if (
       Math.hypot(info.velocity.x, info.velocity.y) > TOSS_VELOCITY_THRESHOLD
     ) {
@@ -112,12 +161,21 @@ export function LivingCard({
       }}
       dragSnapToOrigin
       onDragStart={() => setIsDragging(true)}
+      onDrag={handleDrag}
       onDragEnd={handleDragEnd}
       whileDrag={{ scale: dragGrabScale }}
       style={
         prefersReducedMotion
           ? undefined
-          : { y: liftY, scale: liftScale, boxShadow, filter }
+          : {
+              y: liftY,
+              scaleX: totalScaleX,
+              scaleY: totalScaleY,
+              rotate: tilt,
+              skewX: skew,
+              boxShadow,
+              filter,
+            }
       }
       aria-label={identity.title}
     >
@@ -127,7 +185,7 @@ export function LivingCard({
           style={
             prefersReducedMotion
               ? undefined
-              : { x: leanXSpring, y: leanYSpring }
+              : { x: glowOffsetX, y: glowOffsetY }
           }
         >
           <motion.div
@@ -223,6 +281,17 @@ export function LivingCard({
         <h2 className={styles.title}>{identity.title}</h2>
         <p className={styles.futureMemory}>{identity.futureMemory}</p>
       </div>
+
+      {!prefersReducedMotion && (
+        <WorldTrailLayer
+          container={stageEl}
+          deposits={deposits}
+          material={identity.material}
+          speed={params.particleSpeed}
+          jitter={params.jitter}
+          onExpire={expireDeposit}
+        />
+      )}
     </motion.div>
   );
 }
