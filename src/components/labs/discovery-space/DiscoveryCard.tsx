@@ -182,6 +182,35 @@ export function DiscoveryCard({
   const [motionState, setMotionState] = useState<CardMotionState>("idle");
   const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Design Review Experiment 3 ("the tagline wins"): a card is a future
+  // memory, not a product shot — the sentence is the point, not the glow
+  // around it. Sustained hover (not the instant kind) lets the tagline
+  // grow into the card's most prominent element while the video/glow
+  // beneath it quietly dims, so lingering is rewarded with more of the
+  // story instead of more shine. Deliberately not gated behind
+  // `prefersReducedMotion`: this is a response to real, sustained
+  // attention (like drag, which also stays enabled under reduced motion),
+  // not ambient/automatic motion — and the transition itself is a mild
+  // opacity/size fade, not motion in the vestibular sense.
+  const [isLingering, setIsLingering] = useState(false);
+  const lingerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleHoverStart() {
+    onHoverChange?.(true);
+    lingerTimeoutRef.current = setTimeout(() => setIsLingering(true), 1000);
+  }
+
+  function handleHoverEnd() {
+    onHoverChange?.(false);
+    if (lingerTimeoutRef.current !== null) {
+      clearTimeout(lingerTimeoutRef.current);
+      lingerTimeoutRef.current = null;
+    }
+    // No lingering delay on the way out — leaving should read as immediate,
+    // only arriving is deliberately slow.
+    setIsLingering(false);
+  }
+
   // Explicit x/y motion values (rather than letting Framer create them
   // implicitly) so a throw's resting position can be *read* once dragging
   // ends. Without this, resuming the ambient keyframes below — which are
@@ -197,6 +226,9 @@ export function DiscoveryCard({
     return () => {
       if (settleTimeoutRef.current !== null) {
         clearTimeout(settleTimeoutRef.current);
+      }
+      if (lingerTimeoutRef.current !== null) {
+        clearTimeout(lingerTimeoutRef.current);
       }
     };
   }, []);
@@ -268,8 +300,8 @@ export function DiscoveryCard({
       // Motion interpolate the box itself produces a grotesque stretch
       // mid-flight. Position-only travel + crossfade reads far cleaner.
       layout="position"
-      onHoverStart={() => onHoverChange?.(true)}
-      onHoverEnd={() => onHoverChange?.(false)}
+      onHoverStart={handleHoverStart}
+      onHoverEnd={handleHoverEnd}
       // Framer's own tap gesture, not the inner button's onClick: once
       // `drag` is attached to this element, its pointerdown handling
       // suppresses the native click that would otherwise fire on the
@@ -331,6 +363,13 @@ export function DiscoveryCard({
           ease: "easeInOut",
           delay,
         },
+        // Without its own key, the shared-layout projection correction
+        // (this card and its Mood Board row share layoutId) falls back to
+        // `default` above — an Infinite-repeat ambient-drift tween that
+        // never settles. A one-shot layout transition lets the FLIP from
+        // the row's position actually converge instead of getting stuck
+        // mid-transition forever.
+        layout: { duration: 0.7, ease: PREMIUM_EASE },
         // Deliberately fast relative to the ambient drift delay above —
         // the whole field should be visible within ~1.2s of load, staggered
         // just enough to feel alive rather than a single flash-in.
@@ -481,6 +520,18 @@ export function DiscoveryCard({
           className="absolute inset-0 z-0 cursor-pointer bg-transparent text-left"
         />
 
+        {/* The lingering-hover dim: everything below the text (video, glow,
+            temptation effects) quietly recedes so the tagline — the actual
+            memory — becomes the thing being looked at, not the light
+            around it. */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-black transition-opacity duration-500",
+            isLingering ? "opacity-45" : "opacity-0",
+          )}
+        />
+
         <div
           aria-hidden
           className="relative z-0 flex h-full flex-col justify-end gap-1 p-4"
@@ -488,7 +539,14 @@ export function DiscoveryCard({
           <p className="font-heading text-base leading-snug font-medium tracking-[-0.01em] text-white/90 sm:text-lg">
             {experience.name}
           </p>
-          <p className="text-xs leading-snug text-white/45">
+          <p
+            className={cn(
+              "leading-snug transition-all duration-500 ease-out",
+              isLingering
+                ? "text-sm text-white/95 sm:text-base"
+                : "text-xs text-white/45",
+            )}
+          >
             {experience.tagline}
           </p>
         </div>

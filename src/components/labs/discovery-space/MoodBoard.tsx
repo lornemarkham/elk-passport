@@ -28,10 +28,12 @@ interface MoodBoardProps {
    * switcher as a "more boards coming soon" placeholder. */
   boards?: BoardSummary[];
   activeBoardId?: string;
-  /** Fired with the submitted name once the user confirms a rename. The
-   * caller owns persistence — this component only reflects `boardName`
-   * once the parent's state actually changes. */
-  onRenameBoard?: (name: string) => void;
+  /** Fired with the submitted name once the user confirms a rename. May
+   * return a Promise: BoardTitle displays the new name optimistically and
+   * reverts to the last confirmed name if that promise rejects, rather
+   * than leaving the display stuck on an unsaved value with no signal
+   * anything went wrong. */
+  onRenameBoard?: (name: string) => void | Promise<void>;
   /** Placeholder seam: real board switching is wired up by the caller. */
   onSwitchBoard?: (boardId: string) => void;
   /** Placeholder seam: real board creation is wired up by the caller. */
@@ -43,7 +45,7 @@ function BoardTitle({
   onRename,
 }: {
   name: string;
-  onRename?: (name: string) => void;
+  onRename?: (name: string) => void | Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -80,7 +82,15 @@ function BoardTitle({
     const trimmed = draft.trim();
     setIsEditing(false);
     if (trimmed && trimmed !== name) {
-      onRename?.(trimmed);
+      // Optimistic: the h2 below renders `draft`, not `name`, so the new
+      // name is visible immediately instead of showing the old one again
+      // until Atlas confirms. If the rename ultimately fails, fall back
+      // to the last confirmed name rather than leaving the display stuck
+      // on a value that was never actually saved.
+      Promise.resolve(onRename?.(trimmed)).catch(() => {
+        setDraft(name);
+        setSyncedName(name);
+      });
     } else {
       setDraft(name);
     }
@@ -94,7 +104,11 @@ function BoardTitle({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
-          if (event.key === "Enter") commit();
+          // Enter doesn't call commit() itself — it triggers the same
+          // blur that a click-outside would, so there is exactly one
+          // save path (onBlur), not two call sites that happen to agree
+          // today but could silently diverge later.
+          if (event.key === "Enter") event.currentTarget.blur();
           if (event.key === "Escape") {
             hasCommittedRef.current = true;
             setDraft(name);
@@ -114,7 +128,12 @@ function BoardTitle({
       className="group flex items-center gap-1.5 text-left"
       aria-label="Rename board"
     >
-      <h2 className="font-heading text-lg text-white/90">{name}</h2>
+      {/* `draft`, not `name`: once a rename commits, `draft` already
+       * holds the new value optimistically (see commit() above), while
+       * `name` only catches up once Atlas confirms. Rendering `name`
+       * here was the bug — it made a successful rename visibly revert to
+       * the old value for the duration of the round-trip. */}
+      <h2 className="font-heading text-lg text-white/90">{draft}</h2>
       <svg
         aria-hidden
         viewBox="0 0 16 16"
@@ -322,7 +341,7 @@ export function MoodBoard({
   hasActiveFilters,
   onRestoreRejected,
   onClearFilters,
-  boardName = "My Board",
+  boardName,
   boards = [],
   activeBoardId,
   onRenameBoard,
@@ -348,7 +367,19 @@ export function MoodBoard({
               onCreateBoard={onCreateBoard}
             />
           </div>
-          <BoardTitle name={boardName} onRename={onRenameBoard} />
+          {boardName === undefined ? (
+            // Atlas hasn't resolved the active board yet — a skeleton,
+            // not a fabricated name. Rendering a placeholder like "My
+            // Board" here means every load flickers between fake text and
+            // the real name once it arrives; showing nothing wrong is
+            // strictly better than showing something wrong briefly.
+            <div
+              aria-hidden
+              className="h-7 w-32 animate-pulse rounded-md bg-white/[0.06]"
+            />
+          ) : (
+            <BoardTitle name={boardName} onRename={onRenameBoard} />
+          )}
           <div className="flex gap-1.5" role="tablist" aria-label="Mood Board">
             <button
               type="button"
