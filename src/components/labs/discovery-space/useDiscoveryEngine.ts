@@ -153,13 +153,17 @@ export function useDiscoveryEngine() {
       // reject signal — it returns the experience to the active pool
       // rather than marking it unwanted (IMP-004: "Allow removal of saved
       // items"; rejecting is a stronger, separate action).
-      dispatch({ type: "EXPERIENCE_RESTORE", experienceId });
+      dispatch({ type: "EXPERIENCE_UNSAVE", experienceId });
       logDiscoveryEvent({
         type: "mood_board_item_removed",
         sessionId: state.sessionId,
         occurredAt: nowIso(),
         experienceId,
       });
+    },
+
+    switchBoard(savedExperienceIds: string[]) {
+      dispatch({ type: "BOARD_SWITCHED", savedExperienceIds });
     },
 
     broaden(strategy: DiscoveryBroadenStrategy) {

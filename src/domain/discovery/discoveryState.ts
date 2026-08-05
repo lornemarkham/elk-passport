@@ -44,6 +44,8 @@ export type DiscoveryCommand =
   | { type: "EXPERIENCE_REJECT"; experienceId: string }
   | { type: "EXPERIENCE_SHELF"; experienceId: string }
   | { type: "EXPERIENCE_RESTORE"; experienceId: string }
+  | { type: "EXPERIENCE_UNSAVE"; experienceId: string }
+  | { type: "BOARD_SWITCHED"; savedExperienceIds: string[] }
   | { type: "DISCOVERY_BROADEN"; strategy: DiscoveryBroadenStrategy }
   | { type: "DISCOVERY_RESET" }
   | {
@@ -173,6 +175,36 @@ export function discoveryReducer(
           state.lastRemoved?.experienceId === command.experienceId
             ? null
             : state.lastRemoved,
+      };
+
+    // Distinct from EXPERIENCE_RESTORE: removing a *saved* item from the
+    // Mood Board only ever needs to clear savedExperienceIds. Reusing
+    // EXPERIENCE_RESTORE here was a bug — it only clears
+    // rejected/shelved, so a saved-only id was never actually removed.
+    case "EXPERIENCE_UNSAVE":
+      return {
+        ...state,
+        savedExperienceIds: without(
+          state.savedExperienceIds,
+          command.experienceId,
+        ),
+      };
+
+    // A different board entirely — unlike DISCOVERY_RESET (which broadens
+    // the *current* board's search and deliberately keeps saved items),
+    // switching boards means the old board's saved/shelved/rejected ids
+    // don't belong to this session anymore, so they're replaced/cleared
+    // rather than merged. `savedExperienceIds` comes from the target
+    // board's real Atlas items, not computed locally.
+    case "BOARD_SWITCHED":
+      return {
+        ...state,
+        savedExperienceIds: command.savedExperienceIds,
+        shelvedExperienceIds: [],
+        rejectedExperienceIds: [],
+        filters: createEmptyFilterState(),
+        query: "",
+        lastRemoved: null,
       };
 
     case "DISCOVERY_BROADEN": {

@@ -112,6 +112,32 @@ describe("discoveryReducer — save/reject/shelf/restore", () => {
     });
   });
 
+  it("unsave removes an id from savedExperienceIds only", () => {
+    let state = initial();
+    state = discoveryReducer(state, {
+      type: "EXPERIENCE_SAVE",
+      experienceId: "campfire",
+    });
+    state = discoveryReducer(state, {
+      type: "EXPERIENCE_UNSAVE",
+      experienceId: "campfire",
+    });
+    expect(state.savedExperienceIds).toEqual([]);
+  });
+
+  it("restore does NOT remove an id from savedExperienceIds (regression: only EXPERIENCE_UNSAVE should)", () => {
+    let state = initial();
+    state = discoveryReducer(state, {
+      type: "EXPERIENCE_SAVE",
+      experienceId: "campfire",
+    });
+    state = discoveryReducer(state, {
+      type: "EXPERIENCE_RESTORE",
+      experienceId: "campfire",
+    });
+    expect(state.savedExperienceIds).toEqual(["campfire"]);
+  });
+
   it("clears lastRemoved once that experience is restored", () => {
     let state = initial();
     state = discoveryReducer(state, {
@@ -176,6 +202,33 @@ describe("discoveryReducer — saved items survive filter and broaden changes", 
     });
     expect(state.filters.moods).toEqual([]);
     expect(state.rejectedExperienceIds).toEqual(["gone"]);
+  });
+});
+
+describe("discoveryReducer — board switching", () => {
+  it("replaces saved ids with the target board's items and clears shelved/rejected/filters", () => {
+    let state = initial();
+    state = discoveryReducer(state, {
+      type: "EXPERIENCE_SAVE",
+      experienceId: "old-board-item",
+    });
+    state = discoveryReducer(state, {
+      type: "EXPERIENCE_SHELF",
+      experienceId: "shelved-elsewhere",
+    });
+    state = discoveryReducer(state, {
+      type: "FILTER_SET",
+      key: "moods",
+      value: ["cozy"],
+    });
+    state = discoveryReducer(state, {
+      type: "BOARD_SWITCHED",
+      savedExperienceIds: ["new-board-item"],
+    });
+    expect(state.savedExperienceIds).toEqual(["new-board-item"]);
+    expect(state.shelvedExperienceIds).toEqual([]);
+    expect(state.rejectedExperienceIds).toEqual([]);
+    expect(state.filters.moods).toEqual([]);
   });
 });
 

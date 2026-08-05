@@ -3,9 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutGroup, useMotionValue } from "framer-motion";
 import { selectActiveExperiences } from "@/domain/discovery/selectors";
-import { SEED_EXPERIENCES } from "@/domain/experience/seedExperiences";
 import type { Experience as DomainExperience } from "@/domain/experience/types";
 import { logDiscoveryEvent } from "@/domain/discovery/interactions";
+import {
+  getStoredActiveBoardId,
+  setStoredActiveBoardId,
+} from "@/lib/data/activeBoardStorage";
+import {
+  createBoard,
+  listBoardItems,
+  listBoards,
+  removeExperienceFromBoard,
+  renameBoard,
+  saveExperienceToBoard,
+  type Board,
+} from "@/lib/data/boards-repo";
 import { DiscoveryCard } from "./DiscoveryCard";
 import { DiscoveryFilters } from "./DiscoveryFilters";
 import { DiscoveryInspectSheet } from "./DiscoveryInspectSheet";
@@ -16,36 +28,63 @@ import { usePrefersReducedMotion } from "./temptation/usePrefersReducedMotion";
 import { useDiscoveryEngine } from "./useDiscoveryEngine";
 import type { Experience, FieldExperience } from "./types";
 
-// Every seed experience mapped to its Discovery presentation, computed
-// once — stable across renders and across filter changes, so filtering
-// only ever changes *which* cards are visible, never where a still-visible
-// card sits (IMP-002 §11: "must not create new random positions").
-const ALL_FIELD_EXPERIENCES: FieldExperience[] = SEED_EXPERIENCES.map(
-  toFieldExperience,
-).filter((experience): experience is FieldExperience => Boolean(experience));
-
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort();
 }
 
-const AVAILABLE_MOODS = uniqueSorted(SEED_EXPERIENCES.flatMap((e) => e.moods));
-const AVAILABLE_ACTIVITIES = uniqueSorted(
-  SEED_EXPERIENCES.flatMap((e) => e.activities),
-);
-const AVAILABLE_SEASONS = uniqueSorted(
-  SEED_EXPERIENCES.flatMap((e) => e.seasons),
-);
-const AVAILABLE_COMPANIONS = uniqueSorted(
-  SEED_EXPERIENCES.flatMap((e) => e.companions),
-);
-
-function toField(experience: DomainExperience): FieldExperience | null {
-  return ALL_FIELD_EXPERIENCES.find((f) => f.id === experience.id) ?? null;
+export interface DiscoverySpaceProps {
+  /** The catalogue to render — a renderer, not a data source (see module
+   * doc below). Callers own where this comes from: the product route
+   * fetches real Atlas experiences; the labs route still passes the
+   * hand-authored seed set for experimentation. */
+  experiences: DomainExperience[];
 }
 
-export function DiscoverySpace() {
+/**
+ * A renderer, not a data source: every experience it shows comes in as a
+ * prop. This component has no opinion on and no import of where that
+ * catalogue came from — Atlas, seed data, anything else with the same
+ * shape.
+ */
+export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
   const engine = useDiscoveryEngine();
   const { state } = engine;
+
+  // Every experience mapped to its Discovery presentation, computed once
+  // per `experiences` prop — stable across renders and across filter
+  // changes, so filtering only ever changes *which* cards are visible,
+  // never where a still-visible card sits (IMP-002 §11: "must not create
+  // new random positions").
+  const allFieldExperiences = useMemo<FieldExperience[]>(
+    () =>
+      experiences
+        .map(toFieldExperience)
+        .filter((experience): experience is FieldExperience =>
+          Boolean(experience),
+        ),
+    [experiences],
+  );
+
+  const availableMoods = useMemo(
+    () => uniqueSorted(experiences.flatMap((e) => e.moods)),
+    [experiences],
+  );
+  const availableActivities = useMemo(
+    () => uniqueSorted(experiences.flatMap((e) => e.activities)),
+    [experiences],
+  );
+  const availableSeasons = useMemo(
+    () => uniqueSorted(experiences.flatMap((e) => e.seasons)),
+    [experiences],
+  );
+  const availableCompanions = useMemo(
+    () => uniqueSorted(experiences.flatMap((e) => e.companions)),
+    [experiences],
+  );
+
+  function toField(experience: DomainExperience): FieldExperience | null {
+    return allFieldExperiences.find((f) => f.id === experience.id) ?? null;
+  }
 
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -54,12 +93,98 @@ export function DiscoverySpace() {
   const filtersButtonRef = useRef<HTMLButtonElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
+  // Atlas is the source of truth for both which boards exist and which
+  // items each one holds. `boards` is every board this session knows
+  // about (drives the switcher); `board` is the active one, whose items
+  // back the Mood Board. Which board is active persists across reloads
+  // via localStorage (see activeBoardStorage.ts) — falling back to
+  // whichever board Atlas's list returns first if nothing's stored yet,
+  // or the stored id no longer exists.
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [board, setBoard] = useState<Board | null>(null);
+
+  // On load: resolve the active board (persisted choice, or Atlas's
+  // first) and reconcile its real, persisted items into local state, so
+  // a returning visitor's Mood Board reflects what's actually saved for
+  // *that* board. Uses the same authoritative replace as switchToBoard
+  // below, not an additive merge — an additive merge would let stale
+  // localStorage ids from a *different* board bleed into whichever board
+  // happens to load first, which is exactly what happened before this
+  // fix (see the Boards MVP session notes).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const allBoards = await listBoards();
+        if (cancelled) return;
+        setBoards(allBoards);
+        const storedId = getStoredActiveBoardId();
+        const resolved =
+          (storedId && allBoards.find((b) => b.id === storedId)) ||
+          allBoards[0];
+        if (!resolved) return;
+        const items = await listBoardItems(resolved.id);
+        if (cancelled) return;
+        setBoard(resolved);
+        setStoredActiveBoardId(resolved.id);
+        engine.switchBoard(items.map((item) => item.experienceId));
+      } catch (error) {
+        console.error("Failed to load boards from Atlas:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Deliberately run-once: this reconciles local state against Atlas's
+    // state as it stood at mount, not on every subsequent state change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Shared by both create and switch: point `board` at a different board,
+  // persist that choice, and replace local saved/shelved/rejected/filter
+  // state with a fresh session for it (see BOARD_SWITCHED — this
+  // deliberately does NOT merge with whatever was previously saved, since
+  // that belonged to the *old* board). Atlas-first: fetching items
+  // happens before any local state changes, so a failed switch leaves the
+  // previous board's view intact instead of half-updating.
+  async function switchToBoard(target: Board) {
+    try {
+      const items = await listBoardItems(target.id);
+      setBoard(target);
+      setStoredActiveBoardId(target.id);
+      engine.switchBoard(items.map((item) => item.experienceId));
+    } catch (error) {
+      console.error(`Failed to switch to board ${target.id}:`, error);
+    }
+  }
+
+  async function handleCreateBoard(name: string) {
+    try {
+      const created = await createBoard(name);
+      setBoards((prev) => [...prev, created]);
+      await switchToBoard(created);
+    } catch (error) {
+      console.error(`Failed to create board "${name}":`, error);
+    }
+  }
+
+  function handleSwitchBoard(boardId: string) {
+    const target = boards.find((candidate) => candidate.id === boardId);
+    if (!target) {
+      console.error(
+        `Cannot switch to board ${boardId} — not in the loaded boards list.`,
+      );
+      return;
+    }
+    switchToBoard(target);
+  }
+
   // The one pure Compass call (IMP-002 §4/§11, extended by IMP-004): filters
   // + query + save/reject/shelf state all collapse to "what's active right
   // now" through a single selector, so no consumer re-derives this itself.
   const activeExperiences = useMemo(
-    () => selectActiveExperiences(SEED_EXPERIENCES, state),
-    [state],
+    () => selectActiveExperiences(experiences, state),
+    [experiences, state],
   );
 
   const field = useMemo(
@@ -69,7 +194,8 @@ export function DiscoverySpace() {
         .filter((experience): experience is FieldExperience =>
           Boolean(experience),
         ),
-    [activeExperiences],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeExperiences, allFieldExperiences],
   );
 
   // Looked up from the *unfiltered* full field, not the filtered one — a
@@ -78,10 +204,10 @@ export function DiscoverySpace() {
   // preserved by IMP-004's "Mood Board is separate from the current result
   // set" architecture decision).
   const savedFieldExperiences = state.savedExperienceIds
-    .map((id) => ALL_FIELD_EXPERIENCES.find((e) => e.id === id))
+    .map((id) => allFieldExperiences.find((e) => e.id === id))
     .filter((e): e is FieldExperience => Boolean(e));
   const shelvedFieldExperiences = state.shelvedExperienceIds
-    .map((id) => ALL_FIELD_EXPERIENCES.find((e) => e.id === id))
+    .map((id) => allFieldExperiences.find((e) => e.id === id))
     .filter((e): e is FieldExperience => Boolean(e));
 
   // Peripheral Temptation (Discovery Lab v0.4): a self-contained layer that
@@ -121,9 +247,70 @@ export function DiscoverySpace() {
     filtersButtonRef.current?.focus();
   }
 
-  function handleSave(experience: Experience) {
-    engine.save(experience.id);
-    focusStableAnchor();
+  // Atlas-first: local state (the thing that actually drives what the
+  // Mood Board displays) only changes once Atlas confirms the write. A
+  // failed request must not leave the UI claiming a durable save that
+  // never happened — so on failure this deliberately does *not* call
+  // `engine.save()`, and the card stays exactly where it was.
+  async function handleSave(experience: Experience) {
+    if (!board) {
+      console.error(
+        `Cannot save "${experience.id}" — no board has loaded from Atlas yet.`,
+      );
+      return;
+    }
+    try {
+      await saveExperienceToBoard(board.id, experience.id);
+      engine.save(experience.id);
+      focusStableAnchor();
+    } catch (error) {
+      console.error(
+        `Failed to save "${experience.id}" to board ${board.id}:`,
+        error,
+      );
+    }
+  }
+  // Atlas-first, same pattern as handleSave: MoodBoard's title reflects
+  // `board.name`, which only changes once Atlas confirms the rename. On
+  // failure this deliberately does not call `setBoard`, so MoodBoard's
+  // inline input re-syncs to the old name instead of showing a rename
+  // that never actually persisted.
+  async function handleRenameBoard(name: string) {
+    if (!board) {
+      console.error(
+        "Cannot rename board — no board has loaded from Atlas yet.",
+      );
+      return;
+    }
+    try {
+      const renamedBoard = await renameBoard(board.id, name);
+      setBoard(renamedBoard);
+    } catch (error) {
+      console.error(`Failed to rename board ${board.id}:`, error);
+    }
+  }
+  // Atlas-first, same pattern as handleSave/handleRenameBoard: Atlas is
+  // the source of truth reconciled on every mount (see the effect above),
+  // so a local-only removal would silently come back on the next reload
+  // if Atlas never actually deleted the row. Only calls engine.removeSaved
+  // once the delete is confirmed.
+  async function handleRemoveSaved(experienceId: string) {
+    if (!board) {
+      console.error(
+        `Cannot remove "${experienceId}" — no board has loaded from Atlas yet.`,
+      );
+      return;
+    }
+    try {
+      await removeExperienceFromBoard(board.id, experienceId);
+      engine.removeSaved(experienceId);
+      focusStableAnchor();
+    } catch (error) {
+      console.error(
+        `Failed to remove "${experienceId}" from board ${board.id}:`,
+        error,
+      );
+    }
   }
   function handleReject(experience: Experience) {
     engine.reject(experience.id);
@@ -170,10 +357,10 @@ export function DiscoverySpace() {
         resultCount={activeExperiences.length}
         isOpen={filtersOpen}
         onToggleOpen={() => setFiltersOpen((prev) => !prev)}
-        availableMoods={AVAILABLE_MOODS}
-        availableActivities={AVAILABLE_ACTIVITIES}
-        availableSeasons={AVAILABLE_SEASONS}
-        availableCompanions={AVAILABLE_COMPANIONS}
+        availableMoods={availableMoods}
+        availableActivities={availableActivities}
+        availableSeasons={availableSeasons}
+        availableCompanions={availableCompanions}
       />
       <LayoutGroup>
         <div className="relative h-full w-full">
@@ -202,7 +389,7 @@ export function DiscoverySpace() {
         <MoodBoard
           savedExperiences={savedFieldExperiences}
           shelvedExperiences={shelvedFieldExperiences}
-          onRemoveSaved={(id) => engine.removeSaved(id)}
+          onRemoveSaved={handleRemoveSaved}
           onReturnShelved={(id) => engine.restore(id)}
           rejectedCount={state.rejectedExperienceIds.length}
           hasActiveFilters={
@@ -212,6 +399,12 @@ export function DiscoverySpace() {
           }
           onRestoreRejected={() => engine.broaden("restore-rejected")}
           onClearFilters={() => engine.broaden("clear-filters")}
+          boardName={board?.name}
+          onRenameBoard={handleRenameBoard}
+          boards={boards}
+          activeBoardId={board?.id}
+          onSwitchBoard={handleSwitchBoard}
+          onCreateBoard={handleCreateBoard}
         />
       </LayoutGroup>
 
