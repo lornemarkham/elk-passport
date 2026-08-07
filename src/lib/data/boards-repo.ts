@@ -28,6 +28,17 @@ export async function listBoards(): Promise<Board[]> {
   return response.json();
 }
 
+// Atlas has no GET /boards/:id (only PATCH, for rename) — same gap
+// BoardService.renameBoard already works around by listing and finding.
+// Reusing that precedent here rather than adding a new Atlas route for
+// a lookup the existing list endpoint already serves. Returns null (not
+// a throw) when the id genuinely doesn't match any board, so callers can
+// tell "not found" apart from "the request failed."
+export async function getBoard(boardId: string): Promise<Board | null> {
+  const boards = await listBoards();
+  return boards.find((board) => board.id === boardId) ?? null;
+}
+
 export async function createBoard(name: string): Promise<Board> {
   const response = await fetch(`${ATLAS_BASE_URL}/boards`, {
     method: "POST",
@@ -99,4 +110,15 @@ export async function renameBoard(
   }
 
   return response.json();
+}
+
+export async function deleteBoard(boardId: string): Promise<void> {
+  const response = await fetch(
+    `${ATLAS_BASE_URL}/boards/${encodeURIComponent(boardId)}`,
+    { method: "DELETE" },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to delete board.");
+  }
 }

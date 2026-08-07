@@ -24,3 +24,12 @@ export function setStoredActiveBoardId(boardId: string): void {
     // Atlas's first board on the next load is an acceptable MVP tradeoff.
   }
 }
+
+export function clearStoredActiveBoardId(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Same fail-soft posture as setStoredActiveBoardId above.
+  }
+}

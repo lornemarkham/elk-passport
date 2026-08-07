@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { FieldExperience } from "./types";
@@ -22,8 +23,15 @@ interface MoodBoardProps {
   onRestoreRejected: () => void;
   onClearFilters: () => void;
   /** Current board's display name. Optional so today's single-board caller
-   * can keep working unchanged; falls back to a generic label. */
+   * can keep working unchanged; falls back to a generic label. `undefined`
+   * means "not resolved yet" — see `boardsLoaded` for how that's told
+   * apart from "genuinely no boards exist." */
   boardName?: string;
+  /** Whether the initial boards fetch has settled at least once.
+   * Distinguishes "still loading" (boardName undefined, boardsLoaded
+   * false — show a skeleton) from "loaded, zero boards" (boardName
+   * undefined, boardsLoaded true — show the create-a-board state). */
+  boardsLoaded?: boolean;
   /** Every board available to switch to. Omitted/empty renders the
    * switcher as a "more boards coming soon" placeholder. */
   boards?: BoardSummary[];
@@ -38,6 +46,10 @@ interface MoodBoardProps {
   onSwitchBoard?: (boardId: string) => void;
   /** Placeholder seam: real board creation is wired up by the caller. */
   onCreateBoard?: (name: string) => void;
+  /** Opens the delete-confirmation dialog for the active board — the
+   * caller (DiscoverySpace) owns the confirm step and the actual delete,
+   * same split as save-to-board's picker vs. its Atlas call. */
+  onRequestDeleteBoard?: () => void;
 }
 
 function BoardTitle({
@@ -157,11 +169,13 @@ function BoardSwitcher({
   activeBoardId,
   onSwitchBoard,
   onCreateBoard,
+  onRequestDeleteBoard,
 }: {
   boards: BoardSummary[];
   activeBoardId?: string;
   onSwitchBoard?: (boardId: string) => void;
   onCreateBoard?: (name: string) => void;
+  onRequestDeleteBoard?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -274,6 +288,21 @@ function BoardSwitcher({
                 </button>
               )}
             </div>
+
+            {activeBoardId && (
+              <div className="mt-1 border-t border-white/10 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onRequestDeleteBoard?.();
+                  }}
+                  className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-red-400/70 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                >
+                  Delete this board
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -342,11 +371,13 @@ export function MoodBoard({
   onRestoreRejected,
   onClearFilters,
   boardName,
+  boardsLoaded = false,
   boards = [],
   activeBoardId,
   onRenameBoard,
   onSwitchBoard,
   onCreateBoard,
+  onRequestDeleteBoard,
 }: MoodBoardProps) {
   const [tab, setTab] = useState<BoardTab>("saved");
   const canBroaden = hasActiveFilters || rejectedCount > 0;
@@ -354,122 +385,159 @@ export function MoodBoard({
 
   return (
     <aside className="pointer-events-none fixed inset-y-0 right-0 z-40 w-full max-w-[30%] min-w-[280px] border-l border-white/[0.06] bg-[#0b0b0b]/70 backdrop-blur-xl">
-      <div className="pointer-events-auto flex h-full flex-col gap-5 overflow-y-auto px-6 py-10 sm:px-8">
-        <header className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-medium tracking-[0.2em] text-white/35 uppercase">
-              Your board
-            </p>
-            <BoardSwitcher
-              boards={boards}
-              activeBoardId={activeBoardId}
-              onSwitchBoard={onSwitchBoard}
-              onCreateBoard={onCreateBoard}
-            />
-          </div>
-          {boardName === undefined ? (
-            // Atlas hasn't resolved the active board yet — a skeleton,
-            // not a fabricated name. Rendering a placeholder like "My
-            // Board" here means every load flickers between fake text and
-            // the real name once it arrives; showing nothing wrong is
-            // strictly better than showing something wrong briefly.
-            <div
-              aria-hidden
-              className="h-7 w-32 animate-pulse rounded-md bg-white/[0.06]"
-            />
-          ) : (
-            <BoardTitle name={boardName} onRename={onRenameBoard} />
-          )}
-          <div className="flex gap-1.5" role="tablist" aria-label="Mood Board">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "saved"}
-              onClick={() => setTab("saved")}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
-                tab === "saved"
-                  ? "border-white/30 bg-white/[0.08] text-white/90"
-                  : "border-white/10 text-white/45 hover:text-white/70",
-              )}
-            >
-              Saved ({savedExperiences.length})
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "shelved"}
-              onClick={() => setTab("shelved")}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
-                tab === "shelved"
-                  ? "border-white/30 bg-white/[0.08] text-white/90"
-                  : "border-white/10 text-white/45 hover:text-white/70",
-              )}
-            >
-              Shelved ({shelvedExperiences.length})
-            </button>
-          </div>
-          <p className="font-heading text-sm text-white/60">
-            {visible.length === 0
-              ? tab === "saved"
-                ? "Nothing yet — just look around."
-                : "Nothing shelved. Shelf something interesting for later."
-              : tab === "saved"
-                ? `${savedExperiences.length} discover${savedExperiences.length === 1 ? "y" : "ies"} caught your eye`
-                : `${shelvedExperiences.length} set aside for later`}
-          </p>
-        </header>
-
-        <div className="flex flex-1 flex-col gap-3">
-          <AnimatePresence initial={false}>
-            {visible.map((experience) =>
-              tab === "saved" ? (
-                <BoardRow
-                  key={experience.id}
-                  experience={experience}
-                  onAction={() => onRemoveSaved(experience.id)}
-                  actionLabel="Remove"
-                />
+      <div className="pointer-events-auto flex h-full flex-col">
+        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-10 sm:px-8">
+          <header className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-medium tracking-[0.2em] text-white/35 uppercase">
+                Your board
+              </p>
+              <BoardSwitcher
+                boards={boards}
+                activeBoardId={activeBoardId}
+                onSwitchBoard={onSwitchBoard}
+                onCreateBoard={onCreateBoard}
+                onRequestDeleteBoard={onRequestDeleteBoard}
+              />
+            </div>
+            {boardName === undefined ? (
+              boardsLoaded ? (
+                // Resolved, definitively zero boards — most reachable via
+                // Delete Board now that it exists. Plain text, not
+                // BoardTitle: there's no board here to rename.
+                <p className="font-heading text-lg text-white/40">
+                  No boards yet — create one above.
+                </p>
               ) : (
-                <BoardRow
-                  key={experience.id}
-                  experience={experience}
-                  onAction={() => onReturnShelved(experience.id)}
-                  actionLabel="Return to Discovery"
+                // Atlas hasn't resolved the active board yet — a skeleton,
+                // not a fabricated name. Rendering a placeholder like "My
+                // Board" here means every load flickers between fake text
+                // and the real name once it arrives; showing nothing wrong
+                // is strictly better than showing something wrong briefly.
+                <div
+                  aria-hidden
+                  className="h-7 w-32 animate-pulse rounded-md bg-white/[0.06]"
                 />
-              ),
+              )
+            ) : (
+              <BoardTitle name={boardName} onRename={onRenameBoard} />
             )}
-          </AnimatePresence>
+            <div
+              className="flex gap-1.5"
+              role="tablist"
+              aria-label="Mood Board"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "saved"}
+                onClick={() => setTab("saved")}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  tab === "saved"
+                    ? "border-white/30 bg-white/[0.08] text-white/90"
+                    : "border-white/10 text-white/45 hover:text-white/70",
+                )}
+              >
+                Saved ({savedExperiences.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "shelved"}
+                onClick={() => setTab("shelved")}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  tab === "shelved"
+                    ? "border-white/30 bg-white/[0.08] text-white/90"
+                    : "border-white/10 text-white/45 hover:text-white/70",
+                )}
+              >
+                Shelved ({shelvedExperiences.length})
+              </button>
+            </div>
+            <p className="font-heading text-sm text-white/60">
+              {visible.length === 0
+                ? tab === "saved"
+                  ? "Nothing yet — just look around."
+                  : "Nothing shelved. Shelf something interesting for later."
+                : tab === "saved"
+                  ? `${savedExperiences.length} discover${savedExperiences.length === 1 ? "y" : "ies"} caught your eye`
+                  : `${shelvedExperiences.length} set aside for later`}
+            </p>
+          </header>
+
+          <div className="flex flex-1 flex-col gap-3">
+            <AnimatePresence initial={false}>
+              {visible.map((experience) =>
+                tab === "saved" ? (
+                  <BoardRow
+                    key={experience.id}
+                    experience={experience}
+                    onAction={() => onRemoveSaved(experience.id)}
+                    actionLabel="Remove"
+                  />
+                ) : (
+                  <BoardRow
+                    key={experience.id}
+                    experience={experience}
+                    onAction={() => onReturnShelved(experience.id)}
+                    actionLabel="Return to Discovery"
+                  />
+                ),
+              )}
+            </AnimatePresence>
+          </div>
+
+          {canBroaden && (
+            <footer className="space-y-2 border-t border-white/10 pt-4">
+              <p className="text-[11px] font-medium tracking-[0.15em] text-white/35 uppercase">
+                Feeling boxed in?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                  >
+                    Clear filters
+                  </button>
+                )}
+                {rejectedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={onRestoreRejected}
+                    className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                  >
+                    Bring back {rejectedCount} passed-on{" "}
+                    {rejectedCount === 1 ? "idea" : "ideas"}
+                  </button>
+                )}
+              </div>
+            </footer>
+          )}
         </div>
 
-        {canBroaden && (
-          <footer className="space-y-2 border-t border-white/10 pt-4">
-            <p className="text-[11px] font-medium tracking-[0.15em] text-white/35 uppercase">
-              Feeling boxed in?
+        {/* Discovery is the official bridge into Passport now — the
+         * standalone /boards pages are legacy and get no further
+         * investment. Only appears once there's something to carry
+         * forward: an empty board has nothing for "Start Passport" to
+         * naturally follow from. Pinned outside the scrollable area
+         * above so it's always reachable, not buried under a long
+         * saved list. */}
+        {activeBoardId && savedExperiences.length > 0 && (
+          <div className="pointer-events-auto shrink-0 border-t border-white/10 bg-[#0b0b0b] px-6 py-5 sm:px-8">
+            <p className="mb-2.5 text-xs text-white/45">
+              Ready to turn what you&apos;ve saved into a real adventure?
             </p>
-            <div className="flex flex-wrap gap-2">
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={onClearFilters}
-                  className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/30 hover:text-white"
-                >
-                  Clear filters
-                </button>
-              )}
-              {rejectedCount > 0 && (
-                <button
-                  type="button"
-                  onClick={onRestoreRejected}
-                  className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/30 hover:text-white"
-                >
-                  Bring back {rejectedCount} passed-on{" "}
-                  {rejectedCount === 1 ? "idea" : "ideas"}
-                </button>
-              )}
-            </div>
-          </footer>
+            <Link
+              href={`/passport/${activeBoardId}`}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full bg-[#b5651d] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#a25a1a]"
+            >
+              Start Passport
+            </Link>
+          </div>
         )}
       </div>
     </aside>

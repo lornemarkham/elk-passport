@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutGroup, useMotionValue } from "framer-motion";
+import { toast } from "sonner";
 import { selectActiveExperiences } from "@/domain/discovery/selectors";
 import type { Experience as DomainExperience } from "@/domain/experience/types";
 import { logDiscoveryEvent } from "@/domain/discovery/interactions";
 import {
+  clearStoredActiveBoardId,
   getStoredActiveBoardId,
   setStoredActiveBoardId,
 } from "@/lib/data/activeBoardStorage";
 import {
   createBoard,
+  deleteBoard,
   listBoardItems,
   listBoards,
   removeExperienceFromBoard,
@@ -18,11 +21,13 @@ import {
   saveExperienceToBoard,
   type Board,
 } from "@/lib/data/boards-repo";
+import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { DiscoveryCard } from "./DiscoveryCard";
 import { DiscoveryFilters } from "./DiscoveryFilters";
 import { DiscoveryInspectSheet } from "./DiscoveryInspectSheet";
 import { toFieldExperience } from "./fieldPresentation";
 import { MoodBoard } from "./MoodBoard";
+import { SaveToBoardDialog } from "./SaveToBoardDialog";
 import { usePeripheralTemptation } from "./temptation/usePeripheralTemptation";
 import { usePrefersReducedMotion } from "./temptation/usePrefersReducedMotion";
 import { useDiscoveryEngine } from "./useDiscoveryEngine";
@@ -89,6 +94,14 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [inspecting, setInspecting] = useState<Experience | null>(null);
+  // Which experience is mid-save and waiting on a board choice (only used
+  // when 2+ boards exist — see handleSaveRequest), and which board id a
+  // save request is currently in flight for (guards against firing the
+  // same save twice while awaiting Atlas).
+  const [savingExperience, setSavingExperience] = useState<Experience | null>(
+    null,
+  );
+  const [savingBoardId, setSavingBoardId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const filtersButtonRef = useRef<HTMLButtonElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -102,6 +115,13 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
   // or the stored id no longer exists.
   const [boards, setBoards] = useState<Board[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
+  // True once the initial boards fetch has settled at least once —
+  // distinguishes "still loading" from "loaded, zero boards remain"
+  // (reachable now that a board can be deleted), both of which otherwise
+  // look identical from `board === null` alone.
+  const [boardsLoaded, setBoardsLoaded] = useState(false);
+  const [confirmingDeleteBoard, setConfirmingDeleteBoard] = useState(false);
+  const [isDeletingBoard, setIsDeletingBoard] = useState(false);
 
   // On load: resolve the active board (persisted choice, or Atlas's
   // first) and reconcile its real, persisted items into local state, so
@@ -118,6 +138,7 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
         const allBoards = await listBoards();
         if (cancelled) return;
         setBoards(allBoards);
+        setBoardsLoaded(true);
         const storedId = getStoredActiveBoardId();
         const resolved =
           (storedId && allBoards.find((b) => b.id === storedId)) ||
@@ -177,6 +198,42 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
       return;
     }
     switchToBoard(target);
+  }
+
+  function handleRequestDeleteBoard() {
+    setConfirmingDeleteBoard(true);
+  }
+
+  // Atlas-first: the board only disappears from local state once Atlas
+  // confirms it's actually gone. On success, hands off to whichever
+  // board naturally comes next — switchToBoard if one remains, or a
+  // clean "no boards" reset if that was the last one — rather than
+  // leaving `board` pointing at something that no longer exists.
+  async function handleConfirmDeleteBoard() {
+    if (!board) return;
+    const deletedId = board.id;
+    setIsDeletingBoard(true);
+    try {
+      await deleteBoard(deletedId);
+      const remaining = boards.filter(
+        (candidate) => candidate.id !== deletedId,
+      );
+      setBoards(remaining);
+      setConfirmingDeleteBoard(false);
+      if (remaining.length > 0) {
+        await switchToBoard(remaining[0]);
+      } else {
+        setBoard(null);
+        clearStoredActiveBoardId();
+        engine.switchBoard([]);
+      }
+      toast.success("Board deleted.");
+    } catch (error) {
+      console.error(`Failed to delete board ${deletedId}:`, error);
+      toast.error("Couldn't delete this board. Please try again.");
+    } finally {
+      setIsDeletingBoard(false);
+    }
   }
 
   // The one pure Compass call (IMP-002 §4/§11, extended by IMP-004): filters
@@ -248,29 +305,69 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
   }
 
   // Atlas-first: local state (the thing that actually drives what the
-  // Mood Board displays) only changes once Atlas confirms the write. A
-  // failed request must not leave the UI claiming a durable save that
-  // never happened — so on failure this deliberately does *not* call
-  // `engine.save()`, and the card stays exactly where it was.
-  async function handleSave(experience: Experience) {
+  // Mood Board displays) only changes once Atlas confirms the write, and
+  // only when the save targets the *active* board — saving to a
+  // different board must not make the card vanish from a field it's
+  // still active in. A failed request must not leave the UI claiming a
+  // durable save that never happened, so on failure this deliberately
+  // does not call `engine.save()`.
+  //
+  // Duplicate saves to the same board are already safe at the Atlas
+  // layer — SupabaseAtlasStore upserts on the (board_id, experience_id)
+  // unique constraint, so re-saving is a harmless no-op there. The only
+  // thing left to guard here is firing the same request twice while one
+  // is already in flight (savingBoardId).
+  async function performSave(experience: Experience, targetBoard: Board) {
+    if (savingBoardId) return;
+    setSavingBoardId(targetBoard.id);
+    try {
+      await saveExperienceToBoard(targetBoard.id, experience.id);
+      if (targetBoard.id === board?.id) {
+        engine.save(experience.id);
+        focusStableAnchor();
+      }
+      toast.success(`Saved to ${targetBoard.name}.`);
+    } catch (error) {
+      console.error(
+        `Failed to save "${experience.id}" to board ${targetBoard.id}:`,
+        error,
+      );
+      toast.error("Couldn't save that experience. Please try again.");
+    } finally {
+      setSavingBoardId(null);
+      setSavingExperience(null);
+    }
+  }
+
+  // Entry point for both the field card's Save button and the inspect
+  // sheet's. A single board saves immediately — no picker, no extra
+  // click. 2+ boards opens SaveToBoardDialog instead of guessing which
+  // one the user meant.
+  function handleSaveRequest(experience: Experience) {
     if (!board) {
       console.error(
         `Cannot save "${experience.id}" — no board has loaded from Atlas yet.`,
       );
+      toast.error("Your boards haven't loaded yet. Please try again shortly.");
       return;
     }
-    try {
-      await saveExperienceToBoard(board.id, experience.id);
-      engine.save(experience.id);
-      focusStableAnchor();
-    } catch (error) {
-      console.error(
-        `Failed to save "${experience.id}" to board ${board.id}:`,
-        error,
-      );
+    if (boards.length > 1) {
+      // Close the inspect sheet first if that's where Save was clicked —
+      // this dialog is a sibling, not nested inside it (see
+      // SaveToBoardDialog's doc comment for why).
+      setInspecting(null);
+      setSavingExperience(experience);
+      return;
     }
+    performSave(experience, board);
   }
-  // Atlas-first, same pattern as handleSave: MoodBoard's title reflects
+
+  function handleChooseBoardForSave(boardId: string) {
+    const target = boards.find((candidate) => candidate.id === boardId);
+    if (!target || !savingExperience) return;
+    performSave(savingExperience, target);
+  }
+  // Atlas-first, same pattern as performSave: MoodBoard's title reflects
   // `board.name`, which only changes once Atlas confirms the rename. On
   // failure this deliberately does not call `setBoard`, so MoodBoard's
   // inline input re-syncs to the old name instead of showing a rename
@@ -289,7 +386,7 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
       console.error(`Failed to rename board ${board.id}:`, error);
     }
   }
-  // Atlas-first, same pattern as handleSave/handleRenameBoard: Atlas is
+  // Atlas-first, same pattern as performSave/handleRenameBoard: Atlas is
   // the source of truth reconciled on every mount (see the effect above),
   // so a local-only removal would silently come back on the next reload
   // if Atlas never actually deleted the row. Only calls engine.removeSaved
@@ -371,7 +468,7 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
               layout={experience.layout}
               dragConstraintsRef={containerRef}
               onInspect={handleInspect}
-              onSave={handleSave}
+              onSave={handleSaveRequest}
               onReject={handleReject}
               onShelf={handleShelf}
               pointerXPercent={pointerXPercent}
@@ -400,20 +497,37 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
           onRestoreRejected={() => engine.broaden("restore-rejected")}
           onClearFilters={() => engine.broaden("clear-filters")}
           boardName={board?.name}
+          boardsLoaded={boardsLoaded}
           onRenameBoard={handleRenameBoard}
           boards={boards}
           activeBoardId={board?.id}
           onSwitchBoard={handleSwitchBoard}
           onCreateBoard={handleCreateBoard}
+          onRequestDeleteBoard={handleRequestDeleteBoard}
         />
       </LayoutGroup>
 
       <DiscoveryInspectSheet
         experience={inspecting}
         onOpenChange={(open) => !open && setInspecting(null)}
-        onSave={(experience) => handleSave(experience)}
+        onSave={(experience) => handleSaveRequest(experience)}
         onReject={(experience) => handleReject(experience)}
         onShelf={(experience) => handleShelf(experience)}
+      />
+
+      <SaveToBoardDialog
+        experience={savingExperience}
+        boards={boards}
+        savingBoardId={savingBoardId}
+        onOpenChange={(open) => !open && setSavingExperience(null)}
+        onChooseBoard={handleChooseBoardForSave}
+      />
+
+      <DeleteBoardDialog
+        boardName={confirmingDeleteBoard ? (board?.name ?? null) : null}
+        isDeleting={isDeletingBoard}
+        onOpenChange={(open) => !open && setConfirmingDeleteBoard(false)}
+        onConfirm={handleConfirmDeleteBoard}
       />
 
       {state.lastRemoved && !prefersReducedMotion && (
