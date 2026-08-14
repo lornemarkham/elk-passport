@@ -1,29 +1,65 @@
 /**
  * Which workspace gaps Atlas can actually be sent to research.
  *
- * Separate from `researchMissions.ts` because that file is `server-only`
- * and this answers a question a rendering component asks. Keeping them
- * apart is what lets the template ask *"is this gap actionable?"* without
- * dragging an Atlas HTTP client into the component tree.
+ * ## Why this is a fallback rather than the answer
  *
- * ## Phase 1 has exactly one topic
+ * The list Atlas actually holds is served from `/admin/research-topics` and
+ * fetched alongside the missions. This file exists so a rendering component
+ * can answer *"is this gap actionable?"* synchronously, and so the page
+ * still behaves sensibly if Atlas is unreachable.
  *
- * Accessibility, mirroring `atlas/src/application/research/ResearchTopic.ts`.
- * The duplication is real and deliberate: Atlas owns the research profile
- * (the prompt, the source preferences), the app owns only the question of
- * which button to draw. An app that imported Atlas's profiles would be
- * importing a prompt in order to decide whether to render a button.
+ * The previous version was a hardcoded set of one, which was honest at one
+ * topic and becomes a drift hazard at twenty: a button drawn for a topic
+ * Atlas has no profile for is a button that 400s on click.
  *
- * The cost of that duplication is that the two lists can drift. That is
- * bounded and visible — a topic here that Atlas does not know is **refused
- * by the API** with "Unknown research topic", which is a loud failure
- * rather than a silent one. The reverse, a topic Atlas knows and the app
- * does not offer, simply means no button. Neither can corrupt anything.
+ * ## The two gaps that deliberately have no button
+ *
+ * - **`local-tips`** — ADR 020. Local knowledge needs repeated independent
+ *   observation, not one source. A mission would find a marketing page
+ *   calling itself a hidden gem and record it as one.
+ * - **`relationships`** — connecting entities is containment and the
+ *   near-relationship computation, not reading a page. One label over two
+ *   unrelated mechanisms would be a lie about what the button does.
+ *
+ * Both still render as named gaps, stating what they honestly are.
  */
 
-/** Section ids in "What Atlas doesn't know yet" that a curator can act on. */
-const RESEARCHABLE_TOPICS = new Set(["accessibility"]);
+/**
+ * Mirrors `RESEARCH_TOPIC_IDS` in
+ * `atlas/src/application/research/ResearchTopic.ts`.
+ *
+ * Used only when Atlas has not answered. When it has, the served list wins
+ * — so drift shows up as a missing button rather than a broken one, which
+ * is the safe direction for this to fail.
+ */
+const KNOWN_TOPICS: readonly string[] = [
+  "overview",
+  "hours",
+  "contact",
+  "location",
+  "food",
+  "menus",
+  "prices",
+  "policies",
+  "activities",
+  "facilities",
+  "accommodation",
+  "events",
+  "media",
+  "accessibility",
+  "getting-there",
+  "family",
+  "winter",
+  "summer",
+  "seasonal",
+  "history",
+];
 
-export function isResearchable(sectionId: string): boolean {
-  return RESEARCHABLE_TOPICS.has(sectionId);
+export function isResearchable(
+  sectionId: string,
+  servedTopics?: readonly string[],
+): boolean {
+  const topics =
+    servedTopics && servedTopics.length > 0 ? servedTopics : KNOWN_TOPICS;
+  return topics.includes(sectionId);
 }

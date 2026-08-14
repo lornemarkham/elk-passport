@@ -102,6 +102,25 @@ export async function loadResearchMissions(): Promise<
   }
 }
 
+/**
+ * The topics Atlas holds a profile for.
+ *
+ * Fetched rather than duplicated: a button drawn for a topic Atlas cannot
+ * research is a button that 400s on click. Returns [] when Atlas is
+ * unreachable, and the caller falls back to its own list — so the failure
+ * mode is a missing button, never a broken one.
+ */
+export async function loadResearchTopics(): Promise<readonly string[]> {
+  try {
+    const response = await adminFetch("/admin/research-topics");
+    if (!response.ok) return [];
+    const topics = (await response.json()) as { id: string }[];
+    return topics.map((t) => t.id);
+  } catch {
+    return [];
+  }
+}
+
 export async function loadMissionsForEntity(
   entityId: string,
 ): Promise<readonly ResearchMission[]> {

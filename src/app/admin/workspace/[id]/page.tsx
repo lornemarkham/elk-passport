@@ -15,7 +15,10 @@ import {
   visibleSections,
 } from "@/lib/passport/composition";
 import { BaselineEntityTemplate } from "@/components/admin/workspace/BaselineEntityTemplate";
-import { loadMissionsForEntity } from "@/lib/knowledge/researchMissions";
+import {
+  loadMissionsForEntity,
+  loadResearchTopics,
+} from "@/lib/knowledge/researchMissions";
 import { AdminSetupNotice } from "@/components/admin/AdminSetupNotice";
 
 type Props = { params: Promise<{ id: string }> };
@@ -96,7 +99,10 @@ export default async function EntityWorkspacePage({ params }: Props) {
 
   // Missions degrade to [] when Atlas is unreachable — an optional panel
   // must never blank the page whose whole job is showing what Atlas knows.
-  const missions = await loadMissionsForEntity(id);
+  const [missions, researchTopics] = await Promise.all([
+    loadMissionsForEntity(id),
+    loadResearchTopics(),
+  ]);
 
   // One template today. The seam exists so that stays a one-line change.
   const template = resolveTemplate(entityProfile(entity));
@@ -112,7 +118,11 @@ export default async function EntityWorkspacePage({ params }: Props) {
       </Link>
 
       {template === "baseline" && (
-        <BaselineEntityTemplate view={view} missions={missions} />
+        <BaselineEntityTemplate
+          view={view}
+          missions={missions}
+          researchTopics={researchTopics}
+        />
       )}
     </div>
   );

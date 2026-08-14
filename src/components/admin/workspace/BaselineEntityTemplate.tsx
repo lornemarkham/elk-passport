@@ -68,10 +68,17 @@ import { startResearch } from "@/app/admin/workspace/[id]/actions";
 export function BaselineEntityTemplate({
   view,
   missions = [],
+  researchTopics = [],
 }: {
   view: EntityKnowledgeView;
   /** Research Missions for this entity. Optional — the page renders fully without them. */
   missions?: readonly ResearchMission[];
+  /**
+   * Topics Atlas holds a profile for, as served by Atlas. Empty means Atlas
+   * did not answer, and `isResearchable` falls back to its own list — a
+   * missing button rather than a broken one.
+   */
+  researchTopics?: readonly string[];
 }) {
   return (
     <div className="flex flex-col gap-12">
@@ -82,7 +89,12 @@ export function BaselineEntityTemplate({
       ))}
 
       <ResearchMissionPanel missions={missions} entityId={view.id} />
-      <MissingKnowledge view={view} missions={missions} entityId={view.id} />
+      <MissingKnowledge
+        view={view}
+        missions={missions}
+        entityId={view.id}
+        researchTopics={researchTopics}
+      />
       <Recommendations view={view} />
       <ProvenanceDrawer view={view} />
     </div>
@@ -274,13 +286,25 @@ function MissingKnowledge({
   view,
   missions,
   entityId,
+  researchTopics,
 }: {
   view: EntityKnowledgeView;
   missions: readonly ResearchMission[];
   entityId: string;
+  researchTopics: readonly string[];
 }) {
   const unknown = view.sections.filter((s) => s.state === "unknown");
   if (unknown.length === 0) return null;
+
+  // Actionable gaps first. A thin entity can show twenty of these, and a
+  // list where the three you can do nothing about sit among the seventeen
+  // you can is a list that gets skimmed. Order is the whole intervention —
+  // nothing is hidden, and the count still says how many there are.
+  const actionable = unknown.filter((s) =>
+    isResearchable(s.id, researchTopics),
+  );
+  const notYet = unknown.filter((s) => !isResearchable(s.id, researchTopics));
+  const ordered = [...actionable, ...notYet];
 
   return (
     <section className="flex flex-col gap-4">
@@ -290,11 +314,19 @@ function MissingKnowledge({
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Named rather than hidden — a gap you can see is a gap you can close.
+          {actionable.length > 0 && (
+            <>
+              {" "}
+              <span className="text-foreground font-medium">
+                {actionable.length} can be researched now.
+              </span>
+            </>
+          )}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {unknown.map((section) => (
+        {ordered.map((section) => (
           <div
             key={section.id}
             className="border-border/70 rounded-xl border border-dashed p-4"
@@ -310,6 +342,7 @@ function MissingKnowledge({
               section={section}
               missions={missions}
               entityId={entityId}
+              researchTopics={researchTopics}
             />
           </div>
         ))}
@@ -334,10 +367,12 @@ function ResearchAction({
   section,
   missions,
   entityId,
+  researchTopics,
 }: {
   section: KnowledgeSection;
   missions: readonly ResearchMission[];
   entityId: string;
+  researchTopics: readonly string[];
 }) {
   const existing = missions.find(
     (m) =>
@@ -355,7 +390,7 @@ function ResearchAction({
     );
   }
 
-  if (!isResearchable(section.id)) {
+  if (!isResearchable(section.id, researchTopics)) {
     return (
       <p className="text-muted-foreground/70 mt-3 text-xs italic">
         {section.absence?.action}
