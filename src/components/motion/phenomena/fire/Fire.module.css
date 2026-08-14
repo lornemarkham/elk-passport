@@ -1,0 +1,22 @@
+/* Anchored near the bottom of whatever it's composed onto and taller than
+   its own box on purpose — a flame that only filled its container would
+   just be a glowing rectangle again. Internal simulation resolution stays
+   tiny (see Fire.tsx) regardless of how large this box is; upscaling is
+   what's cheap here, not resolution. */
+.fireCanvas {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  translate: -50% 0;
+  width: 72%;
+  height: 150%;
+  filter: blur(3px) saturate(1.15);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.staticGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}

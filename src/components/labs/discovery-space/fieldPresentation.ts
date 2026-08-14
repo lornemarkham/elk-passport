@@ -345,19 +345,79 @@ export const FIELD_PRESENTATION: Record<string, FieldPresentation> = {
   },
 };
 
+// A small, muted palette reused (not reinvented) from the hand-authored
+// entries above, for experiences that have no hand-authored presentation
+// of their own — real Atlas places, today, which arrive with no layout,
+// glow, or personality assigned by anyone.
+const DEFAULT_GLOW_PALETTE = [
+  "from-amber-200/14 to-transparent",
+  "from-slate-300/14 to-transparent",
+  "from-teal-200/14 to-transparent",
+  "from-violet-200/14 to-transparent",
+  "from-emerald-200/12 to-transparent",
+  "from-yellow-100/14 to-transparent",
+] as const;
+
+/** Deterministic 0–1 value from a string — stable across renders (IMP-002
+ * §11 still applies: a card must not jump to a new position every time the
+ * field re-renders), without needing to store anything. Different `salt`
+ * values pull independent-looking numbers out of the same id. */
+function hashToUnit(id: string, salt: string): number {
+  let hash = 0;
+  const input = `${salt}:${id}`;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return (Math.abs(hash) % 10000) / 10000;
+}
+
+function lerp(min: number, max: number, t: number): number {
+  return min + (max - min) * t;
+}
+
+/**
+ * A generated stand-in for experiences nobody has hand-placed yet — same
+ * value ranges as the authored entries above, so a generated card doesn't
+ * read as visually broken next to a designed one. Deliberately the most
+ * conservative choice on every field that expresses personality: `life:
+ * "still"` and no `temptation` — inventing a fire/water/breathing
+ * "character" for content nobody has actually looked at yet is a product
+ * decision, not an engineering default.
+ */
+function defaultPresentationFor(id: string): FieldPresentation {
+  const paletteIndex = Math.floor(
+    hashToUnit(id, "glow") * DEFAULT_GLOW_PALETTE.length,
+  );
+
+  return {
+    glow: DEFAULT_GLOW_PALETTE[paletteIndex]!,
+    life: "still",
+    layout: {
+      top: lerp(4, 80, hashToUnit(id, "top")),
+      left: lerp(6, 55, hashToUnit(id, "left")),
+      size: lerp(130, 230, hashToUnit(id, "size")),
+      rotate: lerp(-4, 4, hashToUnit(id, "rotate")),
+      depth: lerp(0.3, 0.95, hashToUnit(id, "depth")),
+      duration: lerp(21, 34, hashToUnit(id, "duration")),
+      delay: lerp(0, 5.2, hashToUnit(id, "delay")),
+      driftX: lerp(6, 14, hashToUnit(id, "driftX")),
+      driftY: lerp(7, 15, hashToUnit(id, "driftY")),
+    },
+  };
+}
+
 /**
  * Combines a filtered canonical `Experience` with its field presentation
- * to produce what `DiscoveryCard` already knows how to render. Returns
- * `null` for an experience with no presentation entry — it has nowhere to
- * sit in this particular spatial field, which is expected: layout is a
- * Discovery-Space-specific concern, not every consumer of the canonical
- * model needs one.
+ * to produce what `DiscoveryCard` already knows how to render. Falls back
+ * to a generated presentation (see `defaultPresentationFor`) for an
+ * experience with no hand-authored entry — real Atlas experiences, today
+ * — rather than dropping it from the field entirely.
  */
 export function toFieldExperience(
   experience: DomainExperience,
 ): FieldExperience | null {
-  const presentation = FIELD_PRESENTATION[experience.id];
-  if (!presentation) return null;
+  const presentation =
+    FIELD_PRESENTATION[experience.id] ?? defaultPresentationFor(experience.id);
 
   return {
     id: experience.id,

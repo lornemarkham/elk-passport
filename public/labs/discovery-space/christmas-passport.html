@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>ELK Labs — CHRISTMAS. (Experiment 04)</title>
+<meta name="description" content="Passport's emotional interpretation of Christmas. Not a Christmas website — a feeling." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --evergreen: #0f1f16;
+    --evergreen-deep: #0a1610;
+    --cream: #faf6ed;
+    --cream-dim: #f0e9d8;
+    --gold: #c9a15a;
+    --gold-bright: #e0bd7d;
+    --ember: #b8412b;
+    --ink: #1c2b20;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--evergreen);
+    color: var(--cream);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .heading {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin: 0 0 1rem;
+  }
+  section { position: relative; padding: 7rem 1.5rem; }
+  .tone-light { background: var(--cream); color: var(--ink); }
+  .tone-light .kicker { opacity: 0.45; }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .wrap-wide { max-width: 1100px; margin: 0 auto; }
+  .center { text-align: center; }
+  .lede { font-size: 1.15rem; line-height: 1.7; opacity: 0.8; max-width: 640px; margin: 0 auto; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    border: 1px solid currentColor;
+    border-color: rgba(255,255,255,0.2);
+    border-radius: 999px;
+    padding: 0.5em 1em;
+    font-size: 0.9rem;
+    opacity: 0.85;
+    background: transparent;
+    color: inherit;
+    cursor: default;
+  }
+  .tone-light .chip { border-color: rgba(28,43,32,0.2); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+  button.chip { cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
+  button.chip:hover { border-color: var(--gold); }
+  button.chip.active { background: var(--gold); color: var(--evergreen-deep); border-color: var(--gold); font-weight: 600; }
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.9s cubic-bezier(.16,1,.3,1), transform 0.9s cubic-bezier(.16,1,.3,1); }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  .grid { display: grid; gap: 1rem; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .card {
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 18px;
+    padding: 1.5rem;
+    background: rgba(255,255,255,0.02);
+  }
+  .tone-light .card { border-color: rgba(28,43,32,0.12); background: rgba(28,43,32,0.02); }
+  .mood-card { cursor: pointer; text-align: left; width: 100%; font-family: inherit; color: inherit; }
+  .mood-card.active { border-color: var(--gold); background: rgba(201,161,90,0.1); }
+  .mood-emoji { font-size: 1.6rem; }
+  .big { font-size: clamp(3rem, 11vw, 8rem); line-height: 0.95; }
+  .med { font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.1; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5em;
+    border-radius: 999px; padding: 0.8em 1.6em; font-weight: 600; font-size: 0.95rem;
+    cursor: pointer; border: none; font-family: inherit;
+  }
+  .btn-gold { background: var(--gold); color: var(--evergreen-deep); }
+  .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: inherit; }
+  .tone-light .btn-outline { border-color: rgba(28,43,32,0.25); }
+  a.link-nav {
+    position: fixed; top: 1rem; left: 1rem; z-index: 80;
+    color: var(--cream); text-decoration: none; font-size: 0.78rem;
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; padding: 0.5em 1em;
+    background: rgba(15,31,22,0.7); backdrop-filter: blur(6px);
+  }
+  #soundToggle {
+    position: fixed; top: 1rem; right: 1rem; z-index: 80;
+    color: var(--cream); font-size: 0.78rem;
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; padding: 0.5em 1em;
+    background: rgba(15,31,22,0.7); backdrop-filter: blur(6px); cursor: pointer; font-family: inherit;
+  }
+  /* Snow */
+  #snow { position: fixed; inset: 0; pointer-events: none; z-index: 30; overflow: hidden; }
+  .flake { position: absolute; top: -5vh; color: #fff; opacity: 0.75; will-change: transform; }
+  @keyframes fall {
+    to { transform: translateY(110vh) translateX(var(--drift)); }
+  }
+  /* Fireplace glow */
+  .fire-glow {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
+    background: radial-gradient(ellipse at 50% 100%, rgba(184,65,43,0.28), transparent 70%);
+    animation: flicker 3.2s ease-in-out infinite; pointer-events: none;
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 0.9; } 30% { opacity: 0.6; } 55% { opacity: 1; } 80% { opacity: 0.7; }
+  }
+  .ornament { display: inline-block; animation: sway 2.6s ease-in-out infinite; }
+  @keyframes sway { 0%,100%{ transform: rotate(-4deg);} 50%{ transform: rotate(4deg);} }
+  dl.fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.9rem; margin: 1rem 0 0; }
+  dl.fields dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.4; }
+  dl.fields dd { margin: 0.15rem 0 0; opacity: 0.85; }
+  .meter-track { width: 100%; max-width: 420px; margin: 1rem auto 0; height: 10px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }
+  .meter-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); width: 0%; transition: width 0.6s ease; }
+  ul.plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; text-align: left; }
+  .challenge {
+    display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem 1rem;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; cursor: pointer; font-family: inherit;
+    background: transparent; color: inherit; width: 100%; text-align: left; font-size: 0.95rem;
+  }
+  .challenge.done { opacity: 0.5; text-decoration: line-through; border-color: var(--gold); }
+  .check { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; display:flex; align-items:center; justify-content:center; font-size: 0.7rem; }
+  .challenge.done .check { background: var(--gold); border-color: var(--gold); color: var(--evergreen-deep); }
+  .disclosure { font-size: 0.78rem; font-style: italic; opacity: 0.4; max-width: 480px; margin: 0.75rem auto 0; }
+  footer.labnotes { background: var(--cream); color: var(--ink); text-align: center; padding: 8rem 1.5rem; }
+  .divider-line { width: 60px; height: 1px; background: rgba(255,255,255,0.25); margin: 2rem auto; }
+</style>
+</head>
+<body>
+
+<a class="link-nav" href="/about/ideas-to-make-pages">&larr; ELK Labs</a>
+<button id="soundToggle" type="button">🔇 Sound Off</button>
+
+<div id="snow"></div>
+
+<!-- ============================================================ -->
+<!-- INTRO -->
+<!-- ============================================================ -->
+<section class="tone-dark" style="min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+  <div class="fire-glow"></div>
+  <p class="kicker reveal in">ELK Labs — Experiment 04</p>
+  <h1 class="big heading reveal in" style="transition-delay:.2s;">CHRISTMAS.</h1>
+  <p class="lede reveal in" style="margin-top:2rem; transition-delay:.6s;">This is not a Christmas website. Not shopping. Not Black Friday. Passport's emotional interpretation of the season.</p>
+  <p class="med heading reveal in" style="margin-top:3rem; max-width:520px; font-style:italic; opacity:.85; transition-delay:1s;">"Some memories deserve to happen every year."</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHOOSE YOUR CHRISTMAS -->
+<!-- ============================================================ -->
+<section class="tone-dark">
+  <div class="wrap-wide center">
+    <p class="kicker reveal">Choose Your Christmas</p>
+    <h2 class="med heading reveal">Not personalities. Moods.</h2>
+    <p class="lede reveal" style="margin-top:1rem;">Pick one — the day below changes with it.</p>
+    <div class="grid grid-3 reveal" id="moodGrid" style="margin-top:3rem; text-align:left;"></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- BUILD MY DAY -->
+<!-- ============================================================ -->
+<section class="tone-dark">
+  <div class="wrap center">
+    <p class="kicker reveal">Build My Day</p>
+    <h2 class="med heading reveal">Passport, building the perfect day, like a director.</h2>
+    <div id="dayPlan" class="reveal" style="margin-top:2.5rem; display:flex; flex-direction:column; gap:1.6rem; text-align:left;"></div>
+    <p class="disclosure reveal">Invented, illustrative content — not real Atlas inventory, same as every ELK Labs sandbox. Changes with the mood you picked above.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHRISTMAS CHALLENGES -->
+<!-- ============================================================ -->
+<section class="tone-dark">
+  <div class="wrap center">
+    <p class="kicker reveal">Christmas Challenges</p>
+    <h2 class="med heading reveal">Not achievements. Joy, with a checklist.</h2>
+    <p class="lede reveal" style="margin-top:1rem;">Check them off as you go. The Wonder Meter grows with every one.</p>
+    <ul class="plain reveal" id="challengeList" style="margin-top:2.5rem; max-width:520px; margin-left:auto; margin-right:auto;"></ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- THE WONDER METER -->
+<!-- ============================================================ -->
+<section class="tone-dark center">
+  <div class="wrap">
+    <p class="kicker reveal">The Wonder Meter</p>
+    <p class="reveal" style="opacity:.5; font-size:.85rem;">Not a progress bar. Wonder.</p>
+    <p class="big heading reveal" style="margin-top:1rem;">✨ <span id="wonderPct">0</span>%</p>
+    <div class="meter-track reveal"><div class="meter-fill" id="wonderFill"></div></div>
+    <p class="lede reveal" style="margin-top:2rem;">Try one of these too:</p>
+    <div class="chip-row reveal" style="margin-top:1rem;">
+      <span class="chip">Drive through Christmas lights</span>
+      <span class="chip">Call someone you miss</span>
+      <span class="chip">Watch the snow fall</span>
+      <span class="chip">Make hot chocolate</span>
+      <span class="chip">Bake cookies</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ATLAS DISCOVERY -->
+<!-- ============================================================ -->
+<section class="tone-light">
+  <div class="wrap-wide center">
+    <p class="kicker reveal">Atlas Discovery</p>
+    <h2 class="med heading reveal">Atlas provides truth. Passport provides meaning.</h2>
+    <p class="lede reveal" style="margin-top:1rem;">The real kinds of knowledge this would draw on — most of it not built yet, named honestly.</p>
+    <div class="chip-row reveal" style="margin-top:2.5rem;">
+      <span class="chip">Christmas markets</span><span class="chip">Tree lightings</span><span class="chip">Outdoor skating</span>
+      <span class="chip">Christmas concerts</span><span class="chip">Church choirs</span><span class="chip">Craft fairs</span>
+      <span class="chip">Holiday theatre</span><span class="chip">Outdoor movies</span><span class="chip">Santa events</span>
+      <span class="chip">Local bakeries</span><span class="chip">Christmas trains</span><span class="chip">Winter hikes</span>
+      <span class="chip">Snowshoe trails</span><span class="chip">Cross-country skiing</span><span class="chip">Ski hills</span>
+      <span class="chip">Fireplaces</span><span class="chip">Lookouts</span><span class="chip">Hot springs</span><span class="chip">Winter cabins</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- THE MOVIE ENGINE -->
+<!-- ============================================================ -->
+<section class="tone-dark">
+  <div class="wrap-wide center">
+    <p class="kicker reveal">The Movie Engine</p>
+    <h2 class="med heading reveal">"What kind of Christmas movie are you living today?"</h2>
+    <div class="grid grid-3 reveal" id="movieGrid" style="margin-top:2.5rem; text-align:left;"></div>
+    <div id="movieResult" class="reveal" style="margin-top:2rem; font-style:italic; opacity:.8; min-height:1.5em;"></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- FAMILY MEMORY -->
+<!-- ============================================================ -->
+<section class="tone-dark">
+  <div class="wrap center">
+    <p class="kicker reveal">Family Memory — Prototype</p>
+    <h2 class="med heading reveal">Passport remembers traditions.</h2>
+    <div class="reveal" style="margin-top:2rem; display:flex; flex-direction:column; gap:.9rem; font-style:italic; opacity:.75; font-size:1.1rem;">
+      <p>"Three years ago you built a snowman."</p>
+      <p>"You always make Nana's cookies."</p>
+      <p>"You watched Home Alone every Christmas Eve."</p>
+      <p>"You always visit the Christmas lights."</p>
+    </div>
+    <p class="disclosure reveal">Illustrative only — Passport has no real memory of you yet. This is what it could feel like once it does, not a claim about what it knows today.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- THE WEATHER ENGINE -->
+<!-- ============================================================ -->
+<section class="tone-light center">
+  <div class="wrap">
+    <p class="kicker reveal">The Weather Engine</p>
+    <h2 class="med heading reveal">Weather becomes magic.</h2>
+    <div class="chip-row reveal" id="weatherGrid" style="margin-top:2rem;"></div>
+    <p class="lede reveal" id="weatherLine" style="margin-top:1.5rem; font-style:italic;"></p>
+    <p class="disclosure reveal">A real toggle. No live forecast exists in this prototype — the data behind it is simulated, honestly.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- COUNTDOWN -->
+<!-- ============================================================ -->
+<section class="tone-dark">
+  <div class="wrap center">
+    <p class="kicker reveal">Countdown</p>
+    <h2 class="med heading reveal">A Passport signature.</h2>
+    <p class="big heading reveal" style="margin-top:1.5rem;"><span id="daysUntil">--</span></p>
+    <p class="reveal" style="opacity:.6;">days until Christmas — computed from today's real date.</p>
+    <div class="chip-row reveal" style="margin-top:2.5rem;">
+      <span class="chip">🎄 Christmas market opens Friday</span>
+      <span class="chip">🌟 Tree lighting tonight</span>
+      <span class="chip">🎅 Santa arrives Saturday</span>
+      <span class="chip">🎶 Choir concert tomorrow</span>
+      <span class="chip">🎭 Outdoor theatre starts next week</span>
+      <span class="chip">❄️ Fresh snow expected</span>
+    </div>
+    <p class="disclosure reveal">Days-until is real and computed live. The specific events above are illustrative examples, not real listings for any real date.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PHOTO MOMENTS -->
+<!-- ============================================================ -->
+<section class="tone-light center">
+  <div class="wrap">
+    <p class="kicker reveal">Photo Moments</p>
+    <p class="lede reveal">Passport quietly says: <em>"You'll want to remember this."</em></p>
+    <div class="chip-row reveal" style="margin-top:2rem;">
+      <span class="chip">Family portrait</span><span class="chip">Dog in the snow</span><span class="chip">Coffee by the fire</span>
+      <span class="chip">The tree</span><span class="chip">The lights</span><span class="chip">Skating</span>
+      <span class="chip">Cookies, mid-mess</span><span class="chip">Grandparents</span><span class="chip">Friends</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- LITTLE MOMENTS -->
+<!-- ============================================================ -->
+<section class="tone-dark center">
+  <div class="wrap">
+    <p class="kicker reveal">Little Moments</p>
+    <p class="lede reveal">Tiny joys. They're the ones that actually last.</p>
+    <div class="chip-row reveal" style="margin-top:2rem;">
+      <span class="chip">Candy canes</span><span class="chip">Warm socks</span><span class="chip">Fresh evergreen</span>
+      <span class="chip">Peppermint mocha</span><span class="chip">Wrapping presents</span><span class="chip">Reading by the fire</span>
+      <span class="chip">Watching the snow</span><span class="chip">Lighting candles</span><span class="chip">Christmas music while driving</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHRISTMAS CRAFTS -->
+<!-- ============================================================ -->
+<section class="tone-light center">
+  <div class="wrap-wide">
+    <p class="kicker reveal">Christmas Crafts</p>
+    <h2 class="med heading reveal">Passport should inspire making things together.</h2>
+    <div class="chip-row reveal" style="margin-top:2rem;">
+      <span class="chip">Cookie decorating</span><span class="chip">Ornaments</span><span class="chip">Paper snowflakes</span>
+      <span class="chip">DIY wreaths</span><span class="chip">Christmas cards</span><span class="chip">Wrapping presents</span>
+      <span class="chip">Kids' crafts</span><span class="chip">Nature crafts</span><span class="chip">Pinecone decorations</span>
+      <span class="chip">Orange slices</span><span class="chip">Cinnamon sticks</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- GIVING -->
+<!-- ============================================================ -->
+<section class="tone-dark center">
+  <div class="wrap-wide">
+    <p class="kicker reveal">Giving</p>
+    <h2 class="med heading reveal">Christmas isn't only receiving.</h2>
+    <div class="chip-row reveal" style="margin-top:2rem;">
+      <span class="chip">Volunteer</span><span class="chip">Toy drive</span><span class="chip">Food bank</span>
+      <span class="chip">Buy local</span><span class="chip">Support artisans</span><span class="chip">Write a thank-you card</span>
+      <span class="chip">Visit grandparents</span><span class="chip">Phone someone lonely</span><span class="chip">Deliver cookies</span>
+    </div>
+    <p class="lede reveal" style="margin-top:2rem;">Small acts matter. Passport should celebrate kindness as much as it celebrates a good day out.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SOUND DESIGN NOTE -->
+<!-- ============================================================ -->
+<section class="tone-dark center">
+  <div class="wrap">
+    <p class="kicker reveal">Sound Design</p>
+    <p class="lede reveal">Optional. Soft. Warm. Nothing harsh — this should feel like home. The toggle in the corner plays a real, synthesized fireplace-and-wind ambience, honestly built with the Web Audio API — no recorded piano, choir, or church bells exist in this prototype yet.</p>
+    <div class="chip-row reveal" style="margin-top:1.5rem;">
+      <span class="chip">Fireplace</span><span class="chip">Gentle piano</span><span class="chip">Snow</span><span class="chip">Wind</span>
+      <span class="chip">Church bells</span><span class="chip">Children laughing, far away</span><span class="chip">Pages turning</span>
+      <span class="chip">Coffee shop ambience</span><span class="chip">Soft jazz</span><span class="chip">Choir</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PRODUCT PRINCIPLES -->
+<!-- ============================================================ -->
+<section class="tone-light center">
+  <div class="wrap">
+    <p class="kicker reveal">What This Experiment Proves</p>
+    <h2 class="med heading reveal">The same Atlas. An entirely different emotional world.</h2>
+    <div class="reveal" style="margin-top:2.5rem; display:flex; flex-direction:column; gap:.4rem; text-align:left; max-width: 480px; margin-left:auto; margin-right:auto;">
+      <p style="opacity:.85;"><strong>Atlas quietly provides:</strong> places, weather, events, hours, knowledge.</p>
+      <p style="opacity:.85;"><strong>Passport creates:</strong> wonder, traditions, connection, anticipation, joy, meaning, memory.</p>
+    </div>
+    <p class="lede reveal" style="margin-top:2rem;">Passport is not about travel. Passport is about helping people create meaningful days.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ENDING -->
+<!-- ============================================================ -->
+<section class="tone-dark center" id="endingSection" style="min-height:90svh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#000;">
+  <p class="reveal" style="font-size:1.8rem;"><span class="ornament">🔴</span></p>
+  <p class="med heading reveal" style="margin-top:2rem; max-width:560px; font-style:italic; opacity:.85;">Whatever today looks like&nbsp;&mdash;&nbsp;I hope it becomes one you'll remember.</p>
+  <div class="divider-line reveal"></div>
+  <p class="big heading reveal" style="font-size:clamp(2rem,6vw,4rem);">Merry Christmas.</p>
+  <button class="btn btn-gold reveal" id="planTomorrowBtn" type="button" style="margin-top:3rem;">🎄 Plan Tomorrow</button>
+  <p class="disclosure reveal" style="margin-top:1rem;">Because Christmas is never just one day.</p>
+</section>
+
+<footer class="labnotes">
+  <p class="kicker">Lab Notes</p>
+  <p class="lede" style="margin: 1rem auto 0;">KEEP, CHANGE, COMBINE, or TRASH — same rule as every ELK Labs experiment. This one tests whether Passport can hold Christmas's actual feeling, not just its calendar.</p>
+  <a href="/about/ideas-to-make-pages" class="btn btn-outline" style="margin-top:2rem; text-decoration:none;">&larr; Back to the wall</a>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Data (invented, disclosed — same discipline as every ELK Labs sandbox) ---------- */
+  var MOODS = [
+    { id: "cozy", emoji: "🎄", name: "Cozy Christmas", day: ["Slow morning, fresh coffee, snow outside", "A short walk, just to feel the cold", "Fireplace, a book, cinnamon rolls in the oven", "Early to bed, candles still lit"] },
+    { id: "romantic", emoji: "❤️", name: "Romantic Christmas", day: ["Coffee for two, no rush", "A walk under the lights, hand in hand", "Dinner somewhere small and warm", "Fondue, fireplace, a movie neither of you has seen"] },
+    { id: "family", emoji: "👨‍👩‍👧", name: "Family Christmas", day: ["Family breakfast, everyone still in pajamas", "The Christmas market, hot chocolate all around", "Cookie decorating, more frosting on the counter than the cookies", "Board games until someone falls asleep"] },
+    { id: "magic", emoji: "🎅", name: "Christmas Magic", day: ["Wake up to fresh snow", "Visit Santa, just to see the kids' faces", "A horse carriage ride through the lights", "Hot chocolate, snow still falling"] },
+    { id: "adventure", emoji: "⛷️", name: "Adventure Christmas", day: ["Early start, gear packed the night before", "A morning on the ski hill or snowshoe trail", "Lunch at the lodge, boots still on", "Hot springs, aching legs, completely worth it"] },
+    { id: "giving", emoji: "🎁", name: "Giving Christmas", day: ["Morning at the food bank", "An afternoon buying gifts from local artisans", "Wrapping presents for someone who won't expect them", "Delivering cookies, door to door"] },
+    { id: "coffeebook", emoji: "☕", name: "Coffee & Book Christmas", day: ["Slow start, the good mug", "A bookstore, no plan to buy anything (you will)", "A window seat, snow outside, a new chapter", "Tea, a blanket, the day just ending itself"] },
+    { id: "music", emoji: "🎶", name: "Music Christmas", day: ["Carols on, coffee brewing", "A church choir concert, just to sit and listen", "Live music at a local pub", "Driving home with the windows barely cracked, music low"] },
+    { id: "dog", emoji: "🐶", name: "Dog Christmas", day: ["A walk before anyone else is awake", "The dog in the snow, completely losing it", "A photo nobody will ever delete", "Curled up by the fire, dog included"] },
+    { id: "movies", emoji: "🎥", name: "Christmas Movie Marathon", day: ["Pajamas stay on all day, no apologies", "Popcorn, blankets, the good couch spots claimed early", "One movie becomes four", "Falling asleep before the credits, every time"] }
+  ];
+
+  var CHALLENGES = [
+    "🎄 Find the biggest Christmas tree.",
+    "🍪 Eat the best gingerbread cookie.",
+    "☕ Try three local hot chocolates.",
+    "🎁 Buy one gift from a local artisan.",
+    "⭐ Find the oldest Christmas decoration in town.",
+    "🎅 Spot Santa.",
+    "🦌 Find a reindeer decoration.",
+    "📷 Take a family Christmas photo.",
+    "❄️ Catch a snowflake.",
+    "🎶 Listen to live Christmas music.",
+    "🎄 Decorate a tiny tree.",
+    "🧣 Wear the ugliest Christmas sweater.",
+    "🍿 Watch a Christmas movie.",
+    "🍷 Drink mulled wine.",
+    "🥣 Donate food.",
+    "🧸 Donate toys.",
+    "❤️ Perform one anonymous act of kindness."
+  ];
+
+  var MOVIES = [
+    { name: "HOME ALONE", tags: "Neighborhood. Pizza. Lights. Ice cream. Chaos." },
+    { name: "CHRISTMAS VACATION", tags: "Family. Ridiculous decorations. Eggnog. Laughter." },
+    { name: "THE HOLIDAY", tags: "Bookstores. Coffee. Snow. Slow romance." },
+    { name: "ELF", tags: "Childlike wonder. Candy. Joy." },
+    { name: "POLAR EXPRESS", tags: "Magic. Kids. Hot chocolate. Snow." },
+    { name: "KLAUS", tags: "Kindness. Giving. Tradition." }
+  ];
+
+  var WEATHER = [
+    { id: "snowsoon", label: "Snow in 45 min", line: "Perfect excuse. Go outside before it starts." },
+    { id: "clear", label: "Clear tonight", line: "Perfect for Christmas lights." },
+    { id: "freshsnow", label: "Fresh snow tomorrow", line: "Build a snowman before anyone else touches it." },
+    { id: "fog", label: "Fog tonight", line: "Christmas feels a little more magical when you can't see everything." }
+  ];
+
+  /* ---------- Wonder Meter ---------- */
+  var wonder = 0;
+  var wonderFill = document.getElementById("wonderFill");
+  var wonderPct = document.getElementById("wonderPct");
+  function addWonder(amount) {
+    wonder = Math.min(100, wonder + amount);
+    wonderFill.style.width = wonder + "%";
+    wonderPct.textContent = wonder;
+  }
+
+  /* ---------- Choose Your Christmas ---------- */
+  var moodGrid = document.getElementById("moodGrid");
+  var dayPlan = document.getElementById("dayPlan");
+  var LABELS = ["Morning", "Mid Morning", "Afternoon", "Evening"];
+
+  function renderDay(mood) {
+    dayPlan.innerHTML = "";
+    mood.day.forEach(function (line, i) {
+      var row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "1rem";
+      row.style.alignItems = "baseline";
+      row.innerHTML = '<span style="opacity:.4; font-family:Fraunces,serif; font-size:.85rem; width:6.5rem; flex-shrink:0;">' + LABELS[i] + '</span><span style="opacity:.85;">' + line + '</span>';
+      dayPlan.appendChild(row);
+    });
+  }
+
+  MOODS.forEach(function (mood, i) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "card mood-card";
+    btn.innerHTML = '<span class="mood-emoji">' + mood.emoji + '</span><br><strong style="font-family:Fraunces,serif; font-size:1.05rem;">' + mood.name + '</strong>';
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".mood-card").forEach(function (c) { c.classList.remove("active"); });
+      btn.classList.add("active");
+      renderDay(mood);
+      addWonder(6);
+    });
+    moodGrid.appendChild(btn);
+    if (i === 0) { btn.classList.add("active"); renderDay(mood); }
+  });
+
+  /* ---------- Christmas Challenges ---------- */
+  var challengeList = document.getElementById("challengeList");
+  CHALLENGES.forEach(function (text) {
+    var li = document.createElement("li");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "challenge";
+    btn.innerHTML = '<span class="check"></span><span>' + text + '</span>';
+    btn.addEventListener("click", function () {
+      var done = btn.classList.toggle("done");
+      btn.querySelector(".check").textContent = done ? "✓" : "";
+      addWonder(done ? 4 : -4);
+    });
+    li.appendChild(btn);
+    challengeList.appendChild(li);
+  });
+
+  /* ---------- Movie Engine ---------- */
+  var movieGrid = document.getElementById("movieGrid");
+  var movieResult = document.getElementById("movieResult");
+  MOVIES.forEach(function (movie) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "card mood-card";
+    btn.innerHTML = '<strong style="font-family:Fraunces,serif;">' + movie.name + '</strong>';
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("#movieGrid .mood-card").forEach(function (c) { c.classList.remove("active"); });
+      btn.classList.add("active");
+      movieResult.textContent = movie.tags;
+      addWonder(5);
+    });
+    movieGrid.appendChild(btn);
+  });
+
+  /* ---------- Weather Engine ---------- */
+  var weatherGrid = document.getElementById("weatherGrid");
+  var weatherLine = document.getElementById("weatherLine");
+  WEATHER.forEach(function (w, i) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.style.cursor = "pointer";
+    btn.textContent = w.label;
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("#weatherGrid .chip").forEach(function (c) { c.classList.remove("active"); });
+      btn.classList.add("active");
+      weatherLine.textContent = w.line;
+      addWonder(3);
+    });
+    weatherGrid.appendChild(btn);
+    if (i === 0) { btn.click(); }
+  });
+
+  /* ---------- Countdown — real, computed from today's actual date ---------- */
+  (function () {
+    var now = new Date();
+    var year = now.getMonth() === 11 && now.getDate() > 25 ? now.getFullYear() + 1 : now.getFullYear();
+    var christmas = new Date(year, 11, 25);
+    var msPerDay = 1000 * 60 * 60 * 24;
+    var days = Math.ceil((christmas - now) / msPerDay);
+    document.getElementById("daysUntil").textContent = days;
+  })();
+
+  /* ---------- Plan Tomorrow ---------- */
+  document.getElementById("planTomorrowBtn").addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* ---------- Scroll reveal (vanilla IntersectionObserver — the plain-JS equivalent of the React Reveal component used elsewhere in this project) ---------- */
+  var revealEls = document.querySelectorAll(".reveal");
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) entry.target.classList.add("in");
+    });
+  }, { threshold: 0.2 });
+  revealEls.forEach(function (el) { io.observe(el); });
+
+  /* ---------- Snow — real, generated, deterministic count (not random per element count, only per-flake position, which is fine post-mount in a static file with no SSR/hydration to disagree with) ---------- */
+  var snowContainer = document.getElementById("snow");
+  for (var i = 0; i < 45; i++) {
+    var flake = document.createElement("span");
+    flake.className = "flake";
+    flake.textContent = "❄";
+    var left = Math.random() * 100;
+    var duration = 10 + Math.random() * 12;
+    var delay = Math.random() * 15;
+    var size = 0.5 + Math.random() * 1.1;
+    var drift = (Math.random() - 0.5) * 120;
+    flake.style.left = left + "vw";
+    flake.style.fontSize = size + "rem";
+    flake.style.setProperty("--drift", drift + "px");
+    flake.style.animation = "fall " + duration + "s linear " + delay + "s infinite";
+    snowContainer.appendChild(flake);
+  }
+
+  /* ---------- Sound — real, synthesized Web Audio ambience (fireplace/wind-like filtered noise), same honest technique as the React version in October Passport's useSoundscape.ts, ported to plain JS since this page has no build step ---------- */
+  var audioCtx = null, noiseSource = null, filterNode = null, gainNode = null, soundOn = false;
+  var soundBtn = document.getElementById("soundToggle");
+
+  function buildNoiseBuffer(ctx) {
+    var length = ctx.sampleRate * 4;
+    var buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  function startSound() {
+    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    audioCtx = new AudioContextClass();
+    noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = buildNoiseBuffer(audioCtx);
+    noiseSource.loop = true;
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = "lowpass";
+    filterNode.frequency.value = 420;
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.05;
+    noiseSource.connect(filterNode).connect(gainNode).connect(audioCtx.destination);
+    noiseSource.start();
+    soundOn = true;
+    soundBtn.textContent = "🔊 Sound On";
+  }
+
+  function stopSound() {
+    if (noiseSource) noiseSource.stop();
+    if (audioCtx) audioCtx.close();
+    audioCtx = null; noiseSource = null;
+    soundOn = false;
+    soundBtn.textContent = "🔇 Sound Off";
+  }
+
+  soundBtn.addEventListener("click", function () {
+    if (soundOn) stopSound(); else startSound();
+  });
+
+  window.addEventListener("beforeunload", function () {
+    if (noiseSource) noiseSource.stop();
+  });
+})();
+</script>
+
+</body>
+</html>

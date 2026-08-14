@@ -340,9 +340,17 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
   }
 
   // Entry point for both the field card's Save button and the inspect
-  // sheet's. A single board saves immediately — no picker, no extra
-  // click. 2+ boards opens SaveToBoardDialog instead of guessing which
-  // one the user meant.
+  // sheet's. Always saves to the currently active board — the active
+  // board already represents the user's current planning context, so
+  // asking them to choose again on every save is a redundant extra step,
+  // not a real decision. No picker here, regardless of how many boards
+  // exist.
+  //
+  // The board-choice path itself (performSave taking an explicit
+  // targetBoard, handleChooseBoardForSave, SaveToBoardDialog below) is
+  // deliberately still here, not deleted — it's the natural seam for a
+  // future explicit "Save to another board" action, just not part of
+  // this primary one.
   function handleSaveRequest(experience: Experience) {
     if (!board) {
       console.error(
@@ -351,17 +359,12 @@ export function DiscoverySpace({ experiences }: DiscoverySpaceProps) {
       toast.error("Your boards haven't loaded yet. Please try again shortly.");
       return;
     }
-    if (boards.length > 1) {
-      // Close the inspect sheet first if that's where Save was clicked —
-      // this dialog is a sibling, not nested inside it (see
-      // SaveToBoardDialog's doc comment for why).
-      setInspecting(null);
-      setSavingExperience(experience);
-      return;
-    }
     performSave(experience, board);
   }
 
+  // Not called from the primary Save flow today (see handleSaveRequest) —
+  // kept wired to SaveToBoardDialog for whenever a future "Save to
+  // another board" entry point needs it.
   function handleChooseBoardForSave(boardId: string) {
     const target = boards.find((candidate) => candidate.id === boardId);
     if (!target || !savingExperience) return;

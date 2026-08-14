@@ -8,7 +8,10 @@ import type { Experience } from "@/domain/experience/types";
 import { filterExperiences } from "./filterExperiences";
 import type { DiscoveryState } from "./discoveryState";
 
-function matchesQuery(experience: Experience, query: string): boolean {
+/** Exported so any renderer of "does this experience match this free-text
+ * query" — Discovery's immersive field, List mode, anywhere else this
+ * comes up — calls the same function rather than reimplementing it. */
+export function matchesQuery(experience: Experience, query: string): boolean {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return true;
   const haystack = [

@@ -3,6 +3,7 @@ import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { AdminNavEntry } from "@/components/admin/AdminNavEntry";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="bg-topo flex min-h-full flex-col">
         <QueryProvider>{children}</QueryProvider>
         <Toaster />
+        <AdminNavEntry />
       </body>
     </html>
   );

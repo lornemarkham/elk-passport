@@ -141,6 +141,17 @@ function CardActionButton({
       type="button"
       aria-label={label}
       onClick={onClick}
+      // The parent card's onTap (inspect) is a Framer Motion gesture,
+      // tracked via pointerdown/pointerup independently of React's
+      // native click-bubbling — stopping propagation only on onClick
+      // above does not stop it. Without this, pressing any action
+      // button here also opens the inspect sheet right behind it.
+      // Capture phase, not just bubble: Framer's own gesture listener
+      // needs to be preempted before it ever sees the pointer reach the
+      // card, not just told afterward that the event already bubbled.
+      onPointerDownCapture={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerUpCapture={(event) => event.stopPropagation()}
       className="focus-visible:ring-ring/50 flex size-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/70 opacity-70 backdrop-blur-md transition-all hover:border-white/30 hover:bg-black/70 hover:text-white hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
     >
       {children}

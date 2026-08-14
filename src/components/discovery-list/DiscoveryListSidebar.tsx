@@ -1,0 +1,149 @@
+import Link from "next/link";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { Experience } from "@/domain/experience/types";
+import type { Board } from "@/lib/data/boards-repo";
+import { BoardSwitcher } from "./BoardSwitcher";
+import { BoardTitle } from "./BoardTitle";
+
+export interface SavedListItem {
+  experience: Experience;
+  addedAt: string;
+}
+
+interface DiscoveryListSidebarProps {
+  boards: Board[];
+  board: Board | null;
+  boardsLoaded: boolean;
+  savedItems: SavedListItem[];
+  onSwitchBoard: (boardId: string) => void;
+  onCreateBoard: (name: string) => void;
+  onRenameBoard: (name: string) => void | Promise<void>;
+  onRequestDeleteBoard: () => void;
+  onRemoveSaved: (experienceId: string) => void;
+}
+
+/** The same things the immersive Mood Board sidebar already surfaces —
+ * active board, switch/create/rename/delete, saved items, Start
+ * Passport — reused as a workflow (activeBoardStorage + boards-repo),
+ * not as MoodBoard.tsx's exact JSX: that component is tightly coupled to
+ * the immersive field's dark theme, FieldExperience type, and
+ * shelved/rejected concepts List mode has no use for, and reusing it
+ * verbatim here would fight the Passport visual language this page is
+ * built around.
+ *
+ * Renders every saved item, newest first — no cap. A cap here would
+ * make the "N experiences saved" count above disagree with what's
+ * actually visible, and since Bug 3's shopping-cart model made this
+ * list a saved item's *only* home (it's no longer also shown in the
+ * main list), a capped view would make items past the cap functionally
+ * invisible, not just deprioritized. */
+export function DiscoveryListSidebar({
+  boards,
+  board,
+  boardsLoaded,
+  savedItems,
+  onSwitchBoard,
+  onCreateBoard,
+  onRenameBoard,
+  onRequestDeleteBoard,
+  onRemoveSaved,
+}: DiscoveryListSidebarProps) {
+  if (!boardsLoaded) {
+    return (
+      <aside
+        aria-label="Board"
+        className="rounded-2xl border border-[#8a5a24]/20 bg-[#f7ecd3]/40 p-5"
+      >
+        <p className="text-sm text-[#2b2015]/50">Loading your board…</p>
+      </aside>
+    );
+  }
+
+  return (
+    <aside
+      aria-label="Board"
+      className="flex flex-col gap-4 rounded-2xl border border-[#8a5a24]/20 bg-[#f7ecd3]/40 p-5"
+    >
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-medium tracking-[0.14em] text-[#8a5a24] uppercase">
+            Your Board
+          </p>
+          {/* The full `boards` array, unfiltered — `boards[]` is the one
+           * source of truth for what shows here. This used to pass a
+           * derived subset with the active board filtered out, so the
+           * dropdown never showed the active board under any name, and
+           * BoardSwitcher's active-board highlight (board.id ===
+           * activeBoardId) was dead code — there was no longer a matching
+           * row for it to ever hit. Passing the real array removes that
+           * second, derived view entirely instead of trying to keep it in
+           * sync with the first. */}
+          <BoardSwitcher
+            boards={boards}
+            activeBoardId={board?.id}
+            onSwitchBoard={onSwitchBoard}
+            onCreateBoard={onCreateBoard}
+          />
+        </div>
+
+        {board ? (
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <BoardTitle name={board.name} onRename={onRenameBoard} />
+            <button
+              type="button"
+              onClick={onRequestDeleteBoard}
+              aria-label="Delete board"
+              className="shrink-0 rounded-full p-1 text-[#2b2015]/30 transition-colors hover:bg-red-600/10 hover:text-red-700"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <p className="font-heading mt-1 text-xl text-[#2b2015]/40">
+            No board yet — create one above
+          </p>
+        )}
+
+        {board && (
+          <p className="mt-1 text-sm text-[#2b2015]/60">
+            {savedItems.length}{" "}
+            {savedItems.length === 1 ? "experience" : "experiences"} saved
+          </p>
+        )}
+      </div>
+
+      {savedItems.length > 0 && (
+        <ul className="flex max-h-96 flex-col gap-1.5 overflow-y-auto border-t border-[#8a5a24]/15 pt-3">
+          {savedItems.map(({ experience }) => (
+            <li
+              key={experience.id}
+              className="group flex items-center gap-2 rounded-lg px-1.5 py-1"
+            >
+              <p className="min-w-0 flex-1 truncate text-xs text-[#2b2015]/75">
+                {experience.title}
+              </p>
+              <button
+                type="button"
+                onClick={() => onRemoveSaved(experience.id)}
+                aria-label={`Remove ${experience.title} from board`}
+                className="shrink-0 rounded-full p-0.5 text-[#2b2015]/0 transition-colors group-hover:text-[#2b2015]/35 group-hover:hover:text-red-700"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {board && savedItems.length > 0 && (
+        <Button
+          nativeButton={false}
+          render={<Link href={`/passport/${board.id}`} />}
+        >
+          Start Passport
+        </Button>
+      )}
+    </aside>
+  );
+}
