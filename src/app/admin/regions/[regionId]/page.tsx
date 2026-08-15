@@ -30,6 +30,7 @@ import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
 import { duplicateGroupCount } from "@/lib/knowledge/adminSummary";
 import { decideResearch } from "@/app/admin/entities/[id]/actions";
 import type { WaitingFinding } from "@/components/admin/regions/RegionWorkflows";
+import type { UntypedEntity } from "@/components/admin/regions/FixTypesWorkflow";
 import {
   loadWorkspaceBundle,
   type WorkspaceBundle,
@@ -194,7 +195,51 @@ export default async function RegionPage({ params }: Props) {
     })),
   }));
 
-  const untypedCount = rows.filter((r) => !hasRealType(r)).length;
+  // The untyped entities, each with a real source to attribute the
+  // curator's decision to. `null` when nothing describes it — the API
+  // refuses in that case rather than inventing an origin.
+  const describedBy = new Map<string, { id: string; source: string }>();
+  if (bundle) {
+    const sourceById = new Map(bundle.sources.map((s) => [s.id, s]));
+    for (const r of bundle.relationships) {
+      if (r.type !== "describes" || describedBy.has(r.targetEntityId)) continue;
+      const src = sourceById.get(r.sourceEntityId);
+      if (src) {
+        describedBy.set(r.targetEntityId, { id: src.id, source: src.source });
+      }
+    }
+  }
+
+  const untypedRows = rows.filter((r) => !hasRealType(r));
+  const untyped: UntypedEntity[] = untypedRows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    sourceCount: r.sourceCount,
+    sourceRecordId: describedBy.get(r.id)?.id ?? null,
+    sourceLabel: describedBy.get(r.id)?.source ?? null,
+  }));
+
+  // The vocabulary this corpus actually uses, per kind. Never a taxonomy
+  // invented here — Atlas keeps source-native words on purpose (ADR 017),
+  // so the list shows what the region really says.
+  const knownTypes: Record<string, string[]> = {};
+  for (const e of bundle?.entities ?? []) {
+    const kind = String(e.kind);
+    const t = (
+      (e.placeType as string) ??
+      (e.organizationType as string) ??
+      (e.activityType as string) ??
+      (e.eventType as string) ??
+      ""
+    ).trim();
+    if (!t || t.toLowerCase() === "unknown") continue;
+    const list = (knownTypes[kind] ??= []);
+    if (!list.includes(t)) list.push(t);
+  }
+  for (const k of Object.keys(knownTypes)) knownTypes[k]!.sort();
+
+  const untypedCount = untypedRows.length;
   const isolatedCount = rows.filter((r) => r.relationshipCount === 0).length;
 
   return (
@@ -264,19 +309,23 @@ export default async function RegionPage({ params }: Props) {
       </section>
 
       {/* ==== 4. WHAT CAN I DO ======================================== */}
-      <RegionActions
-        regionName={region.name}
-        waitingCount={waiting.length}
-        untypedCount={untypedCount}
-        isolatedCount={isolatedCount}
-        duplicateGroups={duplicateGroups}
-        waiting={waitingFindings}
-        decideResearch={decideResearch}
-        activeRunId={activeRun?.id ?? null}
-        lastRunId={lastRun?.id ?? null}
-        lastRunLabel={lastRun?.label ?? "Atlas"}
-        runIsLive={Boolean(activeRun)}
-      />
+      <div id="your-work" className="scroll-mt-8">
+        <RegionActions
+          regionName={region.name}
+          waitingCount={waiting.length}
+          untypedCount={untypedCount}
+          isolatedCount={isolatedCount}
+          duplicateGroups={duplicateGroups}
+          waiting={waitingFindings}
+          untyped={untyped}
+          knownTypes={knownTypes}
+          decideResearch={decideResearch}
+          activeRunId={activeRun?.id ?? null}
+          lastRunId={lastRun?.id ?? null}
+          lastRunLabel={lastRun?.label ?? "Atlas"}
+          runIsLive={Boolean(activeRun)}
+        />
+      </div>
 
       {/* ==== 5. WHAT ELSE NEEDS ME — every finding, every action ===== */}
       <section className="flex flex-col gap-3">

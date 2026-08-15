@@ -235,11 +235,10 @@ export function diagnoseRegion(input: {
       title: `${untyped} ${untyped === 1 ? "entity has" : "entities have"} no type`,
       detail:
         "Atlas never established what kind of place these are. Type will decide which layout, completeness rules and research a page gets, so untyped entities cannot be improved systematically.",
-      action: {
-        kind: "planned",
-        label: "Classify these",
-        note: "Atlas has an `overview` research profile that establishes what a place is, and can already run it for one entity from that entity's page. Running it across a whole region needs bulk operations, which are not built yet.",
-      },
+      // Real now: opens the in-place Fix Types workflow, which writes
+      // through `EnrichmentService` and records the curator's decision as
+      // its own editorial source record.
+      action: { kind: "link", label: "Fix them now", href: "#your-work" },
       secondary: {
         kind: "filter",
         label: `Show the ${untyped}`,

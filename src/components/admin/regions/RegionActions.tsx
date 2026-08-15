@@ -1,6 +1,7 @@
 "use client";
 
 import { FilePlus2, Link2, Plus, Tags } from "lucide-react";
+import { FixTypesWorkflow, type UntypedEntity } from "./FixTypesWorkflow";
 import {
   ActivityWorkflow,
   DuplicatesWorkflow,
@@ -49,6 +50,8 @@ export function RegionActions({
   isolatedCount,
   duplicateGroups,
   waiting,
+  untyped,
+  knownTypes,
   decideResearch,
   activeRunId,
   lastRunId,
@@ -61,6 +64,8 @@ export function RegionActions({
   isolatedCount: number;
   duplicateGroups: number | null;
   waiting: WaitingFinding[];
+  untyped: UntypedEntity[];
+  knownTypes: Record<string, string[]>;
   decideResearch: (formData: FormData) => Promise<void>;
   activeRunId: string | null;
   lastRunId: string | null;
@@ -68,13 +73,6 @@ export function RegionActions({
   runIsLive: boolean;
 }) {
   const planned = [
-    {
-      label: "Fix types",
-      detail: `${untypedCount} ${untypedCount === 1 ? "entity has" : "entities have"} no type. Atlas can research what a place is, one entity at a time, from that entity's page.`,
-      icon: <Tags className="h-4 w-4" />,
-      badge: untypedCount,
-      soon: "Accepting a suggested type in bulk needs two things Atlas does not have: an edit surface for a single type, and bulk operations. Both are recorded in FUTURE-OPPORTUNITIES.",
-    },
     {
       label: "Review relationships",
       detail: `Atlas proposes connections it finds while reading. ${isolatedCount > 0 ? `${isolatedCount} here connect to nothing.` : "Nothing here is unconnected."}`,
@@ -141,6 +139,24 @@ export function RegionActions({
                   : duplicateGroups > 0
                     ? "Entities Atlas thinks are the same real thing. Merging is not reversible — you decide."
                     : "Nothing looks duplicated right now."
+              }
+            />
+          )}
+        />
+
+        <FixTypesWorkflow
+          untyped={untyped}
+          knownTypes={knownTypes}
+          trigger={(open) => (
+            <WorkflowCard
+              onOpen={open}
+              label="Fix missing types"
+              icon={<Tags className="h-4 w-4" />}
+              badge={untypedCount}
+              detail={
+                untypedCount > 0
+                  ? "Set what kind of place each one is. Type decides layout, completeness and research."
+                  : "Everything here has a type."
               }
             />
           )}
