@@ -53,6 +53,9 @@ async function adminGet<T>(path: string): Promise<T> {
   try {
     response = await fetch(`${ATLAS_BASE_URL}${path}`, {
       headers: { "x-admin-token": token },
+      // Bounded: the home page awaits this, and an untimed fetch is a
+      // page that never renders.
+      signal: AbortSignal.timeout(3000),
       cache: "no-store",
     });
   } catch (error) {

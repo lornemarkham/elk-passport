@@ -6,6 +6,7 @@ import {
   awaitsReview,
 } from "@/lib/knowledge/researchMissions";
 import { loadRegions } from "@/lib/knowledge/regions";
+import { duplicateGroupCount, runsToday } from "@/lib/knowledge/adminSummary";
 import {
   Code,
   EmptyState,
@@ -14,8 +15,6 @@ import {
   Pill,
   Row,
   Section,
-  Stat,
-  StatLine,
 } from "@/components/atlas/ui";
 
 export const metadata: Metadata = { title: "Atlas" };
@@ -27,51 +26,50 @@ export const metadata: Metadata = { title: "Atlas" };
  *
  * *"Which region am I working on today?"*
  *
- * Everything on this page serves that and nothing else. Regions first and
- * largest; the cross-region tools below them; a single quiet line of system
- * status at the foot.
+ * ## Every row carries its own state
  *
- * ## What was removed, and why
+ * The page used to end with a floating line — `168 entities · 1 region ·
+ * 167 unplaced` — orphaned from anything it described. Numbers belong on
+ * the thing they are about: the entity count sits on **All entities**, the
+ * region's size sits on the region, the review backlog sits on **Review**.
+ * A statistic with no home is a statistic nobody acts on.
  *
- * The previous version opened with a four-cell KPI block — Regions,
- * Entities, Unplaced, Waiting — in 30px numerals. Every number was true and
- * none of them was the question. A dashboard at the front door makes an
- * operator read statistics before choosing work.
+ * ## Metrics degrade individually, and never to zero
  *
- * Those numbers still exist, as one line of 13px text at the bottom, which
- * is the weight they deserve: context, not headline.
+ * Each count is fetched independently and bounded. When one cannot be
+ * established the row falls back to describing its destination rather than
+ * showing `0` — a zero is a claim about the corpus, and this page has
+ * already once told an operator there were `0 entities` when there were
+ * 168. See `adminSummary.ts`.
  *
- * Also gone: the paragraph explaining what Atlas is. A front door that
- * describes itself is a front door that is not obvious.
+ * ## What is deliberately absent
+ *
+ * *Last updated* on a region. Entities carry no modification timestamp, so
+ * any such figure would be derived from something adjacent and presented as
+ * if it were the thing. Omitted rather than approximated.
  */
 export default async function AtlasHomePage() {
-  // Two calls, both cheap. The workspace bundle used to be awaited here for
-  // an entity count that is now derived from the regions payload — dropping
-  // it removes the page's slowest dependency for no loss.
-  const [missions, regionsResult] = await Promise.all([
+  const [missions, regionsResult, runs, duplicates] = await Promise.all([
     loadResearchMissions(),
     loadRegions(),
+    runsToday(),
+    duplicateGroupCount(),
   ]);
 
-  const waiting = missions.filter(awaitsReview).length;
+  const waiting = missions.filter(awaitsReview);
   const { regions, unassignedIds } = regionsResult;
 
-  // Derived from the regions payload rather than from the workspace bundle.
-  //
-  // The bundle is a second, slower call and it can fail on its own — which
-  // it did, and the page rendered "0 entities" beside "167 unplaced". A
-  // fabricated zero is worse than a missing number: it reads as a fact
-  // about an empty corpus rather than as a failed fetch.
-  //
-  // `unassignedIds` plus every region's members plus the regions themselves
-  // is the whole corpus, computed from data that actually loaded.
   const placed = new Set(regions.flatMap((r) => r.memberIds));
   const entityCount = unassignedIds.length + placed.size + regions.length;
   const atlasReachable = regions.length > 0 || unassignedIds.length > 0;
 
   return (
     <div className="flex flex-col gap-14">
-      <PageHeader back={{ href: "/", label: "Passport" }} title="Atlas" />
+      <PageHeader
+        back={{ href: "/", label: "Passport" }}
+        title="Atlas"
+        description="Knowledge Engine"
+      />
 
       {/* --- Regions. The reason this page exists. ----------------------- */}
       <Section
@@ -102,15 +100,38 @@ export default async function AtlasHomePage() {
           </EmptyState>
         ) : (
           <List>
-            {regions.map((region) => (
-              <Row
-                key={region.id}
-                href={`/admin/regions/${region.id}`}
-                icon={<MapPin className="h-4 w-4" />}
-                title={region.name}
-                meta={`${region.memberIds.length} ${region.memberIds.length === 1 ? "entity" : "entities"}`}
-              />
-            ))}
+            {regions.map((region) => {
+              const size = region.memberIds.length;
+              const reviewing = waiting.filter((m) =>
+                region.memberIds.includes(m.entityId),
+              ).length;
+
+              return (
+                <Row
+                  key={region.id}
+                  href={`/admin/regions/${region.id}`}
+                  icon={<MapPin className="h-4 w-4" />}
+                  title={region.name}
+                  meta={
+                    // A bare "0 entities" reads as a dead metric. The same
+                    // fact stated as a condition reads as something to do.
+                    size === 0
+                      ? "No entities placed here yet"
+                      : [
+                          `${size} ${size === 1 ? "entity" : "entities"}`,
+                          reviewing > 0 && `${reviewing} awaiting review`,
+                        ]
+                          .filter(Boolean)
+                          .join("  ·  ")
+                  }
+                  trailing={
+                    reviewing > 0 ? (
+                      <Pill tone="attention">{reviewing}</Pill>
+                    ) : undefined
+                  }
+                />
+              );
+            })}
           </List>
         )}
       </Section>
@@ -122,52 +143,61 @@ export default async function AtlasHomePage() {
             href="/admin/review"
             icon={<Search className="h-4 w-4" />}
             title="Review"
-            meta="Research findings waiting on a decision"
+            meta={
+              // `missions` loaded, so zero is a real answer rather than a
+              // missing one — stated the same way Runs and Duplicates state
+              // theirs, so the three rows read as one vocabulary.
+              waiting.length > 0
+                ? `${waiting.length} ${waiting.length === 1 ? "finding" : "findings"} waiting`
+                : "Nothing waiting on you"
+            }
             trailing={
-              waiting > 0 ? <Pill tone="attention">{waiting}</Pill> : undefined
+              waiting.length > 0 ? (
+                <Pill tone="attention">{waiting.length}</Pill>
+              ) : undefined
             }
           />
           <Row
             href="/admin/runs"
             icon={<Waves className="h-4 w-4" />}
             title="Runs"
-            meta="What Atlas has been doing"
+            meta={
+              runs === null
+                ? "What Atlas has been doing"
+                : runs === 0
+                  ? "Nothing has run today"
+                  : `${runs} ${runs === 1 ? "run" : "runs"} today`
+            }
           />
           <Row
             href="/admin/duplicates"
             icon={<Split className="h-4 w-4" />}
             title="Duplicates"
-            meta="Entries that look like the same real thing"
+            meta={
+              duplicates === null
+                ? "Entries that look like the same real thing"
+                : duplicates === 0
+                  ? "Nothing needs review"
+                  : `${duplicates} ${duplicates === 1 ? "group needs" : "groups need"} review`
+            }
+            trailing={
+              duplicates !== null && duplicates > 0 ? (
+                <Pill>{duplicates}</Pill>
+              ) : undefined
+            }
           />
           <Row
             href="/admin/entities"
             icon={<Layers className="h-4 w-4" />}
             title="All entities"
-            meta="Everything Atlas holds, placed or not"
+            meta={
+              atlasReachable
+                ? `${entityCount} in Atlas  ·  ${unassignedIds.length} not in a region`
+                : "Everything Atlas holds, placed or not"
+            }
           />
         </List>
       </Section>
-
-      {/* --- Context, at the weight context deserves --------------------- */}
-      {atlasReachable ? (
-        <StatLine>
-          <Stat
-            label={entityCount === 1 ? "entity" : "entities"}
-            value={entityCount}
-          />
-          <Stat
-            label={regions.length === 1 ? "region" : "regions"}
-            value={regions.length}
-          />
-          <Stat label="unplaced" value={unassignedIds.length} />
-        </StatLine>
-      ) : (
-        // Never a row of zeros. A zero is a claim about the corpus; this is
-        // a statement about the connection, and they are different things.
-        <p className="text-muted-foreground text-[13px]">
-          Atlas is not responding — counts unavailable.
-        </p>
-      )}
     </div>
   );
 }
