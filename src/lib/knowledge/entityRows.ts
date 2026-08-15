@@ -35,6 +35,15 @@ export interface BuildRowsOptions {
   readonly awaitingReview?: ReadonlySet<string>;
   /** Entity ids with research requested and not yet back. */
   readonly researching?: ReadonlySet<string>;
+  /**
+   * What the most recent run did to each entity.
+   *
+   * Read from that run's own `IngestionEvent`s, so the badge on a row and
+   * the story in the Observatory are the same rows. **An operation that
+   * leaves no trace on the thing it changed is an operation a curator has
+   * to take on faith.**
+   */
+  readonly changed?: ReadonlyMap<string, "new" | "updated">;
 }
 
 export function buildEntityRows(
@@ -42,7 +51,7 @@ export function buildEntityRows(
   options: BuildRowsOptions = {},
 ): PickerEntity[] {
   const { entities, sources, relationships, scores } = bundle;
-  const { only, membership, awaitingReview, researching } = options;
+  const { only, membership, awaitingReview, researching, changed } = options;
 
   const scoreById = new Map(scores.map((s) => [s.entityId, s.overallPercent]));
   const sourceIds = new Set(sources.map((s) => s.id));
@@ -92,6 +101,7 @@ export function buildEntityRows(
         membership: membership?.get(id),
         awaitingReview: awaitingReview?.has(id) ?? false,
         researching: researching?.has(id) ?? false,
+        changed: changed?.get(id),
       };
     });
 }

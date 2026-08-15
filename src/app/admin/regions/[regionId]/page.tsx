@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Sparkles,
   Terminal,
   TriangleAlert,
 } from "lucide-react";
@@ -13,11 +14,15 @@ import { AdminUnreachableNotice } from "@/components/admin/AdminUnreachableNotic
 import { EntityPicker } from "@/components/admin/entities/EntityPicker";
 import { RegionViewSwitcher } from "@/components/admin/regions/RegionViewSwitcher";
 import { RegionOperations } from "@/components/admin/regions/RegionOperations";
-import { diagnoseRegion } from "@/lib/knowledge/regionDiagnosis";
+import {
+  diagnoseRegion,
+  type FindingAction,
+} from "@/lib/knowledge/regionDiagnosis";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { regionScope } from "@/lib/knowledge/regionScope";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
+import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
 import {
   loadWorkspaceBundle,
   type WorkspaceBundle,
@@ -118,12 +123,17 @@ export default async function RegionPage({ params }: Props) {
   const waiting = regionMissions.filter(awaitsReview);
   const running = regionMissions.filter(isOpen);
 
+  // Ingestion status, from runs Atlas already records.
+  const lastRunForChanges = runs.length > 0 ? runs[0] : null;
+  const changed = await loadRecentChanges(lastRunForChanges);
+
   const rows = bundle
     ? buildEntityRows(bundle, {
         only: scope.ids,
         membership: scope.membership,
         awaitingReview: new Set(waiting.map((m) => m.entityId)),
         researching: new Set(running.map((m) => m.entityId)),
+        changed,
       })
     : [];
 
@@ -137,8 +147,7 @@ export default async function RegionPage({ params }: Props) {
         )
       : null;
 
-  // Ingestion status, from runs Atlas already records.
-  const lastRun = runs.length > 0 ? runs[0] : null;
+  const lastRun = lastRunForChanges;
   // Atlas may already be working when the page loads — from this button,
   // from the CLI, or from another tab. The workspace picks it up either
   // way rather than claiming Atlas is idle because *this* tab did not
@@ -174,11 +183,11 @@ export default async function RegionPage({ params }: Props) {
         </p>
       </header>
 
-      {/* --- What Atlas knows and doesn't. Findings, not statistics. -- */}
+      {/* --- What Atlas knows and doesn't. Findings, each actionable. -- */}
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-[13px] font-medium tracking-wide uppercase">
-            Region health
+            What Atlas knows about {region.name}
           </h2>
           <span className="text-muted-foreground text-[13px] tabular-nums">
             {rosterUnavailable
@@ -197,50 +206,100 @@ export default async function RegionPage({ params }: Props) {
         ) : (
           <ul className="border-border divide-border divide-y overflow-hidden rounded-lg border">
             {findings.map((f) => (
-              <li key={f.title} className="flex gap-3 px-4 py-3">
+              <li
+                key={f.title}
+                className="flex flex-wrap items-start gap-3 px-4 py-3.5"
+              >
                 {f.tone === "good" ? (
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-500" />
                 ) : (
                   <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
                 )}
-                <span className="min-w-0">
+                <span className="min-w-[240px] flex-1">
                   <span className="block text-sm font-medium">{f.title}</span>
-                  {/* Plain English, where the concept is encountered. A
-                      curator should never have to hold Atlas's vocabulary
-                      in their head to read their own region. */}
+                  {/* Plain English, where the concept is met. A curator
+                      should never have to hold Atlas's vocabulary in their
+                      head to read their own region. */}
                   <span className="text-muted-foreground mt-0.5 block max-w-3xl text-[13px] leading-relaxed">
                     {f.detail}
                   </span>
                 </span>
+                {(f.action || f.secondary) && (
+                  <span className="flex shrink-0 flex-wrap items-center gap-2">
+                    {f.action && (
+                      <FindingButton
+                        action={f.action}
+                        regionId={region.id}
+                        primary
+                      />
+                    )}
+                    {f.secondary && (
+                      <FindingButton
+                        action={f.secondary}
+                        regionId={region.id}
+                      />
+                    )}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
         )}
+
+        {/* --- Teaching, in four lines. Where the words are met. ------- */}
+        <details className="border-border group rounded-lg border px-4 py-3">
+          <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none text-[13px] select-none">
+            What these words mean
+            <span className="ml-1.5 inline-block transition-transform group-open:rotate-90">
+              ›
+            </span>
+          </summary>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Term
+              term="Knowledge coverage"
+              means="How much of what Atlas looks for it actually has. Not how much exists in the world — Atlas has no way to know that."
+            />
+            <Term
+              term="Type"
+              means="What kind of place something is, in the source's own words. It will decide which layout, rules and research a page gets."
+            />
+            <Term
+              term="Relationships"
+              means="How things connect — what contains what, what is near what. They are how a traveller explores rather than searches."
+            />
+            <Term
+              term="Research"
+              means="Atlas reading a source to answer one specific question. It proposes; you decide whether it is written."
+            />
+          </dl>
+        </details>
       </section>
 
       {/* --- The operation. What to do, what happens, and watching it. -- */}
-      <RegionOperations
-        regionId={region.id}
-        regionName={region.name}
-        action={action}
-        coverageBefore={averageCompleteness}
-        entitiesBefore={scope.ids.size}
-        activeRunId={activeRun?.id ?? null}
-        lastRun={
-          lastRun
-            ? {
-                id: lastRun.id,
-                status: lastRun.status,
-                label: lastRun.label,
-                startedAt: lastRun.startedAt,
-                finishedAt: lastRun.finishedAt,
-              }
-            : null
-        }
-      />
+      <div id="next-action" className="scroll-mt-8">
+        <RegionOperations
+          regionId={region.id}
+          regionName={region.name}
+          action={action}
+          coverageBefore={averageCompleteness}
+          entitiesBefore={scope.ids.size}
+          activeRunId={activeRun?.id ?? null}
+          lastRun={
+            lastRun
+              ? {
+                  id: lastRun.id,
+                  status: lastRun.status,
+                  label: lastRun.label,
+                  startedAt: lastRun.startedAt,
+                  finishedAt: lastRun.finishedAt,
+                }
+              : null
+          }
+        />
+      </div>
 
       {/* --- Entities. The primary section: this is what the page is for. */}
-      <section className="flex flex-col gap-4">
+      <section id="entities" className="flex scroll-mt-8 flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-[13px] font-medium tracking-wide uppercase">
@@ -323,6 +382,98 @@ export default async function RegionPage({ params }: Props) {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/**
+ * The thing to do about a finding.
+ *
+ * **Every finding gets one.** A finding without an action is a complaint:
+ * it tells a curator something is wrong and leaves them to work out where
+ * to go, which is exactly the *"what am I supposed to do?"* this page
+ * exists to end.
+ *
+ * A `planned` action still renders, disabled, saying what it will do. A
+ * button that pretended would be worse than none — but a gap with no
+ * button at all hides the shape of the product, and a curator cannot tell
+ * "Atlas will never do this" from "Atlas cannot do this yet".
+ */
+function FindingButton({
+  action,
+  regionId,
+  primary,
+}: {
+  action: FindingAction;
+  regionId: string;
+  primary?: boolean;
+}) {
+  const base =
+    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors";
+  const tone = primary
+    ? "bg-foreground text-background hover:opacity-90"
+    : "border-border hover:bg-muted/50 border text-foreground";
+
+  if (action.kind === "planned") {
+    return (
+      <span
+        title={action.note}
+        aria-disabled="true"
+        className={`${base} border-border text-muted-foreground/60 cursor-not-allowed border border-dashed`}
+      >
+        {action.label}
+        <span className="text-[11px] tracking-wide uppercase opacity-70">
+          soon
+        </span>
+      </span>
+    );
+  }
+
+  if (action.kind === "link") {
+    return (
+      <Link href={action.href} className={`${base} ${tone}`}>
+        {action.label}
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    );
+  }
+
+  if (action.kind === "filter") {
+    // Scrolls to the table below with that filter applied. The weakest
+    // action and the most universally honest one — "show me which ones"
+    // runs on the same measurement the finding counted, so the list can
+    // never disagree with the number above it.
+    return (
+      <Link
+        href={`/admin/regions/${regionId}?gap=${action.gap}#entities`}
+        scroll
+        className={`${base} ${tone}`}
+      >
+        {action.label}
+      </Link>
+    );
+  }
+
+  // `run` — the operation lives in the panel below, which owns starting,
+  // progress and completion. Sending the curator there keeps one place
+  // responsible for an operation instead of two buttons that could
+  // disagree about whether something is running.
+  return (
+    <Link href="#next-action" scroll className={`${base} ${tone}`}>
+      <Sparkles className="h-3.5 w-3.5" />
+      {action.label}
+    </Link>
+  );
+}
+
+/** One short definition. Teaching is four lines, not a manual. */
+function Term({ term, means }: { term: string; means: string }) {
+  return (
+    <div>
+      <dt className="text-[13px] font-medium">{term}</dt>
+      <dd className="text-muted-foreground mt-0.5 text-[13px] leading-relaxed">
+        {means}
+      </dd>
     </div>
   );
 }

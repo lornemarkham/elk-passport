@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ChevronRight, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,8 @@ export interface PickerEntity {
   membership?: "direct" | "indirect";
   awaitingReview?: boolean;
   researching?: boolean;
+  /** What the most recent run did to this entity, if anything. */
+  changed?: "new" | "updated";
 }
 
 type SortKey = "needs-work" | "name" | "sources" | "connections";
@@ -41,6 +44,7 @@ type GapKey =
   | "no-image"
   | "unscored"
   | "no-type"
+  | "changed"
   | "thin";
 
 const KINDS = ["All", "Place", "Organization", "Activity", "Event"] as const;
@@ -51,6 +55,11 @@ const GAPS: {
   match: (e: PickerEntity) => boolean;
 }[] = [
   { key: "all", label: "All", match: () => true },
+  {
+    key: "changed",
+    label: "Changed just now",
+    match: (e) => e.changed !== undefined,
+  },
   {
     key: "needs-review",
     label: "Needs review",
@@ -124,10 +133,31 @@ export function EntityPicker({
   /** Region scope only: label whether a curator placed this or a member contains it. */
   showMembership?: boolean;
 }) {
+  const params = useSearchParams();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<(typeof KINDS)[number]>("All");
-  const [gap, setGap] = useState<GapKey>("all");
   const [sort, setSort] = useState<SortKey>("needs-work");
+
+  /**
+   * The gap filter comes from the URL, with a local override once the
+   * curator clicks a chip themselves.
+   *
+   * A finding above says *"show me the six"* by linking to `?gap=no-type`,
+   * so the link is shareable and the back button works — a server-rendered
+   * finding can drive a client-rendered filter without the two sharing a
+   * parent.
+   *
+   * **Derived, not synced.** Copying the URL into state inside an effect
+   * would render once with the wrong filter and again with the right one,
+   * and would fight the curator every time the URL changed under them.
+   * `override ?? url ?? all` needs no effect at all.
+   */
+  const urlGap = params.get("gap");
+  const [override, setOverride] = useState<GapKey | null>(null);
+  const gap: GapKey =
+    override ??
+    (urlGap && GAPS.some((g) => g.key === urlGap) ? (urlGap as GapKey) : "all");
+  const setGap = setOverride;
 
   // Counts are computed against the *other* axes, so a filter that would
   // return nothing says so before it is clicked. A control that silently
@@ -259,6 +289,19 @@ export function EntityPicker({
               <span className="min-w-0 flex-[2]">
                 <span className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium">{e.name}</span>
+                  {/* What the last run did to this row. Loud on purpose:
+                      the point of an operation is seeing what it touched,
+                      and a subtle badge is one a curator scrolls past. */}
+                  {e.changed === "new" && (
+                    <span className="shrink-0 rounded bg-emerald-600/15 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-400">
+                      New
+                    </span>
+                  )}
+                  {e.changed === "updated" && (
+                    <span className="shrink-0 rounded bg-sky-600/15 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-sky-700 uppercase dark:text-sky-400">
+                      Updated
+                    </span>
+                  )}
                   {e.awaitingReview && (
                     <span className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
                       review

@@ -221,12 +221,26 @@ export function RegionOperations({
     <section className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-[13px] font-medium tracking-wide uppercase">
-          Next action
+          {phase === "running" || phase === "starting"
+            ? "Atlas is working"
+            : phase === "done"
+              ? "Atlas finished"
+              : "Atlas suggests"}
         </h2>
         <StatusLine phase={phase} lastRun={lastRun} />
       </div>
 
-      <div className="border-border rounded-lg border">
+      <div
+        className={`rounded-lg border transition-colors ${
+          phase === "running" || phase === "starting"
+            ? "border-emerald-600/40 bg-emerald-500/[0.04]"
+            : phase === "done"
+              ? "border-emerald-600/40 bg-emerald-500/[0.04]"
+              : action.kind === "nothing"
+                ? "border-border"
+                : "border-foreground/25 bg-muted/30"
+        }`}
+      >
         {phase === "idle" || phase === "error" ? (
           <Proposal
             regionName={regionName}
@@ -276,7 +290,9 @@ function Proposal({
       {/* What will happen, stated *before* it happens. A curator who can
           predict the outcome can trust the result. */}
       <p className="text-muted-foreground mt-4 text-[13px] font-medium">
-        {action.kind === "grow" ? "Atlas will:" : "What happens next:"}
+        {action.kind === "grow"
+          ? "If you run this, Atlas will:"
+          : "What happens next:"}
       </p>
       <ul className="mt-1.5 flex flex-col gap-1">
         {action.willDo.map((step) => (
@@ -369,7 +385,7 @@ function InFlight({
     <div className="p-5">
       <p className="flex items-center gap-2 text-sm font-medium">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Growing {regionName}…
+        Atlas is learning about {regionName}…
       </p>
 
       {/* Indeterminate on purpose. Atlas cannot know how many pages a run
@@ -410,7 +426,7 @@ function InFlight({
 
       {(changes.created > 0 || changes.enriched > 0 || changes.facts > 0) && (
         <p className="text-muted-foreground mt-4 text-[13px]">
-          So far:{" "}
+          Atlas has found so far:{" "}
           {[
             changes.created > 0 && `${changes.created} new`,
             changes.enriched > 0 && `${changes.enriched} enriched`,
@@ -450,7 +466,7 @@ function Complete({
     <div className="p-5">
       <p className="flex items-center gap-2 text-sm font-medium">
         <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
-        Grow {regionName} complete
+        Atlas finished growing {regionName}
       </p>
 
       {nothingChanged ? (
@@ -482,6 +498,35 @@ function Complete({
             />
           )}
         </ul>
+      )}
+
+      {changes.touched.length > 0 && (
+        <div className="mt-4">
+          <p className="text-muted-foreground text-[13px] font-medium">
+            Atlas changed:
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-1.5">
+            {changes.touched.map((name) => (
+              <li
+                key={name}
+                className="bg-muted rounded px-2 py-0.5 text-[13px]"
+              >
+                {name}
+              </li>
+            ))}
+          </ul>
+          <p className="text-muted-foreground mt-2 text-[13px]">
+            These are marked{" "}
+            <span className="rounded bg-emerald-600/15 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-400">
+              new
+            </span>{" "}
+            or{" "}
+            <span className="rounded bg-sky-600/15 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-sky-700 uppercase dark:text-sky-400">
+              updated
+            </span>{" "}
+            in the list below.
+          </p>
+        </div>
       )}
 
       {changes.queued > 0 && (
@@ -581,6 +626,8 @@ interface Changes {
   enriched: number;
   facts: number;
   queued: number;
+  /** Which entities, by name. The claim and its evidence on one screen. */
+  touched: string[];
 }
 
 /**
@@ -594,10 +641,14 @@ function summarise(events: readonly RunEvent[]): Changes {
   let enriched = 0;
   let facts = 0;
   let queued = 0;
+  const touched = new Set<string>();
   for (const e of events) {
-    if (e.stage === "entity-created") created += 1;
-    else if (e.stage === "entity-enriched") {
+    if (e.stage === "entity-created") {
+      created += 1;
+      if (e.subject) touched.add(e.subject);
+    } else if (e.stage === "entity-enriched") {
       enriched += 1;
+      if (e.subject) touched.add(e.subject);
       // "+3 facts" appears in the event's own message; counting the
       // leading number is reading what the pipeline wrote, not inventing.
       const m = /(\d+)/.exec(e.message);
@@ -606,7 +657,7 @@ function summarise(events: readonly RunEvent[]): Changes {
       queued += 1;
     }
   }
-  return { created, enriched, facts, queued };
+  return { created, enriched, facts, queued, touched: [...touched] };
 }
 
 const STAGE_WORDS: Record<string, string> = {

@@ -33,6 +33,33 @@ import type { IngestionRun } from "./runData";
 
 export type FindingTone = "good" | "attention";
 
+/**
+ * What a curator can do about a finding, right now.
+ *
+ * **Every finding carries one.** A finding without an action is a
+ * complaint — it tells a curator something is wrong and leaves them to
+ * work out where to go, which is the "what am I supposed to do?" this
+ * page exists to end.
+ *
+ * Four kinds, in descending order of how much they do:
+ *
+ * - `run` — starts a real region operation.
+ * - `link` — goes to the surface that resolves it.
+ * - `filter` — shows exactly the entities concerned, in the table below.
+ *   Weaker than it sounds and available for almost everything: *"show me
+ *   the six"* is the first thing a curator wants, and it is always
+ *   truthful because the filter runs on the same measurement the finding
+ *   counted.
+ * - `planned` — named, visibly not built, and honest about it. A button
+ *   that pretends would be worse than none; a button that says what it
+ *   will do keeps the shape of the product visible.
+ */
+export type FindingAction =
+  | { readonly kind: "run"; readonly label: string }
+  | { readonly kind: "link"; readonly label: string; readonly href: string }
+  | { readonly kind: "filter"; readonly label: string; readonly gap: string }
+  | { readonly kind: "planned"; readonly label: string; readonly note: string };
+
 export interface Finding {
   readonly tone: FindingTone;
   readonly title: string;
@@ -40,6 +67,10 @@ export interface Finding {
   readonly detail: string;
   /** How many entities this concerns, when it concerns entities. */
   readonly count?: number;
+  /** The primary thing to do about it. */
+  readonly action?: FindingAction;
+  /** A second, weaker option — almost always "show me which ones". */
+  readonly secondary?: FindingAction;
 }
 
 export type ActionKind = "grow" | "review" | "nothing";
@@ -110,6 +141,12 @@ export function diagnoseRegion(input: {
             title: `Knowledge coverage is ${averageCompleteness}%`,
             detail:
               "Most entities here are missing things Atlas knows how to look for. Growing the region reads more of what it already knows exists.",
+            action: { kind: "run", label: "Grow this region" },
+            secondary: {
+              kind: "filter",
+              label: "Show the thinnest",
+              gap: "thin",
+            },
           },
     );
   }
@@ -121,6 +158,12 @@ export function diagnoseRegion(input: {
       title: `${noSources} ${noSources === 1 ? "entity has" : "entities have"} no source`,
       detail:
         "Nothing Atlas has read mentions them, so everything on their page came from somewhere else. These are the least trustworthy entries in the region.",
+      action: { kind: "run", label: "Grow this region" },
+      secondary: {
+        kind: "filter",
+        label: `Show the ${noSources}`,
+        gap: "no-sources",
+      },
     });
   } else if (rows.length > 0) {
     findings.push({
@@ -138,6 +181,16 @@ export function diagnoseRegion(input: {
       title: `${untyped} ${untyped === 1 ? "entity has" : "entities have"} no type`,
       detail:
         "Atlas never established what kind of place these are. Type will decide which layout, completeness rules and research a page gets, so untyped entities cannot be improved systematically.",
+      action: {
+        kind: "planned",
+        label: "Classify these",
+        note: "Atlas has an `overview` research profile that establishes what a place is, and can already run it for one entity from that entity's page. Running it across a whole region needs bulk operations, which are not built yet.",
+      },
+      secondary: {
+        kind: "filter",
+        label: `Show the ${untyped}`,
+        gap: "no-type",
+      },
     });
   }
 
@@ -148,6 +201,8 @@ export function diagnoseRegion(input: {
       title: `${thin} below 50% coverage`,
       detail:
         "Atlas holds less than half of what it looks for on these. They are the highest-value things to grow.",
+      action: { kind: "run", label: "Grow this region" },
+      secondary: { kind: "filter", label: `Show the ${thin}`, gap: "thin" },
     });
   }
 
@@ -158,6 +213,16 @@ export function diagnoseRegion(input: {
       title: `${isolated} connected to nothing`,
       detail:
         "No relationship links these to anything else in the region, so they cannot be reached by exploring — only by searching for them by name.",
+      action: {
+        kind: "planned",
+        label: "Suggest connections",
+        note: "Atlas already proposes relationships it finds while reading (`RelationshipCandidate`), and a curator confirms them. Proposing connections for entities nothing has mentioned is a different job and is not built.",
+      },
+      secondary: {
+        kind: "filter",
+        label: `Show the ${isolated}`,
+        gap: "no-relationships",
+      },
     });
   }
 
@@ -168,6 +233,12 @@ export function diagnoseRegion(input: {
       title: `${noImage} without an image`,
       detail:
         "Atlas only uses images a source published — it never constructs an image URL — so these need a source that carries one.",
+      action: { kind: "run", label: "Grow this region" },
+      secondary: {
+        kind: "filter",
+        label: `Show the ${noImage}`,
+        gap: "no-image",
+      },
     });
   }
 
@@ -178,6 +249,12 @@ export function diagnoseRegion(input: {
       title: `${waitingCount} research ${waitingCount === 1 ? "finding" : "findings"} waiting on you`,
       detail:
         "Atlas researched something and stopped before writing it. It proposes; a person decides.",
+      action: { kind: "link", label: "Review them", href: "/admin/review" },
+      secondary: {
+        kind: "filter",
+        label: `Show the ${waitingCount}`,
+        gap: "needs-review",
+      },
     });
   }
 
@@ -188,6 +265,11 @@ export function diagnoseRegion(input: {
       title: `${runningCount} research ${runningCount === 1 ? "mission" : "missions"} in progress`,
       detail:
         "Requested and not yet back. Run them with `npm run run-missions`.",
+      secondary: {
+        kind: "filter",
+        label: `Show the ${runningCount}`,
+        gap: "researching",
+      },
     });
   }
 
