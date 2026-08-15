@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ChevronRight, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { hasRealType } from "./entityGaps";
 
 export interface PickerEntity {
   id: string;
@@ -41,25 +42,6 @@ type GapKey =
   | "unscored"
   | "no-type"
   | "thin";
-
-/**
- * A subtype Atlas does not actually know.
- *
- * Extraction writes the literal string `unknown` when a source never said
- * what something is, so an absent type and the word "unknown" are the same
- * fact wearing different clothes. Rendering `unknown` as though it were a
- * type is the fabricated-zero mistake in a text field: it looks like
- * knowledge and is the absence of it.
- *
- * This matters more than it used to. Types are about to drive layouts,
- * completeness rules, research missions and Passport presentation — so
- * "we never established the type" is a gap a curator needs to *find*, not
- * a label to skim past.
- */
-export function hasRealType(e: PickerEntity): boolean {
-  const t = (e.subtype ?? "").trim().toLowerCase();
-  return t !== "" && t !== "unknown";
-}
 
 const KINDS = ["All", "Place", "Organization", "Activity", "Event"] as const;
 

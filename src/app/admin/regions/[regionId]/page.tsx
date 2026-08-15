@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Search, Terminal } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Terminal,
+  TriangleAlert,
+} from "lucide-react";
 import { AdminSetupNotice } from "@/components/admin/AdminSetupNotice";
 import { AdminUnreachableNotice } from "@/components/admin/AdminUnreachableNotice";
 import { EntityPicker } from "@/components/admin/entities/EntityPicker";
 import { RegionViewSwitcher } from "@/components/admin/regions/RegionViewSwitcher";
+import { RegionOperations } from "@/components/admin/regions/RegionOperations";
+import { diagnoseRegion } from "@/lib/knowledge/regionDiagnosis";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { regionScope } from "@/lib/knowledge/regionScope";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
@@ -129,14 +137,26 @@ export default async function RegionPage({ params }: Props) {
         )
       : null;
 
-  // Ingestion status, from runs Atlas already records. Scoped by nothing —
-  // runs are global today — so it is labelled as an Atlas-wide fact rather
-  // than presented as a regional one.
+  // Ingestion status, from runs Atlas already records.
   const lastRun = runs.length > 0 ? runs[0] : null;
+  // Atlas may already be working when the page loads — from this button,
+  // from the CLI, or from another tab. The workspace picks it up either
+  // way rather than claiming Atlas is idle because *this* tab did not
+  // start anything.
+  const activeRun = runs.find((r) => r.status === "running") ?? null;
 
-  // Measured absences across the scope. Each is a real count of a thing
-  // Atlas does not hold, never a grade.
-  const withoutSources = rows.filter((r) => r.sourceCount === 0).length;
+  // Facts turned into findings: what Atlas knows, what it doesn't, and
+  // what to do about it. Every one is measured; none is a grade.
+  const { findings, action } = diagnoseRegion({
+    regionName: region.name,
+    rows,
+    scopeIds: scope.ids,
+    averageCompleteness,
+    waitingCount: waiting.length,
+    runningCount: running.length,
+    bundle,
+    runs,
+  });
 
   return (
     <div className="flex flex-col gap-12">
@@ -154,97 +174,70 @@ export default async function RegionPage({ params }: Props) {
         </p>
       </header>
 
-      {/* --- Health. Scoped to members, and honest about what it can't say. */}
+      {/* --- What Atlas knows and doesn't. Findings, not statistics. -- */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-[13px] font-medium tracking-wide uppercase">
-          Health
-        </h2>
-        <div className="border-border grid gap-6 rounded-lg border p-5 sm:grid-cols-3 lg:grid-cols-5">
-          <Stat
-            label="Entities"
-            value={rosterUnavailable ? "—" : String(scope.ids.size)}
-            hint={
-              rosterUnavailable
-                ? "Could not be loaded"
-                : `${scope.directCount} placed · ${scope.indirectCount} inside them`
-            }
-          />
-          <Stat
-            label="Knowledge coverage"
-            value={
-              averageCompleteness === null ? "—" : `${averageCompleteness}%`
-            }
-            hint={
-              // Three states. "Nothing scored yet" is a claim about the
-              // corpus and must not appear when the scores merely failed
-              // to load.
-              scoresUnavailable
-                ? "Could not be loaded"
-                : averageCompleteness === null
-                  ? "Nothing scored yet"
-                  : "Of what Atlas holds, not the world"
-            }
-          />
-          <Stat
-            label="Without sources"
-            value={rosterUnavailable ? "—" : String(withoutSources)}
-            hint={
-              rosterUnavailable
-                ? "Could not be loaded"
-                : withoutSources === 0
-                  ? "Every entity has evidence"
-                  : "Nothing backs these yet"
-            }
-          />
-          <Stat
-            label="Findings waiting"
-            value={String(waiting.length)}
-            hint={waiting.length > 0 ? "Needs a decision" : "Nothing to review"}
-          />
-          <Stat
-            label="Research running"
-            value={String(running.length)}
-            hint={
-              running.length > 0 ? "Requested, not yet back" : "Nothing running"
-            }
-          />
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-[13px] font-medium tracking-wide uppercase">
+            Region health
+          </h2>
+          <span className="text-muted-foreground text-[13px] tabular-nums">
+            {rosterUnavailable
+              ? "—"
+              : `${scope.ids.size} entities · ${scope.directCount} placed · ${scope.indirectCount} inside them`}
+          </span>
         </div>
 
-        {/* Ingestion status. Runs are global today, and this says so
-            rather than implying Atlas tracks them per region. */}
-        <p className="text-muted-foreground text-[13px]">
-          {lastRun ? (
-            <>
-              Last ingestion run:{" "}
-              <Link
-                href={`/admin/runs/${lastRun.id}`}
-                className="text-foreground underline-offset-4 hover:underline"
-              >
-                {lastRun.label}
-              </Link>{" "}
-              · {lastRun.status} ·{" "}
-              {new Date(lastRun.startedAt).toLocaleString()} — Atlas-wide, not
-              scoped to {region.name}.
-            </>
-          ) : (
-            <>No ingestion run has been recorded yet.</>
-          )}
-        </p>
-
-        {waiting.length > 0 && (
-          <Link
-            href="/admin/review"
-            className="border-border hover:bg-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors"
-          >
-            <Search className="text-muted-foreground h-4 w-4" />
-            <span className="text-sm font-medium">
-              {waiting.length} finding{waiting.length === 1 ? "" : "s"} in{" "}
-              {region.name} waiting on a decision
-            </span>
-            <ArrowRight className="text-muted-foreground ml-auto h-4 w-4" />
-          </Link>
+        {rosterUnavailable ? (
+          <AdminUnreachableNotice what="This region's health" />
+        ) : findings.length === 0 ? (
+          <p className="text-muted-foreground border-border rounded-lg border border-dashed px-5 py-6 text-[13px]">
+            Nothing to report yet — Atlas holds too little here to say anything
+            useful about it.
+          </p>
+        ) : (
+          <ul className="border-border divide-border divide-y overflow-hidden rounded-lg border">
+            {findings.map((f) => (
+              <li key={f.title} className="flex gap-3 px-4 py-3">
+                {f.tone === "good" ? (
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-500" />
+                ) : (
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                )}
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{f.title}</span>
+                  {/* Plain English, where the concept is encountered. A
+                      curator should never have to hold Atlas's vocabulary
+                      in their head to read their own region. */}
+                  <span className="text-muted-foreground mt-0.5 block max-w-3xl text-[13px] leading-relaxed">
+                    {f.detail}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
+
+      {/* --- The operation. What to do, what happens, and watching it. -- */}
+      <RegionOperations
+        regionId={region.id}
+        regionName={region.name}
+        action={action}
+        coverageBefore={averageCompleteness}
+        entitiesBefore={scope.ids.size}
+        activeRunId={activeRun?.id ?? null}
+        lastRun={
+          lastRun
+            ? {
+                id: lastRun.id,
+                status: lastRun.status,
+                label: lastRun.label,
+                startedAt: lastRun.startedAt,
+                finishedAt: lastRun.finishedAt,
+              }
+            : null
+        }
+      />
 
       {/* --- Entities. The primary section: this is what the page is for. */}
       <section className="flex flex-col gap-4">

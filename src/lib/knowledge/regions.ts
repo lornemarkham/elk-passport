@@ -39,7 +39,34 @@ const ATLAS_BASE_URL = "http://localhost:3000";
  * Three seconds is generous for localhost and short enough that a stalled
  * dependency degrades to "Atlas is unreachable" instead of to nothing.
  */
-const ADMIN_FETCH_TIMEOUT_MS = 3000;
+const ADMIN_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * **Why this one is 10s when the optional metrics are 3s.**
+ *
+ * The 3s budget was set when every read was a single unbounded query. Paged
+ * reads (ADR 027) turned each into several round trips, and `/admin/regions`
+ * is the most expensive of them — it walks the whole relationship table
+ * *and* four entity tables to answer "which regions, and who is in them".
+ * Measured on 2026-08-16: `/admin/entities` alone is ~2.2s, and the
+ * composite exceeded 3s often enough that the workspace intermittently
+ * claimed Atlas was unreachable while Atlas was answering fine.
+ *
+ * **A timeout that fires on a healthy system is worse than a slow page**:
+ * it produces a confident, wrong claim, which is the failure this file was
+ * rewritten to prevent in the first place.
+ *
+ * So the budget is split by what the read is *for*, the same essential vs
+ * optional distinction `loadWorkspaceBundle` already draws. This one is
+ * essential — no region page can render without it — and gets room. The
+ * optional counts on the admin home keep 3s, because a missing number
+ * costs one number while a missing region costs the page.
+ *
+ * Still bounded, and still far from the 45-second blank page that made
+ * timeouts necessary. The real fix is not a bigger number: it is not
+ * loading the whole graph to answer a membership question, which is the
+ * recorded "query the graph, don't load it" milestone.
+ */
 
 export interface RegionSummary {
   readonly id: string;
