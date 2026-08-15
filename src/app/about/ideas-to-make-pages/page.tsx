@@ -170,6 +170,13 @@ export default function IdeasToMakePagesPage() {
               Experiment 06 — Analog Adventures
               <ArrowUpRight className="h-4 w-4" />
             </Link>
+            <Link
+              href="/about/experiment-07-fishing-with-emi"
+              className="flex items-center gap-1.5 rounded-full border border-current/20 px-5 py-2.5 text-sm font-medium transition-colors hover:bg-current/10"
+            >
+              Experiment 07 — Fishing With Emi
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
         </Reveal>
         <Reveal delay={0.45}>
