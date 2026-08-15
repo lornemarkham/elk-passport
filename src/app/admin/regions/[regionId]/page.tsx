@@ -15,6 +15,7 @@ import { EntityPicker } from "@/components/admin/entities/EntityPicker";
 import { RegionViewSwitcher } from "@/components/admin/regions/RegionViewSwitcher";
 import { RegionOperations } from "@/components/admin/regions/RegionOperations";
 import { RegionWorkspaceShell } from "@/components/admin/regions/RegionWorkspaceShell";
+import { RegionComposition } from "@/components/admin/regions/RegionComposition";
 import { RegionLastRun } from "@/components/admin/regions/RegionLastRun";
 import {
   diagnoseRegion,
@@ -23,6 +24,7 @@ import {
 import { hasRealType } from "@/components/admin/entities/entityGaps";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { regionScope } from "@/lib/knowledge/regionScope";
+import { regionComposition } from "@/lib/knowledge/regionComposition";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
 import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
@@ -213,6 +215,30 @@ export default async function RegionPage({ params }: Props) {
     }
   }
 
+  // Why this region looks small. Three counts over asserted `contains`
+  // edges — nothing inferred from geography.
+  const composition = regionComposition(
+    scope,
+    bundle,
+    regionsResult.regions,
+    region.id,
+  );
+
+  // The unassigned entities, built through the same row builder the
+  // inventory uses so the drawer and the list cannot describe an entity
+  // two different ways.
+  const unassignedRows = bundle
+    ? buildEntityRows(bundle, { only: new Set(composition.unassignedIds) }).map(
+        (r) => ({
+          id: r.id,
+          name: r.name,
+          kind: r.kind,
+          subtype: r.subtype,
+          sourceCount: r.sourceCount,
+        }),
+      )
+    : [];
+
   const queuedSources = (bundle?.candidateSources ?? []).filter(
     (c) =>
       c.status === "queued" &&
@@ -292,6 +318,14 @@ export default async function RegionPage({ params }: Props) {
           </p>
         </div>
       </header>
+
+      {/* ==== 0. WHY THIS REGION LOOKS SMALL =========================== */}
+      <RegionComposition
+        regionId={region.id}
+        regionName={region.name}
+        counts={composition}
+        unassigned={unassignedRows}
+      />
 
       {/* ==== 1. NEXT BEST ACTION + every workflow, one client shell ==== */}
       <RegionWorkspaceShell
