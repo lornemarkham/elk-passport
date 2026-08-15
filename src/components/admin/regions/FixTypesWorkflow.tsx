@@ -89,10 +89,30 @@ function FixTypesBody({
   const [error, setError] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
 
-  const remaining = untyped.filter((e) => !done[e.id]);
+  /**
+   * **The work list is snapshotted when the panel opens.**
+   *
+   * Found by driving this to zero rather than by reading it. Setting a
+   * type calls `router.refresh()`, so the `untyped` prop shrinks under the
+   * component while `done` grows inside it — and the counter was reading
+   * its numerator from session state and its denominator from the live
+   * prop. It printed **"Entity 3 of 1"**.
+   *
+   * The same collision destroyed the completion summary: once the prop
+   * reached `[]`, the "nothing to do" branch fired and the list of what
+   * the curator had just set disappeared.
+   *
+   * **A progress counter must measure one thing.** The snapshot is that
+   * thing — the work as it stood when the curator started — so the
+   * denominator is stable, the numerator is comparable to it, and
+   * finishing shows a receipt rather than an empty state.
+   */
+  const [queue] = useState(untyped);
+
+  const remaining = queue.filter((e) => !done[e.id]);
   const current = remaining[Math.min(index, remaining.length - 1)];
 
-  if (untyped.length === 0) {
+  if (queue.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
         Every entity in this region has a type. Nothing to do here.
@@ -112,7 +132,7 @@ function FixTypesBody({
           {Object.entries(done).map(([id, type]) => (
             <li key={id} className="text-[13px]">
               <span className="text-muted-foreground">
-                {untyped.find((e) => e.id === id)?.name}
+                {queue.find((e) => e.id === id)?.name}
               </span>{" "}
               → <span className="font-medium">{type}</span>
             </li>
@@ -160,7 +180,7 @@ function FixTypesBody({
   return (
     <div>
       <p className="text-muted-foreground text-[13px]">
-        Entity {Object.keys(done).length + 1} of {untyped.length}
+        Entity {Object.keys(done).length + 1} of {queue.length}
       </p>
 
       <h3 className="mt-1 text-lg font-semibold tracking-tight">
