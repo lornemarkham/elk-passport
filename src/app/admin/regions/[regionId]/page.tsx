@@ -14,8 +14,7 @@ import { AdminUnreachableNotice } from "@/components/admin/AdminUnreachableNotic
 import { EntityPicker } from "@/components/admin/entities/EntityPicker";
 import { RegionViewSwitcher } from "@/components/admin/regions/RegionViewSwitcher";
 import { RegionOperations } from "@/components/admin/regions/RegionOperations";
-import { RegionMission } from "@/components/admin/regions/RegionMission";
-import { RegionActions } from "@/components/admin/regions/RegionActions";
+import { RegionWorkspaceShell } from "@/components/admin/regions/RegionWorkspaceShell";
 import { RegionLastRun } from "@/components/admin/regions/RegionLastRun";
 import {
   diagnoseRegion,
@@ -27,6 +26,10 @@ import { regionScope } from "@/lib/knowledge/regionScope";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
 import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
+import {
+  buildOperationCatalogue,
+  rankOperations,
+} from "@/lib/knowledge/operationCatalogue";
 import { duplicateGroupCount } from "@/lib/knowledge/adminSummary";
 import { decideResearch } from "@/app/admin/entities/[id]/actions";
 import type { WaitingFinding } from "@/components/admin/regions/RegionWorkflows";
@@ -165,7 +168,7 @@ export default async function RegionPage({ params }: Props) {
 
   // Facts turned into findings: what Atlas knows, what it doesn't, and
   // what to do about it. Every one is measured; none is a grade.
-  const { findings, action, mission } = diagnoseRegion({
+  const { findings, action } = diagnoseRegion({
     regionName: region.name,
     rows,
     scopeIds: scope.ids,
@@ -210,6 +213,13 @@ export default async function RegionPage({ params }: Props) {
     }
   }
 
+  const queuedSources = (bundle?.candidateSources ?? []).filter(
+    (c) =>
+      c.status === "queued" &&
+      typeof c.aboutEntityId === "string" &&
+      scope.ids.has(c.aboutEntityId),
+  ).length;
+
   const untypedRows = rows.filter((r) => !hasRealType(r));
   const untyped: UntypedEntity[] = untypedRows.map((r) => ({
     id: r.id,
@@ -242,6 +252,21 @@ export default async function RegionPage({ params }: Props) {
   const untypedCount = untypedRows.length;
   const isolatedCount = rows.filter((r) => r.relationshipCount === 0).length;
 
+  // One description per operation, read by the next-action panel and by
+  // every card — so the same operation can never be explained two ways.
+  const catalogue = buildOperationCatalogue({
+    regionName: region.name,
+    untypedCount,
+    waitingCount: waiting.length,
+    runningCount: running.length,
+    duplicateGroups,
+    isolatedCount,
+    queuedSources,
+    growSeconds: action.estimatedSeconds,
+    hasRun: Boolean(lastRun),
+  });
+  const ranked = rankOperations(catalogue);
+
   return (
     <div className="flex flex-col gap-10">
       <header>
@@ -268,8 +293,21 @@ export default async function RegionPage({ params }: Props) {
         </div>
       </header>
 
-      {/* ==== 1. WHAT SHOULD I DO NEXT — the page's visual focus ======== */}
-      <RegionMission mission={mission} regionId={region.id} />
+      {/* ==== 1. NEXT BEST ACTION + every workflow, one client shell ==== */}
+      <RegionWorkspaceShell
+        regionName={region.name}
+        ranked={ranked}
+        catalogue={catalogue}
+        untyped={untyped}
+        knownTypes={knownTypes}
+        waiting={waitingFindings}
+        decideResearch={decideResearch}
+        activeRunId={activeRun?.id ?? null}
+        lastRunId={lastRun?.id ?? null}
+        lastRunLabel={lastRun?.label ?? "Atlas"}
+        runIsLive={Boolean(activeRun)}
+        growAnchorId="atlas-can-do"
+      />
 
       {/* ==== 2. WHAT CAN ATLAS DO FOR ME ============================== */}
       <div id="atlas-can-do" className="scroll-mt-8">
@@ -307,25 +345,6 @@ export default async function RegionPage({ params }: Props) {
         </div>
         <RegionLastRun run={lastRun} changed={changed} />
       </section>
-
-      {/* ==== 4. WHAT CAN I DO ======================================== */}
-      <div id="your-work" className="scroll-mt-8">
-        <RegionActions
-          regionName={region.name}
-          waitingCount={waiting.length}
-          untypedCount={untypedCount}
-          isolatedCount={isolatedCount}
-          duplicateGroups={duplicateGroups}
-          waiting={waitingFindings}
-          untyped={untyped}
-          knownTypes={knownTypes}
-          decideResearch={decideResearch}
-          activeRunId={activeRun?.id ?? null}
-          lastRunId={lastRun?.id ?? null}
-          lastRunLabel={lastRun?.label ?? "Atlas"}
-          runIsLive={Boolean(activeRun)}
-        />
-      </div>
 
       {/* ==== 5. WHAT ELSE NEEDS ME — every finding, every action ===== */}
       <section className="flex flex-col gap-3">

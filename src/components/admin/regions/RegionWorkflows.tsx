@@ -9,6 +9,7 @@ import {
   Copy,
   Loader2,
   MessageSquareQuote,
+  Tags,
   Waves,
   X,
 } from "lucide-react";
@@ -360,4 +361,5 @@ export const WORKFLOW_ICONS = {
   duplicates: <Copy className="h-4 w-4" />,
   research: <MessageSquareQuote className="h-4 w-4" />,
   activity: <Waves className="h-4 w-4" />,
+  types: <Tags className="h-4 w-4" />,
 };
