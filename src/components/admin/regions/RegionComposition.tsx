@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Check, Database, Loader2, MapPin, TriangleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RegionDrawer } from "./RegionDrawer";
-import type { PickerEntity } from "@/components/admin/entities/EntityPicker";
 
 /**
  * **Region composition — why this region looks small.**
@@ -41,6 +40,9 @@ export interface UnassignedEntity {
   kind: string;
   subtype?: string;
   sourceCount: number;
+  /** What Atlas already knows that bears on membership. Never a score. */
+  tier: "shared-source" | "proximity" | "none";
+  because: string;
 }
 
 export interface CompositionCounts {
@@ -179,6 +181,38 @@ function Figure({
 
 const KINDS = ["All", "Place", "Organization", "Activity", "Event"] as const;
 
+/**
+ * The evidence groups, in the order a curator should work them.
+ *
+ * `shared-source` first because it is the only tier backed by something a
+ * page actually published. `proximity` is coordinate-derived and is
+ * deliberately **not** offered for bulk selection — see
+ * `membershipEvidence.ts`.
+ */
+const TIERS = [
+  {
+    key: "shared-source" as const,
+    label: "A source describes both",
+    blurb:
+      "A page Atlas has already read describes this entity and something already in the region. This is documentary evidence — it exists because a real source said so.",
+    bulk: true,
+  },
+  {
+    key: "proximity" as const,
+    label: "Near something in the region",
+    blurb:
+      'Atlas computed a "near" link from stored coordinates. Nothing published said these belong together, so this is a hint about where to look — not a reason to place. No bulk selection here, deliberately.',
+    bulk: false,
+  },
+  {
+    key: "none" as const,
+    label: "Atlas has no evidence either way",
+    blurb:
+      "Nothing Atlas holds connects these to this region. That is not a judgement that they do not belong — only that Atlas cannot help you decide.",
+    bulk: false,
+  },
+];
+
 function AssignDrawer({
   regionId,
   regionName,
@@ -192,6 +226,10 @@ function AssignDrawer({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<(typeof KINDS)[number]>("All");
+  // Opens on the strongest evidence — Atlas has done the sorting, so the
+  // curator starts where the reasoning is best rather than at "A".
+  const [tier, setTier] =
+    useState<(typeof TIERS)[number]["key"]>("shared-source");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -199,9 +237,17 @@ function AssignDrawer({
     alreadyMember: { id: string; name: string }[];
   } | null>(null);
 
+  const tierCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of unassigned)
+      counts.set(e.tier, (counts.get(e.tier) ?? 0) + 1);
+    return counts;
+  }, [unassigned]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return unassigned
+      .filter((e) => e.tier === tier)
       .filter((e) => kind === "All" || e.kind === kind)
       .filter(
         (e) =>
@@ -210,7 +256,9 @@ function AssignDrawer({
           (e.subtype ?? "").toLowerCase().includes(q),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [unassigned, query, kind]);
+  }, [unassigned, query, kind, tier]);
+
+  const activeTier = TIERS.find((t) => t.key === tier)!;
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -291,6 +339,34 @@ function AssignDrawer({
         </div>
       )}
 
+      {/* Atlas has grouped the work by the evidence it actually holds. */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {TIERS.map((t) => {
+          const n = tierCounts.get(t.key) ?? 0;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTier(t.key)}
+              disabled={n === 0}
+              className={`rounded-md px-3 py-1.5 text-[13px] transition-colors ${
+                tier === t.key
+                  ? "bg-foreground text-background font-medium"
+                  : n === 0
+                    ? "text-muted-foreground/40 cursor-not-allowed"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              {t.label}
+              <span className="ml-1.5 tabular-nums opacity-70">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="text-muted-foreground border-border mb-4 rounded-lg border border-dashed px-4 py-3 text-[13px] leading-relaxed">
+        {activeTier.blurb}
+      </p>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
           value={query}
@@ -315,9 +391,25 @@ function AssignDrawer({
         </div>
       </div>
 
-      <p className="text-muted-foreground mb-2 text-[13px]">
-        {visible.length} shown · {selected.size} selected
-      </p>
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        <p className="text-muted-foreground text-[13px]">
+          {visible.length} shown · {selected.size} selected
+        </p>
+        {activeTier.bulk && visible.length > 0 && (
+          <button
+            onClick={() =>
+              setSelected((s) => {
+                const next = new Set(s);
+                for (const e of visible) next.add(e.id);
+                return next;
+              })
+            }
+            className="border-border hover:bg-muted rounded-md border px-2.5 py-1 text-[13px] transition-colors"
+          >
+            Select these {visible.length}
+          </button>
+        )}
+      </div>
 
       {visible.length === 0 ? (
         <p className="text-muted-foreground border-border rounded-lg border border-dashed px-5 py-8 text-sm">
@@ -346,6 +438,13 @@ function AssignDrawer({
                   {e.kind} · {e.sourceCount}{" "}
                   {e.sourceCount === 1 ? "source" : "sources"}
                 </span>
+                {/* The evidence itself, not a score — so a curator can
+                    disagree with the grouping rather than with a number. */}
+                {e.because && (
+                  <span className="text-muted-foreground/80 mt-0.5 block text-[12px] leading-relaxed">
+                    {e.because}
+                  </span>
+                )}
               </span>
               <Link
                 href={`/admin/entities/${e.id}`}
@@ -389,17 +488,4 @@ function AssignDrawer({
       </div>
     </RegionDrawer>
   );
-}
-
-/** Rows the drawer needs, from rows the page already built. */
-export function toUnassigned(
-  rows: readonly PickerEntity[],
-): UnassignedEntity[] {
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    kind: r.kind,
-    subtype: r.subtype,
-    sourceCount: r.sourceCount,
-  }));
 }

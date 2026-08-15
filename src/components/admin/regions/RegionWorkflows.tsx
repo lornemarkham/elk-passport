@@ -40,6 +40,7 @@ import { RegionDrawer } from "./RegionDrawer";
  * ---------------------------------------------------------------------- */
 
 export function DuplicatesWorkflow({ trigger }: { trigger: TriggerFn }) {
+  const router = useRouter();
   return (
     <RegionDrawer
       wide
@@ -47,8 +48,11 @@ export function DuplicatesWorkflow({ trigger }: { trigger: TriggerFn }) {
       description="Entities Atlas thinks are the same real thing. Merging is not reversible in practice, so Atlas proposes and never decides — it matches on a deterministic key, never on names that look alike."
       trigger={trigger}
     >
-      {/* The exact component /admin/duplicates renders. One implementation. */}
-      <AdminDuplicatesView />
+      {/* The exact component /admin/duplicates renders. One implementation.
+          `onChanged` re-renders the server page so the duplicate badge and
+          the ranked next action move with the merge — a count that stays
+          at 4 after merging one is how a curator stops trusting counts. */}
+      <AdminDuplicatesView onChanged={() => router.refresh()} />
     </RegionDrawer>
   );
 }

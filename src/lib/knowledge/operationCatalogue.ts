@@ -103,17 +103,23 @@ export function buildOperationCatalogue(
     grow: {
       id: "grow",
       label: `Grow ${regionName}`,
-      does: `Reads the pages Atlas already knows about in ${regionName} and learns from them.`,
+      // Precise on purpose. Grow does NOT go looking for new parts of the
+      // region — it reads the queue, and the queue only contains pages
+      // Atlas found while reading something already in this region's
+      // branch. Saying "discovers new places" would promise a capability
+      // the runner does not have.
+      does: `Reads pages already in Atlas's queue for ${regionName} — never the open web.`,
       why:
         queuedSources > 0
           ? `Atlas knows about ${queuedSources} page${queuedSources === 1 ? "" : "s"} in this region it has not read yet.`
-          : `Atlas has read everything it currently knows about. Growing again will find nothing new until a source is added.`,
+          : `Atlas has read every page in this region's queue. Growth will correctly find nothing until someone gives it a new source to start from — it does not go looking on its own.`,
       mutates: true,
       outcome: [
         "Adds facts to entities already here",
-        "Creates entities for anything new it finds inside them",
+        "Creates entities for things a page lists inside them — a resort's dining directory becomes its restaurants",
         "Records relationships it can establish from what it read",
-        "Queues further pages it discovers — for the next run, never this one",
+        "Queues further pages it finds — for the next run, never this one",
+        "Finds nothing if the queue is empty, which is a correct result, not a failure",
       ],
       durationSeconds: growSeconds,
       affected: queuedSources,

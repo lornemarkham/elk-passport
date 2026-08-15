@@ -33,6 +33,14 @@ import type { IngestionRun } from "./runData";
 
 export type FindingTone = "good" | "attention";
 
+/** Mission status in the curator's words, not the enum's. */
+function statusWord(status: string): string {
+  if (status === "requested") return "requested, not yet run";
+  if (status === "running") return "Atlas is reading now";
+  if (status === "awaiting-review") return "finished, waiting on you";
+  return status;
+}
+
 /**
  * What a curator can do about a finding, right now.
  *
@@ -148,6 +156,12 @@ export function diagnoseRegion(input: {
   readonly scoresUnavailable?: boolean;
   readonly waitingCount: number;
   readonly runningCount: number;
+  /** Named missions, so the finding can say which entity and topic. */
+  readonly runningDetail?: readonly {
+    readonly entityName: string;
+    readonly topic: string;
+    readonly status: string;
+  }[];
   readonly bundle: WorkspaceBundle | null;
   readonly runs: readonly IngestionRun[];
 }): RegionDiagnosis {
@@ -159,6 +173,7 @@ export function diagnoseRegion(input: {
     scoresUnavailable,
     waitingCount,
     runningCount,
+    runningDetail,
     bundle,
     runs,
   } = input;
@@ -177,7 +192,7 @@ export function diagnoseRegion(input: {
     // which is a claim about the region rather than about the fetch.
     findings.push({
       tone: "attention",
-      title: "Knowledge coverage could not be loaded",
+      title: "Entity knowledge completeness could not be loaded",
       detail:
         "Atlas did not return the completeness scores, so this says nothing about how complete the region actually is. Reload, or check that the Atlas API is running.",
     });
@@ -186,15 +201,15 @@ export function diagnoseRegion(input: {
       averageCompleteness >= 70
         ? {
             tone: "good",
-            title: `Knowledge coverage is ${averageCompleteness}%`,
+            title: `Entity knowledge is ${averageCompleteness}% complete`,
             detail:
-              "Averaged across everything in this region. It measures how much of what Atlas tries to know it has, not how much exists in the world.",
+              "Averaged over the entities in this region. Each is scored on four things Atlas expects to hold — identity fields, an image, at least two sources, and traveller information. It does NOT mean Atlas knows 75% of the Okanagan: it has no way to count what exists in the world.",
           }
         : {
             tone: "attention",
-            title: `Knowledge coverage is ${averageCompleteness}%`,
+            title: `Entity knowledge is ${averageCompleteness}% complete`,
             detail:
-              "Most entities here are missing things Atlas knows how to look for. Growing the region reads more of what it already knows exists.",
+              "Averaged over the entities in this region, scored on identity fields, an image, at least two sources, and traveller information. Most are missing things Atlas knows how to look for. This says nothing about how much of the Okanagan exists — Atlas has no denominator for that.",
             action: { kind: "run", label: "Grow this region" },
             secondary: {
               kind: "filter",
@@ -315,9 +330,22 @@ export function diagnoseRegion(input: {
     findings.push({
       tone: "good",
       count: runningCount,
-      title: `${runningCount} research ${runningCount === 1 ? "mission" : "missions"} in progress`,
-      detail:
-        "Requested and not yet back. Run them with `npm run run-missions`.",
+      title:
+        runningCount === 1 && runningDetail?.[0]
+          ? `Researching ${runningDetail[0].topic} for ${runningDetail[0].entityName}`
+          : `${runningCount} research missions requested`,
+      // Names the entity, the topic and the real status. "1 in progress"
+      // left a curator asking which entity, what topic, and whether it had
+      // actually run — all of which Atlas already stores on the mission.
+      detail: runningDetail?.length
+        ? `${runningDetail
+            .map(
+              (m) => `${m.entityName} · ${m.topic} · ${statusWord(m.status)}`,
+            )
+            .join(
+              "; ",
+            )}. A mission is a request until Atlas runs it — \`npm run run-missions\` answers the ones waiting.`
+        : "Requested and not yet back. Run them with `npm run run-missions`.",
       secondary: {
         kind: "filter",
         label: `Show the ${runningCount}`,

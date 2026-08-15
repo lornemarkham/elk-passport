@@ -25,6 +25,7 @@ import { hasRealType } from "@/components/admin/entities/entityGaps";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { regionScope } from "@/lib/knowledge/regionScope";
 import { regionComposition } from "@/lib/knowledge/regionComposition";
+import { membershipEvidence } from "@/lib/knowledge/membershipEvidence";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
 import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
@@ -136,6 +137,17 @@ export default async function RegionPage({ params }: Props) {
   const regionMissions = missions.filter((m) => scope.ids.has(m.entityId));
   const waiting = regionMissions.filter(awaitsReview);
   const running = regionMissions.filter(isOpen);
+  // "1 research mission in progress" tells a curator nothing. Name the
+  // entity, the topic and the real status — all of which Atlas already
+  // stores on the mission.
+  const missionNames = new Map(
+    (bundle?.entities ?? []).map((e) => [String(e.id), String(e.name)]),
+  );
+  const runningDetail = running.map((m) => ({
+    entityName: missionNames.get(m.entityId) ?? "an entity in this region",
+    topic: m.topic,
+    status: m.status,
+  }));
 
   // Ingestion status, from runs Atlas already records.
   const lastRunForChanges = runs.length > 0 ? runs[0] : null;
@@ -178,6 +190,7 @@ export default async function RegionPage({ params }: Props) {
     scoresUnavailable,
     waitingCount: waiting.length,
     runningCount: running.length,
+    runningDetail,
     bundle,
     runs,
   });
@@ -227,6 +240,14 @@ export default async function RegionPage({ params }: Props) {
   // The unassigned entities, built through the same row builder the
   // inventory uses so the drawer and the list cannot describe an entity
   // two different ways.
+  // What Atlas already knows that bears on membership, grouped by the kind
+  // of evidence. Atlas does the analysis; the curator makes the assertion.
+  const evidence = membershipEvidence(
+    scope.ids,
+    composition.unassignedIds,
+    bundle,
+  );
+
   const unassignedRows = bundle
     ? buildEntityRows(bundle, { only: new Set(composition.unassignedIds) }).map(
         (r) => ({
@@ -235,6 +256,8 @@ export default async function RegionPage({ params }: Props) {
           kind: r.kind,
           subtype: r.subtype,
           sourceCount: r.sourceCount,
+          tier: evidence.get(r.id)?.tier ?? ("none" as const),
+          because: evidence.get(r.id)?.because ?? "",
         }),
       )
     : [];
@@ -452,8 +475,8 @@ export default async function RegionPage({ params }: Props) {
           </summary>
           <dl className="mt-3 grid gap-3 sm:grid-cols-2">
             <Term
-              term="Knowledge coverage"
-              means="How much of what Atlas looks for it actually has. Not how much exists in the world — Atlas has no way to know that."
+              term="Knowledge completeness"
+              means="Of the things Atlas expects to hold for an entity — identity fields, an image, two sources, traveller info — how many it has. Never how much of the region exists: Atlas has no denominator for that."
             />
             <Term
               term="Type"
@@ -522,12 +545,16 @@ export default async function RegionPage({ params }: Props) {
             Grow {region.name}
           </p>
           <p className="text-muted-foreground mt-2 max-w-2xl text-[13px] leading-relaxed">
-            Growth is scoped to this region: it works the branch beneath{" "}
-            {region.name}&apos;s members and places what it discovers here, so
-            no membership has to be re-typed afterwards. Atlas does not start
-            crawls from the browser — a request that waited on a fetch, an LLM
-            call and a merge would time out, and a button that silently does
-            nothing teaches the wrong model.
+            <strong className="text-foreground">
+              Grow reads the queue; it does not search the web.
+            </strong>{" "}
+            Atlas works the branch beneath {region.name}&apos;s members, reading
+            pages it already discovered while reading something else here. A
+            page becomes eligible when Atlas found it inside a source it holds,
+            or when it is an entity&apos;s own first-party URL — so growth
+            deepens what the region already touches rather than finding new
+            parts of the Okanagan. When the queue empties, growth correctly
+            finds nothing and the only way forward is a new source.
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <Command
@@ -542,11 +569,11 @@ export default async function RegionPage({ params }: Props) {
             />
             <Command
               command="npm run run-missions"
-              does="Answer research a curator requested."
+              does="Runs the research missions a curator asked for. Atlas proposes what it finds; you accept or reject each one."
             />
             <Command
               command={`npm run define-region -- "${region.name}" --assign "<entity>"`}
-              does="Place an entity by hand. Only needed for a new starting point."
+              does="The manual escape hatch: place an entity Atlas has not connected to this region. The Review unassigned drawer above does the same thing with Atlas's evidence attached."
             />
           </div>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
