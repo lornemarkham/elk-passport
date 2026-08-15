@@ -53,7 +53,9 @@ export default async function RegionsPage() {
 
       {regions.length === 0 ? (
         <div className="border-border rounded-xl border border-dashed p-8">
-          <p className="font-medium">No regions defined yet.</p>
+          <p className="font-medium">
+            The benchmark region, Okanagan, has not been created yet.
+          </p>
           <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed">
             A region is a Place with{" "}
             <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
@@ -71,7 +73,7 @@ export default async function RegionsPage() {
             Create one:{" "}
             <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
               npm run define-region -- &quot;Okanagan&quot; --lat 49.8 --lon
-              -119.5
+              -119.5 --assign &quot;Big White Ski Resort&quot;
             </code>
           </p>
         </div>

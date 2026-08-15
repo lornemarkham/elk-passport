@@ -143,7 +143,9 @@ export default async function AtlasHomePage() {
 
         {regions.length === 0 ? (
           <div className="border-border rounded-xl border border-dashed p-6">
-            <p className="text-sm font-medium">No regions defined yet.</p>
+            <p className="text-sm font-medium">
+              The benchmark region, Okanagan, has not been created yet.
+            </p>
             <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
               All {entityCount} entities are unplaced. A region is a real Place
               with{" "}
@@ -160,7 +162,7 @@ export default async function AtlasHomePage() {
             <p className="text-muted-foreground mt-3 text-sm">
               <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
                 npm run define-region -- &quot;Okanagan&quot; --lat 49.8 --lon
-                -119.5
+                -119.5 --assign &quot;Big White Ski Resort&quot;
               </code>
             </p>
           </div>
