@@ -27,6 +27,9 @@ import { regionScope } from "@/lib/knowledge/regionScope";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
 import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
+import { duplicateGroupCount } from "@/lib/knowledge/adminSummary";
+import { decideResearch } from "@/app/admin/entities/[id]/actions";
+import type { WaitingFinding } from "@/components/admin/regions/RegionWorkflows";
 import {
   loadWorkspaceBundle,
   type WorkspaceBundle,
@@ -96,6 +99,7 @@ export default async function RegionPage({ params }: Props) {
     loadResearchMissions(),
     loadRuns().catch(() => []),
   ]);
+  const duplicateGroups = await duplicateGroupCount();
 
   const region = findRegion(regionsResult, regionId);
 
@@ -172,6 +176,24 @@ export default async function RegionPage({ params }: Props) {
     runs,
   });
 
+  // Everything the in-place workflows need, loaded here so the drawers
+  // are hosts rather than fetchers — one server read, no client waterfall.
+  const nameById = new Map(rows.map((r) => [r.id, r.name]));
+  const waitingFindings: WaitingFinding[] = waiting.map((m) => ({
+    missionId: m.id,
+    entityId: m.entityId,
+    entityName: nameById.get(m.entityId) ?? "Unknown entity",
+    topic: m.topic,
+    summary: m.summary,
+    // `findings` is a bundle, not a list — the facts live under
+    // `keyFacts`. The drawer shows those; media and conflicts belong to
+    // the entity workspace, which has room to render them properly.
+    findings: (m.findings?.keyFacts ?? []).map((f) => ({
+      label: f.label,
+      value: f.value,
+    })),
+  }));
+
   const untypedCount = rows.filter((r) => !hasRealType(r)).length;
   const isolatedCount = rows.filter((r) => r.relationshipCount === 0).length;
 
@@ -247,6 +269,13 @@ export default async function RegionPage({ params }: Props) {
         waitingCount={waiting.length}
         untypedCount={untypedCount}
         isolatedCount={isolatedCount}
+        duplicateGroups={duplicateGroups}
+        waiting={waitingFindings}
+        decideResearch={decideResearch}
+        activeRunId={activeRun?.id ?? null}
+        lastRunId={lastRun?.id ?? null}
+        lastRunLabel={lastRun?.label ?? "Atlas"}
+        runIsLive={Boolean(activeRun)}
       />
 
       {/* ==== 5. WHAT ELSE NEEDS ME — every finding, every action ===== */}
