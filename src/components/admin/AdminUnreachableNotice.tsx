@@ -30,10 +30,15 @@ export function AdminUnreachableNotice({
         <PlugZap className="text-muted-foreground h-4 w-4" />
         Atlas isn&apos;t responding
       </p>
+      {/*
+        One expression, not `{what} needs …`. React emits a separator
+        between an interpolation and adjacent JSX text, and here it
+        swallowed the space — the page rendered "This regionneeds Atlas's
+        admin API". Caught by reading the DOM during verification, which is
+        the only place it was visible: the source looks correct.
+      */}
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        {what} needs Atlas&apos;s admin API, and the request timed out rather
-        than being refused. Nothing here is a statement about what Atlas holds —
-        we could not ask.
+        {`${what} needs Atlas's admin API, and the request timed out rather than being refused. Nothing here is a statement about what Atlas holds — we could not ask.`}
       </p>
       <p className="text-muted-foreground mt-3 text-sm">
         Check that the API is running on port 3000 (

@@ -22,7 +22,18 @@ export function buildEntityRows(
 
   const sourceIds = new Set(sources.map((s) => s.id));
   const sourceCountById = new Map<string, number>();
+  // What each entity directly contains — "Big White · 6 inside". One pass
+  // over the same relationship list the source count already walks, rather
+  // than `directChildCount` per row, which would be O(rows × edges).
+  const containsCountById = new Map<string, number>();
   for (const r of relationships) {
+    if (r.type === "contains") {
+      containsCountById.set(
+        r.sourceEntityId,
+        (containsCountById.get(r.sourceEntityId) ?? 0) + 1,
+      );
+      continue;
+    }
     if (r.type !== "describes" || !sourceIds.has(r.sourceEntityId)) continue;
     sourceCountById.set(
       r.targetEntityId,
@@ -43,6 +54,7 @@ export function buildEntityRows(
         (e.eventType as string),
       score: scoreById.get(String(e.id)) ?? null,
       sourceCount: sourceCountById.get(String(e.id)) ?? 0,
+      containsCount: containsCountById.get(String(e.id)) ?? 0,
       hasImage: Boolean(e.imageUrl),
     }));
 }

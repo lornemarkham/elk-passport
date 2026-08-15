@@ -117,13 +117,14 @@ export default async function EntityWorkspacePage({ params }: Props) {
   return (
     <div className="flex flex-col gap-8">
       <Link
-        href={
-          region ? `/admin/regions/${region.id}/entities` : "/admin/entities"
-        }
+        // Back to the region itself, not to a list *of* the region. The
+        // intermediate entities page is gone (ADR 028) and the breadcrumb
+        // is now literally true: Atlas → Okanagan → Big White.
+        href={region ? `/admin/regions/${region.id}` : "/admin/entities"}
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
       >
         <ArrowLeft className="h-4 w-4" />
-        {region ? `Entities in ${region.name}` : "All entities"}
+        {region ? region.name : "All entities"}
       </Link>
 
       {template === "baseline" && (

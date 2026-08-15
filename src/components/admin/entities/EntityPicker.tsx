@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ArrowRight, AlertTriangle } from "lucide-react";
+import { Search, ChevronRight, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export interface PickerEntity {
@@ -12,6 +12,8 @@ export interface PickerEntity {
   subtype?: string;
   score: number | null;
   sourceCount: number;
+  /** How many entities this one directly contains. Real `contains` edges, never a guess. */
+  containsCount: number;
   hasImage: boolean;
 }
 
@@ -20,13 +22,30 @@ type SortKey = "needs-work" | "name" | "sources";
 const KINDS = ["All", "Place", "Organization", "Activity", "Event"] as const;
 
 /**
- * Replaces the Content Explorer's flat, unsearchable 97-item list.
+ * The entity browser. One component, two scopes: everything Atlas holds
+ * (`/admin/entities`) and one region's members (the Region workspace).
  *
- * Scope discipline: this is entity *navigation*, not fleet analytics. It
- * has search, a kind filter, and three sorts — enough to reach any entity
- * in a couple of seconds — and deliberately no charts, no saved views, and
- * no bulk operations. The fleet-level questions belong to the Curator
- * Queue that already exists.
+ * ## Rows, not cards
+ *
+ * This shipped as a grid of bordered cards, which is the one thing the
+ * design system names outright as wrong: *a card is a box drawn around
+ * content, and a page of boxes is a page of borders.* Inside the Region
+ * workspace it was worse than untidy — a grid of cards under a health
+ * summary reads as a second dashboard rather than as the list of things to
+ * work on.
+ *
+ * The row carries strictly more information than the card did (kind,
+ * subtype, coverage, sources, what it contains) in less vertical space,
+ * because dot-separated meta is denser than a stack of chips and a
+ * progress bar. The progress bar went with the cards: a 1px bar repeated
+ * 168 times is texture, and the number it encodes is already in the row.
+ *
+ * ## Scope discipline
+ *
+ * Entity *navigation*, not fleet analytics — search, a kind filter, three
+ * sorts. Deliberately no charts, no saved views, no bulk operations. When
+ * bulk operations arrive they bring a Collection screen with them, because
+ * processing is a different verb from choosing (ADR 028).
  */
 export function EntityPicker({ entities }: { entities: PickerEntity[] }) {
   const [query, setQuery] = useState("");
@@ -108,55 +127,54 @@ export function EntityPicker({ entities }: { entities: PickerEntity[] }) {
       </div>
 
       <p className="text-muted-foreground text-sm">
-        {visible.length} of {entities.length} entities
+        {visible.length === entities.length
+          ? `${entities.length} ${entities.length === 1 ? "entity" : "entities"}`
+          : `${visible.length} of ${entities.length} entities`}
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {visible.map((e) => (
-          <Link
-            key={e.id}
-            href={`/admin/entities/${e.id}`}
-            className="border-border hover:border-foreground/30 hover:bg-muted/30 group flex flex-col gap-3 rounded-xl border p-4 transition"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{e.name}</p>
-                <p className="text-muted-foreground text-xs">
-                  {e.kind}
-                  {e.subtype ? ` · ${e.subtype}` : ""}
-                </p>
-              </div>
-              <ArrowRight className="text-muted-foreground group-hover:text-foreground mt-0.5 h-4 w-4 shrink-0 transition" />
-            </div>
-
-            <div className="flex items-center gap-3 text-xs">
-              {e.score !== null ? (
-                <span className="font-medium tabular-nums">{e.score}%</span>
-              ) : (
-                <span className="text-muted-foreground">not scored</span>
-              )}
-              <span className="text-muted-foreground">
-                {e.sourceCount} {e.sourceCount === 1 ? "source" : "sources"}
-              </span>
-              {e.sourceCount === 0 && (
-                <span
-                  className="text-amber-700 dark:text-amber-500"
-                  title="No source describes this entity"
-                >
-                  <AlertTriangle className="inline h-3.5 w-3.5" />
+      {visible.length === 0 ? (
+        <p className="text-muted-foreground border-border rounded-lg border border-dashed px-5 py-8 text-sm">
+          Nothing matches that search. Clearing it brings back all{" "}
+          {entities.length}.
+        </p>
+      ) : (
+        <div className="border-border divide-border divide-y overflow-hidden rounded-lg border">
+          {visible.map((e) => (
+            <Link
+              key={e.id}
+              href={`/admin/entities/${e.id}`}
+              className="hover:bg-muted/40 group flex items-center gap-4 px-4 py-3 transition-colors"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {e.name}
                 </span>
-              )}
-            </div>
+                <span className="text-muted-foreground mt-0.5 block text-[13px]">
+                  {[
+                    e.subtype ? `${e.kind} · ${e.subtype}` : e.kind,
+                    // "not scored" rather than 0% — an unmeasured entity is
+                    // not a bad one, and a fabricated zero here would sort
+                    // and read as though it were.
+                    e.score === null ? "not scored" : `${e.score}% knowledge`,
+                    `${e.sourceCount} ${e.sourceCount === 1 ? "source" : "sources"}`,
+                    e.containsCount > 0 && `contains ${e.containsCount}`,
+                  ]
+                    .filter(Boolean)
+                    .join("  ·  ")}
+                </span>
+              </span>
 
-            <div className="bg-muted h-1 w-full overflow-hidden rounded-full">
-              <div
-                className="bg-foreground/50 h-full rounded-full"
-                style={{ width: `${e.score ?? 0}%` }}
-              />
-            </div>
-          </Link>
-        ))}
-      </div>
+              {e.sourceCount === 0 && (
+                <AlertTriangle
+                  className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-500"
+                  aria-label="No source describes this entity"
+                />
+              )}
+              <ChevronRight className="text-muted-foreground/0 group-hover:text-muted-foreground h-4 w-4 shrink-0 transition-colors" />
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
