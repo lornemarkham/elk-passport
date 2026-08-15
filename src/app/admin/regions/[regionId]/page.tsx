@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Search, Terminal } from "lucide-react";
+import { AdminSetupNotice } from "@/components/admin/AdminSetupNotice";
+import { AdminUnreachableNotice } from "@/components/admin/AdminUnreachableNotice";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { descendantCount, directChildCount } from "@/lib/knowledge/regionTree";
 import {
@@ -70,9 +72,25 @@ export default async function RegionPage({ params }: Props) {
   // and the summary derived from a call that had succeeded. The empty state
   // then told the operator to run the exact command they had just run.
   const rosterUnavailable = bundle === null;
+  // Scores degrade on their own now, so "no scores" and "scores did not
+  // load" are separable even when the roster itself is fine.
+  const scoresUnavailable =
+    rosterUnavailable || (bundle?.unavailable.includes("scores") ?? false);
 
   const region = findRegion(regionsResult, regionId);
-  if (!region) notFound();
+
+  // `notFound()` asserts this region does not exist. That is only true if
+  // Atlas answered and did not list it. When Atlas did not answer we know
+  // nothing about this region, and a 404 would be the same lie the roster
+  // used to tell — a claim about the connection dressed as a claim about
+  // the corpus. Observed live: a 3-second timeout produced a confident 404
+  // for a region that was on screen a moment earlier.
+  if (!region) {
+    if (regionsResult.status === "no-token") return <AdminSetupNotice />;
+    if (regionsResult.status === "unreachable")
+      return <AdminUnreachableNotice what="This region" />;
+    notFound();
+  }
 
   const members = new Set(region.memberIds);
   const entities = (
@@ -149,8 +167,9 @@ export default async function RegionPage({ params }: Props) {
             // Three states, not two. "Nothing scored yet" is a claim about
             // the corpus and must not be shown when the scores simply
             // failed to load — the same conflation that produced the
-            // contradictory roster below.
-            rosterUnavailable
+            // contradictory roster below. Scores are an optional part of
+            // the bundle, so they can be missing while the roster is fine.
+            scoresUnavailable
               ? "Could not be loaded"
               : averageCompleteness === null
                 ? "Nothing scored yet"

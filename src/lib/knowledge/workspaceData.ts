@@ -67,6 +67,9 @@ export interface WorkspaceCandidateSource {
   discoveredAt: string;
 }
 
+/** An optional part of the bundle. Named so a page can say which one is missing. */
+export type WorkspacePart = "sources" | "scores" | "candidateSources";
+
 export interface WorkspaceBundle {
   entities: AdminEntity[];
   sources: SourceRecord[];
@@ -75,36 +78,85 @@ export interface WorkspaceBundle {
   scores: CompletenessScoreResult[];
   /** Sprint 4.2 — pages discovered but deliberately not fetched. Empty when the running Atlas predates the route. */
   candidateSources: WorkspaceCandidateSource[];
+  /**
+   * Which optional parts came back empty **because they failed**, rather
+   * than because they are empty.
+   *
+   * A page rendering `0 sources` or a blank score column has no other way
+   * to tell those apart, and rendering the first when the second is true
+   * is the fabricated zero this codebase keeps rediscovering.
+   */
+  unavailable: readonly WorkspacePart[];
 }
 
-/** One fetch of everything the workspace needs. Four parallel reads, no caching — the same "always right now" honesty every other admin view already has. */
+/**
+ * Everything the workspace needs, in one round of parallel reads.
+ *
+ * ## Essential and optional are decided here, once, and stated
+ *
+ * This used to be a flat `Promise.all`, which made every read essential by
+ * omission. A single mistyped path — `/admin-health` for
+ * `/admin/content-health` — therefore discarded four healthy responses and
+ * emptied five pages. **The blast radius came entirely from failure
+ * handling, not from the typo.**
+ *
+ * **Essential: `entities` and `relationships`.** They are the graph. No
+ * page means anything without them, so their failure rejects and the
+ * caller shows an honest error. Degrading them to `[]` would assert that
+ * Atlas is empty.
+ *
+ * **Optional: `sources`, `scores`, `candidateSources`.** Each is an
+ * annotation *on* that graph. An annotation that failed to load should
+ * grey out its own column, not empty the page — so each is caught
+ * individually and named in `unavailable`.
+ *
+ * That last part is the point. **A tolerated failure nobody can observe is
+ * the same bug wearing a `catch`** — the previous version already
+ * tolerated `candidateSources` and told no one, so a page could show "no
+ * queued sources" for a route that was simply down.
+ */
 export async function loadWorkspaceBundle(): Promise<WorkspaceBundle> {
-  const [entities, sources, relationships, health, candidateSources] =
+  const unavailable: WorkspacePart[] = [];
+
+  /** Optional read: never fails the bundle, always announces that it failed. */
+  const optional = <T>(part: WorkspacePart, path: string, fallback: T) =>
+    adminGet<T>(path).catch(() => {
+      unavailable.push(part);
+      return fallback;
+    });
+
+  const [entities, relationships, sources, health, candidateSources] =
     await Promise.all([
+      // Essential — these two reject, on purpose.
       adminGet<AdminEntity[]>("/admin/entities"),
-      adminGet<SourceRecord[]>("/admin/source-records"),
       adminGet<Relationship[]>("/admin/relationships"),
+
+      optional<SourceRecord[]>("sources", "/admin/source-records", []),
       // `/admin/content-health`, not `/admin-health`. The latter was a typo
-      // that Atlas has never served, and because this sits inside a
-      // `Promise.all`, its 404 failed the whole bundle — so four healthy
-      // reads were discarded on account of a missing slash. Every page that
-      // caught the rejection then rendered "nothing here". The app's own
-      // proxy route has always used the correct path; only this caller
-      // disagreed.
-      adminGet<ContentHealthResult>("/admin/content-health"),
-      // Tolerated failure: a running Atlas built before this route exists
-      // should degrade to "no queued sources", not break the whole
-      // workspace. An honest empty is better than a 500.
-      adminGet<WorkspaceCandidateSource[]>("/admin/candidate-sources").catch(
-        () => [] as WorkspaceCandidateSource[],
+      // Atlas has never served; the app's own proxy route always had it
+      // right and only this caller disagreed.
+      // `null` rather than a hand-built empty ContentHealthResult: the
+      // other fields (scannedAt, totalEntities, …) have no honest zero, and
+      // inventing them would be the fabricated zero one level down.
+      optional<ContentHealthResult | null>(
+        "scores",
+        "/admin/content-health",
+        null,
+      ),
+      optional<WorkspaceCandidateSource[]>(
+        "candidateSources",
+        "/admin/candidate-sources",
+        [],
       ),
     ]);
+
   return {
     entities,
     sources,
     relationships,
-    scores: health.scores ?? [],
+    scores: health?.scores ?? [],
     candidateSources,
+    unavailable,
   };
 }
 

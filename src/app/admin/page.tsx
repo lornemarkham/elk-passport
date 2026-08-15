@@ -61,7 +61,11 @@ export default async function AtlasHomePage() {
 
   const placed = new Set(regions.flatMap((r) => r.memberIds));
   const entityCount = unassignedIds.length + placed.size + regions.length;
-  const atlasReachable = regions.length > 0 || unassignedIds.length > 0;
+  // Asked, not inferred. This used to be `regions.length > 0 ||
+  // unassignedIds.length > 0` — a heuristic that reads "Atlas is up" from
+  // "Atlas returned something", and therefore reports a genuinely empty
+  // Atlas as unreachable. `loadRegions` now says which it is.
+  const atlasReachable = regionsResult.status === "ok";
 
   return (
     <div className="flex flex-col gap-14">
