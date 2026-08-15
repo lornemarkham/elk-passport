@@ -21,6 +21,21 @@ import "server-only";
 
 const ATLAS_BASE_URL = "http://localhost:3000";
 
+/**
+ * How long an optional admin fetch may block a page render.
+ *
+ * Server components `await` these, so a fetch with no timeout is a page
+ * that never renders — which is exactly what happened: with the Atlas API
+ * unreachable in a way that did not refuse the connection, `/admin` simply
+ * hung. A blank page for 45 seconds is the least calm thing an interface
+ * can do, and it fails in the direction that looks like a crash rather than
+ * like missing data.
+ *
+ * Three seconds is generous for localhost and short enough that a stalled
+ * dependency degrades to "Atlas is unreachable" instead of to nothing.
+ */
+const ADMIN_FETCH_TIMEOUT_MS = 3000;
+
 export type ResearchMissionStatus =
   | "requested"
   | "running"
@@ -79,6 +94,7 @@ async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
       ...(init?.headers ?? {}),
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(ADMIN_FETCH_TIMEOUT_MS),
   });
 }
 

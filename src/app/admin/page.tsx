@@ -1,277 +1,173 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Layers,
-  MapPin,
-  Search,
-  Split,
-  Waves,
-} from "lucide-react";
+import { Layers, MapPin, Search, Split, Waves } from "lucide-react";
 import {
   loadResearchMissions,
   awaitsReview,
-  isOpen,
 } from "@/lib/knowledge/researchMissions";
 import { loadRegions } from "@/lib/knowledge/regions";
 import {
-  loadWorkspaceBundle,
-  type WorkspaceBundle,
-} from "@/lib/knowledge/workspaceData";
+  Code,
+  EmptyState,
+  List,
+  PageHeader,
+  Pill,
+  Row,
+  Section,
+  Stat,
+  StatLine,
+} from "@/components/atlas/ui";
 
 export const metadata: Metadata = { title: "Atlas" };
 
 /**
- * **Atlas — headquarters.**
+ * **Atlas — the front door.**
  *
- * ## The one question this page answers
+ * ## The one question
  *
- * *"How is Atlas doing across everything, and where do I go?"*
+ * *"Which region am I working on today?"*
  *
- * ## What this page is NOT, and why that matters
+ * Everything on this page serves that and nothing else. Regions first and
+ * largest; the cross-region tools below them; a single quiet line of system
+ * status at the foot.
  *
- * The previous version of this page opened with **"Where Atlas is
- * thinnest"** and a list of category completeness — Restaurants 58%, Parks
- * 47%, Lakes 67%. That was a real measurement answering nobody's question,
- * and it conflated four different things: global health, regional health,
- * entity completeness, and taxonomy.
+ * ## What was removed, and why
  *
- * Worse, it hid the product's organising concept. A curator's unit of work
- * is **a destination** — *"grow the Okanagan"* — and a home page that
- * opened with a taxonomy made geography invisible.
+ * The previous version opened with a four-cell KPI block — Regions,
+ * Entities, Unplaced, Waiting — in 30px numerals. Every number was true and
+ * none of them was the question. A dashboard at the front door makes an
+ * operator read statistics before choosing work.
  *
- * So this page's first job is to make the hierarchy obvious:
+ * Those numbers still exist, as one line of 13px text at the bottom, which
+ * is the weight they deserve: context, not headline.
  *
- * ```
- * Atlas  →  Regions  →  Region  →  Entities  →  Entity  →  Passport
- * ```
- *
- * ## Findings still come first
- *
- * A mission in `awaiting-review` is the only thing here blocked on *this
- * person*, and it can span regions — so it belongs at headquarters rather
- * than inside one region. Regions come immediately after, because that is
- * where work is chosen.
- *
- * ## No speculative cards, no disabled features
- *
- * Every destination below is a working page. The six "Coming soon" cards
- * that used to sit here were deleted: a disabled card is a promise the
- * product cannot keep, and six at the front door was the loudest available
- * signal that Atlas is unfinished.
+ * Also gone: the paragraph explaining what Atlas is. A front door that
+ * describes itself is a front door that is not obvious.
  */
 export default async function AtlasHomePage() {
-  const [missions, regionsResult, bundle] = await Promise.all([
+  // Two calls, both cheap. The workspace bundle used to be awaited here for
+  // an entity count that is now derived from the regions payload — dropping
+  // it removes the page's slowest dependency for no loss.
+  const [missions, regionsResult] = await Promise.all([
     loadResearchMissions(),
     loadRegions(),
-    loadWorkspaceBundle().catch((): WorkspaceBundle | null => null),
   ]);
 
-  const waiting = missions.filter(awaitsReview);
-  const running = missions.filter(isOpen);
-  const entityCount = (bundle?.entities ?? []).length;
+  const waiting = missions.filter(awaitsReview).length;
   const { regions, unassignedIds } = regionsResult;
 
+  // Derived from the regions payload rather than from the workspace bundle.
+  //
+  // The bundle is a second, slower call and it can fail on its own — which
+  // it did, and the page rendered "0 entities" beside "167 unplaced". A
+  // fabricated zero is worse than a missing number: it reads as a fact
+  // about an empty corpus rather than as a failed fetch.
+  //
+  // `unassignedIds` plus every region's members plus the regions themselves
+  // is the whole corpus, computed from data that actually loaded.
+  const placed = new Set(regions.flatMap((r) => r.memberIds));
+  const entityCount = unassignedIds.length + placed.size + regions.length;
+  const atlasReachable = regions.length > 0 || unassignedIds.length > 0;
+
   return (
-    <div className="flex flex-col gap-12">
-      <div>
-        <Link
-          href="/"
-          className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Passport
-        </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Atlas</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
-          The knowledge behind Passport. Atlas grows one destination at a time —
-          better regions make better entities, and better entities make better
-          traveller pages.
-        </p>
-      </div>
+    <div className="flex flex-col gap-14">
+      <PageHeader back={{ href: "/", label: "Passport" }} title="Atlas" />
 
-      {/* --- System health, in one line. Not a dashboard. ------------------ */}
-      <section className="border-border grid gap-6 rounded-xl border p-6 sm:grid-cols-4">
-        <Stat label="Regions" value={String(regions.length)} />
-        <Stat label="Entities" value={String(entityCount)} />
-        <Stat
-          label="Unplaced"
-          value={String(unassignedIds.length)}
-          hint="Belong to no region yet"
-        />
-        <Stat
-          label="Waiting on you"
-          value={String(waiting.length)}
-          hint={running.length > 0 ? `${running.length} requested` : undefined}
-        />
-      </section>
-
-      {/* --- Blocked on a person, and can span regions --------------------- */}
-      {waiting.length > 0 && (
-        <Link
-          href="/admin/review"
-          className="border-border hover:border-foreground/30 hover:bg-muted/30 flex items-center gap-3 rounded-xl border p-5 transition"
-        >
-          <Search className="h-4 w-4" />
-          <span className="text-sm font-medium">
-            {waiting.length} research finding{waiting.length === 1 ? "" : "s"}{" "}
-            waiting on a decision
-          </span>
-          <ArrowRight className="text-muted-foreground ml-auto h-4 w-4" />
-        </Link>
-      )}
-
-      {/* --- The hierarchy, made obvious ----------------------------------- */}
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">Regions</h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Where knowledge is grown. Open a destination to see its health and
-              grow it.
-            </p>
-          </div>
-          <Link
-            href="/admin/regions"
-            className="border-border hover:bg-muted/40 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
-          >
-            All regions
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-
+      {/* --- Regions. The reason this page exists. ----------------------- */}
+      <Section
+        title="Regions"
+        action={
+          regions.length > 0 ? (
+            <Link
+              href="/admin/regions"
+              className="text-muted-foreground hover:text-foreground text-[13px] transition-colors"
+            >
+              View all
+            </Link>
+          ) : undefined
+        }
+      >
         {regions.length === 0 ? (
-          <div className="border-border rounded-xl border border-dashed p-6">
-            <p className="text-sm font-medium">
-              The benchmark region, Okanagan, has not been created yet.
+          <EmptyState title="The benchmark region, Okanagan, has not been created yet.">
+            <p>
+              A region is a Place a curator has marked as one; membership is
+              asserted, never inferred from coordinates.
             </p>
-            <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-              All {entityCount} entities are unplaced. A region is a real Place
-              with{" "}
-              <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
-                placeType: region
-              </code>
-              , and membership is the{" "}
-              <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
-                contains
-              </code>{" "}
-              relationship — asserted by a curator, never inferred from
-              coordinates.
-            </p>
-            <p className="text-muted-foreground mt-3 text-sm">
-              <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
+            <p className="mt-3">
+              <Code>
                 npm run define-region -- &quot;Okanagan&quot; --lat 49.8 --lon
                 -119.5 --assign &quot;Big White Ski Resort&quot;
-              </code>
+              </Code>
             </p>
-          </div>
+          </EmptyState>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <List>
             {regions.map((region) => (
-              <Link
+              <Row
                 key={region.id}
                 href={`/admin/regions/${region.id}`}
-                className="border-border hover:border-foreground/30 hover:bg-muted/30 group flex items-center gap-3 rounded-xl border p-5 transition"
-              >
-                <MapPin className="text-muted-foreground h-4 w-4 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{region.name}</p>
-                  <p className="text-muted-foreground text-xs tabular-nums">
-                    {region.memberIds.length} entit
-                    {region.memberIds.length === 1 ? "y" : "ies"}
-                  </p>
-                </div>
-                <ArrowRight className="text-muted-foreground group-hover:text-foreground h-4 w-4 shrink-0 transition" />
-              </Link>
+                icon={<MapPin className="h-4 w-4" />}
+                title={region.name}
+                meta={`${region.memberIds.length} ${region.memberIds.length === 1 ? "entity" : "entities"}`}
+              />
             ))}
-          </div>
+          </List>
         )}
-      </section>
+      </Section>
 
-      {/* --- Genuinely cross-region tools ---------------------------------- */}
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Across all regions
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            System-wide observation and resolution. These do not belong to any
-            one destination.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Destination
+      {/* --- Everything that is not one destination ---------------------- */}
+      <Section title="Operations">
+        <List>
+          <Row
+            href="/admin/review"
+            icon={<Search className="h-4 w-4" />}
+            title="Review"
+            meta="Research findings waiting on a decision"
+            trailing={
+              waiting > 0 ? <Pill tone="attention">{waiting}</Pill> : undefined
+            }
+          />
+          <Row
             href="/admin/runs"
             icon={<Waves className="h-4 w-4" />}
             title="Runs"
-            blurb="Every run, what it read, what it learned."
+            meta="What Atlas has been doing"
           />
-          <Destination
+          <Row
             href="/admin/duplicates"
             icon={<Split className="h-4 w-4" />}
             title="Duplicates"
-            blurb="Entries that look like the same real thing."
+            meta="Entries that look like the same real thing"
           />
-          <Destination
+          <Row
             href="/admin/entities"
             icon={<Layers className="h-4 w-4" />}
             title="All entities"
-            blurb="Everything Atlas holds, placed or not."
+            meta="Everything Atlas holds, placed or not"
           />
-          <Destination
-            href="/admin/explorer"
-            icon={<Layers className="h-4 w-4" />}
-            title="Field explorer"
-            blurb="Inspect many entities' fields at once."
+        </List>
+      </Section>
+
+      {/* --- Context, at the weight context deserves --------------------- */}
+      {atlasReachable ? (
+        <StatLine>
+          <Stat
+            label={entityCount === 1 ? "entity" : "entities"}
+            value={entityCount}
           />
-        </div>
-      </section>
+          <Stat
+            label={regions.length === 1 ? "region" : "regions"}
+            value={regions.length}
+          />
+          <Stat label="unplaced" value={unassignedIds.length} />
+        </StatLine>
+      ) : (
+        // Never a row of zeros. A zero is a claim about the corpus; this is
+        // a statement about the connection, and they are different things.
+        <p className="text-muted-foreground text-[13px]">
+          Atlas is not responding — counts unavailable.
+        </p>
+      )}
     </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <p className="text-muted-foreground text-sm">{label}</p>
-      <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
-        {value}
-      </p>
-      {hint && <p className="text-muted-foreground mt-1 text-xs">{hint}</p>}
-    </div>
-  );
-}
-
-function Destination({
-  href,
-  icon,
-  title,
-  blurb,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  title: string;
-  blurb: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="border-border hover:border-foreground/30 hover:bg-muted/30 flex flex-col gap-1.5 rounded-xl border p-5 transition"
-    >
-      <p className="flex items-center gap-2 text-sm font-medium">
-        {icon}
-        {title}
-      </p>
-      <p className="text-muted-foreground text-sm leading-relaxed">{blurb}</p>
-    </Link>
   );
 }
