@@ -63,6 +63,14 @@ export default async function RegionPage({ params }: Props) {
     loadResearchMissions(),
   ]);
 
+  // `null` means Atlas could not be read — **not** that the region is
+  // empty. Keeping the two apart is the whole point: this page once
+  // reported "1 placed entity" beside "Nothing has been placed in Okanagan
+  // yet", because the roster derived from a bundle that had failed to load
+  // and the summary derived from a call that had succeeded. The empty state
+  // then told the operator to run the exact command they had just run.
+  const rosterUnavailable = bundle === null;
+
   const region = findRegion(regionsResult, regionId);
   if (!region) notFound();
 
@@ -138,9 +146,15 @@ export default async function RegionPage({ params }: Props) {
           label="Average completeness"
           value={averageCompleteness === null ? "—" : `${averageCompleteness}%`}
           hint={
-            averageCompleteness === null
-              ? "Nothing scored yet"
-              : "Of what Atlas holds, not of the world"
+            // Three states, not two. "Nothing scored yet" is a claim about
+            // the corpus and must not be shown when the scores simply
+            // failed to load — the same conflation that produced the
+            // contradictory roster below.
+            rosterUnavailable
+              ? "Could not be loaded"
+              : averageCompleteness === null
+                ? "Nothing scored yet"
+                : "Of what Atlas holds, not of the world"
           }
         />
         <Stat
@@ -195,7 +209,24 @@ export default async function RegionPage({ params }: Props) {
           </Link>
         </div>
 
-        {roster.length === 0 ? (
+        {rosterUnavailable ? (
+          // Atlas did not answer. Say that, and say nothing about the
+          // roster — we do not know what is in it.
+          <p className="text-muted-foreground border-border rounded-xl border border-dashed p-6 text-sm">
+            Atlas could not be reached, so this roster could not be loaded.{" "}
+            {region.memberIds.length > 0 && (
+              <>
+                The summary above still holds:{" "}
+                <strong className="text-foreground">
+                  {region.memberIds.length}
+                </strong>{" "}
+                {region.memberIds.length === 1 ? "entity is" : "entities are"}{" "}
+                placed here.{" "}
+              </>
+            )}
+            Check that the Atlas API is running on port 3000, then reload.
+          </p>
+        ) : roster.length === 0 ? (
           <p className="text-muted-foreground border-border rounded-xl border border-dashed p-6 text-sm">
             Nothing has been placed in {region.name} yet. Place one with{" "}
             <code className="bg-muted rounded px-1.5 py-0.5 text-xs">

@@ -84,7 +84,14 @@ export async function loadWorkspaceBundle(): Promise<WorkspaceBundle> {
       adminGet<AdminEntity[]>("/admin/entities"),
       adminGet<SourceRecord[]>("/admin/source-records"),
       adminGet<Relationship[]>("/admin/relationships"),
-      adminGet<ContentHealthResult>("/admin-health"),
+      // `/admin/content-health`, not `/admin-health`. The latter was a typo
+      // that Atlas has never served, and because this sits inside a
+      // `Promise.all`, its 404 failed the whole bundle — so four healthy
+      // reads were discarded on account of a missing slash. Every page that
+      // caught the rejection then rendered "nothing here". The app's own
+      // proxy route has always used the correct path; only this caller
+      // disagreed.
+      adminGet<ContentHealthResult>("/admin/content-health"),
       // Tolerated failure: a running Atlas built before this route exists
       // should degrade to "no queued sources", not break the whole
       // workspace. An honest empty is better than a 500.
