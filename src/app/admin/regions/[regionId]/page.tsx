@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Search, Terminal } from "lucide-react";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
+import { descendantCount, directChildCount } from "@/lib/knowledge/regionTree";
 import {
   loadWorkspaceBundle,
   type WorkspaceBundle,
@@ -84,10 +85,31 @@ export default async function RegionPage({ params }: Props) {
   const waiting = regionMissions.filter(awaitsReview);
   const running = regionMissions.filter(isOpen);
 
-  const thinnest = [...scores]
-    .sort((a, b) => a.overallPercent - b.overallPercent)
-    .slice(0, 5);
-  const names = new Map(entities.map((e) => [String(e.id), String(e.name)]));
+  // The roster: direct members, thinnest first, each carrying how many
+  // things it contains. Structure surfaced as a number rather than as a
+  // tree — see `regionTree.ts` for why a tree is the wrong browser here.
+  const scoreById = new Map(scores.map((s) => [s.entityId, s.overallPercent]));
+  const roster = entities
+    .map((e) => ({
+      id: String(e.id),
+      name: String(e.name),
+      kind: String(e.kind),
+      subtype:
+        (e.placeType as string) ??
+        (e.organizationType as string) ??
+        (e.activityType as string) ??
+        (e.eventType as string),
+      score: scoreById.get(String(e.id)) ?? null,
+      children: directChildCount(String(e.id), bundle),
+    }))
+    .sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+
+  // Everything reachable through the members. Stated out loud so a roster of
+  // "1 entity" never implies a region containing seven things is empty.
+  const reachable = region.memberIds.reduce(
+    (total, id) => total + 1 + descendantCount(id, bundle),
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-10">
@@ -144,29 +166,38 @@ export default async function RegionPage({ params }: Props) {
         </Link>
       )}
 
-      {/* --- Where this region is thinnest ---------------------------------- */}
+      {/* --- The roster. Structure shown, tree not imposed. ---------------- */}
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
-              Thinnest here
+              Placed in {region.name}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              The entities in {region.name} that Atlas knows least about.
+              {reachable > region.memberIds.length ? (
+                <>
+                  {region.memberIds.length} placed directly ·{" "}
+                  {reachable - region.memberIds.length} more reachable through
+                  them. Membership is what a curator asserted; the rest is what
+                  those entities contain.
+                </>
+              ) : (
+                <>Entities a curator has placed in this destination.</>
+              )}
             </p>
           </div>
           <Link
             href={`/admin/regions/${region.id}/entities`}
             className="border-border hover:bg-muted/40 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
           >
-            All {region.memberIds.length} entities
+            Browse &amp; prioritise
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
-        {thinnest.length === 0 ? (
+        {roster.length === 0 ? (
           <p className="text-muted-foreground border-border rounded-xl border border-dashed p-6 text-sm">
-            No entities have been placed in {region.name} yet. Place one with{" "}
+            Nothing has been placed in {region.name} yet. Place one with{" "}
             <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
               npm run define-region -- &quot;{region.name}&quot; --assign
               &quot;Big White Ski Resort&quot;
@@ -174,19 +205,23 @@ export default async function RegionPage({ params }: Props) {
           </p>
         ) : (
           <div className="border-border divide-border divide-y rounded-xl border">
-            {thinnest.map((score) => (
+            {roster.map((member) => (
               <Link
-                key={score.entityId}
-                href={`/admin/entities/${score.entityId}`}
-                className="hover:bg-muted/30 flex items-center gap-4 px-5 py-3 transition"
+                key={member.id}
+                href={`/admin/entities/${member.id}`}
+                className="hover:bg-muted/30 flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 transition"
               >
-                <p className="flex-1 text-sm font-medium">
-                  {names.get(score.entityId) ?? score.entityId.slice(0, 8)}
+                <div className="min-w-[200px] flex-1">
+                  <p className="text-sm font-medium">{member.name}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {member.subtype ?? member.kind}
+                    {member.children > 0 && <> · contains {member.children}</>}
+                  </p>
+                </div>
+                <p className="text-muted-foreground w-14 text-right text-sm tabular-nums">
+                  {member.score === null ? "—" : `${member.score}%`}
                 </p>
-                <p className="text-muted-foreground text-sm tabular-nums">
-                  {score.overallPercent}%
-                </p>
-                <ArrowRight className="text-muted-foreground h-4 w-4" />
+                <ArrowRight className="text-muted-foreground h-4 w-4 shrink-0" />
               </Link>
             ))}
           </div>
