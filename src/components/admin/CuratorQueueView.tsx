@@ -1,3 +1,17 @@
+/**
+ * ⚠️ UNREFERENCED as of the 2026-08-15 admin reorganization.
+ *
+ * `/admin/content/queue` was deleted because `/admin/entities` renders the
+ * same rows with better filters and already sorts by "Needs work".
+ *
+ * **This file is kept on purpose.** It carries one thing the entities list
+ * does not: a per-row list of the specific gaps to close next. That is real
+ * value, and deleting it would be assuming the entities list covers it —
+ * which it does not. Either fold the gap column into the entities list and
+ * then delete this, or restore a route to it. Do not leave it in limbo.
+ *
+ * See project-management/ATLAS-ADMIN-REORGANIZATION.md §6.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -281,7 +295,7 @@ export function CuratorQueueView() {
                 )}
               </div>
               <Link
-                href={`/admin/content/explorer?entityId=${score.entityId}`}
+                href={`/admin/explorer?entityId=${score.entityId}`}
                 className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1 text-xs whitespace-nowrap"
               >
                 {availability === "source-available"

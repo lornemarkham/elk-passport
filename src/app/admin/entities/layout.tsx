@@ -1,7 +1,7 @@
 /**
  * The Entity Workspace shell.
  *
- * Deliberately a sibling of `/admin/content`, not a child of it. The
+ * Deliberately a sibling of `/admin`, not a child of it. The
  * Curator Workbench layout wraps everything in `max-w-6xl`, which is the
  * direct cause of the cramping the workspace exists to fix — a knowledge
  * editor needs the full desktop width, and a nested layout can only ever

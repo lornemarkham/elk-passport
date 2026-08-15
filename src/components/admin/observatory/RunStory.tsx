@@ -91,7 +91,7 @@ export function RunStory({
                   <div className="flex flex-wrap items-center gap-2">
                     {node.entityId ? (
                       <Link
-                        href={`/admin/workspace/${node.entityId}`}
+                        href={`/admin/entities/${node.entityId}`}
                         className="text-sm font-medium underline-offset-4 hover:underline"
                       >
                         {node.name}

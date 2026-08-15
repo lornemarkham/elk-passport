@@ -1,5 +1,5 @@
 /**
- * Shell for the Ingestion Observatory. Sibling of `/admin/workspace` and
+ * Shell for the Ingestion Observatory. Sibling of `/admin/entities` and
  * for the same reason: the Curator Workbench layout constrains to
  * `max-w-6xl`, and a timeline of a city-scale run needs the full width.
  */

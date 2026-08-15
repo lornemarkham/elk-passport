@@ -53,7 +53,7 @@ export function AdminNavEntry() {
 
   return (
     <Link
-      href="/admin/content"
+      href="/admin"
       className="bg-background text-foreground hover:bg-muted fixed right-4 bottom-4 z-50 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
     >
       <LayoutDashboard className="h-3.5 w-3.5" />

@@ -110,7 +110,7 @@ export function RunTimeline({ events }: { events: readonly IngestionEvent[] }) {
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       {event.entityId && (
                         <Link
-                          href={`/admin/workspace/${event.entityId}`}
+                          href={`/admin/entities/${event.entityId}`}
                           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs underline-offset-4 hover:underline"
                         >
                           Open entity

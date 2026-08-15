@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import {
   EntityPicker,
   type PickerEntity,
-} from "@/components/admin/workspace/EntityPicker";
+} from "@/components/admin/entities/EntityPicker";
 import { AdminSetupNotice } from "@/components/admin/AdminSetupNotice";
 import {
   loadWorkspaceBundle,
@@ -64,7 +64,7 @@ export default async function WorkspaceIndexPage() {
     <div className="flex flex-col gap-8">
       <div>
         <Link
-          href="/admin/content"
+          href="/admin"
           className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />

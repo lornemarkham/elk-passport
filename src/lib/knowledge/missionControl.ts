@@ -266,7 +266,7 @@ function computeStatusLines(
     lines.push({
       text: `${conflicts.events.length} source conflict${conflicts.events.length === 1 ? "" : "s"} — two sources disagree and Atlas kept what it had.`,
       href: conflicts.events[0]?.entityId
-        ? `/admin/workspace/${conflicts.events[0].entityId}`
+        ? `/admin/entities/${conflicts.events[0].entityId}`
         : undefined,
       tone: "attention",
     });
@@ -276,7 +276,7 @@ function computeStatusLines(
   if (missing > 0) {
     lines.push({
       text: `${missing} entit${missing === 1 ? "y" : "ies"} still ${missing === 1 ? "has" : "have"} no first-party website, so ${missing === 1 ? "it" : "they"} can only hold second-hand knowledge.`,
-      href: "/admin/workspace",
+      href: "/admin/entities",
       tone: "calm",
     });
   }
@@ -629,7 +629,7 @@ function computeNextActions(input: {
           ? `Review the ${conflictField(first.message)} conflict on ${first.subject}`
           : `Resolve ${conflicts.events.length} source conflicts`,
       why: "Two sources disagree. Atlas kept what it had rather than picking a winner — only you can decide.",
-      href: first?.entityId ? `/admin/workspace/${first.entityId}` : undefined,
+      href: first?.entityId ? `/admin/entities/${first.entityId}` : undefined,
       tone: "review",
     });
   }
@@ -650,7 +650,7 @@ function computeNextActions(input: {
     actions.push({
       title: `${missingSource} entit${missingSource === 1 ? "y has" : "ies have"} no first-party source`,
       why: "An entity Atlas cannot trace to its own website can only ever hold second-hand knowledge.",
-      href: "/admin/workspace",
+      href: "/admin/entities",
       tone: "review",
     });
   }

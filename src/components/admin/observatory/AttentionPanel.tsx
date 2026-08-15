@@ -61,7 +61,7 @@ export function AttentionPanel({
                   <p className="text-sm font-medium">
                     {event.entityId ? (
                       <Link
-                        href={`/admin/workspace/${event.entityId}`}
+                        href={`/admin/entities/${event.entityId}`}
                         className="underline-offset-4 hover:underline"
                       >
                         {event.subject}

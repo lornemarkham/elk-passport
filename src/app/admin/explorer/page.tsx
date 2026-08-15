@@ -23,7 +23,7 @@ export default function ContentExplorerPage() {
   return (
     <>
       <Link
-        href="/admin/content"
+        href="/admin"
         className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm"
       >
         <ArrowLeft className="h-4 w-4" />

@@ -37,7 +37,7 @@ export function WorkspaceHeader({
     <header className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Link
-          href="/admin/workspace"
+          href="/admin/entities"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -45,7 +45,7 @@ export function WorkspaceHeader({
         </Link>
         <span className="text-muted-foreground/40">·</span>
         <Link
-          href="/admin/content"
+          href="/admin"
           className="text-muted-foreground hover:text-foreground text-sm"
         >
           Curator Workbench

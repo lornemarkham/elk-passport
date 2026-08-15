@@ -66,7 +66,7 @@ export function ResearchMissionsPanel({
         {ordered.map((mission) => (
           <Link
             key={mission.id}
-            href={`/admin/workspace/${mission.entityId}`}
+            href={`/admin/entities/${mission.entityId}`}
             className="border-border hover:border-foreground/30 hover:bg-muted/30 group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-5 py-4 transition"
           >
             <div className="min-w-[220px] flex-1">

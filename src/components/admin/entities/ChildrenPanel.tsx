@@ -66,7 +66,7 @@ export function ChildrenPanel({
 
               <div className="min-w-0 flex-1">
                 <Link
-                  href={`/admin/workspace/${child.otherId}`}
+                  href={`/admin/entities/${child.otherId}`}
                   className="font-medium underline-offset-4 hover:underline"
                 >
                   {child.otherName}

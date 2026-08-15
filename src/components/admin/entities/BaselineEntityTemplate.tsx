@@ -18,7 +18,7 @@ import { MediaGallery } from "./MediaGallery";
 import { ResearchMissionPanel } from "./ResearchMissionPanel";
 import { isOpen, type ResearchMission } from "@/lib/knowledge/researchMissions";
 import { isResearchable } from "@/lib/knowledge/researchMissions.shared";
-import { startResearch } from "@/app/admin/workspace/[id]/actions";
+import { startResearch } from "@/app/admin/entities/[id]/actions";
 
 /**
  * **The Baseline Entity Template** — the default renderer for every Atlas
@@ -134,7 +134,7 @@ function Hero({ view }: { view: EntityKnowledgeView }) {
               <>
                 <span aria-hidden>·</span>
                 <Link
-                  href={`/admin/workspace/${hero.parent.id}`}
+                  href={`/admin/entities/${hero.parent.id}`}
                   className="hover:text-foreground underline-offset-4 hover:underline"
                 >
                   part of {hero.parent.name}
@@ -467,10 +467,7 @@ export function ProvenanceDrawer({ view }: { view: EntityKnowledgeView }) {
         ))}
       </ul>
       <p className="text-muted-foreground mt-4 text-xs">
-        <Link
-          href="/admin/ingestion"
-          className="underline-offset-4 hover:underline"
-        >
+        <Link href="/admin/runs" className="underline-offset-4 hover:underline">
           Ingestion detail
         </Link>{" "}
         — how Atlas read these, rather than what it learned.

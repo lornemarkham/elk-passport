@@ -154,11 +154,11 @@ function MissionCompleteCard({
 
       <div className="mt-5 flex flex-wrap gap-2">
         {complete.exploreEntityId && (
-          <ExploreLink href={`/admin/workspace/${complete.exploreEntityId}`}>
+          <ExploreLink href={`/admin/entities/${complete.exploreEntityId}`}>
             Explore {complete.exploreEntityName}
           </ExploreLink>
         )}
-        <ExploreLink href={`/admin/ingestion/${complete.runId}`}>
+        <ExploreLink href={`/admin/runs/${complete.runId}`}>
           See the full mission
         </ExploreLink>
       </div>
@@ -269,7 +269,7 @@ function MissionBanner({ model }: { model: MissionControlModel }) {
                 <>
                   {" · "}
                   <Link
-                    href={`/admin/ingestion/${mission.runId}`}
+                    href={`/admin/runs/${mission.runId}`}
                     className="underline-offset-4 hover:underline"
                   >
                     open run
@@ -503,7 +503,7 @@ function AtlasWantsYou({ model }: { model: MissionControlModel }) {
                 <li key={event.id} className="text-xs">
                   {event.entityId ? (
                     <Link
-                      href={`/admin/workspace/${event.entityId}`}
+                      href={`/admin/entities/${event.entityId}`}
                       className="font-medium underline-offset-4 hover:underline"
                     >
                       {event.subject}
@@ -587,7 +587,7 @@ function GrowthFeed({ items }: { items: readonly GrowthItem[] }) {
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
                 {item.entityId ? (
                   <Link
-                    href={`/admin/workspace/${item.entityId}`}
+                    href={`/admin/entities/${item.entityId}`}
                     className="font-medium underline-offset-4 hover:underline"
                   >
                     {item.subject}
@@ -607,11 +607,11 @@ function GrowthFeed({ items }: { items: readonly GrowthItem[] }) {
                   three places it could sensibly lead. */}
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {item.entityId && (
-                  <ExploreLink href={`/admin/workspace/${item.entityId}`}>
+                  <ExploreLink href={`/admin/entities/${item.entityId}`}>
                     Open entity
                   </ExploreLink>
                 )}
-                <ExploreLink href={`/admin/ingestion/${item.runId}`}>
+                <ExploreLink href={`/admin/runs/${item.runId}`}>
                   See evidence
                 </ExploreLink>
                 {item.detailUrl && (

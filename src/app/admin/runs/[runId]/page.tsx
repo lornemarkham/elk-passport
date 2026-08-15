@@ -67,7 +67,7 @@ export default async function RunDetailPage({ params }: Props) {
     <div className="flex flex-col gap-12">
       <header className="flex flex-col gap-4">
         <Link
-          href="/admin/ingestion"
+          href="/admin/runs"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />

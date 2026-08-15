@@ -21,7 +21,7 @@ export async function startResearch(formData: FormData): Promise<void> {
   if (!entityId || !topic) return;
 
   await requestResearchMission(entityId, topic);
-  revalidatePath(`/admin/workspace/${entityId}`);
+  revalidatePath(`/admin/entities/${entityId}`);
 }
 
 /**
@@ -43,5 +43,5 @@ export async function decideResearch(formData: FormData): Promise<void> {
   if (!missionId || (decision !== "accept" && decision !== "reject")) return;
 
   await reviewResearchMission(missionId, decision);
-  revalidatePath(`/admin/workspace/${entityId}`);
+  revalidatePath(`/admin/entities/${entityId}`);
 }

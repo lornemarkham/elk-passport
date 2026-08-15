@@ -20,7 +20,7 @@ import { scoreBarColor, scoreTextColor } from "./knowledgeScorePresentation";
  * view doesn't exist yet, and this sprint's own discipline is not
  * building speculative surfaces a real workflow hasn't asked for.
  */
-const QUEUE_HREF = "/admin/content/queue";
+const QUEUE_HREF = "/admin/entities";
 
 function ReviewLink() {
   return (

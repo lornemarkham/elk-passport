@@ -84,7 +84,7 @@ export async function loadWorkspaceBundle(): Promise<WorkspaceBundle> {
       adminGet<AdminEntity[]>("/admin/entities"),
       adminGet<SourceRecord[]>("/admin/source-records"),
       adminGet<Relationship[]>("/admin/relationships"),
-      adminGet<ContentHealthResult>("/admin/content-health"),
+      adminGet<ContentHealthResult>("/admin-health"),
       // Tolerated failure: a running Atlas built before this route exists
       // should degrade to "no queued sources", not break the whole
       // workspace. An honest empty is better than a 500.

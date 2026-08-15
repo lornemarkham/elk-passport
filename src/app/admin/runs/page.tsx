@@ -174,7 +174,7 @@ function RunRow({
 
   return (
     <Link
-      href={`/admin/ingestion/${run.id}`}
+      href={`/admin/runs/${run.id}`}
       className="border-border hover:border-foreground/30 hover:bg-muted/30 group flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border px-5 py-4 transition"
     >
       <div className="min-w-[240px] flex-1">
@@ -256,7 +256,7 @@ function Header() {
   return (
     <div>
       <Link
-        href="/admin/content"
+        href="/admin"
         className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm"
       >
         <ArrowLeft className="h-4 w-4" />

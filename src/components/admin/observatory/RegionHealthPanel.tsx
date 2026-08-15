@@ -135,7 +135,7 @@ function CategoryCard({ category }: { category: CategoryHealth }) {
           </div>
 
           <Link
-            href="/admin/workspace"
+            href="/admin/entities"
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
           >
             Open workspace

@@ -82,7 +82,7 @@ export function RelationshipPanel({
               </span>
 
               <Link
-                href={`/admin/workspace/${r.otherId}`}
+                href={`/admin/entities/${r.otherId}`}
                 className="text-muted-foreground hover:text-foreground shrink-0 text-xs underline underline-offset-4"
               >
                 Open {r.otherKind}

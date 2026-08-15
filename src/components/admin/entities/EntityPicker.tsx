@@ -115,7 +115,7 @@ export function EntityPicker({ entities }: { entities: PickerEntity[] }) {
         {visible.map((e) => (
           <Link
             key={e.id}
-            href={`/admin/workspace/${e.id}`}
+            href={`/admin/entities/${e.id}`}
             className="border-border hover:border-foreground/30 hover:bg-muted/30 group flex flex-col gap-3 rounded-xl border p-4 transition"
           >
             <div className="flex items-start justify-between gap-3">

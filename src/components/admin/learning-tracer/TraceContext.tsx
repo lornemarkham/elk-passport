@@ -36,7 +36,7 @@ const TraceContext = createContext<TraceContextValue | null>(null);
  * do with learning or tracing.
  *
  * Mounted once, at the Curator Workbench layout level
- * (`app/admin/content/layout.tsx`), so the same emission and panel
+ * (`app/admin/layout.tsx`), so the same emission and panel
  * open/closed state survive navigating between Explorer, Duplicates, and
  * the overview page — not re-created per page.
  *

@@ -115,7 +115,7 @@ export default async function PassportPage({ params }: Props) {
       <div className="border-border bg-muted/30 border-b">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <Link
-            href="/admin/workspace"
+            href="/admin/entities"
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -141,7 +141,7 @@ export default async function PassportPage({ params }: Props) {
               {page.completeness}% complete
             </span>
             <Link
-              href={`/admin/workspace/${id}`}
+              href={`/admin/entities/${id}`}
               className="text-muted-foreground hover:text-foreground"
             >
               Evidence

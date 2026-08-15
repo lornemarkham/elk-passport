@@ -6,7 +6,7 @@ import {
   type ResearchMission,
 } from "@/lib/knowledge/researchMissions";
 import { MediaGallery } from "./MediaGallery";
-import { decideResearch } from "@/app/admin/workspace/[id]/actions";
+import { decideResearch } from "@/app/admin/entities/[id]/actions";
 
 /**
  * **Findings, shown beside what Atlas knows — never folded into it.**
