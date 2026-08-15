@@ -14,10 +14,14 @@ import { AdminUnreachableNotice } from "@/components/admin/AdminUnreachableNotic
 import { EntityPicker } from "@/components/admin/entities/EntityPicker";
 import { RegionViewSwitcher } from "@/components/admin/regions/RegionViewSwitcher";
 import { RegionOperations } from "@/components/admin/regions/RegionOperations";
+import { RegionMission } from "@/components/admin/regions/RegionMission";
+import { RegionActions } from "@/components/admin/regions/RegionActions";
+import { RegionLastRun } from "@/components/admin/regions/RegionLastRun";
 import {
   diagnoseRegion,
   type FindingAction,
 } from "@/lib/knowledge/regionDiagnosis";
+import { hasRealType } from "@/components/admin/entities/entityGaps";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { regionScope } from "@/lib/knowledge/regionScope";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
@@ -156,44 +160,105 @@ export default async function RegionPage({ params }: Props) {
 
   // Facts turned into findings: what Atlas knows, what it doesn't, and
   // what to do about it. Every one is measured; none is a grade.
-  const { findings, action } = diagnoseRegion({
+  const { findings, action, mission } = diagnoseRegion({
     regionName: region.name,
     rows,
     scopeIds: scope.ids,
     averageCompleteness,
+    scoresUnavailable,
     waitingCount: waiting.length,
     runningCount: running.length,
     bundle,
     runs,
   });
 
+  const untypedCount = rows.filter((r) => !hasRealType(r)).length;
+  const isolatedCount = rows.filter((r) => r.relationshipCount === 0).length;
+
   return (
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-col gap-10">
       <header>
         <Link
           href="/admin/regions"
-          className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-[13px] transition-colors"
+          className="text-muted-foreground hover:text-foreground mb-5 inline-flex items-center gap-1.5 text-[13px] transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Regions
+          All regions
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{region.name}</h1>
-        <p className="text-muted-foreground mt-1.5 text-[13px]">
-          Everything needed to manage this destination.
-        </p>
-      </header>
-
-      {/* --- What Atlas knows and doesn't. Findings, each actionable. -- */}
-      <section className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[13px] font-medium tracking-wide uppercase">
-            What Atlas knows about {region.name}
-          </h2>
-          <span className="text-muted-foreground text-[13px] tabular-nums">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{region.name}</h1>
+            <p className="text-muted-foreground mt-1.5 text-sm">
+              Mission control for this destination — what Atlas knows, what it
+              is doing, and what needs you.
+            </p>
+          </div>
+          <p className="text-muted-foreground text-[13px] tabular-nums">
             {rosterUnavailable
               ? "—"
               : `${scope.ids.size} entities · ${scope.directCount} placed · ${scope.indirectCount} inside them`}
-          </span>
+          </p>
+        </div>
+      </header>
+
+      {/* ==== 1. WHAT SHOULD I DO NEXT — the page's visual focus ======== */}
+      <RegionMission mission={mission} regionId={region.id} />
+
+      {/* ==== 2. WHAT CAN ATLAS DO FOR ME ============================== */}
+      <div id="atlas-can-do" className="scroll-mt-8">
+        <RegionOperations
+          regionId={region.id}
+          regionName={region.name}
+          action={action}
+          coverageBefore={averageCompleteness}
+          entitiesBefore={scope.ids.size}
+          activeRunId={activeRun?.id ?? null}
+          lastRun={
+            lastRun
+              ? {
+                  id: lastRun.id,
+                  status: lastRun.status,
+                  label: lastRun.label,
+                  startedAt: lastRun.startedAt,
+                  finishedAt: lastRun.finishedAt,
+                }
+              : null
+          }
+        />
+      </div>
+
+      {/* ==== 3. WHAT CHANGED — evidence that survives a reload ======== */}
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-[13px] font-semibold tracking-wide uppercase">
+            What changed
+          </h2>
+          <p className="text-muted-foreground mt-1 max-w-2xl text-[13px]">
+            The last thing Atlas did, and what it touched. Shown whether or not
+            this browser was watching it happen.
+          </p>
+        </div>
+        <RegionLastRun run={lastRun} changed={changed} />
+      </section>
+
+      {/* ==== 4. WHAT CAN I DO ======================================== */}
+      <RegionActions
+        regionName={region.name}
+        waitingCount={waiting.length}
+        untypedCount={untypedCount}
+        isolatedCount={isolatedCount}
+      />
+
+      {/* ==== 5. WHAT ELSE NEEDS ME — every finding, every action ===== */}
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-[13px] font-semibold tracking-wide uppercase">
+            Everything Atlas found
+          </h2>
+          <p className="text-muted-foreground mt-1 max-w-2xl text-[13px]">
+            What Atlas knows and does not know about {region.name}. Each one
+            leads somewhere.
+          </p>
         </div>
 
         {rosterUnavailable ? (
@@ -275,30 +340,7 @@ export default async function RegionPage({ params }: Props) {
         </details>
       </section>
 
-      {/* --- The operation. What to do, what happens, and watching it. -- */}
-      <div id="next-action" className="scroll-mt-8">
-        <RegionOperations
-          regionId={region.id}
-          regionName={region.name}
-          action={action}
-          coverageBefore={averageCompleteness}
-          entitiesBefore={scope.ids.size}
-          activeRunId={activeRun?.id ?? null}
-          lastRun={
-            lastRun
-              ? {
-                  id: lastRun.id,
-                  status: lastRun.status,
-                  label: lastRun.label,
-                  startedAt: lastRun.startedAt,
-                  finishedAt: lastRun.finishedAt,
-                }
-              : null
-          }
-        />
-      </div>
-
-      {/* --- Entities. The primary section: this is what the page is for. */}
+      {/* ==== 6. EXPLORE — the work, waiting to happen ================ */}
       <section id="entities" className="flex scroll-mt-8 flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -474,26 +516,6 @@ function Term({ term, means }: { term: string; means: string }) {
       <dd className="text-muted-foreground mt-0.5 text-[13px] leading-relaxed">
         {means}
       </dd>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <p className="text-muted-foreground text-[13px]">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-        {value}
-      </p>
-      {hint && <p className="text-muted-foreground mt-1 text-xs">{hint}</p>}
     </div>
   );
 }

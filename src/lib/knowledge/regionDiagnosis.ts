@@ -93,9 +93,50 @@ export interface RecommendedAction {
   readonly estimatedSeconds: number | null;
 }
 
+/**
+ * **Today's mission — the single highest-impact thing to do next.**
+ *
+ * ## Why one, and why it dominates the page
+ *
+ * A list of eight findings is a list of eight decisions. A curator who
+ * opens the workspace has already decided to do *something*; what they
+ * lack is which. Picking one and defending the pick is the whole job of
+ * this object.
+ *
+ * ## What "impact" means here, exactly
+ *
+ * **How many entities in this region the work would affect**, as a share
+ * of the region. Not a rating, not a score, not a guess — five stars
+ * means "this concerns nearly everything here", one means "this concerns
+ * a few". The page prints the count next to the stars so a curator can
+ * check the arithmetic and disagree with the ranking rather than with a
+ * hidden verdict.
+ *
+ * There is deliberately no "estimated time" unless Atlas has measured
+ * one. A plausible "~2 minutes" is the same class of error as a
+ * fabricated identifier: a number that looks like evidence.
+ */
+export interface Mission {
+  readonly title: string;
+  /** The curator-facing statement of the problem. Names Atlas as the actor. */
+  readonly headline: string;
+  /** What Atlas cannot do until this is resolved. Concrete, never abstract. */
+  readonly blocks: readonly string[];
+  /** Entities affected. The number behind the stars. */
+  readonly affected: number;
+  /** Entities in the region, so the share is checkable. */
+  readonly outOf: number;
+  /** 1–5, derived from `affected / outOf`. Stated, never felt. */
+  readonly impact: number;
+  readonly action?: FindingAction;
+  readonly secondary?: FindingAction;
+}
+
 export interface RegionDiagnosis {
   readonly findings: readonly Finding[];
   readonly action: RecommendedAction;
+  /** `null` when nothing needs a human — which is itself worth saying. */
+  readonly mission: Mission | null;
 }
 
 export function diagnoseRegion(input: {
@@ -103,6 +144,8 @@ export function diagnoseRegion(input: {
   readonly rows: readonly PickerEntity[];
   readonly scopeIds: ReadonlySet<string>;
   readonly averageCompleteness: number | null;
+  /** Scores failed to load — not the same as the region having none. */
+  readonly scoresUnavailable?: boolean;
   readonly waitingCount: number;
   readonly runningCount: number;
   readonly bundle: WorkspaceBundle | null;
@@ -113,6 +156,7 @@ export function diagnoseRegion(input: {
     rows,
     scopeIds,
     averageCompleteness,
+    scoresUnavailable,
     waitingCount,
     runningCount,
     bundle,
@@ -127,7 +171,17 @@ export function diagnoseRegion(input: {
   const thin = rows.filter((r) => r.score !== null && r.score < 50).length;
   const isolated = rows.filter((r) => r.relationshipCount === 0).length;
 
-  if (averageCompleteness !== null) {
+  if (scoresUnavailable) {
+    // Say so. Before this, a failed score fetch made the coverage finding
+    // vanish silently — and a missing finding reads as "nothing to report",
+    // which is a claim about the region rather than about the fetch.
+    findings.push({
+      tone: "attention",
+      title: "Knowledge coverage could not be loaded",
+      detail:
+        "Atlas did not return the completeness scores, so this says nothing about how complete the region actually is. Reload, or check that the Atlas API is running.",
+    });
+  } else if (averageCompleteness !== null) {
     findings.push(
       averageCompleteness >= 70
         ? {
@@ -290,7 +344,105 @@ export function diagnoseRegion(input: {
     runs,
   });
 
-  return { findings, action };
+  return { findings, action, mission: chooseMission(findings, rows.length) };
+}
+
+/**
+ * The one finding that becomes today's mission.
+ *
+ * **Ordered by how much of the region it blocks, not by severity.** A
+ * severity scale would be a judgement nobody agreed on; "affects six of
+ * seven entities" is a fact. Ties break toward the finding that blocks
+ * the most other work — type before image, because layouts, completeness
+ * rules and research all key on type while an image blocks only itself.
+ */
+function chooseMission(
+  findings: readonly Finding[],
+  totalRows: number,
+): Mission | null {
+  const BLOCKS: Record<string, { headline: string; blocks: string[] }> = {
+    "no type": {
+      headline: "Atlas cannot classify these places yet.",
+      blocks: [
+        "Choose the right page layout for them",
+        "Apply the completeness rules that fit what they are",
+        "Run the research that suits their kind",
+        "Group and recommend them alongside similar places",
+      ],
+    },
+    "no source": {
+      headline: "Atlas has read nothing that mentions these.",
+      blocks: [
+        "Show a traveller where any of it came from",
+        "Notice when the facts go stale",
+        "Improve them — there is nothing to re-read",
+      ],
+    },
+    "connected to nothing": {
+      headline: "Nothing links these to the rest of the region.",
+      blocks: [
+        "Let a traveller find them by exploring",
+        "Suggest them alongside nearby places",
+        "Include them in anything built from the region's shape",
+      ],
+    },
+    "without an image": {
+      headline: "These have no picture a source published.",
+      blocks: [
+        "Give a traveller anything to look at",
+        "Use them anywhere presentation depends on an image",
+      ],
+    },
+    "below 50%": {
+      headline: "Atlas holds less than half of what it looks for here.",
+      blocks: [
+        "Answer most of what a traveller would ask",
+        "Fill the sections a Passport page expects",
+      ],
+    },
+    "waiting on you": {
+      headline: "Atlas researched something and needs your decision.",
+      blocks: [
+        "Write what it found — Atlas proposes, a person decides",
+        "Move on to the next question until this one is closed",
+      ],
+    },
+  };
+
+  const ranked = findings
+    .filter((f) => f.tone === "attention" && (f.count ?? 0) > 0)
+    .map((f) => {
+      const key = Object.keys(BLOCKS).find((k) => f.title.includes(k));
+      return key ? { finding: f, ...BLOCKS[key]! } : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    // A decision waiting on a human always outranks machine work: growing
+    // while findings sit unreviewed adds to a queue nobody is draining.
+    .sort((a, b) => {
+      const aWaiting = a.finding.title.includes("waiting on you") ? 1 : 0;
+      const bWaiting = b.finding.title.includes("waiting on you") ? 1 : 0;
+      return (
+        bWaiting - aWaiting || (b.finding.count ?? 0) - (a.finding.count ?? 0)
+      );
+    });
+
+  const top = ranked[0];
+  if (!top || totalRows === 0) return null;
+
+  const affected = top.finding.count ?? 0;
+  const share = affected / totalRows;
+  return {
+    title: top.finding.title,
+    headline: top.headline,
+    blocks: top.blocks,
+    affected,
+    outOf: totalRows,
+    // Derived from the share, so it is checkable against the count
+    // printed beside it. Never a feeling.
+    impact: Math.max(1, Math.min(5, Math.ceil(share * 5))),
+    action: top.finding.action,
+    secondary: top.finding.secondary,
+  };
 }
 
 function recommend(input: {
