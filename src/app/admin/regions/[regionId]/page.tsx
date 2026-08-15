@@ -7,8 +7,9 @@ import { AdminUnreachableNotice } from "@/components/admin/AdminUnreachableNotic
 import { EntityPicker } from "@/components/admin/entities/EntityPicker";
 import { RegionViewSwitcher } from "@/components/admin/regions/RegionViewSwitcher";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
-import { descendantCount } from "@/lib/knowledge/regionTree";
+import { regionScope } from "@/lib/knowledge/regionScope";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
+import { loadRuns } from "@/lib/knowledge/runData";
 import {
   loadWorkspaceBundle,
   type WorkspaceBundle,
@@ -72,10 +73,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function RegionPage({ params }: Props) {
   const { regionId } = await params;
 
-  const [regionsResult, bundle, missions] = await Promise.all([
+  const [regionsResult, bundle, missions, runs] = await Promise.all([
     loadRegions(),
     loadWorkspaceBundle().catch((): WorkspaceBundle | null => null),
     loadResearchMissions(),
+    loadRuns().catch(() => []),
   ]);
 
   const region = findRegion(regionsResult, regionId);
@@ -96,10 +98,30 @@ export default async function RegionPage({ params }: Props) {
   const scoresUnavailable =
     rosterUnavailable || (bundle?.unavailable.includes("scores") ?? false);
 
-  const members = new Set(region.memberIds);
-  const rows = bundle ? buildEntityRows(bundle, members) : [];
+  // The region's whole scope: members, plus everything those members
+  // contain. Both are asserted facts — a curator placed Big White, and
+  // directory expansion recorded what Big White contains. Nothing is
+  // inferred from geography.
+  const scope = regionScope(region.memberIds, bundle);
 
-  const scores = (bundle?.scores ?? []).filter((s) => members.has(s.entityId));
+  // Everything scoped to the region — a regional number counting the whole
+  // corpus would be the exact confusion this hierarchy exists to end.
+  const regionMissions = missions.filter((m) => scope.ids.has(m.entityId));
+  const waiting = regionMissions.filter(awaitsReview);
+  const running = regionMissions.filter(isOpen);
+
+  const rows = bundle
+    ? buildEntityRows(bundle, {
+        only: scope.ids,
+        membership: scope.membership,
+        awaitingReview: new Set(waiting.map((m) => m.entityId)),
+        researching: new Set(running.map((m) => m.entityId)),
+      })
+    : [];
+
+  const scores = (bundle?.scores ?? []).filter((s) =>
+    scope.ids.has(s.entityId),
+  );
   const averageCompleteness =
     scores.length > 0
       ? Math.round(
@@ -107,19 +129,14 @@ export default async function RegionPage({ params }: Props) {
         )
       : null;
 
-  // Scoped to this region's members — a regional number counting the whole
-  // corpus would be the exact confusion this hierarchy exists to end.
-  const regionMissions = missions.filter((m) => members.has(m.entityId));
-  const waiting = regionMissions.filter(awaitsReview);
-  const running = regionMissions.filter(isOpen);
+  // Ingestion status, from runs Atlas already records. Scoped by nothing —
+  // runs are global today — so it is labelled as an Atlas-wide fact rather
+  // than presented as a regional one.
+  const lastRun = runs.length > 0 ? runs[0] : null;
 
-  // Everything reachable through the members. Stated out loud so a roster
-  // of "1 entity" never implies a region containing seven things is empty.
-  const reachable = region.memberIds.reduce(
-    (total, id) => total + 1 + descendantCount(id, bundle),
-    0,
-  );
-  const indirect = reachable - region.memberIds.length;
+  // Measured absences across the scope. Each is a real count of a thing
+  // Atlas does not hold, never a grade.
+  const withoutSources = rows.filter((r) => r.sourceCount === 0).length;
 
   return (
     <div className="flex flex-col gap-12">
@@ -142,14 +159,14 @@ export default async function RegionPage({ params }: Props) {
         <h2 className="text-[13px] font-medium tracking-wide uppercase">
           Health
         </h2>
-        <div className="border-border grid gap-6 rounded-lg border p-5 sm:grid-cols-4">
+        <div className="border-border grid gap-6 rounded-lg border p-5 sm:grid-cols-3 lg:grid-cols-5">
           <Stat
-            label="Entities placed"
-            value={String(region.memberIds.length)}
+            label="Entities"
+            value={rosterUnavailable ? "—" : String(scope.ids.size)}
             hint={
-              indirect > 0
-                ? `${indirect} more reachable through them`
-                : undefined
+              rosterUnavailable
+                ? "Could not be loaded"
+                : `${scope.directCount} placed · ${scope.indirectCount} inside them`
             }
           />
           <Stat
@@ -165,20 +182,54 @@ export default async function RegionPage({ params }: Props) {
                 ? "Could not be loaded"
                 : averageCompleteness === null
                   ? "Nothing scored yet"
-                  : "Of what Atlas holds, not of the world"
+                  : "Of what Atlas holds, not the world"
+            }
+          />
+          <Stat
+            label="Without sources"
+            value={rosterUnavailable ? "—" : String(withoutSources)}
+            hint={
+              rosterUnavailable
+                ? "Could not be loaded"
+                : withoutSources === 0
+                  ? "Every entity has evidence"
+                  : "Nothing backs these yet"
             }
           />
           <Stat
             label="Findings waiting"
             value={String(waiting.length)}
-            hint={waiting.length > 0 ? "Needs a decision" : undefined}
+            hint={waiting.length > 0 ? "Needs a decision" : "Nothing to review"}
           />
           <Stat
             label="Research running"
             value={String(running.length)}
-            hint={running.length > 0 ? "Requested, not yet back" : undefined}
+            hint={
+              running.length > 0 ? "Requested, not yet back" : "Nothing running"
+            }
           />
         </div>
+
+        {/* Ingestion status. Runs are global today, and this says so
+            rather than implying Atlas tracks them per region. */}
+        <p className="text-muted-foreground text-[13px]">
+          {lastRun ? (
+            <>
+              Last ingestion run:{" "}
+              <Link
+                href={`/admin/runs/${lastRun.id}`}
+                className="text-foreground underline-offset-4 hover:underline"
+              >
+                {lastRun.label}
+              </Link>{" "}
+              · {lastRun.status} ·{" "}
+              {new Date(lastRun.startedAt).toLocaleString()} — Atlas-wide, not
+              scoped to {region.name}.
+            </>
+          ) : (
+            <>No ingestion run has been recorded yet.</>
+          )}
+        </p>
 
         {waiting.length > 0 && (
           <Link
@@ -202,12 +253,13 @@ export default async function RegionPage({ params }: Props) {
             <h2 className="text-[13px] font-medium tracking-wide uppercase">
               Entities
             </h2>
-            <p className="text-muted-foreground mt-1 text-[13px]">
-              {indirect > 0 ? (
+            <p className="text-muted-foreground mt-1 max-w-2xl text-[13px]">
+              {scope.indirectCount > 0 ? (
                 <>
-                  {region.memberIds.length} placed directly · {indirect} more
-                  reachable through them. Membership is what a curator asserted;
-                  the rest is what those entities contain.
+                  {scope.directCount} placed by a curator ·{" "}
+                  {scope.indirectCount} inside them. Both are asserted —
+                  membership by a person, containment by what a source said.
+                  Neither is inferred from coordinates.
                 </>
               ) : (
                 <>Entities a curator has placed in this destination.</>
@@ -230,7 +282,7 @@ export default async function RegionPage({ params }: Props) {
             </code>
           </p>
         ) : (
-          <EntityPicker entities={rows} />
+          <EntityPicker entities={rows} showMembership />
         )}
       </section>
 
@@ -245,20 +297,23 @@ export default async function RegionPage({ params }: Props) {
             Grow {region.name}
           </p>
           <p className="text-muted-foreground mt-2 max-w-2xl text-[13px] leading-relaxed">
-            Growing a region is where ingestion belongs. Atlas does not start
+            Growth is scoped to this region: it works the branch beneath{" "}
+            {region.name}&apos;s members and places what it discovers here, so
+            no membership has to be re-typed afterwards. Atlas does not start
             crawls from the browser — a request that waited on a fetch, an LLM
             call and a merge would time out, and a button that silently does
-            nothing teaches the wrong model. These commands are the real
-            interface today.
+            nothing teaches the wrong model.
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <Command
-              command="npm run queue-benchmark"
-              does="Queue the sources Atlas already knows it should read."
+              command={`npm run grow-region -- "${region.name}" --dry-run`}
+              does={`Plan a scoped run over ${region.name}. Costs nothing.`}
+              primary
             />
             <Command
-              command="npm run run-queue"
-              does="Fetch and learn from everything queued. Bounded and resumable."
+              command={`npm run grow-region -- "${region.name}"`}
+              does="Fetch and learn, bounded to this region. Discoveries land here."
+              primary
             />
             <Command
               command="npm run run-missions"
@@ -266,7 +321,7 @@ export default async function RegionPage({ params }: Props) {
             />
             <Command
               command={`npm run define-region -- "${region.name}" --assign "<entity>"`}
-              does="Place an entity in this region. Curator-asserted, reversible."
+              does="Place an entity by hand. Only needed for a new starting point."
             />
           </div>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
@@ -299,10 +354,23 @@ function Stat({
   );
 }
 
-function Command({ command, does }: { command: string; does: string }) {
+function Command({
+  command,
+  does,
+  primary,
+}: {
+  command: string;
+  does: string;
+  /** The region-scoped verbs. Emphasis is the only hierarchy here — no buttons. */
+  primary?: boolean;
+}) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4">
-      <code className="bg-muted w-fit rounded px-2 py-1 font-mono text-xs">
+      <code
+        className={`w-fit rounded px-2 py-1 font-mono text-xs ${
+          primary ? "bg-foreground/90 text-background" : "bg-muted"
+        }`}
+      >
         {command}
       </code>
       <span className="text-muted-foreground text-[13px]">{does}</span>
