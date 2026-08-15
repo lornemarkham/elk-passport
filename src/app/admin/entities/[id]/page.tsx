@@ -19,6 +19,7 @@ import {
   loadMissionsForEntity,
   loadResearchTopics,
 } from "@/lib/knowledge/researchMissions";
+import { loadRegions, regionForEntity } from "@/lib/knowledge/regions";
 import { AdminSetupNotice } from "@/components/admin/AdminSetupNotice";
 
 type Props = { params: Promise<{ id: string }> };
@@ -99,10 +100,16 @@ export default async function EntityWorkspacePage({ params }: Props) {
 
   // Missions degrade to [] when Atlas is unreachable — an optional panel
   // must never blank the page whose whole job is showing what Atlas knows.
-  const [missions, researchTopics] = await Promise.all([
+  const [missions, researchTopics, regionsResult] = await Promise.all([
     loadMissionsForEntity(id),
     loadResearchTopics(),
+    loadRegions(),
   ]);
+
+  // The last link in Atlas → Region → Entities → Entity. Absent when no
+  // region has claimed this entity, which is currently most of them and is
+  // said plainly rather than papered over.
+  const region = regionForEntity(regionsResult, id);
 
   // One template today. The seam exists so that stays a one-line change.
   const template = resolveTemplate(entityProfile(entity));
@@ -110,11 +117,13 @@ export default async function EntityWorkspacePage({ params }: Props) {
   return (
     <div className="flex flex-col gap-8">
       <Link
-        href="/admin/entities"
+        href={
+          region ? `/admin/regions/${region.id}/entities` : "/admin/entities"
+        }
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
       >
         <ArrowLeft className="h-4 w-4" />
-        All entities
+        {region ? `Entities in ${region.name}` : "All entities"}
       </Link>
 
       {template === "baseline" && (

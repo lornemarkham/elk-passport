@@ -13,7 +13,7 @@ import {
 } from "@/lib/knowledge/workspaceData";
 
 export const metadata: Metadata = {
-  title: "Entity Workspace — Atlas Curator Workbench",
+  title: "All entities — Atlas",
 };
 
 export default async function WorkspaceIndexPage() {
@@ -68,12 +68,12 @@ export default async function WorkspaceIndexPage() {
           className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
-          Curator Workbench
+          Atlas
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Entity Workspace</h1>
+        <h1 className="text-3xl font-bold tracking-tight">All entities</h1>
         <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
-          Everything Atlas knows about an entity, where it came from, and what
-          the traveler page actually does with it. Pick an entity to begin.
+          Everything Atlas holds, whether or not a region has claimed it. To
+          work a destination instead, start from Regions.
         </p>
       </div>
 
