@@ -38,6 +38,7 @@ import "server-only";
  */
 
 export type OperationId =
+  | "place-members"
   | "grow"
   | "fix-types"
   | "review-research"
@@ -75,6 +76,10 @@ export interface OperationSpec {
 
 export interface CatalogueInput {
   readonly regionName: string;
+  /** Entities in no region at all. The largest lever on the page. */
+  readonly unassignedCount: number;
+  /** Of those, how many Atlas holds documentary evidence for. */
+  readonly actionableUnassigned: number;
   readonly untypedCount: number;
   readonly waitingCount: number;
   readonly runningCount: number;
@@ -90,6 +95,8 @@ export function buildOperationCatalogue(
 ): Record<OperationId, OperationSpec> {
   const {
     regionName,
+    unassignedCount,
+    actionableUnassigned,
     untypedCount,
     waitingCount,
     duplicateGroups,
@@ -100,6 +107,40 @@ export function buildOperationCatalogue(
   } = input;
 
   return {
+    // Placing entities was missing from this catalogue entirely, which
+    // meant the Next Best Action could never recommend the biggest lever
+    // on the page however obvious it was on screen. Everything else here
+    // is computed over the region's scope; this is the operation that
+    // changes it.
+    "place-members": {
+      id: "place-members",
+      label: `Place entities in ${regionName}`,
+      does: "Review what Atlas knows about each unplaced entity, and assert the ones that belong.",
+      why:
+        actionableUnassigned > 0
+          ? `${actionableUnassigned} of ${unassignedCount} unplaced entities have documentary evidence tying them to this region — a real page describes them alongside something already here.`
+          : `${unassignedCount} entities are in no region, and Atlas holds no documentary evidence for any of them. Placing them is entirely your judgement until ingestion gives Atlas something to read.`,
+      mutates: true,
+      outcome: [
+        "Writes one `contains` relationship per entity — the whole assertion",
+        "Widens every count on this page, because they are all computed over the region's scope",
+        "Makes coverage measurable, which needs entities before it can mean anything",
+        "Brings each placed entity into range of region-scoped growth",
+      ],
+      durationSeconds: null,
+      // Reach is the *actionable* count, not the raw one. Ranking on 157
+      // when 32 are tractable overstates the available work fivefold.
+      affected: actionableUnassigned,
+      availability:
+        unassignedCount > 0
+          ? { available: true }
+          : {
+              available: false,
+              blockedBecause:
+                "Every entity Atlas holds is already in a region.",
+            },
+    },
+
     grow: {
       id: "grow",
       label: `Grow ${regionName}`,

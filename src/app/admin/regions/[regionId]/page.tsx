@@ -32,10 +32,11 @@ import {
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
 import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
-import {
-  buildOperationCatalogue,
-  rankOperations,
-} from "@/lib/knowledge/operationCatalogue";
+import { buildOperationCatalogue } from "@/lib/knowledge/operationCatalogue";
+import { prioritiseOperations } from "@/lib/knowledge/actionPriority";
+import { regionCoverage } from "@/lib/knowledge/regionCoverage";
+import { sourceOpportunities } from "@/lib/knowledge/sourceOpportunities";
+import { RegionKnowledgeCoverage } from "@/components/admin/regions/RegionKnowledgeCoverage";
 import { duplicateGroupCount } from "@/lib/knowledge/adminSummary";
 import { decideResearch } from "@/app/admin/entities/[id]/actions";
 import type { WaitingFinding } from "@/components/admin/regions/RegionWorkflows";
@@ -266,6 +267,9 @@ export default async function RegionPage({ params }: Props) {
             evidence.get(r.id)?.headline ??
             "Nothing Atlas holds connects this entity to the region.",
           signals: evidence.get(r.id)?.signals ?? [],
+          upgradePath:
+            evidence.get(r.id)?.upgradePath ??
+            "Give Atlas a source that mentions this entity and the region together.",
         }),
       )
     : [];
@@ -311,8 +315,18 @@ export default async function RegionPage({ params }: Props) {
 
   // One description per operation, read by the next-action panel and by
   // every card — so the same operation can never be explained two ways.
+  // How many unplaced entities Atlas actually holds documentary evidence
+  // for. Ranking on the raw 157 when 32 are tractable overstates the
+  // available work fivefold and sends a curator to the biggest number
+  // rather than the most answerable one.
+  const actionableUnassigned = [...evidence.values()].filter(
+    (a) => a.band === "strong" || a.band === "moderate",
+  ).length;
+
   const catalogue = buildOperationCatalogue({
     regionName: region.name,
+    unassignedCount: composition.unassigned,
+    actionableUnassigned,
     untypedCount,
     waitingCount: waiting.length,
     runningCount: running.length,
@@ -322,7 +336,15 @@ export default async function RegionPage({ params }: Props) {
     growSeconds: action.estimatedSeconds,
     hasRun: Boolean(lastRun),
   });
-  const ranked = rankOperations(catalogue);
+  // Lexicographic priority over a documented rubric, replacing the
+  // hardcoded order. See `actionPriority.ts`.
+  const scored = prioritiseOperations(Object.values(catalogue));
+  const ranked = scored.map((s) => s.op);
+
+  // What this region holds by category, and — deliberately — no
+  // denominator for any of it.
+  const coverage = regionCoverage(rows);
+  const opportunities = sourceOpportunities(coverage);
 
   return (
     <div className="flex flex-col gap-10">
@@ -356,6 +378,12 @@ export default async function RegionPage({ params }: Props) {
         regionName={region.name}
         counts={composition}
         unassigned={unassignedRows}
+      />
+
+      <RegionKnowledgeCoverage
+        regionName={region.name}
+        coverage={coverage}
+        opportunities={opportunities}
       />
 
       {/* ==== 1. NEXT BEST ACTION + every workflow, one client shell ==== */}

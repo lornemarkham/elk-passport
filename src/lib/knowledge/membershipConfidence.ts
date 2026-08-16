@@ -63,12 +63,18 @@ import type { WorkspaceBundle } from "./workspaceData";
  * which is what the drawer does.
  */
 
-export type { SignalClass, Signal, Band } from "./membershipBands";
+export type {
+  SignalClass,
+  Signal,
+  Band,
+  AutoApprovalRequirement,
+} from "./membershipBands";
 export {
   MAX_SCORE,
   BAND_META,
   BAND_THRESHOLDS,
   bandFor,
+  AUTO_APPROVAL_REQUIREMENTS,
 } from "./membershipBands";
 
 import {
@@ -93,6 +99,13 @@ export interface MembershipAssessment {
    */
   readonly autoAssertable: boolean;
   readonly autoBlockedBecause: string;
+  /**
+   * The single missing signal worth chasing, phrased as what to go and
+   * read. **A gap is only useful if it names the next action** — "no
+   * official domain" is a complaint; "read the operator's own site" is a
+   * task.
+   */
+  readonly upgradePath: string;
 }
 
 function hostOf(url: string): string {
@@ -280,6 +293,24 @@ export function assessMembership(
           ? `Only a computed proximity link — no source connects it to the region.`
           : `Nothing Atlas holds connects this entity to the region.`;
 
+    // The highest-weighted absent scoring signal — the cheapest real
+    // upgrade available for this entity.
+    const nextGap = signals
+      .filter((sig) => !sig.present && sig.weight > 0)
+      .sort((a, b) => b.weight - a.weight)[0];
+    const UPGRADE: Record<string, string> = {
+      "member-source":
+        "Read a page that covers this entity and something already in the region — a regional directory, or the operator's own site.",
+      "official-domain":
+        "Queue the official website of a region member that mentions this entity. A page published by the operator outranks any third party.",
+      "multi-link":
+        "Find a second, unrelated source connecting it to the region. Two pages on one domain are one source.",
+      "well-sourced":
+        "Give Atlas another source for this entity — the record is thin regardless of the region question.",
+      typed:
+        "Set the entity type, so Atlas can at least say what kind of thing it is.",
+    };
+
     out.set(id, {
       entityId: id,
       band,
@@ -292,6 +323,9 @@ export function assessMembership(
       autoAssertable: false,
       autoBlockedBecause:
         "No source Atlas holds states which region this belongs to. Shared-source evidence ranks a queue; it cannot assert membership.",
+      upgradePath: nextGap
+        ? (UPGRADE[nextGap.id] ?? `Establish: ${nextGap.label.toLowerCase()}.`)
+        : "Every signal Atlas looks for is already present. Only a source that states the region outright would raise this further.",
     });
   }
 

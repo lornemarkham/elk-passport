@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { RegionDrawer } from "./RegionDrawer";
 import {
+  AUTO_APPROVAL_REQUIREMENTS,
   BAND_META,
   type Band,
   type Signal,
@@ -63,6 +64,8 @@ export interface UnassignedEntity {
   headline: string;
   /** The full checklist — present and missing — so the score is checkable. */
   signals: readonly Signal[];
+  /** The cheapest real upgrade — phrased as something to go and read. */
+  upgradePath: string;
 }
 
 export interface CompositionCounts {
@@ -391,14 +394,14 @@ function AssignDrawer({
   return (
     <RegionDrawer
       wide
-      title={`Entities in no region`}
-      description={`Place any of these in ${regionName}. Membership is your assertion — Atlas never infers it. Nothing is pre-selected, and adding an entity here is reversible: it writes one relationship and removing it undoes the whole assertion.`}
+      title="Knowledge assessment"
+      description={`What Atlas knows about each entity that is in no region yet, how certain that makes it, and what it would have to read to become more certain. Placing an entity in ${regionName} is your assertion — Atlas never infers it, nothing is pre-selected, and the assertion is one relationship that can be removed again.`}
       trigger={(open) => (
         <button
           onClick={open}
           className="bg-foreground text-background mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
         >
-          Review unassigned entities
+          Knowledge assessment · {unassigned.length}
         </button>
       )}
     >
@@ -448,6 +451,35 @@ function AssignDrawer({
           does that yet.
         </p>
       </div>
+
+      {/* The bar, published in advance — so it stays a standard rather than
+          a judgement made later under pressure to make automation look good. */}
+      <details className="border-border mb-4 rounded-lg border">
+        <summary className="hover:bg-muted/40 cursor-pointer px-4 py-2.5 text-[13px] font-medium">
+          What Atlas would need before placing anything on its own
+        </summary>
+        <ul className="border-border space-y-2.5 border-t px-4 py-3">
+          {AUTO_APPROVAL_REQUIREMENTS.map((r) => (
+            <li key={r.id} className="flex gap-2.5">
+              {r.have ? (
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-500" />
+              ) : (
+                <Circle className="text-muted-foreground/40 mt-0.5 h-3.5 w-3.5 shrink-0" />
+              )}
+              <span className="min-w-0">
+                <span
+                  className={`text-[13px] font-medium ${r.have ? "" : "text-muted-foreground"}`}
+                >
+                  {r.label}
+                </span>
+                <span className="text-muted-foreground mt-0.5 block text-[12px] leading-relaxed">
+                  {r.detail}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       {/* Atlas has graded the work by how much evidence it actually holds. */}
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -600,6 +632,17 @@ function AssignDrawer({
                 {open && (
                   <div className="border-border bg-muted/30 border-t px-4 py-3 pl-11">
                     <EvidenceChecklist signals={e.signals} />
+                    {/* A gap is only useful if it names the next action.
+                        "No official domain" is a complaint; "read the
+                        operator's own site" is a task. */}
+                    <p className="border-border mt-3 border-t pt-2.5 text-[12px] leading-relaxed">
+                      <span className="font-medium">
+                        What would make Atlas more certain:
+                      </span>{" "}
+                      <span className="text-muted-foreground">
+                        {e.upgradePath}
+                      </span>
+                    </p>
                   </div>
                 )}
               </div>

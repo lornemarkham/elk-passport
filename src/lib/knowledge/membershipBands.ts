@@ -76,3 +76,63 @@ export function bandFor(score: number): Band {
   for (const t of BAND_THRESHOLDS) if (score >= t.min) return t.band;
   return "none";
 }
+
+/**
+ * **What Atlas would need before it could ever place an entity without
+ * asking.**
+ *
+ * Written down so the bar is a published standard rather than a judgement
+ * made later under pressure to make automation demo well. Every row is a
+ * class of evidence Atlas does **not** hold today; the `have` flag exists
+ * so the list stops being aspirational the moment ingestion delivers one.
+ *
+ * The ordering matters. The first two are *statements about membership*;
+ * the rest are corroboration. **No quantity of corroboration substitutes
+ * for one source that says where a place is** — which is the whole lesson
+ * of the road contractor that scored full marks on shared-source evidence.
+ */
+export interface AutoApprovalRequirement {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+  /** Whether Atlas holds this class of evidence today. */
+  readonly have: boolean;
+}
+
+export const AUTO_APPROVAL_REQUIREMENTS: readonly AutoApprovalRequirement[] = [
+  {
+    id: "region-statement",
+    label: "A source that states the region outright",
+    detail:
+      'Extraction captures "X is in the Okanagan" as a claim, with the page that said it. This is the one requirement with no substitute.',
+    have: false,
+  },
+  {
+    id: "official-listing",
+    label: "An official listing that defines its own catchment",
+    detail:
+      "A tourism body's member directory, a municipal register, or a park authority's site list. Membership of the list is itself the regional claim.",
+    have: false,
+  },
+  {
+    id: "official-address",
+    label: "An address published by the operator",
+    detail:
+      "A municipality in an address the business itself published — not a geocoded guess, and not a third-party listing.",
+    have: false,
+  },
+  {
+    id: "independent-corroboration",
+    label: "Two independent authoritative sources agreeing",
+    detail:
+      "Two publishers with no relationship to each other. Two pages on the same domain are one source wearing two hats.",
+    have: false,
+  },
+  {
+    id: "explicit-relationship",
+    label: "An asserted containment path to the region",
+    detail:
+      "Already available and already honoured — an entity reachable from a member is in scope and never appears in this queue. Listed for completeness.",
+    have: true,
+  },
+];
