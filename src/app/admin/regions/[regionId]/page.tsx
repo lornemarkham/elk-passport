@@ -397,7 +397,7 @@ export default async function RegionPage({ params }: Props) {
         growAnchorId="atlas-can-do"
       />
 
-      <RegionDiscovery regionName={region.name} />
+      <RegionDiscovery regionId={region.id} regionName={region.name} />
 
       <RegionKnowledgeCoverage
         regionName={region.name}

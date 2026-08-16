@@ -61,7 +61,13 @@ interface Report {
   summary: string;
 }
 
-export function RegionDiscovery({ regionName }: { regionName: string }) {
+export function RegionDiscovery({
+  regionId,
+  regionName,
+}: {
+  regionId: string;
+  regionName: string;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,7 +87,7 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
       const res = await fetch("/api/admin/discovery/named", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, regionId }),
       });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? "Atlas could not investigate that.");
@@ -166,7 +172,9 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
         </h2>
         <p className="text-muted-foreground mt-1 max-w-2xl text-[13px] leading-relaxed">
           Name one thing. Atlas works out <em>who would know</em> about it and
-          what it could read — it does not search for answers.
+          what it could read — it does not search for answers. It investigates
+          from {regionName}, which narrows where it looks and proves nothing
+          about where anything belongs.
         </p>
       </div>
 
