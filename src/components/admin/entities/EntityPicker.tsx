@@ -267,7 +267,7 @@ export function EntityPicker({
 
       <p className="text-muted-foreground text-[13px]">
         {visible.length === entities.length
-          ? `${entities.length} ${entities.length === 1 ? "entity" : "entities"}`
+          ? `${entities.length} ${entities.length === 1 ? "place" : "places"}`
           : `${visible.length} of ${entities.length} entities`}
       </p>
 

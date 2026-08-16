@@ -171,10 +171,10 @@ export function buildOperationCatalogue(
       id: "fix-types",
       label: "Fix missing types",
       does: "Set what kind of place each untyped entity is.",
-      why: "Type decides which layout a page gets, which facts count as complete, and which research Atlas runs. An untyped entity cannot be improved systematically.",
+      why: "Type decides which layout a page gets, which facts count as complete, and which research Atlas runs. An untyped place cannot be improved systematically.",
       mutates: true,
       outcome: [
-        "Sets the type on each entity you decide",
+        "Sets the type on each place you decide",
         "Records your decision as editorial evidence, not as something a source said",
         "Removes them from this region's untyped count",
       ],
@@ -202,7 +202,7 @@ export function buildOperationCatalogue(
     "review-duplicates": {
       id: "review-duplicates",
       label: "Review duplicates",
-      does: "Compare entities Atlas thinks are the same real thing, and merge them if they are.",
+      does: "Compare places Atlas thinks are the same real thing, and merge them if they are.",
       why: "Duplicates split a place's knowledge across two records, so neither page is complete and both look thinner than the corpus really is.",
       mutates: true,
       outcome: [
@@ -238,7 +238,7 @@ export function buildOperationCatalogue(
     "review-relationships": {
       id: "review-relationships",
       label: "Review relationships",
-      does: "Confirm or reject connections Atlas proposed between entities.",
+      does: "Confirm or reject connections Atlas proposed between places.",
       why: "Relationships are how a traveller explores rather than searches. Entities connected to nothing can only be found by name.",
       mutates: true,
       outcome: [
@@ -258,7 +258,7 @@ export function buildOperationCatalogue(
 
     "add-entity": {
       id: "add-entity",
-      label: "Add an entity",
+      label: "Add a place",
       does: `Place something in ${regionName} yourself, when Atlas has no way to discover it.`,
       why: "Some things are not linked from any page Atlas can reach. A curator has to introduce them.",
       mutates: true,

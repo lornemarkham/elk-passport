@@ -1,4 +1,4 @@
-import { BookOpen, HelpCircle, Layers } from "lucide-react";
+import { ArrowRight, BookOpen, HelpCircle, Layers } from "lucide-react";
 import type { RegionCoverage } from "@/lib/knowledge/regionCoverage";
 import type { CategoryOpportunities } from "@/lib/knowledge/sourceOpportunities";
 
@@ -43,13 +43,12 @@ export function RegionKnowledgeCoverage({
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Layers className="h-4 w-4" />
-          What {regionName} holds
+          How well does Atlas know {regionName}?
         </h2>
         <p className="text-muted-foreground mt-1 max-w-3xl text-[13px] leading-relaxed">
-          A count of what Atlas has, by category. There is no coverage
-          percentage because <strong>Atlas has no denominator</strong> — it
-          knows what it holds, and nothing it holds says how many exist. The
-          right-hand column names the publisher who would know.
+          What it holds, by category. There is no percentage because{" "}
+          <strong>nothing Atlas has read says how many exist</strong> — so the
+          last column names who would know.
         </p>
       </div>
 
@@ -101,7 +100,7 @@ export function RegionKnowledgeCoverage({
                 </td>
                 <td className="text-muted-foreground px-4 py-2.5 leading-relaxed">
                   Matched no category. Reported rather than dropped — a list
-                  that quietly loses entities makes a region look tidier than it
+                  that quietly loses places makes a region look tidier than it
                   is.
                 </td>
               </tr>
@@ -113,65 +112,97 @@ export function RegionKnowledgeCoverage({
       {opportunities.length > 0 && (
         <div className="border-border rounded-xl border">
           <div className="border-border border-b px-5 py-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <h3 className="flex items-center gap-2 text-base font-semibold">
               <BookOpen className="h-4 w-4" />
-              Where Atlas should read next
+              If Atlas read one more thing
             </h3>
-            <p className="text-muted-foreground mt-1 max-w-3xl text-[13px] leading-relaxed">
-              The categories Atlas holds least of, and the publishers who would
-              fix that. Nothing here has been fetched or queued — it is a
-              reading list, and acting on it is your call.
+            <p className="text-muted-foreground mt-1 max-w-2xl text-[13px] leading-relaxed">
+              The thinnest categories, and what each publisher would actually
+              change. Nothing here is fetched or queued — reading it is your
+              call.
             </p>
           </div>
           <div className="divide-border divide-y">
             {opportunities.map((cat) => (
               <div key={cat.categoryId} className="px-5 py-4">
-                <p className="text-sm font-medium">
-                  {cat.categoryLabel}
-                  <span className="text-muted-foreground ml-2 font-normal">
-                    Atlas holds {cat.known}
+                <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <span className="font-semibold">{cat.categoryLabel}</span>
+                  <span className="text-muted-foreground text-[13px]">
+                    {cat.known === 0
+                      ? "Atlas holds none"
+                      : `Atlas holds ${cat.known}`}
                   </span>
                 </p>
-                <ul className="mt-2.5 space-y-2.5">
+                <div className="mt-3 space-y-3">
                   {cat.opportunities.map((o) => (
-                    <li key={o.publisher + o.what} className="flex gap-2.5">
-                      <span className="bg-muted-foreground/40 mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
-                      <span className="min-w-0">
-                        <span className="text-[13px] font-medium">
+                    <div
+                      key={o.publisher + o.what}
+                      className="border-border rounded-lg border px-4 py-3"
+                    >
+                      <p className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-[13px] font-semibold">
                           {o.publisher}
                         </span>
-                        <span className="text-muted-foreground text-[13px]">
-                          {" "}
-                          — {o.what}
+                        {/* Register vs directory is not a label — it decides
+                            whether reading it can produce a denominator. */}
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase ${
+                            o.kind === "register"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {o.kind}
                         </span>
-                        {/* A URL Atlas has not fetched is a URL Atlas is
-                            guessing at. The distinction is stated, never
-                            implied by the presence of a link. */}
-                        {o.urlVerified && o.url ? (
-                          <a
-                            href={o.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground mt-0.5 block truncate text-[12px] underline underline-offset-2"
+                      </p>
+                      <p className="text-muted-foreground mt-0.5 text-[13px]">
+                        {o.what}
+                      </p>
+
+                      <p className="mt-2.5 text-[12px] font-medium">
+                        What this would unlock
+                      </p>
+                      <ul className="mt-1 space-y-1">
+                        {o.unlocks.map((u) => (
+                          <li
+                            key={u}
+                            className="flex gap-2 text-[12px] leading-relaxed"
                           >
-                            {o.url}
-                            <span className="ml-1.5 no-underline">
-                              · fetched {o.verifiedOn}
-                            </span>
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground/70 mt-0.5 block text-[12px]">
-                            Atlas has not fetched an address for this publisher
-                            — find and confirm it before queueing.
+                            <ArrowRight className="text-primary mt-0.5 h-3 w-3 shrink-0" />
+                            <span>{u}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {o.kind === "register" && (
+                        <p className="text-muted-foreground mt-2 text-[12px] leading-relaxed">
+                          A register is complete for its own domain, so reading
+                          it would give this category a real denominator for the
+                          first time.
+                        </p>
+                      )}
+
+                      {o.urlVerified && o.url ? (
+                        <a
+                          href={o.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-foreground mt-2 block truncate text-[12px] underline underline-offset-2"
+                        >
+                          {o.url}
+                          <span className="ml-1.5 no-underline">
+                            · Atlas fetched this {o.verifiedOn}
                           </span>
-                        )}
-                        <span className="text-muted-foreground/80 mt-0.5 block text-[12px] leading-relaxed">
-                          {o.why}
-                        </span>
-                      </span>
-                    </li>
+                        </a>
+                      ) : (
+                        <p className="text-muted-foreground/70 mt-2 text-[12px]">
+                          Atlas has not fetched an address for this publisher —
+                          confirm it before queueing.
+                        </p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             ))}
           </div>

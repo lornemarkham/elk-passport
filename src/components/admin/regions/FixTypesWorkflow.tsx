@@ -67,7 +67,7 @@ export function FixTypesWorkflow({
     <RegionDrawer
       wide
       title="Fix missing types"
-      description="A type is what kind of place something is. It decides which layout a page gets, which facts count as complete, and which research Atlas runs — so an untyped entity cannot be improved systematically."
+      description="A type is what kind of place something is. It decides which layout a page gets, which facts count as complete, and which research Atlas runs — so an untyped place cannot be improved systematically."
       trigger={trigger}
     >
       <FixTypesBody untyped={untyped} knownTypes={knownTypes} />

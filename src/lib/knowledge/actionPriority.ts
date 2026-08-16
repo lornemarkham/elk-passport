@@ -105,7 +105,7 @@ const UNLOCKS: Record<OperationId, readonly string[]> = {
     "The next research question for that entity, which waits behind this one",
   ],
   "review-relationships": [
-    "Exploration paths between entities a traveller could follow",
+    "Exploration paths between places a traveller could follow",
   ],
   "add-source": ["Growth, which can only read sources Atlas has been given"],
   grow: [],

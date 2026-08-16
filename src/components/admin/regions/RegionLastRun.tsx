@@ -88,7 +88,7 @@ export function RegionLastRun({
               <span>
                 <span className="font-semibold tabular-nums">+{created}</span>{" "}
                 <span className="text-muted-foreground text-[13px]">
-                  new {created === 1 ? "entity" : "entities"}
+                  new {created === 1 ? "place" : "places"}
                 </span>
               </span>
             )}
@@ -96,7 +96,7 @@ export function RegionLastRun({
               <span>
                 <span className="font-semibold tabular-nums">{updated}</span>{" "}
                 <span className="text-muted-foreground text-[13px]">
-                  {updated === 1 ? "entity" : "entities"} improved
+                  {updated === 1 ? "place" : "places"} improved
                 </span>
               </span>
             )}

@@ -43,9 +43,24 @@ import type { RegionCoverage } from "./regionCoverage";
  * and the second wastes an ingestion run.
  */
 
+/**
+ * What kind of publisher this is — which decides what reading it can and
+ * cannot settle.
+ *
+ * **A register is definitionally complete for its own domain**: the body
+ * that designates recreation sites publishes all of them, so reading it
+ * yields a denominator. A directory is a curated selection, so it grows
+ * the corpus and never bounds it. Conflating the two is how a coverage
+ * figure becomes fiction.
+ */
+export type SourceKind = "register" | "directory" | "reference";
+
 export interface SourceOpportunity {
   readonly publisher: string;
   readonly what: string;
+  readonly kind: SourceKind;
+  /** Concrete, checkable: what Atlas could do afterwards that it cannot now. */
+  readonly unlocks: readonly string[];
   /** Only present when Atlas actually fetched it. */
   readonly url?: string;
   readonly urlVerified: boolean;
@@ -73,95 +88,153 @@ const VERIFIED_ON = "2026-08-15";
 const BY_CATEGORY: Record<string, readonly SourceOpportunity[]> = {
   lakes: [
     {
-      publisher: "Freshwater Fisheries Society of BC",
-      what: "Stocked-lake records and where-to-fish listings",
-      url: "https://www.gofishbc.com/where-to-fish/",
-      urlVerified: false,
-      why: "Publishes the province's stocking data lake by lake — the closest thing to an authoritative register of fishable water.",
-    },
-    {
       publisher: "Province of British Columbia",
       what: "Freshwater Fishing Regulations Synopsis, Region 8 tables",
+      kind: "register",
+      unlocks: [
+        "A published list of named Okanagan waters — the first real denominator on this page",
+        "The rules for each one, which a traveller needs before going",
+      ],
       url: "https://www2.gov.bc.ca/assets/gov/sports-recreation-arts-and-culture/outdoor-recreation/fishing-and-hunting/freshwater-fishing/region_8_okanagan.pdf",
       urlVerified: true,
       verifiedOn: VERIFIED_ON,
-      why: "Names individual waters in the Okanagan with their management unit — a real list of lakes, published by the regulator.",
+      why: "The regulator names individual waters with their management unit.",
+    },
+    {
+      publisher: "Freshwater Fisheries Society of BC",
+      what: "Stocked-lake records and where-to-fish listings",
+      kind: "register",
+      unlocks: [
+        "Which lakes are actually worth fishing, and what is in them",
+        "Stocking history — a fact no aggregator reproduces",
+      ],
+      url: "https://www.gofishbc.com/where-to-fish/",
+      urlVerified: false,
+      why: "Publishes the province's stocking data lake by lake.",
     },
     {
       publisher: "OpenStreetMap",
       what: "Named water bodies with geometry",
+      kind: "reference",
+      unlocks: [
+        "Candidate lakes Atlas has never heard of",
+        "Coordinates for places it holds without any",
+      ],
       urlVerified: false,
-      why: "Broad coverage of named lakes. Community-maintained rather than authoritative, so useful for discovering candidates, not for asserting facts.",
+      why: "Broad but community-maintained — good for finding candidates, not for asserting facts.",
     },
   ],
   trails: [
     {
       publisher: "Recreation Sites and Trails BC",
       what: "Provincial trail and recreation site listings",
+      kind: "register",
+      unlocks: [
+        "A denominator for trails, from the body that designates them",
+        "Trailhead access — the fact that decides whether a trip happens",
+      ],
       urlVerified: false,
-      why: "The provincial body that designates and maintains these trails, so its list is definitionally complete for the ones it manages.",
+      why: "The provincial body that designates and maintains them.",
     },
     {
       publisher: "BC Parks",
       what: "Trails inside provincial parks",
+      kind: "register",
+      unlocks: [
+        "The well-known trails the provincial rec-site list does not cover",
+      ],
       urlVerified: false,
-      why: "Covers the trails Recreation Sites and Trails does not, which is most of the well-known ones.",
+      why: "Covers what Recreation Sites and Trails does not.",
     },
   ],
   campgrounds: [
     {
       publisher: "Recreation Sites and Trails BC",
       what: "Recreation site listings, facilities and seasonal fees",
+      kind: "register",
+      unlocks: [
+        "A denominator for campgrounds",
+        "Site counts, boat launches and fee periods — detail aggregators get wrong",
+      ],
       urlVerified: false,
-      why: "Publishes site-by-site detail — number of campsites, boat launches, fee periods — that no aggregator reproduces accurately.",
+      why: "Publishes site-by-site detail nobody else reproduces accurately.",
     },
     {
       publisher: "BC Parks",
       what: "Provincial park campgrounds and reservations",
+      kind: "register",
+      unlocks: [
+        "The other half of BC's public camping",
+        "Whether a site can be booked, which changes how a trip is planned",
+      ],
       urlVerified: false,
-      why: "The other half of BC's public camping inventory.",
+      why: "The other half of the public camping inventory.",
     },
   ],
   food: [
     {
       publisher: "Regional destination marketing organisation",
       what: "Member directories for the region",
+      kind: "directory",
+      unlocks: [
+        "A published statement that a business belongs to this region — the evidence class that would let Atlas place entities without asking",
+        "Businesses Atlas has never read about",
+      ],
       urlVerified: false,
-      why: "A tourism body's member list is one of the few places that states which businesses belong to a region — the evidence class that would unlock automatic membership.",
+      why: "A member list is a regional claim, not an inference from a map.",
     },
   ],
   accommodation: [
     {
       publisher: "Regional destination marketing organisation",
       what: "Accommodation member listings",
+      kind: "directory",
+      unlocks: [
+        "Regional membership claims for places to stay",
+        "Somewhere to sleep — every multi-day trip needs it and Atlas holds one",
+      ],
       urlVerified: false,
-      why: "Same reason as food and drink: a membership list is a regional claim, not an inference from a map.",
+      why: "Same regional claim as food and drink.",
     },
   ],
   activities: [
     {
       publisher: "Province of British Columbia",
       what: "Freshwater Fishing Regulations Synopsis",
+      kind: "reference",
+      unlocks: [
+        "Fishing as something with rules, seasons and named waters rather than a vague activity",
+        "Licence requirements a first-time visitor would not know to ask about",
+      ],
       url: "https://www2.gov.bc.ca/assets/gov/sports-recreation-arts-and-culture/outdoor-recreation/fishing-and-hunting/freshwater-fishing/pw_regulations_guide.pdf",
       urlVerified: true,
       verifiedOn: VERIFIED_ON,
-      why: "Turns fishing from a vague activity into something with rules, seasons and named waters — the detail that makes a Passport page worth trusting.",
+      why: "Turns an activity into something a page can be trusted about.",
     },
   ],
   parks: [
     {
       publisher: "BC Parks",
       what: "Provincial parks, conservancies and protected areas",
+      kind: "register",
+      unlocks: [
+        "A denominator for parks, from the authority that designates them",
+      ],
       urlVerified: false,
-      why: "The authority that designates them, so its list is the register.",
+      why: "The designating authority, so its list is the register.",
     },
   ],
   viewpoints: [
     {
       publisher: "BC Geographical Names",
       what: "Official names and locations of natural features",
+      kind: "reference",
+      unlocks: [
+        "Whether a named feature exists and what it is officially called",
+        "A check against duplicates created from informal names",
+      ],
       urlVerified: false,
-      why: "The provincial naming authority — the right source for whether a peak or waterfall exists and what it is actually called.",
+      why: "The provincial naming authority.",
     },
   ],
 };

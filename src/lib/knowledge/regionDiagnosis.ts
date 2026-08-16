@@ -201,15 +201,15 @@ export function diagnoseRegion(input: {
       averageCompleteness >= 70
         ? {
             tone: "good",
-            title: `Entity knowledge is ${averageCompleteness}% complete`,
+            title: `What Atlas knows is ${averageCompleteness}% complete`,
             detail:
-              "Averaged over the entities in this region. Each is scored on four things Atlas expects to hold — identity fields, an image, at least two sources, and traveller information. It does NOT mean Atlas knows 75% of the Okanagan: it has no way to count what exists in the world.",
+              "Averaged over the places in this region. Each is scored on four things Atlas expects to hold — identity fields, an image, at least two sources, and traveller information. It does NOT mean Atlas knows 75% of the Okanagan: it has no way to count what exists in the world.",
           }
         : {
             tone: "attention",
-            title: `Entity knowledge is ${averageCompleteness}% complete`,
+            title: `What Atlas knows is ${averageCompleteness}% complete`,
             detail:
-              "Averaged over the entities in this region, scored on identity fields, an image, at least two sources, and traveller information. Most are missing things Atlas knows how to look for. This says nothing about how much of the Okanagan exists — Atlas has no denominator for that.",
+              "Averaged over the places in this region, scored on identity fields, an image, at least two sources, and traveller information. Most are missing things Atlas knows how to look for. This says nothing about how much of the Okanagan exists — Atlas has no denominator for that.",
             action: { kind: "run", label: "Grow this region" },
             secondary: {
               kind: "filter",
@@ -224,7 +224,7 @@ export function diagnoseRegion(input: {
     findings.push({
       tone: "attention",
       count: noSources,
-      title: `${noSources} ${noSources === 1 ? "entity has" : "entities have"} no source`,
+      title: `${noSources} ${noSources === 1 ? "place has" : "places have"} no source`,
       detail:
         "Nothing Atlas has read mentions them, so everything on their page came from somewhere else. These are the least trustworthy entries in the region.",
       action: { kind: "run", label: "Grow this region" },
@@ -237,7 +237,7 @@ export function diagnoseRegion(input: {
   } else if (rows.length > 0) {
     findings.push({
       tone: "good",
-      title: "Every entity has evidence behind it",
+      title: "Every place has evidence behind it",
       detail:
         "Each one is described by at least one source Atlas fetched and stored.",
     });
@@ -247,9 +247,9 @@ export function diagnoseRegion(input: {
     findings.push({
       tone: "attention",
       count: untyped,
-      title: `${untyped} ${untyped === 1 ? "entity has" : "entities have"} no type`,
+      title: `${untyped} ${untyped === 1 ? "place has" : "places have"} no type`,
       detail:
-        "Atlas never established what kind of place these are. Type will decide which layout, completeness rules and research a page gets, so untyped entities cannot be improved systematically.",
+        "Atlas never established what kind of place these are. Type will decide which layout, completeness rules and research a page gets, so untyped places cannot be improved systematically.",
       // Real now: opens the in-place Fix Types workflow, which writes
       // through `EnrichmentService` and records the curator's decision as
       // its own editorial source record.
@@ -284,7 +284,7 @@ export function diagnoseRegion(input: {
       action: {
         kind: "planned",
         label: "Suggest connections",
-        note: "Atlas already proposes relationships it finds while reading (`RelationshipCandidate`), and a curator confirms them. Proposing connections for entities nothing has mentioned is a different job and is not built.",
+        note: "Atlas already proposes relationships it finds while reading (`RelationshipCandidate`), and a curator confirms them. Proposing connections for places nothing has mentioned is a different job and is not built.",
       },
       secondary: {
         kind: "filter",
@@ -492,7 +492,7 @@ function recommend(input: {
       why: "Atlas has already done the research and is waiting on a decision. Deciding first means growth builds on knowledge you have accepted.",
       willDo: [
         "Show you what Atlas found, and the source it came from",
-        "Write it to the entity only if you accept it",
+        "Write it to the place only if you accept it",
         "Leave the evidence in place either way",
       ],
       queuedSources,
@@ -507,8 +507,8 @@ function recommend(input: {
       why: `Atlas already knows about ${queuedSources} page${queuedSources === 1 ? "" : "s"} in this region it has not read yet.`,
       willDo: [
         `Read ${queuedSources} page${queuedSources === 1 ? "" : "s"} Atlas already discovered`,
-        "Add facts to entities that are already here",
-        "Create entities for anything new it finds inside them",
+        "Add facts to places that are already here",
+        "Create records for anything new it finds inside them",
         "Queue further pages it discovers — for the next run, never this one",
       ],
       queuedSources,
@@ -522,7 +522,7 @@ function recommend(input: {
     why: `Atlas has read everything it currently knows about in ${regionName}. Growth would find nothing new.`,
     willDo: [
       "Give Atlas a new source to start from, with `npm run define-region`",
-      "Or request research on a specific gap from an entity's page",
+      "Or request research on a specific gap from a place's page",
     ],
     queuedSources: 0,
     estimatedSeconds,

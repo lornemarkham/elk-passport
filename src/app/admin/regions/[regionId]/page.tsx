@@ -367,7 +367,7 @@ export default async function RegionPage({ params }: Props) {
           <p className="text-muted-foreground text-[13px] tabular-nums">
             {rosterUnavailable
               ? "—"
-              : `${scope.ids.size} entities · ${scope.directCount} placed · ${scope.indirectCount} inside them`}
+              : `${scope.ids.size} places · ${scope.directCount} confirmed · ${scope.indirectCount} inside them`}
           </p>
         </div>
       </header>
@@ -535,12 +535,12 @@ export default async function RegionPage({ params }: Props) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-[13px] font-medium tracking-wide uppercase">
-              Entities
+              Everything in this region
             </h2>
             <p className="text-muted-foreground mt-1 max-w-2xl text-[13px]">
               {scope.indirectCount > 0 ? (
                 <>
-                  {scope.directCount} placed by a curator ·{" "}
+                  {scope.directCount} confirmed by a curator ·{" "}
                   {scope.indirectCount} inside them. Both are asserted —
                   membership by a person, containment by what a source said.
                   Neither is inferred from coordinates.
@@ -609,7 +609,7 @@ export default async function RegionPage({ params }: Props) {
             />
             <Command
               command={`npm run define-region -- "${region.name}" --assign "<entity>"`}
-              does="The manual escape hatch: place an entity Atlas has not connected to this region. The Review unassigned drawer above does the same thing with Atlas's evidence attached."
+              does="The manual escape hatch: confirm a place Atlas has not connected to this region. The confirmation panel above does the same thing with Atlas's evidence attached."
             />
           </div>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">

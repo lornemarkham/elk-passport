@@ -483,10 +483,10 @@ function Complete({
       ) : (
         <ul className="mt-3 flex flex-col gap-1">
           {changes.created > 0 && (
-            <Result value={`+${changes.created}`} label="new entities" />
+            <Result value={`+${changes.created}`} label="new places" />
           )}
           {changes.enriched > 0 && (
-            <Result value={`+${changes.enriched}`} label="entities enriched" />
+            <Result value={`+${changes.enriched}`} label="places improved" />
           )}
           {changes.facts > 0 && (
             <Result value={`+${changes.facts}`} label="facts added" />

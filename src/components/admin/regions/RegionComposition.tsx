@@ -106,50 +106,46 @@ export function RegionComposition({
       <div className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <Figure
           icon={<Database className="h-4 w-4" />}
-          label="Entities in Atlas"
+          label="Found so far"
           value={counts.corpus}
-          note="Everything Atlas holds, across all regions"
+          note="Places, businesses and activities Atlas has read about"
         />
         <Figure
           icon={<MapPin className="h-4 w-4" />}
-          label={`In ${regionName}`}
+          label={`Confirmed in ${regionName}`}
           value={counts.inThisRegion}
-          note="Placed by a curator, plus what those entities contain"
+          note="You said these belong here, plus everything inside them"
           strong
         />
         <Figure
           icon={<TriangleAlert className="h-4 w-4" />}
-          label="In no region yet"
+          label="Waiting on you"
           value={counts.unassigned}
           note={
-            counts.otherRegionCount > 0
-              ? `${counts.inOtherRegions} more are in another region`
-              : "No other region exists to hold them"
+            // At zero this card is a result, not a request. The old copy
+            // ("only you can say they belong") kept asking for a decision
+            // that had already been made.
+            counts.unassigned === 0
+              ? "Nothing is waiting on your judgement"
+              : counts.otherRegionCount > 0
+                ? `${counts.inOtherRegions} more belong to another region`
+                : `Atlas found them. Only you can say they belong to ${regionName}.`
           }
           attention={counts.unassigned > 0}
         />
       </div>
 
-      {counts.unassigned > 0 && (
+      {counts.unassigned > 0 ? (
         <div className="border-border bg-muted/30 border-t px-6 py-5">
-          {/* The explanation. Without this the numbers read as data loss. */}
-          <p className="text-sm font-medium">
-            This is not missing data — it is unasserted membership.
+          {/* Two sentences. The curator needs the situation, not the
+              philosophy — the philosophy is one click away, below, where
+              they will actually ask for it. */}
+          <p className="text-base font-semibold">
+            Atlas found {counts.unassigned} places it cannot place for you.
           </p>
-          <p className="text-muted-foreground mt-2 max-w-3xl text-[13px] leading-relaxed">
-            Atlas only places an entity in a region when a person says so. It
-            never infers membership from coordinates, distance or names, because
-            a lodge whose latitude falls inside a boundary has not been placed
-            there by anyone. Most of these {counts.unassigned} entities were
-            ingested before Regions existed, so nobody has placed them yet. They
-            are still in Atlas, still complete, and still searchable from{" "}
-            <Link
-              href="/admin/entities"
-              className="text-foreground underline-offset-4 hover:underline"
-            >
-              All entities
-            </Link>
-            .
+          <p className="text-muted-foreground mt-1.5 max-w-2xl text-sm leading-relaxed">
+            They are read, stored and complete — nobody has confirmed yet that
+            they belong to {regionName}.
           </p>
 
           <AssignDrawer
@@ -157,6 +153,51 @@ export function RegionComposition({
             regionName={regionName}
             unassigned={unassigned}
           />
+
+          {/* Progressive disclosure. The "why" answers a question the
+              curator asks *after* meeting the queue, not before. */}
+          <details className="group mt-4">
+            <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[13px] underline-offset-4 hover:underline">
+              Why can&apos;t Atlas work this out itself?
+            </summary>
+            <p className="text-muted-foreground mt-2 max-w-2xl text-[13px] leading-relaxed">
+              Because a lodge whose latitude falls inside a boundary has not
+              been put there by anyone. Atlas never infers membership from
+              coordinates, distance or names — it only records what a person
+              asserts or a source states. Most of these were read before Regions
+              existed, so nobody has been asked yet. They remain searchable from{" "}
+              <Link
+                href="/admin/entities"
+                className="text-foreground underline-offset-4 hover:underline"
+              >
+                All places
+              </Link>
+              .
+            </p>
+          </details>
+        </div>
+      ) : (
+        /* Objective 6 — arriving at zero is the end of one job and the
+           start of the next. A bare "0" reads as an empty table; this
+           says what was achieved and where the work goes now. */
+        <div className="border-border border-t border-emerald-600/30 bg-emerald-500/[0.04] px-6 py-5">
+          <p className="flex items-center gap-2 text-base font-semibold">
+            <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+            Every place Atlas has found has been decided.
+          </p>
+          <p className="text-muted-foreground mt-1.5 max-w-2xl text-sm leading-relaxed">
+            {regionName} now holds {counts.inThisRegion} confirmed{" "}
+            {counts.inThisRegion === 1 ? "place" : "places"}, and nothing is
+            waiting on your judgement. Atlas knows this region as well as its
+            sources allow.
+          </p>
+          <p className="text-muted-foreground mt-3 max-w-2xl text-[13px] leading-relaxed">
+            <span className="text-foreground font-medium">
+              Which makes reading the next thing the only way forward.
+            </span>{" "}
+            Growth reads what is already queued; a new source is how the region
+            gets bigger. Both are below.
+          </p>
         </div>
       )}
     </section>
@@ -394,14 +435,18 @@ function AssignDrawer({
   return (
     <RegionDrawer
       wide
-      title="Knowledge assessment"
-      description={`What Atlas knows about each entity that is in no region yet, how certain that makes it, and what it would have to read to become more certain. Placing an entity in ${regionName} is your assertion — Atlas never infers it, nothing is pre-selected, and the assertion is one relationship that can be removed again.`}
+      title={`What belongs in ${regionName}?`}
+      description={`Atlas has graded each one by the evidence it holds, strongest first. Confirming a place is your call — nothing is pre-selected, and every confirmation can be undone.`}
       trigger={(open) => (
         <button
           onClick={open}
-          className="bg-foreground text-background mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
+          className="bg-foreground text-background mt-4 inline-flex items-center gap-2.5 rounded-lg px-5 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
         >
-          Knowledge assessment · {unassigned.length}
+          <MapPin className="h-4 w-4" />
+          Start confirming what belongs in {regionName}
+          <span className="bg-background/20 rounded px-1.5 py-0.5 text-[12px] tabular-nums">
+            {unassigned.length}
+          </span>
         </button>
       )}
     >
@@ -446,7 +491,7 @@ function AssignDrawer({
           evidence is. A page that describes a resort also describes its road
           contractor and the airport two valleys over — so a shared source is
           strong enough to <em>rank</em> this queue and far too weak to{" "}
-          <em>assert</em> membership. Atlas will place entities without asking
+          <em>assert</em> membership. Atlas will confirm places without asking
           once a source states which region something is in; nothing it holds
           does that yet.
         </p>
