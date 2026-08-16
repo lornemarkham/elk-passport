@@ -42,6 +42,8 @@ interface Lead {
   reason: string;
   couldEstablish: string[];
   state: "new" | "queued" | "read";
+  /** Present once queued — needed to read it. */
+  candidateSourceId?: string;
 }
 
 interface Consulted {
@@ -66,6 +68,7 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [queued, setQueued] = useState<Record<string, "queuing" | "done">>({});
+  const [reads, setReads] = useState<Record<string, ReadState>>({});
 
   async function investigate(e: React.FormEvent) {
     e.preventDefault();
@@ -114,6 +117,8 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
         return;
       }
       setQueued((q) => ({ ...q, [lead.url]: "done" }));
+      if (data?.candidate?.id)
+        setReads((r) => ({ ...r, [lead.url]: { id: data.candidate.id } }));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reach Atlas.");
@@ -122,6 +127,33 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
         delete next[lead.url];
         return next;
       });
+    }
+  }
+
+  async function readNow(lead: Lead, candidateSourceId: string) {
+    setReads((r) => ({
+      ...r,
+      [lead.url]: { id: candidateSourceId, busy: true },
+    }));
+    try {
+      const res = await fetch(
+        `/api/admin/candidate-sources/${encodeURIComponent(candidateSourceId)}/read-targetless`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Atlas could not read that source.");
+        setReads((r) => ({ ...r, [lead.url]: { id: candidateSourceId } }));
+        return;
+      }
+      setReads((r) => ({
+        ...r,
+        [lead.url]: { id: candidateSourceId, result: data },
+      }));
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach Atlas.");
+      setReads((r) => ({ ...r, [lead.url]: { id: candidateSourceId } }));
     }
   }
 
@@ -278,20 +310,13 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
                           Atlas has read this
                         </p>
                       ) : isQueued ? (
-                        /* Queued and unread is a *waiting* state, not a
-                           finished one. Saying "queued ✓" implied the work
-                           was done; nothing reads this queue on its own. */
-                        <div className="rounded-lg border border-amber-600/40 bg-amber-500/[0.05] px-3.5 py-2.5">
-                          <p className="text-[13px] font-medium">
-                            Queued — and nothing has read it
-                          </p>
-                          <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
-                            Atlas holds this source and cannot process it
-                            automatically: the queue runner only reads pages
-                            whose target entity is already known, and this one
-                            is about something Atlas does not hold yet.
-                          </p>
-                        </div>
+                        <ReadPanel
+                          state={reads[lead.url]}
+                          candidateSourceId={
+                            reads[lead.url]?.id ?? lead.candidateSourceId
+                          }
+                          onRead={(id) => void readNow(lead, id)}
+                        />
                       ) : (
                         <button
                           onClick={() => void queue(lead)}
@@ -332,5 +357,119 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
         </div>
       )}
     </section>
+  );
+}
+
+interface ReadResult {
+  outcome:
+    | "identified"
+    | "unresolved"
+    | "not-targetless"
+    | "fetch-failed"
+    | "extraction-failed";
+  summary: string;
+  claim?: { name: string };
+  assessment?: { hasIdentity: boolean; signals: string[]; reason?: string };
+  sourceRecordId?: string;
+}
+
+interface ReadState {
+  id: string;
+  busy?: boolean;
+  result?: ReadResult;
+}
+
+/**
+ * **Queued is a waiting state, and reading it is a real action.**
+ *
+ * Nothing drains this queue on its own — the runner only reads pages whose
+ * target entity is already known, and a discovered source is by definition
+ * about something Atlas does not hold. So the panel offers the read rather
+ * than implying one is scheduled.
+ *
+ * The result never claims more than the identity gate allowed. *Identified*
+ * means Atlas can tell which thing this is and **still created nothing**;
+ * *unresolved* means it read the page and the page was not enough.
+ */
+function ReadPanel({
+  state,
+  candidateSourceId,
+  onRead,
+}: {
+  state?: ReadState;
+  candidateSourceId?: string;
+  onRead: (id: string) => void;
+}) {
+  const result = state?.result;
+
+  if (result) {
+    const good = result.outcome === "identified";
+    return (
+      <div
+        className={`rounded-lg border px-3.5 py-2.5 ${
+          good
+            ? "border-emerald-600/40 bg-emerald-500/[0.05]"
+            : "border-border bg-muted/30"
+        }`}
+      >
+        <p className="flex items-center gap-1.5 text-[13px] font-medium">
+          {good ? (
+            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
+          ) : (
+            <CircleSlash className="text-muted-foreground h-3.5 w-3.5" />
+          )}
+          {good ? "Source read · identity found" : "Source read · unresolved"}
+        </p>
+        {result.assessment && result.assessment.signals.length > 0 && (
+          <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+            {result.assessment.signals.map((s) => (
+              <li key={s} className="text-[12px]">
+                ✓ {s}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-muted-foreground mt-1.5 text-[12px] leading-relaxed">
+          {result.summary}
+        </p>
+        {/* The reasoning, one click away rather than in the way. */}
+        {result.assessment?.reason && !good && (
+          <details className="mt-1.5">
+            <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[12px] underline-offset-2 hover:underline">
+              Why?
+            </summary>
+            <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+              {result.assessment.reason}
+            </p>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-amber-600/40 bg-amber-500/[0.05] px-3.5 py-2.5">
+      <p className="text-[13px] font-medium">Queued — nothing has read it</p>
+      <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+        Atlas will not pick this up on its own: the queue runner only reads
+        pages whose subject it already holds.
+      </p>
+      {candidateSourceId ? (
+        <button
+          onClick={() => onRead(candidateSourceId)}
+          disabled={state?.busy}
+          className="border-border bg-background hover:bg-muted mt-2.5 inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors disabled:opacity-50"
+        >
+          {state?.busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          {state?.busy ? "Reading…" : "Read now"}
+        </button>
+      ) : (
+        <p className="text-muted-foreground/70 mt-2 text-[12px]">
+          Investigate again to get a read action for this source.
+        </p>
+      )}
+    </div>
   );
 }
