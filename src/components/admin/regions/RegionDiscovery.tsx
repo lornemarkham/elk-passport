@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Loader2,
   MapPin,
+  Plus,
   Search,
   Sparkles,
   X,
@@ -213,6 +214,99 @@ export function RegionDiscovery({
     }
   }
 
+  /**
+   * **The write.** Everything before this was reversible; this creates an
+   * entity, so it happens only because a person clicked it.
+   *
+   * The name is sent so Atlas can *refuse a mismatch* — it re-reads the
+   * stored evidence in full and will not create a subject the curator did
+   * not review.
+   */
+  async function learn(
+    lead: Lead,
+    id: string,
+    confirmedName: string,
+    acknowledgeDuplicate = false,
+  ) {
+    setReads((r) => ({
+      ...r,
+      [lead.url]: { ...r[lead.url]!, learning: true },
+    }));
+    try {
+      const res = await fetch(
+        `/api/admin/candidate-sources/${encodeURIComponent(id)}/learn`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmedName, acknowledgeDuplicate }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Atlas could not create that entity.");
+        setReads((r) => ({
+          ...r,
+          [lead.url]: { ...r[lead.url]!, learning: false },
+        }));
+        return;
+      }
+      setReads((r) => ({
+        ...r,
+        [lead.url]: {
+          ...r[lead.url]!,
+          learning: false,
+          learned: data as LearnResult,
+        },
+      }));
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach Atlas.");
+      setReads((r) => ({
+        ...r,
+        [lead.url]: { ...r[lead.url]!, learning: false },
+      }));
+    }
+  }
+
+  /**
+   * **Placing is a second statement.** Creating an entity says it exists;
+   * this says it belongs here (ADR 025). Two acts, two clicks, on purpose.
+   */
+  async function place(lead: Lead, entityId: string, entityName: string) {
+    setReads((r) => ({ ...r, [lead.url]: { ...r[lead.url]!, placing: true } }));
+    try {
+      const res = await fetch("/api/admin/relationships/contains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentId: regionId,
+          childId: entityId,
+          reason: `Curator placed ${entityName} in ${regionName} after learning it from a discovered source.`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Atlas could not place that entity.");
+        setReads((r) => ({
+          ...r,
+          [lead.url]: { ...r[lead.url]!, placing: false },
+        }));
+        return;
+      }
+      setReads((r) => ({
+        ...r,
+        [lead.url]: { ...r[lead.url]!, placing: false, placed: true },
+      }));
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach Atlas.");
+      setReads((r) => ({
+        ...r,
+        [lead.url]: { ...r[lead.url]!, placing: false },
+      }));
+    }
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <div>
@@ -409,10 +503,17 @@ export function RegionDiscovery({
                       ) : isQueued ? (
                         <ReadPanel
                           state={reads[lead.url]}
+                          regionName={regionName}
                           candidateSourceId={
                             reads[lead.url]?.id ?? lead.candidateSourceId
                           }
                           onRead={(id) => void readNow(lead, id)}
+                          onLearn={(id, name, ack) =>
+                            void learn(lead, id, name, ack)
+                          }
+                          onPlace={(entityId, entityName) =>
+                            void place(lead, entityId, entityName)
+                          }
                         />
                       ) : (
                         <button
@@ -658,10 +759,162 @@ interface ReadResult {
   sourceRecordId?: string;
 }
 
+/**
+ * **What happened when Atlas tried to learn it.**
+ *
+ * Every outcome except `learned` is a refusal, and each refusal names what
+ * would resolve it. A refusal with no next step is where a curator gets
+ * stuck, and the failure they blame is the product rather than the page.
+ *
+ * The two writes are shown separately because they are separate claims:
+ * *this exists* and *this belongs to {region}*. A single "Add to Okanagan"
+ * button would collapse them and quietly make membership a side effect of
+ * creation — the inference ADR 025 exists to forbid.
+ */
+function LearnedPanel({
+  learned,
+  regionName,
+  placing,
+  placed,
+  onPlace,
+  onRetryAsDistinct,
+}: {
+  learned: LearnResult;
+  regionName: string;
+  placing?: boolean;
+  placed?: boolean;
+  onPlace: (entityId: string, entityName: string) => void;
+  onRetryAsDistinct?: () => void;
+}) {
+  const created = learned.outcome === "learned";
+
+  return (
+    <div
+      className={`rounded-lg border px-3.5 py-3 ${
+        created
+          ? "border-emerald-600/40 bg-emerald-500/[0.05]"
+          : "border-amber-600/40 bg-amber-500/[0.05]"
+      }`}
+    >
+      <p className="flex items-center gap-1.5 text-[13px] font-medium">
+        {created ? (
+          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
+        ) : (
+          <CircleSlash className="text-muted-foreground h-3.5 w-3.5" />
+        )}
+        {created ? "Atlas has learned it" : "Not created"}
+      </p>
+      <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+        {learned.summary}
+      </p>
+
+      {/* Every write, named. A write a curator cannot see is a hidden one. */}
+      {learned.written.length > 0 && (
+        <ul className="mt-2 space-y-0.5">
+          {learned.written.map((w) => (
+            <li
+              key={w}
+              className="text-[12px] leading-relaxed before:mr-1.5 before:content-['✓']"
+            >
+              {w}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {learned.matchedEntityId && (
+        <Link
+          href={`/admin/entities/${learned.matchedEntityId}`}
+          className="border-border hover:bg-muted mt-2 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[13px]"
+        >
+          {learned.matchedEntityName}
+        </Link>
+      )}
+
+      {onRetryAsDistinct && (
+        <button
+          onClick={onRetryAsDistinct}
+          className="border-border hover:bg-muted mt-2 ml-2 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] font-medium"
+        >
+          This is a different place — create it anyway
+        </button>
+      )}
+
+      {/* The second statement. Deliberately not automatic. */}
+      {created && learned.entityId && (
+        <div className="border-border/60 mt-3 border-t pt-3">
+          {placed ? (
+            <p className="flex items-center gap-1.5 text-[13px] font-medium">
+              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
+              Placed in {regionName} — coverage now counts it
+            </p>
+          ) : (
+            <>
+              <p className="text-[13px] font-medium">
+                It belongs to no region yet
+              </p>
+              <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+                {learned.nextStep}
+              </p>
+              <button
+                onClick={() =>
+                  onPlace(learned.entityId!, learned.entityName ?? "it")
+                }
+                disabled={placing}
+                className="border-border bg-background hover:bg-muted mt-2 inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors disabled:opacity-50"
+              >
+                {placing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                Place it in {regionName}
+              </button>
+            </>
+          )}
+          {learned.entityId && (
+            <Link
+              href={`/admin/entities/${learned.entityId}`}
+              className="text-muted-foreground hover:text-foreground mt-2 block text-[12px] underline underline-offset-2"
+            >
+              Open {learned.entityName}
+            </Link>
+          )}
+        </div>
+      )}
+
+      {!created && learned.nextStep && (
+        <p className="mt-2 text-[12px] leading-relaxed">{learned.nextStep}</p>
+      )}
+    </div>
+  );
+}
+
+interface LearnResult {
+  outcome:
+    | "learned"
+    | "already-known"
+    | "possible-duplicate"
+    | "subject-changed"
+    | "no-identity"
+    | "not-read"
+    | "extraction-failed";
+  entityId?: string;
+  entityName?: string;
+  placeType?: string;
+  matchedEntityId?: string;
+  matchedEntityName?: string;
+  written: string[];
+  summary: string;
+  nextStep?: string;
+}
+
 interface ReadState {
   id: string;
   busy?: boolean;
   result?: ReadResult;
+  learning?: boolean;
+  learned?: LearnResult;
+  placing?: boolean;
+  placed?: boolean;
 }
 
 /**
@@ -678,14 +931,43 @@ interface ReadState {
  */
 function ReadPanel({
   state,
+  regionName,
   candidateSourceId,
   onRead,
+  onLearn,
+  onPlace,
 }: {
   state?: ReadState;
+  regionName: string;
   candidateSourceId?: string;
   onRead: (id: string) => void;
+  onLearn: (
+    id: string,
+    confirmedName: string,
+    acknowledgeDuplicate?: boolean,
+  ) => void;
+  onPlace: (entityId: string, entityName: string) => void;
 }) {
   const result = state?.result;
+
+  // Once Atlas has learned it, the read result is history — the panel shows
+  // what exists now and what is still undone.
+  if (state?.learned) {
+    return (
+      <LearnedPanel
+        learned={state.learned}
+        regionName={regionName}
+        placing={state.placing}
+        placed={state.placed}
+        onPlace={onPlace}
+        onRetryAsDistinct={
+          state.learned.outcome === "possible-duplicate" && candidateSourceId
+            ? () => onLearn(candidateSourceId, result?.claim?.name ?? "", true)
+            : undefined
+        }
+      />
+    );
+  }
 
   if (result) {
     const good = result.outcome === "identified";
@@ -727,6 +1009,41 @@ function ReadPanel({
               {result.assessment.reason}
             </p>
           </details>
+        )}
+
+        {/* The decision. Atlas has said what it believes and stopped —
+            this is the first click in the whole journey that writes. */}
+        {good && result.claim?.name && candidateSourceId && (
+          <div className="border-border mt-3 border-t pt-3">
+            <p className="text-[13px] font-medium">
+              Atlas has not learned this yet
+            </p>
+            <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+              It read the page and can tell which place it describes. Nothing
+              exists in Atlas until you say so — and creating it says only that
+              it exists, not that it belongs to {regionName}.
+            </p>
+            <button
+              onClick={() => onLearn(candidateSourceId, result.claim!.name)}
+              disabled={state?.learning}
+              className="bg-foreground text-background mt-2.5 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {state?.learning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+              {state?.learning
+                ? "Reading it properly…"
+                : `Create ${result.claim.name}`}
+            </button>
+            {state?.learning && (
+              <p className="text-muted-foreground/80 mt-1.5 text-[12px] leading-relaxed">
+                Re-reading the stored page in full — the identity check was
+                deliberately shallow, and this is the read worth paying for.
+              </p>
+            )}
+          </div>
         )}
       </div>
     );
