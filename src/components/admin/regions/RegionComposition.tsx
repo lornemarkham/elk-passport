@@ -1,11 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Database, Loader2, MapPin, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Circle,
+  Database,
+  Loader2,
+  Lock,
+  MapPin,
+  TriangleAlert,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RegionDrawer } from "./RegionDrawer";
+import {
+  BAND_META,
+  type Band,
+  type Signal,
+} from "@/lib/knowledge/membershipBands";
 
 /**
  * **Region composition — why this region looks small.**
@@ -40,9 +54,15 @@ export interface UnassignedEntity {
   kind: string;
   subtype?: string;
   sourceCount: number;
-  /** What Atlas already knows that bears on membership. Never a score. */
-  tier: "shared-source" | "proximity" | "none";
-  because: string;
+  /** Which evidence band Atlas sorted this into. */
+  band: Band;
+  /** Count of evidence present, out of `max`. **Not** a probability. */
+  score: number;
+  max: number;
+  /** The strongest true sentence Atlas can say about this entity. */
+  headline: string;
+  /** The full checklist — present and missing — so the score is checkable. */
+  signals: readonly Signal[];
 }
 
 export interface CompositionCounts {
@@ -140,6 +160,57 @@ export function RegionComposition({
   );
 }
 
+/**
+ * **A number that counts to its new value when knowledge changes.**
+ *
+ * The one animation on this page that carries information rather than
+ * decoration. Placing six entities moves "In Okanagan" from 7 to 13 and
+ * "In no region" from 157 to 151; if both numbers simply *are* different
+ * after a refresh, the curator has to remember the old ones to notice that
+ * anything happened. Counting makes the change the thing you see.
+ *
+ * Deliberately does **not** animate on first render — a page that counts
+ * every figure up from zero on load teaches nothing, because nothing
+ * changed. It animates only on a *transition*, which is exactly when
+ * something did.
+ *
+ * Respects `prefers-reduced-motion` by snapping to the value.
+ */
+function AnimatedNumber({ value }: { value: number }) {
+  const [shown, setShown] = useState(value);
+  const previous = useRef(value);
+  const frame = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const from = previous.current;
+    previous.current = value;
+    if (from === value) return;
+
+    // Reduced motion snaps rather than counts — but still goes through the
+    // frame callback. Setting state synchronously in an effect body
+    // cascades renders, and the lint gate is right to refuse it.
+    const reduced = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    )?.matches;
+
+    const start = performance.now();
+    const duration = reduced ? 0 : 550;
+    const step = (now: number) => {
+      const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
+      // Ease-out: fast enough to feel responsive, settled enough to read.
+      const eased = 1 - Math.pow(1 - t, 3);
+      setShown(Math.round(from + (value - from) * eased));
+      if (t < 1) frame.current = requestAnimationFrame(step);
+    };
+    frame.current = requestAnimationFrame(step);
+    return () => {
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+    };
+  }, [value]);
+
+  return <>{shown}</>;
+}
+
 function Figure({
   icon,
   label,
@@ -166,12 +237,51 @@ function Figure({
           attention ? "text-amber-700 dark:text-amber-500" : ""
         }`}
       >
-        {value}
+        <AnimatedNumber value={value} />
       </p>
       <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
         {note}
       </p>
     </div>
+  );
+}
+
+/**
+ * The evidence checklist for one entity — present *and* missing.
+ *
+ * The missing half is the point. "98% confident" tells a curator nothing
+ * they can act on; **"official domain ✓, second source ✗"** tells them
+ * precisely what would change the answer, and lets them disagree with the
+ * reasoning rather than with a number they cannot inspect.
+ */
+function EvidenceChecklist({ signals }: { signals: readonly Signal[] }) {
+  const CLASS_NOTE: Record<Signal["cls"], string> = {
+    documentary: "a page said so",
+    corroborating: "about the record, not the region",
+    geometric: "from coordinates — never counts",
+  };
+  return (
+    <ul className="mt-2 space-y-1.5">
+      {signals.map((s) => (
+        <li key={s.id} className="flex gap-2 text-[12px] leading-relaxed">
+          {s.present ? (
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-500" />
+          ) : (
+            <Circle className="text-muted-foreground/40 mt-0.5 h-3.5 w-3.5 shrink-0" />
+          )}
+          <span className={s.present ? "" : "text-muted-foreground/70"}>
+            <span className="font-medium">{s.label}</span>
+            <span className="text-muted-foreground/60">
+              {" "}
+              · {s.weight > 0 ? `+${s.weight}` : "0"} · {CLASS_NOTE[s.cls]}
+            </span>
+            <span className="text-muted-foreground mt-0.5 block">
+              {s.detail}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -181,37 +291,8 @@ function Figure({
 
 const KINDS = ["All", "Place", "Organization", "Activity", "Event"] as const;
 
-/**
- * The evidence groups, in the order a curator should work them.
- *
- * `shared-source` first because it is the only tier backed by something a
- * page actually published. `proximity` is coordinate-derived and is
- * deliberately **not** offered for bulk selection — see
- * `membershipEvidence.ts`.
- */
-const TIERS = [
-  {
-    key: "shared-source" as const,
-    label: "A source describes both",
-    blurb:
-      "A page Atlas has already read describes this entity and something already in the region. This is documentary evidence — it exists because a real source said so.",
-    bulk: true,
-  },
-  {
-    key: "proximity" as const,
-    label: "Near something in the region",
-    blurb:
-      'Atlas computed a "near" link from stored coordinates. Nothing published said these belong together, so this is a hint about where to look — not a reason to place. No bulk selection here, deliberately.',
-    bulk: false,
-  },
-  {
-    key: "none" as const,
-    label: "Atlas has no evidence either way",
-    blurb:
-      "Nothing Atlas holds connects these to this region. That is not a judgement that they do not belong — only that Atlas cannot help you decide.",
-    bulk: false,
-  },
-];
+/** Strongest evidence first — the order a curator should work the queue. */
+const BANDS: readonly Band[] = ["strong", "moderate", "weak", "none"];
 
 function AssignDrawer({
   regionId,
@@ -226,10 +307,18 @@ function AssignDrawer({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<(typeof KINDS)[number]>("All");
-  // Opens on the strongest evidence — Atlas has done the sorting, so the
-  // curator starts where the reasoning is best rather than at "A".
-  const [tier, setTier] =
-    useState<(typeof TIERS)[number]["key"]>("shared-source");
+  // Opens on the strongest band that actually has entities in it.
+  //
+  // Opening on `strong` unconditionally looked right and was wrong: the
+  // Okanagan currently has **zero** strong candidates, so the drawer
+  // greeted the curator with "nothing matches these filters" over a queue
+  // of 157. **A default that is correct in principle and empty in practice
+  // is a broken default.**
+  const [band, setBand] = useState<Band>(() => {
+    const present = new Set(unassigned.map((e) => e.band));
+    return BANDS.find((b) => present.has(b)) ?? "none";
+  });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -237,28 +326,32 @@ function AssignDrawer({
     alreadyMember: { id: string; name: string }[];
   } | null>(null);
 
-  const tierCounts = useMemo(() => {
-    const counts = new Map<string, number>();
+  const bandCounts = useMemo(() => {
+    const counts = new Map<Band, number>();
     for (const e of unassigned)
-      counts.set(e.tier, (counts.get(e.tier) ?? 0) + 1);
+      counts.set(e.band, (counts.get(e.band) ?? 0) + 1);
     return counts;
   }, [unassigned]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return unassigned
-      .filter((e) => e.tier === tier)
-      .filter((e) => kind === "All" || e.kind === kind)
-      .filter(
-        (e) =>
-          !q ||
-          e.name.toLowerCase().includes(q) ||
-          (e.subtype ?? "").toLowerCase().includes(q),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [unassigned, query, kind, tier]);
+    return (
+      unassigned
+        .filter((e) => e.band === band)
+        .filter((e) => kind === "All" || e.kind === kind)
+        .filter(
+          (e) =>
+            !q ||
+            e.name.toLowerCase().includes(q) ||
+            (e.subtype ?? "").toLowerCase().includes(q),
+        )
+        // Strongest evidence first inside the band, then alphabetical —
+        // so the best-reasoned rows are the ones read first.
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    );
+  }, [unassigned, query, kind, band]);
 
-  const activeTier = TIERS.find((t) => t.key === tier)!;
+  const activeBand = BAND_META[band];
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -339,24 +432,41 @@ function AssignDrawer({
         </div>
       )}
 
-      {/* Atlas has grouped the work by the evidence it actually holds. */}
+      {/* What Atlas would do without asking — and why it will not. */}
+      <div className="border-border bg-muted/40 mb-4 flex gap-2.5 rounded-lg border px-4 py-3">
+        <Lock className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-muted-foreground text-[13px] leading-relaxed">
+          <span className="text-foreground font-medium">
+            Atlas placed 0 of these on its own.
+          </span>{" "}
+          It automates work when the evidence is deterministic, and none of this
+          evidence is. A page that describes a resort also describes its road
+          contractor and the airport two valleys over — so a shared source is
+          strong enough to <em>rank</em> this queue and far too weak to{" "}
+          <em>assert</em> membership. Atlas will place entities without asking
+          once a source states which region something is in; nothing it holds
+          does that yet.
+        </p>
+      </div>
+
+      {/* Atlas has graded the work by how much evidence it actually holds. */}
       <div className="mb-3 flex flex-wrap gap-1.5">
-        {TIERS.map((t) => {
-          const n = tierCounts.get(t.key) ?? 0;
+        {BANDS.map((b) => {
+          const n = bandCounts.get(b) ?? 0;
           return (
             <button
-              key={t.key}
-              onClick={() => setTier(t.key)}
+              key={b}
+              onClick={() => setBand(b)}
               disabled={n === 0}
               className={`rounded-md px-3 py-1.5 text-[13px] transition-colors ${
-                tier === t.key
+                band === b
                   ? "bg-foreground text-background font-medium"
                   : n === 0
                     ? "text-muted-foreground/40 cursor-not-allowed"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              {t.label}
+              {BAND_META[b].label}
               <span className="ml-1.5 tabular-nums opacity-70">{n}</span>
             </button>
           );
@@ -364,7 +474,7 @@ function AssignDrawer({
       </div>
 
       <p className="text-muted-foreground border-border mb-4 rounded-lg border border-dashed px-4 py-3 text-[13px] leading-relaxed">
-        {activeTier.blurb}
+        {activeBand.blurb}
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -395,7 +505,7 @@ function AssignDrawer({
         <p className="text-muted-foreground text-[13px]">
           {visible.length} shown · {selected.size} selected
         </p>
-        {activeTier.bulk && visible.length > 0 && (
+        {activeBand.bulk && visible.length > 0 && (
           <button
             onClick={() =>
               setSelected((s) => {
@@ -418,43 +528,83 @@ function AssignDrawer({
         </p>
       ) : (
         <div className="border-border divide-border divide-y overflow-hidden rounded-lg border">
-          {visible.map((e) => (
-            <label
-              key={e.id}
-              className="hover:bg-muted/40 flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(e.id)}
-                onChange={() => toggle(e.id)}
-                className="h-4 w-4 shrink-0"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
-                  {e.name}
-                </span>
-                <span className="text-muted-foreground block text-[13px]">
-                  {e.subtype ? `${e.subtype} · ` : ""}
-                  {e.kind} · {e.sourceCount}{" "}
-                  {e.sourceCount === 1 ? "source" : "sources"}
-                </span>
-                {/* The evidence itself, not a score — so a curator can
-                    disagree with the grouping rather than with a number. */}
-                {e.because && (
-                  <span className="text-muted-foreground/80 mt-0.5 block text-[12px] leading-relaxed">
-                    {e.because}
+          {visible.map((e) => {
+            const open = expanded.has(e.id);
+            return (
+              <div key={e.id} className="hover:bg-muted/40 transition-colors">
+                <label className="flex cursor-pointer items-start gap-3 px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(e.id)}
+                    onChange={() => toggle(e.id)}
+                    className="mt-1 h-4 w-4 shrink-0"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="truncate text-sm font-medium">
+                        {e.name}
+                      </span>
+                      {/* Evidence count, labelled so it can never read as a
+                          probability. The bar is the same number, seen. */}
+                      <span className="text-muted-foreground flex items-center gap-1.5 text-[12px] tabular-nums">
+                        <span className="bg-muted h-1.5 w-10 overflow-hidden rounded-full">
+                          <span
+                            className="bg-foreground/70 block h-full rounded-full"
+                            style={{ width: `${(e.score / e.max) * 100}%` }}
+                          />
+                        </span>
+                        {e.score}/{e.max} evidence
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground block text-[13px]">
+                      {e.subtype ? `${e.subtype} · ` : ""}
+                      {e.kind} · {e.sourceCount}{" "}
+                      {e.sourceCount === 1 ? "source" : "sources"}
+                    </span>
+                    {/* The strongest true sentence, always visible — never
+                        hidden behind the disclosure. */}
+                    <span className="text-muted-foreground/80 mt-0.5 block text-[12px] leading-relaxed">
+                      {e.headline}
+                    </span>
                   </span>
+                  <span className="flex shrink-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        setExpanded((s) => {
+                          const next = new Set(s);
+                          if (next.has(e.id)) next.delete(e.id);
+                          else next.add(e.id);
+                          return next;
+                        });
+                      }}
+                      aria-expanded={open}
+                      className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-[13px]"
+                    >
+                      Why
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    <Link
+                      href={`/admin/entities/${e.id}`}
+                      onClick={(ev) => ev.stopPropagation()}
+                      className="text-muted-foreground hover:text-foreground text-[13px] underline-offset-4 hover:underline"
+                    >
+                      Open
+                    </Link>
+                  </span>
+                </label>
+                {open && (
+                  <div className="border-border bg-muted/30 border-t px-4 py-3 pl-11">
+                    <EvidenceChecklist signals={e.signals} />
+                  </div>
                 )}
-              </span>
-              <Link
-                href={`/admin/entities/${e.id}`}
-                onClick={(ev) => ev.stopPropagation()}
-                className="text-muted-foreground hover:text-foreground shrink-0 text-[13px] underline-offset-4 hover:underline"
-              >
-                Open
-              </Link>
-            </label>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
 

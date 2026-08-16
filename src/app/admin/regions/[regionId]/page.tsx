@@ -25,7 +25,10 @@ import { hasRealType } from "@/components/admin/entities/entityGaps";
 import { loadRegions, findRegion } from "@/lib/knowledge/regions";
 import { regionScope } from "@/lib/knowledge/regionScope";
 import { regionComposition } from "@/lib/knowledge/regionComposition";
-import { membershipEvidence } from "@/lib/knowledge/membershipEvidence";
+import {
+  assessMembership,
+  MAX_SCORE,
+} from "@/lib/knowledge/membershipConfidence";
 import { buildEntityRows } from "@/lib/knowledge/entityRows";
 import { loadRuns } from "@/lib/knowledge/runData";
 import { loadRecentChanges } from "@/lib/knowledge/recentChanges";
@@ -240,9 +243,9 @@ export default async function RegionPage({ params }: Props) {
   // The unassigned entities, built through the same row builder the
   // inventory uses so the drawer and the list cannot describe an entity
   // two different ways.
-  // What Atlas already knows that bears on membership, grouped by the kind
-  // of evidence. Atlas does the analysis; the curator makes the assertion.
-  const evidence = membershipEvidence(
+  // How much evidence Atlas holds for each unplaced entity, and exactly
+  // which evidence. Atlas grades and explains; the curator still asserts.
+  const evidence = assessMembership(
     scope.ids,
     composition.unassignedIds,
     bundle,
@@ -256,8 +259,13 @@ export default async function RegionPage({ params }: Props) {
           kind: r.kind,
           subtype: r.subtype,
           sourceCount: r.sourceCount,
-          tier: evidence.get(r.id)?.tier ?? ("none" as const),
-          because: evidence.get(r.id)?.because ?? "",
+          band: evidence.get(r.id)?.band ?? ("none" as const),
+          score: evidence.get(r.id)?.score ?? 0,
+          max: evidence.get(r.id)?.max ?? MAX_SCORE,
+          headline:
+            evidence.get(r.id)?.headline ??
+            "Nothing Atlas holds connects this entity to the region.",
+          signals: evidence.get(r.id)?.signals ?? [],
         }),
       )
     : [];
