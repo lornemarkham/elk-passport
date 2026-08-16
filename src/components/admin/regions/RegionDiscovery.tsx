@@ -61,6 +61,11 @@ interface Lead {
   state: "new" | "queued" | "read";
   /** Present once queued — needed to read it. */
   candidateSourceId?: string;
+  /**
+   * The entity this source taught Atlas. **Absent means read but not
+   * learned** — a decision that is still waiting, not one that was made.
+   */
+  learnedEntityId?: string;
 }
 
 interface Consulted {
@@ -458,8 +463,17 @@ export function RegionDiscovery({
             <div className="divide-border divide-y">
               {report.leads.map((lead) => {
                 const local = queued[lead.url];
-                const isQueued = local === "done" || lead.state === "queued";
-                const isRead = lead.state === "read";
+                // **Read is not learned.** Evidence is stored before the
+                // curator decides, so a page read in a previous session and
+                // never acted on used to render as finished work with
+                // nothing to click — a decision nobody made, shown as one
+                // that was. Only the `describes` edge means learned.
+                const isLearned = Boolean(lead.learnedEntityId);
+                const isQueued =
+                  local === "done" ||
+                  lead.state === "queued" ||
+                  (lead.state === "read" && !isLearned);
+                const readNotLearned = lead.state === "read" && !isLearned;
                 return (
                   <div key={lead.url} className="px-5 py-4">
                     <p className="flex flex-wrap items-baseline gap-x-2">
@@ -495,14 +509,23 @@ export function RegionDiscovery({
                       ))}
                     </ul>
                     <div className="mt-3">
-                      {isRead ? (
-                        <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-emerald-700 dark:text-emerald-500">
-                          <Check className="h-3.5 w-3.5" />
-                          Atlas has read this
-                        </p>
+                      {isLearned ? (
+                        <div>
+                          <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-emerald-700 dark:text-emerald-500">
+                            <Check className="h-3.5 w-3.5" />
+                            Atlas has read this and learned from it
+                          </p>
+                          <Link
+                            href={`/admin/entities/${lead.learnedEntityId}`}
+                            className="text-muted-foreground hover:text-foreground mt-1 block text-[12px] underline underline-offset-2"
+                          >
+                            Open what it created
+                          </Link>
+                        </div>
                       ) : isQueued ? (
                         <ReadPanel
                           state={reads[lead.url]}
+                          alreadyRead={readNotLearned}
                           regionName={regionName}
                           candidateSourceId={
                             reads[lead.url]?.id ?? lead.candidateSourceId
@@ -931,6 +954,7 @@ interface ReadState {
  */
 function ReadPanel({
   state,
+  alreadyRead,
   regionName,
   candidateSourceId,
   onRead,
@@ -938,6 +962,8 @@ function ReadPanel({
   onPlace,
 }: {
   state?: ReadState;
+  /** Atlas already stored evidence for this page and created nothing from it. */
+  alreadyRead?: boolean;
   regionName: string;
   candidateSourceId?: string;
   onRead: (id: string) => void;
@@ -1051,10 +1077,15 @@ function ReadPanel({
 
   return (
     <div className="rounded-lg border border-amber-600/40 bg-amber-500/[0.05] px-3.5 py-2.5">
-      <p className="text-[13px] font-medium">Queued — nothing has read it</p>
+      <p className="text-[13px] font-medium">
+        {alreadyRead
+          ? "Read, but nothing was created"
+          : "Queued — nothing has read it"}
+      </p>
       <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
-        Atlas will not pick this up on its own: the queue runner only reads
-        pages whose subject it already holds.
+        {alreadyRead
+          ? "Atlas fetched this page and stored the evidence, and no entity came of it — the decision is still yours. Reading it again brings back what it found."
+          : "Atlas will not pick this up on its own: the queue runner only reads pages whose subject it already holds."}
       </p>
       {candidateSourceId ? (
         <button
@@ -1065,7 +1096,11 @@ function ReadPanel({
           {state?.busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : null}
-          {state?.busy ? "Reading…" : "Read now"}
+          {state?.busy
+            ? "Reading…"
+            : alreadyRead
+              ? "Review it again"
+              : "Read now"}
         </button>
       ) : (
         <p className="text-muted-foreground/70 mt-2 text-[12px]">
