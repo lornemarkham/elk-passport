@@ -12,6 +12,31 @@ import { NextResponse } from "next/server";
  */
 const ATLAS_BASE_URL = "http://localhost:3000";
 
+/** Read the queue. Needed to tell "queued, unread" from "read and rejected". */
+export async function GET() {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) {
+    return NextResponse.json(
+      { error: "ADMIN_TOKEN is not configured for this app." },
+      { status: 503 },
+    );
+  }
+  try {
+    const response = await fetch(`${ATLAS_BASE_URL}/admin/candidate-sources`, {
+      headers: { "x-admin-token": token },
+      cache: "no-store",
+    });
+    return NextResponse.json(await response.json(), {
+      status: response.status,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: `Atlas is unreachable: ${(error as Error).message}` },
+      { status: 503 },
+    );
+  }
+}
+
 export async function POST(request: Request) {
   const token = process.env.ADMIN_TOKEN;
   if (!token) {

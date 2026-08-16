@@ -41,7 +41,7 @@ interface Lead {
   basis: string;
   reason: string;
   couldEstablish: string[];
-  alreadyKnown: boolean;
+  state: "new" | "queued" | "read";
 }
 
 interface Consulted {
@@ -52,7 +52,7 @@ interface Consulted {
 
 interface Report {
   name: string;
-  outcome: "already-known" | "leads-found" | "no-sources";
+  outcome: "already-known" | "leads-found" | "queued-unread" | "no-sources";
   possibleMatches: { id: string; name: string; kind: string }[];
   leads: Lead[];
   consulted: Consulted[];
@@ -234,8 +234,9 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
           {report.leads.length > 0 ? (
             <div className="divide-border divide-y">
               {report.leads.map((lead) => {
-                const state = queued[lead.url];
-                const done = state === "done" || lead.alreadyKnown;
+                const local = queued[lead.url];
+                const isQueued = local === "done" || lead.state === "queued";
+                const isRead = lead.state === "read";
                 return (
                   <div key={lead.url} className="px-5 py-4">
                     <p className="flex flex-wrap items-baseline gap-x-2">
@@ -271,20 +272,33 @@ export function RegionDiscovery({ regionName }: { regionName: string }) {
                       ))}
                     </ul>
                     <div className="mt-3">
-                      {done ? (
+                      {isRead ? (
                         <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-emerald-700 dark:text-emerald-500">
                           <Check className="h-3.5 w-3.5" />
-                          {lead.alreadyKnown && state !== "done"
-                            ? "Atlas already has this queued"
-                            : "Queued — Atlas will read it on the next run"}
+                          Atlas has read this
                         </p>
+                      ) : isQueued ? (
+                        /* Queued and unread is a *waiting* state, not a
+                           finished one. Saying "queued ✓" implied the work
+                           was done; nothing reads this queue on its own. */
+                        <div className="rounded-lg border border-amber-600/40 bg-amber-500/[0.05] px-3.5 py-2.5">
+                          <p className="text-[13px] font-medium">
+                            Queued — and nothing has read it
+                          </p>
+                          <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+                            Atlas holds this source and cannot process it
+                            automatically: the queue runner only reads pages
+                            whose target entity is already known, and this one
+                            is about something Atlas does not hold yet.
+                          </p>
+                        </div>
                       ) : (
                         <button
                           onClick={() => void queue(lead)}
-                          disabled={state === "queuing"}
+                          disabled={local === "queuing"}
                           className="border-border hover:bg-muted inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors disabled:opacity-50"
                         >
-                          {state === "queuing" ? (
+                          {local === "queuing" ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : null}
                           Queue this source for reading
