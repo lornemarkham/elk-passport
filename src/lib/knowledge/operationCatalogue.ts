@@ -118,8 +118,8 @@ export function buildOperationCatalogue(
       does: "Review what Atlas knows about each unplaced entity, and assert the ones that belong.",
       why:
         actionableUnassigned > 0
-          ? `${actionableUnassigned} of ${unassignedCount} unplaced entities have documentary evidence tying them to this region — a real page describes them alongside something already here.`
-          : `${unassignedCount} entities are in no region, and Atlas holds no documentary evidence for any of them. Placing them is entirely your judgement until ingestion gives Atlas something to read.`,
+          ? `Atlas holds documentary evidence for ${actionableUnassigned} of them — a real page describes those alongside something already in the region. The rest are your judgement.`
+          : `Atlas holds no documentary evidence for any of them, so every one is your judgement until ingestion gives it something to read. That does not make the work smaller.`,
       mutates: true,
       outcome: [
         "Writes one `contains` relationship per entity — the whole assertion",
@@ -128,9 +128,21 @@ export function buildOperationCatalogue(
         "Brings each placed entity into range of region-scoped growth",
       ],
       durationSeconds: null,
-      // Reach is the *actionable* count, not the raw one. Ranking on 157
-      // when 32 are tractable overstates the available work fivefold.
-      affected: actionableUnassigned,
+      // **Reach is the whole workload, not the tractable subset.**
+      //
+      // This was `actionableUnassigned` — an attempt to stop overstating
+      // the work when only 32 of 157 had documentary evidence. It
+      // overcorrected badly: curator work drained the evidenced
+      // candidates, the count reached zero, `prioritiseOperations`
+      // filtered on `affected > 0`, and **the largest job on the page
+      // vanished from the ranking entirely.** Live, the workspace
+      // recommended fixing 2 missing types while 125 candidates waited.
+      //
+      // Reach answers "how much work is there". How tractable that work
+      // is, is a different claim and belongs in `why` — which is where it
+      // now lives. Collapsing the two let a quality signal silently
+      // delete a quantity.
+      affected: unassignedCount,
       availability:
         unassignedCount > 0
           ? { available: true }

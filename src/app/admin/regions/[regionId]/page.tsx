@@ -380,12 +380,6 @@ export default async function RegionPage({ params }: Props) {
         unassigned={unassignedRows}
       />
 
-      <RegionKnowledgeCoverage
-        regionName={region.name}
-        coverage={coverage}
-        opportunities={opportunities}
-      />
-
       {/* ==== 1. NEXT BEST ACTION + every workflow, one client shell ==== */}
       <RegionWorkspaceShell
         regionName={region.name}
@@ -400,6 +394,12 @@ export default async function RegionPage({ params }: Props) {
         lastRunLabel={lastRun?.label ?? "Atlas"}
         runIsLive={Boolean(activeRun)}
         growAnchorId="atlas-can-do"
+      />
+
+      <RegionKnowledgeCoverage
+        regionName={region.name}
+        coverage={coverage}
+        opportunities={opportunities}
       />
 
       {/* ==== 2. WHAT CAN ATLAS DO FOR ME ============================== */}
