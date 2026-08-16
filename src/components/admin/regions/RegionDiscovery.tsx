@@ -526,7 +526,28 @@ export function RegionDiscovery({
                         <ReadPanel
                           state={reads[lead.url]}
                           alreadyRead={readNotLearned}
+                          subject={report.name}
                           regionName={regionName}
+                          // What else Atlas could still try for *this*
+                          // subject. A refusal that names the alternative
+                          // keeps the curator on Oyama Lake instead of
+                          // sending them to the region's generic backlog.
+                          otherLeadsToTry={
+                            report.leads.filter(
+                              (l) =>
+                                l.url !== lead.url &&
+                                !l.learnedEntityId &&
+                                l.state !== "read" &&
+                                // Not one the curator already tried in this
+                                // session. The report was fetched before
+                                // these reads happened, and a failed fetch
+                                // writes nothing, so the server-side state
+                                // cannot know — pointing at a source that
+                                // just failed in front of them is worse
+                                // than saying there is nothing left.
+                                !reads[l.url]?.result,
+                            ).length
+                          }
                           candidateSourceId={
                             reads[lead.url]?.id ?? lead.candidateSourceId
                           }
@@ -796,6 +817,7 @@ interface ReadResult {
  */
 function LearnedPanel({
   learned,
+  subject,
   regionName,
   placing,
   placed,
@@ -803,6 +825,8 @@ function LearnedPanel({
   onRetryAsDistinct,
 }: {
   learned: LearnResult;
+  /** The name the curator typed, used when nothing was created and there is no entity to name. */
+  subject: string;
   regionName: string;
   placing?: boolean;
   placed?: boolean;
@@ -825,7 +849,9 @@ function LearnedPanel({
         ) : (
           <CircleSlash className="text-muted-foreground h-3.5 w-3.5" />
         )}
-        {created ? "Atlas has learned it" : "Not created"}
+        {created
+          ? `Atlas has learned ${learned.entityName ?? "it"}`
+          : `${learned.entityName ?? subject} was not created`}
       </p>
       <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
         {learned.summary}
@@ -952,9 +978,57 @@ interface ReadState {
  * means Atlas can tell which thing this is and **still created nothing**;
  * *unresolved* means it read the page and the page was not enough.
  */
+/**
+ * **What each read outcome means, and what to do about it — for this subject.**
+ *
+ * Every entry keeps the curator on the name they typed. A refusal with no
+ * next step is where an investigation dies quietly, leaving the region's
+ * generic backlog as the only thing left to click — 126 other entities,
+ * none of them the one they came for.
+ *
+ * The titles matter as much as the actions. *"Source read · unresolved"*
+ * over a fetch that never completed is a claim about the reading made out
+ * of a failure to read, and it tells a curator to doubt the page when they
+ * should doubt the URL.
+ */
+const READ_OUTCOME: Record<
+  ReadResult["outcome"],
+  { title: string; nextStep: (subject: string, others: number) => string }
+> = {
+  identified: { title: "Source read · identity found", nextStep: () => "" },
+  unresolved: {
+    title: "Source read · not enough to identify it",
+    nextStep: (subject, others) =>
+      `Atlas read the page and it did not establish which ${subject} this is. ` +
+      (others > 0
+        ? `There ${others === 1 ? "is 1 other source" : `are ${others} other sources`} for it below — try one of those.`
+        : "It needs a source that publishes coordinates, an identifier or an address."),
+  },
+  "fetch-failed": {
+    title: "The page could not be fetched",
+    nextStep: (subject, others) =>
+      `Atlas built this URL from the name and it does not resolve. That is a fact about the guess, not about ${subject}. ` +
+      (others > 0
+        ? `There ${others === 1 ? "is 1 other source" : `are ${others} other sources`} for it below — try one of those.`
+        : "It needs a real source rather than another constructed one."),
+  },
+  "extraction-failed": {
+    title: "Read, but could not be interpreted",
+    nextStep: (subject) =>
+      `Atlas fetched and stored the page for ${subject} but could not read meaning from it. The evidence is held, so trying again costs no fetch.`,
+  },
+  "not-targetless": {
+    title: "Already has a known subject",
+    nextStep: () =>
+      "This source belongs to an entity Atlas already holds, so the normal processing path handles it.",
+  },
+};
+
 function ReadPanel({
   state,
   alreadyRead,
+  subject,
+  otherLeadsToTry,
   regionName,
   candidateSourceId,
   onRead,
@@ -964,6 +1038,10 @@ function ReadPanel({
   state?: ReadState;
   /** Atlas already stored evidence for this page and created nothing from it. */
   alreadyRead?: boolean;
+  /** The name the curator typed. Every message here stays about this. */
+  subject: string;
+  /** How many other sources for this same subject remain untried. */
+  otherLeadsToTry: number;
   regionName: string;
   candidateSourceId?: string;
   onRead: (id: string) => void;
@@ -982,6 +1060,7 @@ function ReadPanel({
     return (
       <LearnedPanel
         learned={state.learned}
+        subject={subject}
         regionName={regionName}
         placing={state.placing}
         placed={state.placed}
@@ -1011,7 +1090,7 @@ function ReadPanel({
           ) : (
             <CircleSlash className="text-muted-foreground h-3.5 w-3.5" />
           )}
-          {good ? "Source read · identity found" : "Source read · unresolved"}
+          {READ_OUTCOME[result.outcome]?.title ?? "Source read"}
         </p>
         {result.assessment && result.assessment.signals.length > 0 && (
           <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
@@ -1035,6 +1114,16 @@ function ReadPanel({
               {result.assessment.reason}
             </p>
           </details>
+        )}
+
+        {/* **No entity was created, so say why and what to do next.** The
+            investigation is still about this subject; an unexplained
+            refusal is what leaves the region's generic backlog as the only
+            remaining thing to click. */}
+        {!good && (
+          <p className="border-border/60 mt-2.5 border-t pt-2.5 text-[12px] leading-relaxed">
+            {READ_OUTCOME[result.outcome]?.nextStep(subject, otherLeadsToTry)}
+          </p>
         )}
 
         {/* The decision. Atlas has said what it believes and stopped —
