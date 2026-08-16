@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, CircleSlash, Loader2, Search, Sparkles, X } from "lucide-react";
+import {
+  Check,
+  CircleSlash,
+  HelpCircle,
+  Loader2,
+  MapPin,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 /**
@@ -21,11 +30,18 @@ import { Input } from "@/components/ui/input";
  *
  * ## The refusals are the honest part
  *
- * Atlas can construct a Wikipedia hypothesis from a name. It cannot guess
- * an operator's domain, and it cannot query OpenStreetMap without
- * coordinates. **Both refusals are shown with their reason** rather than
- * quietly omitted — a list of one participating publisher looks broken
- * until you can see the other three were considered and declined.
+ * Atlas can construct a Wikipedia hypothesis from a name, and it can search
+ * OpenStreetMap inside a Discovery Scope. It still cannot guess an
+ * operator's domain. **Every refusal is shown with its reason** rather than
+ * quietly omitted — a short list of participating publishers looks broken
+ * until you can see the others were considered and declined.
+ *
+ * ## Where Atlas looked comes before what Atlas found
+ *
+ * Strategy #4 (ADR 032) searches a bounded area, so the scope is rendered
+ * *above* the results. A result read without its scope is unreadable: "no
+ * lakes found" is a fact about a rectangle, and only the rectangle can say
+ * how much that is worth.
  *
  * ## Progress is real, not theatre
  *
@@ -52,12 +68,46 @@ interface Consulted {
   note: string;
 }
 
+type StrategyStatus =
+  "succeeded" | "multiple-candidates" | "failed" | "not-applicable" | "skipped";
+
+interface Strategy {
+  number: number;
+  name: string;
+  status: StrategyStatus;
+  detail: string;
+}
+
+interface DiscoveryScope {
+  bbox: { south: number; west: number; north: number; east: number };
+  source: "curator-asserted" | "member-derived";
+  label: string;
+  derivedFrom?: { id: string; name: string }[];
+}
+
+interface OSMCandidate {
+  osmType: string;
+  osmId: number;
+  externalId: string;
+  name: string;
+  coordinates?: [number, number];
+  tags: Record<string, string>;
+  url: string;
+  whyConsidered: string;
+  identity: { hasIdentity: boolean; signals: string[]; reason?: string };
+}
+
 interface Report {
   name: string;
   outcome: "already-known" | "leads-found" | "queued-unread" | "no-sources";
   possibleMatches: { id: string; name: string; kind: string }[];
   leads: Lead[];
   consulted: Consulted[];
+  strategies: Strategy[];
+  scope?: DiscoveryScope;
+  scopeRefusal?: { reason: string; remedy: string };
+  osmCandidates: OSMCandidate[];
+  osmQuery?: string;
   summary: string;
 }
 
@@ -245,6 +295,45 @@ export function RegionDiscovery({
             </div>
           )}
 
+          {/* WHERE ATLAS LOOKED — the scope, before anything it found.
+              Reading a result without knowing the area it came from is how a
+              bounded zero gets mistaken for a fact about the world. */}
+          <ScopePanel
+            scope={report.scope}
+            refusal={report.scopeRefusal}
+            regionName={regionName}
+          />
+
+          {/* WHAT ATLAS TRIED — the ladder, in order, with real outcomes. */}
+          <div className="border-border border-b px-5 py-4">
+            <p className="text-[13px] font-medium">What Atlas tried</p>
+            <ol className="mt-2 space-y-2">
+              {report.strategies.map((s) => (
+                <li key={s.number} className="flex gap-2.5">
+                  <StrategyIcon status={s.status} />
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-[13px] font-medium">{s.name}</span>
+                      <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+                        {s.status.replace("-", " ")}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground mt-0.5 block text-[12px] leading-relaxed">
+                      {s.detail}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {report.osmCandidates.length > 0 && (
+            <OSMCandidates
+              candidates={report.osmCandidates}
+              query={report.osmQuery}
+            />
+          )}
+
           {/* WHO WOULD KNOW — participants and refusals together. */}
           <div className="border-border border-b px-5 py-4">
             <p className="text-[13px] font-medium">Who would know?</p>
@@ -365,6 +454,194 @@ export function RegionDiscovery({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * **The area Atlas was allowed to search — shown before its results.**
+ *
+ * ADR 032. A Discovery Scope proves nothing; it only says where Atlas
+ * looked. That makes it the single most important thing to read *before* a
+ * result, because "nothing found" means nothing without it.
+ *
+ * When there is no scope, the refusal and its remedy are shown rather than
+ * an empty search — Atlas does not have a fallback radius and the interface
+ * should not imply one exists.
+ */
+function ScopePanel({
+  scope,
+  refusal,
+  regionName,
+}: {
+  scope?: DiscoveryScope;
+  refusal?: { reason: string; remedy: string };
+  regionName: string;
+}) {
+  if (!scope) {
+    if (!refusal) return null;
+    return (
+      <div className="border-border border-b px-5 py-4">
+        <p className="flex items-center gap-1.5 text-[13px] font-medium">
+          <CircleSlash className="text-muted-foreground h-3.5 w-3.5" />
+          No Discovery Scope for {regionName}
+        </p>
+        <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+          {refusal.reason} Location-based sources are searched by area, and
+          Atlas will not pick a radius to fill the gap.
+        </p>
+        <p className="mt-1 text-[12px] leading-relaxed">{refusal.remedy}</p>
+      </div>
+    );
+  }
+
+  const { south, west, north, east } = scope.bbox;
+  return (
+    <div className="border-border border-b px-5 py-4">
+      <p className="flex items-center gap-1.5 text-[13px] font-medium">
+        <MapPin className="h-3.5 w-3.5" />
+        Where Atlas looked
+      </p>
+      <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+        {scope.label}
+      </p>
+      <p className="text-muted-foreground/80 mt-1.5 font-mono text-[11px]">
+        {south}, {west} → {north}, {east}
+        <span className="ml-2 tracking-wide uppercase">{scope.source}</span>
+      </p>
+      {scope.derivedFrom && scope.derivedFrom.length > 0 && (
+        <details className="mt-1.5">
+          <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[12px] underline-offset-2 hover:underline">
+            The {scope.derivedFrom.length} entities that define this area
+          </summary>
+          <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+            {scope.derivedFrom.map((d) => d.name).join(" · ")}
+          </p>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function StrategyIcon({ status }: { status: StrategyStatus }) {
+  const shared = "mt-0.5 h-3.5 w-3.5 shrink-0";
+  if (status === "succeeded")
+    return (
+      <Check className={`${shared} text-emerald-600 dark:text-emerald-500`} />
+    );
+  if (status === "multiple-candidates")
+    return (
+      <HelpCircle className={`${shared} text-amber-600 dark:text-amber-500`} />
+    );
+  if (status === "failed") return <X className={`${shared} text-amber-600`} />;
+  return <CircleSlash className={`${shared} text-muted-foreground/40`} />;
+}
+
+/**
+ * **Candidates, deliberately not a shortlist.**
+ *
+ * Every feature OpenStreetMap returned inside the scope, in the order OSM
+ * returned them. Nothing is ranked and nothing is marked "best": the
+ * nearest one is nearest to the entities a curator already placed, which
+ * would be Atlas's own bias presented as relevance.
+ *
+ * Each carries a real identifier, so each passes the identity gate — and
+ * that is precisely why the ambiguity is real. **The gate answers "is this
+ * a thing?", not "is this the thing?"**
+ */
+function OSMCandidates({
+  candidates,
+  query,
+}: {
+  candidates: OSMCandidate[];
+  query?: string;
+}) {
+  return (
+    <div className="border-border border-b px-5 py-4">
+      <p className="text-[13px] font-medium">
+        OpenStreetMap found {candidates.length}{" "}
+        {candidates.length === 1 ? "feature" : "features"} in that area
+      </p>
+      <p className="text-muted-foreground mt-1 text-[12px] leading-relaxed">
+        Evidence to judge, not entities. Atlas has not chosen between these and
+        will not — each is independently identified, and being closest to what
+        Atlas already knows is not evidence of being right.
+      </p>
+
+      <ul className="mt-3 space-y-3">
+        {candidates.map((c) => (
+          <li
+            key={c.externalId}
+            className="border-border rounded-lg border p-3"
+          >
+            <p className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[13px] font-semibold">{c.name}</span>
+              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
+                {c.externalId}
+              </span>
+            </p>
+            {c.coordinates && (
+              <p className="text-muted-foreground mt-0.5 font-mono text-[11px]">
+                {c.coordinates[1]}, {c.coordinates[0]}
+              </p>
+            )}
+            <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+              {c.identity.signals.map((s) => (
+                <span key={s} className="text-[12px]">
+                  ✓ {s}
+                </span>
+              ))}
+            </p>
+            {Object.keys(c.tags).length > 0 && (
+              <details className="mt-1.5">
+                <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[12px] underline-offset-2 hover:underline">
+                  What OpenStreetMap says about it
+                </summary>
+                <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                  {Object.entries(c.tags).map(([k, v]) => (
+                    <Fragment key={k}>
+                      <dt className="text-muted-foreground font-mono text-[11px]">
+                        {k}
+                      </dt>
+                      <dd className="text-[11px]">{v}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              </details>
+            )}
+            <a
+              href={c.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground mt-1.5 inline-block text-[12px] underline underline-offset-2"
+            >
+              View on OpenStreetMap
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      {/* Why there is no button here. Queueing an OSM element page would
+          create work nothing can currently do — the existing OSM loader
+          reads the Overpass API, not openstreetmap.org's rendered page.
+          That failure already happened once, with discovery sources that sat
+          in the queue forever. */}
+      <p className="text-muted-foreground/80 mt-3 text-[12px] leading-relaxed">
+        Atlas is not offering to queue these. Reading an OpenStreetMap feature
+        is a different operation from reading a web page, and creating an entity
+        from one is a separate, deliberate step that does not exist yet.
+      </p>
+
+      {query && (
+        <details className="mt-2">
+          <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[12px] underline-offset-2 hover:underline">
+            The exact query Atlas sent
+          </summary>
+          <pre className="text-muted-foreground mt-1 overflow-x-auto font-mono text-[11px] leading-relaxed">
+            {query}
+          </pre>
+        </details>
+      )}
+    </div>
   );
 }
 
