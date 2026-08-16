@@ -37,6 +37,7 @@ import { prioritiseOperations } from "@/lib/knowledge/actionPriority";
 import { regionCoverage } from "@/lib/knowledge/regionCoverage";
 import { sourceOpportunities } from "@/lib/knowledge/sourceOpportunities";
 import { RegionKnowledgeCoverage } from "@/components/admin/regions/RegionKnowledgeCoverage";
+import { RegionDiscovery } from "@/components/admin/regions/RegionDiscovery";
 import { duplicateGroupCount } from "@/lib/knowledge/adminSummary";
 import { decideResearch } from "@/app/admin/entities/[id]/actions";
 import type { WaitingFinding } from "@/components/admin/regions/RegionWorkflows";
@@ -395,6 +396,8 @@ export default async function RegionPage({ params }: Props) {
         runIsLive={Boolean(activeRun)}
         growAnchorId="atlas-can-do"
       />
+
+      <RegionDiscovery regionName={region.name} />
 
       <RegionKnowledgeCoverage
         regionName={region.name}
