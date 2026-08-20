@@ -433,3 +433,73 @@ still verified, still correct, still there for an engineer. It is no longer the 
 a `contains` edge, so it would be an irreversible one-click action. Atlas automates reversible work
 and reviews irreversible work. Per-row and explicit multi-select are both deliberate acts;
 `DELETE /admin/regions/:id/members` is the prerequisite for the third.
+
+---
+
+## 9. The MVP loop, and how a mission finishes (2026-08-20)
+
+The definition of done for this stage was one sentence: **I can stay on the Recreation page until
+Atlas truthfully tells me there is no current Recreation work left to do.** Not _the CLI is gone_ —
+that was a deliberate change of direction. A CLI command is an **Operation**, Operations change
+reality, and running one in a terminal is an accepted shape. What was missing was not automation.
+It was the page telling the truth about what happened.
+
+### Run the Operation, come back, Refresh
+
+Everything on a domain page is derived from facts Atlas already holds, so **re-reading is the whole
+mechanism**. There is no job system, no websocket, nothing to poll — those would be infrastructure
+built to avoid pressing a button.
+
+So the button is first-class. `RefreshStatus` sits in the page header next to the status line and
+calls `router.refresh()`. The server component re-reads Atlas, re-evaluates every mission, the work
+queue, health and Passport readiness, and re-renders. A mission that needs a command shows the
+command; the operator runs it, comes back, and presses Refresh.
+
+### Every mission has a visible finish
+
+Derived progression has one honest cost. The instant a mission's conditions turn true the _next_
+mission becomes current — and a server render has no memory of a previous state. So an operator who
+ran a command and refreshed saw a different mission and no acknowledgement that the old one
+finished. **The work succeeded and the page said nothing.**
+
+`MissionTransition` fixes that with browser memory of the last visit, deliberately not a stored
+status. A stored status is the asserted pointer we removed; it can disagree with the corpus. What
+was actually missing is not a fact about Atlas but a fact about **this operator's last visit** — so
+that is what is stored, in `localStorage`, and every message is worded _since you last looked_.
+
+- **✓ Mission complete** — names the mission that finished and what became current in its place.
+- **Update available** — the domain was complete when last seen and is not now. Worded as _update
+  available_ rather than _no longer complete_, because the earlier completion was correct against
+  the evidence that existed then. New evidence created new work. **Nothing that was done becomes
+  undone.**
+
+Clear the browser and you lose the greeting, not the truth. The mission roster still shows exactly
+which missions are complete, because that is derived.
+
+### The page tells one story, top to bottom
+
+Status → what finished since you last looked → **Current Mission** and its work surface → what needs
+you (or CURRENT KNOWLEDGE COMPLETE) → the mission roster → what the domain knows → Passport
+readiness → Reference.
+
+Health moved into Reference. It answers _is Atlas working_, which is a real question and not
+today's question.
+
+### What "complete" is allowed to mean
+
+**✓ CURRENT KNOWLEDGE COMPLETE**, and never more than that. Not _Atlas knows every recreation place
+in the Okanagan_ — that claim has no denominator and never will. The claim being made is narrower
+and entirely true: everything Atlas currently knows about has been processed, and every mission that
+could be started has finished.
+
+Which is precisely why it can stop being true without anything having been wrong.
+
+### One thing that looked right and was not
+
+The transition banners were first rendered `hidden` and revealed by `removeAttribute` in an effect,
+to satisfy a lint rule about setting state in effects. It typechecked, it linted, and it never
+showed a banner: React Strict Mode double-invokes effects, the remount restored `hidden`, and the
+second run read its own `localStorage` write and found nothing to announce.
+
+No static check could have caught it. **A lint workaround that changes the rendering strategy is a
+design change — test it live.**
