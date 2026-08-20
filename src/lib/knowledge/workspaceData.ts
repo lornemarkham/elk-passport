@@ -61,6 +61,25 @@ export interface WorkspaceCandidateSource {
   url: string;
   sourceType: string;
   status: string;
+  /**
+   * **The entities this page is expected to teach. Zero, one, or many.**
+   *
+   * This is the field Atlas actually serves (`CandidateSource.expectedTargets`)
+   * and the field its reversibility gate reads: `isAutomaticallyProcessable`
+   * refuses a candidate with none, because Atlas does not know who the page is
+   * about. Anything scoping candidates to a region or a mission joins on this.
+   */
+  expectedTargets?: string[];
+  /**
+   * @deprecated Atlas removed this when a shared source — one tourism page
+   * teaching fifty restaurants — made one-page-one-entity structurally
+   * impossible. It survives in this type only because three callers still
+   * filter on it (`app/admin/regions/[regionId]/page.tsx`,
+   * `regionDiagnosis.ts`, `ChildrenPanel.tsx`), so each of those filters
+   * matches nothing and silently reports an empty list. That is a real defect
+   * with its own verification; leaving the field visible keeps it a known bug
+   * rather than converting it into a compile error in unrelated code today.
+   */
   aboutEntityId?: string;
   discoveredFromSourceRecordId: string;
   reason: string;

@@ -1,0 +1,196 @@
+import type { DomainHealth } from "./domainHealth";
+import type { DomainWork } from "./domainWork";
+import type { DomainProgress, MissionContext } from "./missions";
+import { unplacedEntities } from "./missions";
+
+/**
+ * **Everything Atlas currently knows needs a person, in one place.**
+ *
+ * The operator's first question is *what needs me?*, and before this the answer
+ * was scattered: placement inside the mission, decisions inside Review,
+ * evidence gaps behind a disclosure, enrichment under Passport, failures under
+ * the last run. Five true answers, five places to look, and no way to know you
+ * had seen them all.
+ *
+ * This groups them once. It **computes nothing new** — every count is read
+ * from the module that already owns it, so the queue cannot disagree with the
+ * section it points at:
+ *
+ * | Group | Owned by |
+ * |---|---|
+ * | Needs placement | `unplacedEntities` — the same filter the mission condition uses |
+ * | Needs a decision | `domainWork.totals.decisions` |
+ * | Needs evidence | `domainWork.totals.evidenceGaps` |
+ * | Needs enrichment | `domainHealth.passport` |
+ * | Failed | `domainWork.totals.failures` |
+ *
+ * ## Every group states its next action
+ *
+ * A count with no action is a complaint. Each group carries `because` (why
+ * these are here), `missing` (what Atlas does not have) and `nextAction` (what
+ * the operator does about it) — and an anchor to the section that renders the
+ * items themselves.
+ *
+ * ## Populations do not overlap
+ *
+ * Each group counts a different kind of thing — an entity's placement, a
+ * proposed merge, a queued page, a missing field, a failed read — so an item
+ * is never counted twice. They are deliberately **not** summed into a single
+ * "N items" headline that implies one comparable unit; the total is stated as
+ * *pieces of work*, which is what it is.
+ *
+ * ## What "complete" means here
+ *
+ * Every group empty **and** every non-blocked mission complete. That is
+ * *complete against current knowledge* — never a claim that Atlas knows every
+ * recreation place in the Okanagan, which has no denominator and never will.
+ * New evidence creates new work, and the previous completion was not wrong.
+ */
+
+export type WorkGroupKey =
+  "placement" | "decision" | "evidence" | "enrichment" | "failed";
+
+export interface WorkGroup {
+  readonly key: WorkGroupKey;
+  readonly label: string;
+  readonly count: number;
+  /** Why these items are here. */
+  readonly because: string;
+  /** What Atlas does not have. Empty when the gap is a decision rather than a fact. */
+  readonly missing?: string;
+  /** What the operator does about it. Never absent — a count with no action is a complaint. */
+  readonly nextAction: string;
+  /** Where on this page the items themselves are rendered. */
+  readonly href: string;
+  /** Named examples, so the group is about places rather than arithmetic. */
+  readonly examples: readonly string[];
+}
+
+export interface DomainWorkQueue {
+  readonly groups: readonly WorkGroup[];
+  /** Groups with something in them, largest first. */
+  readonly outstanding: readonly WorkGroup[];
+  readonly totalOutstanding: number;
+  /** True when nothing is outstanding and every non-blocked mission is complete. */
+  readonly complete: boolean;
+  /**
+   * Missions that can never be started as things stand. Stated because
+   * "complete" while three missions are blocked would be a different claim
+   * from the one being made.
+   */
+  readonly blockedMissions: number;
+  /** False when a read failed, so every count is a floor rather than a total. */
+  readonly readsComplete: boolean;
+}
+
+export function buildWorkQueue(
+  health: DomainHealth,
+  work: DomainWork,
+  context: MissionContext,
+  progress: DomainProgress,
+): DomainWorkQueue {
+  const unplaced = context.scopeable ? unplacedEntities(context) : [];
+  const needsEnrichment = health.passport?.needsExamples ?? [];
+  const enrichmentCount = health.passport?.needsEnrichment ?? 0;
+
+  const groups: WorkGroup[] = [
+    {
+      key: "placement",
+      label: "Needs placement",
+      count: unplaced.length,
+      because: `Atlas holds these but no curator has said they belong to ${context.regionName}.`,
+      missing: "A membership assertion. Never inferred from coordinates.",
+      nextAction: `Place each one in ${context.regionName} — on this page.`,
+      href: "#mission",
+      examples: unplaced.slice(0, 3).map((e) => e.name),
+    },
+    {
+      key: "decision",
+      label: "Needs a decision",
+      count: work.totals.decisions,
+      because:
+        "Atlas narrowed each to one irreversible question and stopped, because deciding cannot be undone.",
+      nextAction: "Answer yes or no — on this page.",
+      href: "#mission",
+      examples: work.decisions.slice(0, 3).map((d) => d.question),
+    },
+    {
+      key: "evidence",
+      label: "Needs evidence",
+      count: work.totals.evidenceGaps,
+      because:
+        "Atlas cannot responsibly ask a yes/no yet — a page is queued unread, or an extraction produced nothing it could attribute.",
+      missing:
+        "A source Atlas has not read, or one that produced nothing usable.",
+      nextAction:
+        "Read the queued pages, or abandon the ones you do not want — on this page.",
+      href: "#mission",
+      examples: work.evidenceGaps.slice(0, 3).map((g) => g.subject),
+    },
+    {
+      key: "enrichment",
+      label: "Needs enrichment",
+      count: enrichmentCount,
+      because:
+        "Atlas holds these, but Passport cannot present them — a traveller-facing section would render empty.",
+      missing: gapSummary(health.passport?.gaps ?? []),
+      nextAction:
+        "Research the missing field and add it. Not yet doable on this page — see the gaps below.",
+      href: "#passport",
+      examples: needsEnrichment.slice(0, 3).map((e) => e.name),
+    },
+    {
+      key: "failed",
+      label: "Failed",
+      count: work.totals.failures,
+      because:
+        "A page could not be read, or Atlas read one and declined to write. Those are opposite events and both are listed.",
+      missing: "Nothing — this is a transport or identity outcome, not a gap.",
+      nextAction:
+        "Re-run the operation for a transport failure. A refusal is the identity gate working and needs no action.",
+      href: "#mission",
+      examples: work.failures.slice(0, 3).map((f) => f.subject),
+    },
+  ];
+
+  const outstanding = groups
+    .filter((g) => g.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  const blockedMissions = progress.missions.filter(
+    (m) => m.state === "blocked",
+  ).length;
+
+  return {
+    groups,
+    outstanding,
+    totalOutstanding: outstanding.reduce((sum, g) => sum + g.count, 0),
+    // Both halves matter. An empty queue with an incomplete mission means a
+    // mission whose finish rests on something the queue does not track; a
+    // complete mission set with a full queue means work nobody turned into a
+    // mission. Neither is "done".
+    complete:
+      context.scopeable &&
+      context.readsComplete &&
+      outstanding.length === 0 &&
+      progress.completed + blockedMissions === progress.total,
+    blockedMissions,
+    readsComplete: context.readsComplete,
+  };
+}
+
+/**
+ * "12 need a picture · 9 need a description".
+ *
+ * Read from `PassportReadiness.gaps`, which carries the **full** per-requirement
+ * count. `needsExamples` is capped for display, and summing that would report a
+ * smaller gap than exists — a silent truncation wearing a total's clothes.
+ */
+function gapSummary(
+  gaps: readonly { readonly label: string; readonly count: number }[],
+): string | undefined {
+  if (gaps.length === 0) return undefined;
+  return gaps
+    .map((gap) => `${gap.count} need ${gap.label.toLowerCase()}`)
+    .join(" · ");
+}

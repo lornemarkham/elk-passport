@@ -47,16 +47,30 @@ export interface RegionHealth {
   readonly weakest: readonly CategoryHealth[];
 }
 
-interface CategoryRule {
+export interface CategoryRule {
   readonly key: string;
   readonly label: string;
   readonly unlocks: string;
   /** Undefined means Atlas cannot yet identify this category at all. */
   readonly matches?: (entity: EntityLike) => boolean;
   readonly notMeasurable?: string;
+  /**
+   * **What would teach Atlas this, when it holds nothing yet.**
+   *
+   * The difference between a category that reads `0` and one that reads *"Not
+   * taught yet — the OSM sweep would find these"*. The first is a score an
+   * operator can only feel bad about; the second is the next piece of work.
+   *
+   * An empty category is not a failure. It is a part of Atlas nobody has built
+   * yet, and naming the publisher that would build it turns the table into a
+   * roadmap.
+   */
+  readonly taughtBy?: string;
 }
 
-interface EntityLike {
+export interface EntityLike {
+  /** Needed to join an entity to its `describes` edges when scoping a domain. */
+  readonly id: string;
   readonly kind: string;
   readonly name?: string;
   readonly description?: string;
@@ -106,7 +120,15 @@ const org = (e: EntityLike, ...words: string[]) =>
  * Categories Atlas genuinely cannot identify yet carry `notMeasurable`
  * instead of a match — planned and visible, never silently absent.
  */
-const RULES: readonly CategoryRule[] = [
+/**
+ * Exported so a Knowledge Domain page can scope its numbers to its own entities.
+ *
+ * A Recreation page reporting corpus-wide corroboration is reporting Food &
+ * Drink's evidence under a Recreation heading. These rules are the only
+ * domain-shaped entity grouping Atlas has, so they are shared rather than
+ * reimplemented — a second matcher would drift from this one immediately.
+ */
+export const CATEGORY_RULES: readonly CategoryRule[] = [
   {
     key: "restaurants",
     label: "Restaurants & cafés",
@@ -137,20 +159,93 @@ const RULES: readonly CategoryRule[] = [
     key: "parks",
     label: "Parks & protected areas",
     unlocks: "A family day out; camping",
-    matches: (e) => has(e.placeType, "park", "protected", "conservation"),
+    // `parking` contains `park`. Three OpenStreetMap parking lots were being
+    // counted as protected areas, which then put them in the queue for
+    // "every park needs a photo". Excluded explicitly rather than by
+    // tightening the match, because the source's vocabulary is open and a
+    // whole-word rule would drop "provincial park" the moment a publisher
+    // wrote "parkland".
+    matches: (e) =>
+      !has(e.placeType, "parking") &&
+      has(e.placeType, "park", "protected", "conservation"),
+    taughtBy: "BC Parks — the batch file exists",
   },
   {
     key: "trails",
-    label: "Trails & hiking",
+    label: "Trails & trailheads",
     unlocks: "A hike matched to ability and season",
-    matches: (e) => has(e.placeType, "trail", "hike", "path"),
+    matches: (e) => has(e.placeType, "trail", "trailhead", "hike", "path"),
+    taughtBy:
+      "Blocked — no trail tag in the POI allow list, and no trail publisher wired",
   },
   {
+    key: "beaches",
+    label: "Beaches & lakeshore",
+    unlocks: "A swim; an afternoon by the water",
+    matches: (e) => has(e.placeType, "beach", "lakeshore", "swimming"),
+    taughtBy: "The OpenStreetMap sweep — natural=beach",
+  },
+  {
+    key: "campgrounds",
+    label: "Campgrounds & recreation sites",
+    unlocks: "A night outside; a long weekend",
+    matches: (e) => has(e.placeType, "camp", "recreation site", "rec site"),
+    taughtBy: "The OpenStreetMap sweep — tourism=camp_site",
+  },
+  {
+    key: "water-access",
+    label: "Boat launches & marinas",
+    unlocks: "A day on the lake",
+    matches: (e) =>
+      has(e.placeType, "slipway", "boat launch", "marina", "wharf", "dock"),
+    taughtBy: "The OpenStreetMap sweep — leisure=slipway",
+  },
+  {
+    key: "viewpoints",
+    label: "Viewpoints & picnic areas",
+    unlocks: "A stop worth making on the way somewhere",
+    matches: (e) => has(e.placeType, "viewpoint", "lookout", "picnic"),
+    taughtBy: "The OpenStreetMap sweep — tourism=viewpoint",
+  },
+  {
+    key: "cycling",
+    label: "Cycling & bike parks",
+    unlocks: "A ride matched to ability",
+    matches: (e) => has(e.placeType, "bike", "cycling", "pump track"),
+    taughtBy: "Trailforks — licensing not established",
+  },
+  {
+    key: "winter",
+    label: "Winter recreation",
+    unlocks: "Nordic trails, snowshoeing, sledding hills",
+    matches: (e) =>
+      has(e.placeType, "nordic", "snowmobile", "snowshoe", "skating"),
+    taughtBy: "No publisher identified",
+  },
+  {
+    key: "climbing",
+    label: "Climbing",
+    unlocks: "A crag matched to grade",
+    matches: (e) => has(e.placeType, "climb", "crag", "boulder"),
+    taughtBy: "No publisher identified",
+  },
+  {
+    key: "golf",
+    label: "Golf",
+    unlocks: "A round; a golf weekend",
+    matches: (e) => has(e.placeType, "golf"),
+    taughtBy: "No publisher identified",
+  },
+  {
+    // `beach` deliberately moved to its own Recreation category. A lake is a
+    // water feature Geography is responsible for; a beach is somewhere you go,
+    // which is Recreation's. Leaving it here counted the same entity under two
+    // domains, so the two would never sum to the corpus.
     key: "water",
     label: "Lakes, rivers & waterfalls",
     unlocks: "A waterfall photography tour; a swim",
-    matches: (e) =>
-      has(e.placeType, "lake", "river", "waterfall", "creek", "beach"),
+    matches: (e) => has(e.placeType, "lake", "river", "waterfall", "creek"),
+    taughtBy: "BC Freshwater Atlas, through Discovery",
   },
   {
     key: "lodging",
@@ -162,9 +257,10 @@ const RULES: readonly CategoryRule[] = [
   },
   {
     key: "resorts",
-    label: "Resorts & mountains",
+    label: "Ski & mountain resorts",
     unlocks: "A ski weekend; summer on the mountain",
     matches: (e) => has(e.placeType, "resort", "mountain", "ski"),
+    taughtBy: "The operator's own website",
   },
   {
     key: "museums",
@@ -175,10 +271,25 @@ const RULES: readonly CategoryRule[] = [
       org(e, "museum", "gallery", "theatre", "theater", "cultural"),
   },
   {
+    /**
+     * **Not a Recreation category, and no longer treated as one.**
+     *
+     * An Activity is a thing you can *do* at a place, not a kind of place.
+     * Counting it beside parks and trails was measurably wrong: Recreation
+     * reported 66 entities of which 49 were Activities, so corroboration and
+     * Passport readiness were mostly statements about Activity records — and
+     * an Activity has no coordinates and no image, so it sat permanently in
+     * *needs enrichment* and made the parks look unpresentable.
+     *
+     * The rule stays, because the region page's coverage table still wants a
+     * line for it. What changed is that no Knowledge Domain claims it as one
+     * of its categories; Recreation counts it separately, through `alsoHolds`.
+     */
     key: "activities",
-    label: "Activities",
+    label: "Things to do",
     unlocks: "Things to actually do",
     matches: (e) => e.kind === "Activity",
+    taughtBy: "Extraction, from whatever page describes the place",
   },
   {
     key: "sports",
@@ -224,7 +335,7 @@ export function computeRegionHealth(
     (e) => e.kind !== "SourceRecord",
   );
 
-  const categories = RULES.map((rule): CategoryHealth => {
+  const categories = CATEGORY_RULES.map((rule): CategoryHealth => {
     if (!rule.matches) {
       return {
         key: rule.key,
