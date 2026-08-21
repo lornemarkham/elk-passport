@@ -53,6 +53,7 @@ export type WorkGroupKey =
   | "placement-evidence"
   | "decision"
   | "learning"
+  | "learned-nothing"
   | "evidence"
   | "enrichment"
   | "failed";
@@ -169,7 +170,28 @@ export function buildWorkQueue(
       examples: work.learning
         .filter((l) => !l.complete)
         .slice(0, 3)
-        .map((l) => `${l.entityName} (${l.queued + l.failed})`),
+        .map((l) => `${l.entityName} (${l.unread + l.failed})`),
+    },
+    {
+      // The operation ran and produced nothing applicable. Not waiting work —
+      // running it again reads nothing new — so it is counted apart from the
+      // queue and given the remedy that would actually change it.
+      key: "learned-nothing",
+      label: "Read, nothing applied",
+      unit: "pages read without result",
+      unitOne: "page read without result",
+      count: work.totals.learnedNothing,
+      because:
+        "Atlas fetched and extracted these pages and could apply none of what it found to the entity they name. The operation completed; it produced no enrichment.",
+      missing:
+        "Nothing is waiting to be read. What is missing is a way to attribute what was already extracted, or a source of a different kind.",
+      nextAction:
+        "Re-running the queue will not change these. This needs a pipeline change or a different publisher.",
+      href: "#mission",
+      examples: work.learning
+        .filter((l) => l.readNotApplied > 0)
+        .slice(0, 3)
+        .map((l) => `${l.entityName} (${l.readNotApplied})`),
     },
     {
       // Atlas *did* read, and stopped. The opposite state from the one above,

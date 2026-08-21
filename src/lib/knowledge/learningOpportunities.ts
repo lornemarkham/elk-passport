@@ -47,16 +47,43 @@ import type { EntityLike } from "./regionHealth";
  * ---------------------------------------------------------------------- */
 
 /**
- * What has happened to one queued page.
+ * **What actually happened to one discovered page.**
  *
- * Derived from two places on purpose, because Atlas records them in two
- * places: `CandidateSourceStatus` carries the settled outcomes (`ingested`,
- * `rejected`) while a broken fetch leaves the candidate `queued` and reports
- * itself as a **failed event**. A page that failed is still queued in the
- * database and is emphatically not waiting quietly, so it gets a state of its
- * own rather than being counted with the untouched ones.
+ * `CandidateSourceStatus` has four values and only ever reaches two of them
+ * from a queue run: `ingested` when knowledge was applied, `rejected` when a
+ * curator refused it. **Every other outcome leaves the row `queued`** —
+ * including the ones where Atlas fetched the page, extracted from it, and
+ * could not attribute what it found. `ProcessCandidateSourceService` calls
+ * `resolveCandidate` on exactly three paths (already-current, proposed,
+ * enriched) and returns early on all the rest.
+ *
+ * So `queued` means two opposite things, and the page was reporting the wrong
+ * one. On the live corpus, ten of Big White's thirteen pages had a
+ * `SourceRecord` — Atlas had read every one of them — while all thirteen still
+ * said *waiting to be read*.
+ *
+ * ## Attempted is derived from evidence, not from status
+ *
+ * A `SourceRecord` exists **because Atlas fetched that URL**. It is written
+ * before extraction, it is durable, and it is the one fact that cannot be
+ * faked by a status field nobody updated. So *attempted* is a join on the
+ * canonical URL, and it needs no schema change to be true today.
+ *
+ * | State | Meaning | Derived from |
+ * |---|---|---|
+ * | `unread` | Atlas has not fetched this page | no `SourceRecord`, candidate open |
+ * | `applied` | knowledge reached the entity | candidate `ingested` |
+ * | `read-not-applied` | fetched and extracted; nothing could be applied | `SourceRecord` exists, candidate still open |
+ * | `failed` | the fetch itself broke | a `failed` event against this candidate |
+ * | `rejected` | a curator refused it | candidate `rejected` |
+ *
+ * **Running an operation and learning nothing is still a completed
+ * operation.** `read-not-applied` is a finished attempt with an unmet outcome,
+ * and calling it *waiting* told the operator to run a command that would
+ * change nothing.
  */
-export type SourceState = "queued" | "read" | "rejected" | "failed";
+export type SourceState =
+  "unread" | "applied" | "read-not-applied" | "rejected" | "failed";
 
 export interface LearningSource {
   readonly id: string;
@@ -81,23 +108,45 @@ export interface LearningOpportunity {
   readonly entityName: string;
   /** Every discovered page naming this entity, in every state. */
   readonly sources: readonly LearningSource[];
-  readonly queued: number;
-  readonly read: number;
+  /** Every page discovered for this entity, whatever became of it. */
+  readonly discovered: number;
+  /**
+   * **What Atlas attempted.** Fetched, or tried to fetch, and recorded the
+   * outcome — whether or not anything was learned. This is the number that
+   * answers *did the operation run*.
+   */
+  readonly processed: number;
+  /** Never fetched. The only pages a queue run would actually act on. */
+  readonly unread: number;
+  /** Knowledge reached the entity. */
+  readonly applied: number;
+  /** Fetched and extracted; nothing could be applied. A finished attempt, not a waiting page. */
+  readonly readNotApplied: number;
   readonly rejected: number;
   readonly failed: number;
-  /** Short labels for what the outstanding pages would teach. */
+  /** Short labels for what the unread pages would teach. */
   readonly learningAreas: readonly string[];
   /** Distinct publishers, not page count. */
   readonly publishers: readonly string[];
   /**
-   * **No actionable source remains in this pass.**
+   * **Atlas has attempted every page discovered so far.**
    *
-   * Deliberately narrow. It does not mean Atlas knows everything about this
-   * entity — it means Atlas has processed the source set discovered so far.
-   * Discovery finding more pages tomorrow makes this work again, and today's
-   * completion will not have been wrong.
+   * Deliberately about *attempts*, not gains. The mission asks whether Atlas
+   * processed the discovered pages, and running an operation that learns
+   * nothing is still a completed operation — treating an unproductive read as
+   * unfinished work told the operator to run a command that would change
+   * nothing.
+   *
+   * A broken fetch is the exception, and it is not an exception to the
+   * principle: it is an attempt whose outcome is *retry*, and re-running the
+   * queue genuinely does act on it.
    */
   readonly complete: boolean;
+  /**
+   * True when Atlas read pages here and applied none of them. Not a failure of
+   * the operation — a result from it, and a different kind of work.
+   */
+  readonly learnedNothing: boolean;
 }
 
 /* -------------------------------------------------------------------------
@@ -151,13 +200,37 @@ export function learningArea(reason: string): string {
   return trimmed.length > 48 ? `${trimmed.slice(0, 47)}…` : trimmed;
 }
 
+/**
+ * The canonical form Atlas itself stores candidate URLs in — host without
+ * `www.`, path without a trailing slash, query dropped. Used only to join a
+ * candidate to the `SourceRecord` its fetch produced.
+ */
+export function canonicalUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.host.replace(/^www\./i, "").toLowerCase();
+    const path = parsed.pathname.replace(/\/+$/, "").toLowerCase();
+    return `${host}${path}`;
+  } catch {
+    return url.trim().toLowerCase().replace(/\/+$/, "");
+  }
+}
+
 function stateOf(
   candidate: WorkspaceCandidateSource,
   failure: string | undefined,
+  fetched: boolean,
 ): SourceState {
-  if (candidate.status === "ingested") return "read";
+  // Order matters. A curator's refusal and an applied ingestion are settled
+  // facts and outrank anything derived; a broken fetch outranks the mere
+  // existence of an older SourceRecord for the same URL.
   if (candidate.status === "rejected") return "rejected";
-  return failure ? "failed" : "queued";
+  if (candidate.status === "ingested") return "applied";
+  if (failure) return "failed";
+  // Still open, but Atlas holds a record of having fetched it. It was read;
+  // nothing could be applied. This is the state that did not exist before,
+  // and the one the whole defect turned on.
+  return fetched ? "read-not-applied" : "unread";
 }
 
 /**
@@ -174,7 +247,14 @@ export function buildLearningOpportunities(
   events: readonly IngestionEvent[],
   ids: ReadonlySet<string>,
   byId: ReadonlyMap<string, EntityLike>,
+  /**
+   * Every `SourceRecord` Atlas holds. Their URLs are the durable proof of what
+   * Atlas has actually fetched — the fact `CandidateSourceStatus` fails to
+   * record when a read produces nothing applicable.
+   */
+  sources: readonly { readonly source: string }[] = [],
 ): readonly LearningOpportunity[] {
+  const fetchedUrls = new Set(sources.map((s) => canonicalUrl(s.source)));
   // A broken fetch reports itself against the candidate it was reading, so
   // the join is by id and never by URL or name.
   const failureByCandidate = new Map<string, string>();
@@ -189,6 +269,7 @@ export function buildLearningOpportunities(
     const targets = targetsOfCandidate(candidate).filter((id) => ids.has(id));
     if (targets.length === 0) continue;
     const failure = failureByCandidate.get(candidate.id);
+    const fetched = fetchedUrls.has(canonicalUrl(candidate.url));
     const source: LearningSource = {
       id: candidate.id,
       url: candidate.url,
@@ -197,7 +278,7 @@ export function buildLearningOpportunities(
       reason: candidate.reason,
       area: learningArea(candidate.reason),
       status: candidate.status,
-      state: stateOf(candidate, failure),
+      state: stateOf(candidate, failure, fetched),
       failure,
       alsoTeaches: targets.length - 1,
     };
@@ -207,33 +288,47 @@ export function buildLearningOpportunities(
   }
 
   const opportunities: LearningOpportunity[] = [];
-  for (const [entityId, sources] of byEntity) {
+  for (const [entityId, entitySources] of byEntity) {
     const count = (state: SourceState) =>
-      sources.filter((s) => s.state === state).length;
-    const outstanding = sources.filter(
-      (s) => s.state === "queued" || s.state === "failed",
+      entitySources.filter((s) => s.state === state).length;
+    const unread = count("unread");
+    const failed = count("failed");
+    const applied = count("applied");
+    const readNotApplied = count("read-not-applied");
+    const rejected = count("rejected");
+    // Only the pages a queue run would actually act on. A page already read
+    // will not be read again, so listing what it *would* have taught reads as
+    // a promise the operation cannot keep.
+    const actionable = entitySources.filter(
+      (s) => s.state === "unread" || s.state === "failed",
     );
     opportunities.push({
       entityId,
       entityName: byId.get(entityId)?.name ?? entityId,
-      sources,
-      queued: count("queued"),
-      read: count("read"),
-      rejected: count("rejected"),
-      failed: count("failed"),
-      learningAreas: [...new Set(outstanding.map((s) => s.area))],
-      publishers: [...new Set(sources.map((s) => s.host))].sort(),
-      // Read and rejected are both settled. Queued and failed are both work —
-      // a failure is a retry, not a finish, and folding it into "complete"
-      // would report a pass as finished on the strength of a broken fetch.
-      complete: outstanding.length === 0,
+      sources: entitySources,
+      discovered: entitySources.length,
+      // Everything Atlas has an outcome for. A rejection is a curator's
+      // outcome rather than Atlas's, and is counted separately below.
+      processed: applied + readNotApplied + failed,
+      unread,
+      applied,
+      readNotApplied,
+      rejected,
+      failed,
+      learningAreas: [...new Set(actionable.map((s) => s.area))],
+      publishers: [...new Set(entitySources.map((s) => s.host))].sort(),
+      // Attempts, not gains. A page read and not applied is finished work with
+      // an unmet outcome; a broken fetch is an attempt whose outcome is retry,
+      // and re-running the queue genuinely acts on it.
+      complete: actionable.length === 0,
+      learnedNothing: readNotApplied > 0 && applied === 0,
     });
   }
 
   // Most outstanding first: the entity with the most to learn is the one worth
   // running the operation for.
   return opportunities.sort(
-    (a, b) => b.queued + b.failed - (a.queued + a.failed),
+    (a, b) => b.unread + b.failed - (a.unread + a.failed),
   );
 }
 

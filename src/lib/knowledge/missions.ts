@@ -96,6 +96,8 @@ export interface MissionContext {
   readonly queuedPages: number;
   /** Entities with pages still to read. The curator's unit, and the wording's. */
   readonly learningEntities: number;
+  /** Pages Atlas read and could apply nothing from. A result, not outstanding work. */
+  readonly learnedNothing: number;
   /** Passport readiness per category key, counted over places only. */
   readonly passportByCategory: ReadonlyMap<
     string,
@@ -406,29 +408,51 @@ export function categoryPassportReady(
 }
 
 /** No page is still sitting in the queue for this domain. */
+/**
+ * **Did Atlas process the discovered pages?**
+ *
+ * That is the question the mission asks, and it is not *did Atlas learn
+ * anything*. Running an operation and gaining nothing is still a completed
+ * operation: the operation measures what Atlas attempted, learning measures
+ * what Atlas gained, and those are different facts.
+ *
+ * The old rule was effectively `queued pages == 0`, which was wrong twice
+ * over. `queued` is the status a candidate keeps when Atlas fetched it,
+ * extracted from it, and could not attribute the result — so a page Atlas had
+ * already read counted as unread, and the mission demanded an operation that
+ * would do nothing. Ten of Big White's thirteen pages were in exactly that
+ * state.
+ *
+ * It now grades attempts. A page read without result does not hold the mission
+ * open; it becomes its own piece of work, with the remedy that would actually
+ * change it. A broken fetch does hold it open, because re-running the queue
+ * genuinely acts on one.
+ */
 export function queueDrained(): DoneCondition {
   return {
     id: "queue-drained",
-    label: "Every entity's discovered pages have been read",
+    label: "Every discovered page has been attempted",
     evaluate: (ctx) => {
-      // Zero here has two meanings — nothing is queued, or the read that would
-      // have counted it failed — and completing a mission on the second is the
-      // fabricated zero with a finish attached.
+      // Zero here has two meanings — nothing is outstanding, or the read that
+      // would have counted it failed — and completing a mission on the second
+      // is the fabricated zero with a finish attached.
       if (!ctx.readsComplete && ctx.queuedPages === 0)
         return {
           state: "unverifiable",
           detail:
-            "A read behind the queue did not answer, so zero pages waiting is unknown rather than true.",
+            "A read behind the queue did not answer, so zero pages outstanding is unknown rather than true.",
         };
       if (ctx.queuedPages === 0)
         return {
           state: "done",
           detail:
-            "No entity has a discovered page left to read. Discovery finding more makes this work again.",
+            ctx.learnedNothing > 0
+              ? `Atlas attempted every discovered page. ${ctx.learnedNothing} produced nothing it could apply — a result, not unfinished work.`
+              : "Atlas has attempted every discovered page. Discovery finding more makes this work again.",
         };
       return {
         state: "not-done",
-        detail: `${ctx.learningEntities} entit${ctx.learningEntities === 1 ? "y has" : "ies have"} ${ctx.queuedPages} page${ctx.queuedPages === 1 ? "" : "s"} waiting to be read.`,
+        detail: `${ctx.learningEntities} entit${ctx.learningEntities === 1 ? "y has" : "ies have"} ${ctx.queuedPages} page${ctx.queuedPages === 1 ? "" : "s"} Atlas has not attempted.`,
       };
     },
   };
@@ -730,15 +754,18 @@ export const MISSIONS: readonly Mission[] = [
     // makes this mission current again, which is what a derived sequence is
     // for.
     id: "rec-learn-queued",
-    owns: ["learning"],
+    owns: ["learning", "learned-nothing"],
     domain: "recreation",
-    title: "Read what the discovered pages can teach",
+    title: "Read the pages Atlas has discovered",
+    // Attempts, not gains. Promising that what each page teaches "is applied"
+    // would make an honest outcome — Atlas read it and could apply nothing —
+    // look like a failure of the mission rather than a result from it.
     outcome:
-      "Every entity with pages waiting has had them read, and what each page teaches is applied to it.",
+      "Every discovered page has been attempted, and what each one produced is recorded against the entity it names.",
     why: [
       "These pages are not proving anything exists — Atlas already trusts these entities.",
       "One entity is one piece of work, however many pages name it.",
-      "A page Atlas cannot attribute to an entity is refused, never guessed at.",
+      "Running the operation and learning nothing is still a completed operation; the result is recorded either way.",
     ],
     duration: "Not measured — one fetch and one extraction per page",
     operationId: "run-queue",

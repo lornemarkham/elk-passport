@@ -155,6 +155,7 @@ export async function loadDomainState(
     // mission with a broken page still unread.
     queuedPages: work.totals.learningSources,
     learningEntities: work.totals.learningEntities,
+    learnedNothing: work.totals.learnedNothing,
     passportByCategory: health.passportByCategory,
     // The Region matters here as much as the bundle does. Without it
     // `placedIds` is empty, and a condition asking "is everything placed?"

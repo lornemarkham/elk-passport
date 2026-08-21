@@ -1,4 +1,23 @@
-import type { LearningOpportunity } from "@/lib/knowledge/learningOpportunities";
+import type {
+  LearningOpportunity,
+  SourceState,
+} from "@/lib/knowledge/learningOpportunities";
+
+/**
+ * Five states, named as outcomes rather than as queue positions.
+ *
+ * *Read, nothing applied* is the one that did not exist before: Atlas fetched
+ * the page and could apply none of what it extracted. It used to render as
+ * **Queued**, which told the operator to run a command that would not touch
+ * it.
+ */
+const SOURCE_STATE_LABEL: Record<SourceState, string> = {
+  unread: "Not attempted",
+  applied: "Applied",
+  "read-not-applied": "Read, nothing applied",
+  rejected: "Rejected",
+  failed: "Fetch failed",
+};
 
 /**
  * **One entity, one work item, however many pages name it.**
@@ -52,14 +71,18 @@ export function LearningList({
 function Entity({ opportunity }: { opportunity: LearningOpportunity }) {
   const {
     entityName,
-    queued,
-    read,
+    discovered,
+    processed,
+    unread,
+    applied,
+    readNotApplied,
     rejected,
     failed,
     learningAreas,
     publishers,
     sources,
     complete,
+    learnedNothing,
   } = opportunity;
 
   return (
@@ -68,33 +91,67 @@ function Entity({ opportunity }: { opportunity: LearningOpportunity }) {
         <h4 className="font-heading text-[17px] leading-snug font-medium tracking-tight">
           {entityName}
         </h4>
-        {complete ? (
-          <span className="text-primary text-[11px] font-medium tracking-widest uppercase">
-            ✓ Learning pass complete
-          </span>
-        ) : (
+        {!complete ? (
           <span className="text-[11px] font-medium tracking-widest uppercase">
             More to learn
+          </span>
+        ) : learnedNothing ? (
+          // A completed operation with an unmet outcome. Not a tick, because
+          // nothing was gained — and not a warning, because nothing failed.
+          <span className="text-[11px] font-medium tracking-widest uppercase">
+            Read · nothing applied
+          </span>
+        ) : (
+          <span className="text-primary text-[11px] font-medium tracking-widest uppercase">
+            ✓ Learning pass complete
           </span>
         )}
       </div>
 
       <p className="text-muted-foreground mt-1 max-w-2xl text-[13px] leading-relaxed">
-        {complete
-          ? `Atlas has processed every page discovered for it so far — ${read} read${rejected > 0 ? `, ${rejected} rejected` : ""}. Discovery finding more makes this work again.`
-          : `Atlas already knows this entity. ${queued + failed} discovered page${queued + failed === 1 ? " is" : "s are"} waiting to be read.`}
+        {!complete
+          ? `Atlas already knows this entity. ${unread + failed} of ${discovered} discovered page${unread + failed === 1 ? " has" : "s have"} not been attempted yet.`
+          : learnedNothing
+            ? `Atlas attempted all ${processed} of them and could apply nothing to this entity. The operation completed; it produced no enrichment.`
+            : `Atlas has attempted every page discovered for it so far. Discovery finding more makes this work again.`}
       </p>
 
-      {/* The counts that are not zero, and only those. A row of zeroes reads
-          as a status board; the curator needs the shape of this entity's
-          pass, which is usually one or two numbers. */}
+      {/* Discovered and processed always, because they are the two numbers
+          that answer "did the operation run". The rest only when they are not
+          zero — a row of zeroes reads as a status board rather than as the
+          shape of this entity's pass. */}
       <dl className="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-[12.5px]">
-        {queued > 0 && <Count term="Queued" value={queued} />}
-        {failed > 0 && <Count term="Needs attention" value={failed} emphasis />}
-        {read > 0 && <Count term="Read" value={read} />}
+        <Count term="Discovered" value={discovered} />
+        <Count term="Processed" value={processed} />
+        {unread > 0 && <Count term="Not attempted" value={unread} />}
+        {applied > 0 && <Count term="Applied" value={applied} />}
+        {readNotApplied > 0 && (
+          <Count term="Read, nothing applied" value={readNotApplied} />
+        )}
+        {failed > 0 && <Count term="Fetch failed" value={failed} emphasis />}
         {rejected > 0 && <Count term="Rejected" value={rejected} />}
       </dl>
 
+      {complete && learnedNothing && (
+        <div className="border-border mt-3 border-l-2 pl-4">
+          <p className="text-muted-foreground text-[11px] font-medium tracking-widest uppercase">
+            Result
+          </p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed">
+            No knowledge could be applied. Atlas kept every page it fetched and
+            linked it to this entity as evidence, but could not attribute what
+            it extracted to the entity itself.
+          </p>
+          <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed font-medium">
+            Next: running the queue again reads nothing new. This needs the
+            enrichment pipeline to attribute what it already has, or a source of
+            a different kind.
+          </p>
+        </div>
+      )}
+
+      {/* Only what a queue run would actually reach. Listing what an already
+          read page "can teach" is a promise the operation cannot keep. */}
       {learningAreas.length > 0 && (
         <div className="mt-3">
           <p className="text-muted-foreground text-[11px] font-medium tracking-widest uppercase">
@@ -162,13 +219,7 @@ function Entity({ opportunity }: { opportunity: LearningOpportunity }) {
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
                 <span className="text-[12.5px] font-medium">{source.area}</span>
                 <span className="text-muted-foreground text-[11px] tracking-wide uppercase">
-                  {source.state === "read"
-                    ? "Read"
-                    : source.state === "rejected"
-                      ? "Rejected"
-                      : source.state === "failed"
-                        ? "Failed"
-                        : "Queued"}
+                  {SOURCE_STATE_LABEL[source.state]}
                 </span>
               </div>
               <p className="text-muted-foreground mt-0.5 font-mono text-[11.5px] break-all">

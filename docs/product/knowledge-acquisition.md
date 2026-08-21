@@ -809,3 +809,81 @@ Seventeen of them. They are not folded into any group, because Atlas refuses to 
 exactly one reason — it does not know who they are about — and the app guessing a target would be
 inventing the attribution the engine declined to invent. The page says **"No operator workflow
 exists yet."** That is a real gap, and stating it is better than drawing a button for it.
+
+---
+
+## 14. Operations measure attempts, learning measures gains (2026-08-21)
+
+> **Running an operation and learning nothing is still a completed operation.** Operations measure
+> what Atlas attempted. Learning measures what Atlas gained. Those are different facts.
+
+### The page lied, and the engine taught it to
+
+Recreation said **13 pages waiting to be read** for Big White Ski Resort. Atlas had already read ten
+of them. The operator ran `npm run run-queue`, Atlas fetched, extracted, recorded the run and
+finished — and the page reported the same 13 pages still waiting.
+
+`ProcessCandidateSourceService` moves a candidate to `ingested` on exactly three paths:
+already-current, proposed, enriched. **Every other outcome returns early**, so a page that was
+fetched, extracted, and could not be attributed keeps `status: "queued"` — and `queued` comes to
+mean two opposite things:
+
+```text
+queued  ⟸  Atlas has never tried this page
+queued  ⟸  Atlas read it and could apply nothing
+```
+
+Measured on the live corpus: thirteen Big White candidates, all `queued`, none with `resolvedAt`,
+and **ten of them already had a SourceRecord**.
+
+### Attempted is derived from evidence, not from status
+
+A `SourceRecord` exists _because Atlas fetched that URL_. It is written before extraction runs, it is
+durable, and it cannot be falsified by a status field nobody updated. Joining candidate to source
+record on canonical URL makes _attempted_ true today, with no schema change.
+
+| State              | Meaning                                         |
+| ------------------ | ----------------------------------------------- |
+| `unread`           | Atlas has not fetched this page                 |
+| `applied`          | knowledge reached the entity                    |
+| `read-not-applied` | fetched and extracted; nothing could be applied |
+| `failed`           | the fetch itself broke                          |
+| `rejected`         | a curator refused it                            |
+
+### The completion rule now grades attempts
+
+It was effectively `queued pages == 0`, which was wrong twice: it counted already-read pages as
+unread, and it demanded an operation that would do nothing.
+
+The mission asks **did Atlas process the discovered pages** — not _did Atlas learn anything_. A page
+read without result no longer holds it open. It becomes its own piece of work with an honest next
+action: _re-running the queue will not change these; this needs a pipeline change or a different
+publisher._ A broken fetch does hold the mission open, because re-running genuinely acts on one.
+
+Big White now reads:
+
+```text
+Big White Ski Resort                         MORE TO LEARN
+Atlas already knows this entity. 3 of 13 discovered pages have not been attempted yet.
+
+Discovered 13 · Processed 10 · Not attempted 3 · Read, nothing applied 10
+
+WHAT ATLAS CAN LEARN
+· Driving and parking   · Named properties…   · Airport, shuttles, transport
+```
+
+Only the three pages a run would actually reach are offered — listing what an already-read page
+"can teach" is a promise the operation cannot keep.
+
+### Failures are not hidden
+
+When every page has been attempted and none applied, the entity reads **Read · nothing applied**,
+with the result stated: Atlas kept every page it fetched and linked it as evidence, but could not
+attribute what it extracted to the entity itself. That is not a tick and not a warning. It is a
+completed operation with an unmet outcome.
+
+### What Atlas should still add
+
+The URL join is correct but indirect. Atlas should stamp the attempt on the candidate itself — a
+`lastAttemptedAt`, or carrying `candidateSourceId` on the needs-attention events, which today record
+only `sourceRecordId` and `entityId`.

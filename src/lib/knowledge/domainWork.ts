@@ -261,8 +261,17 @@ export interface DomainWork {
     readonly evidenceGaps: number;
     /** Entities with at least one page still to read. The learning work item count. */
     readonly learningEntities: number;
-    /** Outstanding pages across those entities — queued plus failed. */
+    /** Pages a queue run would act on — never fetched, plus broken fetches. */
     readonly learningSources: number;
+    /**
+     * **Pages Atlas read and could apply nothing from.**
+     *
+     * The operation completed; it produced no usable enrichment. Counted apart
+     * from `learningSources` because re-running the queue does not touch these
+     * — they need a different source or a pipeline that can attribute what was
+     * already extracted.
+     */
+    readonly learnedNothing: number;
     /**
      * **Where Atlas read something and stopped.**
      *
@@ -354,6 +363,7 @@ export async function loadDomainWork(
       evidenceGaps: 0,
       learningEntities: 0,
       learningSources: 0,
+      learnedNothing: 0,
       stalled: 0,
       queued: 0,
       failures: 0,
@@ -412,6 +422,10 @@ export async function loadDomainWork(
     events,
     decidableIds,
     byId,
+    // The durable proof of what Atlas has actually fetched. Candidate status
+    // does not record a read that produced nothing applicable; a SourceRecord
+    // does, because it is written before extraction runs.
+    bundle?.sources ?? [],
   );
   const failures = failuresIn(events, ids, byId, namesLower);
 
@@ -441,7 +455,11 @@ export async function loadDomainWork(
       relationships: relationshipItems.length,
       evidenceGaps: gaps.length,
       learningEntities: learning.filter((l) => !l.complete).length,
-      learningSources: learning.reduce((n, l) => n + l.queued + l.failed, 0),
+      // Pages a queue run would act on. A page already read is not waiting.
+      learningSources: learning.reduce((n, l) => n + l.unread + l.failed, 0),
+      // Read, and nothing could be applied. A different kind of work — and
+      // running the operation again would change none of it.
+      learnedNothing: learning.reduce((n, l) => n + l.readNotApplied, 0),
       stalled: gaps.filter((g) => !g.abandonId).length,
       queued: gaps.filter((g) => g.abandonId).length,
       failures: failures.length,
