@@ -660,3 +660,70 @@ That separation is right for measurement and wrong for decisions. Recreation's t
 groups are both Activities, so scoping the review queue by category alone meant they belonged to no
 domain and were shown to nobody. Measurement and decisions are different questions and now get
 different sets rather than one compromise.
+
+---
+
+## 12. Recreation, operable end to end (2026-08-21)
+
+Three things stood between the sequence and a truthful _caught up_. None of them was that the work
+was hard; all three were missions that could not be **finished**.
+
+### A current mission with no work and no instruction
+
+The duplicate scan timed out, `noOpenDuplicates` graded `unverifiable` — which never completes a
+mission — and the panel said _"Nothing in this mission is waiting on a judgement."_ Every word of
+that was true, and the operator was stranded with no action and no way forward.
+
+Two fixes, because there were two faults. The decision reads now get a **12-second budget** instead
+of the 4 seconds set when they were cheap lookups; measured alone the scan answers in 0.4–1.4s, but
+it runs beside the workspace bundle, the region list and a throttled sweep of run events against the
+same Atlas process, and under that contention it intermittently passed 4s.
+
+And the current mission now always says what is stopping it. When a mission has no countable work of
+its own, the unsatisfied conditions **are** the work, each rendered with the missing fact and the
+next thing to press. `unverifiable` gets its own instruction — _Atlas could not read this, so the
+figure is unknown rather than zero_ — because "could not read" and "not done yet" are opposite
+problems with opposite remedies, and an unticked box reads as the second when it is the first.
+
+### Select all, restored
+
+```text
+☑ Select all      Clear selection            [Place selected (17)]
+```
+
+With an indeterminate state when only some rows are picked. Bulk placement is safe to _write_ — the
+service takes an array — but no route removes a `contains` edge, so selection and commit stay two
+separate deliberate acts. There is deliberately no one-click "place everything": the operator
+selects, sees the count they are about to commit, and presses a button that names it.
+
+### Enrichment is a blocked capability, not waiting work
+
+Measured against the live corpus rather than assumed: every one of the twelve entities short of
+Passport readiness is short of exactly one thing — **a picture**. Nothing Atlas can run acquires
+one. No queued candidate source targets any of them (the queue is Big White pages and lakes), and no
+wired publisher supplies park imagery. Running the queue would read pages about other entities and
+change nothing here.
+
+So the mission says exactly **"No enrichment operation exists yet."** and is blocked. Inventing a
+task would have been the more expensive mistake. It can still complete on its own if the corpus
+comes to satisfy it — BC Parks ingestion may carry images for the two parks in its own batch.
+
+### Caught up, with capabilities still missing
+
+Recreation now has **four actionable missions and two blocked capabilities**, and the completion
+banner keeps those apart:
+
+```text
+✓ CURRENT KNOWLEDGE COMPLETE
+All currently actionable Recreation work is finished.
+Missions complete   4 of 4 actionable
+
+Future capability
+  Make every provincial park presentable to a traveller
+  Blocked: No enrichment operation exists yet…
+  Acquire trails and trailheads
+  Blocked: no trail tag in the POI allow list…
+```
+
+A capability Atlas does not have yet is not unfinished work, and `4 of 6` would have made a finished
+body of work read as unfinished forever.

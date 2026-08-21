@@ -381,3 +381,98 @@ describe("the open panel", () => {
     }
   });
 });
+
+/**
+ * **Reaching the end of Recreation.**
+ *
+ * The finish line is a truthful *caught up*: every mission that can be worked
+ * is finished, and the two that cannot be worked are stated as blocked rather
+ * than counted as outstanding. Asserted deterministically because the live
+ * corpus cannot be driven there without irreversible curator decisions —
+ * merging entities and asserting region membership are both one-way.
+ */
+describe("Recreation reaching a caught-up state", () => {
+  /**
+   * Everything the four actionable missions grade on, satisfied. The BC Parks
+   * mission names its two parks by fragment, so the fixture has to hold a
+   * Kalamalka record for the same reason the real corpus does.
+   */
+  const KALAMALKA = entity("kalamalka", "Kalamalka Lake Provincial Park");
+  const caughtUp = () =>
+    contextWith(
+      [ELLISON, KEKULI, KALAMALKA],
+      ["ellison", "kekuli", "kalamalka"],
+      {
+        heldByCategory: new Map([
+          ["campgrounds", 2],
+          ["parks", 3],
+        ]),
+        sourceTypes: new Map([
+          ["ellison", new Set(["bcparks"])],
+          ["kekuli", new Set(["bcparks"])],
+          ["kalamalka", new Set(["bcparks"])],
+        ]),
+        openDecisions: { duplicate: 0, relationship: 0 },
+      },
+    );
+
+  it("leaves no mission current once every actionable one is finished", () => {
+    const progress = evaluateDomain("recreation", caughtUp());
+    const stillOpen = progress.missions.filter(
+      (m) => m.state === "current" || m.state === "queued",
+    );
+    expect(stillOpen.map((m) => m.mission.id)).toEqual([]);
+    expect(progress.current).toBeUndefined();
+  });
+
+  it("accounts for every mission as complete or blocked, never as outstanding", () => {
+    // This is the arithmetic the domain-complete banner rests on. If a mission
+    // were neither, the page would claim completion with work left over.
+    const progress = evaluateDomain("recreation", caughtUp());
+    const blocked = progress.missions.filter((m) => m.state === "blocked");
+    expect(progress.completed + blocked.length).toBe(progress.total);
+  });
+
+  it("names both blocked missions rather than one", () => {
+    // Enrichment joined trails as a blocked capability once the corpus showed
+    // every Passport gap to be a missing picture that nothing acquires.
+    const progress = evaluateDomain("recreation", caughtUp());
+    expect(
+      progress.missions
+        .filter((m) => m.state === "blocked")
+        .map((m) => m.mission.id)
+        .sort(),
+    ).toEqual(["rec-park-photos", "rec-trails"]);
+  });
+
+  it("keeps a blocked mission out of the current slot even when it sits early", () => {
+    const progress = evaluateDomain("recreation", contextWith([ELLISON], []));
+    for (const item of progress.missions) {
+      if (item.state === "blocked") expect(item).not.toBe(progress.current);
+    }
+  });
+
+  it("still lets a blocked mission complete if the corpus satisfies it", () => {
+    // Facts outrank the assertion: if trails appear, the blocker cleared in
+    // reality and the catalogue was merely out of date.
+    const withTrails = contextWith([ELLISON], ["ellison"], {
+      heldByCategory: new Map([["trails", 3]]),
+    });
+    const trails = evaluateDomain("recreation", withTrails).missions.find(
+      (m) => m.mission.id === "rec-trails",
+    );
+    expect(trails!.state).toBe("complete");
+  });
+
+  it("never leaves a current mission with nothing outstanding to show", () => {
+    // The trap this whole pass exists to close: a current mission whose
+    // conditions are all satisfied should have completed and handed over.
+    const progress = evaluateDomain("recreation", contextWith([ELLISON], []));
+    if (progress.current) {
+      const outstanding = progress.current.outcome.conditions.filter(
+        ({ result }) => result.state !== "done",
+      );
+      expect(outstanding.length).toBeGreaterThan(0);
+    }
+  });
+});

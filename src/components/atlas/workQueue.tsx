@@ -110,12 +110,24 @@ export function DomainComplete({
 }) {
   return (
     <div className="border-border flex flex-col gap-5 border-y py-10">
+      {/*
+        Two statements, and the wording keeps them apart.
+
+        "Current knowledge complete" is about evidence: everything Atlas holds
+        has been processed, and a new publisher makes it work again. A blocked
+        mission is about *capability* — Atlas cannot do that thing at all yet —
+        and folding it into the same sentence would make a finished body of
+        work read as unfinished forever. So the headline says **actionable**
+        when something is blocked, and names what is blocked underneath.
+      */}
       <p className="text-primary text-[11.5px] font-medium tracking-widest uppercase">
         ✓ Current knowledge complete
       </p>
 
       <p className="font-heading max-w-2xl text-4xl leading-[1.1] font-medium tracking-tight">
-        Everything Atlas knows about {domainName} has been processed.
+        {blocked.length > 0
+          ? `All currently actionable ${domainName} work is finished.`
+          : `Everything Atlas knows about ${domainName} has been processed.`}
       </p>
 
       <dl className="mt-1 flex flex-wrap gap-x-12 gap-y-4">
@@ -124,7 +136,11 @@ export function DomainComplete({
         <Figure term="Waiting on you" value={0} />
         <Figure
           term="Missions complete"
-          value={`${missionsComplete} of ${missionsTotal}`}
+          value={
+            blocked.length > 0
+              ? `${missionsComplete} of ${missionsTotal - blocked.length} actionable`
+              : `${missionsComplete} of ${missionsTotal}`
+          }
         />
       </dl>
 

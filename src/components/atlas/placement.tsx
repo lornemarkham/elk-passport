@@ -107,6 +107,14 @@ export function PlacementList({
     [ready, state],
   );
   const remaining = ready.length - placed.length;
+  /** Rows a click can still act on — a placed row is finished, not a choice. */
+  const selectable = useMemo(
+    () => ready.filter((r) => state[r.id]?.status !== "placed"),
+    [ready, state],
+  );
+  const allSelected =
+    selectable.length > 0 && selectable.every((r) => selected.has(r.id));
+  const someSelected = selected.size > 0;
 
   if (!regionId) {
     return (
@@ -223,13 +231,63 @@ export function PlacementList({
             <h3 className="text-[11.5px] font-medium tracking-widest uppercase">
               Ready to place
             </h3>
+            <span className="text-muted-foreground text-[12.5px]">
+              {selected.size === 0
+                ? `${remaining} ready to place`
+                : `${selected.size} selected`}
+            </span>
+          </div>
+
+          {/*
+            Select all, and then a separate deliberate act to commit it.
+
+            Bulk placement is safe to *write* — the service takes an array —
+            but no route removes a `contains` edge, so at this scale it has no
+            undo. That is why there is no one-click "place everything": the
+            operator selects, sees the count they are about to commit, and
+            presses a button that names it. Two acts, both intentional, and
+            the list they apply to is on screen.
+          */}
+          <div className="border-border flex flex-wrap items-center gap-x-4 gap-y-2 border-y py-3">
+            <label className="flex cursor-pointer items-center gap-2.5 text-[13px] font-medium">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(node) => {
+                  if (node) node.indeterminate = someSelected && !allSelected;
+                }}
+                disabled={busy || selectable.length === 0}
+                onChange={() =>
+                  setSelected(
+                    allSelected
+                      ? new Set()
+                      : new Set(selectable.map((r) => r.id)),
+                  )
+                }
+                aria-label="Select all ready to place"
+                className="accent-primary h-4 w-4 disabled:opacity-30"
+              />
+              Select all
+            </label>
+
+            <button
+              type="button"
+              disabled={busy || selected.size === 0}
+              onClick={() => setSelected(new Set())}
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded text-[12.5px] underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40"
+            >
+              Clear selection
+            </button>
+
             <button
               type="button"
               disabled={busy || selected.size === 0}
               onClick={() => void place([...selected])}
-              className="border-border hover:bg-muted focus-visible:ring-ring rounded-md border px-3.5 py-1.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40"
+              className="bg-foreground text-background focus-visible:ring-ring ml-auto rounded-md px-3.5 py-1.5 text-[13px] font-medium transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-40"
             >
-              Place selected ({selected.size})
+              {busy && selected.size > 0
+                ? `Placing ${selected.size}…`
+                : `Place selected (${selected.size})`}
             </button>
           </div>
 

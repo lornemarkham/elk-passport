@@ -69,6 +69,14 @@ export function CurrentMission({
         surface={surface}
       />
 
+      {ownedWork.length === 0 && (
+        <WhatRemains
+          progress={progress}
+          hasSurface={Boolean(surface)}
+          hasOperation={Boolean(operation)}
+        />
+      )}
+
       {ownedWork.length > 0 && (
         <div className="flex flex-col gap-4">
           <PhaseTitle index="·" title="What remains" />
@@ -245,5 +253,66 @@ export function Truncated({
     <p className="text-muted-foreground max-w-2xl text-[12.5px] leading-relaxed">
       Showing {shown} of {total} {noun}s.
     </p>
+  );
+}
+
+/**
+ * **The current mission always says what is stopping it.**
+ *
+ * The failure this exists to prevent was concrete: the duplicate scan timed
+ * out, `noOpenDuplicates` graded `unverifiable`, the mission could not
+ * complete, and the panel said *"Nothing in this mission is waiting on a
+ * judgement."* Every word of that was true and the operator was stranded —
+ * a current mission with no work, no instruction and no way forward.
+ *
+ * So when a mission has no countable work of its own, the unsatisfied
+ * conditions *are* the work, and each one is rendered with the fact that is
+ * missing and the next thing to press. **`unverifiable` gets its own
+ * instruction**, because "Atlas could not read this" and "this is not done
+ * yet" are opposite problems with opposite remedies, and an unticked box
+ * reads as the second when it is the first.
+ */
+function WhatRemains({
+  progress,
+  hasSurface,
+  hasOperation,
+}: {
+  progress: MissionProgress;
+  hasSurface: boolean;
+  hasOperation: boolean;
+}) {
+  const outstanding = progress.outcome.conditions.filter(
+    ({ result }) => result.state !== "done",
+  );
+  if (outstanding.length === 0) return null;
+
+  const instruction = (state: string): string => {
+    if (state === "unverifiable") {
+      return "Atlas could not read this, so the figure is unknown rather than zero — and an unknown never completes a mission. Press Refresh status to read it again.";
+    }
+    if (hasSurface) return "Do it in the list above.";
+    if (hasOperation)
+      return "Run the operation above, then press Refresh status.";
+    return "Nothing here runs. This finishes when the fact above becomes true.";
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <PhaseTitle index="·" title="What remains" />
+      <ul className="divide-border divide-y">
+        {outstanding.map(({ condition, result }) => (
+          <li key={condition.id} className="py-3 first:pt-0 last:pb-0">
+            <p className="text-[15px] font-medium">{condition.label}</p>
+            <p className="text-muted-foreground mt-1 max-w-2xl text-[13px] leading-relaxed">
+              {result.state === "unverifiable" && "Cannot be verified — "}
+              {result.detail}
+            </p>
+            <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed font-medium">
+              {instruction(result.state)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

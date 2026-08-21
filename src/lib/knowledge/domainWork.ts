@@ -260,10 +260,31 @@ export interface DecisionInputs {
   readonly relationshipCandidates: readonly RelationshipCandidate[] | null;
 }
 
+/**
+ * **A longer budget than the other reads, and deliberately.**
+ *
+ * Four seconds was the default when these were two cheap lookups. The
+ * duplicate scan is now the most expensive read on the page — it compares
+ * every entity against every other — and it runs concurrently with the
+ * workspace bundle, the region list and a throttled sweep of run events
+ * against the same Atlas process. Measured alone it answers in 0.4–1.4s;
+ * under that contention it intermittently passed 4s.
+ *
+ * The cost of the timeout being too short is not a slow page. It is a
+ * *mission the operator cannot finish*: a failed read makes `noOpenDuplicates`
+ * report `unverifiable`, which never completes a mission, so the current
+ * mission sat on "nothing is waiting" with no action and no way forward. A
+ * slower worst case is much cheaper than that.
+ */
+const DECISION_READ_BUDGET_MS = 12_000;
+
 export async function loadDecisionInputs(): Promise<DecisionInputs> {
   const [duplicates, relationshipCandidates] = await Promise.all([
-    adminGet<DuplicateScanResult>("/admin/duplicates"),
-    adminGet<RelationshipCandidate[]>("/admin/relationship-candidates"),
+    adminGet<DuplicateScanResult>("/admin/duplicates", DECISION_READ_BUDGET_MS),
+    adminGet<RelationshipCandidate[]>(
+      "/admin/relationship-candidates",
+      DECISION_READ_BUDGET_MS,
+    ),
   ]);
   return { duplicates, relationshipCandidates };
 }

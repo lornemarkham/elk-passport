@@ -750,12 +750,26 @@ export const MISSIONS: readonly Mission[] = [
       "A park with no picture renders an empty hero.",
       "This is the shortest route from a corpus that grew to a product that improved.",
     ],
-    duration: "A few minutes per park",
+    duration: "Not measured — an engineering change",
+    // Measured against the live corpus on 2026-08-21, not assumed: every one
+    // of the twelve entities short of Passport readiness is short of exactly
+    // one thing, **a picture**. Nothing Atlas can run acquires one. No queued
+    // candidate source targets any of them — the queue is Big White and lakes
+    // — and no wired publisher supplies park imagery. `run-queue` would read
+    // pages about other entities and change nothing here.
+    //
+    // So this is a capability Atlas does not have, not work waiting on a
+    // curator, and saying otherwise would be inventing a task. It can still
+    // complete on its own: BC Parks ingestion may carry images for the two
+    // parks in its batch, and if the corpus comes to satisfy the condition the
+    // blocker cleared in reality and the catalogue was out of date.
+    blockedBy:
+      "No enrichment operation exists yet. All twelve gaps are a missing picture, no queued source targets any of them, and no wired publisher supplies park images.",
     steps: [
       {
-        title: "Work the list under Passport",
+        title: "Wire a publisher that supplies images",
         detail:
-          "Each park names exactly what it is missing. Fewest gaps first.",
+          "Or add an operation that acquires one. Until then this cannot be worked from here.",
       },
     ],
     done: [categoryPassportReady("parks", "Every park is Passport ready")],
