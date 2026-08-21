@@ -16,6 +16,7 @@ import { buildWorkQueue } from "@/lib/knowledge/workQueue";
 import { DomainComplete, WorkQueue } from "@/components/atlas/workQueue";
 import { MissionTransition } from "@/components/atlas/missionTransition";
 import { PlacementList, type PlacementRow } from "@/components/atlas/placement";
+import { REQUIREMENT_LABEL } from "@/lib/knowledge/placementReadiness";
 import { GRADE_LABEL } from "@/lib/knowledge/domainHealth";
 import { PageHeader } from "@/components/atlas/ui";
 import {
@@ -155,6 +156,11 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
    * every row carries its category and its coordinates. Two rows with the same
    * name are still two distinguishable places, and work is never hidden
    * because a source did not name something well.
+   *
+   * Each row also carries its **placement readiness** — read from
+   * `context.placementReadiness`, the same verdict `allPlacedInRegion` grades
+   * on. The list and the condition therefore cannot disagree about which
+   * entities are a decision and which are an evidence gap.
    */
   const surface = (() => {
     if (mission?.surface !== "place-in-region") return undefined;
@@ -166,6 +172,7 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
         Array.isArray(full.geometry.coordinates)
           ? (full.geometry.coordinates as number[])
           : undefined;
+      const readiness = context.placementReadiness.get(entity.id);
       return {
         id: entity.id,
         name: entity.name,
@@ -174,6 +181,21 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
           point && point.length === 2
             ? `${point[1]!.toFixed(4)}, ${point[0]!.toFixed(4)}`
             : "No coordinates",
+        // A missing verdict is rendered as not-ready rather than as ready.
+        // The gate not having run is not evidence that it would have passed.
+        readiness: {
+          ready: readiness?.ready ?? false,
+          because:
+            readiness?.because ??
+            "Atlas did not assess this one, so it cannot say whether asking is reasonable.",
+          requirements: (readiness?.requirements ?? []).map((requirement) => ({
+            label: REQUIREMENT_LABEL[requirement.requirement],
+            met: requirement.met,
+            detail: requirement.detail,
+          })),
+          publishers: readiness?.publishers ?? [],
+          nextOperation: readiness?.nextOperation,
+        },
       };
     });
     return (

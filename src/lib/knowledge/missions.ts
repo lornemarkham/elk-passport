@@ -46,6 +46,8 @@
  * or an opportunity. That test is what keeps missions finishable.
  */
 
+import type { PlacementReadiness } from "./placementReadiness";
+
 /* -------------------------------------------------------------------------
  * What a condition can see
  * ---------------------------------------------------------------------- */
@@ -75,6 +77,15 @@ export interface MissionContext {
   readonly heldByCategory: ReadonlyMap<string, number>;
   /** Distinct source types describing each entity id. */
   readonly sourceTypes: ReadonlyMap<string, ReadonlySet<string>>;
+  /**
+   * **Whether asking a curator to place each entity is a reasonable question.**
+   *
+   * Computed once by `placementReadiness.ts` where the full entity records
+   * live, and read here rather than recomputed — a condition that re-derived
+   * it could disagree with the rows on screen, which is the failure this
+   * codebase has already paid for twice.
+   */
+  readonly placementReadiness: ReadonlyMap<string, PlacementReadiness>;
   /** Irreversible questions still open in this domain, by kind. */
   readonly openDecisions: {
     readonly duplicate: number;
@@ -218,11 +229,50 @@ export function unplacedEntities(
   return ctx.entities.filter((e) => !ctx.placedIds.has(e.id));
 }
 
+/**
+ * **The unplaced entities Atlas can justify asking about.**
+ *
+ * Not every unplaced entity is a pending decision. An entity Atlas cannot
+ * name, locate or attribute is not a placement question a curator can answer —
+ * it is an evidence gap wearing a placement question's clothes, and clicking
+ * *Place* on it would be asserting a membership Atlas has no grounds to
+ * propose. The gate is `assessPlacementReadiness`; this is the population it
+ * admits.
+ *
+ * An entity with no readiness entry is treated as **not** ready. A missing
+ * assessment means the gate did not run, and admitting on absence is the
+ * fabricated zero again — the safe reading of "Atlas said nothing" is "Atlas
+ * cannot justify this yet", which costs a curator a delay rather than a wrong
+ * assertion.
+ */
+export function placementDecisions(
+  ctx: MissionContext,
+): readonly ContextEntity[] {
+  return unplacedEntities(ctx).filter(
+    (e) => ctx.placementReadiness.get(e.id)?.ready === true,
+  );
+}
+
+/**
+ * **The unplaced entities Atlas is withholding from the question.**
+ *
+ * Counted and named everywhere the ready ones are, never quietly dropped: a
+ * gate that shrank a to-do list without saying so would be indistinguishable
+ * from a gate that worked.
+ */
+export function withheldFromPlacement(
+  ctx: MissionContext,
+): readonly ContextEntity[] {
+  return unplacedEntities(ctx).filter(
+    (e) => ctx.placementReadiness.get(e.id)?.ready !== true,
+  );
+}
+
 /** Every entity in this domain has been placed in the region. */
 export function allPlacedInRegion(): DoneCondition {
   return {
     id: "all-placed",
-    label: "Every entity is placed in the region",
+    label: "Every entity Atlas can justify placing is in the region",
     evaluate: (ctx) => {
       // `placedIds` is empty both when nothing is placed and when Atlas could
       // not tell us which Region is being built. Reporting the first when the
@@ -233,21 +283,43 @@ export function allPlacedInRegion(): DoneCondition {
           state: "unverifiable",
           detail: `Atlas could not identify ${ctx.regionName}'s membership, so "unplaced" cannot be counted.`,
         };
-      const unplaced = unplacedEntities(ctx);
       if (ctx.entities.length === 0)
         return {
           state: "not-done",
           detail: "Atlas holds nothing here to place.",
         };
+
+      // The mission is about placement *decisions*, so it is graded on the
+      // entities Atlas can justify asking about. An entity that fails the
+      // evidence gate is not an unanswered question — it is a question Atlas
+      // has not earned the right to ask, and no amount of clicking resolves
+      // it. Grading on the whole unplaced set would leave this mission
+      // permanently at "6 remaining" with nothing a curator could do about it,
+      // which is the uncompletable mission this architecture exists to avoid.
+      //
+      // The withheld are never silently dropped: the detail states them either
+      // way, and the work queue carries them as a group of their own with a
+      // next action attached.
+      const decisions = placementDecisions(ctx);
+      const withheld = withheldFromPlacement(ctx);
+      const withheldNote =
+        withheld.length === 0
+          ? ""
+          : ` ${withheld.length} withheld — Atlas cannot justify asking yet.`;
+
+      if (decisions.length > 0) {
+        return {
+          state: "not-done",
+          detail: `${decisions.length} ready to place — ${decisions
+            .slice(0, 3)
+            .map((e) => e.name)
+            .join(", ")}${decisions.length > 3 ? "…" : ""}.${withheldNote}`,
+        };
+      }
+
       return {
-        state: unplaced.length === 0 ? "done" : "not-done",
-        detail:
-          unplaced.length === 0
-            ? `All ${ctx.entities.length} are in ${ctx.regionName}.`
-            : `${unplaced.length} unplaced — ${unplaced
-                .slice(0, 3)
-                .map((e) => e.name)
-                .join(", ")}${unplaced.length > 3 ? "…" : ""}`,
+        state: "done",
+        detail: `Every entity Atlas can justify placing is in ${ctx.regionName}.${withheldNote}`,
       };
     },
   };

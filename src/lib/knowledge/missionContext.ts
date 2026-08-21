@@ -2,6 +2,7 @@ import "server-only";
 import type { KnowledgeDomain } from "./knowledgeDomains";
 import { KNOWLEDGE_DOMAINS } from "./knowledgeDomains";
 import type { MissionContext, DomainProgress } from "./missions";
+import { splitByPlacementReadiness } from "./placementReadiness";
 import { evaluateDomain } from "./missions";
 import { domainHealth, type DomainHealth } from "./domainHealth";
 import {
@@ -134,6 +135,15 @@ export async function loadDomainState(
       health.scope.categories.map((c) => [c.key, c.held]),
     ),
     sourceTypes: health.evidence?.sourceTypesByEntity ?? new Map(),
+    // Run once, here, where the full entity records and the per-entity
+    // publisher sets both already exist. A mission condition and the rows on
+    // screen then read one answer instead of deriving two.
+    placementReadiness: new Map(
+      splitByPlacementReadiness(
+        health.scope.entities,
+        health.evidence?.sourceTypesByEntity ?? new Map(),
+      ).all.map((readiness) => [readiness.entityId, readiness]),
+    ),
     openDecisions: {
       duplicate: work.totals.duplicates,
       relationship: work.totals.relationships,

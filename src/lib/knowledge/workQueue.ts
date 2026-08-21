@@ -1,7 +1,7 @@
 import type { DomainHealth } from "./domainHealth";
 import type { DomainWork } from "./domainWork";
 import type { DomainProgress, MissionContext } from "./missions";
-import { unplacedEntities } from "./missions";
+import { placementDecisions, withheldFromPlacement } from "./missions";
 
 /**
  * **Everything Atlas currently knows needs a person, in one place.**
@@ -18,7 +18,8 @@ import { unplacedEntities } from "./missions";
  *
  * | Group | Owned by |
  * |---|---|
- * | Needs placement | `unplacedEntities` — the same filter the mission condition uses |
+ * | Needs placement | `placementDecisions` — the same filter the mission condition grades |
+ * | Needs evidence before placement | `withheldFromPlacement` — the rest of the unplaced set |
  * | Needs a decision | `domainWork.totals.decisions` |
  * | Needs evidence | `domainWork.totals.evidenceGaps` |
  * | Needs enrichment | `domainHealth.passport` |
@@ -48,7 +49,12 @@ import { unplacedEntities } from "./missions";
  */
 
 export type WorkGroupKey =
-  "placement" | "decision" | "evidence" | "enrichment" | "failed";
+  | "placement"
+  | "placement-evidence"
+  | "decision"
+  | "evidence"
+  | "enrichment"
+  | "failed";
 
 export interface WorkGroup {
   readonly key: WorkGroupKey;
@@ -89,7 +95,8 @@ export function buildWorkQueue(
   context: MissionContext,
   progress: DomainProgress,
 ): DomainWorkQueue {
-  const unplaced = context.scopeable ? unplacedEntities(context) : [];
+  const readyToPlace = context.scopeable ? placementDecisions(context) : [];
+  const withheld = context.scopeable ? withheldFromPlacement(context) : [];
   const needsEnrichment = health.passport?.needsExamples ?? [];
   const enrichmentCount = health.passport?.needsEnrichment ?? 0;
 
@@ -97,12 +104,29 @@ export function buildWorkQueue(
     {
       key: "placement",
       label: "Needs placement",
-      count: unplaced.length,
-      because: `Atlas holds these but no curator has said they belong to ${context.regionName}.`,
+      count: readyToPlace.length,
+      because: `Atlas knows what each of these is and where it is, but no curator has said they belong to ${context.regionName}.`,
       missing: "A membership assertion. Never inferred from coordinates.",
       nextAction: `Place each one in ${context.regionName} — on this page.`,
       href: "#mission",
-      examples: unplaced.slice(0, 3).map((e) => e.name),
+      examples: readyToPlace.slice(0, 3).map((e) => e.name),
+    },
+    {
+      // A separate group on purpose. These are unplaced too, but they are not
+      // a decision anybody can make — folding them into the count above would
+      // put work on a curator's list that no amount of clicking resolves, and
+      // dropping them would hide real gaps behind a shrinking number.
+      key: "placement-evidence",
+      label: "Needs evidence before placement",
+      count: withheld.length,
+      because:
+        "Atlas cannot yet justify asking whether these belong to a region — it cannot name them, locate them, or say who published them.",
+      missing:
+        "A distinguishing name, a usable location, or a source that describes it.",
+      nextAction:
+        "Acquire them from a publisher that names them, then place. Not a decision — an acquisition.",
+      href: "#mission",
+      examples: withheld.slice(0, 3).map((e) => e.name),
     },
     {
       key: "decision",

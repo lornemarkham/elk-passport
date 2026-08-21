@@ -76,6 +76,8 @@ export interface EntityLike {
   readonly description?: string;
   readonly placeType?: string;
   readonly organizationType?: string;
+  /** A street address. A locating fact in its own right, and one of the four identity signals. */
+  readonly address?: string;
   readonly imageUrl?: string;
   readonly geometry?: { type?: string; coordinates?: unknown };
   readonly externalIds?: readonly { system: string }[];
