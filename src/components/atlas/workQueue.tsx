@@ -93,19 +93,20 @@ export function WorkQueue({ queue }: { queue: DomainWorkQueue }) {
 export function DomainComplete({
   domainName,
   regionName,
-  queue,
   placed,
   known,
   missionsComplete,
   missionsTotal,
+  blocked,
 }: {
   domainName: string;
   regionName: string;
-  queue: DomainWorkQueue;
   placed: number;
   known: number;
   missionsComplete: number;
   missionsTotal: number;
+  /** Missions nobody can start. Named separately, never folded into the tally. */
+  blocked: readonly { readonly title: string; readonly blockedBy: string }[];
 }) {
   return (
     <div className="border-border flex flex-col gap-5 border-y py-10">
@@ -132,8 +133,53 @@ export function DomainComplete({
         knows every {domainName.toLowerCase()} place in {regionName}, which has
         no denominator. When a publisher yields something new, this becomes work
         again, and today&apos;s completion will not have been wrong.
-        {queue.blockedMissions > 0 &&
-          ` ${queue.blockedMissions} mission${queue.blockedMissions === 1 ? " is" : "s are"} blocked on a change Atlas cannot make itself, and ${queue.blockedMissions === 1 ? "is" : "are"} not counted here.`}
+      </p>
+
+      {blocked.length > 0 && <FutureCapability blocked={blocked} />}
+    </div>
+  );
+}
+
+/**
+ * **A capability Atlas does not have yet is not unfinished work.**
+ *
+ * A blocked mission left inside the tally would make a finished body of work
+ * read as incomplete forever — *5 of 6 missions* against a mission nobody can
+ * start. It is a different kind of statement: not *you still have this to do*
+ * but *Atlas cannot do this at all yet*, and the change that would alter that
+ * is an engineering one.
+ *
+ * So it is named, with its blocker, below the completion rather than inside
+ * it. Still visible, still true, and no longer subtracting from what was
+ * actually achieved.
+ */
+function FutureCapability({
+  blocked,
+}: {
+  blocked: readonly { readonly title: string; readonly blockedBy: string }[];
+}) {
+  return (
+    <div className="border-border mt-3 border-t pt-5">
+      <h3 className="text-muted-foreground text-[11.5px] font-medium tracking-widest uppercase">
+        Future capability
+      </h3>
+      <ul className="mt-3 flex flex-col gap-3">
+        {blocked.map((mission) => (
+          <li key={mission.title} className="max-w-2xl">
+            <p className="text-sm font-medium">{mission.title}</p>
+            {mission.blockedBy && (
+              <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-relaxed">
+                <span className="text-foreground/70">Blocked: </span>
+                {mission.blockedBy}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground mt-3 max-w-2xl text-[12.5px] leading-relaxed">
+        Not counted above, and not work waiting on you. Each needs a change to
+        what Atlas can do — and each can still complete on its own if the corpus
+        comes to satisfy its conditions, because facts outrank the assertion.
       </p>
     </div>
   );

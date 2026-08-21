@@ -60,6 +60,13 @@ export interface WorkGroup {
   readonly key: WorkGroupKey;
   readonly label: string;
   readonly count: number;
+  /**
+   * The noun the count takes when it is read as a phrase — *12 ready to
+   * place*. The label is a heading and does not survive being prefixed with a
+   * number: *"12 needs placement"* is not English. One authored word each,
+   * rather than a heuristic that strips "Needs " and hopes.
+   */
+  readonly unit: string;
   /** Why these items are here. */
   readonly because: string;
   /** What Atlas does not have. Empty when the gap is a decision rather than a fact. */
@@ -104,6 +111,7 @@ export function buildWorkQueue(
     {
       key: "placement",
       label: "Needs placement",
+      unit: "ready to place",
       count: readyToPlace.length,
       because: `Atlas knows what each of these is and where it is, but no curator has said they belong to ${context.regionName}.`,
       missing: "A membership assertion. Never inferred from coordinates.",
@@ -118,6 +126,7 @@ export function buildWorkQueue(
       // dropping them would hide real gaps behind a shrinking number.
       key: "placement-evidence",
       label: "Needs evidence before placement",
+      unit: "need more evidence",
       count: withheld.length,
       because:
         "Atlas cannot yet justify asking whether these belong to a region — it cannot name them, locate them, or say who published them.",
@@ -131,6 +140,7 @@ export function buildWorkQueue(
     {
       key: "decision",
       label: "Needs a decision",
+      unit: "decisions to answer",
       count: work.totals.decisions,
       because:
         "Atlas narrowed each to one irreversible question and stopped, because deciding cannot be undone.",
@@ -141,6 +151,7 @@ export function buildWorkQueue(
     {
       key: "evidence",
       label: "Needs evidence",
+      unit: "waiting on evidence",
       count: work.totals.evidenceGaps,
       because:
         "Atlas cannot responsibly ask a yes/no yet — a page is queued unread, or an extraction produced nothing it could attribute.",
@@ -154,6 +165,7 @@ export function buildWorkQueue(
     {
       key: "enrichment",
       label: "Needs enrichment",
+      unit: "need enrichment",
       count: enrichmentCount,
       because:
         "Atlas holds these, but Passport cannot present them — a traveller-facing section would render empty.",
@@ -166,6 +178,7 @@ export function buildWorkQueue(
     {
       key: "failed",
       label: "Failed",
+      unit: "failed",
       count: work.totals.failures,
       because:
         "A page could not be read, or Atlas read one and declined to write. Those are opposite events and both are listed.",
@@ -217,4 +230,42 @@ function gapSummary(
   return gaps
     .map((gap) => `${gap.count} need ${gap.label.toLowerCase()}`)
     .join(" · ");
+}
+
+/* -------------------------------------------------------------------------
+ * Which mission owns which work
+ * ---------------------------------------------------------------------- */
+
+/**
+ * **Outstanding work that belongs to this mission.**
+ *
+ * Read from `Mission.owns`, declared in the catalogue beside `surface`, so the
+ * page never matches on a mission id. A domain page used to carry a *What
+ * needs you* section that competed with the mission for attention: two true
+ * lists, and answering *what do I do next?* meant combining them by hand.
+ * Work that belongs to a mission now sits inside it.
+ */
+export function groupsOwnedBy(
+  queue: DomainWorkQueue,
+  mission: { readonly owns?: readonly WorkGroupKey[] } | undefined,
+): readonly WorkGroup[] {
+  const owns = new Set(mission?.owns ?? []);
+  return queue.groups.filter((group) => owns.has(group.key) && group.count > 0);
+}
+
+/**
+ * **Outstanding work no mission claims.**
+ *
+ * Not a leftovers bin — a real category. A failed fetch belongs to a run, not
+ * to a job; a page queued unread belongs to a source. Neither has a mission
+ * whose finish depends on it, and inventing one to tidy the page would assert
+ * a relationship Atlas cannot see. So they stay, secondary, and say why they
+ * are not part of the sequence.
+ */
+export function unassignedGroups(
+  queue: DomainWorkQueue,
+  missions: readonly { readonly owns?: readonly WorkGroupKey[] }[],
+): readonly WorkGroup[] {
+  const claimed = new Set(missions.flatMap((m) => m.owns ?? []));
+  return queue.outstanding.filter((group) => !claimed.has(group.key));
 }

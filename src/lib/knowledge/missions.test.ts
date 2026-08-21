@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allPlacedInRegion,
+  evaluateDomain,
   placementDecisions,
   unplacedEntities,
   withheldFromPlacement,
@@ -221,5 +222,162 @@ describe("allPlacedInRegion with entities the gate withholds", () => {
     const ctx = withGate([ELLISON], ["ellison"], []);
     expect(withheldFromPlacement(ctx)).toHaveLength(0);
     expect(allPlacedInRegion().evaluate(ctx).state).toBe("done");
+  });
+});
+
+/**
+ * **The sequence the Recreation page is worked in.**
+ *
+ * The page renders one accordion whose open panel is whichever mission
+ * `evaluateDomain` calls current. These assert the ordering rules the UI
+ * depends on, so a change to either can never quietly desynchronise them:
+ * exactly one mission is current, it is the earliest workable one, and
+ * derived reality outranks the authored order.
+ */
+describe("evaluateDomain — the order the page is worked in", () => {
+  const ctx = (placedIds: readonly string[] = []) =>
+    contextWith([ELLISON, KEKULI], placedIds);
+
+  it("marks exactly one mission current, and never more", () => {
+    const progress = evaluateDomain("recreation", ctx());
+    expect(progress.missions.filter((m) => m.state === "current")).toHaveLength(
+      1,
+    );
+  });
+
+  it("chooses the earliest mission that is neither complete nor blocked", () => {
+    const progress = evaluateDomain("recreation", ctx());
+    const currentIndex = progress.missions.findIndex(
+      (m) => m.state === "current",
+    );
+    // Everything before it is settled — nothing workable is skipped over,
+    // which is the whole promise of a top-to-bottom page.
+    for (const earlier of progress.missions.slice(0, currentIndex)) {
+      expect(["complete", "blocked"]).toContain(earlier.state);
+    }
+    expect(progress.current).toBe(progress.missions[currentIndex]);
+  });
+
+  it("queues everything after the current mission", () => {
+    const progress = evaluateDomain("recreation", ctx());
+    const currentIndex = progress.missions.findIndex(
+      (m) => m.state === "current",
+    );
+    for (const later of progress.missions.slice(currentIndex + 1)) {
+      expect(["queued", "complete", "blocked"]).toContain(later.state);
+      expect(later.state).not.toBe("current");
+    }
+  });
+
+  it("never makes a blocked mission current, wherever it sits", () => {
+    const progress = evaluateDomain("recreation", ctx());
+    for (const item of progress.missions) {
+      if (item.mission.blockedBy && !item.outcome.complete) {
+        expect(item.state).toBe("blocked");
+      }
+    }
+  });
+
+  it("lets a later mission read complete out of order — facts outrank sequence", () => {
+    // A mission whose conditions happen to be satisfied is complete whether or
+    // not the ones above it are. Inventing a dependency to keep the list tidy
+    // would assert something Atlas cannot see.
+    const progress = evaluateDomain("recreation", ctx());
+    const currentIndex = progress.missions.findIndex(
+      (m) => m.state === "current",
+    );
+    const laterComplete = progress.missions
+      .slice(currentIndex + 1)
+      .filter((m) => m.state === "complete");
+    for (const item of laterComplete) {
+      expect(item.outcome.complete).toBe(true);
+    }
+    // And such a mission is still not current.
+    expect(laterComplete.every((m) => m.state !== "current")).toBe(true);
+  });
+
+  it("names the mission that becomes current next, skipping blocked ones", () => {
+    const progress = evaluateDomain("recreation", ctx());
+    if (progress.next) {
+      expect(progress.next.state).toBe("queued");
+      expect(progress.next.mission.blockedBy).toBeUndefined();
+    }
+  });
+
+  it("has no current mission when nothing is workable", () => {
+    // Not an error state. "Everything left is blocked" is a real answer, and
+    // better than promoting work that cannot begin.
+    const progress = evaluateDomain("recreation", ctx());
+    const workable = progress.missions.filter(
+      (m) => m.state === "current" || m.state === "queued",
+    );
+    if (workable.length === 0) expect(progress.current).toBeUndefined();
+    else expect(progress.current).toBeDefined();
+  });
+
+  it("counts completions without counting blocked missions as done", () => {
+    const progress = evaluateDomain("recreation", ctx());
+    expect(progress.completed).toBe(
+      progress.missions.filter((m) => m.state === "complete").length,
+    );
+    expect(progress.total).toBe(progress.missions.length);
+  });
+});
+
+/**
+ * **Which panel the page opens.**
+ *
+ * The accordion sets `open` from the derived state and from nothing else —
+ * there is no stored open-state and nothing advances by hand. Asserting the
+ * rule here rather than in a render test keeps it where the state machine
+ * lives.
+ */
+describe("the open panel", () => {
+  const openStates = (ctx: MissionContext) =>
+    evaluateDomain("recreation", ctx).missions.map(
+      (m) => m.state === "current",
+    );
+
+  it("opens exactly one panel", () => {
+    const open = openStates(contextWith([ELLISON, KEKULI], []));
+    expect(open.filter(Boolean)).toHaveLength(1);
+  });
+
+  it("moves the open panel down when a mission completes", () => {
+    // The transition the operator sees after a refresh: the mission they just
+    // finished collapses, and the one below opens. Nothing was clicked.
+    //
+    // Built against the real Recreation catalogue rather than a synthetic one,
+    // so the two must actually agree: the sweep needs entities in its
+    // categories and the duplicate scan must have answered, which is what puts
+    // placement in front of the operator.
+    const sweptAndDeduped = (placedIds: readonly string[]) =>
+      contextWith([ELLISON, KEKULI], placedIds, {
+        heldByCategory: new Map([["campgrounds", 2]]),
+      });
+
+    const before = evaluateDomain("recreation", sweptAndDeduped([]));
+    const after = evaluateDomain(
+      "recreation",
+      sweptAndDeduped(["ellison", "kekuli"]),
+    );
+    const indexOf = (p: typeof before) =>
+      p.missions.findIndex((m) => m.state === "current");
+
+    expect(before.current!.mission.id).toBe("rec-place-entities");
+    expect(indexOf(after)).toBeGreaterThan(indexOf(before));
+
+    // And the mission that was current is now complete rather than merely
+    // closed — the panel collapsed because the fact changed.
+    expect(
+      after.missions.find((m) => m.mission.id === "rec-place-entities")!.state,
+    ).toBe("complete");
+  });
+
+  it("opens nothing when every remaining mission is blocked", () => {
+    const progress = evaluateDomain("recreation", contextWith([], []));
+    if (!progress.current) {
+      expect(progress.missions.every((m) => m.state !== "current")).toBe(true);
+    }
   });
 });

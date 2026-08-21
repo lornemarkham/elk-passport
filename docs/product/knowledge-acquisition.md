@@ -503,3 +503,90 @@ second run read its own `localStorage` write and found nothing to announce.
 
 No static check could have caught it. **A lint workaround that changes the rendering strategy is a
 design change — test it live.**
+
+---
+
+## 10. The domain page is a sequence (2026-08-21)
+
+> A Knowledge Domain is operated as an ordered sequence of finite missions. The current mission is
+> the working surface. Completed missions collapse, and the next unfinished mission becomes current
+> from derived Atlas facts.
+
+### The problem was six true answers
+
+The page carried a current mission, a work queue, a mission roster, health, Passport readiness and
+Reference. Every one of them was accurate. None of them was _the_ answer, and working out what to
+do next meant holding all six in your head at once and reconciling them.
+
+There is now one spine: an ordered list of missions, worked top to bottom.
+
+```text
+✓ 1. Sweep Ellison Provincial Park                        COMPLETE   collapsed
+✓ 2. Resolve the duplicates the sweep created             COMPLETE   collapsed
+○ 3. Place the new Recreation entities in the Okanagan    CURRENT    open
+      12 ready to place · 5 need more evidence
+○ 4. Ingest Ellison Park and Kalamalka Lake Park          NEXT       collapsed
+○ 5. Make every provincial park presentable               NEXT       collapsed
+— 6. Acquire trails and trailheads                        BLOCKED    collapsed
+```
+
+### Nothing new decides which panel is open
+
+`evaluateDomain` had already chosen the current mission — the first that is neither complete nor
+blocked. The accordion sets `open` from that and from nothing else. There is no stored open-state,
+no click that advances a mission, and no second answer to _which mission is current_; that second
+answer is precisely the defect that once made a page say **Mission complete** and **NOW** in the
+same breath.
+
+So the loop is unchanged and now visible:
+
+```text
+Operation changes Atlas → Refresh → conditions re-evaluate →
+mission completes → it collapses → the next one opens
+```
+
+### Each state shows a different thing, deliberately
+
+**Complete** shows the conditions that make it true, read from Atlas just now rather than recorded
+when it happened — and **no controls at all**. In a page worked top to bottom, a stale control is
+worse than a missing one: it pulls attention backwards past the mission that actually needs it.
+
+**Current** is the only panel with controls: Execute · Review · Complete, with the Refresh button
+inside Execute, where the instruction to press it belongs.
+
+**Next** shows the objective, the reasons, the conditions it will be graded on, and what it is
+waiting for. No controls, because starting it now would be working out of order against a page
+whose whole purpose is order.
+
+**Blocked** shows the blocker and, where no command exists, says **operation not built yet**. That
+is a truthful blocker. Drawing a button for an operation nobody has written would be the more
+expensive mistake.
+
+### Order guides, but facts still win
+
+The authored order is the intended path. A later mission whose conditions are already true renders
+complete anyway, out of sequence and without argument. Nothing invents a dependency to keep the
+list tidy — derived reality outranks expected sequence.
+
+### Work sits inside the mission that owns it
+
+`Mission.owns` names which kinds of outstanding work a mission is responsible for, declared in the
+catalogue beside `surface`. Placement work and its needs-more-evidence half now live inside the
+placement mission; enrichment lives inside the Passport mission.
+
+What no mission claims stays on the page as **Not tied to a mission**, secondary, and says why: a
+failed fetch belongs to a run and a queued page belongs to a source. Inventing a mission to house
+them would assert a relationship Atlas cannot see.
+
+### Passport readiness is not a gate
+
+It is the done-condition of exactly one mission — _make every provincial park presentable_ — and
+no earlier mission is held up because a park has no photograph. Elsewhere on the page it is
+Reference.
+
+### A blocked capability is not unfinished work
+
+When everything actionable is complete, the page shows **✓ CURRENT KNOWLEDGE COMPLETE**, and blocked
+missions are listed below it under **Future capability** with their blockers. They are not in the
+tally. _5 of 6 missions_ against a mission nobody can start would make a finished body of work read
+as unfinished forever, which is a different and false statement.

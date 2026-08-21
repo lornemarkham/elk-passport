@@ -1120,10 +1120,11 @@ export function MissionHeader({
  */
 export function MissionComplete({
   outcome,
-  next,
+  nextTitle,
 }: {
   outcome: MissionOutcome;
-  next?: Mission;
+  /** The mission that becomes current when this one finishes. */
+  nextTitle?: string;
 }) {
   const mark = (state: string) =>
     state === "done" ? "✓" : state === "unverifiable" ? "?" : "○";
@@ -1184,10 +1185,10 @@ export function MissionComplete({
         ))}
       </ul>
 
-      {outcome.complete && next && (
+      {outcome.complete && nextTitle && (
         <p className="max-w-2xl text-sm leading-relaxed">
           <span className="text-muted-foreground">Next mission: </span>
-          <span className="font-medium">{next.title}</span>
+          <span className="font-medium">{nextTitle}</span>
         </p>
       )}
     </div>

@@ -47,6 +47,7 @@
  */
 
 import type { PlacementReadiness } from "./placementReadiness";
+import type { WorkGroupKey } from "./workQueue";
 
 /* -------------------------------------------------------------------------
  * What a condition can see
@@ -500,6 +501,20 @@ export interface Mission {
    * calls the same `RegionMembershipService` the CLI calls.
    */
   readonly surface?: "place-in-region";
+  /**
+   * **Which kinds of outstanding work this mission is responsible for.**
+   *
+   * Declared here for the same reason `surface` is: so the page can put work
+   * inside the mission that owns it without matching on an id. A domain page
+   * used to carry a separate *What needs you* section that competed with the
+   * mission for the operator's attention, and answering *what do I do next?*
+   * meant combining the two by hand.
+   *
+   * A group named by no mission is genuinely domain-wide — a failed fetch
+   * belongs to a run, not to a job — and the page says so rather than
+   * pretending it fits somewhere.
+   */
+  readonly owns?: readonly WorkGroupKey[];
   readonly done: readonly DoneCondition[];
 }
 
@@ -639,6 +654,7 @@ export const MISSIONS: readonly Mission[] = [
   },
   {
     id: "rec-resolve-duplicates",
+    owns: ["decision"],
     domain: "recreation",
     title: "Resolve the duplicates the sweep created",
     outcome: "No two records describe the same place.",
@@ -657,6 +673,7 @@ export const MISSIONS: readonly Mission[] = [
   },
   {
     id: "rec-place-entities",
+    owns: ["placement", "placement-evidence"],
     domain: "recreation",
     title: "Place the new Recreation entities in the Okanagan",
     outcome: "Everything the sweep created belongs to the region.",
@@ -710,6 +727,7 @@ export const MISSIONS: readonly Mission[] = [
   },
   {
     id: "rec-park-photos",
+    owns: ["enrichment"],
     domain: "recreation",
     title: "Make every provincial park presentable to a traveller",
     outcome:
