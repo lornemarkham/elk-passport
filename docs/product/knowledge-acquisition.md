@@ -727,3 +727,85 @@ Future capability
 
 A capability Atlas does not have yet is not unfinished work, and `4 of 6` would have made a finished
 body of work read as unfinished forever.
+
+---
+
+## 13. Curators work on entities (2026-08-21)
+
+> **Atlas performs work on sources. Curators perform work on entities.** The operator interface
+> organises ingestion work around the entity being learned, with sources beneath it as evidence and
+> inputs.
+>
+> A source queue is implementation detail. The operator's goal is to teach Atlas about an entity.
+
+### The queue view had leaked into the operator experience
+
+Thirteen discovered pages about Big White Ski Resort rendered as thirteen work items, each headed
+_Big White Ski Resort_:
+
+```text
+Needs more evidence
+  Big White Ski Resort   Summer operation      bigwhite.com/summer
+  Big White Ski Resort   Lodging categories    bigwhite.com/plan-your-trip/accommodation
+  Big White Ski Resort   Driving and parking   bigwhite.com/explore/transport/…
+  …
+```
+
+Every row was true. The list was still wrong, because it left the curator asking whether those were
+thirteen decisions, why the same name appeared thirteen times, and when Big White would be finished.
+Atlas already knew all thirteen pages were about one entity — `expectedTargets` says so, and it is
+the same field the reversibility gate reads. The interface had no business making a person infer it.
+
+It now reads:
+
+```text
+Big White Ski Resort            MORE TO LEARN
+Atlas already knows this entity. 13 discovered pages are waiting to be read.
+Queued 13
+
+WHAT ATLAS CAN LEARN
+· Summer operation      · Lodging categories    · Driving and parking
+· The core winter product · Winter beyond skiing · Core resort facts
+· The dining directory  · Trail and village maps · Conditions and forecast
+…
+bigwhite.com
+▸ Sources — 13
+```
+
+### More to learn is not needs evidence
+
+| State              | Means                                                          | Remedy                     |
+| ------------------ | -------------------------------------------------------------- | -------------------------- |
+| **Needs evidence** | Atlas does not know enough to trust the entity or the decision | a different kind of source |
+| **More to learn**  | Atlas already trusts the entity and has sources waiting        | read the queue             |
+
+Big White is a valid entity with identity, location and provenance. Its queued pages are not proving
+it exists; they are teaching Atlas about it. Filing that under _needs evidence_ told the curator
+their corpus was weaker than it is, and buried the one thing they could act on.
+
+### Four source states, from the two places Atlas records them
+
+`ingested` → read. `rejected` → rejected. A broken fetch leaves the row **queued** in the database
+and reports itself as a failed event, so `failed` is derived by joining on
+`IngestionEvent.candidateSourceId` — never on name or URL.
+
+A pass is complete only when nothing is queued **and** nothing failed. Seven of eight processed is
+not done, and folding a failure into "complete" would report a finish on the strength of a broken
+fetch.
+
+### Completion is deliberately narrow
+
+_No actionable source remains in this pass._ Not _Atlas knows everything about Big White_. Discovery
+finding more pages tomorrow makes this work again, and today's completion will not have been wrong.
+
+### Grouping is hierarchy, not deletion
+
+Every URL, publisher, candidate status, reason and failure is one disclosure down, available
+whenever provenance is the question. The curator should not need to open it.
+
+### Pages that name no entity stay separate
+
+Seventeen of them. They are not folded into any group, because Atlas refuses to process them for
+exactly one reason — it does not know who they are about — and the app guessing a target would be
+inventing the attribution the engine declined to invent. The page says **"No operator workflow
+exists yet."** That is a real gap, and stating it is better than drawing a button for it.

@@ -149,7 +149,12 @@ export async function loadDomainState(
       duplicate: work.totals.duplicates,
       relationship: work.totals.relationships,
     },
-    queuedPages: work.totals.queued,
+    // Outstanding *learning* work, counted the way the surface counts it:
+    // queued plus failed, across the entities this domain owns. A failed fetch
+    // is a retry, not a finish, and counting only `queued` would complete the
+    // mission with a broken page still unread.
+    queuedPages: work.totals.learningSources,
+    learningEntities: work.totals.learningEntities,
     passportByCategory: health.passportByCategory,
     // The Region matters here as much as the bundle does. Without it
     // `placedIds` is empty, and a condition asking "is everything placed?"

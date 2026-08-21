@@ -880,6 +880,47 @@ export const KNOWLEDGE_DOMAINS: readonly KnowledgeDomain[] = [
         note: "For another area, copy the batch file and change bbox and areaLabel. Cover the surroundings, not just the park.",
       },
       {
+        id: "run-queue",
+        title: "Read the pages Atlas has already discovered",
+        purpose:
+          "Reads queued candidate sources and applies what each teaches to the entity it names.",
+        whenToUse:
+          "When an entity has discovered pages nobody has read. This is enrichment of things Atlas already holds, not discovery of new ones.",
+        duration: "Not measured · one fetch and one OpenAI call per page",
+        before: [
+          ".env.local must hold OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.",
+          "Always start with --dry-run. It costs nothing and prints exactly what a real run would attempt.",
+          "The run is bounded by budgets stated up front. Nothing here runs on a timer.",
+        ],
+        workingDirectory: ATLAS_DIRECTORY,
+        command: "npm run run-queue",
+        expected:
+          "Each queued page is fetched, extracted, and its facts applied to the entity named in expectedTargets. A page Atlas cannot attribute is refused rather than guessed at.",
+        thenCheck: [
+          "Return to this page and press Refresh status — the entity's queued count is re-read from Atlas.",
+          "A page that failed stays queued and is listed under the entity as needing attention.",
+        ],
+        checkHref: "/admin/runs",
+        checkLabel: "Mission Control",
+        knownFailures: [
+          {
+            symptom: "A page reports a fetch failure.",
+            meaning:
+              "Transport, not identity. The candidate stays queued and nothing was written for it.",
+            recovery:
+              "Re-run the queue. Persistent failures need the URL checked by hand.",
+          },
+          {
+            symptom: "A page is read but nothing is learned.",
+            meaning:
+              "Extraction produced nothing Atlas could attribute to the entity. That is an evidence problem, not a transport one.",
+            recovery:
+              "Acquire a different kind of source. Reading the same page again will not change it.",
+          },
+        ],
+        note: "Bounded by --max and --extractions. `npm run run-queue -- --branch <entityId>` restricts it to one entity and anything it contains.",
+      },
+      {
         id: "bcparks",
         title: "Ingest provincial park pages",
         purpose:

@@ -58,6 +58,7 @@ function contextWith(
     ),
     openDecisions: { duplicate: 0, relationship: 0 },
     queuedPages: 0,
+    learningEntities: 0,
     passportByCategory: new Map(),
     readsComplete: true,
     regionName: "Okanagan",

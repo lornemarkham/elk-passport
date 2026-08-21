@@ -94,6 +94,8 @@ export interface MissionContext {
   };
   /** Pages queued for reading against this domain's entities. */
   readonly queuedPages: number;
+  /** Entities with pages still to read. The curator's unit, and the wording's. */
+  readonly learningEntities: number;
   /** Passport readiness per category key, counted over places only. */
   readonly passportByCategory: ReadonlyMap<
     string,
@@ -407,14 +409,28 @@ export function categoryPassportReady(
 export function queueDrained(): DoneCondition {
   return {
     id: "queue-drained",
-    label: "No page is left queued",
-    evaluate: (ctx) => ({
-      state: ctx.queuedPages === 0 ? "done" : "not-done",
-      detail:
-        ctx.queuedPages === 0
-          ? "Nothing waiting to be read."
-          : `${ctx.queuedPages} queued — read them, or abandon what you do not want.`,
-    }),
+    label: "Every entity's discovered pages have been read",
+    evaluate: (ctx) => {
+      // Zero here has two meanings — nothing is queued, or the read that would
+      // have counted it failed — and completing a mission on the second is the
+      // fabricated zero with a finish attached.
+      if (!ctx.readsComplete && ctx.queuedPages === 0)
+        return {
+          state: "unverifiable",
+          detail:
+            "A read behind the queue did not answer, so zero pages waiting is unknown rather than true.",
+        };
+      if (ctx.queuedPages === 0)
+        return {
+          state: "done",
+          detail:
+            "No entity has a discovered page left to read. Discovery finding more makes this work again.",
+        };
+      return {
+        state: "not-done",
+        detail: `${ctx.learningEntities} entit${ctx.learningEntities === 1 ? "y has" : "ies have"} ${ctx.queuedPages} page${ctx.queuedPages === 1 ? "" : "s"} waiting to be read.`,
+      };
+    },
   };
 }
 
@@ -500,7 +516,7 @@ export interface Mission {
    * `place-in-region` — a list of unplaced entities, each with a button that
    * calls the same `RegionMembershipService` the CLI calls.
    */
-  readonly surface?: "place-in-region";
+  readonly surface?: "place-in-region" | "learn-from-sources";
   /**
    * **Which kinds of outstanding work this mission is responsible for.**
    *
@@ -705,6 +721,42 @@ export const MISSIONS: readonly Mission[] = [
     ],
     surface: "place-in-region",
     done: [allPlacedInRegion()],
+  },
+  {
+    // Placed before BC Parks, not after. These pages were discovered by runs
+    // that already happened and are sitting unread today; gating them behind
+    // an acquisition that has not run yet would make the operator wait to do
+    // work that is already available. Acquiring more sources later simply
+    // makes this mission current again, which is what a derived sequence is
+    // for.
+    id: "rec-learn-queued",
+    owns: ["learning"],
+    domain: "recreation",
+    title: "Read what the discovered pages can teach",
+    outcome:
+      "Every entity with pages waiting has had them read, and what each page teaches is applied to it.",
+    why: [
+      "These pages are not proving anything exists — Atlas already trusts these entities.",
+      "One entity is one piece of work, however many pages name it.",
+      "A page Atlas cannot attribute to an entity is refused, never guessed at.",
+    ],
+    duration: "Not measured — one fetch and one extraction per page",
+    operationId: "run-queue",
+    surface: "learn-from-sources",
+    steps: [
+      {
+        title: "Run the queue",
+        detail:
+          "Start with --dry-run. It prints exactly what a real run would attempt and costs nothing.",
+        operationId: "run-queue",
+      },
+      {
+        title: "Come back and refresh",
+        detail:
+          "Each entity's queued count is re-read from Atlas. A page that failed stays listed under its entity.",
+      },
+    ],
+    done: [queueDrained()],
   },
   {
     id: "rec-bcparks",

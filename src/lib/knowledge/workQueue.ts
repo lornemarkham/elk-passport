@@ -52,6 +52,7 @@ export type WorkGroupKey =
   | "placement"
   | "placement-evidence"
   | "decision"
+  | "learning"
   | "evidence"
   | "enrichment"
   | "failed";
@@ -67,6 +68,8 @@ export interface WorkGroup {
    * rather than a heuristic that strips "Needs " and hopes.
    */
   readonly unit: string;
+  /** The singular form, where "1 <unit>" would not be English. */
+  readonly unitOne?: string;
   /** Why these items are here. */
   readonly because: string;
   /** What Atlas does not have. Empty when the gap is a decision rather than a fact. */
@@ -149,18 +152,43 @@ export function buildWorkQueue(
       examples: work.decisions.slice(0, 3).map((d) => d.question),
     },
     {
+      // Counted in **entities**, not pages. Thirteen discovered pages about
+      // Big White are one thing to do, not thirteen — and a count of pages
+      // told the curator the opposite.
+      key: "learning",
+      label: "More to learn",
+      unit: "entities with pages to read",
+      unitOne: "entity with pages to read",
+      count: work.totals.learningEntities,
+      because:
+        "Atlas already trusts these entities and has discovered pages about them that nobody has read yet. This is enrichment, not an identity gap.",
+      missing: `${work.totals.learningSources} discovered page${work.totals.learningSources === 1 ? "" : "s"} Atlas has not read.`,
+      nextAction:
+        "Run the queue operation in the mission, then refresh — Atlas applies what it learns to each entity.",
+      href: "#mission",
+      examples: work.learning
+        .filter((l) => !l.complete)
+        .slice(0, 3)
+        .map((l) => `${l.entityName} (${l.queued + l.failed})`),
+    },
+    {
+      // Atlas *did* read, and stopped. The opposite state from the one above,
+      // and folding them together is what buried both.
       key: "evidence",
       label: "Needs evidence",
       unit: "waiting on evidence",
-      count: work.totals.evidenceGaps,
+      count: work.totals.stalled,
       because:
-        "Atlas cannot responsibly ask a yes/no yet — a page is queued unread, or an extraction produced nothing it could attribute.",
+        "Atlas read what it had and could not carry the decision — an extraction produced nothing it could attribute, or the evidence would not settle a question.",
       missing:
-        "A source Atlas has not read, or one that produced nothing usable.",
+        "A different publisher, a canonical identifier, or a geometry — not another read of the same page.",
       nextAction:
-        "Read the queued pages, or abandon the ones you do not want — on this page.",
+        "Acquire a source of a different kind. Reading the queue again will not change these.",
       href: "#mission",
-      examples: work.evidenceGaps.slice(0, 3).map((g) => g.subject),
+      examples: work.evidenceGaps
+        .filter((g) => !g.abandonId)
+        .slice(0, 3)
+        .map((g) => g.subject),
     },
     {
       key: "enrichment",

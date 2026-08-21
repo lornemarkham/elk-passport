@@ -970,6 +970,7 @@ export function MissionHeader({
   operation,
   state,
   surface,
+  commandLeads,
 }: {
   mission: Mission;
   operation?: Operation;
@@ -985,6 +986,15 @@ export function MissionHeader({
    * (`Mission.surface`), never guessed from its id.
    */
   surface?: React.ReactNode;
+  /**
+   * **True when the surface shows the work but does not perform it.**
+   *
+   * A placement list *is* the operation — the command belongs behind a
+   * disclosure there. A list of entities waiting to be taught is a picture of
+   * what the command will do, and demoting the command would hide the only
+   * thing that moves the mission forward.
+   */
+  commandLeads?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -1015,7 +1025,7 @@ export function MissionHeader({
         {surface ?? null}
 
         {operation ? (
-          surface ? (
+          surface && !commandLeads ? (
             // Demoted, not removed. The command still exists and still works;
             // it is no longer what the page tells you to do.
             <details className="group mt-1">
@@ -1055,7 +1065,7 @@ export function MissionHeader({
         <div className="mt-1 flex flex-col gap-2">
           <p className="text-muted-foreground max-w-2xl text-[12.5px] leading-relaxed">
             <span className="text-foreground/70">Status: </span>
-            {surface
+            {surface && !commandLeads
               ? "Ready — do it here, and the counts update as you go."
               : operation
                 ? "Waiting for the operation. Run the command, then refresh — Atlas works out what changed."
@@ -1066,7 +1076,7 @@ export function MissionHeader({
 
         {/* Instructions for work the page now performs are noise. Kept when
             the terminal is still the only route. */}
-        {!surface && (
+        {(!surface || commandLeads) && (
           <ol className="marker:text-muted-foreground mt-1 flex max-w-2xl list-decimal flex-col gap-1.5 pl-4">
             {mission.steps.map((step) => (
               <li key={step.title} className="text-[13px] leading-relaxed">

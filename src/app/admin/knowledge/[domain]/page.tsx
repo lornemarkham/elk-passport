@@ -57,6 +57,7 @@ import {
   type SequenceItem,
 } from "@/components/atlas/missionSequence";
 import { CurrentMission } from "@/components/atlas/currentMission";
+import { LearningList } from "@/components/atlas/learning";
 
 /**
  * **A Knowledge Domain, and the mission being run inside it.**
@@ -128,7 +129,12 @@ function currentStatus(
 ): string | undefined {
   const owned = groupsOwnedBy(queue, item.mission);
   if (owned.length > 0) {
-    return owned.map((group) => `${group.count} ${group.unit}`).join("  ·  ");
+    return owned
+      .map(
+        (group) =>
+          `${group.count} ${group.count === 1 ? (group.unitOne ?? group.unit) : group.unit}`,
+      )
+      .join("  ·  ");
   }
   if (item.outcome.complete) return undefined;
   if (item.outcome.awaitingYou) return "Only your confirmation is left";
@@ -178,6 +184,17 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
    * entities are a decision and which are an evidence gap.
    */
   const surface = (() => {
+    // Reading the discovered pages is done at the terminal, but the *work* is
+    // shown here grouped by entity — one item per thing being taught, however
+    // many pages name it.
+    if (mission?.surface === "learn-from-sources") {
+      return (
+        <LearningList
+          opportunities={work.learning}
+          unattributed={work.unattributedSources}
+        />
+      );
+    }
     if (mission?.surface !== "place-in-region") return undefined;
     const byId = new Map(health.scope.entities.map((e) => [e.id, e]));
     const rows: PlacementRow[] = unplacedEntities(context).map((entity) => {
@@ -251,7 +268,12 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
    */
   const coveredByControls = new Set<WorkGroupKey>([
     "decision",
-    ...(mission?.surface ? (["placement", "placement-evidence"] as const) : []),
+    ...(mission?.surface === "place-in-region"
+      ? (["placement", "placement-evidence"] as const)
+      : []),
+    ...(mission?.surface === "learn-from-sources"
+      ? (["learning"] as const)
+      : []),
   ]);
 
   const sequence: SequenceItem[] = progress.missions.map((item, index) => {
@@ -271,6 +293,7 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
             work={work}
             ownedWork={owned}
             nextTitle={nextMission?.title}
+            commandLeads={item.mission.surface === "learn-from-sources"}
           />
         ),
       };

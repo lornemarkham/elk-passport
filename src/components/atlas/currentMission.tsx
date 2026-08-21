@@ -38,6 +38,7 @@ export function CurrentMission({
   work,
   ownedWork,
   nextTitle,
+  commandLeads,
 }: {
   domain: KnowledgeDomain;
   progress: MissionProgress;
@@ -57,6 +58,8 @@ export function CurrentMission({
    */
   ownedWork: readonly WorkGroup[];
   nextTitle?: string;
+  /** The surface shows the work; the command still performs it. */
+  commandLeads?: boolean;
 }) {
   const { mission, outcome, state } = progress;
 
@@ -67,6 +70,7 @@ export function CurrentMission({
         operation={operation}
         state={state}
         surface={surface}
+        commandLeads={commandLeads}
       />
 
       {ownedWork.length === 0 && (

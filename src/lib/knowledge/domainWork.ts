@@ -9,6 +9,12 @@ import type { RunWithEvents } from "./missionControl";
 import type { WorkspaceBundle } from "./workspaceData";
 import type { EntityLike } from "./regionHealth";
 import {
+  buildLearningOpportunities,
+  unattributedCandidates,
+  publisherOf,
+  type LearningOpportunity,
+} from "./learningOpportunities";
+import {
   buildMergeRecommendation,
   type MergeRecommendation,
 } from "./mergeRecommendation";
@@ -209,6 +215,22 @@ export interface DomainWork {
   readonly added: readonly AddedItem[];
   readonly decisions: readonly DecisionItem[];
   readonly evidenceGaps: readonly EvidenceGapItem[];
+  /**
+   * **Discovered pages, grouped by the entity they teach.**
+   *
+   * The curator's unit of work. `evidenceGaps` still carries the per-source
+   * rows for anything that needs them, but nothing renders those as primary
+   * work any more — thirteen rows headed *Big White Ski Resort* was the
+   * storage view leaking into the operator experience.
+   */
+  readonly learning: readonly LearningOpportunity[];
+  /** Pages naming no entity. Counted, never guessed at, never folded into a group. */
+  readonly unattributedSources: readonly {
+    readonly id: string;
+    readonly url: string;
+    readonly host: string;
+    readonly reason: string;
+  }[];
   readonly failures: readonly FailureItem[];
   /**
    * Events in that run that name no entity and match no name here. Stated, so
@@ -237,6 +259,19 @@ export interface DomainWork {
     readonly duplicates: number;
     readonly relationships: number;
     readonly evidenceGaps: number;
+    /** Entities with at least one page still to read. The learning work item count. */
+    readonly learningEntities: number;
+    /** Outstanding pages across those entities — queued plus failed. */
+    readonly learningSources: number;
+    /**
+     * **Where Atlas read something and stopped.**
+     *
+     * The real evidence gaps: an extraction that produced nothing it could
+     * attribute, or a decision the evidence would not carry. Separate from
+     * learning on purpose — *Atlas has pages waiting* and *Atlas looked and
+     * could not tell* are opposite states with opposite remedies.
+     */
+    readonly stalled: number;
     readonly queued: number;
     readonly failures: number;
   };
@@ -307,6 +342,8 @@ export async function loadDomainWork(
     added: [],
     decisions: [],
     evidenceGaps: [],
+    learning: [],
+    unattributedSources: [],
     failures: [],
     unattributedEvents: 0,
     untargetedCandidates: 0,
@@ -315,6 +352,9 @@ export async function loadDomainWork(
       duplicates: 0,
       relationships: 0,
       evidenceGaps: 0,
+      learningEntities: 0,
+      learningSources: 0,
+      stalled: 0,
       queued: 0,
       failures: 0,
     },
@@ -364,6 +404,15 @@ export async function loadDomainWork(
   );
   const decisions = [...duplicateItems, ...relationshipItems];
   const gaps = evidenceGapsFor(bundle, ids, byId, events, namesLower);
+  // Grouped by entity, because that is the curator's unit of work. Built from
+  // `expectedTargets` — the same field the reversibility gate reads — so the
+  // page never asserts an association Atlas has not made.
+  const learning = buildLearningOpportunities(
+    bundle?.candidateSources ?? [],
+    events,
+    decidableIds,
+    byId,
+  );
   const failures = failuresIn(events, ids, byId, namesLower);
 
   return {
@@ -372,6 +421,15 @@ export async function loadDomainWork(
     added: addedIn(events, ids, byId),
     decisions: decisions.slice(0, DECISIONS_SHOWN),
     evidenceGaps: gaps.slice(0, GAPS_SHOWN),
+    learning,
+    unattributedSources: unattributedCandidates(
+      bundle?.candidateSources ?? [],
+    ).map((c) => ({
+      id: c.id,
+      url: c.url,
+      host: publisherOf(c.url),
+      reason: c.reason,
+    })),
     failures: failures.slice(0, FAILURES_SHOWN),
     unattributedEvents: unattributed(events, ids, namesLower),
     untargetedCandidates: (bundle?.candidateSources ?? []).filter(
@@ -382,6 +440,9 @@ export async function loadDomainWork(
       duplicates: duplicateItems.length,
       relationships: relationshipItems.length,
       evidenceGaps: gaps.length,
+      learningEntities: learning.filter((l) => !l.complete).length,
+      learningSources: learning.reduce((n, l) => n + l.queued + l.failed, 0),
+      stalled: gaps.filter((g) => !g.abandonId).length,
       queued: gaps.filter((g) => g.abandonId).length,
       failures: failures.length,
     },
