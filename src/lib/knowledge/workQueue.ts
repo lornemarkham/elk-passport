@@ -139,12 +139,12 @@ export function buildWorkQueue(
     },
     {
       key: "decision",
-      label: "Needs a decision",
-      unit: "decisions to answer",
+      label: "Needs your review",
+      unit: "recommendations to review",
       count: work.totals.decisions,
       because:
-        "Atlas narrowed each to one irreversible question and stopped, because deciding cannot be undone.",
-      nextAction: "Answer yes or no — on this page.",
+        "Atlas has proposed an answer to each and stopped short of acting, because deciding cannot be undone.",
+      nextAction: "Accept or reject each recommendation — on this page.",
       href: "#mission",
       examples: work.decisions.slice(0, 3).map((d) => d.question),
     },

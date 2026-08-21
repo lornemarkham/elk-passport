@@ -1,10 +1,17 @@
 import "server-only";
 import type { AdminEntity, DuplicateScanResult } from "@/lib/data/admin-repo";
-import type { RelationshipCandidate } from "@/lib/data/explorer-repo";
+import type {
+  Relationship,
+  RelationshipCandidate,
+} from "@/lib/data/explorer-repo";
 import type { IngestionEvent } from "./runData";
 import type { RunWithEvents } from "./missionControl";
 import type { WorkspaceBundle } from "./workspaceData";
 import type { EntityLike } from "./regionHealth";
+import {
+  buildMergeRecommendation,
+  type MergeRecommendation,
+} from "./mergeRecommendation";
 import type { DomainScope } from "./domainHealth";
 
 /**
@@ -111,12 +118,28 @@ export interface DecisionItem {
   /** What "yes" does, in one line. Shown next to the button. */
   readonly yesDoes: string;
   readonly noDoes: string;
+  /**
+   * **Atlas's proposal, for a duplicate group.**
+   *
+   * Which record it recommends keeping, why, what each of the others
+   * contributes, and what happens to them. Present so the curator reviews a
+   * proposal rather than reconstructing one; absent for a relationship
+   * question, which has only two records and no survivor to choose.
+   */
+  readonly recommendation?: MergeRecommendation;
   /** Everything the client needs to post the decision. */
   readonly action:
     | {
         readonly type: "merge";
         readonly survivingId: string;
         readonly absorbedIds: readonly string[];
+        /**
+         * Gaps on the survivor that a candidate can fill, carried across with
+         * the merge. `MergeService.merge` accepts these and applies them over
+         * the survivor's own fields, so the knowledge an absorbed record holds
+         * is not left behind on an archived row.
+         */
+        readonly fieldOverrides?: Readonly<Record<string, unknown>>;
       }
     | {
         readonly type: "relationship";
@@ -250,6 +273,12 @@ export async function loadDomainWork(
   bundle: WorkspaceBundle | null,
   runs: readonly RunWithEvents[],
   inputs?: DecisionInputs,
+  /**
+   * Members of the region being built. Read so a merge recommendation can
+   * prefer the record a curator has already placed — merging into it keeps
+   * that decision rather than asking for it a second time.
+   */
+  placedIds: ReadonlySet<string> = new Set(),
 ): Promise<DomainWork> {
   const empty = (state: WorkState): DomainWork => ({
     state,
@@ -274,6 +303,20 @@ export async function loadDomainWork(
   if (scope.entities.length === 0) return empty("no-entities");
 
   const ids = new Set(scope.entities.map((e) => e.id));
+  /**
+   * **What this domain may be asked to decide about.**
+   *
+   * Wider than `ids` on purpose. `alsoHolds` entities are kept out of the
+   * category scope because they distort every measurement taken over it — an
+   * Activity has no coordinates and no image and never will. But a duplicate
+   * between two of Recreation's Activities is unambiguously Recreation's to
+   * review, and scoping the review queue by category alone meant those groups
+   * belonged to no domain at all and were shown to nobody.
+   *
+   * Measurement and decisions are different questions, so they get different
+   * sets rather than one compromise between them.
+   */
+  const decidableIds = new Set([...ids, ...(scope.alsoHolds?.ids ?? [])]);
   const byId = new Map(scope.entities.map((e) => [e.id, e]));
   const namesLower = new Map(
     scope.entities
@@ -287,7 +330,12 @@ export async function loadDomainWork(
   const latest = latestRun(runs, ids);
   const events = latest?.events ?? [];
 
-  const duplicateItems = duplicateDecisions(duplicates, ids);
+  const duplicateItems = duplicateDecisions(
+    duplicates,
+    decidableIds,
+    placedIds,
+    bundle?.relationships ?? [],
+  );
   const relationshipItems = relationshipDecisions(
     relationshipCandidates,
     ids,
@@ -415,9 +463,20 @@ function addedIn(
  * and its two-value signal is rendered as the sentence it stands for rather
  * than as the word *confidence*, which in Atlas means a number nothing reads.
  */
+/**
+ * **A duplicate group, presented as Atlas's proposal.**
+ *
+ * The survivor used to be `group.entities[0]` — whichever record the scan
+ * returned first. That is not a recommendation, and it left the curator to
+ * work out for themselves which record already existed, which was already
+ * placed, and what a merge would cost. `buildMergeRecommendation` makes that
+ * choice from observable facts and shows its reasoning; this only carries it.
+ */
 function duplicateDecisions(
   result: DuplicateScanResult | null,
   ids: ReadonlySet<string>,
+  placedIds: ReadonlySet<string>,
+  relationships: readonly Relationship[],
 ): DecisionItem[] {
   if (!result) return [];
   return result.groups
@@ -428,33 +487,41 @@ function duplicateDecisions(
         // of crashing it.
         group.entities.length >= 2 && group.entities.some((e) => ids.has(e.id)),
     )
-    .map((group): DecisionItem => {
-      const [surviving, ...absorbed] = group.entities;
-      return {
-        id: `dup:${group.kind}:${group.name}`,
-        kind: "duplicate",
-        question: `Are these ${group.entities.length} records the same ${group.kind.toLowerCase()}?`,
-        subjects: group.entities.map((e: AdminEntity) => ({
-          id: e.id,
-          name: e.name,
-        })),
-        evidence: [
-          group.matchReason,
-          group.confidence === "high"
-            ? "Name and real-world position both matched."
-            : "Only the name matched — one record has no position to check against.",
-        ],
-        irreversible:
-          "Merging cannot be undone in practice. Atlas proposes and never decides.",
-        yesDoes: `Keeps “${surviving?.name}” and folds the other ${absorbed.length === 1 ? "record" : "records"} into it.`,
-        noDoes:
-          "Records them as different things, so Atlas stops proposing this group.",
-        action: {
-          type: "merge",
-          survivingId: surviving!.id,
-          absorbedIds: absorbed.map((e) => e.id),
+    .flatMap((group): DecisionItem[] => {
+      const recommendation = buildMergeRecommendation(
+        group,
+        placedIds,
+        relationships,
+      );
+      if (!recommendation) return [];
+      const absorbed = recommendation.merge.map((m) => m.entityId);
+      return [
+        {
+          id: `dup:${group.kind}:${group.name}`,
+          kind: "duplicate",
+          // Asked as a review of a proposal, not as a puzzle. The mission is
+          // to review Atlas's merge recommendations, and the question a
+          // curator answers should be the same shape as the mission.
+          question: `Keep “${recommendation.keep.name}” and merge the other ${absorbed.length === 1 ? "record" : `${absorbed.length} records`} into it?`,
+          subjects: group.entities.map((e: AdminEntity) => ({
+            id: e.id,
+            name: e.name,
+          })),
+          evidence: recommendation.sameness,
+          irreversible:
+            "Merging cannot be undone in practice. Atlas proposes and never decides.",
+          yesDoes: `Keeps “${recommendation.keep.name}” and folds the other ${absorbed.length === 1 ? "record" : "records"} into it.`,
+          noDoes:
+            "Records them as different things, so Atlas stops proposing this group.",
+          recommendation,
+          action: {
+            type: "merge",
+            survivingId: recommendation.keep.entityId,
+            absorbedIds: absorbed,
+            fieldOverrides: recommendation.fieldOverrides,
+          },
         },
-      };
+      ];
     });
 }
 

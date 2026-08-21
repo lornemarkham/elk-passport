@@ -8,6 +8,10 @@ import {
   rejectRelationshipCandidate,
 } from "@/lib/data/explorer-repo";
 import type { DecisionItem, EvidenceGapItem } from "@/lib/knowledge/domainWork";
+import type {
+  CandidateContribution,
+  MergeRecommendation,
+} from "@/lib/knowledge/mergeRecommendation";
 
 /**
  * **The two buckets an operator can finish, finished here.**
@@ -109,6 +113,11 @@ export function ReviewQuestions({
           await mergeEntities({
             survivingId: item.action.survivingId,
             absorbedIds: [...item.action.absorbedIds],
+            // The knowledge the absorbed records hold and the survivor does
+            // not. Without these, `merge` writes `{...survivor}` and every
+            // fact the other records carried stays behind on an archived row
+            // — the loss the recommendation promises will not happen.
+            fieldOverrides: item.action.fieldOverrides,
             reason: "Confirmed by a curator from the domain page.",
           });
           setDone((d) => ({ ...d, [item.id]: "Merged." }));
@@ -175,17 +184,23 @@ export function ReviewQuestions({
               {item.question}
             </p>
 
-            <p className="text-muted-foreground mt-1.5 max-w-2xl text-[13px] leading-relaxed">
-              {item.subjects.map((s) => s.name).join("  ·  ")}
-            </p>
+            {item.recommendation ? (
+              <Recommendation recommendation={item.recommendation} />
+            ) : (
+              <>
+                <p className="text-muted-foreground mt-1.5 max-w-2xl text-[13px] leading-relaxed">
+                  {item.subjects.map((s) => s.name).join("  ·  ")}
+                </p>
 
-            <ul className="marker:text-muted-foreground mt-3 flex max-w-2xl list-disc flex-col gap-1 pl-4">
-              {item.evidence.map((line, i) => (
-                <li key={i} className="text-[13px] leading-relaxed">
-                  {line}
-                </li>
-              ))}
-            </ul>
+                <ul className="marker:text-muted-foreground mt-3 flex max-w-2xl list-disc flex-col gap-1 pl-4">
+                  {item.evidence.map((line, i) => (
+                    <li key={i} className="text-[13px] leading-relaxed">
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
 
             <p className="text-muted-foreground mt-3 max-w-2xl text-[12.5px] leading-relaxed">
               {item.irreversible}
@@ -203,13 +218,21 @@ export function ReviewQuestions({
                     disabled={working}
                     onClick={() => void answer(item, true)}
                   >
-                    {working && busy?.answer === "yes" ? "Saving…" : "Yes"}
+                    {working && busy?.answer === "yes"
+                      ? "Saving…"
+                      : item.recommendation
+                        ? "Accept recommendation"
+                        : "Yes"}
                   </Answer>
                   <Answer
                     disabled={working}
                     onClick={() => void answer(item, false)}
                   >
-                    {working && busy?.answer === "no" ? "Saving…" : "No"}
+                    {working && busy?.answer === "no"
+                      ? "Saving…"
+                      : item.recommendation
+                        ? "These are different things"
+                        : "No"}
                   </Answer>
                 </div>
                 <p className="text-muted-foreground max-w-2xl text-[12.5px] leading-relaxed">
@@ -353,5 +376,214 @@ export function EvidenceGaps({ gaps }: { gaps: readonly EvidenceGapItem[] }) {
         );
       })}
     </ul>
+  );
+}
+
+/* -------------------------------------------------------------------------
+ * Atlas's proposal
+ * ---------------------------------------------------------------------- */
+
+/**
+ * **The recommendation, read top to bottom in a few seconds.**
+ *
+ * Keep this one · because · these merge in · here is what each adds · nothing
+ * is lost. The curator's job is to agree or disagree with a proposal, not to
+ * read six near-identical records and construct the proposal themselves.
+ *
+ * Everything shown is a fact Atlas can point at. There is no confidence
+ * percentage and no score — where the mock-up said *confidence: high*, this
+ * says what the scan actually checked, which is the honest version of the same
+ * information.
+ */
+function Recommendation({
+  recommendation,
+}: {
+  recommendation: MergeRecommendation;
+}) {
+  const { keep, merge } = recommendation;
+
+  return (
+    <div className="mt-4 flex flex-col gap-5">
+      {/* --- Keep ------------------------------------------------------ */}
+      <div className="border-border border-l-2 pl-4">
+        <p className="text-primary text-[11px] font-medium tracking-widest uppercase">
+          Keep
+        </p>
+        <p className="font-heading mt-1 text-[17px] leading-snug font-medium tracking-tight">
+          {keep.name}
+        </p>
+        <p className="text-muted-foreground mt-1 max-w-2xl text-[12.5px] leading-relaxed">
+          {recommendation.because.join(" ")}
+        </p>
+      </div>
+
+      {/* --- Merge into it --------------------------------------------- */}
+      <div>
+        <p className="text-muted-foreground text-[11px] font-medium tracking-widest uppercase">
+          Merge into it · {merge.length}
+        </p>
+        <ul className="divide-border mt-2 divide-y">
+          {merge.map((candidate) => (
+            <Candidate
+              key={candidate.entityId}
+              candidate={candidate}
+              survivorName={keep.name}
+            />
+          ))}
+        </ul>
+      </div>
+
+      {/* --- Why Atlas thinks they are the same thing ------------------ */}
+      <details className="group">
+        <summary className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex w-fit cursor-pointer list-none items-baseline gap-1.5 rounded text-[12px] transition-colors focus-visible:ring-2 focus-visible:outline-none">
+          <span
+            aria-hidden
+            className="transition-transform group-open:rotate-90"
+          >
+            ▸
+          </span>
+          Why Atlas believes these are the same thing
+        </summary>
+        <ul className="marker:text-muted-foreground mt-2 flex max-w-2xl list-disc flex-col gap-1 pl-4">
+          {recommendation.sameness.map((line, i) => (
+            <li key={i} className="text-[12.5px] leading-relaxed">
+              {line}
+            </li>
+          ))}
+          <li className="text-[12.5px] leading-relaxed">
+            {recommendation.matchBasis === "name-and-position"
+              ? "Checked on name and on real-world position."
+              : "Checked on name alone — read the records before accepting."}
+          </li>
+        </ul>
+      </details>
+
+      {/* --- What a merge costs ---------------------------------------- */}
+      <div className="bg-muted/40 rounded-md px-4 py-3">
+        <p className="text-[11px] font-medium tracking-widest uppercase">
+          {recommendation.setAside.length === 0
+            ? "Nothing is lost"
+            : "What happens to the rest"}
+        </p>
+        <ul className="marker:text-muted-foreground mt-2 flex max-w-2xl list-disc flex-col gap-1 pl-4">
+          {recommendation.preserved.map((line, i) => (
+            <li key={i} className="text-[12.5px] leading-relaxed">
+              {line}
+            </li>
+          ))}
+          {recommendation.setAside.map((line, i) => (
+            <li key={`aside-${i}`} className="text-[12.5px] leading-relaxed">
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * **One candidate, stated as what it adds.**
+ *
+ * The closed row is the whole point: a name that is the same as five others
+ * tells the curator nothing, so the row leads with *what this record
+ * contributes*. Opening it shows the values — and **only the differences**.
+ * Fields both records agree on are not rendered at all; repeating them was
+ * what made the old list unreadable.
+ */
+function Candidate({
+  candidate,
+  survivorName,
+}: {
+  candidate: CandidateContribution;
+  survivorName: string;
+}) {
+  const summary = candidate.addsNothing
+    ? "Adds nothing new — a straight duplicate"
+    : [
+        candidate.adds.length > 0 &&
+          `Adds ${candidate.adds.map((a) => a.label.toLowerCase()).join(", ")}`,
+        candidate.conflicts.length > 0 &&
+          `${candidate.conflicts.length} disagreement${candidate.conflicts.length === 1 ? "" : "s"}`,
+      ]
+        .filter(Boolean)
+        .join("  ·  ");
+
+  return (
+    <li className="py-2.5 first:pt-0 last:pb-0">
+      <details className="group">
+        <summary className="focus-visible:ring-ring flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded focus-visible:ring-2 focus-visible:outline-none">
+          <span aria-hidden className="text-muted-foreground/60 text-[11px]">
+            ▸
+          </span>
+          <span className="text-[13px] font-medium">{summary}</span>
+          <span className="text-muted-foreground text-[12px]">
+            {candidate.standing.sources} source
+            {candidate.standing.sources === 1 ? "" : "s"} ·{" "}
+            {candidate.standing.relationships} relationship
+            {candidate.standing.relationships === 1 ? "" : "s"}
+          </span>
+        </summary>
+
+        <div className="mt-2 flex flex-col gap-3 pl-5">
+          {candidate.adds.length > 0 && (
+            <div>
+              <p className="text-muted-foreground text-[11px] font-medium tracking-widest uppercase">
+                New information
+              </p>
+              <ul className="mt-1.5 flex flex-col gap-1.5">
+                {candidate.adds.map((fact) => (
+                  <li
+                    key={fact.field}
+                    className="max-w-2xl text-[12.5px] leading-relaxed"
+                  >
+                    <span className="text-primary" aria-hidden>
+                      +{" "}
+                    </span>
+                    <span className="font-medium">{fact.label}: </span>
+                    {fact.value}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {candidate.conflicts.length > 0 && (
+            <div>
+              <p className="text-muted-foreground text-[11px] font-medium tracking-widest uppercase">
+                Disagrees — {survivorName}&apos;s value is kept
+              </p>
+              <ul className="mt-1.5 flex flex-col gap-1.5">
+                {candidate.conflicts.map((conflict) => (
+                  <li
+                    key={conflict.field}
+                    className="max-w-2xl text-[12.5px] leading-relaxed"
+                  >
+                    <span className="font-medium">{conflict.label}: </span>
+                    <span className="text-muted-foreground">
+                      this record says “{conflict.setAside}”
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {candidate.aliasGained && (
+            <p className="text-muted-foreground max-w-2xl text-[12.5px] leading-relaxed">
+              Its name — “{candidate.aliasGained}” — is kept as an alias.
+            </p>
+          )}
+
+          {candidate.addsNothing && (
+            <p className="text-muted-foreground max-w-2xl text-[12.5px] leading-relaxed">
+              Every field this record holds, {survivorName} already holds with
+              the same value. Merging it removes a duplicate row and changes
+              nothing else.
+            </p>
+          )}
+        </div>
+      </details>
+    </li>
   );
 }

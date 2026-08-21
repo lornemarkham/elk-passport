@@ -656,17 +656,30 @@ export const MISSIONS: readonly Mission[] = [
     id: "rec-resolve-duplicates",
     owns: ["decision"],
     domain: "recreation",
-    title: "Resolve the duplicates the sweep created",
-    outcome: "No two records describe the same place.",
+    // The wording is the product decision. "Resolve the duplicates" asks the
+    // curator to solve the problem; "review Atlas's merge recommendations"
+    // asks them to check a proposal Atlas has already made. The second is the
+    // job, and naming it wrongly is what let the surface get away with showing
+    // six identical cards and no opinion.
+    title: "Review Atlas's merge recommendations",
+    outcome:
+      "Every proposed duplicate has been accepted or rejected, and no two records describe the same place.",
     why: [
       "A sweep near entities Atlas already holds is the likeliest source of near-matches.",
-      "Merging is irreversible, so Atlas proposes and never decides.",
+      "Atlas proposes which record to keep and why; merging is irreversible, so it never decides.",
+      "A rejection is remembered, so the same pair is not proposed again.",
     ],
-    duration: "A minute per group",
+    duration: "Seconds per recommendation",
     steps: [
       {
-        title: "Answer each question in Review",
-        detail: "Yes merges; no leaves both records exactly as they are.",
+        title: "Read each recommendation",
+        detail:
+          "Atlas states which record it would keep, what each of the others adds, and what a merge costs.",
+      },
+      {
+        title: "Accept it, or say they are different things",
+        detail:
+          "Accepting merges; rejecting records them as distinct so the group does not return.",
       },
     ],
     done: [noOpenDuplicates()],

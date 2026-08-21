@@ -131,6 +131,18 @@ export interface DomainScope {
     readonly label: string;
     readonly count: number;
     readonly note: string;
+    /**
+     * **The ids, not only the count.**
+     *
+     * These entities are deliberately outside `entities` — an Activity has no
+     * coordinates and no image and never will, so counting it as a category
+     * made Passport readiness report a domain full of unpresentable places.
+     * That separation is right for *measurement* and wrong for *decisions*: a
+     * duplicate between two of Recreation's Activities is plainly Recreation's
+     * to review, and scoping the review queue by category alone meant those
+     * groups belonged to no domain and were never shown to anyone.
+     */
+    readonly ids: readonly string[];
   };
 }
 
@@ -203,10 +215,14 @@ export function domainScope(
   // Counted beside the categories, never inside them. An Activity is a thing
   // you do at a place, not a place, and mixing the two made three quarters of
   // Recreation's figures statements about Activity records.
+  const alsoHeld = domain.alsoHolds
+    ? all.filter((e) => e.kind === domain.alsoHolds!.kind)
+    : [];
   const alsoHolds = domain.alsoHolds
     ? {
+        ids: alsoHeld.map((e) => e.id),
         label: domain.alsoHolds.label,
-        count: all.filter((e) => e.kind === domain.alsoHolds!.kind).length,
+        count: alsoHeld.length,
         note: domain.alsoHolds.note,
       }
     : undefined;

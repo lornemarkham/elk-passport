@@ -590,3 +590,73 @@ When everything actionable is complete, the page shows **✓ CURRENT KNOWLEDGE C
 missions are listed below it under **Future capability** with their blockers. They are not in the
 tally. _5 of 6 missions_ against a mission nobody can start would make a finished body of work read
 as unfinished forever, which is a different and false statement.
+
+---
+
+## 11. Atlas proposes the merge (2026-08-21)
+
+> The mission is not _resolve the duplicates_. It is **review Atlas's merge recommendations**.
+
+That wording is the product decision, and the old wording is what let the surface get away with
+showing a curator six near-identical cards and no opinion.
+
+### The surface was asking the curator to do Atlas's job
+
+A duplicate group arrived as a list of records and a yes/no. The surviving record was
+`group.entities[0]` — whichever the scan happened to return first. Nothing on the page answered:
+which record already exists, which one Atlas recommends keeping, why it believes they are the same
+thing, what information would be lost, or what each extra record actually contributes.
+
+Every one of those is a question Atlas can answer from facts it already holds. It simply was not
+being asked to.
+
+### Choosing a survivor without inventing a score
+
+A weighted score would be a confidence number wearing a different word. Instead the survivor is
+chosen by a **lexicographic order over observable facts**, and the first criterion on which the
+records genuinely differ becomes the reason shown:
+
+1. **Already placed in the region.** A curator has already asserted this record belongs here.
+   Merging into it keeps that decision; merging the other way discards it and asks again.
+2. **Most relationships** — merging into the best-connected record repoints the fewest edges.
+3. **Most describing sources.**
+4. **Most external identifiers.**
+5. **Most facts recorded.**
+6. **Lowest id** — and this one is labelled as a tie-break, not a reason.
+
+Where the mock-up said _confidence: high_, the page says what the scan actually checked: name and
+position, or name alone. That is the honest version of the same information, and it is a value
+`DuplicateGroupFinder` already produces.
+
+### The detail view shows differences and nothing else
+
+Repeating the shared name six times is what made the old list unreadable. Expanding a candidate now
+shows only **new information** (fields the survivor lacks), **disagreements** (where the survivor's
+value is kept and nothing is settled), and the name that becomes an alias. A record that adds
+nothing says so in one line.
+
+### The loss statement had to be earned, not asserted
+
+`MergeService.merge` writes `{...survivor}` plus accumulated aliases and external identifiers. It
+does **not** carry the absorbed record's own field values across — so before this change, merging
+two records genuinely stranded the loser's description, picture and hours on an archived row, and a
+page promising "nothing is lost" would have been lying.
+
+The recommendation now computes those gaps and sends them as `fieldOverrides`, which `merge`
+already accepts. Gaps are filled; a value the survivor holds is never overwritten; identity fields
+never move. That is `mergeEntityKnowledge`'s rule, applied to a merge instead of an ingestion.
+
+Live, on the real corpus, that is not hypothetical: the surviving
+`recreational boating on Kalamalka Lake` was missing a picture the absorbed record had. It is now
+carried across and named in the recommendation.
+
+### Decisions are scoped more widely than measurements
+
+`alsoHolds` keeps Activities out of a domain's category scope, because an Activity has no
+coordinates and no image and never will — counting them as categories made Passport readiness
+report a domain full of unpresentable places.
+
+That separation is right for measurement and wrong for decisions. Recreation's two live duplicate
+groups are both Activities, so scoping the review queue by category alone meant they belonged to no
+domain and were shown to nobody. Measurement and decisions are different questions and now get
+different sets rather than one compromise.

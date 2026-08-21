@@ -121,6 +121,7 @@ export async function loadDomainState(
     facts.bundle,
     facts.runs,
     facts.decisions,
+    facts.placedIds,
   );
 
   const context: MissionContext = {
