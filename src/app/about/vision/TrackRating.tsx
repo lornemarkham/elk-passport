@@ -28,8 +28,8 @@ export function TrackRating({ trackId }: { trackId: string }) {
   // Read once, after mount — localStorage doesn't exist during SSR.
   useEffect(() => {
     const stored = window.localStorage.getItem(storageKey(trackId));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading a real external source (localStorage) after mount, not a derivable-from-props value
     if (stored === "love" || stored === "maybe" || stored === "no")
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading a real external source (localStorage) after mount, not a derivable-from-props value
       setRating(stored);
   }, [trackId]);
 

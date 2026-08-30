@@ -1,5 +1,25 @@
+import { TraceProvider } from "@/components/admin/learning-tracer/TraceContext";
+import { LearningTracerPanel } from "@/components/admin/learning-tracer/LearningTracerPanel";
+import { LearningTracerToggleButton } from "@/components/admin/learning-tracer/LearningTracerToggleButton";
+
 /**
  * The Atlas admin shell.
+ *
+ * ## The Learning Tracer's provider lives here, and had gone missing
+ *
+ * `TraceProvider` was mounted once for the whole workbench in
+ * `admin/content/layout.tsx`. `3609a41` ("nine routes become seven") deleted
+ * that layout and moved `explorer/` out from under it, and nothing
+ * re-mounted the provider — so `useTrace()` threw and `/admin/explorer`
+ * returned a 500 from that commit onward. It fails loudly on purpose; what
+ * was missing was anywhere for it to be heard.
+ *
+ * Mounted here rather than per page, so the tracer's last emission and
+ * open/closed state survive navigating between admin pages. This layout
+ * stays a server component — `TraceProvider` is the one client boundary,
+ * wrapping `{children}` rather than replacing them. The panel and its
+ * launcher are `fixed` and self-positioning, so neither affects the measure
+ * below.
  *
  * ## One calm surface
  *
@@ -30,8 +50,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="bg-background min-h-screen">
-      <div className="mx-auto max-w-[1100px] px-8 py-12">{children}</div>
-    </main>
+    <TraceProvider>
+      <main className="bg-background min-h-screen">
+        <div className="mx-auto max-w-[1100px] px-8 py-12">{children}</div>
+      </main>
+      <LearningTracerPanel />
+      <LearningTracerToggleButton />
+    </TraceProvider>
   );
 }
