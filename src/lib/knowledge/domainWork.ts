@@ -10,6 +10,7 @@ import type { WorkspaceBundle } from "./workspaceData";
 import type { EntityLike } from "./regionHealth";
 import {
   buildLearningOpportunities,
+  ownedSourceRecordIds,
   unattributedCandidates,
   publisherOf,
   type LearningOpportunity,
@@ -413,7 +414,6 @@ export async function loadDomainWork(
     bundle,
   );
   const decisions = [...duplicateItems, ...relationshipItems];
-  const gaps = evidenceGapsFor(bundle, ids, byId, events, namesLower);
   // Grouped by entity, because that is the curator's unit of work. Built from
   // `expectedTargets` — the same field the reversibility gate reads — so the
   // page never asserts an association Atlas has not made.
@@ -426,6 +426,17 @@ export async function loadDomainWork(
     // does not record a read that produced nothing applicable; a SourceRecord
     // does, because it is written before extraction runs.
     bundle?.sources ?? [],
+  );
+  const gaps = evidenceGapsFor(
+    bundle,
+    ids,
+    byId,
+    events,
+    namesLower,
+    // **Whose work this already is.** Computed from `learning` rather than
+    // recomputed, so the two can never disagree about which reads a mission
+    // owns.
+    ownedSourceRecordIds(learning, bundle?.sources ?? []),
   );
   const failures = failuresIn(events, ids, byId, namesLower);
 
@@ -694,6 +705,12 @@ function evidenceGapsFor(
   byId: ReadonlyMap<string, EntityLike>,
   events: readonly IngestionEvent[],
   namesLower: ReadonlyMap<string, EntityLike>,
+  /**
+   * Source records whose outcomes a mission already presents as its own work.
+   * Events against these are not unowned; counting them here made ten reads
+   * read as sixty-six separate things for a curator to do.
+   */
+  ownedSources: ReadonlySet<string> = new Set(),
 ): EvidenceGapItem[] {
   const items: EvidenceGapItem[] = [];
 
@@ -720,6 +737,13 @@ function evidenceGapsFor(
   // decision. Distinct from a failure: nothing broke.
   for (const event of events) {
     if (event.outcome !== "needs-attention") continue;
+    // **Already somebody's work.** The read that produced this event is
+    // presented under the mission that owns it, with its own count and its own
+    // next action. Repeating the outcome here as unowned work asks the curator
+    // to do the same thing twice, in a unit that measures events rather than
+    // pages — and one read emits several.
+    if (event.sourceRecordId && ownedSources.has(event.sourceRecordId))
+      continue;
     const entity = event.entityId ? byId.get(event.entityId) : undefined;
     const matched =
       entity ?? namesLower.get(event.subject.trim().toLowerCase());

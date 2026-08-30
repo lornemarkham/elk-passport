@@ -5,6 +5,7 @@ import type { EntityLike } from "./regionHealth";
 import {
   buildLearningOpportunities,
   learningArea,
+  ownedSourceRecordIds,
   publisherOf,
   targetsOfCandidate,
   unattributedCandidates,
@@ -432,5 +433,84 @@ describe("attempted is derived from evidence, not from status", () => {
     expect(result[0]!.processed).toBe(0);
     expect(result[0]!.rejected).toBe(1);
     expect(result[0]!.complete).toBe(true);
+  });
+});
+
+/**
+ * **Work a mission owns is not also unowned work.**
+ *
+ * Measured on the live corpus 2026-08-30: ten Big White pages were read and
+ * applied nothing. Mission 4 presented them as ten, in pages. The same ten
+ * reads emitted **66** `needs-attention` events, and those were counted again
+ * under *Not tied to a mission → Needs evidence* — a second backlog, in a
+ * different unit, for the same work, with a contradictory next action.
+ *
+ * The join is by identifier, never by text: an event names the `SourceRecord`
+ * its read wrote, and a mission's pages are candidate URLs. `canonicalUrl` is
+ * the same join `buildLearningOpportunities` already uses to tell read from
+ * unread, so the two answers cannot drift.
+ */
+describe("ownedSourceRecordIds", () => {
+  const url = (id: string) => `https://www.bigwhite.com/${id}`;
+  const record = (id: string, source: string) => ({ id, source });
+
+  test("claims the source records produced by a mission's own reads", () => {
+    const learning = build(
+      [
+        candidate({ id: "summer", url: url("summer") }),
+        candidate({ id: "winter", url: url("winter") }),
+      ],
+      [],
+      fetched(url("summer"), url("winter")),
+    );
+    const owned = ownedSourceRecordIds(learning, [
+      record("sr-summer", url("summer")),
+      record("sr-winter", url("winter")),
+      record("sr-elsewhere", "https://www.silverstarbc.com/trails"),
+    ]);
+    expect(owned.has("sr-summer")).toBe(true);
+    expect(owned.has("sr-winter")).toBe(true);
+    // A page no mission discovered stays unowned, so its outcomes remain the
+    // curator's to see.
+    expect(owned.has("sr-elsewhere")).toBe(false);
+  });
+
+  test("many events from one read cannot inflate the backlog", () => {
+    // The real shape: one page, one SourceRecord, several needs-attention
+    // events. Ownership is per read, so the count a curator sees is pages.
+    const learning = build(
+      [candidate({ id: "food-dining", url: url("food-dining") })],
+      [],
+      fetched(url("food-dining")),
+    );
+    const owned = ownedSourceRecordIds(learning, [
+      record("sr-food", url("food-dining")),
+    ]);
+    const eventsFromThatOneRead = Array.from({ length: 7 }, () => ({
+      sourceRecordId: "sr-food",
+    }));
+    const stillUnowned = eventsFromThatOneRead.filter(
+      (e) => !owned.has(e.sourceRecordId),
+    );
+    expect(owned.size).toBe(1);
+    expect(stillUnowned).toEqual([]);
+  });
+
+  test("matches the URL the way Atlas stores it, not byte-for-byte", () => {
+    const learning = build(
+      [candidate({ id: "summer", url: "https://www.bigwhite.com/Summer/" })],
+      [],
+      fetched("https://www.bigwhite.com/Summer/"),
+    );
+    const owned = ownedSourceRecordIds(learning, [
+      record("sr-summer", "https://bigwhite.com/summer"),
+    ]);
+    expect(owned.has("sr-summer")).toBe(true);
+  });
+
+  test("owns nothing when a domain's missions own no reads", () => {
+    // The filter must be inert where it does not apply — a domain with no
+    // discovered pages keeps every evidence gap it had.
+    expect(ownedSourceRecordIds([], [record("sr-a", url("a"))]).size).toBe(0);
   });
 });

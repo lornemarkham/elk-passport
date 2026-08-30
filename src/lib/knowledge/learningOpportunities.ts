@@ -349,3 +349,33 @@ export function unattributedCandidates(
       (candidate.status === "queued" || candidate.status === "discovered"),
   );
 }
+
+/**
+ * **The `SourceRecord`s produced by reads a mission already owns.**
+ *
+ * A mission's learning group is built from candidate URLs; an event reports
+ * itself against the `SourceRecord` the fetch wrote. Joining them on the
+ * canonical URL — the same join `buildLearningOpportunities` already performs
+ * to tell *read* from *unread* — turns "which reads does a mission own" into
+ * "which source-record ids are its outcomes attributable to".
+ *
+ * Real identifiers only. Nothing here reads an event's prose, and no entity or
+ * publisher is named: a domain whose missions own no reads yields an empty set
+ * and nothing is filtered.
+ */
+export function ownedSourceRecordIds(
+  learning: readonly LearningOpportunity[],
+  sources: readonly { readonly id: string; readonly source: string }[],
+): ReadonlySet<string> {
+  const ownedUrls = new Set(
+    learning.flatMap((opportunity) =>
+      opportunity.sources.map((source) => canonicalUrl(source.url)),
+    ),
+  );
+  if (ownedUrls.size === 0) return new Set();
+  const owned = new Set<string>();
+  for (const record of sources) {
+    if (ownedUrls.has(canonicalUrl(record.source))) owned.add(record.id);
+  }
+  return owned;
+}
