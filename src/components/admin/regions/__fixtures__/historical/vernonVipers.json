@@ -1,0 +1,151 @@
+{
+  "name": "Vernon Vipers",
+  "originalSearch": "Vernon Vipers",
+  "outcome": "leads-found",
+  "identity": {
+    "outcome": "no-convergence",
+    "detail": "No publisher returned a record that identifies itself, so there is nothing to reconcile. That is a statement about what was published in the area Atlas searched, not about whether the place exists."
+  },
+  "nextMove": {
+    "kind": "read-constructed",
+    "label": "Try “Vernon Vipers” on Wikipedia",
+    "why": "I built this address from the name — nobody has confirmed a page is there, so this is a guess worth one click rather than a lead. If it's wrong, that is a finding too.",
+    "url": "https://en.wikipedia.org/wiki/Vernon_Vipers"
+  },
+  "blockers": [],
+  "possibleMatches": [],
+  "leads": [
+    {
+      "url": "https://en.wikipedia.org/wiki/Vernon_Vipers",
+      "title": "Vernon Vipers",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Built from the name using Wikipedia's own title convention. This is a hypothesis, not a claim — Atlas fetches the page and checks it deterministically identifies this place before extracting anything.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "state": "new",
+      "scopeRelation": "no-scope",
+      "scopeReason": "This investigation has no area to search, so nothing can be inside or outside it.",
+      "nameMatch": "exact",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Vernon_Vipers_(Okanagan)",
+      "title": "Vernon Vipers (Okanagan)",
+      "statedContext": "Okanagan",
+      "publisher": "Wikipedia · Okanagan",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Built from the name plus \"Okanagan\", the region you are investigating from — Wikipedia disambiguates same-named places exactly this way. Narrower than the bare name, and still a hypothesis: the page is fetched and checked before anything is extracted. The region is where Atlas looked, not where this belongs.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "state": "new",
+      "scopeRelation": "no-scope",
+      "scopeReason": "This investigation has no area to search, so nothing can be inside or outside it.",
+      "nameMatch": "contains",
+      "standing": "primary"
+    }
+  ],
+  "consulted": [
+    {
+      "publisher": "Wikipedia",
+      "participated": true,
+      "note": "Tried the bare name and 1 region-qualified variant (Okanagan)."
+    },
+    {
+      "publisher": "The operator's own website",
+      "participated": false,
+      "note": "A domain cannot be derived from a name. A wrong guess returns a real, plausible page about something else — the most dangerous failure available here, so Atlas refuses to guess one."
+    },
+    {
+      "publisher": "OpenStreetMap",
+      "participated": false,
+      "note": "OSM is searched by area, and this region has no Discovery Scope. A radius chosen to make the search succeed would be a guess with a unit attached, so Atlas does not pick one."
+    },
+    {
+      "publisher": "BC Geographical Names",
+      "participated": false,
+      "note": "The province publishes names for all of British Columbia, and this region has no Discovery Scope. An unbounded search would return every feature by this name in BC as though they were candidates here."
+    },
+    {
+      "publisher": "BC Freshwater Atlas",
+      "participated": false,
+      "note": "The Freshwater Atlas covers all of British Columbia, and this region has no Discovery Scope. An unbounded search would return every waterbody by this name in BC as though they were candidates here."
+    },
+    {
+      "publisher": "Tourism boards and government registers",
+      "participated": false,
+      "note": "No strategy exists yet. Both are jurisdiction-specific, and a register that names things without identifying them is a separate, deferred problem."
+    }
+  ],
+  "strategies": [
+    {
+      "number": 1,
+      "name": "Corpus match",
+      "status": "succeeded",
+      "detail": "Nothing in the corpus shares this name, so this would be new to Atlas.",
+      "bounding": "unbounded"
+    },
+    {
+      "number": 2,
+      "name": "Wikipedia, bare name",
+      "status": "succeeded",
+      "detail": "A title was constructed from the name using Wikipedia's own convention. It is a hypothesis until the page is fetched and checked.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 1,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 3,
+      "name": "Wikipedia, region-qualified",
+      "status": "succeeded",
+      "detail": "Added 1 narrower hypothesis using Okanagan — the region's own stored names, nothing inferred.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 1,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 3.5,
+      "name": "Wikipedia, search",
+      "status": "skipped",
+      "detail": "Wikipedia's search API was not consulted in this run."
+    },
+    {
+      "number": 4,
+      "name": "Region-bounded OpenStreetMap",
+      "status": "skipped",
+      "detail": "OpenStreetMap was not consulted in this run."
+    },
+    {
+      "number": 4.5,
+      "name": "BC Geographical Names",
+      "status": "skipped",
+      "detail": "The provincial gazetteer was not consulted in this run."
+    },
+    {
+      "number": 4.6,
+      "name": "BC Freshwater Atlas",
+      "status": "skipped",
+      "detail": "The Freshwater Atlas was not consulted in this run."
+    }
+  ],
+  "structuredRecords": [],
+  "namedLeads": [],
+  "clues": [],
+  "summary": "Atlas found 2 sources worth reading about \"Vernon Vipers\"."
+}

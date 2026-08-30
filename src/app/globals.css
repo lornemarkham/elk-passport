@@ -61,7 +61,12 @@
   --secondary: oklch(0.93 0.018 80);
   --secondary-foreground: oklch(0.28 0.03 55);
   --muted: oklch(0.94 0.014 82);
-  --muted-foreground: oklch(0.48 0.03 60);
+  /* Darkened from 0.48 for contrast, same hue and chroma. Against the ivory
+     background 0.48 measured 4.5:1 — passing AA by a rounding error, and
+     failing it outright anywhere the token was used at reduced opacity. 0.44
+     measures 5.2:1, which leaves room for the secondary text that carries most
+     of the operational detail in Knowledge Acquisition. */
+  --muted-foreground: oklch(0.44 0.03 60);
   --accent: oklch(0.62 0.135 45);
   --accent-foreground: oklch(0.98 0.012 85);
   --destructive: oklch(0.55 0.18 27);

@@ -1,0 +1,667 @@
+{
+  "name": "Swalwell Lake",
+  "originalSearch": "Swalwell Lake",
+  "outcome": "leads-found",
+  "identity": {
+    "outcome": "no-convergence",
+    "detail": "Only OpenStreetMap returned records that could take part in an identity. One publisher agreeing with itself is a duplicate row, not corroboration — Atlas proposes an identity only when separate organisations arrive at the same place independently."
+  },
+  "phase": "identity",
+  "phaseDetail": "Atlas is still working out which place this is, so every publisher below was asked in order to establish that.",
+  "publisherAccounts": [
+    {
+      "publisher": "Atlas's own corpus",
+      "outcome": "nothing",
+      "asked": [],
+      "detail": "Nothing found."
+    },
+    {
+      "publisher": "Wikipedia",
+      "outcome": "nothing",
+      "asked": [],
+      "detail": "No useful in-scope article found for this lake."
+    },
+    {
+      "publisher": "OpenStreetMap",
+      "outcome": "found",
+      "detail": "Found Swalwell Lake.",
+      "foundName": "Swalwell Lake",
+      "alsoPublishedAs": ["Beaver Lake"],
+      "asked": ["Beaver Lake"],
+      "externalId": "relation/1697950",
+      "url": "https://www.openstreetmap.org/relation/1697950"
+    },
+    {
+      "publisher": "BC Geographical Names",
+      "outcome": "nothing",
+      "asked": ["Beaver Lake"],
+      "detail": "Nothing found."
+    },
+    {
+      "publisher": "BC Freshwater Atlas",
+      "outcome": "nothing",
+      "asked": ["Beaver Lake"],
+      "detail": "Nothing found."
+    }
+  ],
+  "knownNames": [
+    {
+      "name": "Swalwell Lake",
+      "from": "the curator",
+      "field": "search",
+      "role": "searched"
+    },
+    {
+      "name": "Beaver Lake",
+      "from": "OpenStreetMap",
+      "field": "alt_name",
+      "role": "alternate",
+      "fromRecord": "relation/1697950",
+      "system": "osm"
+    }
+  ],
+  "nextMove": {
+    "kind": "read-constructed",
+    "label": "Try “Swalwell Lake (Okanagan)” on Wikipedia",
+    "why": "I built this address from the name — nobody has confirmed a page is there, so this is a guess worth one click rather than a lead. If it's wrong, that is a finding too.",
+    "url": "https://en.wikipedia.org/wiki/Swalwell_Lake_(Okanagan)"
+  },
+  "blockers": [],
+  "possibleMatches": [],
+  "leads": [
+    {
+      "url": "https://en.wikipedia.org/wiki/Swalwell_Lake",
+      "title": "Swalwell Lake",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Built from the name using Wikipedia's own title convention. This is a hypothesis, not a claim — Atlas fetches the page and checks it deterministically identifies this place before extracting anything.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "exact",
+      "corroboration": "not-enumerated",
+      "standing": "background",
+      "standingReason": "Atlas constructed this title. Wikipedia's own search for \"Swalwell Lake\" returned 10 articles and this was not among them. Wikipedia reported 617 matching pages and returned 10, so this is not proof the page does not exist — it is the absence of any corroboration for a title Atlas made up. Meanwhile relation/1697950 (\"Swalwell Lake\") is published inside the area Atlas searched, with coordinates."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Swalwell_Lake_(Okanagan)",
+      "title": "Swalwell Lake (Okanagan)",
+      "statedContext": "Okanagan",
+      "publisher": "Wikipedia · Okanagan",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Built from the name plus \"Okanagan\", the region you are investigating from — Wikipedia disambiguates same-named places exactly this way. Narrower than the bare name, and still a hypothesis: the page is fetched and checked before anything is extracted. The region is where Atlas looked, not where this belongs.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "state": "new",
+      "scopeRelation": "in-scope",
+      "scopeReason": "Its publisher says it is about Okanagan, which is a name this region is known by.",
+      "nameMatch": "contains",
+      "corroboration": "not-enumerated",
+      "standing": "background",
+      "standingReason": "Atlas constructed this title. Wikipedia's own search for \"Swalwell Lake\" returned 10 articles and this was not among them. Wikipedia reported 617 matching pages and returned 10, so this is not proof the page does not exist — it is the absence of any corroboration for a title Atlas made up. Meanwhile relation/1697950 (\"Swalwell Lake\") is published inside the area Atlas searched, with coordinates."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/2026_California_gubernatorial_election",
+      "title": "2026 California gubernatorial election",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 1 of 10, page id 72291407. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Swalwell%2C_Alberta",
+      "title": "Swalwell, Alberta",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 2 of 10, page id 14329317. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "coordinates": [-113.3183, 51.5572],
+      "statedContext": "Alberta",
+      "state": "new",
+      "scopeRelation": "out-of-scope",
+      "scopeReason": "Its published position falls outside the area Atlas searched, so it is a fact about somewhere else.",
+      "nameMatch": "partial",
+      "corroboration": "enumerated",
+      "standing": "background",
+      "standingReason": "Its published position falls outside The exact box around 25 entities you have placed in Okanagan. Every corner is a coordinate a source published — nothing was padded or chosen. It can only reach as far as what Atlas already knows about., so it is a fact about somewhere else. Inside that area, relation/1697950 (\"Swalwell Lake\") is published with coordinates. It stays here to read if you want it — it is simply not an answer to this investigation."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Ruben_Gallego",
+      "title": "Ruben Gallego",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 3 of 10, page id 26457766. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/California's_14th_congressional_district",
+      "title": "California's 14th congressional district",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 4 of 10, page id 5601819. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "coordinates": [-122.4, 37.5],
+      "state": "new",
+      "scopeRelation": "out-of-scope",
+      "scopeReason": "Its published position falls outside the area Atlas searched, so it is a fact about somewhere else.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "background",
+      "standingReason": "Its published position falls outside The exact box around 25 entities you have placed in Okanagan. Every corner is a coordinate a source published — nothing was padded or chosen. It can only reach as far as what Atlas already knows about., so it is a fact about somewhere else. Inside that area, relation/1697950 (\"Swalwell Lake\") is published with coordinates. It stays here to read if you want it — it is simply not an answer to this investigation."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Statewide_opinion_polling_for_the_2020_Democratic_Party_presidential_primaries",
+      "title": "Statewide opinion polling for the 2020 Democratic Party presidential primaries",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 5 of 10, page id 61126847. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/2026_United_States_House_of_Representatives_elections_in_California",
+      "title": "2026 United States House of Representatives elections in California",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 6 of 10, page id 78516760. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Lottie_Lake",
+      "title": "Lottie Lake",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 7 of 10, page id 24552827. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "coordinates": [-111.56833333, 54.05777778],
+      "state": "new",
+      "scopeRelation": "out-of-scope",
+      "scopeReason": "Its published position falls outside the area Atlas searched, so it is a fact about somewhere else.",
+      "nameMatch": "partial",
+      "corroboration": "enumerated",
+      "standing": "background",
+      "standingReason": "Its published position falls outside The exact box around 25 entities you have placed in Okanagan. Every corner is a coordinate a source published — nothing was padded or chosen. It can only reach as far as what Atlas already knows about., so it is a fact about somewhere else. Inside that area, relation/1697950 (\"Swalwell Lake\") is published with coordinates. It stays here to read if you want it — it is simply not an answer to this investigation."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/2026_United_States_House_of_Representatives_elections",
+      "title": "2026 United States House of Representatives elections",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 8 of 10, page id 78311563. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/2026_in_the_United_States",
+      "title": "2026 in the United States",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 9 of 10, page id 74006227. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "unrelated",
+      "corroboration": "enumerated",
+      "standing": "primary"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Half_Moon_Lake%2C_Alberta",
+      "title": "Half Moon Lake, Alberta",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Wikipedia's own search returned this article for \"Swalwell Lake\" — result 10 of 10, page id 20761874. Wikipedia asserts the page exists and matches the query; it does not assert the page is about the place you mean, so it is fetched and checked before anything is extracted.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "pageKind": "article",
+      "coordinates": [-113.09388889, 53.45972222],
+      "statedContext": "Alberta",
+      "state": "new",
+      "scopeRelation": "out-of-scope",
+      "scopeReason": "Its published position falls outside the area Atlas searched, so it is a fact about somewhere else.",
+      "nameMatch": "partial",
+      "corroboration": "enumerated",
+      "standing": "background",
+      "standingReason": "Its published position falls outside The exact box around 25 entities you have placed in Okanagan. Every corner is a coordinate a source published — nothing was padded or chosen. It can only reach as far as what Atlas already knows about., so it is a fact about somewhere else. Inside that area, relation/1697950 (\"Swalwell Lake\") is published with coordinates. It stays here to read if you want it — it is simply not an answer to this investigation."
+    }
+  ],
+  "consulted": [
+    {
+      "publisher": "Wikipedia",
+      "participated": true,
+      "note": "Tried the bare name and 1 region-qualified variant (Okanagan)."
+    },
+    {
+      "publisher": "The operator's own website",
+      "participated": false,
+      "note": "A domain cannot be derived from a name. A wrong guess returns a real, plausible page about something else — the most dangerous failure available here, so Atlas refuses to guess one."
+    },
+    {
+      "publisher": "OpenStreetMap",
+      "participated": true,
+      "note": "Searched a 92 × 156 km area — The exact box around 25 entities you have placed in Okanagan. Every corner is a coordinate a source published — nothing was padded or chosen. It can only reach as far as what Atlas already knows about. OSM returned candidates to judge, not an answer to believe."
+    },
+    {
+      "publisher": "BC Geographical Names",
+      "participated": true,
+      "note": "Asked the province for features officially named \"Swalwell Lake\" inside a 92 × 156 km area. The gazetteer publishes official names only — it carries no alternative or former names to search."
+    },
+    {
+      "publisher": "Tourism boards and government registers",
+      "participated": false,
+      "note": "No strategy exists yet. Both are jurisdiction-specific, and a register that names things without identifying them is a separate, deferred problem."
+    },
+    {
+      "publisher": "BC Freshwater Atlas",
+      "participated": true,
+      "note": "Asked four waterbody layers — lakes, reservoirs, wetlands and rivers — for water named \"Swalwell Lake\" inside a 92 × 156 km area. The Atlas maps the water itself, so a match brings a polygon, an area and a watershed rather than only a label."
+    }
+  ],
+  "strategies": [
+    {
+      "number": 1,
+      "name": "Corpus match",
+      "publisher": "Atlas's own corpus",
+      "request": "asks-the-publisher",
+      "status": "succeeded",
+      "detail": "Nothing in the corpus shares this name, so this would be new to Atlas. Corpus match cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded"
+    },
+    {
+      "number": 2,
+      "name": "Wikipedia, bare name",
+      "publisher": "Wikipedia",
+      "request": "builds-from-convention",
+      "status": "succeeded",
+      "detail": "A title was constructed from the name using Wikipedia's own convention. It is a hypothesis until the page is fetched and checked. Wikipedia, bare name cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 1,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 3,
+      "name": "Wikipedia, region-qualified",
+      "publisher": "Wikipedia",
+      "request": "builds-from-convention",
+      "status": "succeeded",
+      "detail": "Added 1 narrower hypothesis using Okanagan — the region's own stored names, nothing inferred. Wikipedia, region-qualified cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 1,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 3.5,
+      "name": "Wikipedia, search",
+      "publisher": "Wikipedia",
+      "request": "asks-the-publisher",
+      "status": "multiple-candidates",
+      "detail": "Wikipedia reports 617 matching articles; Atlas read the first 10 and does not page further — a search that keeps going is a crawl. 10 new sources to consider, unranked and none of them chosen. Query sent: https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=Swalwell+Lake&srnamespace=0&srlimit=10&srinfo=totalhits&srprop=&format=json&formatversion=2 | https://en.wikipedia.org/w/api.php?action=query&pageids=72291407%7C14329317%7C26457766%7C5601819%7C61126847%7C78516760%7C24552827%7C78311563%7C74006227%7C20761874&prop=info%7Cpageprops%7Ccoordinates&ppprop=disambiguation&coprimary=primary&format=json&formatversion=2 Wikipedia, search cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 10,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 4,
+      "name": "Region-bounded OpenStreetMap",
+      "publisher": "OpenStreetMap",
+      "request": "asks-the-publisher",
+      "status": "succeeded",
+      "detail": "One OpenStreetMap feature named \"Swalwell Lake\" in the 92 × 156 km box around the entities already placed in this region. It is a candidate with a real identifier and a published coordinate — not yet a decision that it is the place you meant.",
+      "bounding": "bounded-by-scope",
+      "nextAction": {
+        "kind": "no-lifecycle-yet",
+        "shape": "structured-record",
+        "count": 1,
+        "detail": "These records already identify themselves, so there is nothing to fetch — and nothing to queue, because reading one is a different operation from reading a page. Atlas keeps no record of them after this response, so re-running the investigation will offer them again."
+      }
+    },
+    {
+      "number": 4.5,
+      "name": "BC Geographical Names",
+      "publisher": "BC Geographical Names",
+      "request": "asks-the-publisher",
+      "status": "none-found",
+      "detail": "British Columbia officially names nothing \"Swalwell Lake\" in the 92 × 156 km box around the entities already placed in this region. The gazetteer holds official names only, so a feature known locally by another name would not appear here under this one.",
+      "bounding": "bounded-by-scope"
+    },
+    {
+      "number": 4.5,
+      "name": "BC Geographical Names",
+      "publisher": "BC Geographical Names",
+      "request": "asks-the-publisher",
+      "status": "none-found",
+      "detail": "British Columbia officially names nothing \"Beaver Lake\" in the 92 × 156 km box around the entities already placed in this region. The gazetteer holds official names only, so a feature known locally by another name would not appear here under this one.",
+      "bounding": "bounded-by-scope",
+      "askedAbout": "Beaver Lake"
+    },
+    {
+      "number": 4.6,
+      "name": "BC Freshwater Atlas",
+      "publisher": "BC Freshwater Atlas",
+      "request": "asks-the-publisher",
+      "status": "failed",
+      "detail": "Atlas could not complete the Freshwater Atlas search: Wetlands: Atlas stopped waiting for BC Freshwater Atlas after 15s. That is a fact about this request — the connection, or the response, never arrived — and not a fact about what the publisher holds. That is a fact about the request, not about whether the province has mapped this water.",
+      "bounding": "bounded-by-scope"
+    },
+    {
+      "number": 4,
+      "name": "Region-bounded OpenStreetMap",
+      "publisher": "OpenStreetMap",
+      "request": "asks-the-publisher",
+      "status": "succeeded",
+      "detail": "One OpenStreetMap feature matching \"Beaver Lake\" in the 92 × 156 km box around the entities already placed in this region — OpenStreetMap calls it Swalwell Lake, and records \"Beaver Lake\" as an alternative name for it. It is a candidate with a real identifier and a published coordinate — not yet a decision that it is the place you meant.",
+      "bounding": "bounded-by-scope",
+      "askedAbout": "Beaver Lake",
+      "nextAction": {
+        "kind": "no-lifecycle-yet",
+        "shape": "structured-record",
+        "count": 1,
+        "detail": "These records already identify themselves, so there is nothing to fetch — and nothing to queue, because reading one is a different operation from reading a page. Atlas keeps no record of them after this response, so re-running the investigation will offer them again."
+      }
+    },
+    {
+      "number": 4.6,
+      "name": "BC Freshwater Atlas",
+      "publisher": "BC Freshwater Atlas",
+      "request": "asks-the-publisher",
+      "status": "none-found",
+      "detail": "The Freshwater Atlas maps no waterbody named \"Beaver Lake\" in the 92 × 156 km box around the entities already placed in this region. It publishes the province's own names for water, so a lake known locally by another name would not appear here under this one.",
+      "bounding": "bounded-by-scope",
+      "askedAbout": "Beaver Lake"
+    }
+  ],
+  "scope": {
+    "bbox": {
+      "west": -119.63916667,
+      "east": -118.3445081,
+      "south": 49.72833333,
+      "north": 51.1316192
+    },
+    "source": "member-derived",
+    "label": "The exact box around 25 entities you have placed in Okanagan. Every corner is a coordinate a source published — nothing was padded or chosen. It can only reach as far as what Atlas already knows about.",
+    "derivedFrom": [
+      {
+        "id": "04683321-c27e-448d-8503-1c2d57706d6f",
+        "name": "Okanagan Mountain Provincial Park",
+        "coordinates": [-119.63916667, 49.72833333]
+      },
+      {
+        "id": "1987b49b-5494-467b-8068-d8244b783ac4",
+        "name": "Sugar Lake (British Columbia)",
+        "coordinates": [-118.5164546, 50.4015315]
+      },
+      {
+        "id": "1d8a002c-a7ac-41d5-9a3e-73ab0849e702",
+        "name": "Kekuli Bay Provincial Park",
+        "coordinates": [-119.34027778, 50.18333333]
+      },
+      {
+        "id": "238661eb-e191-4d60-ae3d-748b4543964c",
+        "name": "Big White Ski Resort",
+        "coordinates": [-118.9459084, 49.7379086]
+      },
+      {
+        "id": "2ffda7a0-db72-45f4-ae27-f4e85fc498f6",
+        "name": "Monashee Mountains",
+        "coordinates": [-118.3445081, 51.1316192]
+      },
+      {
+        "id": "4689082d-2bb6-4811-8889-71404f846690",
+        "name": "Mabel Lake",
+        "coordinates": [-118.717, 50.583]
+      },
+      {
+        "id": "4c19a8d0-1e1c-4a4a-9927-c987b21d8d58",
+        "name": "Wood Lake",
+        "coordinates": [-119.3896439, 50.0811058]
+      },
+      {
+        "id": "651ecb3c-33e1-408a-95be-1daa40c28004",
+        "name": "Okanagan Lake Viewpoint",
+        "coordinates": [-119.4042208, 50.1918109]
+      },
+      {
+        "id": "6931f16a-d8d9-4707-8780-86ba87ed5941",
+        "name": "Kal Beach",
+        "coordinates": [-119.2654267, 50.2308355]
+      },
+      {
+        "id": "6f5ff51b-d730-4136-a053-4d872571a03f",
+        "name": "Kalavista Boat Launch",
+        "coordinates": [-119.2646996, 50.2284861]
+      },
+      {
+        "id": "78367ec1-b8c6-4020-8b84-a74943028b71",
+        "name": "Kaloya Regional Park",
+        "coordinates": [-119.3686937, 50.1175767]
+      },
+      {
+        "id": "9340aa8a-cdfa-41e3-874a-9f0da31b5d35",
+        "name": "Ellison Park",
+        "coordinates": [-119.4398516, 50.1779849]
+      },
+      {
+        "id": "9cbac7c7-fee8-4247-af88-ddef90bb53c6",
+        "name": "Kalamalka Lake Provincial Park",
+        "coordinates": [-119.3161422, 50.1654789]
+      },
+      {
+        "id": "a06544db-7565-4fde-93bf-3d2d88d1ac76",
+        "name": "Telus Park",
+        "coordinates": [-119.4948515, 49.8968981]
+      },
+      {
+        "id": "a30a07e6-e02c-4200-b5c6-3e0b2d428535",
+        "name": "Evely Campground",
+        "coordinates": [-119.466625, 50.2079352]
+      },
+      {
+        "id": "aa126ace-32bb-4ddf-b547-5fc110259f2e",
+        "name": "Big White Mountain",
+        "coordinates": [-118.9351764, 49.7445384]
+      },
+      {
+        "id": "b7a939b4-d31b-4fb9-85b7-01f0209b2915",
+        "name": "Kinloch Boat Launch",
+        "coordinates": [-119.2673156, 50.2184433]
+      },
+      {
+        "id": "c0e1e616-3057-4c66-b83c-f0f4e618a444",
+        "name": "Shuswap Lake",
+        "coordinates": [-119.017, 50.983]
+      },
+      {
+        "id": "c43dd503-a62a-4e09-80d2-105d77e1d519",
+        "name": "Kelowna",
+        "coordinates": [-119.495902, 49.8879177]
+      },
+      {
+        "id": "d3116035-b5ce-4c70-acf4-27b601182c8e",
+        "name": "Silver Star Mountain Resort",
+        "coordinates": [-119.05805556, 50.35972222]
+      },
+      {
+        "id": "d558a32f-32ad-4b80-9435-dffff92a8f04",
+        "name": "Predator Ridge Resort",
+        "coordinates": [-119.388, 50.188]
+      },
+      {
+        "id": "d9db8a48-a1e5-43bf-9ac5-8ade230fb471",
+        "name": "Okanagan Lake",
+        "coordinates": [-119.4943506, 49.9251919]
+      },
+      {
+        "id": "d9e50732-52d6-4fa1-af9c-789112980f46",
+        "name": "Silver Star Provincial Park",
+        "coordinates": [-119.08333333, 50.375]
+      },
+      {
+        "id": "dd65260a-277c-4fc4-b9c8-404c4464f6d6",
+        "name": "Kalamalka Lake",
+        "coordinates": [-119.33, 50.17361111]
+      },
+      {
+        "id": "eddd9851-b490-45ad-bb20-cb21e7d9e27f",
+        "name": "Ellison Provincial Park",
+        "coordinates": [-119.43333333, 50.17361111]
+      }
+    ]
+  },
+  "structuredRecords": [
+    {
+      "system": "osm",
+      "osmType": "relation",
+      "osmId": 1697950,
+      "externalId": "relation/1697950",
+      "name": "Swalwell Lake",
+      "coordinates": [-119.226008, 50.0531545],
+      "tags": {
+        "alt_name": "Beaver Lake",
+        "name": "Swalwell Lake",
+        "natural": "water",
+        "source": "NRCan-CanVec-7.0",
+        "type": "multipolygon",
+        "water": "lake"
+      },
+      "publishedNames": [
+        {
+          "field": "name",
+          "name": "Swalwell Lake",
+          "role": "primary"
+        },
+        {
+          "field": "alt_name",
+          "name": "Beaver Lake",
+          "role": "alternate"
+        }
+      ],
+      "featureType": "water",
+      "url": "https://www.openstreetmap.org/relation/1697950",
+      "matchedField": "name",
+      "whyConsidered": "OpenStreetMap has a feature named \"Swalwell Lake\" inside the 92 × 156 km area Atlas searched. That is where Atlas looked — it says nothing about which region this belongs to.",
+      "identity": {
+        "hasIdentity": true,
+        "signals": ["canonical-external-id", "coordinates"]
+      }
+    }
+  ],
+  "namedLeads": [],
+  "osmQuery": "[out:json][timeout:25];(nwr[\"name\"=\"Beaver Lake\"](49.72833333,-119.63916667,51.1316192,-118.3445081);nwr[\"name\"=\"beaver lake\"](49.72833333,-119.63916667,51.1316192,-118.3445081);nwr[\"name\"=\"BEAVER LAKE\"](49.72833333,-119.63916667,51.1316192,-118.3445081);nwr[\"alt_name\"=\"Beaver Lake\"](49.72833333,-119.63916667,51.1316192,-118.3445081);nwr[\"alt_name\"=\"beaver lake\"](49.72833333,-119.63916667,51.1316192,-118.3445081);nwr[\"alt_name\"=\"BEAVER LAKE\"](49.72833333,-119.63916667,51.1316192,-118.3445081););out tags center;",
+  "clues": [
+    {
+      "kind": "coordinates",
+      "coordinates": [-119.226008, 50.0531545],
+      "from": "OpenStreetMap relation/1697950 (\"Swalwell Lake\")",
+      "unlocks": "A coordinate for the subject itself would let Atlas corroborate against OSM and look for what is nearby — once a curator has said which candidate is the right one."
+    }
+  ],
+  "summary": "Atlas found 6 sources worth reading about \"Swalwell Lake\". 6 further pages came back and were kept as background, 4 of them published about somewhere else. Wikipedia listed pages for this name, and the address Atlas built was not among them. OpenStreetMap also has 1 feature matching this name inside the area Atlas searched — unranked, and none of them chosen."
+}

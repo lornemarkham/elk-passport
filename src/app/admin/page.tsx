@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Layers, MapPin, Search, Split, Waves } from "lucide-react";
+import { Compass, Layers, MapPin, Search, Split, Waves } from "lucide-react";
 import {
   loadResearchMissions,
   awaitsReview,
 } from "@/lib/knowledge/researchMissions";
+import { KNOWLEDGE_DOMAINS } from "@/lib/knowledge/knowledgeDomains";
 import { loadRegions } from "@/lib/knowledge/regions";
 import { duplicateGroupCount, runsToday } from "@/lib/knowledge/adminSummary";
 import {
@@ -26,6 +27,18 @@ export const metadata: Metadata = { title: "Atlas" };
  *
  * *"Which region am I working on today?"*
  *
+ * ## Three areas, in the order they are asked about
+ *
+ * **Regions** — the thing being built, and the primary object here. **Knowledge
+ * Domains** — the permanent responsibilities through which a region gets built,
+ * each running one finite mission at a time. **Operations** — the maintenance
+ * underneath both, and the only Atlas-wide rows on the page.
+ *
+ * The hierarchy the product now states is Region → Knowledge Domain → Mission →
+ * Operation. A region is never finished; a domain is never finished; a mission
+ * is, and that is where an operator gets to feel they completed something.
+ *
+
  * ## Every row carries its own state
  *
  * The page used to end with a floating line — `168 entities · 1 region ·
@@ -66,6 +79,16 @@ export default async function AtlasHomePage() {
   // "Atlas returned something", and therefore reports a genuinely empty
   // Atlas as unreachable. `loadRegions` now says which it is.
   const atlasReachable = regionsResult.status === "ok";
+
+  // Asserted in `missions.ts` and counted here, never estimated. There is
+  // deliberately no percentage: Atlas cannot know what fraction of a region's
+  // lakes it holds, so any bar would be a number invented to fill a shape.
+  const operationalDomains = KNOWLEDGE_DOMAINS.filter(
+    (d) => d.status === "operational",
+  ).length;
+  const unconfiguredDomains = KNOWLEDGE_DOMAINS.filter(
+    (d) => d.publishers.length === 0,
+  ).length;
 
   return (
     <div className="flex flex-col gap-14">
@@ -115,7 +138,7 @@ export default async function AtlasHomePage() {
                   key={region.id}
                   href={`/admin/regions/${region.id}`}
                   icon={<MapPin className="h-4 w-4" />}
-                  title={region.name}
+                  title={`Build ${region.name}`}
                   meta={
                     // A bare "0 entities" reads as a dead metric. The same
                     // fact stated as a condition reads as something to do.
@@ -138,6 +161,35 @@ export default async function AtlasHomePage() {
             })}
           </List>
         )}
+      </Section>
+
+      {/* --- How knowledge arrives. A peer of Regions, not an Operation. --
+          Regions is "where am I working"; Knowledge Acquisition is "what is
+          Atlas responsible for knowing". Operations is the maintenance drawer
+          underneath both. Three areas, in that order, is the whole
+          reorganisation — nothing was moved out of Operations. */}
+      <Section title="Knowledge Domains">
+        <List>
+          <Row
+            href="/admin/knowledge"
+            icon={<Compass className="h-4 w-4" />}
+            title="What Atlas is responsible for knowing"
+            meta={
+              // Counted from the catalogue itself, so the line cannot drift
+              // from the pages it summarises. Stated in words rather than in
+              // the status vocabulary, because the key that explains that
+              // vocabulary lives on the other side of this link.
+              [
+                `${KNOWLEDGE_DOMAINS.length} domains`,
+                operationalDomains > 0 && `${operationalDomains} operational`,
+                unconfiguredDomains > 0 &&
+                  `${unconfiguredDomains} with no publisher yet`,
+              ]
+                .filter(Boolean)
+                .join("  ·  ")
+            }
+          />
+        </List>
       </Section>
 
       {/* --- Everything that is not one destination ---------------------- */}

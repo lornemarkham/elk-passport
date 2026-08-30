@@ -1,0 +1,406 @@
+{
+  "name": "Swalwell Lake",
+  "originalSearch": "Swalwell Lake",
+  "outcome": "leads-found",
+  "identity": {
+    "outcome": "proposed",
+    "detail": "3 records from 3 independent publishers appear to describe one place, published as \"Swalwell Lake\".",
+    "proposal": {
+      "key": "identity:bcgnis/bcgnis/20899+fwa/fwa/705020305+osm/relation/1697950",
+      "searchedFor": "Swalwell Lake",
+      "proposedName": "Swalwell Lake",
+      "proposedNameFrom": "BC Freshwater Atlas",
+      "evidence": [
+        {
+          "publisher": "BC Freshwater Atlas",
+          "system": "fwa",
+          "externalId": "fwa/705020305",
+          "url": "https://delivery.maps.gov.bc.ca/fwa",
+          "publishedNames": [
+            {
+              "field": "GNIS_NAME_1",
+              "name": "Swalwell Lake",
+              "role": "primary",
+              "gnisId": 20899
+            }
+          ],
+          "matchedQuery": {
+            "field": "GNIS_NAME_1",
+            "name": "Swalwell Lake",
+            "role": "primary",
+            "gnisId": 20899
+          },
+          "featureType": "L",
+          "extent": {
+            "north": 50.0614,
+            "south": 50.0449,
+            "east": -119.2169,
+            "west": -119.2352
+          }
+        },
+        {
+          "publisher": "BC Geographical Names",
+          "system": "bcgnis",
+          "externalId": "bcgnis/20899",
+          "url": "https://delivery.maps.gov.bc.ca/bcgnis",
+          "publishedNames": [
+            {
+              "field": "GEOGRAPHICAL_NAME",
+              "name": "Swalwell Lake",
+              "role": "primary"
+            }
+          ],
+          "matchedQuery": {
+            "field": "GEOGRAPHICAL_NAME",
+            "name": "Swalwell Lake",
+            "role": "primary"
+          },
+          "featureType": "Lake"
+        },
+        {
+          "publisher": "OpenStreetMap",
+          "system": "osm",
+          "externalId": "relation/1697950",
+          "url": "https://www.openstreetmap.org/relation/1697950",
+          "publishedNames": [
+            {
+              "field": "name",
+              "name": "Swalwell Lake",
+              "role": "primary"
+            },
+            {
+              "field": "alt_name",
+              "name": "Beaver Lake",
+              "role": "alternate"
+            }
+          ],
+          "matchedQuery": {
+            "field": "name",
+            "name": "Swalwell Lake",
+            "role": "primary"
+          },
+          "featureType": "water"
+        }
+      ],
+      "signals": [
+        "independent-publishers",
+        "canonical-identifiers",
+        "same-investigation-scope",
+        "exact-primary-name",
+        "geographic-containment"
+      ],
+      "whyAsking": "Atlas is asking rather than deciding. These are separate organisations that happen to agree, which is strong evidence and is not proof — and confirming this changes what Atlas investigates, so the choice is yours. Whatever you decide, Atlas keeps the words you originally searched for."
+    }
+  },
+  "hypothesis": {
+    "key": "identity:bcgnis/bcgnis/20899+fwa/fwa/705020305+osm/relation/1697950",
+    "searchedFor": "Swalwell Lake",
+    "primaryName": "Swalwell Lake",
+    "primaryNameFrom": "BC Freshwater Atlas",
+    "names": [
+      {
+        "name": "Swalwell Lake",
+        "role": "primary",
+        "publisher": "BC Freshwater Atlas",
+        "system": "fwa",
+        "field": "GNIS_NAME_1"
+      },
+      {
+        "name": "Swalwell Lake",
+        "role": "primary",
+        "publisher": "BC Geographical Names",
+        "system": "bcgnis",
+        "field": "GEOGRAPHICAL_NAME"
+      },
+      {
+        "name": "Swalwell Lake",
+        "role": "primary",
+        "publisher": "OpenStreetMap",
+        "system": "osm",
+        "field": "name"
+      },
+      {
+        "name": "Beaver Lake",
+        "role": "alternate",
+        "publisher": "OpenStreetMap",
+        "system": "osm",
+        "field": "alt_name"
+      }
+    ],
+    "status": "proposed"
+  },
+  "nextMove": {
+    "kind": "confirm-identity",
+    "label": "Confirm this is your Swalwell Lake",
+    "why": "3 independent publishers describe what looks like one place, published as \"Swalwell Lake\". Confirming it lets me keep investigating the thing rather than the word — and nothing is renamed, merged or written either way."
+  },
+  "blockers": [],
+  "possibleMatches": [],
+  "leads": [
+    {
+      "url": "https://en.wikipedia.org/wiki/Swalwell_Lake",
+      "title": "Swalwell Lake",
+      "publisher": "Wikipedia",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Built from the name using Wikipedia's own title convention. This is a hypothesis, not a claim — Atlas fetches the page and checks it deterministically identifies this place before extracting anything.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "state": "new",
+      "scopeRelation": "unplaced",
+      "scopeReason": "Nothing published about it says where it is, so Atlas cannot place it inside or outside the area it searched. That is an absence, not a denial.",
+      "nameMatch": "exact",
+      "standing": "background",
+      "standingReason": "Atlas built this URL from the name and Wikipedia's address convention. No index was consulted in this run, so nothing has confirmed a page is there — a URL Atlas can construct is not evidence that a page exists. Meanwhile relation/1697950 (\"Swalwell Lake\") is published inside the area Atlas searched, with coordinates. Still worth reading if you know it is right; not the strongest thing in this investigation."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Swalwell_Lake_(Okanagan)",
+      "title": "Swalwell Lake (Okanagan)",
+      "statedContext": "Okanagan",
+      "publisher": "Wikipedia · Okanagan",
+      "sourceType": "wikipedia",
+      "basis": "constructed",
+      "reason": "Built from the name plus \"Okanagan\", the region you are investigating from — Wikipedia disambiguates same-named places exactly this way. Narrower than the bare name, and still a hypothesis: the page is fetched and checked before anything is extracted. The region is where Atlas looked, not where this belongs.",
+      "couldEstablish": [
+        "Whether a place of this name exists and is documented",
+        "Coordinates, which unlock every location-based source afterwards",
+        "A description and the basic identity fields"
+      ],
+      "state": "new",
+      "scopeRelation": "in-scope",
+      "scopeReason": "Its publisher says it is about Okanagan, which is a name this region is known by.",
+      "nameMatch": "contains",
+      "standing": "background",
+      "standingReason": "Atlas built this URL from the name and Wikipedia's address convention. No index was consulted in this run, so nothing has confirmed a page is there — a URL Atlas can construct is not evidence that a page exists. Meanwhile relation/1697950 (\"Swalwell Lake\") is published inside the area Atlas searched, with coordinates. Still worth reading if you know it is right; not the strongest thing in this investigation."
+    }
+  ],
+  "consulted": [
+    {
+      "publisher": "Wikipedia",
+      "participated": true,
+      "note": "Tried the bare name and 1 region-qualified variant (Okanagan)."
+    },
+    {
+      "publisher": "The operator's own website",
+      "participated": false,
+      "note": "A domain cannot be derived from a name. A wrong guess returns a real, plausible page about something else — the most dangerous failure available here, so Atlas refuses to guess one."
+    },
+    {
+      "publisher": "OpenStreetMap",
+      "participated": true,
+      "note": "Searched a 36 × 56 km area — The exact box around entities placed in Okanagan. OSM returned candidates to judge, not an answer to believe."
+    },
+    {
+      "publisher": "BC Geographical Names",
+      "participated": true,
+      "note": "Asked the province for features officially named \"Swalwell Lake\" inside a 36 × 56 km area. The gazetteer publishes official names only — it carries no alternative or former names to search."
+    },
+    {
+      "publisher": "BC Freshwater Atlas",
+      "participated": true,
+      "note": "Asked four waterbody layers — lakes, reservoirs, wetlands and rivers — for water named \"Swalwell Lake\" inside a 36 × 56 km area. The Atlas maps the water itself, so a match brings a polygon, an area and a watershed rather than only a label."
+    },
+    {
+      "publisher": "Tourism boards and government registers",
+      "participated": false,
+      "note": "No strategy exists yet. Both are jurisdiction-specific, and a register that names things without identifying them is a separate, deferred problem."
+    }
+  ],
+  "strategies": [
+    {
+      "number": 1,
+      "name": "Corpus match",
+      "status": "succeeded",
+      "detail": "Nothing in the corpus shares this name, so this would be new to Atlas. Corpus match cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded"
+    },
+    {
+      "number": 2,
+      "name": "Wikipedia, bare name",
+      "status": "succeeded",
+      "detail": "A title was constructed from the name using Wikipedia's own convention. It is a hypothesis until the page is fetched and checked. Wikipedia, bare name cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 1,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 3,
+      "name": "Wikipedia, region-qualified",
+      "status": "succeeded",
+      "detail": "Added 1 narrower hypothesis using Okanagan — the region's own stored names, nothing inferred. Wikipedia, region-qualified cannot be bounded by an area — this publisher offers no regional search — so Atlas asked globally and placed each result against the investigation afterwards.",
+      "bounding": "unbounded",
+      "nextAction": {
+        "kind": "queue-and-read",
+        "shape": "retrievable-source",
+        "count": 1,
+        "detail": "Queue it and Atlas will fetch, verify and read it. Nothing is believed until the page has been checked."
+      }
+    },
+    {
+      "number": 3.5,
+      "name": "Wikipedia, search",
+      "status": "skipped",
+      "detail": "Wikipedia's search API was not consulted in this run."
+    },
+    {
+      "number": 4,
+      "name": "Region-bounded OpenStreetMap",
+      "status": "succeeded",
+      "detail": "One OpenStreetMap feature named \"Swalwell Lake\" in the 36 × 56 km box around the entities already placed in this region. It is a candidate with a real identifier and a published coordinate — not yet a decision that it is the place you meant.",
+      "bounding": "bounded-by-scope",
+      "nextAction": {
+        "kind": "no-lifecycle-yet",
+        "shape": "structured-record",
+        "count": 1,
+        "detail": "These records already identify themselves, so there is nothing to fetch — and nothing to queue, because reading one is a different operation from reading a page. Atlas keeps no record of them after this response, so re-running the investigation will offer them again."
+      }
+    },
+    {
+      "number": 4.5,
+      "name": "BC Geographical Names",
+      "status": "succeeded",
+      "detail": "British Columbia officially names a lake \"Swalwell Lake\" in the 36 × 56 km box around the entities already placed in this region. It carries a provincial identifier (bcgnis/20899) and published coordinates — a candidate with real identity, not yet a decision that it is the place you meant.",
+      "bounding": "bounded-by-scope",
+      "nextAction": {
+        "kind": "no-lifecycle-yet",
+        "shape": "structured-record",
+        "count": 1,
+        "detail": "These records already identify themselves, so there is nothing to fetch — and nothing to queue, because reading one is a different operation from reading a page. Atlas keeps no record of them after this response, so re-running the investigation will offer them again."
+      }
+    },
+    {
+      "number": 4.6,
+      "name": "BC Freshwater Atlas",
+      "status": "succeeded",
+      "detail": "The Freshwater Atlas maps \"Swalwell Lake\" in the 36 × 56 km box around the entities already placed in this region. It carries provincial keys (fwa/705020305) and a real polygon — a candidate with genuine identity, not yet a decision that it is the place you meant.",
+      "bounding": "bounded-by-scope",
+      "nextAction": {
+        "kind": "no-lifecycle-yet",
+        "shape": "structured-record",
+        "count": 1,
+        "detail": "These records already identify themselves, so there is nothing to fetch — and nothing to queue, because reading one is a different operation from reading a page. Atlas keeps no record of them after this response, so re-running the investigation will offer them again."
+      }
+    }
+  ],
+  "scope": {
+    "bbox": {
+      "south": 49.7,
+      "west": -119.3,
+      "north": 50.2,
+      "east": -118.8
+    },
+    "source": "member-derived",
+    "label": "The exact box around entities placed in Okanagan."
+  },
+  "structuredRecords": [
+    {
+      "system": "osm",
+      "externalId": "relation/1697950",
+      "name": "Swalwell Lake",
+      "coordinates": [-119.2261, 50.0531],
+      "tags": {
+        "name": "Swalwell Lake",
+        "alt_name": "Beaver Lake",
+        "natural": "water"
+      },
+      "publishedNames": [
+        {
+          "field": "name",
+          "name": "Swalwell Lake",
+          "role": "primary"
+        },
+        {
+          "field": "alt_name",
+          "name": "Beaver Lake",
+          "role": "alternate"
+        }
+      ],
+      "featureType": "water",
+      "url": "https://www.openstreetmap.org/relation/1697950",
+      "whyConsidered": "OpenStreetMap also records \"Beaver Lake\" as an alternative name for it.",
+      "identity": {
+        "hasIdentity": true,
+        "signals": ["canonical-external-id", "coordinates"]
+      }
+    },
+    {
+      "system": "bcgnis",
+      "externalId": "bcgnis/20899",
+      "name": "Swalwell Lake",
+      "coordinates": [-119.2255, 50.0525],
+      "publishedNames": [
+        {
+          "field": "GEOGRAPHICAL_NAME",
+          "name": "Swalwell Lake",
+          "role": "primary"
+        }
+      ],
+      "featureType": "Lake",
+      "attributes": {},
+      "url": "https://delivery.maps.gov.bc.ca/bcgnis",
+      "whyConsidered": "British Columbia officially names a lake \"Swalwell Lake\".",
+      "identity": {
+        "hasIdentity": true,
+        "signals": ["canonical-external-id", "coordinates"]
+      }
+    },
+    {
+      "system": "fwa",
+      "externalId": "fwa/705020305",
+      "name": "Swalwell Lake",
+      "coordinates": [-119.22606, 50.05315],
+      "extent": {
+        "north": 50.0614,
+        "south": 50.0449,
+        "east": -119.2169,
+        "west": -119.2352
+      },
+      "publishedNames": [
+        {
+          "field": "GNIS_NAME_1",
+          "name": "Swalwell Lake",
+          "role": "primary",
+          "gnisId": 20899
+        }
+      ],
+      "featureType": "L",
+      "attributes": {},
+      "url": "https://delivery.maps.gov.bc.ca/fwa",
+      "whyConsidered": "The Freshwater Atlas maps a waterbody named \"Swalwell Lake\".",
+      "identity": {
+        "hasIdentity": true,
+        "signals": ["canonical-external-id", "coordinates"]
+      }
+    }
+  ],
+  "namedLeads": [],
+  "osmQuery": "stub",
+  "clues": [
+    {
+      "kind": "coordinates",
+      "coordinates": [-119.2261, 50.0531],
+      "from": "OpenStreetMap relation/1697950 (\"Swalwell Lake\")",
+      "unlocks": "A coordinate for the subject itself would let Atlas corroborate against OSM and look for what is nearby — once a curator has said which candidate is the right one."
+    },
+    {
+      "kind": "coordinates",
+      "coordinates": [-119.2255, 50.0525],
+      "from": "BC Geographical Names bcgnis/20899 (\"Swalwell Lake\")",
+      "unlocks": "A provincially published coordinate for the subject would let Atlas corroborate against other publishers and look for what is nearby — once a curator has said which record is the right one."
+    },
+    {
+      "kind": "coordinates",
+      "coordinates": [-119.22606, 50.05315],
+      "from": "BC Freshwater Atlas fwa/705020305 (\"Swalwell Lake\")",
+      "unlocks": "A mapped waterbody position would let Atlas corroborate against other publishers and look for what is nearby — once a curator has said which record is the right one."
+    }
+  ],
+  "summary": "Atlas thinks it has found your place. 3 independent publishers — BC Freshwater Atlas, BC Geographical Names, OpenStreetMap — describe what looks like one feature, published as \"Swalwell Lake\". You searched for \"Swalwell Lake\". Atlas has not renamed anything and will not until you confirm this is the same place. Wikipedia does not appear to have a dedicated article for this place. Moving on."
+}
