@@ -10,7 +10,9 @@ import type { WorkspaceBundle } from "./workspaceData";
 import type { EntityLike } from "./regionHealth";
 import {
   buildLearningOpportunities,
+  canonicalUrl,
   ownedSourceRecordIds,
+  readSourceUrls,
   unattributedCandidates,
   publisherOf,
   type LearningOpportunity,
@@ -714,9 +716,27 @@ function evidenceGapsFor(
 ): EvidenceGapItem[] {
   const items: EvidenceGapItem[] = [];
 
-  // A page Atlas knows it should read, about an entity in this domain.
+  /**
+   * **What Atlas has already fetched**, by the same canonical-URL join
+   * `buildLearningOpportunities` and `selectEligible` use.
+   *
+   * `status` cannot answer *"is this page still waiting to be read?"* — only
+   * the paths that apply something move a candidate off `queued`, so a page
+   * Atlas read and could apply nothing from stays `queued` forever. Asking
+   * `status` here put thirteen already-read Big White pages on screen under
+   * *needs more evidence*, each saying "Queued for reading" and offering to
+   * abandon it. Every word of that was false, and the only action offered
+   * would have permanently closed a first-party page over a pipeline
+   * limitation Atlas already knows about.
+   */
+  const readUrls = readSourceUrls(bundle?.sources ?? []);
+
+  // A page Atlas knows it should read, and **has not read yet**. Once it has
+  // been read, whatever that read produced is a fact about the read — not a
+  // gap in the evidence a curator could go and fill.
   for (const candidate of bundle?.candidateSources ?? []) {
     if (!isOpen(candidate.status)) continue;
+    if (readUrls.has(canonicalUrl(candidate.url))) continue;
     const targets = targetsOf(candidate).filter((id) => ids.has(id));
     if (targets.length === 0) continue;
     const subject = targets.map((id) => byId.get(id)?.name ?? id).join(", ");

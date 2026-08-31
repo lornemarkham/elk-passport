@@ -4,8 +4,10 @@ import type { IngestionEvent } from "./runData";
 import type { EntityLike } from "./regionHealth";
 import {
   buildLearningOpportunities,
+  canonicalUrl,
   learningArea,
   ownedSourceRecordIds,
+  readSourceUrls,
   publisherOf,
   targetsOfCandidate,
   unattributedCandidates,
@@ -512,5 +514,75 @@ describe("ownedSourceRecordIds", () => {
     // The filter must be inert where it does not apply — a domain with no
     // discovered pages keeps every evidence gap it had.
     expect(ownedSourceRecordIds([], [record("sr-a", url("a"))]).size).toBe(0);
+  });
+});
+
+/**
+ * **A page Atlas has read is not a page waiting to be read.**
+ *
+ * Measured live 2026-08-31: all thirteen Big White candidates were
+ * `status: "queued"` and all thirteen had been read. The evidence bucket asked
+ * `status`, so it put eight of them on screen under *needs more evidence*,
+ * each saying "Queued for reading. `npm run run-queue` reads it" and offering
+ * *I do not want this*. Every word was false, and the only action offered
+ * would have permanently closed a first-party page — `isAutomaticallyProcessable`
+ * refuses `rejected` forever — over a pipeline limitation Atlas already knows
+ * about.
+ *
+ * ADR 045: Atlas asks for a decision only once it has the evidence to make it
+ * meaningful. A question whose premise Atlas can itself disprove is not a
+ * decision.
+ */
+describe("readSourceUrls — what Atlas has already fetched", () => {
+  const url = (id: string) => `https://www.bigwhite.com/${id}`;
+  const record = (source: string) => ({ source });
+
+  test("a queued candidate with a SourceRecord has been read", () => {
+    const read = readSourceUrls([record(url("summer"))]);
+    // The exact regression: status is still `queued`, and it is still read.
+    expect(read.has(canonicalUrl(url("summer")))).toBe(true);
+  });
+
+  test("a queued candidate with no SourceRecord is genuinely unread", () => {
+    // Stays a legitimate evidence gap, and stays actionable — abandoning it
+    // before Atlas spends the fetch is a real decision.
+    const read = readSourceUrls([record(url("summer"))]);
+    expect(read.has(canonicalUrl(url("accommodation-directory")))).toBe(false);
+  });
+
+  test("matches the way Atlas stores URLs, not byte-for-byte", () => {
+    const read = readSourceUrls([
+      record("https://www.BigWhite.com/Explore/Food-Dining/"),
+    ]);
+    expect(
+      read.has(canonicalUrl("http://bigwhite.com/explore/food-dining")),
+    ).toBe(true);
+  });
+
+  test("an empty corpus of sources marks nothing as read", () => {
+    // Absent evidence is not evidence of a read — every candidate stays a gap.
+    expect(readSourceUrls([]).size).toBe(0);
+  });
+
+  test("agrees with the state the mission surface derives", () => {
+    // One rule, two consumers. `stateOf` calls a fetched-but-open candidate
+    // `read-not-applied`; the evidence bucket must therefore not call the same
+    // candidate an unread gap.
+    const opportunities = build(
+      [
+        candidate({ id: "read", url: url("read") }),
+        candidate({ id: "unread", url: url("unread") }),
+      ],
+      [],
+      fetched(url("read")),
+    );
+    const states = Object.fromEntries(
+      opportunities[0]!.sources.map((s) => [s.id, s.state]),
+    );
+    expect(states).toEqual({ read: "read-not-applied", unread: "unread" });
+
+    const read = readSourceUrls(fetched(url("read")));
+    expect(read.has(canonicalUrl(url("read")))).toBe(true);
+    expect(read.has(canonicalUrl(url("unread")))).toBe(false);
   });
 });

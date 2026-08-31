@@ -379,3 +379,24 @@ export function ownedSourceRecordIds(
   }
   return owned;
 }
+
+/**
+ * **The canonical URLs Atlas has actually fetched.**
+ *
+ * A `SourceRecord` exists because Atlas fetched that URL, and it is written
+ * before extraction runs — so it is the durable proof of a read that
+ * `CandidateSource.status` does not record. Only the paths that apply
+ * something move a candidate off `queued`, so `queued` alone cannot answer
+ * *"is this page still waiting to be read?"*.
+ *
+ * Shared so every consumer answers that question the same way:
+ * `stateOf` uses it to tell **unread** from **read-not-applied**, the queue
+ * runner uses it to decide what is still outstanding, and the evidence bucket
+ * uses it to avoid presenting an already-read page as a gap a curator could
+ * fill.
+ */
+export function readSourceUrls(
+  sources: readonly { readonly source: string }[],
+): ReadonlySet<string> {
+  return new Set(sources.map((record) => canonicalUrl(record.source)));
+}
