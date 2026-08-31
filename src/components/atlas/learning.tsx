@@ -1,5 +1,6 @@
 import type {
   LearningOpportunity,
+  LearningSource,
   SourceState,
 } from "@/lib/knowledge/learningOpportunities";
 
@@ -202,6 +203,8 @@ function Entity({ opportunity }: { opportunity: LearningOpportunity }) {
         {publishers.join(" · ")}
       </p>
 
+      <AlsoDescribed sources={sources} />
+
       {/* Provenance on demand. The curator should not need to open this. */}
       <details className="group mt-2">
         <summary className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex w-fit cursor-pointer list-none items-baseline gap-1.5 rounded text-[12px] transition-colors focus-visible:ring-2 focus-visible:outline-none">
@@ -326,5 +329,70 @@ function Unattributed({
         </ul>
       </details>
     </section>
+  );
+}
+
+/**
+ * **What the reads described and Atlas did not create.**
+ *
+ * Informational, deliberately. These proposals survived extraction *and*
+ * Atlas's own validation, and were withheld only because none could be proven
+ * to describe the entity the page was read for. That is a fact about what a
+ * trustworthy source published — not a question, and not a queue.
+ *
+ * There is no action here on purpose. Atlas does not yet know whether any of
+ * these is a distinct real thing, whether it already exists in the corpus, or
+ * how it relates to the entity the page was about, so it has not earned the
+ * right to ask (ADR 045). Offering *create* or *dismiss* would put an
+ * irreversible decision behind a name and a kind.
+ *
+ * A page with **no recorded interpretation** contributes nothing here rather
+ * than a zero — most of these were read before Atlas kept this record, and
+ * "nothing was withheld" is not something it can claim about them.
+ */
+function AlsoDescribed({ sources }: { sources: readonly LearningSource[] }) {
+  const described = sources.filter(
+    (source) => (source.withheld?.length ?? 0) > 0,
+  );
+  if (described.length === 0) return null;
+  const total = described.reduce((n, s) => n + (s.withheld?.length ?? 0), 0);
+
+  return (
+    <details className="group mt-2">
+      <summary className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex w-fit cursor-pointer list-none items-baseline gap-1.5 rounded text-[12px] transition-colors focus-visible:ring-2 focus-visible:outline-none">
+        <span aria-hidden className="transition-transform group-open:rotate-90">
+          ▸
+        </span>
+        Also described, and not created — {total}
+      </summary>
+      <p className="text-muted-foreground mt-2 max-w-2xl text-[12.5px] leading-relaxed">
+        These survived extraction and validation. Atlas did not apply them
+        because it could not prove they describe this entity, and it has not
+        created them: whether any is a distinct thing, already known, or related
+        to this one are questions it cannot answer yet.
+      </p>
+      <ul className="divide-border mt-2 divide-y">
+        {described.map((source) => (
+          <li key={source.id} className="py-2">
+            <p className="text-muted-foreground font-mono text-[11.5px] break-all">
+              {source.url}
+            </p>
+            <ul className="mt-1 flex flex-col gap-0.5">
+              {source.withheld!.map((proposal, index) => (
+                <li
+                  key={`${proposal.kind}-${proposal.name}-${index}`}
+                  className="text-[13px]"
+                >
+                  <span className="text-muted-foreground font-mono text-[11px] tracking-wide uppercase">
+                    {proposal.kind}
+                  </span>{" "}
+                  {proposal.name}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

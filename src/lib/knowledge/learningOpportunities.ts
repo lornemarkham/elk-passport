@@ -99,6 +99,16 @@ export interface LearningSource {
   readonly state: SourceState;
   /** The failure message, when this page's last attempt broke. */
   readonly failure?: string;
+  /**
+   * **Validated proposals this read produced and did not apply.**
+   *
+   * `undefined` means Atlas recorded no interpretation for this page — not
+   * that it found nothing. The two render differently on purpose.
+   */
+  readonly withheld?: readonly {
+    readonly kind: string;
+    readonly name: string;
+  }[];
   /** How many other entities this same page also teaches. Usually zero. */
   readonly alsoTeaches: number;
 }
@@ -281,6 +291,8 @@ export function buildLearningOpportunities(
       state: stateOf(candidate, failure, fetched),
       failure,
       alsoTeaches: targets.length - 1,
+      // Straight from Atlas's own durable snapshot. Absent stays absent.
+      withheld: candidate.lastAttempt?.withheld,
     };
     for (const id of targets) {
       byEntity.set(id, [...(byEntity.get(id) ?? []), source]);

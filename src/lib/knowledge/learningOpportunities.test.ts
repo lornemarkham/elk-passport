@@ -586,3 +586,89 @@ describe("readSourceUrls — what Atlas has already fetched", () => {
     expect(read.has(canonicalUrl(url("unread")))).toBe(false);
   });
 });
+
+/**
+ * **What a read described and Atlas did not create.**
+ *
+ * Carried straight from Atlas's own durable snapshot. The distinction that
+ * matters is between *recorded and empty* and *never recorded* — most Big
+ * White pages were read before Atlas kept this, and claiming they withheld
+ * nothing would be a fabricated zero.
+ */
+describe("withheld proposals in the read model", () => {
+  const url = (id: string) => `https://www.bigwhite.com/${id}`;
+  const attempt = (
+    withheld: { kind: string; name: string }[],
+    outcome: "applied" | "withheld" | "nothing-extracted" = "withheld",
+  ) => ({
+    at: "2026-08-31T12:00:00.000Z",
+    sourceRecordId: "sr-1",
+    targetEntityId: BIG_WHITE,
+    outcome,
+    withheld,
+  });
+
+  test("carries kind and name through from the candidate", () => {
+    const result = build(
+      [
+        candidate({
+          id: "food-dining",
+          url: url("food-dining"),
+          lastAttempt: attempt([
+            { kind: "Organization", name: "On-Mountain Restaurants" },
+            { kind: "Activity", name: "Horse Drawn Sleigh Dining Tours" },
+          ]),
+        }),
+      ],
+      [],
+      fetched(url("food-dining")),
+    );
+    expect(result[0]!.sources[0]!.withheld).toEqual([
+      { kind: "Organization", name: "On-Mountain Restaurants" },
+      { kind: "Activity", name: "Horse Drawn Sleigh Dining Tours" },
+    ]);
+  });
+
+  test("a recorded interpretation that found nothing is an empty list", () => {
+    const result = build(
+      [
+        candidate({
+          id: "summer",
+          url: url("summer"),
+          lastAttempt: attempt([], "nothing-extracted"),
+        }),
+      ],
+      [],
+      fetched(url("summer")),
+    );
+    expect(result[0]!.sources[0]!.withheld).toEqual([]);
+  });
+
+  test("a page Atlas never interpreted stays undefined, not zero", () => {
+    // The legacy case, and the one a UI must not render as "0 withheld".
+    const result = build(
+      [candidate({ id: "legacy", url: url("legacy") })],
+      [],
+      fetched(url("legacy")),
+    );
+    expect(result[0]!.sources[0]!.withheld).toBeUndefined();
+  });
+
+  test("withheld evidence does not change the source's own state", () => {
+    // Still `read-not-applied`, still not queue work. Recording what a read
+    // found says nothing about whether the page is outstanding.
+    const result = build(
+      [
+        candidate({
+          id: "food-dining",
+          url: url("food-dining"),
+          lastAttempt: attempt([{ kind: "Activity", name: "Night Skiing" }]),
+        }),
+      ],
+      [],
+      fetched(url("food-dining")),
+    );
+    expect(result[0]!.sources[0]!.state).toBe("read-not-applied");
+    expect(result[0]!.unread).toBe(0);
+  });
+});

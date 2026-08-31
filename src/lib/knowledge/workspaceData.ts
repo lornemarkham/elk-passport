@@ -71,6 +71,20 @@ export interface WorkspaceCandidateSource {
    */
   expectedTargets?: string[];
   /**
+   * **What Atlas's last completed interpretation of this page produced.**
+   *
+   * Absent means Atlas never recorded one — every candidate read before the
+   * field existed — and never "nothing was found". A consumer that renders
+   * absence as `0 withheld` is inventing a zero.
+   */
+  lastAttempt?: {
+    at: string;
+    sourceRecordId: string;
+    targetEntityId: string;
+    outcome: "applied" | "withheld" | "nothing-extracted";
+    withheld: { kind: string; name: string }[];
+  };
+  /**
    * @deprecated Atlas removed this when a shared source — one tourism page
    * teaching fifty restaurants — made one-page-one-entity structurally
    * impossible. It survives in this type only because three callers still
