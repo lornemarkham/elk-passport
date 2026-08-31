@@ -58,6 +58,7 @@ import {
 } from "@/components/atlas/missionSequence";
 import { CurrentMission } from "@/components/atlas/currentMission";
 import { LearningList } from "@/components/atlas/learning";
+import { ReadQueue } from "@/components/atlas/readQueue";
 
 /**
  * **A Knowledge Domain, and the mission being run inside it.**
@@ -184,15 +185,26 @@ export default async function KnowledgeDomainPage({ params }: PageProps) {
    * entities are a decision and which are an evidence gap.
    */
   const surface = (() => {
-    // Reading the discovered pages is done at the terminal, but the *work* is
-    // shown here grouped by entity — one item per thing being taught, however
-    // many pages name it.
+    // The work is shown grouped by entity — one item per thing being taught,
+    // however many pages name it — and it can now be *done* here. `unread` and
+    // `failed` come from the same `work.learning` the completion condition
+    // reads, so the control cannot offer work the mission does not agree is
+    // outstanding, and it renders nothing when there is none.
     if (mission?.surface === "learn-from-sources") {
       return (
-        <LearningList
-          opportunities={work.learning}
-          unattributed={work.unattributedSources}
-        />
+        <>
+          <LearningList
+            opportunities={work.learning}
+            unattributed={work.unattributedSources}
+          />
+          <ReadQueue
+            entityIds={work.learning
+              .filter((o) => o.unread + o.failed > 0)
+              .map((o) => o.entityId)}
+            unread={work.learning.reduce((n, o) => n + o.unread, 0)}
+            failed={work.learning.reduce((n, o) => n + o.failed, 0)}
+          />
+        </>
       );
     }
     if (mission?.surface !== "place-in-region") return undefined;

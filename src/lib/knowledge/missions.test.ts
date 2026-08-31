@@ -3,6 +3,7 @@ import {
   allPlacedInRegion,
   evaluateDomain,
   placementDecisions,
+  queueDrained,
   unplacedEntities,
   withheldFromPlacement,
   type ContextEntity,
@@ -476,5 +477,46 @@ describe("Recreation reaching a caught-up state", () => {
       );
       expect(outstanding.length).toBeGreaterThan(0);
     }
+  });
+});
+
+/**
+ * **Completion stays derived, and stays about attempts.**
+ *
+ * The mission page can now start the queue run itself (ADR 043). That changes
+ * who presses the button and nothing about what finishing means: `queueDrained`
+ * still grades what Atlas *attempted*, still ignores a read that produced
+ * nothing applicable, and is still recomputed on every render from Atlas's own
+ * facts. Nothing anywhere stores that a mission is complete.
+ */
+describe("queueDrained — unchanged by the on-page operation", () => {
+  it("completes when nothing is unread, however many reads produced nothing", () => {
+    const outcome = queueDrained().evaluate(
+      contextWith([], [], { queuedPages: 0, learnedNothing: 10 }),
+    );
+    expect(outcome.state).toBe("done");
+    // Ten pages read without result are a result, not outstanding work.
+    expect(outcome.detail).toMatch(/10 produced nothing it could apply/);
+  });
+
+  it("stays open while a page has not been attempted", () => {
+    const outcome = queueDrained().evaluate(
+      contextWith([], [], {
+        queuedPages: 3,
+        learningEntities: 1,
+        learnedNothing: 10,
+      }),
+    );
+    expect(outcome.state).toBe("not-done");
+    expect(outcome.detail).toMatch(/3 pages Atlas has not attempted/);
+  });
+
+  it("refuses to complete on a zero it could not verify", () => {
+    // The fabricated zero with a finish attached: a read behind the counter
+    // failed, so "nothing outstanding" is unknown rather than true.
+    const outcome = queueDrained().evaluate(
+      contextWith([], [], { queuedPages: 0, readsComplete: false }),
+    );
+    expect(outcome.state).toBe("unverifiable");
   });
 });
