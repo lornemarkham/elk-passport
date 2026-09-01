@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   allPlacedInRegion,
   evaluateDomain,
+  namedPlacesHaveSource,
   placementDecisions,
   queueDrained,
   unplacedEntities,
@@ -397,14 +398,17 @@ describe("the open panel", () => {
 describe("Recreation reaching a caught-up state", () => {
   /**
    * Everything the four actionable missions grade on, satisfied. The BC Parks
-   * mission names its two parks by fragment, so the fixture has to hold a
-   * Kalamalka record for the same reason the real corpus does.
+   * mission names its two parks by their **exact** names, so the fixture holds
+   * records under exactly those names — `Ellison Provincial Park` and
+   * `Kalamalka Lake Provincial Park` are different records in the real corpus
+   * and no longer stand in for them.
    */
-  const KALAMALKA = entity("kalamalka", "Kalamalka Lake Provincial Park");
+  const ELLISON_PARK = entity("ellison-park", "Ellison Park");
+  const KALAMALKA = entity("kalamalka", "Kalamalka Lake Park");
   const caughtUp = () =>
     contextWith(
-      [ELLISON, KEKULI, KALAMALKA],
-      ["ellison", "kekuli", "kalamalka"],
+      [ELLISON, KEKULI, ELLISON_PARK, KALAMALKA],
+      ["ellison", "kekuli", "ellison-park", "kalamalka"],
       {
         heldByCategory: new Map([
           ["campgrounds", 2],
@@ -413,6 +417,7 @@ describe("Recreation reaching a caught-up state", () => {
         sourceTypes: new Map([
           ["ellison", new Set(["bcparks"])],
           ["kekuli", new Set(["bcparks"])],
+          ["ellison-park", new Set(["bcparks"])],
           ["kalamalka", new Set(["bcparks"])],
         ]),
         openDecisions: { duplicate: 0, relationship: 0 },
@@ -518,5 +523,155 @@ describe("queueDrained — unchanged by the on-page operation", () => {
       contextWith([], [], { queuedPages: 0, readsComplete: false }),
     );
     expect(outcome.state).toBe("unverifiable");
+  });
+});
+
+/**
+ * **Mission 5 could not finish because a name fragment chose the wrong record.**
+ *
+ * Measured on the live corpus 2026-08-31: `"Ellison"` matched four entities
+ * and `.find()` returned *Ellison Provincial Park **Road***, an OSM road;
+ * `"Kalamalka"` matched six and returned *Kalamalka Lake **Provincial** Park*,
+ * sourced from Wikipedia. Neither carried a BC Parks source, so the condition
+ * reported not-done — while *Ellison Park* (44 keyFacts) and *Kalamalka Lake
+ * Park* (47 keyFacts) had both been ingested from BC Parks and held exactly
+ * what the mission asked for.
+ */
+describe("namedPlacesHaveSource — identity, not first hit", () => {
+  const park = (id: string, name: string): ContextEntity => ({
+    id,
+    name,
+    kind: "Place",
+    categories: ["parks"],
+  });
+
+  /** The live shape: the intended parks, plus the records that outranked them. */
+  const corpus = [
+    park("road", "Ellison Provincial Park Road"),
+    park("ellison", "Ellison Park"),
+    park("ellison-prov", "Ellison Provincial Park"),
+    park("kal-prov", "Kalamalka Lake Provincial Park"),
+    park("kalamalka", "Kalamalka Lake Park"),
+  ];
+
+  const sources = (entries: Record<string, string[]>) =>
+    new Map(Object.entries(entries).map(([id, types]) => [id, new Set(types)]));
+
+  const evaluate = (
+    entities: readonly ContextEntity[],
+    sourceTypes: Map<string, Set<string>>,
+    names = ["Ellison Park", "Kalamalka Lake Park"],
+  ) =>
+    namedPlacesHaveSource(
+      names,
+      "bcparks",
+      "Both parks carry a BC Parks source",
+    ).evaluate(contextWith(entities, [], { sourceTypes }));
+
+  it("completes on the intended parks, whatever else shares part of their name", () => {
+    const outcome = evaluate(
+      corpus,
+      sources({
+        road: ["osm"],
+        ellison: ["bcparks", "passport-editorial"],
+        "ellison-prov": ["wikipedia"],
+        "kal-prov": ["wikipedia"],
+        kalamalka: ["bcparks"],
+      }),
+    );
+    expect(outcome.state).toBe("done");
+  });
+
+  it("a road that merely contains the word cannot decide the answer", () => {
+    // The exact regression. Under the old rule this returned not-done because
+    // `.find()` reached the road first.
+    const shuffled = [
+      corpus[0]!,
+      corpus[2]!,
+      corpus[3]!,
+      corpus[1]!,
+      corpus[4]!,
+    ];
+    const types = sources({
+      road: ["osm"],
+      ellison: ["bcparks"],
+      "ellison-prov": ["wikipedia"],
+      "kal-prov": ["wikipedia"],
+      kalamalka: ["bcparks"],
+    });
+    expect(evaluate(corpus, types).state).toBe("done");
+    expect(evaluate(shuffled, types).state).toBe("done");
+  });
+
+  it("array order cannot change the answer", () => {
+    const types = sources({ ellison: ["bcparks"], kalamalka: ["bcparks"] });
+    const forwards = [
+      park("ellison", "Ellison Park"),
+      park("kalamalka", "Kalamalka Lake Park"),
+    ];
+    expect(evaluate(forwards, types).state).toBe("done");
+    expect(evaluate([...forwards].reverse(), types).state).toBe("done");
+  });
+
+  it("a differently-named park does not satisfy the condition for this one", () => {
+    // `Ellison Provincial Park` carries bcparks too, and is not what this
+    // mission is about. An exact name refuses to accept it as a substitute.
+    const outcome = evaluate(
+      [
+        park("ellison-prov", "Ellison Provincial Park"),
+        park("kalamalka", "Kalamalka Lake Park"),
+      ],
+      sources({ "ellison-prov": ["bcparks"], kalamalka: ["bcparks"] }),
+    );
+    expect(outcome.state).toBe("not-done");
+    expect(outcome.detail).toMatch(/Not in Atlas: Ellison Park/);
+  });
+
+  it("every record of that name must carry the evidence, not merely one", () => {
+    // Atlas holds two `Kalamalka Lake Park` records today. If they disagree,
+    // Atlas cannot say which is the park — so it refuses to grade rather than
+    // passing on the lucky one.
+    const outcome = evaluate(
+      [
+        park("ellison", "Ellison Park"),
+        park("kalamalka", "Kalamalka Lake Park"),
+        park("kalamalka-empty", "Kalamalka Lake Park"),
+      ],
+      sources({ ellison: ["bcparks"], kalamalka: ["bcparks"] }),
+    );
+    expect(outcome.state).toBe("unverifiable");
+    expect(outcome.detail).toMatch(/2 records, 1 carrying a bcparks source/);
+  });
+
+  it("duplicates that both carry the evidence still complete", () => {
+    // The live state: both `Kalamalka Lake Park` records carry bcparks. The
+    // duplicate is a real problem, and it is not this mission's problem.
+    const outcome = evaluate(
+      [
+        park("ellison", "Ellison Park"),
+        park("kalamalka", "Kalamalka Lake Park"),
+        park("kalamalka-empty", "Kalamalka Lake Park"),
+      ],
+      sources({
+        ellison: ["bcparks"],
+        kalamalka: ["bcparks"],
+        "kalamalka-empty": ["bcparks"],
+      }),
+    );
+    expect(outcome.state).toBe("done");
+  });
+
+  it("says plainly when a park carries no such source", () => {
+    const outcome = evaluate(
+      [
+        park("ellison", "Ellison Park"),
+        park("kalamalka", "Kalamalka Lake Park"),
+      ],
+      sources({ ellison: ["bcparks"], kalamalka: ["wikipedia"] }),
+    );
+    expect(outcome.state).toBe("not-done");
+    expect(outcome.detail).toMatch(
+      /No bcparks source: Kalamalka Lake Park \(wikipedia\)/,
+    );
   });
 });

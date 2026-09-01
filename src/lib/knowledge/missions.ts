@@ -331,44 +331,92 @@ export function allPlacedInRegion(): DoneCondition {
 }
 
 /**
- * Named places exist and carry a source from a particular publisher.
+ * **Named places exist and carry a source from a particular publisher.**
  *
- * Matching is by name fragment, which is display-grade matching and nothing
- * more — no identity is resolved here and nothing is written. If the fragment
- * is wrong the condition reads *not found*, which is visible and harmless.
+ * ## Why this is an exact name, and why it checks every match
+ *
+ * This condition used a name **fragment** resolved with `.find()`, and that is
+ * how Mission 5 became unfinishable. `"Ellison"` matched four entities and
+ * returned *Ellison Provincial Park **Road***, an OSM road; `"Kalamalka"`
+ * matched six and returned *Kalamalka Lake **Provincial** Park*, a different
+ * record sourced from Wikipedia. Neither carried a BC Parks source, so the
+ * mission reported not-done — while the two parks it is actually about had
+ * been ingested and held 44 and 47 facts.
+ *
+ * First-hit ordering is not a tie-break; it is an unrecorded decision, and it
+ * is the third place in this codebase where `.find()` over an ambiguous name
+ * silently chose a record.
+ *
+ * The name is now matched **exactly**, which is this codebase's standing
+ * discipline everywhere identity is involved, and the caller supplies the
+ * entity's real name rather than a fragment that happens to appear in it.
+ *
+ * ## Every match must carry the evidence, not merely one of them
+ *
+ * An exact name can still match more than one record — Atlas holds two called
+ * *Kalamalka Lake Park* today. Asking whether **some** match carries the source
+ * would let a duplicate satisfy the mission by luck; asking whether **every**
+ * match does is strictly stronger and cannot be. Where the matches disagree,
+ * Atlas cannot say which record is the park, so the condition reports
+ * `unverifiable` and names them — never a quiet pass, and never an unticked
+ * box, which would read as outstanding work.
+ *
+ * Still display-grade in one respect, deliberately: no identity is resolved
+ * here and nothing is written. A wrong name reads *not found*, which is
+ * visible and harmless.
  */
 export function namedPlacesHaveSource(
-  fragments: readonly string[],
+  /** The entities' exact names, as Atlas holds them. Never a fragment. */
+  names: readonly string[],
   sourceTypeFragment: string,
   label: string,
 ): DoneCondition {
   return {
-    id: `sourced:${sourceTypeFragment}:${fragments.join("+")}`,
+    id: `sourced:${sourceTypeFragment}:${names.join("+")}`,
     label,
     evaluate: (ctx) => {
       const missing: string[] = [];
       const unsourced: string[] = [];
-      for (const fragment of fragments) {
-        const match = ctx.entities.find((e) =>
-          e.name.toLowerCase().includes(fragment.toLowerCase()),
+      const ambiguous: string[] = [];
+
+      const carriesSource = (entityId: string): boolean =>
+        [...(ctx.sourceTypes.get(entityId) ?? [])].some((type) =>
+          type.toLowerCase().includes(sourceTypeFragment.toLowerCase()),
         );
-        if (!match) {
-          missing.push(fragment);
+
+      for (const name of names) {
+        const matches = ctx.entities.filter(
+          (e) => e.name.toLowerCase() === name.toLowerCase(),
+        );
+        if (matches.length === 0) {
+          missing.push(name);
           continue;
         }
-        const types = ctx.sourceTypes.get(match.id);
-        const has = [...(types ?? [])].some((t) =>
-          t.toLowerCase().includes(sourceTypeFragment.toLowerCase()),
-        );
-        if (!has)
+        const sourced = matches.filter((m) => carriesSource(m.id));
+        if (sourced.length === matches.length) continue;
+        if (sourced.length === 0) {
+          const types = ctx.sourceTypes.get(matches[0]!.id);
           unsourced.push(
-            `${match.name} (${types && types.size > 0 ? [...types].join(", ") : "no source"})`,
+            `${name} (${types && types.size > 0 ? [...types].join(", ") : "no source"})`,
           );
+          continue;
+        }
+        // Some carry it and some do not. Atlas holds more than one record of
+        // this name and cannot say which is the park, so it refuses to grade.
+        ambiguous.push(
+          `${name} — ${matches.length} records, ${sourced.length} carrying a ${sourceTypeFragment} source`,
+        );
       }
+
+      if (ambiguous.length > 0)
+        return {
+          state: "unverifiable",
+          detail: `Atlas holds more than one record under a name this mission is about, and they disagree: ${ambiguous.join("; ")}. Resolve the duplicate and this grades itself.`,
+        };
       if (missing.length === 0 && unsourced.length === 0)
         return {
           state: "done",
-          detail: `All ${fragments.length} carry a ${sourceTypeFragment} source.`,
+          detail: `All ${names.length} carry a ${sourceTypeFragment} source.`,
         };
       return {
         state: "not-done",
@@ -811,7 +859,11 @@ export const MISSIONS: readonly Mission[] = [
     ],
     done: [
       namedPlacesHaveSource(
-        ["Ellison", "Kalamalka"],
+        // The entities' exact names, matching the batch's two slugs
+        // (`ellison-park`, `kalamalka-lake-park`). Fragments used to match a
+        // road and a different park; these name the records the mission is
+        // actually about.
+        ["Ellison Park", "Kalamalka Lake Park"],
         "bcparks",
         "Both parks carry a BC Parks source",
       ),
