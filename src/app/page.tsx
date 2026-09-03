@@ -24,13 +24,20 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* Both of these pointed at routes that do not exist — `/atlas-test`
+            and `/sign-up` each returned 404, so the product had no working
+            front door and Discovery was reachable only by typing its URL. */}
         <div className="flex flex-wrap justify-center gap-4">
-          <Button size="lg" render={<Link href="/atlas-test" />}>
-            Explore Passport
+          <Button size="lg" render={<Link href="/places" />}>
+            Browse Places
           </Button>
 
-          <Button size="lg" variant="outline" render={<Link href="/sign-up" />}>
-            Sign In / Sign Up
+          <Button
+            size="lg"
+            variant="outline"
+            render={<Link href="/discovery" />}
+          >
+            Discover
           </Button>
         </div>
 

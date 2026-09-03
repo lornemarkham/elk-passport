@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { listPlaces } from "@/lib/data/atlas-repo";
-import { PlacesIndexView } from "@/components/places-index/PlacesIndexView";
+import { PlacesDiscovery } from "@/components/places/PlacesDiscovery";
 
 export const metadata: Metadata = {
   title: "Places — Passport",
@@ -13,5 +13,5 @@ export const metadata: Metadata = {
  */
 export default async function PlacesPage() {
   const places = await listPlaces();
-  return <PlacesIndexView places={places} />;
+  return <PlacesDiscovery places={places} />;
 }
