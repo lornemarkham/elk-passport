@@ -890,12 +890,20 @@ export const MISSIONS: readonly Mission[] = [
     // carries an article's lead image as media, so the parks category went from
     // 5 of 9 ready to 8 of 9 in one pass.
     //
-    // What remains is **an evidence gap, not a missing capability**: Kekuli Bay
-    // Provincial Park has no photograph at any supported publisher. BC Parks
+    // What remains is **an evidence gap, not a missing capability**. Kekuli Bay
+    // Provincial Park has no photograph at any supported publisher: BC Parks
     // publishes none for ORCS 378, and its own Wikipedia article has no lead
     // image. The only picture Atlas holds anywhere near it is of Kalamalka
     // Lake, from an article that merely names it — and attaching that is
     // exactly what ADR 046 forbids.
+    //
+    // The count moved *down* on 2026-09-03, from 8 of 9 to 5 of 9, and that was
+    // the audit working rather than a regression. Three more parks — Kaloya
+    // Regional Park, Kalamalka Lake Provincial Park, Telus Park — were only
+    // ever "ready" because they carried a photograph of somewhere else, applied
+    // before media had a subject. Forty-eight such borrowed heroes were cleared
+    // across the corpus. A park with no picture is a smaller problem than a park
+    // showing the wrong one, and this number is now honest.
     //
     // It stays `blockedBy` because there is still nothing a curator can do here
     // and inventing a task would be dishonest. But the sentence a person reads
@@ -903,7 +911,7 @@ export const MISSIONS: readonly Mission[] = [
     // exists" and "the operation ran and one park has no evidence" are
     // completely different facts and were previously indistinguishable.
     blockedBy:
-      "8 of 9 parks are ready. Kekuli Bay Provincial Park has no picture from any supported publisher — BC Parks publishes no photographs for it, and its own Wikipedia article has no lead image. This is missing evidence, not a missing operation.",
+      "Every park Atlas can prove a photograph of now has one. The rest are waiting on evidence, not on an operation: BC Parks publishes no photographs for them, and their own Wikipedia articles carry no lead image. The pictures some of them appeared to have were borrowed from sources about somewhere else, and were removed rather than left to mislead.",
     steps: [
       {
         title: "Find a publisher that photographs Kekuli Bay Provincial Park",
