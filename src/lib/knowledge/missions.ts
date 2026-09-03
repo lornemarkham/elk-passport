@@ -882,25 +882,33 @@ export const MISSIONS: readonly Mission[] = [
       "This is the shortest route from a corpus that grew to a product that improved.",
     ],
     duration: "Not measured — an engineering change",
-    // Measured against the live corpus on 2026-08-21, not assumed: every one
-    // of the twelve entities short of Passport readiness is short of exactly
-    // one thing, **a picture**. Nothing Atlas can run acquires one. No queued
-    // candidate source targets any of them — the queue is Big White and lakes
-    // — and no wired publisher supplies park imagery. `run-queue` would read
-    // pages about other entities and change nothing here.
+    // **The blocker changed on 2026-09-03, and the reason is now a different
+    // kind of thing.** It used to be a capability Atlas did not have: nothing
+    // it could run acquired a picture, and no wired publisher supplied park
+    // imagery. That is no longer true. `BCParksSourceLoader` now acquires
+    // photographs keyed on the park's own ORCS, and `WikipediaSourceLoader`
+    // carries an article's lead image as media, so the parks category went from
+    // 5 of 9 ready to 8 of 9 in one pass.
     //
-    // So this is a capability Atlas does not have, not work waiting on a
-    // curator, and saying otherwise would be inventing a task. It can still
-    // complete on its own: BC Parks ingestion may carry images for the two
-    // parks in its batch, and if the corpus comes to satisfy the condition the
-    // blocker cleared in reality and the catalogue was out of date.
+    // What remains is **an evidence gap, not a missing capability**: Kekuli Bay
+    // Provincial Park has no photograph at any supported publisher. BC Parks
+    // publishes none for ORCS 378, and its own Wikipedia article has no lead
+    // image. The only picture Atlas holds anywhere near it is of Kalamalka
+    // Lake, from an article that merely names it — and attaching that is
+    // exactly what ADR 046 forbids.
+    //
+    // It stays `blockedBy` because there is still nothing a curator can do here
+    // and inventing a task would be dishonest. But the sentence a person reads
+    // now says which of the two situations this is, because "no operation
+    // exists" and "the operation ran and one park has no evidence" are
+    // completely different facts and were previously indistinguishable.
     blockedBy:
-      "No enrichment operation exists yet. All twelve gaps are a missing picture, no queued source targets any of them, and no wired publisher supplies park images.",
+      "8 of 9 parks are ready. Kekuli Bay Provincial Park has no picture from any supported publisher — BC Parks publishes no photographs for it, and its own Wikipedia article has no lead image. This is missing evidence, not a missing operation.",
     steps: [
       {
-        title: "Wire a publisher that supplies images",
+        title: "Find a publisher that photographs Kekuli Bay Provincial Park",
         detail:
-          "Or add an operation that acquires one. Until then this cannot be worked from here.",
+          "BC Parks publishes park photography keyed on ORCS and has none for 378; the park's own Wikipedia article carries no lead image. Kalamalka Lake's article has a photograph and names the park, which is not evidence of what that photograph shows.",
       },
     ],
     done: [categoryPassportReady("parks", "Every park is Passport ready")],
