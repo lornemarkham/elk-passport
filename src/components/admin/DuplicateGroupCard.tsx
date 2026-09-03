@@ -160,8 +160,30 @@ export function DuplicateGroupCard({
             <li className="flex items-start gap-2">
               <Tag className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                Both entries are named{" "}
-                <span className="font-medium">&quot;{group.name}&quot;</span>
+                {/* Only said when it is true. A group can now also reach this
+                    screen because someone nominated the pair for review, and
+                    those records are named differently — claiming a shared name
+                    would be the one line on this card a curator cannot check
+                    against the table directly below it. */}
+                {group.entities.every(
+                  (entity) => entity.name === group.name,
+                ) ? (
+                  <>
+                    Both entries are named{" "}
+                    <span className="font-medium">
+                      &quot;{group.name}&quot;
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    These entries are named differently:{" "}
+                    <span className="font-medium">
+                      {group.entities
+                        .map((entity) => `"${entity.name}"`)
+                        .join(" and ")}
+                    </span>
+                  </>
+                )}
               </span>
             </li>
             <li className="flex items-start gap-2">
