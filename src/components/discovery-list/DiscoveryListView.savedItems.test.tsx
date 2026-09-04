@@ -15,10 +15,10 @@ import type { DiscoveryCandidate } from "@/lib/data/types";
  * saved items as plain text with no href. So a saved detail-ready Place has no
  * route to its own page from anywhere on Discover.
  *
- * That is deliberate behaviour (the list is "what's still available to
- * discover"), long-standing, and not a regression. It is pinned here because
- * nothing described it, and because the interaction — save a thing, lose the
- * only link to it — is what made working detail pages look broken.
+ * Removing the card is deliberate (the list is "what's still available to
+ * discover") and is kept. Losing the only link was not intended, and the
+ * sidebar now carries the same `destinationFor` destination the card would
+ * have — so a saved item stays reachable without the card coming back.
  */
 const boards = [
   {
@@ -97,7 +97,7 @@ describe("a saved Place and its detail-page link", () => {
     ).toHaveAttribute("href", "/places/238661eb-e191-4d60-ae3d-748b4543964c");
   });
 
-  it("removes a saved Place from the list, and the sidebar offers no link in its place", async () => {
+  it("removes a saved Place from the list and keeps it reachable from the board", async () => {
     items = [
       {
         id: "item-1",
@@ -108,25 +108,31 @@ describe("a saved Place and its detail-page link", () => {
     ];
     render(<DiscoveryListView experiences={experiences} />);
 
-    // It is on the board…
+    // Its card is gone from the list…
     const sidebar = await screen.findByRole("complementary");
     await waitFor(() =>
       expect(within(sidebar).getByText("Ellison Provincial Park")).toBeTruthy(),
     );
-    // …as plain text. This is the step that leaves a saved Place unreachable.
     expect(
-      within(sidebar).queryByRole("link", { name: "Ellison Provincial Park" }),
-    ).toBeNull();
+      screen
+        .getAllByRole("listitem")
+        .every(
+          (li) =>
+            li.getAttribute("data-navigates") === null ||
+            !li.textContent?.includes("Ellison Provincial Park"),
+        ),
+    ).toBe(true);
 
-    // …and its card, with the only `/places/{id}` link, is gone.
+    // …and the board carries the same destination the card would have.
     expect(
-      screen.queryByRole("link", { name: "Ellison Provincial Park" }),
-    ).toBeNull();
+      within(sidebar).getByRole("link", { name: "Ellison Provincial Park" }),
+    ).toHaveAttribute("href", "/places/eddd9851-b490-45ad-bb20-cb21e7d9e27f");
+    // Exactly one link to it — the board's, not a lingering card.
     expect(
-      document.querySelector(
+      document.querySelectorAll(
         'a[href="/places/eddd9851-b490-45ad-bb20-cb21e7d9e27f"]',
       ),
-    ).toBeNull();
+    ).toHaveLength(1);
 
     // The unsaved Place is unaffected — saving one thing hides one thing.
     expect(

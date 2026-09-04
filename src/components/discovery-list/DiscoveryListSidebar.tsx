@@ -2,6 +2,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Experience } from "@/domain/experience/types";
+import { destinationFor } from "@/domain/experience/destination";
 import type { Board } from "@/lib/data/boards-repo";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { BoardTitle } from "./BoardTitle";
@@ -115,24 +116,48 @@ export function DiscoveryListSidebar({
 
       {savedItems.length > 0 && (
         <ul className="flex max-h-96 flex-col gap-1.5 overflow-y-auto border-t border-[#8a5a24]/15 pt-3">
-          {savedItems.map(({ experience }) => (
-            <li
-              key={experience.id}
-              className="group flex items-center gap-2 rounded-lg px-1.5 py-1"
-            >
+          {savedItems.map(({ experience }) => {
+            // The same `destinationFor` the cards use — not a second routing
+            // rule. Saving an experience removes its card from the list, and
+            // the card carried the only link to its detail page, so without
+            // this a saved Place was unreachable from Discover while its page
+            // worked perfectly. An experience with nowhere truthful to go
+            // stays plain text, exactly as its card would.
+            const destination = destinationFor(experience);
+            const label = (
               <p className="min-w-0 flex-1 truncate text-xs text-[#2b2015]/75">
                 {experience.title}
               </p>
-              <button
-                type="button"
-                onClick={() => onRemoveSaved(experience.id)}
-                aria-label={`Remove ${experience.title} from board`}
-                className="shrink-0 rounded-full p-0.5 text-[#2b2015]/0 transition-colors group-hover:text-[#2b2015]/35 group-hover:hover:text-red-700"
+            );
+            return (
+              <li
+                key={experience.id}
+                className="group flex items-center gap-2 rounded-lg px-1.5 py-1"
               >
-                <X className="h-3 w-3" />
-              </button>
-            </li>
-          ))}
+                {destination ? (
+                  <Link
+                    href={destination}
+                    // Resting appearance is unchanged — the underline is the
+                    // only affordance, and text-decoration reaches the <p>
+                    // where a colour utility on the anchor would not.
+                    className="flex min-w-0 flex-1 hover:underline"
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                )}
+                <button
+                  type="button"
+                  onClick={() => onRemoveSaved(experience.id)}
+                  aria-label={`Remove ${experience.title} from board`}
+                  className="shrink-0 rounded-full p-0.5 text-[#2b2015]/0 transition-colors group-hover:text-[#2b2015]/35 group-hover:hover:text-red-700"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
