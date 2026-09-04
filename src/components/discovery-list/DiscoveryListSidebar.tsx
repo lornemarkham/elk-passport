@@ -161,12 +161,25 @@ export function DiscoveryListSidebar({
         </ul>
       )}
 
+      {/* "Start Passport" sent this board's id to `/passport/{id}`, which
+       * takes an **entity** id and 404s on anything else — it has never
+       * worked, in this or either of the two other places it appeared.
+       * `loadBoardWithExperiences` records the original contract ("shared by
+       * /boards/:id and /passport/:id"): that route once took a board id and
+       * was later repurposed into the single-entity Passport page, leaving
+       * the buttons pointing at a contract that no longer exists.
+       *
+       * There is no board-level Passport in the codebase — `buildPassportPage`
+       * takes one entity and the passport layer knows nothing about boards —
+       * so the button now says what the destination actually does. Composing a
+       * Passport from a whole board is real product work, recorded as debt in
+       * docs/product/discover.md rather than invented here. */}
       {board && savedItems.length > 0 && (
         <Button
           nativeButton={false}
-          render={<Link href={`/passport/${board.id}`} />}
+          render={<Link href={`/boards/${board.id}`} />}
         >
-          Start Passport
+          Review board
         </Button>
       )}
     </aside>

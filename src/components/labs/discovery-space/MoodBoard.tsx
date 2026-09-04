@@ -522,20 +522,22 @@ export function MoodBoard({
         {/* Discovery is the official bridge into Passport now — the
          * standalone /boards pages are legacy and get no further
          * investment. Only appears once there's something to carry
-         * forward: an empty board has nothing for "Start Passport" to
-         * naturally follow from. Pinned outside the scrollable area
+         * forward: an empty board has nothing to review. Pinned outside the scrollable area
          * above so it's always reachable, not buried under a long
          * saved list. */}
         {activeBoardId && savedExperiences.length > 0 && (
           <div className="pointer-events-auto shrink-0 border-t border-white/10 bg-[#0b0b0b] px-6 py-5 sm:px-8">
+            {/* Was "Start Passport" -> `/passport/{boardId}`, a route that
+             * takes an entity id and 404s on a board's. No board-level
+             * Passport exists; see docs/product/discover.md. */}
             <p className="mb-2.5 text-xs text-white/45">
-              Ready to turn what you&apos;ve saved into a real adventure?
+              Everything you&apos;ve saved, in one place.
             </p>
             <Link
-              href={`/passport/${activeBoardId}`}
+              href={`/boards/${activeBoardId}`}
               className="flex w-full items-center justify-center gap-1.5 rounded-full bg-[#b5651d] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#a25a1a]"
             >
-              Start Passport
+              Review board
             </Link>
           </div>
         )}

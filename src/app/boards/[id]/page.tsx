@@ -93,21 +93,29 @@ export default async function BoardPage({ params }: BoardPageProps) {
               <>
                 <ExperienceList experiences={result.experiences} />
 
-                {/* Review Board -> Start Creating Passport: only appears
-                 * once there's something to review. Committing an empty
-                 * board to a Passport isn't a step forward, it's a dead
-                 * end — so the natural-next-step framing only holds when
-                 * there's actually a board worth reviewing above it. */}
+                {/* This used to offer "Start Passport", pointing at
+                 * `/passport/{boardId}` — a route that takes an **entity** id
+                 * and 404s on a board's. There is no board-level Passport:
+                 * `buildPassportPage` composes one entity, and the passport
+                 * layer has no concept of a board. Building one is real
+                 * product work, recorded as debt in docs/product/discover.md.
+                 *
+                 * So the page offers the one true next step it already
+                 * supports. Deliberately not a link back to this same page,
+                 * and deliberately not a Passport for one arbitrarily chosen
+                 * saved entity — picking which of five saved things "the
+                 * Passport" is would be inventing the product rather than
+                 * reporting it. */}
                 <div className="mt-12 flex flex-col items-center gap-3 border-t pt-10 text-center">
                   <p className="text-muted-foreground text-sm">
-                    Ready to turn this into a real adventure?
+                    Found what you were looking for?
                   </p>
                   <Button
                     size="lg"
                     nativeButton={false}
-                    render={<Link href={`/passport/${result.board.id}`} />}
+                    render={<Link href="/discovery" />}
                   >
-                    Start Passport
+                    Continue discovering
                   </Button>
                 </div>
               </>

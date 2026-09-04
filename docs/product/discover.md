@@ -124,3 +124,43 @@ populate a rail.**
 
 The count reads _"126 to explore"_, not _"186 experiences"_ — what is on screen,
 not how many rows Atlas holds.
+
+## Known product debt — board-level Passport / itinerary composition is not implemented
+
+**Recorded 2026-09-04. Accepted for Oct 1 unless later prioritized.**
+
+Three surfaces offered **"Start Passport"** and sent a _board_ id to
+`/passport/{id}`, which resolves an **entity** id against Atlas and `notFound()`s
+on anything else. It 404'd from the first commit — both routes arrived together
+in `76dde5e` and `/passport/[id]` was an entity page from its first line, so this
+was never a regression.
+
+`loadBoardWithExperiences.ts` still records the original contract:
+
+> "Shared by /boards/:id and /passport/:id, the two pages that both need a
+> board's saved experiences rather than just its metadata."
+
+That route was later repurposed into the single-entity Passport page and the
+buttons were left pointing at a contract that no longer exists.
+
+**What does not exist today:** any board-level Passport. `buildPassportPage`
+composes exactly one entity, and nothing in `src/lib/passport/` references a
+board. There is no itinerary model, no multi-entity composition, and no rule for
+which of several saved entities a board's Passport would be _about_.
+
+**What was done instead** — the UI stopped claiming otherwise:
+
+| surface                | was                                      | now                                   |
+| ---------------------- | ---------------------------------------- | ------------------------------------- |
+| `DiscoveryListSidebar` | "Start Passport" → `/passport/{boardId}` | "Review board" → `/boards/{boardId}`  |
+| `boards/[id]`          | "Start Passport" → itself, broken        | "Continue discovering" → `/discovery` |
+| `MoodBoard` (labs)     | "Start Passport" → `/passport/{boardId}` | "Review board" → `/boards/{boardId}`  |
+
+The board page deliberately does **not** link back to itself, and no surface
+picks one saved entity to stand in for the board — choosing which of five saved
+things "the Passport" is would be inventing the product rather than reporting it.
+
+**Open when prioritized:** what a Passport made from a multi-item board _means_ —
+an itinerary across saved entities, a cover page linking to each entity's own
+Passport, or whether "Start Passport" was simply the wrong label for reviewing a
+board all along.

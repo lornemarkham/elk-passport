@@ -166,10 +166,14 @@ describe("everything else the board already did", () => {
     );
   });
 
-  it("still offers Start Passport", () => {
+  it("offers the board its own page, not a Passport that does not exist", () => {
+    // Was "Start Passport" -> `/passport/board-1`, which resolves an *entity*
+    // id and 404s on a board's. No board-level Passport exists; see
+    // docs/product/discover.md.
     const { sidebar } = renderSidebar([saved(ELLISON)]);
-    expect(
-      within(sidebar).getByText("Start Passport").closest("a"),
-    ).toHaveAttribute("href", "/passport/board-1");
+    const cta = within(sidebar).getByText("Review board").closest("a");
+    expect(cta).toHaveAttribute("href", "/boards/board-1");
+    expect(within(sidebar).queryByText("Start Passport")).toBeNull();
+    expect(sidebar.querySelector('a[href^="/passport/"]')).toBeNull();
   });
 });
