@@ -84,3 +84,32 @@ export interface PlaceDetail {
   sources: PlaceSource[];
   relatedPlaces: PlaceRelatedPlace[];
 }
+
+/**
+ * One thing Atlas thinks Discover may consider, with one hop of world context.
+ *
+ * Served by Atlas `GET /discovery/candidates`, derived there from entities and
+ * `contains` edges — see `application/discovery/DiscoveryCandidates.ts`. Nothing
+ * here is persisted, and Passport must not add to it: a candidate is a question
+ * Discover asks of Atlas, not a fact Atlas stores.
+ */
+export interface DiscoveryCandidateContext {
+  id: string;
+  kind: "Place" | "Organization" | "Activity" | "Event";
+  name: string;
+}
+
+export interface DiscoveryCandidate {
+  id: string;
+  kind: "Place" | "Organization" | "Activity" | "Event";
+  name: string;
+  subtype?: string;
+  description: string;
+  heroUrl?: string;
+  mediaCount: number;
+  coordinates?: [number, number];
+  /** Physical containment only. Region membership is deliberately kept out of this. */
+  context?: DiscoveryCandidateContext;
+  containsCount: number;
+  regionIds: string[];
+}

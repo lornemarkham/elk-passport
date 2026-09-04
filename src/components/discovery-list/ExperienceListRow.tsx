@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Check, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
+import { destinationFor } from "@/domain/experience/destination";
 
 interface ExperienceListRowProps {
   experience: Experience;
@@ -39,15 +40,22 @@ export function ExperienceListRow({
   saving,
   onSave,
 }: ExperienceListRowProps) {
-  const tag = experience.activities[0] ?? experience.moods[0];
+  const tag =
+    experience.subtype ?? experience.activities[0] ?? experience.moods[0];
+  const destination = destinationFor(experience);
 
   return (
     <li className="relative flex items-center gap-4 rounded-xl border border-[#8a5a24]/15 bg-[#f7ecd3] p-4">
-      <Link
-        href={`/places/${experience.id}`}
-        className="absolute inset-0 rounded-xl"
-        aria-label={experience.title}
-      />
+      {/* A card with nowhere truthful to go is still a card. Sending an
+          Organization to `/places/{organizationId}` would be a 404 dressed up
+          as a link — see `destinationFor`. */}
+      {destination && (
+        <Link
+          href={destination}
+          className="absolute inset-0 rounded-xl"
+          aria-label={experience.title}
+        />
+      )}
 
       <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#2b2015]/[0.06]">
         {experience.heroMedia?.src ? (

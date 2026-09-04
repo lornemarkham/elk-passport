@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { listPlaces } from "@/lib/data/atlas-repo";
-import { placeToExperience } from "@/domain/experience/atlasMapper";
+import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
+import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { DiscoveryListView } from "@/components/discovery-list/DiscoveryListView";
 
 export const metadata: Metadata = {
@@ -14,8 +14,10 @@ export const metadata: Metadata = {
 // still fully live at /labs/discovery-space; it's the future
 // "Inspiration" mode, not deleted or refactored away.
 export default async function DiscoveryPage() {
-  const places = await listPlaces();
-  const experiences = places.map(placeToExperience);
+  // Every kind Atlas holds, not just Places — `The BullWheel` is an
+  // Organization and was invisible here until now.
+  const candidates = await listDiscoveryCandidates();
+  const experiences = candidates.map(candidateToExperience);
 
   return <DiscoveryListView experiences={experiences} />;
 }

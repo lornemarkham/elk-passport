@@ -5,11 +5,12 @@ import { createEmptyFilterState } from "./types";
 
 function makeExperience(overrides: Partial<Experience> = {}): Experience {
   return {
+    kind: "Place",
+    detailReady: true,
     id: "test-experience",
     slug: "test-experience",
     title: "Test Experience",
     shortDescription: "A test experience.",
-    tier: 3,
     moods: [],
     activities: [],
     seasons: [],

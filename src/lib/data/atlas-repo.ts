@@ -1,4 +1,4 @@
-import type { Place, PlaceDetail } from "./types";
+import type { DiscoveryCandidate, Place, PlaceDetail } from "./types";
 
 export async function listPlaces(): Promise<Place[]> {
   const response = await fetch("http://localhost:3000/places");
@@ -42,4 +42,22 @@ export async function getPlaceDetail(id: string): Promise<PlaceDetail | null> {
   }
 
   return response.json();
+}
+
+/**
+ * Everything Discover may consider, across every entity kind.
+ *
+ * Replaces `listPlaces()` as Discover's source. `listPlaces` stays exactly as
+ * it was — `/places` and the place detail pages still use it, and this changes
+ * only what Discover consumes.
+ */
+export async function listDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
+  const response = await fetch("http://localhost:3000/discovery/candidates");
+  if (!response.ok) {
+    throw new Error(
+      `Atlas discovery candidates request failed: ${response.status}`,
+    );
+  }
+  const body = (await response.json()) as { candidates: DiscoveryCandidate[] };
+  return body.candidates;
 }
