@@ -24,7 +24,17 @@ export function destinationFor(experience: Experience): string | undefined {
     return `/places/${experience.id}`;
   }
 
-  // No Organization, Activity or Event template exists yet. Where Atlas knows
+  // An Event goes to the entity Passport page, which already renders one
+  // without pretending it is a Place: it reads any entity kind from the same
+  // bundle and shows the name, overview and evidence. A dated card that cannot
+  // be opened is the one thing an event listing must not be. Gated on the date
+  // rather than on `detailReady`, because for an Event the date *is* the
+  // qualifying fact — a photograph is not what makes it real.
+  if (experience.kind === "Event" && experience.startTime) {
+    return `/passport/${experience.id}`;
+  }
+
+  // No Organization or Activity template exists yet. Where Atlas knows
   // what physically contains the thing, its container is a truthful place to
   // land — you reach The BullWheel through Big White, which is how you reach it
   // in life. Only when that container is a Place we can actually render.

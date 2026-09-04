@@ -64,6 +64,8 @@ export function candidateToExperience(
     energyLevel: 1,
     priceLevel: 0,
     duration: { minMinutes: 0, maxMinutes: 0 },
+    startTime: candidate.startTime,
+    endTime: candidate.endTime,
     familyFriendly: false,
     petFriendly: false,
     requiresReservation: false,

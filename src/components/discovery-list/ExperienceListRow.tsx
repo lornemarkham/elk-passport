@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, ChevronRight, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
+import { formatEventWhen } from "@/domain/experience/eventTime";
 
 interface ExperienceListRowProps {
   experience: Experience;
@@ -43,6 +44,10 @@ export function ExperienceListRow({
   const tag =
     experience.subtype ?? experience.activities[0] ?? experience.moods[0];
   const destination = destinationFor(experience);
+  // Events only, and the single most important thing on the card: an event
+  // without its date cannot be attended, and is indistinguishable from one
+  // that already happened.
+  const when = formatEventWhen(experience.startTime, experience.endTime);
   // `UNKNOWN` is Atlas saying it has not classified this yet — true, and not
   // worth shouting at a traveller in a badge.
   const showTag = tag && tag.toLowerCase() !== "unknown";
@@ -93,6 +98,11 @@ export function ExperienceListRow({
             inferred from a name, and never from region membership. It is also
             what explains the destination: BullWheel opens Big White's page
             because BullWheel is at Big White. */}
+        {when && (
+          <p className="mt-0.5 truncate text-xs font-medium text-[#8a5a24]">
+            {when}
+          </p>
+        )}
         {experience.context && (
           <p className="mt-0.5 truncate text-xs font-medium text-[#8a5a24]">
             at {experience.context.name}

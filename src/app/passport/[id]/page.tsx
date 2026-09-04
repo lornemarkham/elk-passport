@@ -12,6 +12,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { loadWorkspaceBundle } from "@/lib/knowledge/workspaceData";
+import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
   loadComposition,
   resolveComposition,
@@ -208,6 +209,7 @@ function HeroBlock({
     entity.organizationType && entity.organizationType !== "unknown"
       ? entity.organizationType
       : (entity.placeType ?? entity.kind);
+  const when = formatEventWhen(entity.startTime, entity.endTime);
 
   return (
     <header className="pt-10">
@@ -227,6 +229,14 @@ function HeroBlock({
         {kindLabel}
       </p>
       <h1 className="mt-2 text-4xl font-bold tracking-tight">{entity.name}</h1>
+      {/* For an Event this is the fact the page exists to carry. Rendered
+          beside the name rather than as a section, because a date is not
+          something a traveller should have to scroll for. */}
+      {when && (
+        <p className="text-muted-foreground mt-3 text-base font-medium">
+          {when}
+        </p>
+      )}
     </header>
   );
 }

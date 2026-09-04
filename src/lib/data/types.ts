@@ -112,4 +112,7 @@ export interface DiscoveryCandidate {
   context?: DiscoveryCandidateContext;
   containsCount: number;
   regionIds: string[];
+  /** Events only. ISO 8601 UTC, exactly as Atlas stores the instant. */
+  startTime?: string;
+  endTime?: string;
 }

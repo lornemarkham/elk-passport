@@ -35,6 +35,9 @@ export interface EntityKnowledge {
   readonly imageUrl?: string;
   readonly hours?: string;
   readonly address?: string;
+  /** Events only. ISO 8601, as Atlas stores the instant. */
+  readonly startTime?: string;
+  readonly endTime?: string;
   readonly geometry?: { type?: string; coordinates?: number[] };
   readonly externalIds?: readonly { system: string; id: string }[];
   readonly keyFacts?: readonly {

@@ -88,6 +88,17 @@ export interface Experience {
   energyLevel: EnergyLevel;
   priceLevel: PriceLevel;
   duration: ExperienceDuration;
+  /**
+   * **Events only**, straight from Atlas, ISO 8601 UTC. Absent on every other
+   * kind — Atlas treats them as timeless, and a null date on a park would be a
+   * claim it never made.
+   *
+   * Rendered in `America/Vancouver`: everything Atlas holds is in one timezone,
+   * and `Event.startTime` is a `Date` there, so the publisher's own offset is
+   * already gone by the time it arrives. Known debt, recorded in Atlas.
+   */
+  startTime?: string;
+  endTime?: string;
 
   familyFriendly: boolean;
   petFriendly: boolean;
