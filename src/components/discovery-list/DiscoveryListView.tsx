@@ -33,6 +33,8 @@ import {
 } from "./DiscoveryListSidebar";
 import { DiscoveryModeSwitcher } from "./DiscoveryModeSwitcher";
 import { ExperienceListRow } from "./ExperienceListRow";
+import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
+import type { ExperienceKind } from "@/domain/experience/types";
 
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort();
@@ -52,6 +54,7 @@ interface DiscoveryListViewProps {
  * this mirrors.
  */
 export function DiscoveryListView({ experiences }: DiscoveryListViewProps) {
+  const [kind, setKind] = useState<ExperienceKind | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
   const [boardsLoaded, setBoardsLoaded] = useState(false);
@@ -136,13 +139,22 @@ export function DiscoveryListView({ experiences }: DiscoveryListViewProps) {
   // (see savedItems below). Presentation-only: nothing is deleted, and
   // removing it from the board (handleRemoveSaved) drops it from
   // savedIds, which brings it right back here.
-  const visible = useMemo(
-    () =>
-      filterExperiences(experiences, filters)
-        .filter((experience) => matchesQuery(experience, query))
-        .filter((experience) => !savedIds.has(experience.id)),
-    [experiences, filters, query, savedIds],
-  );
+  // **Candidate eligibility is not feed inclusion.** Atlas says 189 things are
+  // worth considering; the default view is a conservative projection of that
+  // (see `defaultFeed`), and a typed query or an explicit kind searches the
+  // *whole* corpus. So `Snowboarding` leaves the feed and is still findable,
+  // which is the entire point of keeping the two questions apart.
+  const browsing = query.trim().length > 0 || kind !== null;
+
+  const visible = useMemo(() => {
+    const pool = browsing ? experiences : defaultFeed(experiences);
+    return filterExperiences(pool, filters)
+      .filter((experience) => (kind ? experience.kind === kind : true))
+      .filter((experience) => matchesQuery(experience, query))
+      .filter((experience) => !savedIds.has(experience.id));
+  }, [experiences, filters, query, savedIds, browsing, kind]);
+
+  const kinds = useMemo(() => availableKinds(experiences), [experiences]);
 
   // Recently saved, newest first, resolved against the already-loaded
   // catalogue rather than a second fetch — Atlas's board-items response
@@ -334,6 +346,10 @@ export function DiscoveryListView({ experiences }: DiscoveryListViewProps) {
               availableSeasons={availableSeasons}
               availableCompanions={availableCompanions}
               resultCount={visible.length}
+              kinds={kinds}
+              selectedKind={kind}
+              onKindChange={setKind}
+              browsing={browsing}
             />
 
             {visible.length === 0 ? (

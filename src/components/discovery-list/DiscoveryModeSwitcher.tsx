@@ -23,22 +23,25 @@ export function DiscoveryModeSwitcher() {
   return (
     <nav
       aria-label="Discovery modes"
-      className="flex flex-wrap items-center gap-2 border-b border-[#2b2015]/10 pb-3"
+      className="flex flex-wrap items-center gap-1.5 border-b border-[#2b2015]/10 pb-2"
     >
       {MODES.map((mode) => {
         const Icon = mode.icon;
         if (!mode.enabled) {
+          // Reserved, not advertised. Three "COMING SOON" labels wrapped onto
+          // four lines at 375px and pushed the first actual discovery to
+          // y≈704 — most of a phone screen spent telling the traveller about
+          // features that do not exist. The slot is kept, the announcement is
+          // not.
           return (
             <span
               key={mode.label}
               aria-disabled="true"
-              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-[#2b2015]/35"
+              title={`${mode.label} — coming soon`}
+              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-[#2b2015]/30"
             >
               <Icon className="h-3.5 w-3.5" />
               {mode.label}
-              <span className="ml-0.5 text-[10px] tracking-wide text-[#2b2015]/25 uppercase">
-                Coming Soon
-              </span>
             </span>
           );
         }

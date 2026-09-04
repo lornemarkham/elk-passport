@@ -3,6 +3,8 @@
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DiscoveryFilterState } from "@/domain/discovery/types";
+import { kindLabel } from "@/domain/discovery/defaultFeed";
+import type { ExperienceKind } from "@/domain/experience/types";
 
 interface DiscoveryListFiltersProps {
   query: string;
@@ -14,23 +16,12 @@ interface DiscoveryListFiltersProps {
   availableSeasons: string[];
   availableCompanions: string[];
   resultCount: number;
+  kinds: ExperienceKind[];
+  selectedKind: ExperienceKind | null;
+  onKindChange: (kind: ExperienceKind | null) => void;
+  /** True when a query or an explicit kind is active — the view is then searching the whole corpus. */
+  browsing: boolean;
 }
-
-const ENERGY_LEVELS = [1, 2, 3, 4, 5];
-const PRICE_LEVELS = [0, 1, 2, 3, 4];
-const PRICE_LABELS: Record<number, string> = {
-  0: "Free",
-  1: "$",
-  2: "$$",
-  3: "$$$",
-  4: "$$$$",
-};
-const DURATION_PRESETS = [
-  { label: "≤ 1 hr", minutes: 60 },
-  { label: "≤ 2 hrs", minutes: 120 },
-  { label: "≤ 4 hrs", minutes: 240 },
-  { label: "Full day", minutes: 1440 },
-];
 
 function toggleValue(values: string[], value: string): string[] {
   return values.includes(value)
@@ -80,57 +71,11 @@ function ChipGroup({
   );
 }
 
-function SingleSelectGroup({
-  label,
-  options,
-  selectedValue,
-  onSelect,
-}: {
-  label: string;
-  options: { value: number; label: string }[];
-  selectedValue: number | undefined;
-  onSelect: (value: number | undefined) => void;
-}) {
-  return (
-    <div>
-      <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#2b2015]/45 uppercase">
-        {label}
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((option) => {
-          const isSelected = selectedValue === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={isSelected}
-              onClick={() => onSelect(isSelected ? undefined : option.value)}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
-                isSelected
-                  ? "border-[#8a5a24]/50 bg-[#8a5a24]/10 text-[#2b2015]"
-                  : "border-[#8a5a24]/15 bg-transparent text-[#2b2015]/50 hover:border-[#8a5a24]/30 hover:text-[#2b2015]/70",
-              )}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** Search is real — it's the same free-text matching Discovery's
- * immersive field uses (domain/discovery/selectors.matchesQuery). Every
- * filter here runs through the same filterExperiences() every Discovery
- * consumer is expected to share (the same set the immersive
- * labs/discovery-space/DiscoveryFilters.tsx exposes). Category chips
- * render nothing when the catalogue has no values for that category yet
- * — the layout supports the category without inventing data that isn't
- * there. Energy/Budget/Length are fixed scales, not derived from the
- * catalogue, so they're always shown. */
 export function DiscoveryListFilters({
+  kinds,
+  selectedKind,
+  onKindChange,
+  browsing,
   query,
   onQueryChange,
   filters,
@@ -212,45 +157,63 @@ export function DiscoveryListFilters({
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-3">
-        <SingleSelectGroup
-          label="Energy"
-          options={ENERGY_LEVELS.map((level) => ({
-            value: level,
-            label: String(level),
-          }))}
-          selectedValue={filters.maxEnergyLevel}
-          onSelect={(value) =>
-            onFiltersChange({ ...filters, maxEnergyLevel: value })
-          }
-        />
-        <SingleSelectGroup
-          label="Budget"
-          options={PRICE_LEVELS.map((level) => ({
-            value: level,
-            label: PRICE_LABELS[level],
-          }))}
-          selectedValue={filters.maxPriceLevel}
-          onSelect={(value) =>
-            onFiltersChange({ ...filters, maxPriceLevel: value })
-          }
-        />
-        <SingleSelectGroup
-          label="Length of time"
-          options={DURATION_PRESETS.map((preset) => ({
-            value: preset.minutes,
-            label: preset.label,
-          }))}
-          selectedValue={filters.maxDurationMinutes}
-          onSelect={(value) =>
-            onFiltersChange({ ...filters, maxDurationMinutes: value })
-          }
-        />
-      </div>
+      {/* Energy, Budget and Length of time were removed on 2026-09-03. They
+          filtered attributes `atlasMapper` fabricated as identical constants
+          for every record; once the fabrication stopped they matched nothing.
+          Nothing replaces them — Atlas states no such facts, and inventing
+          them again to populate a rail is what put a wrong pet policy on
+          Ellison Park. */}
 
-      <p className="mt-4 text-xs text-[#2b2015]/50">
-        {resultCount} {resultCount === 1 ? "experience" : "experiences"}
+      {/* Browse by what Atlas says a thing *is*. No second Passport taxonomy —
+          `kind` comes straight off the candidate. Choosing one also widens the
+          search to the whole corpus, so an explicit "Things to do" shows the
+          Activities the conservative default feed leaves out. */}
+      {kinds.length > 1 && (
+        <div
+          className="mt-4 flex flex-wrap gap-2"
+          role="group"
+          aria-label="Browse by kind"
+        >
+          <button
+            type="button"
+            onClick={() => onKindChange(null)}
+            aria-pressed={selectedKind === null}
+            className={chipClass(selectedKind === null)}
+          >
+            For you
+          </button>
+          {kinds.map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => onKindChange(selectedKind === kind ? null : kind)}
+              aria-pressed={selectedKind === kind}
+              className={chipClass(selectedKind === kind)}
+            >
+              {kindLabel(kind)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Says what is on screen, not how many rows Atlas holds. "186
+          experiences" was a database count presented as a product fact. */}
+      <p
+        className="mt-4 text-xs text-[#2b2015]/50"
+        data-testid="result-summary"
+      >
+        {resultCount === 0
+          ? "Nothing here yet"
+          : browsing
+            ? `${resultCount} ${resultCount === 1 ? "result" : "results"}`
+            : `${resultCount} to explore`}
       </p>
     </div>
   );
+}
+
+function chipClass(active: boolean): string {
+  return active
+    ? "rounded-full border border-[#8a5a24] bg-[#8a5a24] px-3 py-1 text-xs text-[#f7ecd3]"
+    : "rounded-full border border-[#8a5a24]/25 px-3 py-1 text-xs text-[#2b2015]/70 transition-colors hover:border-[#8a5a24]/50";
 }

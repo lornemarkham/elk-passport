@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, MapPin } from "lucide-react";
+import { Check, ChevronRight, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
 
@@ -43,9 +43,17 @@ export function ExperienceListRow({
   const tag =
     experience.subtype ?? experience.activities[0] ?? experience.moods[0];
   const destination = destinationFor(experience);
+  // `UNKNOWN` is Atlas saying it has not classified this yet — true, and not
+  // worth shouting at a traveller in a badge.
+  const showTag = tag && tag.toLowerCase() !== "unknown";
 
   return (
-    <li className="relative flex items-center gap-4 rounded-xl border border-[#8a5a24]/15 bg-[#f7ecd3] p-4">
+    <li
+      className={`relative flex items-center gap-4 rounded-xl border border-[#8a5a24]/15 bg-[#f7ecd3] p-4 ${
+        destination ? "transition-colors hover:border-[#8a5a24]/45" : ""
+      }`}
+      data-navigates={destination ? "true" : "false"}
+    >
       {/* A card with nowhere truthful to go is still a card. Sending an
           Organization to `/places/{organizationId}` would be a 404 dressed up
           as a link — see `destinationFor`. */}
@@ -75,16 +83,33 @@ export function ExperienceListRow({
           <p className="truncate text-sm font-semibold text-[#2b2015]">
             {experience.title}
           </p>
-          {tag && (
+          {showTag && (
             <span className="shrink-0 rounded-full bg-[#2b2015]/[0.06] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#8a5a24] uppercase">
               {tag}
             </span>
           )}
         </div>
+        {/* Rendered only when Atlas holds a containment edge for it — never
+            inferred from a name, and never from region membership. It is also
+            what explains the destination: BullWheel opens Big White's page
+            because BullWheel is at Big White. */}
+        {experience.context && (
+          <p className="mt-0.5 truncate text-xs font-medium text-[#8a5a24]">
+            at {experience.context.name}
+          </p>
+        )}
         <p className="mt-0.5 line-clamp-2 text-xs text-[#2b2015]/60">
           {experience.shortDescription}
         </p>
       </div>
+
+      {/* The only difference a card without a destination shows: no chevron,
+          no hover. It still reads as a real discovery — most Organizations and
+          Activities have no page yet, and a missing page is not a missing
+          thing. What it must never do is look clickable and do nothing. */}
+      {destination && (
+        <ChevronRight className="h-4 w-4 shrink-0 text-[#8a5a24]/40" />
+      )}
 
       <div className="relative z-10 shrink-0">
         {saved ? (

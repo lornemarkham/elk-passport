@@ -34,6 +34,7 @@ export function candidateToExperience(
     description: candidate.description,
     subtype: candidate.subtype,
     context: candidate.context,
+    containsCount: candidate.containsCount,
     // Derived here, from the same function the admin surfaces use, so there is
     // one definition of "has enough for its own page". It decides the
     // destination and never whether the candidate appears — a strong Activity

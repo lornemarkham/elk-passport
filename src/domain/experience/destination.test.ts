@@ -129,3 +129,43 @@ describe("candidateToExperience", () => {
     expect("tier" in experience).toBe(false);
   });
 });
+
+describe("card context and affordance data", () => {
+  it("carries context only when Atlas supplies it", () => {
+    const withCtx = candidateToExperience(
+      candidate({
+        kind: "Organization",
+        name: "The BullWheel",
+        context: {
+          id: "place-bigwhite",
+          kind: "Place",
+          name: "Big White Ski Resort",
+        },
+      }),
+    );
+    const without = candidateToExperience(
+      candidate({ kind: "Activity", name: "night skiing", subtype: "skiing" }),
+    );
+    expect(withCtx.context?.name).toBe("Big White Ski Resort");
+    // Atlas holds no edge from night skiing to Big White, so Passport must
+    // hold nothing either — no name inference, no region substitution.
+    expect(without.context).toBeUndefined();
+  });
+
+  it("a context-bearing Organization navigates, and its context explains where", () => {
+    const bullwheel = candidateToExperience(
+      candidate({
+        id: "org-bullwheel",
+        kind: "Organization",
+        name: "The BullWheel",
+        context: {
+          id: "place-bigwhite",
+          kind: "Place",
+          name: "Big White Ski Resort",
+        },
+      }),
+    );
+    expect(destinationFor(bullwheel)).toBe("/places/place-bigwhite");
+    expect(bullwheel.context?.name).toBe("Big White Ski Resort");
+  });
+});

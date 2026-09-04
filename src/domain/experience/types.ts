@@ -73,6 +73,8 @@ export interface Experience {
   context?: ExperienceContext;
   /** Whether Atlas holds enough for this to carry its own page — never an eligibility gate. */
   detailReady: boolean;
+  /** How many things Atlas says this physically contains. A signal that there is more here, not a navigation tree. */
+  containsCount?: number;
 
   heroMedia?: ExperienceMedia;
 
