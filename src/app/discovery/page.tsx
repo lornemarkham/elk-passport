@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { DiscoveryListView } from "@/components/discovery-list/DiscoveryListView";
-import { activeRegionId } from "@/domain/discovery/regionScope";
+import { activeScope } from "@/domain/discovery/activeScope";
 
 export const metadata: Metadata = {
   title: "Discovery — Passport",
@@ -17,16 +17,12 @@ export const metadata: Metadata = {
 export default async function DiscoveryPage() {
   // Every kind Atlas holds, not just Places — `The BullWheel` is an
   // Organization and was invisible here until now.
-  const candidates = await listDiscoveryCandidates();
+  const [candidates, scope] = await Promise.all([
+    listDiscoveryCandidates(),
+    // The one call site that decides where Passport is looking.
+    activeScope(),
+  ]);
   const experiences = candidates.map(candidateToExperience);
 
-  // The one call site that decides which region Passport is showing. Undefined
-  // today — one region, no scope, unchanged behaviour — and the only thing that
-  // changes when a second region is defined.
-  return (
-    <DiscoveryListView
-      experiences={experiences}
-      activeRegionId={activeRegionId()}
-    />
-  );
+  return <DiscoveryListView experiences={experiences} scope={scope} />;
 }

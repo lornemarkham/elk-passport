@@ -5,7 +5,7 @@ import type { DiscoveryCandidate } from "@/lib/data/types";
 import type { Board } from "@/lib/data/boards-repo";
 
 /**
- * **The view honours the region scope it is given — through browse and search.**
+ * **The view honours the geographic scope it is given — through browse and search.**
  *
  * The unit tests pin `scopeToRegion`; these pin that the Discover list actually
  * passes its pool through it, which is the part that would silently regress.
@@ -80,8 +80,8 @@ beforeEach(() => {
   saved.mockClear();
 });
 
-describe("the Discover list under a region scope", () => {
-  it("shows every kind of entity when no region is active — today's behaviour", async () => {
+describe("the Discover list under a geographic scope", () => {
+  it("shows everything when no scope is active", async () => {
     render(<DiscoveryListView experiences={experiences} />);
     await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
     for (const name of ["Stanley Park", "Coquihalla Summit", "Mt Moore"]) {
@@ -91,7 +91,10 @@ describe("the Discover list under a region scope", () => {
 
   it("shows only the active region's entities, and never the unplaced ones", async () => {
     render(
-      <DiscoveryListView experiences={experiences} activeRegionId={OKANAGAN} />,
+      <DiscoveryListView
+        experiences={experiences}
+        scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
+      />,
     );
     await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
     expect(screen.getByText("Coquihalla Summit")).toBeTruthy();
@@ -103,7 +106,11 @@ describe("the Discover list under a region scope", () => {
     render(
       <DiscoveryListView
         experiences={experiences}
-        activeRegionId={VANCOUVER}
+        scope={{
+          kind: "atlas-region",
+          regionId: VANCOUVER,
+          label: "Vancouver",
+        }}
       />,
     );
     await waitFor(() => expect(screen.getByText("Stanley Park")).toBeTruthy());
@@ -123,7 +130,10 @@ describe("the Discover list under a region scope", () => {
       },
     ];
     const { unmount } = render(
-      <DiscoveryListView experiences={experiences} activeRegionId={OKANAGAN} />,
+      <DiscoveryListView
+        experiences={experiences}
+        scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
+      />,
     );
     const sidebar = await screen.findByRole("complementary");
     await waitFor(() =>
@@ -134,12 +144,38 @@ describe("the Discover list under a region scope", () => {
     render(
       <DiscoveryListView
         experiences={experiences}
-        activeRegionId={VANCOUVER}
+        scope={{
+          kind: "atlas-region",
+          regionId: VANCOUVER,
+          label: "Vancouver",
+        }}
       />,
     );
     const other = await screen.findByRole("complementary");
     await waitFor(() =>
       expect(other.textContent).toContain("Coquihalla Summit"),
     );
+  });
+});
+
+describe("the location indicator", () => {
+  it("names the area a traveller is looking at", async () => {
+    render(
+      <DiscoveryListView
+        experiences={experiences}
+        scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("active-scope").textContent).toContain(
+        "Okanagan",
+      ),
+    );
+  });
+
+  it("says nothing when there is no scope, rather than naming a region that is not applied", async () => {
+    render(<DiscoveryListView experiences={experiences} />);
+    await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
+    expect(screen.queryByTestId("active-scope")).toBeNull();
   });
 });

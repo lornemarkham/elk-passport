@@ -2,9 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { MapPin } from "lucide-react";
 import { filterExperiences } from "@/domain/discovery/filterExperiences";
 import { matchesQuery } from "@/domain/discovery/selectors";
-import { scopeToRegion } from "@/domain/discovery/regionScope";
+import {
+  scopeExperiences,
+  scopeLabel,
+  type GeographicScope,
+} from "@/domain/discovery/geographicScope";
 import {
   createEmptyFilterState,
   type DiscoveryFilterState,
@@ -44,13 +49,12 @@ function uniqueSorted(values: string[]): string[] {
 interface DiscoveryListViewProps {
   experiences: Experience[];
   /**
-   * The region Passport is showing, or `undefined` for no scope — resolved once
-   * by `activeRegionId()` and passed in, so no component decides this for
-   * itself. Today it is undefined and the feed is unscoped, which is the
-   * existing behaviour; it is a prop rather than a constant so that adding a
-   * second region changes one call site, not this file.
+   * Where Passport is looking, or `undefined` for everywhere — resolved once by
+   * `activeScope()` and passed in, so no component decides this for itself. A
+   * prop rather than a constant, so a viewport or radius scope arrives here
+   * without touching this file.
    */
-  activeRegionId?: string;
+  scope?: GeographicScope;
 }
 
 /**
@@ -64,7 +68,7 @@ interface DiscoveryListViewProps {
  */
 export function DiscoveryListView({
   experiences,
-  activeRegionId,
+  scope,
 }: DiscoveryListViewProps) {
   const [kind, setKind] = useState<ExperienceKind | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -159,22 +163,23 @@ export function DiscoveryListView({
   const browsing = query.trim().length > 0 || kind !== null;
 
   const visible = useMemo(() => {
-    // Region scope is applied to the whole pool, before the feed policy and
-    // before search, so browse and search obey one scope rather than three.
-    // An entity Atlas has placed in no region is excluded by a scope rather
-    // than adopted by it — see `regionScope`.
-    const scoped = scopeToRegion(experiences, activeRegionId);
+    // The geographic scope is applied to the whole pool, before the feed policy
+    // and before search, so browse and search obey one scope rather than three.
+    // An entity Atlas has placed in no region is excluded by a region scope
+    // rather than adopted by it — see `geographicScope`.
+    const scoped = scopeExperiences(experiences, scope);
     const pool = browsing ? scoped : defaultFeed(scoped);
     return filterExperiences(pool, filters)
       .filter((experience) => (kind ? experience.kind === kind : true))
       .filter((experience) => matchesQuery(experience, query))
       .filter((experience) => !savedIds.has(experience.id));
-  }, [experiences, filters, query, savedIds, browsing, kind, activeRegionId]);
+  }, [experiences, filters, query, savedIds, browsing, kind, scope]);
 
   const kinds = useMemo(
-    () => availableKinds(scopeToRegion(experiences, activeRegionId)),
-    [experiences, activeRegionId],
+    () => availableKinds(scopeExperiences(experiences, scope)),
+    [experiences, scope],
   );
+  const where = scopeLabel(scope);
 
   // Recently saved, newest first, resolved against the already-loaded
   // catalogue rather than a second fetch — Atlas's board-items response
@@ -338,6 +343,19 @@ export function DiscoveryListView({
     >
       <div className="mx-auto max-w-6xl px-6 py-14">
         <header className="space-y-4">
+          {/* Where these results come from. Not a control yet — there is one
+              scope and nothing to switch to — but a traveller should never have
+              to guess which area they are looking at, and it is the difference
+              between "the whole corpus" and "the Okanagan". */}
+          {where && (
+            <p
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#8a5a24]"
+              data-testid="active-scope"
+            >
+              <MapPin className="h-4 w-4" aria-hidden="true" />
+              {where}
+            </p>
+          )}
           <h1 className="font-heading text-4xl font-semibold tracking-tight text-[#2b2015] sm:text-5xl">
             Discovery
           </h1>

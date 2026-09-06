@@ -61,3 +61,37 @@ export async function listDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
   const body = (await response.json()) as { candidates: DiscoveryCandidate[] };
   return body.candidates;
 }
+
+export interface AtlasRegion {
+  id: string;
+  name: string;
+}
+
+/**
+ * The Regions Atlas holds, by id and name.
+ *
+ * Server-only: it goes through Atlas's admin route because Atlas publishes no
+ * traveller-facing regions endpoint yet, and `ADMIN_TOKEN` must not reach a
+ * browser. Read here rather than configured so that Passport never hardcodes a
+ * region's uuid or its name — Atlas stays the authority on what a Region is and
+ * what it is called.
+ *
+ * Returns `[]` when Atlas is unreachable or unconfigured, which resolves to no
+ * scope: the whole corpus, exactly as before scoping existed. Falling back to
+ * *everything* is right and falling back to *a guess* would not be.
+ */
+export async function listRegions(): Promise<AtlasRegion[]> {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) return [];
+  try {
+    const response = await fetch("http://localhost:3000/admin/regions", {
+      headers: { "x-admin-token": token },
+      cache: "no-store",
+    });
+    if (!response.ok) return [];
+    const body = (await response.json()) as { regions?: AtlasRegion[] };
+    return (body.regions ?? []).map((r) => ({ id: r.id, name: r.name }));
+  } catch {
+    return [];
+  }
+}
