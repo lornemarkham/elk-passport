@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { filterExperiences } from "@/domain/discovery/filterExperiences";
 import { matchesQuery } from "@/domain/discovery/selectors";
+import { scopeToRegion } from "@/domain/discovery/regionScope";
 import {
   createEmptyFilterState,
   type DiscoveryFilterState,
@@ -42,6 +43,14 @@ function uniqueSorted(values: string[]): string[] {
 
 interface DiscoveryListViewProps {
   experiences: Experience[];
+  /**
+   * The region Passport is showing, or `undefined` for no scope — resolved once
+   * by `activeRegionId()` and passed in, so no component decides this for
+   * itself. Today it is undefined and the feed is unscoped, which is the
+   * existing behaviour; it is a prop rather than a constant so that adding a
+   * second region changes one call site, not this file.
+   */
+  activeRegionId?: string;
 }
 
 /**
@@ -53,7 +62,10 @@ interface DiscoveryListViewProps {
  * Atlas-first patterns (switchToBoard, handleConfirmDeleteBoard, etc.)
  * this mirrors.
  */
-export function DiscoveryListView({ experiences }: DiscoveryListViewProps) {
+export function DiscoveryListView({
+  experiences,
+  activeRegionId,
+}: DiscoveryListViewProps) {
   const [kind, setKind] = useState<ExperienceKind | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
@@ -147,14 +159,22 @@ export function DiscoveryListView({ experiences }: DiscoveryListViewProps) {
   const browsing = query.trim().length > 0 || kind !== null;
 
   const visible = useMemo(() => {
-    const pool = browsing ? experiences : defaultFeed(experiences);
+    // Region scope is applied to the whole pool, before the feed policy and
+    // before search, so browse and search obey one scope rather than three.
+    // An entity Atlas has placed in no region is excluded by a scope rather
+    // than adopted by it — see `regionScope`.
+    const scoped = scopeToRegion(experiences, activeRegionId);
+    const pool = browsing ? scoped : defaultFeed(scoped);
     return filterExperiences(pool, filters)
       .filter((experience) => (kind ? experience.kind === kind : true))
       .filter((experience) => matchesQuery(experience, query))
       .filter((experience) => !savedIds.has(experience.id));
-  }, [experiences, filters, query, savedIds, browsing, kind]);
+  }, [experiences, filters, query, savedIds, browsing, kind, activeRegionId]);
 
-  const kinds = useMemo(() => availableKinds(experiences), [experiences]);
+  const kinds = useMemo(
+    () => availableKinds(scopeToRegion(experiences, activeRegionId)),
+    [experiences, activeRegionId],
+  );
 
   // Recently saved, newest first, resolved against the already-loaded
   // catalogue rather than a second fetch — Atlas's board-items response

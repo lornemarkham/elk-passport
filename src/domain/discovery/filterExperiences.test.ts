@@ -8,6 +8,7 @@ function makeExperience(overrides: Partial<Experience> = {}): Experience {
     kind: "Place",
     detailReady: true,
     id: "test-experience",
+    regionIds: [],
     slug: "test-experience",
     title: "Test Experience",
     shortDescription: "A test experience.",

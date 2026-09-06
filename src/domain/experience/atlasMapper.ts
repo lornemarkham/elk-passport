@@ -35,6 +35,9 @@ export function candidateToExperience(
     subtype: candidate.subtype,
     context: candidate.context,
     containsCount: candidate.containsCount,
+    // Carried, not invented. This is the field Passport used to drop on the
+    // floor, which is why region scope had nothing to filter on.
+    regionIds: candidate.regionIds ?? [],
     // Derived here, from the same function the admin surfaces use, so there is
     // one definition of "has enough for its own page". It decides the
     // destination and never whether the candidate appears — a strong Activity

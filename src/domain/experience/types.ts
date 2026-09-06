@@ -99,6 +99,13 @@ export interface Experience {
    */
   startTime?: string;
   endTime?: string;
+  /**
+   * The regions Atlas has placed this in — **exactly** what Atlas served, never
+   * synthesized and never defaulted. Empty means Atlas has placed it in no
+   * region, which is true of most of the corpus and must not be read as
+   * "belongs to whichever region is active". See `domain/discovery/regionScope`.
+   */
+  regionIds: readonly string[];
 
   familyFriendly: boolean;
   petFriendly: boolean;

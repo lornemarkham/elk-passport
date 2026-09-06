@@ -44,6 +44,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: false,
     location: { name: "Okanagan Lake shoreline", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -66,6 +68,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: true,
     location: { name: "Okanagan Lake", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -88,6 +92,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: true,
     location: { name: "Kelowna", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -110,6 +116,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: false,
     location: { name: "Okanagan Lake", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -131,6 +139,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: true,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -152,6 +162,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: true,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -173,6 +185,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: true,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -195,6 +209,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: true,
     location: { name: "Naramata Bench", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -216,6 +232,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: true,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -237,6 +255,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: true,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -258,6 +278,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: true,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -279,6 +301,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: true,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -300,6 +324,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: true,
     requiresReservation: true,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -321,6 +347,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -342,6 +370,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: true,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -363,6 +393,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -385,6 +417,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: true,
     location: { name: "Okanagan Lake", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -406,6 +440,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -427,6 +463,8 @@ export const SEED_EXPERIENCES: Experience[] = [
     petFriendly: false,
     requiresReservation: false,
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
   {
     kind: "Place",
@@ -449,5 +487,7 @@ export const SEED_EXPERIENCES: Experience[] = [
     requiresReservation: false,
     location: { name: "Okanagan Lake shoreline", region: "Okanagan Valley" },
     isActive: true,
+    // Hand-authored lab content — Atlas has placed it in no region.
+    regionIds: [],
   },
 ];

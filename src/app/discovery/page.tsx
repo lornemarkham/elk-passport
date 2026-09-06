@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { DiscoveryListView } from "@/components/discovery-list/DiscoveryListView";
+import { activeRegionId } from "@/domain/discovery/regionScope";
 
 export const metadata: Metadata = {
   title: "Discovery — Passport",
@@ -19,5 +20,13 @@ export default async function DiscoveryPage() {
   const candidates = await listDiscoveryCandidates();
   const experiences = candidates.map(candidateToExperience);
 
-  return <DiscoveryListView experiences={experiences} />;
+  // The one call site that decides which region Passport is showing. Undefined
+  // today — one region, no scope, unchanged behaviour — and the only thing that
+  // changes when a second region is defined.
+  return (
+    <DiscoveryListView
+      experiences={experiences}
+      activeRegionId={activeRegionId()}
+    />
+  );
 }
