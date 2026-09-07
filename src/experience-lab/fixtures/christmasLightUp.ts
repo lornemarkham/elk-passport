@@ -151,7 +151,7 @@ export const christmasLightUp: ExperienceDefinition = {
       kind: "boolean",
       phaseId: "arrive",
       reveal: "immediate",
-      resolvesAtPhaseId: "arrive",
+      resolvesAtPhaseId: "wander",
       resolution: true,
       scoring: { points: 3, label: "Found it" },
     },
@@ -234,7 +234,7 @@ export const christmasLightUp: ExperienceDefinition = {
     {
       id: "board",
       kind: "leaderboard",
-      title: "The list",
+      title: "Emi's scoreboard",
       subtitle: "Emi is keeping score and Emi does not accept appeals.",
       phaseIds: ["switch", "wander", "home"],
     },

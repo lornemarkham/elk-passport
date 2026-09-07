@@ -149,6 +149,18 @@ function isParticipant(p: Participant | undefined): p is Participant {
   return p !== undefined;
 }
 
+/**
+ * Verb agreement, because "Lorne, Kate and Ben hasn't weighed in yet" is the
+ * kind of sentence that instantly tells a reader nobody wrote this.
+ */
+function agree(
+  people: readonly Participant[],
+  singular: string,
+  plural: string,
+): string {
+  return people.length === 1 ? singular : plural;
+}
+
 function names(people: readonly Participant[]): string {
   const list = people.map((p) => p.name);
   if (list.length === 0) return "nobody";
@@ -172,7 +184,8 @@ const PHRASEBOOKS: Record<VoiceTone, Phrasebook> = {
     unanimous: (o) =>
       `Everyone said ${o.detail}. Either you're all right or you're all cowards.`,
     split: (o) => `This group is dead split on "${o.question}". Delightful.`,
-    silent: (o) => `${names(o.about)} has answered nothing. We can see you.`,
+    silent: (o) =>
+      `${names(o.about)} ${agree(o.about, "has", "have")} answered nothing. We can see you.`,
     crowded: (o) =>
       `${names(o.about)} are all in on ${o.detail}. Herd behaviour.`,
   },
@@ -191,7 +204,8 @@ const PHRASEBOOKS: Record<VoiceTone, Phrasebook> = {
     unanimous: (o) => `Everyone wants ${o.detail}. That was easy.`,
     split: (o) =>
       `You're evenly split on "${o.question}" — worth talking about.`,
-    silent: (o) => `${names(o.about)} hasn't weighed in yet.`,
+    silent: (o) =>
+      `${names(o.about)} ${agree(o.about, "hasn't", "haven't")} weighed in yet.`,
     crowded: (o) => `${o.detail} is where most of you are leaning.`,
   },
   intimate: {

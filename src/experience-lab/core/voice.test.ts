@@ -106,3 +106,33 @@ describe("commentary", () => {
     expect(lines).toEqual([]);
   });
 });
+
+describe("it sounds like a person wrote it", () => {
+  it("agrees the verb with how many people it is talking about", () => {
+    const one = observe(
+      prompt,
+      [say("a", "pub"), say("b", "pub"), say("c", "home"), say("d", "pub")],
+      people,
+    ).find((o) => o.kind === "silent");
+    expect(one).toBeUndefined();
+
+    const many = observe(
+      prompt,
+      [say("a", "pub"), say("b", "home")],
+      people,
+    ).find((o) => o.kind === "silent")!;
+    expect(phrase(many, "warm")).toContain("haven't weighed in");
+    expect(phrase(many, "rowdy")).toContain("have answered nothing");
+  });
+
+  it("uses the singular for one quiet person", () => {
+    const three = people.slice(0, 3);
+    const silent = observe(
+      prompt,
+      [say("a", "pub"), say("b", "home")],
+      three,
+    ).find((o) => o.kind === "silent")!;
+    expect(silent.about).toHaveLength(1);
+    expect(phrase(silent, "warm")).toContain("hasn't weighed in");
+  });
+});
