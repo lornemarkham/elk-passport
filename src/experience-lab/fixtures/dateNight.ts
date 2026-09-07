@@ -36,6 +36,38 @@ export const dateNight: ExperienceDefinition = {
   hostId: "them",
   inviteLine: "Thursday. Just the two of you.",
   tone: "intimate",
+
+  /**
+   * **Three families, all at edge 0, and that is the entire bank.**
+   *
+   * This is the guardrail working exactly as designed. There is no
+   * `prediction`, no `sealed`, no `dare`, no `vault`, no `groupquest`, no
+   * `consequence` and no `people` bank — so the toy box opens on a date night
+   * and offers three quiet things, because a fixture that writes nothing for a
+   * family simply does not have that family.
+   *
+   * Nothing anywhere forbids a leaderboard on a date. The absence of anything
+   * to score is what prevents it, which is a much better property than a rule.
+   */
+  starters: {
+    mission: [
+      {
+        text: "Arrange one small thing tonight they are not expecting. Nothing expensive.",
+        edge: 0,
+        needsTarget: true,
+      },
+      {
+        text: "Get them talking about something they have not thought about in years.",
+        edge: 0,
+        needsTarget: true,
+      },
+    ],
+    photo: [{ text: "One photo tonight. Only one. Make it count.", edge: 0 }],
+    ask: [
+      { text: "Do you want to go somewhere after, or go home?", edge: 0 },
+      { text: "Same place again, or somewhere new next time?", edge: 0 },
+    ],
+  },
   labNote:
     "The disproof fixture. Two people, no competition, no audience, privacy that the engine must be structurally incapable of violating.",
 
@@ -51,6 +83,9 @@ export const dateNight: ExperienceDefinition = {
       label: "Out",
       headline: "Phones down. This page will wait.",
       offsetMinutes: 0,
+      // The most literal application of the whole principle, and the one that
+      // required no argument at all.
+      attention: "quiet",
     },
     {
       id: "after",
@@ -151,7 +186,15 @@ export const dateNight: ExperienceDefinition = {
       title: "Before Thursday",
       subtitle: "You each answer alone. Nothing shows until you've both gone.",
       phaseIds: ["before"],
+      present: "deck",
       promptIds: ["mood", "surprise", "three", "private"],
+      // The toy box is offered here specifically so the guardrail is
+      // demonstrable rather than asserted: open it on a date and it has three
+      // quiet things in it, because that is all this fixture wrote for.
+      inviteOwnPrompt: {
+        cta: "Add something for Thursday",
+        hint: "Small. It doesn't have to be a whole plan.",
+      },
     },
     {
       id: "panel",

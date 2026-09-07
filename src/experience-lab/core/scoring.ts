@@ -95,10 +95,38 @@ export function standings(
   const scored = prompts.filter((p) => p.scoring);
   if (scored.length === 0) return [];
 
+  /**
+   * A cooperative quest that anybody completed is completed by everybody.
+   *
+   * The point of a group quest is that the group did a thing, so it must not
+   * turn into a race to be the one who taps the button — which is exactly
+   * what happened the first time it scored per-person.
+   */
+  const sharedWins = new Set(
+    scored
+      .filter((p) => p.scoring?.shared && p.resolution !== undefined)
+      .filter((p) =>
+        responses.some(
+          (r) => r.promptId === p.id && sameValue(r.value, p.resolution!),
+        ),
+      )
+      .map((p) => p.id),
+  );
+
   const rows = participants.map((participant) => {
     const mine = responses.filter((r) => r.participantId === participant.id);
     const lines: ScoreLine[] = [];
     for (const prompt of scored) {
+      if (sharedWins.has(prompt.id)) {
+        lines.push({
+          promptId: prompt.id,
+          question: prompt.question,
+          points: prompt.scoring!.points,
+          kind: "exact",
+          note: prompt.scoring!.label ?? "Together",
+        });
+        continue;
+      }
       const line = scorePrompt(
         prompt,
         mine.find((r) => r.promptId === prompt.id),

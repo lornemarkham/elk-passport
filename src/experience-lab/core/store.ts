@@ -29,6 +29,11 @@ export function emptyState(slug: string): ExperienceState {
     addedPrompts: [],
     reactions: {},
     lurking: false,
+    brief: null,
+    myEdge: null,
+    cues: [],
+    consented: [],
+    declined: [],
     nowOverride: null,
   };
 }

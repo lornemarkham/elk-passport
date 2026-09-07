@@ -1,7 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Lock, Plus, Sparkles } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Eye,
+  Lock,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+  Vault,
+} from "lucide-react";
+import {
+  getPhoto,
+  photoKey,
+  putPhoto,
+  readFileAsDataUrl,
+  tileFor,
+} from "./photos";
 import { Avatar, AvatarRow, Pill, personColor } from "./atoms";
 import type { LivePrompt } from "../core/engine";
 import type { Participant, ResponseValue } from "../core/types";
@@ -24,19 +40,24 @@ export function PromptCard({
   people,
   onRespond,
   onAddOption,
+  onCue,
+  onConsent,
 }: {
   live: LivePrompt;
   me: Participant | null;
   people: readonly Participant[];
   onRespond: (value: ResponseValue) => void;
   onAddOption?: (label: string, detail?: string) => void;
+  onCue?: (promptId: string) => void;
+  onConsent?: (promptId: string, agreed: boolean) => void;
 }) {
   const { prompt, myResponse, locked, revealed, responses } = live;
   const asker = prompt.askedBy
     ? people.find((p) => p.id === prompt.askedBy)
     : undefined;
-  const resolved = prompt.resolution !== undefined;
-  const canAnswer = Boolean(me) && !locked;
+  const resolved = prompt.resolution !== undefined && live.showResolution;
+  const canAnswer = Boolean(me) && live.open;
+  const hidden = prompt.requiresConsent && me !== null && !live.consented;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -65,6 +86,18 @@ export function PromptCard({
               </Pill>
             )}
             {prompt.reveal === "never" && <Pill>Only you see this</Pill>}
+            {prompt.audience?.only && (
+              <Pill>
+                <Eye className="h-3 w-3" />
+                Only you know about this
+              </Pill>
+            )}
+            {prompt.reveal === "onCue" && !revealed && (
+              <Pill tone="locked">
+                <Vault className="h-3 w-3" />
+                In the vault
+              </Pill>
+            )}
             {prompt.reveal === "onLock" && !locked && !myResponse && (
               <Pill>Sealed until everyone&apos;s in</Pill>
             )}
@@ -72,8 +105,55 @@ export function PromptCard({
         </div>
       </div>
 
-      <div className="mt-3.5">
-        {(prompt.kind === "choice" || prompt.kind === "person") && (
+      {/* A mission's briefing is the interesting half; the question under it is
+          just "did you do it". */}
+      {prompt.brief && (
+        <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3.5 py-3 text-[15px] leading-snug text-white/90">
+          {prompt.brief}
+        </p>
+      )}
+
+      {prompt.requiresConsent && me && !live.consented && onConsent && (
+        <ConsentGate
+          prompt={prompt}
+          onAgree={() => onConsent(prompt.id, true)}
+          onPass={() => onConsent(prompt.id, false)}
+        />
+      )}
+
+      <div
+        className={`mt-3.5 ${hidden ? "pointer-events-none opacity-30" : ""}`}
+      >
+        {prompt.kind === "photo" && (
+          <PhotoBody
+            live={live}
+            me={me}
+            people={people}
+            canAnswer={canAnswer}
+            onRespond={onRespond}
+          />
+        )}
+        {prompt.optionsFrom?.as === "submissions" && (
+          <VaultVoteBody
+            live={live}
+            me={me}
+            people={people}
+            canAnswer={canAnswer}
+            onRespond={onRespond}
+          />
+        )}
+        {!prompt.optionsFrom &&
+          (prompt.kind === "choice" || prompt.kind === "person") && (
+            <ChoiceBody
+              live={live}
+              me={me}
+              people={people}
+              revealed={revealed}
+              canAnswer={canAnswer}
+              onRespond={onRespond}
+            />
+          )}
+        {prompt.optionsFrom?.as === "authors" && (
           <ChoiceBody
             live={live}
             me={me}
@@ -114,6 +194,25 @@ export function PromptCard({
         </p>
       )}
 
+      {live.awaitingCue && onCue && me && (
+        <button
+          type="button"
+          onClick={() => onCue(prompt.id)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 px-4 py-1.5 text-[13px] font-semibold text-amber-200 transition hover:bg-amber-300/10"
+        >
+          <Vault className="h-3.5 w-3.5" />
+          {live.responses.length > 0 && live.prompt.kind !== "person"
+            ? `Open it — ${live.responses.length} inside`
+            : "Reveal the answer"}
+        </button>
+      )}
+
+      {live.owed && (
+        <p className="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-3.5 py-2.5 text-[13.5px] text-amber-100">
+          You owe: {live.owed}
+        </p>
+      )}
+
       {resolved && <Resolution live={live} people={people} />}
 
       {prompt.openToSuggestions && canAnswer && onAddOption && (
@@ -150,6 +249,7 @@ function ChoiceBody({
       {live.tally.map((option) => {
         const chosen = mine === option.optionId;
         const correct =
+          live.showResolution &&
           live.prompt.resolution !== undefined &&
           live.prompt.resolution === option.optionId;
         return (
@@ -246,7 +346,7 @@ function BooleanBody({
     <div className="grid grid-cols-2 gap-2">
       {[true, false].map((value) => {
         const chosen = mine === value;
-        const correct = live.prompt.resolution === value;
+        const correct = live.showResolution && live.prompt.resolution === value;
         return (
           <button
             key={String(value)}
@@ -559,3 +659,263 @@ function AddOption({
 }
 
 export { personColor };
+
+/**
+ * **Opting in, before anything can bind you.**
+ *
+ * Two things this deliberately does not do: it does not tell anybody you
+ * passed, and it does not make passing feel like losing. "Not tonight" closes
+ * the card and that is the end of it — the thing that makes a dare safe is not
+ * a rating, it is that declining costs nothing socially.
+ */
+function ConsentGate({
+  prompt,
+  onAgree,
+  onPass,
+}: {
+  prompt: LivePrompt["prompt"];
+  onAgree: () => void;
+  onPass: () => void;
+}) {
+  const forfeit = prompt.options?.find((o) => o.consequence)?.consequence;
+  return (
+    <div className="mt-3 rounded-xl border border-white/20 bg-white/[0.05] p-3.5">
+      <p className="flex items-start gap-2 text-[13.5px] leading-snug text-white/75">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-white/50" />
+        <span>
+          {forfeit
+            ? `If you're wrong you've agreed to: ${forfeit}`
+            : "This one's aimed at you. In or out?"}
+        </span>
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onAgree}
+          className="rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-black"
+        >
+          I&apos;m in
+        </button>
+        <button
+          type="button"
+          onClick={onPass}
+          className="rounded-full border border-white/15 px-4 py-1.5 text-[13px] text-white/60 transition hover:border-white/40"
+        >
+          Not tonight
+        </button>
+      </div>
+      <p className="mt-2 text-[11.5px] text-white/30">
+        Nobody is told either way.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * A photo submission, and the tile that stands in for it.
+ *
+ * The caption is the answer — it persists, it is what the vault votes on, and
+ * it is what ends up in the recap. A real picked image is a session-only
+ * bonus. See `photos.ts` for why that is the right trade for this lab.
+ */
+function PhotoBody({
+  live,
+  me,
+  people,
+  canAnswer,
+  onRespond,
+}: {
+  live: LivePrompt;
+  me: Participant | null;
+  people: readonly Participant[];
+  canAnswer: boolean;
+  onRespond: (value: ResponseValue) => void;
+}) {
+  const saved =
+    typeof live.myResponse?.value === "string" ? live.myResponse.value : "";
+  const [draft, setDraft] = useState(saved);
+  const [image, setImage] = useState<string | undefined>(() =>
+    me ? getPhoto(photoKey(live.prompt.id, me.id)) : undefined,
+  );
+
+  const submitted = saved.length > 0;
+
+  return (
+    <div>
+      {submitted && me && <PhotoTile caption={saved} image={image} by={me} />}
+
+      {canAnswer && (
+        <div className="mt-3 flex flex-col gap-2">
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Caption it."
+            className="w-full rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5 text-[15px] text-white placeholder:text-white/25 focus:border-white/40 focus:outline-none"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-1.5 text-[13px] text-white/65 transition hover:border-white/40">
+              <Camera className="h-3.5 w-3.5" />
+              {image ? "Change photo" : "Add a photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file || !me) return;
+                  const url = await readFileAsDataUrl(file);
+                  putPhoto(photoKey(live.prompt.id, me.id), url);
+                  setImage(url);
+                }}
+              />
+            </label>
+            {draft.trim() !== saved && (
+              <button
+                type="button"
+                onClick={() => onRespond(draft.trim())}
+                className="rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-black"
+              >
+                {submitted ? "Update" : "Submit"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {live.revealed && live.responses.length > 0 && (
+        <ul className="mt-3 grid grid-cols-2 gap-2">
+          {live.responses
+            .filter((r) => r.participantId !== me?.id)
+            .map((r) => {
+              const who = people.find((p) => p.id === r.participantId);
+              if (!who) return null;
+              return (
+                <li key={r.participantId}>
+                  <PhotoTile
+                    caption={String(r.value)}
+                    image={getPhoto(photoKey(live.prompt.id, r.participantId))}
+                    by={who}
+                  />
+                </li>
+              );
+            })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PhotoTile({
+  caption,
+  image,
+  by,
+}: {
+  caption: string;
+  image?: string;
+  by?: Participant;
+}) {
+  return (
+    <figure className="overflow-hidden rounded-xl border border-white/10">
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt={caption} className="h-28 w-full object-cover" />
+      ) : (
+        <div className="h-28 w-full" style={{ background: tileFor(caption) }} />
+      )}
+      <figcaption className="flex items-center gap-1.5 bg-black/30 px-2.5 py-2 text-[12.5px] text-white/75">
+        {by && <Avatar person={by} size={16} />}
+        <span className="truncate">{caption}</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+/**
+ * **Voting on what everybody put in the vault.**
+ *
+ * The options here did not exist when the question was written — they are the
+ * answers to another question. Rendered as tiles rather than as a list
+ * because the whole point is that you are looking at each other's stuff, and
+ * a radio list of captions loses that completely.
+ *
+ * Authors stay hidden while voting is open, so nobody votes for a friend.
+ */
+function VaultVoteBody({
+  live,
+  me,
+  people,
+  canAnswer,
+  onRespond,
+}: {
+  live: LivePrompt;
+  me: Participant | null;
+  people: readonly Participant[];
+  canAnswer: boolean;
+  onRespond: (value: ResponseValue) => void;
+}) {
+  const mine = live.myResponse?.value;
+  const everyoneVoted = live.responses.length >= live.tally.length;
+  const sourceId = live.prompt.optionsFrom?.promptId ?? live.prompt.id;
+  const top = Math.max(0, ...live.tally.map((t) => t.voters.length));
+
+  return (
+    <ul className="grid grid-cols-2 gap-2">
+      {live.tally.map((option) => {
+        const author = people.find((p) => p.id === option.optionId);
+        const isMine = option.optionId === me?.id;
+        const won = everyoneVoted && option.voters.length === top && top > 0;
+        return (
+          <li key={option.optionId}>
+            <button
+              type="button"
+              disabled={!canAnswer || isMine}
+              onClick={() => onRespond(option.optionId)}
+              className={`w-full overflow-hidden rounded-xl border text-left transition ${
+                mine === option.optionId
+                  ? "border-white/60"
+                  : won
+                    ? "border-amber-300/60"
+                    : "border-white/10 hover:border-white/35"
+              } ${isMine ? "opacity-60" : ""}`}
+            >
+              {(() => {
+                const image = getPhoto(photoKey(sourceId, option.optionId));
+                return image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={image}
+                    alt={option.label}
+                    className="h-28 w-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="block h-28 w-full"
+                    style={{ background: tileFor(option.label) }}
+                  />
+                );
+              })()}
+              <span className="block bg-black/30 px-2.5 py-2">
+                <span className="block truncate text-[12.5px] text-white/85">
+                  {option.label}
+                </span>
+                <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-white/45">
+                  {isMine
+                    ? "yours"
+                    : everyoneVoted && author
+                      ? author.name
+                      : "?"}
+                  {option.voters.length > 0 && (
+                    <span className="ml-auto tabular-nums">
+                      {option.voters.length}
+                    </span>
+                  )}
+                  {won && <span className="text-amber-200">🏆</span>}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

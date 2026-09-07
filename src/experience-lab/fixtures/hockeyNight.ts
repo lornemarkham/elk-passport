@@ -28,6 +28,143 @@ export const hockeyNight: ExperienceDefinition = {
   whereLine: "Rogers Arena, Vancouver",
   hostId: "lorne",
   tone: "rowdy",
+
+  /**
+   * The wording half of the toy box.
+   *
+   * The engine knows what a secret mission *is*; only this file knows that
+   * making Nathan say "analytics" is funny. Every starter is an opening
+   * offer — take it, reroll it, or rewrite it — and the round-1 finding still
+   * holds: the rewritten ones are better. These exist to get somebody past a
+   * blank box, not to be the joke.
+   *
+   * `edge` is the ceiling each one needs. Nothing above the night's setting is
+   * ever shown, so the coworkers-off-duty default (1) simply never sees the
+   * 2s and 3s.
+   */
+  starters: {
+    prediction: [
+      {
+        text: "Someone in this row spills a full beer before the third.",
+        edge: 0,
+      },
+      { text: "We end up talking about work within twenty minutes.", edge: 1 },
+      { text: "Somebody suggests leaving early and is ignored.", edge: 1 },
+      { text: "The person next to Dave regrets it visibly.", edge: 2 },
+    ],
+    sealed: [
+      { text: "Total goals, both teams, exact.", edge: 0 },
+      { text: "The score at the end of the first.", edge: 0 },
+      {
+        text: "How many times Nathan explains a rule nobody asked about.",
+        edge: 1,
+      },
+    ],
+    mission: [
+      {
+        text: "Get Nathan to say the word “analytics” out loud, without prompting him.",
+        edge: 1,
+        needsTarget: true,
+      },
+      {
+        text: "Work the phrase “that's just physics” into a normal conversation.",
+        edge: 1,
+        needsTarget: true,
+      },
+      {
+        text: "Get the whole row to do something in unison without asking them to.",
+        edge: 2,
+        needsTarget: true,
+      },
+      {
+        text: "Convince one person you played junior hockey. Maintain it all night.",
+        edge: 2,
+        needsTarget: true,
+      },
+    ],
+    dare: [
+      {
+        text: "Start a chant. It does not have to catch on.",
+        edge: 2,
+        needsTarget: true,
+      },
+      {
+        text: "Get on the jumbotron. Any means short of a criminal record.",
+        edge: 2,
+        needsTarget: true,
+      },
+      {
+        text: "Deliver a sixty-second unprompted analysis in a broadcaster voice.",
+        edge: 3,
+        needsTarget: true,
+      },
+    ],
+    sidequest: [
+      {
+        text: "Find the single worst item of merchandise in this building.",
+        edge: 0,
+      },
+      { text: "Find the oldest jersey in our section.", edge: 0 },
+      {
+        text: "Find a food item that should not exist. Photograph it.",
+        edge: 0,
+      },
+      {
+        text: "Find someone who travelled further to be here than we did.",
+        edge: 1,
+      },
+    ],
+    photo: [
+      { text: "Best candid. Nobody may know it's being taken.", edge: 0 },
+      { text: "Most Vancouver photo of the night.", edge: 0 },
+      { text: "Accidental masterpiece.", edge: 1 },
+    ],
+    vault: [
+      {
+        text: "One photo. Best evidence of a questionable decision.",
+        edge: 1,
+      },
+      { text: "One photo you'd caption “this is fine”.", edge: 1 },
+      { text: "Best photo of someone else not paying attention.", edge: 1 },
+    ],
+    groupquest: [
+      {
+        text: "All of us plus one opposing fan in a single photo before the third.",
+        edge: 1,
+      },
+      {
+        text: "Everyone holds a different food item at the same time.",
+        edge: 1,
+      },
+      {
+        text: "Get the whole row into one photo where nobody is blinking.",
+        edge: 0,
+      },
+    ],
+    consequence: [
+      {
+        text: "Pick a side | Losing side wears the other team's colours in the postgame photo.",
+        edge: 1,
+      },
+      {
+        text: "Pick a side | Losing side delivers an overly sincere concession speech.",
+        edge: 1,
+      },
+      {
+        text: "Pick a side | Losing side holds the sign in every photo for the rest of the night.",
+        edge: 2,
+      },
+    ],
+    people: [
+      { text: "One true thing about you this lot doesn't know.", edge: 1 },
+      { text: "The stupidest thing you've done on a trip.", edge: 1 },
+      { text: "Two truths and a lie. We'll work it out.", edge: 1 },
+    ],
+    ask: [
+      { text: "Are we doing food after, yes or no?", edge: 0 },
+      { text: "Is anyone actually watching the game right now?", edge: 0 },
+    ],
+  },
   labNote:
     "The specimen. Rowdy, competitive, many participants, a hard start time, and an appetite for stupidity.",
 
@@ -46,9 +183,39 @@ export const hockeyNight: ExperienceDefinition = {
     },
     {
       id: "live",
-      label: "Puck drop",
+      label: "1st period",
       headline: "Picks are locked. Nobody can save you now.",
       offsetMinutes: 0,
+      // The game is on. Passport has nothing to say and should not be looked at.
+      attention: "quiet",
+    },
+    {
+      id: "int1",
+      label: "1st intermission",
+      headline: "Eighteen minutes. Enough for one stupid thing.",
+      offsetMinutes: 40,
+      attention: "burst",
+    },
+    {
+      id: "p2",
+      label: "2nd period",
+      headline: "Back to it.",
+      offsetMinutes: 58,
+      attention: "quiet",
+    },
+    {
+      id: "int2",
+      label: "2nd intermission",
+      headline: "The vault is ready when somebody opens it.",
+      offsetMinutes: 100,
+      attention: "burst",
+    },
+    {
+      id: "p3",
+      label: "3rd period",
+      headline: "Last twenty.",
+      offsetMinutes: 118,
+      attention: "quiet",
     },
     {
       id: "after",
@@ -266,6 +433,120 @@ export const hockeyNight: ExperienceDefinition = {
       ],
     },
 
+    // ---- A forfeit. The consequence lives on the option you personally pick. ----
+    {
+      id: "sides",
+      question: "Pick a side. Loser pays up.",
+      askedBy: "dave",
+      kind: "choice",
+      phaseId: "before",
+      locksAtPhaseId: "live",
+      resolvesAtPhaseId: "after",
+      reveal: "immediate",
+      requiresConsent: true,
+      edge: 1,
+      family: "consequence",
+      resolution: "canucks",
+      options: [
+        {
+          id: "canucks",
+          label: "Canucks",
+          emoji: "🐋",
+          consequence:
+            "Wears a Flames scarf in the postgame photo and looks pleased about it.",
+        },
+        {
+          id: "flames",
+          label: "Flames",
+          emoji: "🔥",
+          consequence:
+            "Wears a Flames scarf in the postgame photo and looks pleased about it.",
+        },
+      ],
+    },
+
+    // ---- Cooperative. Everybody scores or nobody does. ----
+    {
+      id: "group-photo",
+      question:
+        "All six of us plus one Flames fan in a single photo, before the third.",
+      kind: "boolean",
+      phaseId: "int1",
+      reveal: "immediate",
+      resolvesAtPhaseId: "int1",
+      resolution: true,
+      edge: 1,
+      family: "groupquest",
+      scoring: { points: 6, label: "Together", shared: true },
+    },
+
+    // ---- The vault. Two prompts; the second is built from answers to the first. ----
+    {
+      id: "vault",
+      question: "One photo. Best evidence of a questionable decision.",
+      kind: "photo",
+      phaseId: "int1",
+      locksAtPhaseId: "int2",
+      reveal: "onCue",
+      edge: 1,
+      family: "vault",
+    },
+    {
+      id: "vault-vote",
+      question: "The vault is open. Vote — you can't vote for your own.",
+      kind: "choice",
+      phaseId: "int2",
+      locksAtPhaseId: "after",
+      reveal: "onCue",
+      optionsFrom: { promptId: "vault", as: "submissions" },
+      resolvedBy: "vote",
+      edge: 1,
+      family: "vault",
+      scoring: { points: 5, label: "Won the vault" },
+    },
+
+    // ---- Who said this? One toy that multiplies into one question per person. ----
+    {
+      id: "story",
+      question: "One true thing about you this lot doesn't know.",
+      kind: "text",
+      placeholder: "Nothing you'd mind them having. You're choosing this.",
+      phaseId: "before",
+      reveal: "never",
+      edge: 1,
+      family: "people",
+    },
+    {
+      id: "story-guess",
+      question: "Who said this?",
+      kind: "person",
+      phaseId: "int1",
+      locksAtPhaseId: "int2",
+      reveal: "onCue",
+      optionsFrom: { promptId: "story", as: "authors" },
+      edge: 1,
+      family: "people",
+      scoring: { points: 3, label: "Knew it" },
+    },
+
+    // ---- A secret mission. Only Mike ever sees this one. ----
+    {
+      id: "mission-mike",
+      question: "Did you pull it off?",
+      brief:
+        "Get Nathan to say the word “analytics” out loud, without prompting him. Nobody else knows this is happening.",
+      askedBy: "lorne",
+      kind: "boolean",
+      phaseId: "before",
+      locksAtPhaseId: "after",
+      audience: { only: "mike" },
+      reveal: "onCue",
+      requiresConsent: true,
+      edge: 1,
+      family: "mission",
+      scoring: { points: 8, label: "Mission" },
+    },
+
     // ---- Postgame: a decision made in three taps while standing outside. ----
     {
       id: "postgame",
@@ -309,7 +590,7 @@ export const hockeyNight: ExperienceDefinition = {
       id: "roster",
       kind: "roster",
       title: "Who's in",
-      phaseIds: ["before", "warmup", "live", "after"],
+      phaseIds: ["before", "warmup", "int1", "int2", "after"],
     },
     {
       id: "pregame",
@@ -326,7 +607,10 @@ export const hockeyNight: ExperienceDefinition = {
       title: "Your picks",
       subtitle:
         "Sealed until puck drop. No money, no gambling — purely so you can be insufferable about it later.",
-      phaseIds: ["before", "warmup", "live"],
+      phaseIds: ["before", "warmup"],
+      // One at a time. Seven of these in a column is a form; seven of these in
+      // a deck is a run of questions you finish without noticing.
+      present: "deck",
       promptIds: [
         "final-score",
         "first-team",
@@ -334,11 +618,35 @@ export const hockeyNight: ExperienceDefinition = {
         "total-goals",
         "lorne-beer",
         "refs",
+        "sides",
+        "story",
+        "mission-mike",
       ],
       inviteOwnPrompt: {
         cta: "Ask the group something stupid",
         hint: "The best question of the night has never once come from us.",
       },
+    },
+    {
+      id: "int1-block",
+      kind: "promptGroup",
+      title: "Intermission",
+      subtitle: "Eighteen minutes. Two things, then put it away.",
+      phaseIds: ["int1"],
+      present: "deck",
+      promptIds: ["group-photo", "story-guess", "vault"],
+      inviteOwnPrompt: {
+        cta: "Make this interesting 👀",
+        hint: "Passport has ideas. Yours will be better.",
+      },
+    },
+    {
+      id: "int2-block",
+      kind: "promptGroup",
+      title: "The vault",
+      subtitle: "Somebody open it.",
+      phaseIds: ["int2"],
+      promptIds: ["vault-vote", "mission-mike"],
     },
     {
       id: "postgame-block",
@@ -358,13 +666,21 @@ export const hockeyNight: ExperienceDefinition = {
       kind: "leaderboard",
       title: "The Sycle Cup",
       subtitle: "Worth nothing. Contested bitterly.",
-      phaseIds: ["live", "after", "morning", "again"],
+      phaseIds: ["int1", "int2", "after", "morning", "again"],
     },
     {
       id: "feed",
       kind: "feed",
       title: "The night",
-      phaseIds: ["before", "warmup", "live", "after", "morning", "again"],
+      phaseIds: [
+        "before",
+        "warmup",
+        "int1",
+        "int2",
+        "after",
+        "morning",
+        "again",
+      ],
     },
     {
       id: "again",
@@ -439,6 +755,43 @@ export const hockeyNight: ExperienceDefinition = {
     answer("refs", "dave", "nathan", ANCHOR, 2500),
     answer("refs", "nathan", "dave", ANCHOR, 2400),
     answer("refs", "lorne", "mike", ANCHOR, 2300),
+
+    answer("sides", "dave", "flames", ANCHOR, 2200),
+    answer("sides", "sarah", "canucks", ANCHOR, 2150),
+    answer("sides", "nathan", "canucks", ANCHOR, 2100),
+
+    answer(
+      "story",
+      "sarah",
+      "I once got a standing ovation at a karaoke bar in Osaka for a song I do not know the words to.",
+      ANCHOR,
+      2000,
+    ),
+    answer(
+      "story",
+      "nathan",
+      "I have been banned from a curling club. It was a misunderstanding and I will not be discussing it.",
+      ANCHOR,
+      1950,
+    ),
+    answer(
+      "story",
+      "dave",
+      "I slept in an airport overnight because I went to the wrong airport.",
+      ANCHOR,
+      1900,
+    ),
+
+    answer(
+      "vault",
+      "sarah",
+      "Dave, mid-sentence, holding four beers",
+      ANCHOR,
+      -45,
+    ),
+    answer("vault", "nathan", "the row behind us at 2–2", ANCHOR, -50),
+    answer("vault", "dave", "my own feet, apparently", ANCHOR, -55),
+    answer("group-photo", "sarah", true, ANCHOR, -45),
   ],
 
   seedMoments: [

@@ -9,11 +9,15 @@ import {
 } from "react";
 import { liveExperience, withResponse } from "../core/engine";
 import { experienceStore } from "../core/store";
+import { TOYS, type ToyInput } from "../core/toybox";
 import type {
+  Brief,
+  Edge,
   ExperienceDefinition,
   Prompt,
   PromptOption,
   ResponseValue,
+  ToyFamily,
 } from "../core/types";
 
 /**
@@ -200,6 +204,118 @@ export function useExperienceLab(definition: ExperienceDefinition) {
     [setState],
   );
 
+  /** The curator says what kind of night this is. Four taps, once. */
+  const setBrief = useCallback(
+    (brief: Brief) => {
+      setState((prev) => ({ ...prev, brief }));
+    },
+    [setState],
+  );
+
+  /**
+   * My own ceiling, which can only ever lower the night's.
+   *
+   * Kept separate from the brief on purpose: the curator sets the tone of the
+   * night, not the tone of me.
+   */
+  const setMyEdge = useCallback(
+    (edge: Edge | null) => {
+      setState((prev) => ({ ...prev, myEdge: edge }));
+    },
+    [setState],
+  );
+
+  /** A human opens something sealed. Not the clock — a person. */
+  const cue = useCallback(
+    (promptId: string) => {
+      setState((prev) =>
+        prev.cues.includes(promptId)
+          ? prev
+          : {
+              ...prev,
+              cues: [...prev.cues, promptId],
+              moments: [
+                ...prev.moments,
+                {
+                  id: `cue-${promptId}-${Date.now()}`,
+                  at: new Date().toISOString(),
+                  kind: "voice" as const,
+                  text: "🔓 Opened.",
+                },
+              ],
+            },
+      );
+    },
+    [setState],
+  );
+
+  /** Opting in. Nothing with a consequence binds anybody without this. */
+  const consent = useCallback(
+    (promptId: string, agreed: boolean) => {
+      setState((prev) => ({
+        ...prev,
+        consented: agreed
+          ? [...new Set([...prev.consented, promptId])]
+          : prev.consented.filter((id) => id !== promptId),
+        declined: agreed
+          ? prev.declined.filter((id) => id !== promptId)
+          : [...new Set([...prev.declined, promptId])],
+      }));
+    },
+    [setState],
+  );
+
+  /**
+   * A toy becomes questions.
+   *
+   * Note what does *not* happen here: no new block, no new component, no
+   * registry entry. A toy compiles to `Prompt`s and joins `addedPrompts`,
+   * which round 1 already had for "ask the group something stupid". Every
+   * mechanic in round 2 arrived through this one door.
+   */
+  const addToy = useCallback(
+    (family: ToyFamily, input: Omit<ToyInput, "id" | "askedBy">) => {
+      setState((prev) => {
+        if (!prev.meId) return prev;
+        const id = `toy-${family}-${Date.now()}`;
+        const built = TOYS[family].build({
+          ...input,
+          id,
+          askedBy: prev.meId,
+        });
+        /**
+         * The feed announces that something happened, never what.
+         *
+         * The first version printed the mission text into the group feed the
+         * moment it was created, which meant the one mechanic whose entire
+         * value is secrecy leaked itself on creation. Not naming the target
+         * either turned out to be better than naming them: everybody knowing
+         * *somebody* has a mission is the fun part.
+         */
+        const secret = built.some((p) => p.audience?.only);
+        const headline = secret
+          ? `slipped somebody a ${TOYS[family].label.toLowerCase()}. Nobody else needs to know what.`
+          : `added ${TOYS[family].label.toLowerCase()}: “${input.text.split("|")[0].trim()}”`;
+
+        return {
+          ...prev,
+          addedPrompts: [...prev.addedPrompts, ...built],
+          moments: [
+            ...prev.moments,
+            {
+              id: `toym-${id}`,
+              at: new Date().toISOString(),
+              kind: "note" as const,
+              by: prev.meId,
+              text: headline,
+            },
+          ],
+        };
+      });
+    },
+    [setState],
+  );
+
   const setNow = useCallback(
     (iso: string | null) => {
       setState((prev) => ({ ...prev, nowOverride: iso }));
@@ -216,6 +332,11 @@ export function useExperienceLab(definition: ExperienceDefinition) {
     respond,
     join,
     lurk,
+    setBrief,
+    setMyEdge,
+    cue,
+    consent,
+    addToy,
     becomeSomeoneElse,
     addOption,
     addPrompt,

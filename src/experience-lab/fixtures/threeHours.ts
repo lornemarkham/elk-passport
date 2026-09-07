@@ -32,6 +32,23 @@ export const threeHours: ExperienceDefinition = {
   anchorAt: ANCHOR,
   hostId: "lorne",
   tone: "warm",
+
+  starters: {
+    sidequest: [
+      { text: "Find something none of us has eaten before.", edge: 0 },
+      { text: "Take a photo from the highest point we get to.", edge: 0 },
+    ],
+    ask: [
+      { text: "Do we actually have to be back by five?", edge: 0 },
+      { text: "Is anyone secretly not up for this?", edge: 0 },
+    ],
+    photo: [
+      {
+        text: "One photo that makes three hours look like a whole day.",
+        edge: 0,
+      },
+    ],
+  },
   labNote:
     "No anchor event. Tests whether the engine can discover an experience rather than escalate one. Partially answered — see README.",
 
@@ -146,6 +163,7 @@ export const threeHours: ExperienceDefinition = {
       title: "Four questions",
       subtitle: "This is the whole planning step. There is no form.",
       phaseIds: ["open"],
+      present: "deck",
       promptIds: ["energy", "radius", "known", "pick"],
     },
     {

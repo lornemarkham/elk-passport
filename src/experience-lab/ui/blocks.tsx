@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Camera, Check, Copy, Plus, Repeat, Send, Trophy } from "lucide-react";
 import {
   Avatar,
@@ -407,6 +408,38 @@ function MomentRow({
   );
 }
 
+/**
+ * **The receipts.**
+ *
+ * What people owe each other because a side they personally picked lost.
+ * Rendered as a promise rather than a punishment — the name is next to the
+ * thing they agreed to, in their own words, and nobody appears here who did
+ * not opt in.
+ *
+ * This turned out to be the most anticipated block in the prototype, and it
+ * contains no points at all. Worth remembering when deciding how much scoring
+ * anything needs.
+ */
+export function ObligationsBlock({ live }: { live: LiveExperience }) {
+  if (live.obligations.length === 0) return null;
+  return (
+    <ul className="flex flex-col gap-2">
+      {live.obligations.map((obligation) => (
+        <li
+          key={`${obligation.promptId}-${obligation.participant.id}`}
+          className="flex items-start gap-2.5 rounded-2xl border border-amber-300/25 bg-amber-300/[0.06] px-4 py-3"
+        >
+          <Avatar person={obligation.participant} size={26} />
+          <p className="text-[14.5px] leading-snug text-amber-50">
+            <span className="font-semibold">{obligation.participant.name}</span>{" "}
+            owes: {obligation.text}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Facts nobody in the group wrote. Today a fixture; tomorrow Atlas. */
 export function PanelBlock({ block }: { block: Block }) {
   return (
@@ -506,8 +539,25 @@ export function RecapBlock({ live }: { live: LiveExperience }) {
   );
 }
 
-/** Where tradition starts: the next one inherits this one. */
-export function RunItBackBlock({ live }: { live: LiveExperience }) {
+/**
+ * **Where a night becomes a tradition.**
+ *
+ * Round 1 shipped this as a button that did nothing and called it the highest
+ * value unbuilt thing. It now goes somewhere real, and the interesting part is
+ * what it carries: not points — carrying a score forward would make the second
+ * night a continuation of the first — but *receipts*, derived from what
+ * actually happened. Nobody wrote "Dave called 7–1 and has not been allowed to
+ * forget it"; it is simply the worst surviving prediction, found.
+ */
+export function RunItBackBlock({
+  live,
+  receipts,
+  nextSlug,
+}: {
+  live: LiveExperience;
+  receipts: readonly string[];
+  nextSlug: string;
+}) {
   const champion = live.standings[0];
   const lineage = live.definition.lineage;
   return (
@@ -521,24 +571,33 @@ export function RunItBackBlock({ live }: { live: LiveExperience }) {
           champion, which they will mention.
         </p>
       )}
+      {receipts.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1.5 border-l-2 border-white/15 pl-3">
+          {receipts.map((line) => (
+            <li key={line} className="text-[13.5px] leading-snug text-white/60">
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
       {lineage && (
-        <p className="mt-2 text-[13px] text-white/45">
+        <p className="mt-3 text-[13px] text-white/45">
           {lineage.previousLabel} — {lineage.callback}
         </p>
       )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="rounded-full bg-white px-4 py-2 text-[13.5px] font-semibold text-black"
+      <div className="mt-4">
+        <Link
+          href={`/labs/experience/${nextSlug}`}
+          className="inline-flex items-center rounded-full bg-white px-4 py-2 text-[13.5px] font-semibold text-black"
         >
           <Repeat className="mr-1.5 inline h-3.5 w-3.5" />
           Start the next one
-        </button>
-        <span className="self-center text-[12px] text-white/35">
-          Not wired up — the next edition would inherit this roster and these
-          standings.
-        </span>
+        </Link>
       </div>
+      <p className="mt-2 text-[12px] text-white/30">
+        Same people, a fortnight later, nothing decided — and everything above
+        carried across.
+      </p>
     </Surface>
   );
 }

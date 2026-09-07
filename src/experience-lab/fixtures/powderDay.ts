@@ -32,6 +32,71 @@ export const powderDay: ExperienceDefinition = {
   whereLine: "Big White, Okanagan",
   hostId: "lorne",
   tone: "hype",
+
+  /**
+   * Same toy shapes, entirely different wording — and note which families are
+   * missing. There is no `consequence` bank here: a forfeit needs a losing
+   * side, and a powder day has no opposing team. The absence is data.
+   */
+  starters: {
+    prediction: [
+      { text: "Somebody's boot buckle breaks before noon.", edge: 0 },
+      { text: "We lose one person for at least twenty minutes.", edge: 1 },
+      {
+        text: "Tom says the words “last one” and then does four more.",
+        edge: 1,
+      },
+    ],
+    sealed: [
+      { text: "How many runs before somebody says they're done.", edge: 0 },
+      { text: "What time the Cliff Chair actually opens.", edge: 0 },
+    ],
+    mission: [
+      {
+        text: "Find a line nobody has touched and lead us into it without saying anything.",
+        edge: 1,
+        needsTarget: true,
+      },
+      {
+        text: "Get the whole group to stop at the same tree and not explain why.",
+        edge: 2,
+        needsTarget: true,
+      },
+    ],
+    sidequest: [
+      {
+        text: "Find untracked snow after eleven. Photograph it as proof.",
+        edge: 0,
+      },
+      {
+        text: "Find the worst-dressed skier on the hill. Be kind about it.",
+        edge: 1,
+      },
+      { text: "Find someone who drove further than we did.", edge: 0 },
+    ],
+    photo: [
+      { text: "Best faceshot. Doesn't have to be yours.", edge: 0 },
+      { text: "Best photo of somebody eating it.", edge: 1 },
+    ],
+    vault: [
+      { text: "One photo. Best of the day, sealed until après.", edge: 0 },
+      { text: "One photo you would put on the wall.", edge: 0 },
+    ],
+    groupquest: [
+      { text: "All of us in one photo, mid-run, nobody stopped.", edge: 1 },
+      { text: "Everybody skis the same line back to back. One take.", edge: 1 },
+    ],
+    people: [
+      {
+        text: "Worst thing that's ever happened to you on a mountain.",
+        edge: 1,
+      },
+    ],
+    ask: [
+      { text: "Are we doing one more or are we done?", edge: 0 },
+      { text: "Is anyone actually warm right now?", edge: 0 },
+    ],
+  },
   labNote:
     "Conditions-driven and half-spontaneous. Tests whether the engine survives an experience with no ticket, no fixed start, and facts nobody in the group wrote.",
 
@@ -50,9 +115,26 @@ export const powderDay: ExperienceDefinition = {
     },
     {
       id: "onhill",
-      label: "On the hill",
+      label: "First chair",
       headline: "Go ski. Come back when your legs quit.",
       offsetMinutes: 0,
+      attention: "quiet",
+    },
+    {
+      id: "lift",
+      label: "On the chair",
+      headline: "Seven minutes up. Gloves off, be quick.",
+      offsetMinutes: 120,
+      // A ski day's natural gap is the lift, not an intermission. Same
+      // primitive, completely different physical situation.
+      attention: "burst",
+    },
+    {
+      id: "laps",
+      label: "Lapping it",
+      headline: "Nobody is reading this.",
+      offsetMinutes: 130,
+      attention: "quiet",
     },
     {
       id: "apres",
@@ -183,6 +265,11 @@ export const powderDay: ExperienceDefinition = {
       question: "Run of the day",
       kind: "choice",
       phaseId: "apres",
+      // Round 1 could not score this: there is no truth about which run was
+      // best, only the group's opinion. `resolvedBy: "vote"` is that opinion
+      // becoming the answer.
+      resolvedBy: "vote",
+      scoring: { points: 4, label: "Run of the day" },
       reveal: "immediate",
       openToSuggestions: true,
       hint: "Name the run. Argue about it.",
@@ -203,7 +290,7 @@ export const powderDay: ExperienceDefinition = {
       id: "roster",
       kind: "roster",
       title: "Who's coming",
-      phaseIds: ["maybe", "dawn", "onhill", "apres", "after"],
+      phaseIds: ["maybe", "dawn", "lift", "apres", "after"],
     },
     {
       id: "conditions",
@@ -211,7 +298,7 @@ export const powderDay: ExperienceDefinition = {
       title: "This morning",
       subtitle:
         "Not written by anyone here. This is the shape Atlas eventually fills.",
-      phaseIds: ["maybe", "dawn", "onhill"],
+      phaseIds: ["maybe", "dawn", "lift"],
       lines: [
         { label: "Overnight", value: "31 cm", emphasis: true },
         { label: "Base", value: "184 cm" },
@@ -236,10 +323,23 @@ export const powderDay: ExperienceDefinition = {
       kind: "promptGroup",
       title: "Before first chair",
       phaseIds: ["dawn"],
+      present: "deck",
       promptIds: ["meet", "first-run", "vertical", "yardsale"],
       inviteOwnPrompt: {
         cta: "Add a dare",
         hint: "Somebody is going to do it anyway.",
+      },
+    },
+    {
+      id: "lift-block",
+      kind: "promptGroup",
+      title: "On the chair",
+      subtitle: "Seven minutes. One thing.",
+      phaseIds: ["lift"],
+      promptIds: [],
+      inviteOwnPrompt: {
+        cta: "Make this interesting 👀",
+        hint: "It's a long lift.",
       },
     },
     {
@@ -261,7 +361,7 @@ export const powderDay: ExperienceDefinition = {
       id: "feed",
       kind: "feed",
       title: "The day",
-      phaseIds: ["maybe", "dawn", "onhill", "apres", "after"],
+      phaseIds: ["maybe", "dawn", "lift", "apres", "after"],
     },
     {
       id: "again",
@@ -281,10 +381,10 @@ export const powderDay: ExperienceDefinition = {
     },
     {
       id: "yard",
-      label: "Yard Sale of the Day",
-      emoji: "🎿",
+      label: "Last Chair",
+      emoji: "🪑",
       basis: "bottom",
-      blurb: "Gear recovered, dignity not.",
+      blurb: "Somebody has to sweep the run.",
     },
     {
       id: "bold",

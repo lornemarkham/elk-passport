@@ -1,18 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Share2 } from "lucide-react";
+import { ArrowLeft, Share2, Sparkles } from "lucide-react";
 import { SectionHead, VoiceLine } from "./atoms";
 import {
-  AskSomething,
   FeedBlock,
+  ObligationsBlock,
   LeaderboardBlock,
   PanelBlock,
   RecapBlock,
   RosterBlock,
   RunItBackBlock,
 } from "./blocks";
+import { nextEditionSlug, receiptsFrom } from "../core/lineage";
+import { CuratorSetup, MyLimit } from "./CuratorSetup";
+import { InheritedMemory } from "./InheritedMemory";
 import { JoinGate } from "./JoinGate";
+import { PromptDeck } from "./PromptDeck";
+import { QuietMode } from "./QuietMode";
+import { ToyBox } from "./ToyBox";
 import { Poster } from "./Poster";
 import { PromptCard } from "./PromptCard";
 import { TimeMachine } from "./TimeMachine";
@@ -67,12 +74,40 @@ function GroupProgress({
 
 export function ExperienceScreen({
   definition,
+  previous,
 }: {
   definition: ExperienceDefinition;
+  /** Set only on a second edition — the experience this one inherits from. */
+  previous?: ExperienceDefinition;
 }) {
   const lab = useExperienceLab(definition);
   const { live, hydrated } = lab;
+  const [toyBoxOpen, setToyBoxOpen] = useState(false);
+
   const showJoin = hydrated && !live.me && !lab.state.lurking;
+  /**
+   * The setup belongs to whoever made the thing, once, before anything has
+   * happened. Everybody else never sees it — the curator model is a product
+   * hypothesis about *authoring*, not a permission system, so nothing else on
+   * the page behaves differently for the host.
+   */
+  const showSetup =
+    hydrated &&
+    !showJoin &&
+    live.me?.id === definition.hostId &&
+    lab.state.brief === null &&
+    live.phaseNumber === 0;
+
+  const nextPhaseId = definition.phases[live.phaseNumber + 1]?.id;
+
+  /**
+   * What this edition would hand to the next one. Derived from what actually
+   * happened here rather than authored, which is what makes it read as a
+   * callback instead of a slogan.
+   */
+  const receipts = hydrated
+    ? (receiptsFrom(definition, lab.state, live.now)?.receipts ?? [])
+    : [];
 
   return (
     <main className="min-h-dvh bg-[oklch(0.14_0.015_260)] pb-28 text-white">
@@ -106,6 +141,10 @@ export function ExperienceScreen({
         </div>
       )}
 
+      {hydrated && previous && (
+        <InheritedMemory previous={previous} now={live.now} />
+      )}
+
       {hydrated && showJoin && (
         <JoinGate
           definition={definition}
@@ -115,7 +154,28 @@ export function ExperienceScreen({
         />
       )}
 
-      {hydrated && (
+      {hydrated && showSetup && (
+        <CuratorSetup
+          title={definition.title}
+          onDone={lab.setBrief}
+          onSkip={() =>
+            lab.setBrief({
+              audience: "Unspecified",
+              vibe: "Social",
+              edge: 1,
+              appetite: "some",
+            })
+          }
+        />
+      )}
+
+      {/* The real thing is happening. Passport gets out of the way entirely —
+          not a collapsed page, a different one. */}
+      {hydrated && !showSetup && live.attention === "quiet" && (
+        <QuietMode live={live} />
+      )}
+
+      {hydrated && !showSetup && live.attention !== "quiet" && (
         <div className="mx-auto flex max-w-2xl flex-col gap-8 px-5 pt-2">
           {live.commentary.length > 0 && (
             <div className="flex flex-col gap-2">
@@ -148,7 +208,10 @@ export function ExperienceScreen({
               return (
                 <section key={block.id}>
                   <SectionHead title={block.title} subtitle={block.subtitle} />
-                  <LeaderboardBlock live={live} />
+                  <ObligationsBlock live={live} />
+                  <div className="mt-3">
+                    <LeaderboardBlock live={live} />
+                  </div>
                 </section>
               );
             }
@@ -174,72 +237,127 @@ export function ExperienceScreen({
             if (block.kind === "runItBack") {
               return (
                 <section key={block.id}>
-                  <RunItBackBlock live={live} />
+                  <RunItBackBlock
+                    live={live}
+                    receipts={receipts}
+                    nextSlug={nextEditionSlug(definition.slug)}
+                  />
                 </section>
               );
             }
 
             const prompts = live.prompts.filter(
               (p) =>
-                block.promptIds?.includes(p.prompt.id) ||
-                // Questions the group invented land in the group that invited them.
+                // A question built from other people's answers multiplies into
+                // ids like `story-guess::sarah`, so a block claims a family of
+                // derived questions by naming the one it was written as.
+                block.promptIds?.some(
+                  (id) =>
+                    id === p.prompt.id || p.prompt.id.startsWith(`${id}::`),
+                ) ||
+                // Anything the group made lands in the group that invited it.
                 (block.inviteOwnPrompt &&
                   p.prompt.askedBy &&
-                  p.prompt.id.startsWith("ask-") &&
+                  /^(ask|toy)-/.test(p.prompt.id) &&
                   p.prompt.phaseId === live.phase.id),
             );
             if (prompts.length === 0 && !block.inviteOwnPrompt) return null;
+            const isDeck = block.present === "deck" && prompts.length > 2;
 
             return (
               <section key={block.id}>
                 <SectionHead title={block.title} subtitle={block.subtitle} />
-                <GroupProgress
-                  prompts={prompts}
-                  me={live.me}
-                  lockLabel={
-                    definition.phases.find(
-                      (p) => p.id === prompts[0]?.prompt.locksAtPhaseId,
-                    )?.label
-                  }
-                />
+                {/* A deck carries its own progress bar and counter; showing
+                    both said the same thing twice. */}
+                {!isDeck && (
+                  <GroupProgress
+                    prompts={prompts}
+                    me={live.me}
+                    lockLabel={
+                      definition.phases.find(
+                        (p) => p.id === prompts[0]?.prompt.locksAtPhaseId,
+                      )?.label
+                    }
+                  />
+                )}
                 <div className="flex flex-col gap-3">
-                  {prompts.map((prompt) => (
-                    <PromptCard
-                      key={prompt.prompt.id}
-                      live={prompt}
+                  {isDeck ? (
+                    <PromptDeck
+                      prompts={prompts}
                       me={live.me}
                       people={live.participants}
-                      onRespond={(value) =>
-                        lab.respond(prompt.prompt.id, value)
-                      }
-                      onAddOption={(label, detail) =>
-                        lab.addOption(prompt.prompt.id, label, detail)
-                      }
+                      onRespond={lab.respond}
+                      onAddOption={lab.addOption}
+                      onCue={lab.cue}
+                      onConsent={lab.consent}
                     />
-                  ))}
+                  ) : (
+                    prompts.map((prompt) => (
+                      <PromptCard
+                        key={prompt.prompt.id}
+                        live={prompt}
+                        me={live.me}
+                        people={live.participants}
+                        onRespond={(value) =>
+                          lab.respond(prompt.prompt.id, value)
+                        }
+                        onAddOption={(label, detail) =>
+                          lab.addOption(prompt.prompt.id, label, detail)
+                        }
+                        onCue={lab.cue}
+                        onConsent={lab.consent}
+                      />
+                    ))
+                  )}
                   {block.inviteOwnPrompt &&
                     live.me &&
                     prompts.some((p) => p.open) && (
-                      <AskSomething
-                        cta={block.inviteOwnPrompt.cta}
-                        hint={block.inviteOwnPrompt.hint}
-                        phaseId={live.phase.id}
-                        locksAtPhaseId={
-                          definition.phases[live.phaseNumber + 1]?.id
-                        }
-                        onAsk={lab.addPrompt}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setToyBoxOpen(true)}
+                        className="w-full rounded-2xl border border-dashed border-white/20 px-4 py-3.5 text-left transition hover:border-white/45"
+                      >
+                        <span className="flex items-center gap-1.5 text-[15px] font-medium text-white">
+                          <Sparkles className="h-4 w-4" />
+                          {block.inviteOwnPrompt.cta}
+                        </span>
+                        <span className="mt-0.5 block text-[12.5px] text-white/45">
+                          {block.inviteOwnPrompt.hint}
+                        </span>
+                      </button>
                     )}
                 </div>
               </section>
             );
           })}
 
+          {live.me && (
+            <MyLimit
+              nightEdge={lab.state.brief?.edge ?? 1}
+              mine={lab.state.myEdge}
+              onChange={lab.setMyEdge}
+            />
+          )}
+
           <p className="pt-4 pb-2 text-[11.5px] leading-relaxed text-white/25">
             Experience Lab prototype. Everyone but you is a fixture, everything
             is invented, and nothing leaves this browser. {definition.labNote}
           </p>
         </div>
+      )}
+
+      {hydrated && toyBoxOpen && live.me && (
+        <ToyBox
+          definition={definition}
+          edge={live.edge}
+          appetite={lab.state.brief?.appetite ?? "some"}
+          people={live.participants}
+          me={live.me}
+          phaseId={live.phase.id}
+          lockPhaseId={nextPhaseId}
+          onAdd={lab.addToy}
+          onClose={() => setToyBoxOpen(false)}
+        />
       )}
 
       {hydrated && (

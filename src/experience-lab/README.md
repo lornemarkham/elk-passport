@@ -387,14 +387,15 @@ Saturday.**
 
 ## Open questions — genuinely unresolved
 
-1. **Can a vote be a resolution?** "Run of the day" is decided by the group,
-   not by the world. The engine grades against a truth and has no notion of a
-   truth the group creates. This is the difference between "who was right" and
-   "who we decided was best", and they may want different machinery.
+1. ~~**Can a vote be a resolution?**~~ **Answered in round 2: yes, and cheaply.**
+   `Prompt.resolvedBy: "vote"` derives the resolution from the plurality once
+   the answers are revealed, and everything downstream — scoring, awards,
+   `settled`, the share card — worked unchanged. A tie stays unresolved. Powder
+   Day's "run of the day" is now scored this way.
 2. **How does an experience with several small anchors inside it work?**
    Christmas Light-Up strained the phase model. Nested phases? Anchors as
    first-class objects a phase can point at? Unknown.
-3. **How does discovery hand off to escalation?** "We have three hours"
+3. **How does discovery hand off to escalation?** Still open. "We have three hours"
    chooses an option and then... nothing. Does choosing _create_ a new
    experience, or _reconfigure_ this one? This is the biggest structural
    question in the lab.
@@ -443,3 +444,259 @@ impossible to evaluate at the speed of real life.
 
 It is styled as an obviously foreign object. Nothing in it is proposed as a
 Passport feature, and the day it starts looking like one it should be deleted.
+
+---
+
+---
+
+# Round 2 — the toy box
+
+**What changed:** nothing was redesigned. The page, the phases, the voice, the
+five fixtures and the `Prompt` primitive are all as they were. Round 2 added
+_ways to make things_, and then a rhythm to stop them from being too much.
+
+The question this round was set: **how many ways can one person set up a night
+that other people then play?**
+
+---
+
+## The curator hypothesis
+
+> The curator sets the stage. Passport provides the toys. The group creates the
+> night.
+
+This is a hypothesis about **authoring**, not a permission system, and the
+prototype is careful about the difference. There is still no admin view, no
+host controls, and no page that behaves differently because you made it. The
+only thing the curator gets is _a setup that happens once, to them_, and
+everything they add is then just something that exists on everybody's page.
+
+**Verdict: it improved the night, and for a reason that was not the obvious
+one.** The four taps do not make the night better by capturing preferences.
+They make it better by **narrowing what Passport offers**, and a narrowed offer
+is dramatically easier to act on than an open one. Coworkers-off-duty at "game
+for some fun" with "a few things" produces eight toys instead of eleven, and
+that is the difference between browsing and choosing.
+
+The rule the setup was built against and should keep being judged against:
+**if it ever stops visibly changing what Passport offers, delete it rather than
+expand it.**
+
+---
+
+## The toy box
+
+`core/toybox.ts` holds eleven **shapes**. Every fixture holds the **wording**.
+
+That split — the same one that made the voice work in round 1 — turned out to
+be the whole design. The engine knows what a secret mission _is_; only Hockey
+Night knows that making Nathan say "analytics" is funny; Date Night writes no
+dares at all, and therefore has none.
+
+| family                 | what it is                          | new machinery it needed                                |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------ |
+| prediction             | everyone calls it, everyone sees    | none                                                   |
+| sealed pick            | hidden until it opens               | none                                                   |
+| **secret mission**     | one person, privately               | `audience.only`                                        |
+| **dare**               | opt in first, decline silently      | `requiresConsent`                                      |
+| side quest             | optional, anyone                    | none                                                   |
+| photo challenge        | submit, shows immediately           | `kind: "photo"`                                        |
+| **sealed photo vault** | submit blind, open together, vote   | `optionsFrom`, `reveal: "onCue"`, `resolvedBy: "vote"` |
+| **group quest**        | everybody scores or nobody          | `scoring.shared`                                       |
+| **forfeit**            | pick a side, owe something          | `PromptOption.consequence`                             |
+| **who said this?**     | one submission becomes one question | `optionsFrom: "authors"`                               |
+| just ask               | no points, you were curious         | none                                                   |
+
+**A toy is never a component.** It compiles to `Prompt`s and joins
+`addedPrompts`, the same array round 1 already had for "ask the group something
+stupid". Everything downstream — the deck, the cards, scoring, the voice, the
+recap — has no idea a toy box exists. Adding a twelfth toy is a data change.
+
+### Reroll beat blank box, and both lost to editing
+
+The three actions on any idea are **take it**, **another one**, **write my
+own**. Round 1's finding was that the best question is the one Passport did not
+write, and that survived: the good ones are still the edited ones. But an idea
+you can edit is a much better starting point than an empty field. The starter's
+job is to be _replaced_.
+
+---
+
+## The primitive round 2 discovered
+
+**A question can be built out of other people's answers.** `optionsFrom` has
+two shapes and they behave completely differently:
+
+- **`submissions` maps.** Everybody's answer becomes an option on one new
+  question. This is the vault: submit blind, open together, vote.
+- **`authors` multiplies.** Every answer becomes _its own_ question, carrying
+  that answer as the briefing and its writer as the correct answer. This is
+  "who said this?".
+
+The second one was the surprise of the round. A curator adds one toy, and it
+silently becomes one question per person, generated entirely by the group, with
+no further authoring at all. It is the first mechanic in the lab where **the
+group's content is the product**, and it is the cheapest content Passport has
+ever had.
+
+The privacy rule it comes with is absolute and structural: **Passport never
+harvests this.** A person types the thing themselves, knowing exactly what it
+is for. The future "this story would make a great question tonight, use it?"
+behaviour is deliberately not built.
+
+---
+
+## Attention — the thing that surprised us most
+
+`Phase.attention` is `open` | `quiet` | `burst`, and it is the round's most
+important addition despite being one optional field.
+
+During a `quiet` phase the entire page is replaced by the score, your position,
+and the words **"Put your phone away."** Nothing to answer, nothing to scroll,
+nothing that rewards looking. It is the only screen in the lab designed to be
+closed, and it felt wrong to build and immediately right to use.
+
+The rhythm now runs: **before → 1st period (quiet) → intermission (burst) → 2nd
+period (quiet) → intermission (burst) → 3rd (quiet) → final horn → morning →
+next one.**
+
+**The existing Phase/Block system expressed this with no new architecture.**
+That was the explicit thing to check and it passed — the only addition was the
+one field, because "which blocks exist right now" was already phase-driven.
+
+And the generalisation is the interesting part. Every fixture has downtime, but
+it is a different physical thing each time:
+
+- hockey — the intermission;
+- powder day — **the chairlift** (seven minutes up, gloves off);
+- light-up — the gaps between the choir, the switch and the fireworks;
+- date night — there is no burst at all, only quiet.
+
+---
+
+## Consent, and why it is a scale rather than a flag
+
+Two ceilings, and **the lower one always wins**:
+
+- the **curator's**, set once for the night;
+- **each participant's own**, set by them, changeable at any moment.
+
+Nothing above your line is ever _aimed_ at you — missions, dares and forfeits
+above it are not offered at all, so there is no public decline. Group questions
+stay on the page and you simply need not answer. **Nobody is told what anybody
+set.**
+
+The consent record needed no new storage, which is the part worth keeping: the
+engine will not let you answer a `requiresConsent` question until you have
+opted in, so _having an answer at all is the consent_. A person who never opted
+in has no answer and therefore owes nothing. That is structural rather than a
+check somebody has to remember.
+
+And the forfeit's consequence lives on the **option**, not the question — so
+you cannot end up owing something you did not personally pick.
+
+---
+
+## Points are seasoning — confirmed, and sharply
+
+The most anticipated block in the whole prototype is **the receipts** — who
+owes what, in their own words, because a side they chose lost. It contains no
+points at all.
+
+Meanwhile the leaderboard is the block nobody looks at twice.
+
+Keep scoring optional. Date Night has none and is the best-feeling fixture in
+the lab.
+
+---
+
+## What each fixture did with the toys
+
+**🏒 Hockey Night** got everything: a forfeit, a group quest, a vault, a
+who-said-this, one secret mission aimed at Mike, and the picks moved into a
+deck. Interaction count went **up** and page length went **down** (roughly
+4,600px → 3,100px).
+
+**🎿 Powder Day** — the lift is the intermission. "Run of the day" is now
+scored by vote, which answers round 1's open question in the fixture that
+raised it. **No forfeit bank**: a forfeit needs a losing side and a powder day
+has no opposing team. The absence is data.
+
+**🎄 Light-Up** — the switch at 6:00 is `quiet`, which is the most obviously
+correct use of the whole mechanism. No dares, no vault, no forfeits, everything
+at edge 0; scavenger prompts prove that **a scored question need not be a
+prediction** — a seven-year-old cannot call a score but can find a brass band.
+
+**🌙 Date Night** — the guardrail held, and it is now _demonstrable_ rather
+than asserted. Open the toy box on a date and it offers exactly three things:
+a small secret surprise, one photo, and a question. No predictions, no vault,
+no forfeit, no leaderboard. **Nothing forbids any of that.** The fixture simply
+wrote no starters for those families, and a family with no wording does not
+exist. A structural absence beats a rule.
+
+**🕒 Three Hours** — still the weakest, and deliberately not solved. It gained
+a deck and two starter banks. The hand-off from "we chose one" to "that is now
+the experience" is still not built. Open question 3 stands.
+
+---
+
+## Bugs found and fixed
+
+1. **Seeded and local answers were never deduped.** Becoming somebody the
+   fixture had already answered for produced two answers: their vote counted
+   twice, their avatar duplicated its React key, and — worst — `standings()`
+   scored the _seeded_ answer and silently ignored the one the human had just
+   given. Answering and seeing nothing change is about the most corrosive bug
+   this prototype could have had. Fixed in `mergeResponses`, with a test.
+2. **"Who said this?" printed the answer above the question.** A generated
+   question knows its own author from birth, so the card cheerfully said
+   _Sarah — that's what happened_ before anybody guessed. `revealed` and
+   `showResolution` are now separate.
+3. **The feed leaked every secret mission on creation.** The toy box announced
+   _"added a secret mission: get Nathan to say analytics"_ to everybody. It now
+   says somebody was slipped something and does not name the target either —
+   which is funnier.
+4. **`settled` could never become true.** Round 1 defined it as _every scored
+   question has an answer_, which broke the moment a question could be answered
+   by people rather than by the world: a vault nobody voted in and a mission
+   nobody completed held the trophy hostage for ever. Now: _nothing is still in
+   play_ — pending on the world until its moment, pending on people only until
+   it locks.
+5. **A sealed thing nobody opened stayed sealed for ever.** `onCue` prompts now
+   also open by themselves once their moment has passed. Somebody can open it
+   early; nothing is lost by accident.
+6. **Deck and section both reported progress.** Said the same thing twice.
+
+---
+
+## What became clutter
+
+- **`GroupProgress` above a deck.** Removed.
+- **The per-card "4 in, hidden".** Already removed in round 1; the deck made it
+  redundant twice over.
+- **The leaderboard during an intermission.** Still there, still ignored. It is
+  the first thing to try cutting.
+- **Eleven toy families in one sheet** is close to too many. The brief's
+  filtering is what keeps it usable, which is a slightly uncomfortable
+  dependency: the toy box is only pleasant _because_ something narrows it.
+
+---
+
+## Open questions after round 2
+
+1. **How does discovery hand off to escalation?** Unchanged and still the
+   biggest structural question. (Round 1, #3.)
+2. **How does an experience with several small anchors inside it work?**
+   Light-Up still strains the phase model. Attention helped; nesting did not
+   get built. (Round 1, #2.)
+3. **Where do experiences come from?** Round 2 made a _second edition_ nearly
+   free — it is the same definition with a later anchor — which hints that
+   creating an experience may mostly be deriving one from another. Nothing
+   creates a _first_ one yet.
+4. **Should a person be able to set the stakes on their own question?** Still
+   unknown, and one real night would settle it.
+5. **Is `burst` one thing or two?** An 18-minute intermission and a 7-minute
+   lift are both "a gap", but one of them has gloves off in the cold. Duration
+   may need to be part of it.
+6. **Does the vault work when the photos are real?** Everything about it was
+   validated with coloured tiles and captions.

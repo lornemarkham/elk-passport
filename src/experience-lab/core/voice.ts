@@ -254,7 +254,19 @@ export function commentary(
   return lines;
 }
 
-/** Passport never narrates an answer it promised nobody would see. */
+/**
+ * Passport never narrates an answer it promised nobody would see.
+ *
+ * Three separate promises, all of which have to hold here rather than in a
+ * component, because the whole value of a secret is that the system is
+ * *incapable* of leaking it:
+ *
+ * - `never` — private forever;
+ * - `audience.only` — a secret mission, which is not Passport's to mention;
+ * - `onCue` — sealed until a human opens it, and commenting on a sealed
+ *   answer is the same as opening it.
+ */
 function prompt_isPublic(prompt: Prompt): boolean {
-  return prompt.reveal !== "never";
+  if (prompt.reveal === "never" || prompt.reveal === "onCue") return false;
+  return !prompt.audience?.only;
 }

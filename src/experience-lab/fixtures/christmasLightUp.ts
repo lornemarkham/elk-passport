@@ -31,6 +31,60 @@ export const christmasLightUp: ExperienceDefinition = {
   whereLine: "Main Street & the square",
   hostId: "lorne",
   tone: "warm",
+
+  /**
+   * The bank that tested whether the toys survive children.
+   *
+   * No `dare`, no `consequence`, no `vault` — a seven-year-old submitting a
+   * photo into a sealed contest she cannot see the result of for two hours is
+   * a bad time. What is here instead is finding, photographing and
+   * remembering, and everything is edge 0. A fixture opting out of a family by
+   * simply not writing for it stayed the cheapest safety mechanism in the lab.
+   */
+  starters: {
+    sidequest: [
+      {
+        text: "Find something red, something gold and something ridiculous.",
+        edge: 0,
+      },
+      { text: "Find the biggest candy cane in the square.", edge: 0 },
+      { text: "Find a dog wearing something festive.", edge: 0 },
+      { text: "Find a window with more than fifty lights in it.", edge: 0 },
+    ],
+    photo: [
+      {
+        text: "Best photo of somebody's face when the lights come on.",
+        edge: 0,
+      },
+      { text: "The whole family, badly, in front of the tree.", edge: 0 },
+      { text: "Best photo Emi takes all night.", edge: 0 },
+    ],
+    groupquest: [
+      {
+        text: "All of us in one photo with the tree, before the fireworks.",
+        edge: 0,
+      },
+      { text: "Everybody holding something from a different stall.", edge: 0 },
+    ],
+    mission: [
+      {
+        text: "Get one hot chocolate for somebody without them noticing you went.",
+        edge: 0,
+        needsTarget: true,
+      },
+      {
+        text: "Find out from Gran one thing about this event nobody else knows.",
+        edge: 0,
+        needsTarget: true,
+      },
+    ],
+    prediction: [
+      { text: "Somebody cries at the countdown. It is an adult.", edge: 0 },
+      { text: "The doughnut cart sells out before seven.", edge: 0 },
+    ],
+    people: [{ text: "Your best Christmas memory, in one line.", edge: 0 }],
+    ask: [{ text: "Are we staying for the fireworks or going home?", edge: 0 }],
+  },
   labNote:
     "Many anchors in one evening, mixed ages, and a scavenger hunt instead of predictions. Strains the phase model — see README.",
 
@@ -58,6 +112,9 @@ export const christmasLightUp: ExperienceDefinition = {
       label: "6:00 · The switch",
       headline: "This is the bit. Get the kids to the front.",
       offsetMinutes: 60,
+      // The one moment of the entire evening. Nobody should be holding a phone
+      // for a leaderboard while it happens.
+      attention: "quiet",
     },
     {
       id: "wander",
@@ -216,6 +273,7 @@ export const christmasLightUp: ExperienceDefinition = {
       kind: "promptGroup",
       title: "Before Saturday",
       phaseIds: ["before"],
+      present: "deck",
       promptIds: ["meet", "food", "countdown"],
     },
     {

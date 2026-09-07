@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { findFixture, FIXTURES } from "@/experience-lab/fixtures";
+import { findFixture, fixtureSlugs } from "@/experience-lab/fixtures";
 import { ExperienceScreen } from "@/experience-lab/ui/ExperienceScreen";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams() {
-  return FIXTURES.map((fixture) => ({ slug: fixture.slug }));
+  return fixtureSlugs().map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -23,5 +23,10 @@ export default async function ExperienceLabPage({ params }: Props) {
   const { slug } = await params;
   const fixture = findFixture(slug);
   if (!fixture) notFound();
-  return <ExperienceScreen definition={fixture} />;
+  // A second edition is handed the experience it came from, so it can open
+  // carrying that one's receipts.
+  const previous = fixture.nextEditionOf
+    ? findFixture(fixture.nextEditionOf)
+    : undefined;
+  return <ExperienceScreen definition={fixture} previous={previous} />;
 }
