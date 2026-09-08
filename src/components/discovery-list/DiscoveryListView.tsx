@@ -37,7 +37,11 @@ import {
   DiscoveryListSidebar,
   type SavedListItem,
 } from "./DiscoveryListSidebar";
-import { DiscoveryModeSwitcher } from "./DiscoveryModeSwitcher";
+import {
+  DiscoveryModeSwitcher,
+  type DiscoveryMode,
+} from "./DiscoveryModeSwitcher";
+import { InspirationFeed } from "./InspirationFeed";
 import { ExperienceListRow } from "./ExperienceListRow";
 import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
 import type { ExperienceKind } from "@/domain/experience/types";
@@ -91,6 +95,9 @@ export function DiscoveryListView({
   const boardRequestRef = useRef(0);
 
   const [query, setQuery] = useState("");
+  // Which way the same catalogue is being browsed. List is the default because
+  // a returning traveller usually arrives with something in mind.
+  const [mode, setMode] = useState<DiscoveryMode>("List");
   const [filters, setFilters] = useState<DiscoveryFilterState>(
     createEmptyFilterState(),
   );
@@ -174,6 +181,20 @@ export function DiscoveryListView({
       .filter((experience) => matchesQuery(experience, query))
       .filter((experience) => !savedIds.has(experience.id));
   }, [experiences, filters, query, savedIds, browsing, kind, scope]);
+
+  /**
+   * What the Inspiration feed browses.
+   *
+   * The same geographic scope the list obeys, and the same feed policy — so a
+   * card cannot appear here that the list would have excluded. It deliberately
+   * ignores the search box and kind chips: those belong to *finding*, and this
+   * mode is *browsing*. Saved items stay visible, because a shelf that
+   * rearranged itself as you saved from it would lose your place.
+   */
+  const inspirationPool = useMemo(
+    () => defaultFeed(scopeExperiences(experiences, scope)),
+    [experiences, scope],
+  );
 
   const kinds = useMemo(
     () => availableKinds(scopeExperiences(experiences, scope)),
@@ -370,42 +391,55 @@ export function DiscoveryListView({
           className="my-8 border-t border-dashed border-[#8a5a24]/25"
         />
 
-        <DiscoveryModeSwitcher />
+        <DiscoveryModeSwitcher mode={mode} onModeChange={setMode} />
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
           <div className="flex flex-col gap-6">
-            <DiscoveryListFilters
-              query={query}
-              onQueryChange={setQuery}
-              filters={filters}
-              onFiltersChange={setFilters}
-              availableMoods={availableMoods}
-              availableActivities={availableActivities}
-              availableSeasons={availableSeasons}
-              availableCompanions={availableCompanions}
-              resultCount={visible.length}
-              kinds={kinds}
-              selectedKind={kind}
-              onKindChange={setKind}
-              browsing={browsing}
-            />
-
-            {visible.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 px-4 py-10 text-center text-sm text-[#2b2015]/60">
-                No experiences match your search.
-              </p>
+            {mode === "Inspiration" ? (
+              // The same scoped pool the list browses, framed rather than
+              // filtered. `scoped` and not `visible`: the feed is a browse, so
+              // the search box and kind chips do not apply to it.
+              <InspirationFeed
+                experiences={inspirationPool}
+                savedIds={savedIds}
+                onSave={handleSave}
+              />
             ) : (
-              <ul className="flex flex-col gap-3">
-                {visible.map((experience) => (
-                  <ExperienceListRow
-                    key={experience.id}
-                    experience={experience}
-                    saved={savedIds.has(experience.id)}
-                    saving={savingId === experience.id}
-                    onSave={() => handleSave(experience)}
-                  />
-                ))}
-              </ul>
+              <>
+                <DiscoveryListFilters
+                  query={query}
+                  onQueryChange={setQuery}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  availableMoods={availableMoods}
+                  availableActivities={availableActivities}
+                  availableSeasons={availableSeasons}
+                  availableCompanions={availableCompanions}
+                  resultCount={visible.length}
+                  kinds={kinds}
+                  selectedKind={kind}
+                  onKindChange={setKind}
+                  browsing={browsing}
+                />
+
+                {visible.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 px-4 py-10 text-center text-sm text-[#2b2015]/60">
+                    No experiences match your search.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {visible.map((experience) => (
+                      <ExperienceListRow
+                        key={experience.id}
+                        experience={experience}
+                        saved={savedIds.has(experience.id)}
+                        saving={savingId === experience.id}
+                        onSave={() => handleSave(experience)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
 
