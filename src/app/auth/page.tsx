@@ -7,24 +7,47 @@ import { Compass } from "lucide-react";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { safeNext } from "@/lib/auth/safeNext";
+import {
+  friendlyAuthError,
+  PASSWORD_RULE,
+  passwordProblem,
+} from "@/lib/auth/passwordPolicy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/auth/PasswordField";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 /**
  * Sign in, sign up, and go back to whatever you were doing.
  *
- * `?next=` is the whole reason this page is reachable at all now: Passport asks
- * for identity at exactly one moment — you tried to keep something — and the
- * only decent answer to that is to put you back where you were. It is
- * deliberately restricted to same-site paths, because a `next` a stranger can
- * set is an open redirect.
+ * `?next=` exists because Passport asks for identity at exactly one moment —
+ * you tried to keep something — and the only decent answer is to put you back
+ * where you were. It is restricted to same-site paths; a `next` a stranger can
+ * set is an open redirect at the most valuable possible moment.
+ *
+ * `?notice=` is how the flows that leave this page report back: a used-up
+ * recovery link, a cancelled Google consent screen, a password that was just
+ * changed. They are states a person can be in, not errors, and they read that
+ * way.
  */
+const NOTICES: Record<string, string> = {
+  "password-updated":
+    "Password updated. Sign in with your new one — you've been signed out everywhere else.",
+  "link-expired":
+    "That link has expired or was already used. Ask for a fresh one below.",
+  "link-incomplete": "That link was incomplete. Ask for a fresh one below.",
+};
+
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
+  const noticeKey = searchParams.get("notice");
+  const notice = noticeKey
+    ? (NOTICES[noticeKey] ?? decodeURIComponent(noticeKey))
+    : "";
 
-  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,32 +56,37 @@ function AuthForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    setLoading(true);
     setError("");
     setMessage("");
 
+    // Checked before the request so somebody is told their password is too
+    // short by the form that stated the rule, not by a server round trip.
+    if (mode === "signup") {
+      const problem = passwordProblem(password);
+      if (problem) return setError(problem);
+    }
+
+    setLoading(true);
     try {
       if (mode === "signup") {
         const { data, error } = await supabaseBrowser().auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
           },
         });
-
         if (error) throw error;
 
-        // Whether a confirmation email is required is a Supabase project
-        // setting, not something this page can know. So it reports whichever
-        // actually happened rather than always claiming the inbox step.
+        // Whether a confirmation email is required is a project setting this
+        // page cannot know, so it reports whichever actually happened rather
+        // than always claiming the inbox step.
         if (data.session) {
           router.replace(next);
           router.refresh();
         } else {
           setMessage(
-            "Check your email to verify your account, then come back and log in.",
+            "Check your email to confirm your account, then come back and sign in.",
           );
         }
       } else {
@@ -66,110 +94,147 @@ function AuthForm() {
           email,
           password,
         });
-
         if (error) throw error;
 
-        // `refresh()` and not `push()` alone: the session now lives in a cookie
-        // the *server* reads, and every Server Component rendered before this
-        // moment resolved an anonymous user. Without the refresh you would land
-        // on /discovery signed in and be shown a signed-out page.
+        // `refresh()` and not `replace()` alone: the session now lives in a
+        // cookie the *server* reads, and every Server Component rendered
+        // before this moment resolved an anonymous user.
         router.replace(next);
         router.refresh();
       }
     } catch (err: unknown) {
-      // Narrowed rather than asserted: a thrown value is not guaranteed to
-      // be an Error, and `err.message` on a string would have shown the
-      // user "undefined" instead of the fallback.
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(
+        friendlyAuthError(
+          err instanceof Error ? err.message : "Something went wrong.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      <div className="bg-background w-full max-w-md rounded-2xl border p-8 shadow-sm">
-        <div className="mb-8 text-center">
+    <main className="flex min-h-screen items-center justify-center px-5 py-12">
+      <div className="bg-background w-full max-w-md rounded-2xl border p-7 shadow-sm">
+        <div className="mb-7 text-center">
           <div className="text-primary mb-4 flex items-center justify-center gap-2">
-            <Compass className="h-5 w-5" />
+            <Compass className="h-5 w-5" aria-hidden />
             <span className="font-semibold">ELK Passport</span>
           </div>
-
           <h1 className="text-3xl font-bold">
             {mode === "signup" ? "Create your Passport" : "Welcome back"}
           </h1>
-
           <p className="text-muted-foreground mt-2 text-sm">
             {mode === "signup"
-              ? "Create an account to save your adventures."
-              : "Sign in to continue your adventure."}
+              ? "An account keeps what you save, on any device."
+              : "Sign in to pick up where you left off."}
           </p>
         </div>
 
-        <div className="mb-8 flex rounded-lg border p-1">
-          <button
-            className={`min-h-11 flex-1 rounded-md py-2 text-sm font-medium transition ${
-              mode === "login" ? "bg-primary text-primary-foreground" : ""
-            }`}
-            onClick={() => setMode("login")}
+        {notice && (
+          <p
+            className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-900"
+            role="status"
           >
-            Log In
-          </button>
+            {notice}
+          </p>
+        )}
 
-          <button
-            className={`min-h-11 flex-1 rounded-md py-2 text-sm font-medium transition ${
-              mode === "signup" ? "bg-primary text-primary-foreground" : ""
-            }`}
-            onClick={() => setMode("signup")}
-          >
-            Sign Up
-          </button>
+        <GoogleButton next={next} />
+
+        <div className="my-6 flex items-center gap-3">
+          <span className="h-px flex-1 bg-current opacity-10" />
+          <span className="text-muted-foreground text-xs">or</span>
+          <span className="h-px flex-1 bg-current opacity-10" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Sized here rather than in the shared Input: 44px is the minimum
-              comfortable touch target, and a font under 16px makes iOS Safari
-              zoom the whole page the moment the field is focused — which on a
-              sign-in form leaves somebody typing a password into a view they
-              have to pinch back out of. */}
+        <div
+          className="mb-6 flex rounded-lg border p-1"
+          role="tablist"
+          aria-label="Sign in or create an account"
+        >
+          {(["login", "signup"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={mode === m}
+              className={`min-h-11 flex-1 rounded-md py-2 text-sm font-medium transition ${
+                mode === m ? "bg-primary text-primary-foreground" : ""
+              }`}
+              onClick={() => {
+                setMode(m);
+                setError("");
+                setMessage("");
+              }}
+            >
+              {m === "login" ? "Log In" : "Sign Up"}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             type="email"
             placeholder="Email"
             autoComplete="email"
-            className="min-h-11 text-base"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="min-h-11 text-base"
           />
 
-          <Input
-            type="password"
-            placeholder="Password"
-            className="min-h-11 text-base"
+          <PasswordField
+            value={password}
+            onChange={setPassword}
             autoComplete={
               mode === "signup" ? "new-password" : "current-password"
             }
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            describedBy={mode === "signup" ? "password-rule" : undefined}
+            invalid={Boolean(error)}
           />
+
+          {mode === "signup" && (
+            <p id="password-rule" className="text-muted-foreground text-xs">
+              {PASSWORD_RULE}
+            </p>
+          )}
 
           <Button type="submit" className="min-h-11 w-full" disabled={loading}>
             {loading
-              ? "Please wait..."
+              ? "Please wait…"
               : mode === "signup"
-                ? "Create Account"
-                : "Log In"}
+                ? "Create account"
+                : "Log in"}
           </Button>
         </form>
 
+        {/* On the login tab only. Offering a reset beside "create an account"
+            is noise; offering it beside a failed sign-in is the whole point,
+            and the error message points here too. */}
+        {mode === "login" && (
+          <div className="mt-4 text-center">
+            <Link
+              href="/auth/forgot"
+              className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm underline"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+        )}
+
         {message && (
-          <p className="mt-5 text-center text-sm text-green-600">{message}</p>
+          <p className="mt-5 text-center text-sm text-green-700" role="status">
+            {message}
+          </p>
         )}
-
         {error && (
-          <p className="mt-5 text-center text-sm text-red-600">{error}</p>
+          <p className="mt-5 text-center text-sm text-red-600" role="alert">
+            {error}
+          </p>
         )}
 
-        <div className="mt-8 text-center">
+        <div className="mt-7 text-center">
           <Link
             href={next}
             className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
