@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "accept:isolation": "node --env-file=.env.local scripts/acceptance/two-user-isolation.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
