@@ -1,12 +1,19 @@
 import { type Board } from "./boards-repo";
-import { getBoardFor, listBoardItemsFor } from "./boards-server";
+import { listBoardItemsFor } from "./boards-server";
+import { accessToBoard, type BoardRole } from "@/lib/collaboration/boardAccess";
 import { currentUser } from "@/lib/auth/currentUser";
 import { listPlaces } from "./atlas-repo";
 import { placeToExperience } from "@/domain/experience/atlasMapper";
 import type { Experience } from "@/domain/experience/types";
 
 export type LoadBoardResult =
-  | { status: "ok"; board: Board; experiences: Experience[] }
+  | {
+      status: "ok";
+      board: Board;
+      experiences: Experience[];
+      /** What this person may do here. A shared board is not always editable. */
+      role: BoardRole;
+    }
   | { status: "signed-out" }
   | { status: "not-found" }
   | { status: "error" };
@@ -25,20 +32,24 @@ export async function loadBoardWithExperiences(
   const user = await currentUser();
   if (!user) return { status: "signed-out" };
 
-  let board: Board | null;
+  // Owned, shared with them, or neither. "Neither" is reported as not-found
+  // whether the board is somebody else's or does not exist, so changing an id
+  // in the URL tells the changer nothing.
+  let access;
   try {
-    board = await getBoardFor(id, user.id);
+    access = await accessToBoard(user, id);
   } catch {
     return { status: "error" };
   }
-  // Also the answer for a board that exists and belongs to someone else —
-  // `getBoardFor` only ever looks inside this owner's boards, so another
-  // person's id is indistinguishable from a typo. That is deliberate.
-  if (!board) return { status: "not-found" };
+  if (!access) return { status: "not-found" };
+
+  const board = access.board;
 
   try {
     const [items, places] = await Promise.all([
-      listBoardItemsFor(id, user.id),
+      // Read on the owner's behalf — Atlas answers only for an owner and knows
+      // nothing about sharing. Passport already decided this person may look.
+      listBoardItemsFor(id, access.ownerId),
       listPlaces(),
     ]);
     const experienceById = new Map(
@@ -47,7 +58,7 @@ export async function loadBoardWithExperiences(
     const experiences = items
       .map((item) => experienceById.get(item.experienceId))
       .filter((experience): experience is Experience => Boolean(experience));
-    return { status: "ok", board, experiences };
+    return { status: "ok", board, experiences, role: access.role };
   } catch {
     return { status: "error" };
   }

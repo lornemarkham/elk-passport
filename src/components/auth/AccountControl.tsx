@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, UserRound } from "lucide-react";
+import { Bookmark, LogOut, UserRound } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
@@ -42,7 +42,7 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
       <Link
         href={`/auth?next=${encodeURIComponent(next)}`}
         data-testid="sign-in-link"
-        className="inline-flex items-center gap-1.5 rounded-full border border-[#8a5a24]/25 px-3 py-1.5 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#8a5a24]/25 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
       >
         <UserRound className="h-4 w-4" aria-hidden />
         Sign in
@@ -59,19 +59,33 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
 
   return (
     <div
-      className="inline-flex items-center gap-2 text-sm"
+      className="inline-flex flex-wrap items-center justify-end gap-2 text-sm"
       data-testid="account-control"
     >
-      <span className="inline-flex items-center gap-1.5 font-medium text-[#3b2a17]">
+      {/* The two places a signed-in person actually needs to reach. Small, and
+          on every screen that shows this control, because a consumer app that
+          has no way back to your own stuff is not one. */}
+      <Link
+        href="/boards"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10"
+      >
+        <Bookmark className="h-4 w-4" aria-hidden />
+        Boards
+      </Link>
+      <Link
+        href="/account"
+        data-testid="account-link"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 font-medium text-[#3b2a17] transition-colors hover:bg-[#8a5a24]/10"
+      >
         <UserRound className="h-4 w-4 text-[#8a5a24]" aria-hidden />
         <span data-testid="account-name">{displayName}</span>
-      </span>
+      </Link>
       <button
         type="button"
         onClick={handleSignOut}
         disabled={signingOut}
         data-testid="sign-out-button"
-        className="inline-flex items-center gap-1 rounded-full border border-[#8a5a24]/25 px-2.5 py-1 text-xs text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10 disabled:opacity-50"
+        className="inline-flex min-h-11 items-center gap-1 rounded-full border border-[#8a5a24]/25 px-3 text-xs text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10 disabled:opacity-50"
       >
         <LogOut className="h-3.5 w-3.5" aria-hidden />
         {signingOut ? "Signing out…" : "Sign out"}

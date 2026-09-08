@@ -1,7 +1,41 @@
+/**
+ * Where Atlas is.
+ *
+ * One constant instead of the five hardcoded `http://localhost:3000` strings
+ * that were here, which were a laptop's address written into product code:
+ * nothing but this developer's machine could serve them, and moving Atlas to
+ * another port — as a live population run made necessary — meant editing five
+ * call sites. `boards-server` already read this variable; now everything does.
+ *
+ * Server-side only. The browser never names Atlas at all.
+ */
+const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
+
+/**
+ * How long Passport waits for Atlas.
+ *
+ * Node's default is 30 seconds to the first header, which was invisible until
+ * Atlas's corpus passed a thousand entities: `/discovery/candidates` reads the
+ * whole thing, and under a concurrent population run that read measured 56
+ * seconds. Passport then failed with an undici `HeadersTimeoutError` and no
+ * page at all — a Passport-side failure caused by a Passport-side assumption
+ * about somebody else's speed.
+ *
+ * Two minutes is not a fix for the read being slow; that is Atlas's to solve.
+ * It is the difference between waiting and lying about the result.
+ */
+const ATLAS_TIMEOUT_MS = 120_000;
+
+const atlasFetch = (path: string, init?: RequestInit): Promise<Response> =>
+  fetch(`${ATLAS_BASE_URL}${path}`, {
+    ...init,
+    signal: AbortSignal.timeout(ATLAS_TIMEOUT_MS),
+  });
+
 import type { DiscoveryCandidate, Place, PlaceDetail } from "./types";
 
 export async function listPlaces(): Promise<Place[]> {
-  const response = await fetch("http://localhost:3000/places");
+  const response = await atlasFetch("/places");
 
   if (!response.ok) {
     throw new Error("Failed to load places.");
@@ -11,7 +45,7 @@ export async function listPlaces(): Promise<Place[]> {
 }
 
 export async function getPlace(id: string): Promise<Place> {
-  const response = await fetch(`http://localhost:3000/places/${id}`);
+  const response = await atlasFetch(`/places/${id}`);
 
   if (!response.ok) {
     throw new Error("Failed to load place.");
@@ -31,7 +65,7 @@ export async function getPlace(id: string): Promise<Place> {
  * any other failure still throws, same as every other function here.
  */
 export async function getPlaceDetail(id: string): Promise<PlaceDetail | null> {
-  const response = await fetch(`http://localhost:3000/places/${id}/detail`);
+  const response = await atlasFetch(`/places/${id}/detail`);
 
   if (response.status === 404) {
     return null;
@@ -52,7 +86,7 @@ export async function getPlaceDetail(id: string): Promise<PlaceDetail | null> {
  * only what Discover consumes.
  */
 export async function listDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
-  const response = await fetch("http://localhost:3000/discovery/candidates");
+  const response = await atlasFetch("/discovery/candidates");
   if (!response.ok) {
     throw new Error(
       `Atlas discovery candidates request failed: ${response.status}`,
@@ -84,7 +118,7 @@ export async function listRegions(): Promise<AtlasRegion[]> {
   const token = process.env.ADMIN_TOKEN;
   if (!token) return [];
   try {
-    const response = await fetch("http://localhost:3000/admin/regions", {
+    const response = await atlasFetch("/admin/regions", {
       headers: { "x-admin-token": token },
       cache: "no-store",
     });

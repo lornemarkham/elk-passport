@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { loadBoardWithExperiences } from "@/lib/data/loadBoardWithExperiences";
+import { LiveBoard } from "@/components/boards/LiveBoard";
+import { ShareBoard } from "@/components/boards/ShareBoard";
 import type { Experience } from "@/domain/experience/types";
 
 type BoardPageProps = {
@@ -88,9 +90,24 @@ export default async function BoardPage({ params }: BoardPageProps) {
 
         {result.status === "ok" && (
           <>
-            <h1 className="mb-8 text-3xl font-bold tracking-tight">
+            {/* Subscribed while this board is open, so a change another member
+                makes arrives without a reload — and always as "go and re-read",
+                never as a diff applied on the client. */}
+            <LiveBoard boardId={result.board.id} />
+
+            <h1 className="mb-2 text-3xl font-bold tracking-tight">
               {result.board.name}
             </h1>
+            {result.role !== "owner" && (
+              <p className="text-muted-foreground mb-6 text-sm">
+                Shared with you
+                {result.role === "viewer" ? " to look at" : " to add to"}.
+              </p>
+            )}
+
+            <div className="mb-8">
+              <ShareBoard boardId={result.board.id} role={result.role} />
+            </div>
             {result.experiences.length === 0 ? (
               <StatePanel
                 icon={Compass}

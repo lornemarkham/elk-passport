@@ -448,7 +448,7 @@ export function DiscoveryListView({
           "radial-gradient(circle at 12% 8%, rgba(181,101,29,0.10), transparent 45%), radial-gradient(circle at 88% 92%, rgba(120,72,26,0.08), transparent 50%)",
       }}
     >
-      <div className="mx-auto max-w-6xl px-6 py-14">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-14">
         <header className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1" />
@@ -467,7 +467,7 @@ export function DiscoveryListView({
               {where}
             </p>
           )}
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-[#2b2015] sm:text-5xl">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight text-[#2b2015] sm:text-5xl">
             Discovery
           </h1>
           <p className="max-w-xl text-[#2b2015]/60">

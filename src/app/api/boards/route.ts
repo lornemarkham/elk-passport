@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
-import { createBoardFor, listBoardsFor } from "@/lib/data/boards-server";
+import { createBoardFor } from "@/lib/data/boards-server";
+import {
+  boardsVisibleTo,
+  ensureOwnerMembership,
+} from "@/lib/collaboration/boardAccess";
 
 /**
- * The signed-in person's boards.
+ * Every board this person can reach — the ones they made, and the ones shared
+ * with them — each carrying the role they hold on it.
  *
  * `ownerId` is never read from the request. It comes from the verified session
- * and nowhere else, so there is no shape of request a browser can send that
- * reaches another person's boards.
+ * and nowhere else, so there is no request a browser can send that reaches
+ * somebody else's boards.
  */
 export async function GET() {
   const auth = await requireUser();
   if ("response" in auth) return auth.response;
 
-  return NextResponse.json(await listBoardsFor(auth.user.id));
+  const access = await boardsVisibleTo(auth.user);
+
+  return NextResponse.json(
+    access.map(({ board, role }) => ({ ...board, role })),
+  );
 }
 
 export async function POST(request: Request) {
@@ -31,5 +40,10 @@ export async function POST(request: Request) {
   }
 
   const board = await createBoardFor(name, auth.user.id);
-  return NextResponse.json(board, { status: 201 });
+
+  // Recorded now so the board can be shared later. Atlas remains the authority
+  // on who owns it; this row only ever lets Passport add other people.
+  await ensureOwnerMembership(auth.user, board.id);
+
+  return NextResponse.json({ ...board, role: "owner" }, { status: 201 });
 }

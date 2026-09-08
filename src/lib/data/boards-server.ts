@@ -26,6 +26,24 @@ import type { Board, BoardItem } from "./boards-repo";
  */
 const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
 
+/**
+ * Same reasoning as `atlas-repo`: Node's 30-second default header timeout was
+ * an unexamined assumption about how fast Atlas is, and a corpus that grew past
+ * a thousand entities disproved it. Waiting is honest; failing at 30s is not.
+ *
+ * `no-store` on every call because board state is somebody's saved places, and
+ * a cached answer here is one person seeing another's — or their own, stale,
+ * moments after they changed it.
+ */
+const ATLAS_TIMEOUT_MS = 120_000;
+
+const atlasFetch = (url: string, init?: RequestInit): Promise<Response> =>
+  fetch(url, {
+    ...init,
+    cache: "no-store",
+    signal: AbortSignal.timeout(ATLAS_TIMEOUT_MS),
+  });
+
 function boardsUrl(path: string, ownerId: string): string {
   const url = new URL(`${ATLAS_BASE_URL}${path}`);
   url.searchParams.set("ownerId", ownerId);
@@ -48,9 +66,7 @@ async function expectOk(response: Response, what: string): Promise<void> {
 }
 
 export async function listBoardsFor(ownerId: string): Promise<Board[]> {
-  const response = await fetch(boardsUrl("/boards", ownerId), {
-    cache: "no-store",
-  });
+  const response = await atlasFetch(boardsUrl("/boards", ownerId));
   await expectOk(response, "list boards");
   return response.json();
 }
@@ -70,11 +86,10 @@ export async function createBoardFor(
   name: string,
   ownerId: string,
 ): Promise<Board> {
-  const response = await fetch(`${ATLAS_BASE_URL}/boards`, {
+  const response = await atlasFetch(`${ATLAS_BASE_URL}/boards`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, ownerId }),
-    cache: "no-store",
   });
   await expectOk(response, "create board");
   return response.json();
@@ -85,13 +100,12 @@ export async function renameBoardFor(
   name: string,
   ownerId: string,
 ): Promise<Board> {
-  const response = await fetch(
+  const response = await atlasFetch(
     boardsUrl(`/boards/${encodeURIComponent(boardId)}`, ownerId),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
-      cache: "no-store",
     },
   );
   await expectOk(response, "rename board");
@@ -102,9 +116,9 @@ export async function deleteBoardFor(
   boardId: string,
   ownerId: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await atlasFetch(
     boardsUrl(`/boards/${encodeURIComponent(boardId)}`, ownerId),
-    { method: "DELETE", cache: "no-store" },
+    { method: "DELETE" },
   );
   await expectOk(response, "delete board");
 }
@@ -113,9 +127,8 @@ export async function listBoardItemsFor(
   boardId: string,
   ownerId: string,
 ): Promise<BoardItem[]> {
-  const response = await fetch(
+  const response = await atlasFetch(
     boardsUrl(`/boards/${encodeURIComponent(boardId)}/items`, ownerId),
-    { cache: "no-store" },
   );
   await expectOk(response, "list board items");
   return response.json();
@@ -126,13 +139,12 @@ export async function addBoardItemFor(
   experienceId: string,
   ownerId: string,
 ): Promise<BoardItem> {
-  const response = await fetch(
+  const response = await atlasFetch(
     boardsUrl(`/boards/${encodeURIComponent(boardId)}/items`, ownerId),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ experienceId }),
-      cache: "no-store",
     },
   );
   await expectOk(response, "add board item");
@@ -144,12 +156,12 @@ export async function removeBoardItemFor(
   experienceId: string,
   ownerId: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await atlasFetch(
     boardsUrl(
       `/boards/${encodeURIComponent(boardId)}/items/${encodeURIComponent(experienceId)}`,
       ownerId,
     ),
-    { method: "DELETE", cache: "no-store" },
+    { method: "DELETE" },
   );
   await expectOk(response, "remove board item");
 }

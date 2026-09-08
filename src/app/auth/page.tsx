@@ -108,7 +108,7 @@ function AuthForm() {
 
         <div className="mb-8 flex rounded-lg border p-1">
           <button
-            className={`flex-1 rounded-md py-2 text-sm font-medium transition ${
+            className={`min-h-11 flex-1 rounded-md py-2 text-sm font-medium transition ${
               mode === "login" ? "bg-primary text-primary-foreground" : ""
             }`}
             onClick={() => setMode("login")}
@@ -117,7 +117,7 @@ function AuthForm() {
           </button>
 
           <button
-            className={`flex-1 rounded-md py-2 text-sm font-medium transition ${
+            className={`min-h-11 flex-1 rounded-md py-2 text-sm font-medium transition ${
               mode === "signup" ? "bg-primary text-primary-foreground" : ""
             }`}
             onClick={() => setMode("signup")}
@@ -127,10 +127,16 @@ function AuthForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Sized here rather than in the shared Input: 44px is the minimum
+              comfortable touch target, and a font under 16px makes iOS Safari
+              zoom the whole page the moment the field is focused — which on a
+              sign-in form leaves somebody typing a password into a view they
+              have to pinch back out of. */}
           <Input
             type="email"
             placeholder="Email"
             autoComplete="email"
+            className="min-h-11 text-base"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -138,6 +144,7 @@ function AuthForm() {
           <Input
             type="password"
             placeholder="Password"
+            className="min-h-11 text-base"
             autoComplete={
               mode === "signup" ? "new-password" : "current-password"
             }
@@ -145,7 +152,7 @@ function AuthForm() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="min-h-11 w-full" disabled={loading}>
             {loading
               ? "Please wait..."
               : mode === "signup"
@@ -165,7 +172,7 @@ function AuthForm() {
         <div className="mt-8 text-center">
           <Link
             href={next}
-            className="text-muted-foreground hover:text-foreground text-sm"
+            className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
           >
             ← Back to Passport
           </Link>
