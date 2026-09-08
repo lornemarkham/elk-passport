@@ -40,7 +40,9 @@ let checks = 0;
 
 const ok = (label, detail = "") => {
   checks++;
-  console.log(`  \x1b[32m✓\x1b[0m ${label}${detail ? `  \x1b[2m${detail}\x1b[0m` : ""}`);
+  console.log(
+    `  \x1b[32m✓\x1b[0m ${label}${detail ? `  \x1b[2m${detail}\x1b[0m` : ""}`,
+  );
 };
 const bad = (label, detail = "") => {
   checks++;
@@ -87,13 +89,16 @@ const atlas = async (path, init) => {
   const response = await fetch(`${ATLAS}${path}`, init);
   return {
     status: response.status,
-    body: response.status === 204 ? null : await response.json().catch(() => null),
+    body:
+      response.status === 204 ? null : await response.json().catch(() => null),
   };
 };
 
 async function main() {
   if (!SUPABASE_URL || !ANON_KEY) {
-    console.error("Missing Supabase URL/anon key — run with --env-file=.env.local");
+    console.error(
+      "Missing Supabase URL/anon key — run with --env-file=.env.local",
+    );
     process.exit(2);
   }
 
@@ -130,7 +135,8 @@ async function main() {
   }
   console.log("");
 
-  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const UUID =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const created = { boardId: null, token: null };
 
   // ---------------------------------------------------------------- identity
@@ -147,12 +153,18 @@ async function main() {
   {
     const { error } = await A.client
       .from("passport_profiles")
-      .upsert({ user_id: A.id, display_name: `${RUN} A` }, { onConflict: "user_id" });
+      .upsert(
+        { user_id: A.id, display_name: `${RUN} A` },
+        { onConflict: "user_id" },
+      );
     assert(!error, "A can write their own profile", error?.message ?? "");
 
     const forged = await B.client
       .from("passport_profiles")
-      .upsert({ user_id: A.id, display_name: "hijacked" }, { onConflict: "user_id" });
+      .upsert(
+        { user_id: A.id, display_name: "hijacked" },
+        { onConflict: "user_id" },
+      );
     assert(
       Boolean(forged.error),
       "B cannot write a profile row claiming to be A",
@@ -228,7 +240,11 @@ async function main() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: `${RUN} board`, ownerId: A.id }),
     });
-    assert(made.status === 201, "A's board is created in Atlas", `status=${made.status}`);
+    assert(
+      made.status === 201,
+      "A's board is created in Atlas",
+      `status=${made.status}`,
+    );
     created.boardId = made.body?.id ?? null;
     assert(
       made.body?.ownerId === A.id,
@@ -270,7 +286,11 @@ async function main() {
       },
       { onConflict: "board_id,user_id" },
     );
-    assert(!claim.error, "A is recorded as owner of their own board", claim.error?.message ?? "");
+    assert(
+      !claim.error,
+      "A is recorded as owner of their own board",
+      claim.error?.message ?? "",
+    );
 
     if (inspect) {
       const { data } = await inspect
@@ -329,7 +349,11 @@ async function main() {
     });
     const row = (described.data ?? [])[0];
     assert(row?.valid === true, "B can see the link is good before joining");
-    assert(row?.role === "viewer", "and that it offers exactly 'viewer'", row?.role ?? "");
+    assert(
+      row?.role === "viewer",
+      "and that it offers exactly 'viewer'",
+      row?.role ?? "",
+    );
 
     const redeemed = await B.client.rpc("passport_redeem_board_invite", {
       p_token: created.token,
@@ -426,7 +450,10 @@ async function main() {
         .select("user_id")
         .eq("board_id", created.boardId)
         .eq("user_id", B.id);
-      assert((data ?? []).length === 0, "the membership row is gone from storage");
+      assert(
+        (data ?? []).length === 0,
+        "the membership row is gone from storage",
+      );
     }
 
     const members = await B.client
@@ -472,7 +499,11 @@ async function main() {
     const dead = await B.client.rpc("passport_redeem_board_invite", {
       p_token: created.token,
     });
-    assert(dead.data === null, "a revoked link admits nobody", String(dead.data));
+    assert(
+      dead.data === null,
+      "a revoked link admits nobody",
+      String(dead.data),
+    );
   }
 
   // ----------------------------------------------------------------- cleanup
@@ -492,10 +523,16 @@ async function main() {
     // granted, and tidying a test run is an operator's job.
     if (inspect) {
       await tidy("events", () =>
-        inspect.from("passport_events").delete().eq("resource_id", created.boardId),
+        inspect
+          .from("passport_events")
+          .delete()
+          .eq("resource_id", created.boardId),
       );
       await tidy("invites", () =>
-        inspect.from("passport_board_invites").delete().eq("board_id", created.boardId),
+        inspect
+          .from("passport_board_invites")
+          .delete()
+          .eq("board_id", created.boardId),
       );
     } else {
       residue.push(
@@ -503,7 +540,10 @@ async function main() {
       );
     }
     await tidy("memberships", () =>
-      A.client.from("passport_board_members").delete().eq("board_id", created.boardId),
+      A.client
+        .from("passport_board_members")
+        .delete()
+        .eq("board_id", created.boardId),
     );
     await tidy("preference", () =>
       A.client
@@ -518,7 +558,8 @@ async function main() {
         `/boards/${created.boardId}?ownerId=${encodeURIComponent(A.id)}`,
         { method: "DELETE" },
       );
-      if (gone.status !== 204) residue.push(`atlas board: status ${gone.status}`);
+      if (gone.status !== 204)
+        residue.push(`atlas board: status ${gone.status}`);
     }
 
     if (residue.length === 0) {
