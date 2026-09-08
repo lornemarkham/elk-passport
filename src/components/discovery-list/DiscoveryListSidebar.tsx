@@ -16,6 +16,15 @@ interface DiscoveryListSidebarProps {
   boards: Board[];
   board: Board | null;
   boardsLoaded: boolean;
+  /**
+   * Whether there is anyone for a board to belong to.
+   *
+   * A visitor is not "a signed-in person who has not made a board yet", and
+   * telling them to "create one above" invites a click that 401s. They get an
+   * invitation instead — which is also the only place this page asks for
+   * anything.
+   */
+  signedIn?: boolean;
   savedItems: SavedListItem[];
   onSwitchBoard: (boardId: string) => void;
   onCreateBoard: (name: string) => void;
@@ -43,6 +52,7 @@ export function DiscoveryListSidebar({
   boards,
   board,
   boardsLoaded,
+  signedIn = true,
   savedItems,
   onSwitchBoard,
   onCreateBoard,
@@ -100,10 +110,20 @@ export function DiscoveryListSidebar({
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-        ) : (
+        ) : signedIn ? (
           <p className="font-heading mt-1 text-xl text-[#2b2015]/40">
             No board yet — create one above
           </p>
+        ) : (
+          <div className="mt-1">
+            <p className="font-heading text-xl text-[#2b2015]/60">
+              Keep what you find
+            </p>
+            <p className="mt-1 text-sm text-[#2b2015]/55">
+              Sign in and the places you save stay here, on any device. Browsing
+              needs no account.
+            </p>
+          </div>
         )}
 
         {board && (

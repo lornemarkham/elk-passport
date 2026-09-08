@@ -34,6 +34,15 @@ let items: {
   addedAt: string;
 }[] = [];
 
+// `DiscoveryListView` now renders the account control, which reads the router
+// to build its "come back here after signing in" link. These suites are about
+// the list, so the router is stubbed rather than mounted.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }),
+  usePathname: () => "/discovery",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/data/boards-repo", () => ({
   listBoards: async () => boards,
   getBoard: async () => boards[0],
@@ -86,7 +95,9 @@ beforeEach(() => {
 
 describe("a saved Place and its detail-page link", () => {
   it("links both Places while neither is saved", async () => {
-    render(<DiscoveryListView experiences={experiences} />);
+    render(
+      <DiscoveryListView experiences={experiences} displayName="Tester" />,
+    );
     await waitFor(() =>
       expect(
         screen.getByRole("link", { name: "Ellison Provincial Park" }),
@@ -106,7 +117,9 @@ describe("a saved Place and its detail-page link", () => {
         addedAt: "2026-08-11T13:31:43.515Z",
       },
     ];
-    render(<DiscoveryListView experiences={experiences} />);
+    render(
+      <DiscoveryListView experiences={experiences} displayName="Tester" />,
+    );
 
     // Its card is gone from the list…
     const sidebar = await screen.findByRole("complementary");
@@ -153,7 +166,9 @@ describe("a saved Place and its detail-page link", () => {
         addedAt: "2026-08-11T13:32:03.610Z",
       },
     ];
-    render(<DiscoveryListView experiences={experiences} />);
+    render(
+      <DiscoveryListView experiences={experiences} displayName="Tester" />,
+    );
     await waitFor(() =>
       expect(
         screen.getByRole("link", { name: "Big White Ski Resort" }),

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LayoutDashboard } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
  * The navigation foundation for admin capabilities, in the GitHub/Linear/
@@ -36,11 +36,13 @@ export function AdminNavEntry() {
       setIsAdmin(!!email && adminEmails.includes(email.toLowerCase()));
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      checkSession(data.session?.user.email);
-    });
+    supabaseBrowser()
+      .auth.getSession()
+      .then(({ data }) => {
+        checkSession(data.session?.user.email);
+      });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
+    const { data: subscription } = supabaseBrowser().auth.onAuthStateChange(
       (_event, session) => {
         checkSession(session?.user.email);
       },

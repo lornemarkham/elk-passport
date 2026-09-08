@@ -1,5 +1,5 @@
 import "server-only";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
  * How a Passport page is *composed* — and nothing else.
@@ -128,7 +128,7 @@ export async function loadComposition(
   entityId: string,
 ): Promise<PageComposition | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseBrowser()
       .from("page_compositions")
       .select("*")
       .eq("entity_id", entityId)
@@ -151,14 +151,16 @@ export async function loadComposition(
 export async function saveComposition(
   composition: PageComposition,
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.from("page_compositions").upsert({
-    entity_id: composition.entityId,
-    sections: composition.sections,
-    hero_image_url: composition.heroImageUrl ?? null,
-    status: composition.status,
-    published_at: composition.publishedAt ?? null,
-    updated_at: new Date().toISOString(),
-  });
+  const { error } = await supabaseBrowser()
+    .from("page_compositions")
+    .upsert({
+      entity_id: composition.entityId,
+      sections: composition.sections,
+      hero_image_url: composition.heroImageUrl ?? null,
+      status: composition.status,
+      published_at: composition.publishedAt ?? null,
+      updated_at: new Date().toISOString(),
+    });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 

@@ -1,5 +1,3 @@
-import { supabase } from "@/lib/supabase/client";
-
 export default async function AuthTestPage() {
   return (
     <main style={{ padding: 32 }}>

@@ -33,6 +33,15 @@ const saved = vi.fn(async (_boardId: string, experienceId: string) => ({
   addedAt: "2026-09-06T00:00:00.000Z",
 }));
 
+// `DiscoveryListView` now renders the account control, which reads the router
+// to build its "come back here after signing in" link. These suites are about
+// the list, so the router is stubbed rather than mounted.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }),
+  usePathname: () => "/discovery",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/data/boards-repo", () => ({
   listBoards: async () => [board],
   getBoard: async () => board,
@@ -82,7 +91,9 @@ beforeEach(() => {
 
 describe("the Discover list under a geographic scope", () => {
   it("shows everything when no scope is active", async () => {
-    render(<DiscoveryListView experiences={experiences} />);
+    render(
+      <DiscoveryListView experiences={experiences} displayName="Tester" />,
+    );
     await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
     for (const name of ["Stanley Park", "Coquihalla Summit", "Mt Moore"]) {
       expect(screen.getByText(name)).toBeTruthy();
@@ -92,6 +103,7 @@ describe("the Discover list under a geographic scope", () => {
   it("shows only the active region's entities, and never the unplaced ones", async () => {
     render(
       <DiscoveryListView
+        displayName="Tester"
         experiences={experiences}
         scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
       />,
@@ -105,6 +117,7 @@ describe("the Discover list under a geographic scope", () => {
   it("the other region shows its own, and not the Okanagan's", async () => {
     render(
       <DiscoveryListView
+        displayName="Tester"
         experiences={experiences}
         scope={{
           kind: "atlas-region",
@@ -131,6 +144,7 @@ describe("the Discover list under a geographic scope", () => {
     ];
     const { unmount } = render(
       <DiscoveryListView
+        displayName="Tester"
         experiences={experiences}
         scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
       />,
@@ -143,6 +157,7 @@ describe("the Discover list under a geographic scope", () => {
 
     render(
       <DiscoveryListView
+        displayName="Tester"
         experiences={experiences}
         scope={{
           kind: "atlas-region",
@@ -162,6 +177,7 @@ describe("the location indicator", () => {
   it("names the area a traveller is looking at", async () => {
     render(
       <DiscoveryListView
+        displayName="Tester"
         experiences={experiences}
         scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
       />,
@@ -174,7 +190,9 @@ describe("the location indicator", () => {
   });
 
   it("says nothing when there is no scope, rather than naming a region that is not applied", async () => {
-    render(<DiscoveryListView experiences={experiences} />);
+    render(
+      <DiscoveryListView experiences={experiences} displayName="Tester" />,
+    );
     await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
     expect(screen.queryByTestId("active-scope")).toBeNull();
   });

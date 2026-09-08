@@ -1,16 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Compass } from "lucide-react";
 
-import { supabase } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { safeNext } from "@/lib/auth/safeNext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function AuthPage() {
+/**
+ * Sign in, sign up, and go back to whatever you were doing.
+ *
+ * `?next=` is the whole reason this page is reachable at all now: Passport asks
+ * for identity at exactly one moment — you tried to keep something — and the
+ * only decent answer to that is to put you back where you were. It is
+ * deliberately restricted to same-site paths, because a `next` a stranger can
+ * set is an open redirect.
+ */
+function AuthForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
 
   const [mode, setMode] = useState<"login" | "signup">("signup");
   const [email, setEmail] = useState("");
@@ -28,28 +40,41 @@ export default function AuthPage() {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabaseBrowser().auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: "http://localhost:3100/auth",
+            emailRedirectTo: `${window.location.origin}/auth`,
           },
         });
 
         if (error) throw error;
 
-        setMessage(
-          "Check your email to verify your account before continuing.",
-        );
+        // Whether a confirmation email is required is a Supabase project
+        // setting, not something this page can know. So it reports whichever
+        // actually happened rather than always claiming the inbox step.
+        if (data.session) {
+          router.replace(next);
+          router.refresh();
+        } else {
+          setMessage(
+            "Check your email to verify your account, then come back and log in.",
+          );
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabaseBrowser().auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
 
-        router.push("/atlas-test");
+        // `refresh()` and not `push()` alone: the session now lives in a cookie
+        // the *server* reads, and every Server Component rendered before this
+        // moment resolved an anonymous user. Without the refresh you would land
+        // on /discovery signed in and be shown a signed-out page.
+        router.replace(next);
+        router.refresh();
       }
     } catch (err: unknown) {
       // Narrowed rather than asserted: a thrown value is not guaranteed to
@@ -139,7 +164,7 @@ export default function AuthPage() {
 
         <div className="mt-8 text-center">
           <Link
-            href="/"
+            href={next}
             className="text-muted-foreground hover:text-foreground text-sm"
           >
             ← Back to Passport
@@ -147,5 +172,15 @@ export default function AuthPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AuthPage() {
+  // `useSearchParams` suspends during prerender; without a boundary the whole
+  // route opts out of static rendering with a build-time error.
+  return (
+    <Suspense>
+      <AuthForm />
+    </Suspense>
   );
 }

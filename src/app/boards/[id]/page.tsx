@@ -64,6 +64,14 @@ export default async function BoardPage({ params }: BoardPageProps) {
           Back to Boards
         </Link>
 
+        {result.status === "signed-out" && (
+          <StatePanel
+            icon={Compass}
+            title="Sign in to open this board"
+            description="Boards belong to an account, so Passport needs to know who you are before it can open one."
+          />
+        )}
+
         {result.status === "error" && (
           <StatePanel
             title="Couldn't load this board"

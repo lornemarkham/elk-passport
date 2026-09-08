@@ -6,6 +6,7 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   createBoard,
+  isSignedOut,
   listBoardItems,
   listBoards,
   removeExperienceFromBoard,
@@ -59,7 +60,12 @@ export function SaveButton({ placeId }: { placeId: string }) {
         setSaved(items.some((item) => item.experienceId === placeId));
         setState("idle");
       } catch (error) {
-        console.error("Failed to load board state for Save button:", error);
+        // A visitor with no session has no boards — expected, not a failure,
+        // and not worth an error in their console. The button stays live and
+        // offers a sign-in when pressed.
+        if (!isSignedOut(error)) {
+          console.error("Failed to load board state for Save button:", error);
+        }
         setState("idle");
       }
     })();
@@ -88,8 +94,24 @@ export function SaveButton({ placeId }: { placeId: string }) {
         toast.success("Saved to your board.");
       }
     } catch (error) {
-      console.error(`Failed to toggle save for place ${placeId}:`, error);
-      toast.error("Couldn't update your board. Please try again.");
+      if (isSignedOut(error)) {
+        // The page stays exactly where it is. Passport asked once, at the only
+        // moment it had a reason to, and takes them back here afterwards.
+        toast("Sign in to keep this", {
+          description: "Your saved places wait for you on any device.",
+          action: {
+            label: "Sign in",
+            onClick: () => {
+              window.location.href = `/auth?next=${encodeURIComponent(
+                window.location.pathname,
+              )}`;
+            },
+          },
+        });
+      } else {
+        console.error(`Failed to toggle save for place ${placeId}:`, error);
+        toast.error("Couldn't update your board. Please try again.");
+      }
     } finally {
       setState("idle");
     }

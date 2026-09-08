@@ -7,7 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { listBoards, type Board } from "@/lib/data/boards-repo";
+import { type Board } from "@/lib/data/boards-repo";
+import { listBoardsFor } from "@/lib/data/boards-server";
+import { currentUser } from "@/lib/auth/currentUser";
 
 export const metadata: Metadata = {
   title: "Your Boards — Passport",
@@ -31,6 +33,25 @@ function EmptyState() {
       <p className="text-muted-foreground max-w-sm text-sm">
         Boards you create will show up here.
       </p>
+    </div>
+  );
+}
+
+function SignedOutState() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-20 text-center">
+      <Compass className="text-muted-foreground h-8 w-8" />
+      <p className="text-lg font-medium">Boards keep what you find</p>
+      <p className="text-muted-foreground max-w-sm text-sm">
+        Sign in and the places you save stay here — on any device, whenever you
+        come back. Browsing needs no account.
+      </p>
+      <Link
+        href="/auth?next=/boards"
+        className="bg-primary text-primary-foreground mt-2 rounded-full px-4 py-2 text-sm font-medium"
+      >
+        Sign in
+      </Link>
     </div>
   );
 }
@@ -69,12 +90,18 @@ function BoardGrid({ boards }: { boards: Board[] }) {
 }
 
 export default async function BoardsPage() {
-  let boards: Board[] | null = null;
+  // A visitor has no boards — that is a fact about them, not a failed request,
+  // so it renders the sign-in invitation rather than the Atlas error state.
+  const user = await currentUser();
 
-  try {
-    boards = await listBoards();
-  } catch {
-    boards = null;
+  let boards: Board[] | null = [];
+
+  if (user) {
+    try {
+      boards = await listBoardsFor(user.id);
+    } catch {
+      boards = null;
+    }
   }
 
   return (
@@ -82,7 +109,9 @@ export default async function BoardsPage() {
       <div className="mx-auto max-w-5xl px-6 py-16">
         <h1 className="mb-8 text-3xl font-bold tracking-tight">Your Boards</h1>
 
-        {boards === null ? (
+        {!user ? (
+          <SignedOutState />
+        ) : boards === null ? (
           <ErrorState />
         ) : boards.length === 0 ? (
           <EmptyState />

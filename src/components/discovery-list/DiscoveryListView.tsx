@@ -23,6 +23,7 @@ import {
 import {
   createBoard,
   deleteBoard,
+  isSignedOut,
   listBoardItems,
   listBoards,
   removeExperienceFromBoard,
@@ -31,6 +32,7 @@ import {
   type Board,
   type BoardItem,
 } from "@/lib/data/boards-repo";
+import { AccountControl } from "@/components/auth/AccountControl";
 import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { DiscoveryListFilters } from "./DiscoveryListFilters";
 import {
@@ -59,6 +61,15 @@ interface DiscoveryListViewProps {
    * without touching this file.
    */
   scope?: GeographicScope;
+  /**
+   * The signed-in person's name, or `null` for a visitor.
+   *
+   * Resolved on the server and passed down, so the view never has to guess and
+   * never flickers from anonymous to named. It decides one thing only: whether
+   * saving writes to a board or offers a sign-in. Everything else on this page
+   * — the feed, the scope, search, kinds, Inspiration — is identical either way.
+   */
+  displayName?: string | null;
 }
 
 /**
@@ -73,7 +84,9 @@ interface DiscoveryListViewProps {
 export function DiscoveryListView({
   experiences,
   scope,
+  displayName = null,
 }: DiscoveryListViewProps) {
+  const signedIn = displayName !== null;
   const [kind, setKind] = useState<ExperienceKind | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
@@ -107,6 +120,15 @@ export function DiscoveryListView({
   // Atlas is still the one source of truth, this is just a second
   // renderer of the same board data, not a second copy of it.
   useEffect(() => {
+    // A visitor has no boards to load. Calling anyway would 401 on every page
+    // view and toast an error at somebody who has done nothing wrong.
+    if (!signedIn) {
+      // The next person to sign in on this browser must not inherit the last
+      // one's active board.
+      clearStoredActiveBoardId();
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -132,8 +154,29 @@ export function DiscoveryListView({
     return () => {
       cancelled = true;
     };
-    // Deliberately run-once, same reasoning as DiscoverySpace's mount effect.
-  }, []);
+    // Re-runs when the person changes — signing in mid-session has to load
+    // their boards, and signing out has to stop showing the previous one's.
+  }, [signedIn]);
+
+  /**
+   * What the page actually shows.
+   *
+   * Signing out has to clear what is on screen, not merely stop fetching — the
+   * previous person's board name and saved places sitting in the sidebar is the
+   * exact failure this mission exists to prevent. Derived rather than cleared
+   * in an effect: an effect that copies one piece of state into another renders
+   * the stale value first and corrects it a frame later, which for *whose data
+   * this is* is not an acceptable frame.
+   */
+  const visibleBoards = signedIn ? boards : [];
+  const visibleBoard = signedIn ? board : null;
+  // Memoised because two `useMemo`s below depend on it; a fresh `[]` every
+  // render would defeat both.
+  const visibleBoardItems = useMemo(
+    () => (signedIn ? boardItems : []),
+    [signedIn, boardItems],
+  );
+  const boardsReady = signedIn ? boardsLoaded : true;
 
   const availableMoods = useMemo(
     () => uniqueSorted(experiences.flatMap((e) => e.moods)),
@@ -153,8 +196,8 @@ export function DiscoveryListView({
   );
 
   const savedIds = useMemo(
-    () => new Set(boardItems.map((item) => item.experienceId)),
-    [boardItems],
+    () => new Set(visibleBoardItems.map((item) => item.experienceId)),
+    [visibleBoardItems],
   );
 
   // The list represents what's still available to discover — once an
@@ -207,14 +250,14 @@ export function DiscoveryListView({
   // has no experience detail on it, and the full list is already here.
   const savedItems: SavedListItem[] = useMemo(() => {
     const experienceById = new Map(experiences.map((e) => [e.id, e]));
-    return boardItems
+    return visibleBoardItems
       .slice()
       .sort((a, b) => b.addedAt.localeCompare(a.addedAt))
       .flatMap((item) => {
         const experience = experienceById.get(item.experienceId);
         return experience ? [{ experience, addedAt: item.addedAt }] : [];
       });
-  }, [boardItems, experiences]);
+  }, [visibleBoardItems, experiences]);
 
   // Shared by both create and switch: point `board` at a different board,
   // persist that choice, and replace local board-item state with a fresh
@@ -238,6 +281,13 @@ export function DiscoveryListView({
   }
 
   async function handleCreateBoard(name: string) {
+    // Same invitation as saving. A board is durable user state too, so it needs
+    // somebody to belong to before it can exist.
+    if (!signedIn) {
+      inviteSignIn("A board keeps what you find");
+      return;
+    }
+
     try {
       const created = await createBoard(name);
       setBoards((prev) => [...prev, created]);
@@ -330,9 +380,39 @@ export function DiscoveryListView({
     }
   }
 
+  /**
+   * The only thing on this page that asks for anything.
+   *
+   * Deliberately a toast with an action and not a redirect: the traveller is
+   * mid-browse, and throwing them at a sign-in form loses the thing they were
+   * looking at. `next` brings them back to it.
+   */
+  function inviteSignIn(title: string, description?: string) {
+    toast(title, {
+      description,
+      action: {
+        label: "Sign in",
+        onClick: () => {
+          window.location.href = `/auth?next=${encodeURIComponent("/discovery")}`;
+        },
+      },
+    });
+  }
+
   // Atlas-first, same pattern as DiscoverySpace's performSave: local
   // "saved" state only flips once Atlas confirms the write.
   async function handleSave(experience: Experience) {
+    // The one moment Passport asks for anything. Not a wall and not an
+    // apology — the traveller found something they liked, and this says what
+    // signing in would buy them.
+    if (!signedIn) {
+      inviteSignIn(
+        "Sign in to keep this",
+        `${experience.title} will be waiting on your board.`,
+      );
+      return;
+    }
+
     if (!board) {
       toast.error("Your boards haven't loaded yet. Please try again shortly.");
       return;
@@ -348,7 +428,13 @@ export function DiscoveryListView({
         `Failed to save "${experience.id}" to board ${board.id}:`,
         error,
       );
-      toast.error("Couldn't save that experience. Please try again.");
+      // A session that expired mid-visit is not a broken save, and telling
+      // someone to "try again" when the fix is "sign in" wastes their time.
+      toast.error(
+        isSignedOut(error)
+          ? "Your session ended. Sign in again to keep this."
+          : "Couldn't save that experience. Please try again.",
+      );
     } finally {
       setSavingId(null);
     }
@@ -364,6 +450,10 @@ export function DiscoveryListView({
     >
       <div className="mx-auto max-w-6xl px-6 py-14">
         <header className="space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1" />
+            <AccountControl displayName={displayName} returnTo="/discovery" />
+          </div>
           {/* Where these results come from. Not a control yet — there is one
               scope and nothing to switch to — but a traveller should never have
               to guess which area they are looking at, and it is the difference
@@ -444,9 +534,10 @@ export function DiscoveryListView({
           </div>
 
           <DiscoveryListSidebar
-            boards={boards}
-            board={board}
-            boardsLoaded={boardsLoaded}
+            boards={visibleBoards}
+            board={visibleBoard}
+            boardsLoaded={boardsReady}
+            signedIn={signedIn}
             savedItems={savedItems}
             onSwitchBoard={handleSwitchBoard}
             onCreateBoard={handleCreateBoard}
@@ -458,7 +549,7 @@ export function DiscoveryListView({
       </div>
 
       <DeleteBoardDialog
-        boardName={confirmingDeleteBoard ? (board?.name ?? null) : null}
+        boardName={confirmingDeleteBoard ? (visibleBoard?.name ?? null) : null}
         isDeleting={isDeletingBoard}
         onOpenChange={(open) => !open && setConfirmingDeleteBoard(false)}
         onConfirm={handleConfirmDeleteBoard}
