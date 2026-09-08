@@ -24,17 +24,25 @@ vi.mock("next/navigation", () => ({
 
 const listBoards = vi.fn(async () => []);
 const listBoardItems = vi.fn(async () => []);
-const saveExperienceToBoard = vi.fn(async () => {
-  throw new Error("a signed-out visitor must never reach a board write");
-});
+const saveExperienceToBoard = vi.fn(async () => ({
+  id: "item-1",
+  boardId: "board-new",
+  experienceId: "ellison",
+  addedAt: "2026-09-07T00:00:00.000Z",
+}));
+const createBoard = vi.fn(async (name: string) => ({
+  id: "board-new",
+  ownerId: "ana",
+  name,
+  createdAt: "2026-09-07T00:00:00.000Z",
+  updatedAt: "2026-09-07T00:00:00.000Z",
+}));
 
 vi.mock("@/lib/data/boards-repo", () => ({
   listBoards: () => listBoards(),
   getBoard: async () => null,
   listBoardItems: () => listBoardItems(),
-  createBoard: async () => {
-    throw new Error("no board creation while signed out");
-  },
+  createBoard: (name: string) => createBoard(name),
   saveExperienceToBoard: () => saveExperienceToBoard(),
   removeExperienceFromBoard: async () => {},
   renameBoard: async () => {},
@@ -75,6 +83,7 @@ beforeEach(() => {
   listBoards.mockClear();
   listBoardItems.mockClear();
   saveExperienceToBoard.mockClear();
+  createBoard.mockClear();
   toastFn.mockClear();
 });
 
@@ -138,5 +147,21 @@ describe("Discovery for someone signed in", () => {
     await waitFor(() => expect(listBoards).toHaveBeenCalled());
     expect(screen.getByTestId("account-name").textContent).toBe("Ana");
     expect(screen.queryByTestId("sign-in-link")).toBeNull();
+  });
+});
+
+describe("the first save a brand-new account makes", () => {
+  it("creates a board instead of sending them away to make one", async () => {
+    // Somebody who signed up ninety seconds ago has no board. The previous
+    // version told them their boards had not loaded — wrong, and unfixable by
+    // waiting, so the very first thing they tried to keep was a dead end.
+    createBoard.mockClear();
+    render(<DiscoveryListView experiences={experiences} displayName="Ana" />);
+
+    await waitFor(() => expect(listBoards).toHaveBeenCalled());
+    fireEvent.click(screen.getAllByRole("button", { name: /save/i })[0]!);
+
+    await waitFor(() => expect(createBoard).toHaveBeenCalledWith("My Places"));
+    await waitFor(() => expect(saveExperienceToBoard).toHaveBeenCalled());
   });
 });

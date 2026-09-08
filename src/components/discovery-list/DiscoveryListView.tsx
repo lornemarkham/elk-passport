@@ -413,21 +413,34 @@ export function DiscoveryListView({
       return;
     }
 
-    if (!board) {
+    // Still fetching. The only case where "try again shortly" is true.
+    if (!boardsReady) {
       toast.error("Your boards haven't loaded yet. Please try again shortly.");
       return;
     }
+
     if (savingId) return;
     setSavingId(experience.id);
     try {
-      const item = await saveExperienceToBoard(board.id, experience.id);
+      // A person who just signed up has no board, and telling them to go and
+      // make one before they may keep the thing they are looking at is a
+      // dead end dressed as an instruction — the previous version said their
+      // boards had not loaded, which was both wrong and unfixable by waiting.
+      // `SaveButton` on a detail page already creates a first board on first
+      // save; this is the same behaviour, not a new one.
+      let target = board;
+      if (!target) {
+        target = await createBoard("My Places");
+        setBoards((prev) => [...prev, target!]);
+        setBoard(target);
+        setStoredActiveBoardId(target.id);
+      }
+
+      const item = await saveExperienceToBoard(target.id, experience.id);
       setBoardItems((prev) => [...prev, item]);
-      toast.success(`Saved to ${board.name}.`);
+      toast.success(`Saved to ${target.name}.`);
     } catch (error) {
-      console.error(
-        `Failed to save "${experience.id}" to board ${board.id}:`,
-        error,
-      );
+      console.error(`Failed to save "${experience.id}":`, error);
       // A session that expired mid-visit is not a broken save, and telling
       // someone to "try again" when the fix is "sign in" wastes their time.
       toast.error(
