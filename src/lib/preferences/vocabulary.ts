@@ -43,6 +43,22 @@
  * the point. Passport gives before it asks.
  */
 
+/**
+ * The provenance of a stored preference.
+ *
+ * One value, and a named constant rather than a scattered string literal so the
+ * reader and the writer cannot drift apart. `passport_preferences.source` is
+ * CHECK-constrained to exactly this, which is what makes it impossible to
+ * deposit a learned signal beside a stated one.
+ *
+ * When learned signals do arrive they get their own store and their own weight.
+ * Whatever shape that takes, **an observation may inform what Passport shows
+ * first and may never override a boundary somebody set** — and the code that
+ * reads stated preferences asks for this value by name, so it stays correct
+ * either way.
+ */
+export const EXPLICIT = "explicit" as const;
+
 export type PreferenceValue = string | number | boolean | readonly string[];
 
 interface PreferenceDefinition<T extends PreferenceValue> {

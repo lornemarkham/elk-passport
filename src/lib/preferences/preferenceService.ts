@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PassportUser } from "@/lib/auth/currentUser";
+import { EXPLICIT } from "./vocabulary";
 import {
   defaultPreferences,
   preferencesFromRows,
@@ -23,7 +24,22 @@ export async function preferencesFor(user: PassportUser): Promise<Preferences> {
   const { data, error } = await supabase
     .from("passport_preferences")
     .select("key, value")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    // Explicitly `explicit`, even though a CHECK constraint currently makes
+    // every row here explicit anyway.
+    //
+    // The constraint is the thing most likely to be relaxed the day learned
+    // signals arrive — that is what it is for. On that day a read without this
+    // filter silently starts mixing observations into the set of things the
+    // person actually *said*, and `preferencesFromRows` keeps whichever row
+    // happens to arrive last. A boundary somebody set would quietly lose to a
+    // pattern a model noticed, which is the single failure this whole
+    // separation exists to prevent, and it would fail without an error.
+    //
+    // Matching the write (which already stamps 'explicit') costs one line and
+    // stays correct whether learned signals eventually live in this table or
+    // in their own.
+    .eq("source", EXPLICIT);
 
   // Defaults are a complete, working answer, so a read failure degrades to
   // "they have chosen nothing yet" rather than breaking every page that asks.
@@ -56,7 +72,7 @@ export async function savePreferences(
     user_id: string;
     key: string;
     value: unknown;
-    source: string;
+    source: typeof EXPLICIT;
     updated_at: string;
   }[] = [];
 
@@ -72,7 +88,7 @@ export async function savePreferences(
       user_id: user.id,
       key: valid.storageKey,
       value: valid.value,
-      source: "explicit",
+      source: EXPLICIT,
       updated_at: now,
     });
   }

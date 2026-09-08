@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  EXPLICIT,
   defaultPreferences,
   preferencesFromRows,
   PREFERENCES,
@@ -100,5 +101,29 @@ describe("the vocabulary itself", () => {
       expect(definition.label.length).toBeGreaterThan(0);
       expect(definition.help.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("the explicit/learned boundary", () => {
+  it("names its provenance once, so the reader and writer cannot drift", () => {
+    // The service filters reads on this and stamps writes with it. Two string
+    // literals would be one refactor away from a read that quietly picks up
+    // rows nobody stated.
+    expect(EXPLICIT).toBe("explicit");
+  });
+
+  it("has no provenance protection of its own — that is the read's job", () => {
+    // Worth pinning honestly rather than asserting something comforting.
+    // `preferencesFromRows` takes the last valid row for a key and knows
+    // nothing about where a row came from. So the protection lives entirely in
+    // the query that feeds it, which filters on source — see the service test.
+    // If that filter is ever dropped, this is the behaviour that silently
+    // lets an observation answer "what did they say?".
+    const stated = { key: "content_comfort", value: "family-friendly" };
+    const observed = { key: "content_comfort", value: "no restrictions" };
+
+    expect(preferencesFromRows([stated, observed]).contentComfort).toBe(
+      "no restrictions",
+    );
   });
 });
