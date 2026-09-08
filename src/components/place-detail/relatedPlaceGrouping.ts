@@ -55,6 +55,30 @@ export interface GroupedRelatedPlaces {
  * else (a `contains` edge, or a `near` edge to an unmapped place type)
  * lands in `general` unchanged, the same "never force a category it wasn't
  * confidently mapped to" rule this has always followed.
+ *
+ * ## One card per destination, not one card per edge
+ *
+ * A card is somewhere a traveller can go, so the same place must not appear
+ * twice however many edges lead to it. Two things in the live graph made it:
+ *
+ * **Reciprocal edges.** `near` is symmetric and Atlas stores 29 pairs in both
+ * directions — `Kalamalka Lake Park → Trail Parking` *and* `Trail Parking →
+ * Kalamalka Lake Park`. Walking edges produced two identical cards, and React
+ * reported two children with the key `aeaaebd3-…`. Kalamalka Lake Park alone
+ * rendered 34 cards for 28 destinations.
+ *
+ * **Self-edges.** Five relationships in the corpus point an entity at itself
+ * (four `near`, one `possible-duplicate-of`), so a place appeared in its own
+ * "Keep Exploring" as somewhere else to go. Those are an Atlas data defect and
+ * are reported as one; skipping them here is not a workaround for that, it is
+ * this function refusing to call a place its own destination — which it would
+ * have to refuse even if the graph were clean.
+ *
+ * The first edge to a destination decides its caption. Every duplicate
+ * measured is the same type in both directions, so the captions were already
+ * identical and nothing is lost by keeping the first. Deduplication is by
+ * destination, not by (destination, type), because a second card that says
+ * something slightly different about the same place is still a second card.
  */
 export function groupRelatedPlaces(
   currentPlace: Place,
@@ -71,12 +95,16 @@ export function groupRelatedPlaces(
     after: [],
   };
   const general: DestinationCardData[] = [];
+  const placed = new Set<string>();
 
   for (const r of relationships) {
     const currentIsSource = r.sourceEntityId === currentPlace.id;
     const otherId = currentIsSource ? r.targetEntityId : r.sourceEntityId;
+    if (otherId === currentPlace.id) continue; // a place is not its own destination
+    if (placed.has(otherId)) continue; // already has a card, from an earlier edge
     const other = detailsById.get(otherId);
     if (!other) continue; // stale reference, or the related fetch failed — skip, don't break the section
+    placed.add(otherId);
 
     const card: DestinationCardData = {
       place: other,

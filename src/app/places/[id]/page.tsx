@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPlace, getPlaceDetail } from "@/lib/data/atlas-repo";
+import { getPlaceDetail, listPlaces } from "@/lib/data/atlas-repo";
 import type { Place } from "@/lib/data/types";
 import { PlaceHero } from "@/components/place-detail/PlaceHero";
 import { PlaceFireBanNotice } from "@/components/place-detail/PlaceFireBanNotice";
@@ -56,22 +56,34 @@ export default async function PlacePage({ params }: PlacePageProps) {
 
   const { place, relationships, sources, relatedPlaces } = detail;
 
-  const relatedPlaceDetails = (
-    await Promise.all(
-      relatedPlaces.map(async (rp) => {
-        try {
-          return await getPlace(rp.id);
-        } catch (error) {
-          // A related place failing to load is not this page's problem to
-          // surface — "Keep Exploring" just shows one fewer card, the
-          // same defensive-skip discipline it already applies to a stale
-          // relationship reference.
-          console.error(`Failed to load related place ${rp.id}:`, error);
-          return null;
-        }
-      }),
-    )
-  ).filter((p): p is Place => p !== null);
+  // One request for every related place, not one request each.
+  //
+  // This used to be `Promise.all(relatedPlaces.map(rp => getPlace(rp.id)))`,
+  // which looked like a harmless fan-out and was quadratic: Atlas answers
+  // `GET /places/:id` by reading the *whole* corpus and then picking one
+  // record out of it, so a well-connected place asked Atlas to read 2,500
+  // entities thirty-odd times over. Measured against the live corpus,
+  // Kalamalka Lake Park has 29 related places, and 32 concurrent reads took
+  // Postgres past its statement timeout: 26 of 32 came back `500 canceling
+  // statement due to statement timeout`, each after 30–79 seconds. The
+  // per-place `catch` below meant the page still rendered — silently missing
+  // most of "Keep Exploring", after a minute of waiting.
+  //
+  // `listPlaces()` is one corpus read (1.0–1.7s measured) that returns every
+  // Place, so indexing it by id answers all of them at once. Identical
+  // semantics: `relatedPlaces` is already Place-only and both routes read the
+  // same `listEntities()`, which excludes archived records.
+  //
+  // A related place absent from the index is still skipped rather than
+  // fatal — the same defensive discipline as before, now for the one case
+  // that genuinely means something (a stale reference), not for load Passport
+  // was creating itself.
+  const placesById = new Map(
+    (await listPlaces()).map((p) => [p.id, p] as const),
+  );
+  const relatedPlaceDetails = relatedPlaces
+    .map((rp) => placesById.get(rp.id))
+    .filter((p): p is Place => p !== undefined);
 
   const sectionProps = {
     place,

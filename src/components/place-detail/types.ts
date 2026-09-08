@@ -25,11 +25,15 @@ export interface PlaceSectionProps {
    * `/places/:id/detail` route) doesn't carry. Rather than changing that
    * Atlas route — out of scope for this phase, and it would mean every
    * consumer of `/detail` pays for full related-entity payloads whether
-   * they need them or not — `page.tsx` resolves each related place's full
-   * record with the *existing*, already-public `getPlace(id)` (built in
-   * Phase 7.0, unused until now) and passes the result down here. No
-   * Atlas change, no new backend field — just using more of what Atlas
-   * already exposes.
+   * they need them or not — `page.tsx` resolves them from the *existing*,
+   * already-public place index and passes the result down here. No Atlas
+   * change, no new backend field — just using more of what Atlas already
+   * exposes.
+   *
+   * It resolves them with a single `listPlaces()` indexed by id, not with
+   * one `getPlace(id)` per related place. That fan-out was quadratic and
+   * failed in production; `page.tsx` carries the measurements and the
+   * reasoning.
    */
   readonly relatedPlaceDetails: readonly Place[];
 }
