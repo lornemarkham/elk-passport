@@ -113,6 +113,31 @@ export interface PlaceRelatedEntity {
   subtype?: string;
 }
 
+/**
+ * **An Organization that Atlas asserts operates this Place.**
+ *
+ * ADR 019 says an Organization is never a Place, and Big White Ski Resort is
+ * the cost of that being right: two entities, and the one a traveller opens
+ * holds nothing while the other holds 47 key facts and a street address.
+ * `operates` is the edge that makes them one destination without making them
+ * one record.
+ *
+ * Passport composes a page from these. It never merges them, never writes back,
+ * and never reaches an Organization by name — a shared name is a coincidence,
+ * an asserted edge is evidence, and Predator Ridge has three same-named
+ * Organizations to prove the difference matters.
+ */
+export interface PlaceOperator {
+  id: string;
+  name: string;
+  organizationType: string;
+  address?: string;
+  hours?: string;
+  keyFacts: PlaceKeyFact[];
+  /** Activities the *operator* offers, resolved by Atlas along its own edges. */
+  offers: PlaceRelatedEntity[];
+}
+
 /** The Place Detail page's one real request — `GET /places/:id/detail`.
  * See that route's own comment in `atlas/src/api/server.ts` for why this
  * is a purpose-built composite, not a change to the canonical `Place`
@@ -124,6 +149,8 @@ export interface PlaceDetail {
   relatedPlaces: PlaceRelatedPlace[];
   /** Optional so a response from an Atlas that predates the field still parses. */
   relatedEntities?: PlaceRelatedEntity[];
+  /** Same reason. An Atlas without the venue seam simply sends none. */
+  operatedBy?: PlaceOperator[];
 }
 
 /**

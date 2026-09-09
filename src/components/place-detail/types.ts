@@ -1,5 +1,6 @@
 import type {
   Place,
+  PlaceOperator,
   PlaceRelatedEntity,
   PlaceRelatedPlace,
   PlaceRelationship,
@@ -26,6 +27,12 @@ export interface PlaceSectionProps {
    * needs it renders nothing rather than failing.
    */
   readonly relatedEntities?: readonly PlaceRelatedEntity[];
+  /**
+   * Organizations Atlas asserts operate this Place. Sections compose from
+   * these and attribute what they show; nothing is presented as though the
+   * Place itself stated it.
+   */
+  readonly operatedBy?: readonly PlaceOperator[];
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which

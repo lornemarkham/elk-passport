@@ -16,9 +16,16 @@ import type { PlaceSectionProps } from "./types";
  * underneath still always shows; the mood line is additive, never a
  * placeholder for missing feeling.
  */
-export function PlaceHero({ place }: PlaceSectionProps) {
+export function PlaceHero({ place, operatedBy }: PlaceSectionProps) {
+  // A street address beats a decimal coordinate for a reader, and Big White's
+  // Place holds none while the Organization that operates it holds
+  // "5315 Big White Road". Only ever a fallback: the Place's own address wins,
+  // and coordinates remain the last resort rather than the second one.
+  const operatorAddress = operatedBy?.find((o) => o.address?.trim())?.address;
+
   const locationSummary =
     place.address ??
+    operatorAddress ??
     (place.geometry?.type === "Point"
       ? `${place.geometry.coordinates[1].toFixed(3)}, ${place.geometry.coordinates[0].toFixed(3)}`
       : undefined);

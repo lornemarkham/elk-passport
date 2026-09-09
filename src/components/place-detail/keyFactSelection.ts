@@ -1,4 +1,4 @@
-import type { Place, PlaceKeyFact } from "@/lib/data/types";
+import type { Place, PlaceKeyFact, PlaceOperator } from "@/lib/data/types";
 
 /**
  * **Which key facts are worth their own line, and how they group.**
@@ -54,7 +54,20 @@ export interface KeyFactGroup {
   /** Atlas's own category, or `undefined` for the ungrouped ones. */
   readonly category?: string;
   readonly facts: readonly PlaceKeyFact[];
+  /**
+   * The Organization that supplied these, when they came from an operator
+   * rather than from the Place itself.
+   *
+   * Kept so the page can say so. Knowledge composed across an `operates` edge
+   * must never look as though it was stored on the Place — the two are separate
+   * entities in Atlas and stay separate on screen.
+   */
+  readonly operator?: { readonly id: string; readonly name: string };
 }
+
+/** Same label and same sentence is the same fact, however it is punctuated. */
+const factKey = (fact: PlaceKeyFact): string =>
+  `${fact.label.trim().toLowerCase()}|${fact.value.trim().toLowerCase().replace(/\s+/g, " ")}`;
 
 /**
  * Group by Atlas's `category` where a source supplied one, preserving the order
@@ -65,26 +78,69 @@ export interface KeyFactGroup {
  * category Passport invented. A real category — "Locals' favourite launch
  * spots" — is a publisher's own editorial grouping and is worth keeping.
  */
-export function groupKeyFacts(place: Place): KeyFactGroup[] {
-  const usable = (place.keyFacts ?? []).filter(
-    (fact) => isSubstantive(fact) && !isDuplicate(fact, place),
-  );
+function groupsFor(
+  facts: readonly PlaceKeyFact[],
+  operator?: { id: string; name: string },
+): KeyFactGroup[] {
+  if (facts.length === 0) return [];
 
-  if (usable.length === 0) return [];
-
-  const ungrouped = usable.filter((fact) => !fact.category?.trim());
+  const ungrouped = facts.filter((fact) => !fact.category?.trim());
   const groups: KeyFactGroup[] =
-    ungrouped.length > 0 ? [{ facts: ungrouped }] : [];
+    ungrouped.length > 0 ? [{ facts: ungrouped, operator }] : [];
 
-  const seen = new Map<string, PlaceKeyFact[]>();
-  for (const fact of usable) {
+  const byCategory = new Map<string, PlaceKeyFact[]>();
+  for (const fact of facts) {
     const category = fact.category?.trim();
     if (!category) continue;
-    if (!seen.has(category)) seen.set(category, []);
-    seen.get(category)!.push(fact);
+    if (!byCategory.has(category)) byCategory.set(category, []);
+    byCategory.get(category)!.push(fact);
   }
 
-  for (const [category, facts] of seen) groups.push({ category, facts });
+  for (const [category, grouped] of byCategory) {
+    groups.push({ category, facts: grouped, operator });
+  }
+
+  return groups;
+}
+
+/**
+ * The Place's own facts, then each proven operator's, attributed.
+ *
+ * Order is the point: a traveller reads what this place says about itself
+ * first, and an operator's facts follow under its own name, so nothing
+ * composed across an `operates` edge is mistaken for something the Place
+ * stated.
+ *
+ * Deduplication runs across the whole page rather than within each source.
+ * Big White's operator repeats "Telephone" five times in its own record, and a
+ * fact the Place already states is not worth repeating under the operator's
+ * name either.
+ */
+export function groupKeyFacts(
+  place: Place,
+  operators: readonly PlaceOperator[] = [],
+): KeyFactGroup[] {
+  const seen = new Set<string>();
+
+  const admit = (facts: readonly PlaceKeyFact[]): PlaceKeyFact[] =>
+    facts.filter((fact) => {
+      if (!isSubstantive(fact) || isDuplicate(fact, place)) return false;
+      const key = factKey(fact);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  const groups = groupsFor(admit(place.keyFacts ?? []));
+
+  for (const operator of operators) {
+    groups.push(
+      ...groupsFor(admit(operator.keyFacts), {
+        id: operator.id,
+        name: operator.name,
+      }),
+    );
+  }
 
   return groups;
 }

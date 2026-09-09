@@ -1,4 +1,8 @@
-import type { PlaceRelatedEntity, PlaceRelationship } from "@/lib/data/types";
+import type {
+  PlaceOperator,
+  PlaceRelatedEntity,
+  PlaceRelationship,
+} from "@/lib/data/types";
 
 /**
  * **The Activities a place asserts it offers.**
@@ -21,6 +25,45 @@ export interface OfferedActivity {
   readonly id: string;
   readonly name: string;
   readonly subtype?: string;
+  /** The operator that offers it, when it did not come from the Place itself. */
+  readonly operator?: { readonly id: string; readonly name: string };
+}
+
+/**
+ * Everything on offer here — the Place's own edges first, then each proven
+ * operator's, attributed and deduplicated by Activity.
+ *
+ * Big White's Place asserts no offers at all; its operator asserts five. One
+ * `operates` edge is the difference between a page that says nothing about
+ * skiing and one that does, without either record changing.
+ */
+export function composedActivities(
+  placeId: string,
+  relationships: readonly PlaceRelationship[],
+  relatedEntities: readonly PlaceRelatedEntity[] = [],
+  operators: readonly PlaceOperator[] = [],
+): OfferedActivity[] {
+  const own = offeredActivities(placeId, relationships, relatedEntities);
+  const seen = new Set(own.map((activity) => activity.id));
+  const result = [...own];
+
+  for (const operator of operators) {
+    for (const activity of operator.offers) {
+      if (activity.kind !== "Activity") continue;
+      // The Place already says it; saying it again under the operator's name
+      // would read as two different claims about the same thing.
+      if (seen.has(activity.id)) continue;
+      seen.add(activity.id);
+      result.push({
+        id: activity.id,
+        name: activity.name,
+        subtype: activity.subtype,
+        operator: { id: operator.id, name: operator.name },
+      });
+    }
+  }
+
+  return result;
 }
 
 export function offeredActivities(

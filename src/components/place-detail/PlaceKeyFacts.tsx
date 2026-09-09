@@ -1,4 +1,4 @@
-import type { Place } from "@/lib/data/types";
+import type { Place, PlaceOperator } from "@/lib/data/types";
 import { SectionShell } from "./SectionShell";
 import { groupKeyFacts } from "./keyFactSelection";
 
@@ -13,15 +13,32 @@ import { groupKeyFacts } from "./keyFactSelection";
  * Renders nothing when Atlas holds nothing usable, rather than an empty
  * heading.
  */
-export function PlaceKeyFacts({ place }: { place: Place }) {
-  const groups = groupKeyFacts(place);
+export function PlaceKeyFacts({
+  place,
+  operatedBy,
+}: {
+  place: Place;
+  operatedBy?: readonly PlaceOperator[];
+}) {
+  const groups = groupKeyFacts(place, operatedBy ?? []);
   if (groups.length === 0) return null;
 
   return (
     <SectionShell title="Good to know">
       <div className="flex flex-col gap-6" data-testid="place-key-facts">
         {groups.map((group, index) => (
-          <div key={group.category ?? `ungrouped-${index}`}>
+          <div
+            key={`${group.operator?.id ?? "place"}-${group.category ?? `ungrouped-${index}`}`}
+          >
+            {/* Said plainly. These facts belong to the operator, not to the
+                Place, and Atlas keeps them on separate entities — the page
+                should not blur what the graph is careful about. */}
+            {group.operator && (
+              <p className="text-muted-foreground mb-2 text-xs">
+                From <span className="font-medium">{group.operator.name}</span>,
+                which operates this place
+              </p>
+            )}
             {group.category && (
               <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
                 {group.category}

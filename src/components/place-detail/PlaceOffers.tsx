@@ -1,6 +1,10 @@
-import type { PlaceRelatedEntity, PlaceRelationship } from "@/lib/data/types";
+import type {
+  PlaceOperator,
+  PlaceRelatedEntity,
+  PlaceRelationship,
+} from "@/lib/data/types";
 import { SectionShell } from "./SectionShell";
-import { offeredActivities } from "./offeredActivities";
+import { composedActivities } from "./offeredActivities";
 
 /**
  * **What you can do here, according to Atlas's own `offers` edges.**
@@ -18,13 +22,30 @@ export function PlaceOffers({
   placeId,
   relationships,
   relatedEntities,
+  operatedBy,
 }: {
   placeId: string;
   relationships: PlaceRelationship[];
   relatedEntities?: PlaceRelatedEntity[];
+  operatedBy?: readonly PlaceOperator[];
 }) {
-  const activities = offeredActivities(placeId, relationships, relatedEntities);
+  const activities = composedActivities(
+    placeId,
+    relationships,
+    relatedEntities,
+    operatedBy ?? [],
+  );
   if (activities.length === 0) return null;
+
+  // Named once under the list rather than on every chip: a row of identical
+  // "via X" badges is noise, and staying silent about it would be worse.
+  const operators = [
+    ...new Map(
+      activities
+        .filter((activity) => activity.operator)
+        .map((activity) => [activity.operator!.id, activity.operator!]),
+    ).values(),
+  ];
 
   return (
     <SectionShell title="What you can do here">
@@ -38,6 +59,13 @@ export function PlaceOffers({
           </li>
         ))}
       </ul>
+      {operators.length > 0 && (
+        <p className="text-muted-foreground mt-3 text-xs">
+          Some of these are offered by{" "}
+          {operators.map((o) => o.name).join(" and ")}, which operates this
+          place.
+        </p>
+      )}
     </SectionShell>
   );
 }

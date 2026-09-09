@@ -106,11 +106,12 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
   // because "what can I do here" outranks "does it have toilets".
   {
     key: "offers",
-    Component: ({ place, relationships, relatedEntities }) => (
+    Component: ({ place, relationships, relatedEntities, operatedBy }) => (
       <PlaceOffers
         placeId={place.id}
         relationships={[...relationships]}
         relatedEntities={relatedEntities ? [...relatedEntities] : undefined}
+        operatedBy={operatedBy}
       />
     ),
   },
@@ -121,7 +122,12 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
   { key: "accessibility", Component: PlaceAccessibility },
   { key: "hours", Component: PlaceHours },
   { key: "fees", Component: PlaceFees },
-  { key: "key-facts", Component: PlaceKeyFacts },
+  {
+    key: "key-facts",
+    Component: ({ place, operatedBy }) => (
+      <PlaceKeyFacts place={place} operatedBy={operatedBy} />
+    ),
+  },
   { key: "keep-exploring", Component: PlaceKeepExploring },
   { key: "map", Component: PlaceMap },
   { key: "sources", Component: PlaceSources },

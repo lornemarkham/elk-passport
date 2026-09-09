@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { PlaceRelatedEntity, PlaceRelationship } from "@/lib/data/types";
-import { offeredActivities } from "./offeredActivities";
+import type {
+  PlaceOperator,
+  PlaceRelatedEntity,
+  PlaceRelationship,
+} from "@/lib/data/types";
+import { composedActivities, offeredActivities } from "./offeredActivities";
 
 /**
  * **An `offers` edge names something you can do here — if the other end resolves.**
@@ -94,5 +98,58 @@ describe("what a place offers", () => {
 
   it("renders nothing when an older Atlas sends no related entities", () => {
     expect(offeredActivities(PLACE, [edge("offers", PLACE, "a1")])).toEqual([]);
+  });
+});
+
+describe("composing offers across a proven operates edge", () => {
+  const operator = (offers: PlaceRelatedEntity[]): PlaceOperator => ({
+    id: "org-1",
+    name: "Big White Ski Resort",
+    organizationType: "resort",
+    keyFacts: [],
+    offers,
+  });
+
+  it("surfaces what the operator offers when the Place offers nothing", () => {
+    // Big White exactly: the Place asserts no offers, the operator asserts five.
+    const result = composedActivities(
+      PLACE,
+      [],
+      [],
+      [operator([entity("a1", "Activity", "Skiing")])],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("Skiing");
+    expect(result[0].operator?.name).toBe("Big White Ski Resort");
+  });
+
+  it("keeps the Place's own offers unattributed and first", () => {
+    const result = composedActivities(
+      PLACE,
+      [edge("offers", PLACE, "a1")],
+      [entity("a1", "Activity", "Hiking")],
+      [operator([entity("a2", "Activity", "Skiing")])],
+    );
+
+    expect(result.map((a) => a.name)).toEqual(["Hiking", "Skiing"]);
+    expect(result[0].operator).toBeUndefined();
+    expect(result[1].operator?.id).toBe("org-1");
+  });
+
+  it("does not list an activity twice when both assert it", () => {
+    const result = composedActivities(
+      PLACE,
+      [edge("offers", PLACE, "a1")],
+      [entity("a1", "Activity", "Hiking")],
+      [operator([entity("a1", "Activity", "Hiking")])],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].operator).toBeUndefined();
+  });
+
+  it("composes nothing without an operator", () => {
+    expect(composedActivities(PLACE, [], [], [])).toEqual([]);
   });
 });

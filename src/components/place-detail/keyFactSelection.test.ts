@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Place, PlaceKeyFact } from "@/lib/data/types";
+import type { Place, PlaceKeyFact, PlaceOperator } from "@/lib/data/types";
 import { groupKeyFacts } from "./keyFactSelection";
 
 /**
@@ -84,5 +84,68 @@ describe("choosing which key facts to show", () => {
   it("shows nothing at all when Atlas holds nothing", () => {
     expect(groupKeyFacts(place())).toHaveLength(0);
     expect(groupKeyFacts(place({ keyFacts: [] }))).toHaveLength(0);
+  });
+});
+
+describe("composing across a proven operates edge", () => {
+  const operator = (over: Partial<PlaceOperator> = {}): PlaceOperator => ({
+    id: "org-1",
+    name: "Big White Ski Resort",
+    organizationType: "resort",
+    keyFacts: [],
+    offers: [],
+    ...over,
+  });
+
+  it("shows the operator's facts under the operator's name", () => {
+    const groups = groupKeyFacts(place(), [
+      operator({ keyFacts: [fact("Smoking Policy", "No smoking anywhere.")] }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].operator?.name).toBe("Big White Ski Resort");
+    expect(groups[0].facts[0].value).toBe("No smoking anywhere.");
+  });
+
+  it("puts the Place's own facts first, unattributed", () => {
+    const groups = groupKeyFacts(
+      place({ keyFacts: [fact("Elevation", "2319m")] }),
+      [operator({ keyFacts: [fact("Telephone", "250-491-6111")] })],
+    );
+
+    expect(groups[0].operator).toBeUndefined();
+    expect(groups[0].facts[0].label).toBe("Elevation");
+    expect(groups[1].operator?.id).toBe("org-1");
+  });
+
+  it("does not repeat a fact the Place already states", () => {
+    const groups = groupKeyFacts(
+      place({ keyFacts: [fact("Elevation", "2319m")] }),
+      [operator({ keyFacts: [fact("Elevation", " 2319M ")] })],
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].operator).toBeUndefined();
+  });
+
+  it("does not repeat a fact the operator states twice", () => {
+    // Big White's own record carries "Telephone" five times.
+    const groups = groupKeyFacts(place(), [
+      operator({
+        keyFacts: [
+          fact("Telephone", "250-491-6111"),
+          fact("Telephone", "250-491-6111"),
+        ],
+      }),
+    ]);
+
+    expect(groups[0].facts).toHaveLength(1);
+  });
+
+  it("composes nothing when there is no operator", () => {
+    // A same-named Organization with no `operates` edge never reaches here —
+    // Atlas does not put it in `operatedBy`, and this is the other half of
+    // that: given none, compose none.
+    expect(groupKeyFacts(place(), [])).toHaveLength(0);
   });
 });
