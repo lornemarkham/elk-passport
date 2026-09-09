@@ -16,6 +16,27 @@ export interface PlaceExternalId {
   id: string;
 }
 
+/**
+ * Something a publisher stated about a place, in its own words.
+ *
+ * Atlas holds these on 1,202 entities and Passport rendered none of them —
+ * `keyFacts` was simply absent from this type, so the field arrived in every
+ * `/places/:id/detail` response and was discarded at the boundary. Kalamalka
+ * Lake carries seventeen; Lake Country Bike Park eleven, including its phone
+ * number and its rules.
+ *
+ * `label` and `value` are the publisher's. **Passport does not rewrite them**,
+ * because the moment it does, the page is asserting something no source said.
+ * `category` is Atlas's own grouping where a source offered one, and
+ * `sourceRecordId` is which document said it.
+ */
+export interface PlaceKeyFact {
+  label: string;
+  value: string;
+  category?: string;
+  sourceRecordId?: string;
+}
+
 export interface Place {
   kind: "Place";
   id: string;
@@ -36,6 +57,7 @@ export interface Place {
   hours?: string;
   wheelchairAccessible?: "yes" | "no" | "limited";
   feeRequired?: boolean;
+  keyFacts?: PlaceKeyFact[];
 }
 
 /** Matches `atlas/src/domain/relationships/Relationship.ts` — a generic
@@ -74,6 +96,23 @@ export interface PlaceRelatedPlace {
   placeType: string;
 }
 
+/**
+ * The other end of a relationship, whatever kind of thing it turned out to be.
+ *
+ * `relatedPlaces` answers "which of these edges point at a Place", which left
+ * every other edge as an id with nothing on the end of it. Kalamalka Lake
+ * asserts seven `offers` edges to Activities and Ellison Park eight, and a
+ * traveller page could either drop them or print a uuid.
+ *
+ * Additive: `relatedPlaces` is unchanged and still Place-only.
+ */
+export interface PlaceRelatedEntity {
+  id: string;
+  kind: "Place" | "Organization" | "Activity" | "Event";
+  name: string;
+  subtype?: string;
+}
+
 /** The Place Detail page's one real request — `GET /places/:id/detail`.
  * See that route's own comment in `atlas/src/api/server.ts` for why this
  * is a purpose-built composite, not a change to the canonical `Place`
@@ -83,6 +122,8 @@ export interface PlaceDetail {
   relationships: PlaceRelationship[];
   sources: PlaceSource[];
   relatedPlaces: PlaceRelatedPlace[];
+  /** Optional so a response from an Atlas that predates the field still parses. */
+  relatedEntities?: PlaceRelatedEntity[];
 }
 
 /**

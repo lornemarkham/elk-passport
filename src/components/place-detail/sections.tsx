@@ -14,6 +14,8 @@ import { PlaceFees } from "./PlaceFees";
 import { PlaceKeepExploring } from "./PlaceKeepExploring";
 import { PlaceMap } from "./PlaceMap";
 import { PlaceSources } from "./PlaceSources";
+import { PlaceKeyFacts } from "./PlaceKeyFacts";
+import { PlaceOffers } from "./PlaceOffers";
 import type { PlaceSectionDef } from "./types";
 
 /**
@@ -99,10 +101,27 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
   // kept — not deleted — because it is the honest, generic presentation of
   // that field and is the natural thing to restore if "Don't leave
   // without..." is ever driven by real highlight-level evidence instead.
+  // Atlas's own `offers` edges: things it asserts you can do here, each one a
+  // separate entity rather than a word on this record. Above the typed fields
+  // because "what can I do here" outranks "does it have toilets".
+  {
+    key: "offers",
+    Component: ({ place, relationships, relatedEntities }) => (
+      <PlaceOffers
+        placeId={place.id}
+        relationships={[...relationships]}
+        relatedEntities={relatedEntities ? [...relatedEntities] : undefined}
+      />
+    ),
+  },
+  // What the publishers actually said. Placed after the typed fields so the
+  // page leads with the things it can render as structure, and so a fact that
+  // duplicates one of them has already been suppressed.
   { key: "facilities", Component: PlaceFacilities },
   { key: "accessibility", Component: PlaceAccessibility },
   { key: "hours", Component: PlaceHours },
   { key: "fees", Component: PlaceFees },
+  { key: "key-facts", Component: PlaceKeyFacts },
   { key: "keep-exploring", Component: PlaceKeepExploring },
   { key: "map", Component: PlaceMap },
   { key: "sources", Component: PlaceSources },

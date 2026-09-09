@@ -54,7 +54,8 @@ export default async function PlacePage({ params }: PlacePageProps) {
     notFound();
   }
 
-  const { place, relationships, sources, relatedPlaces } = detail;
+  const { place, relationships, sources, relatedPlaces, relatedEntities } =
+    detail;
 
   // One request for every related place, not one request each.
   //
@@ -90,6 +91,9 @@ export default async function PlacePage({ params }: PlacePageProps) {
     relationships,
     sources,
     relatedPlaces,
+    // Carried straight through. Resolving an `offers` edge needs the entity on
+    // the other end, and only Atlas knows what kind of thing it is.
+    relatedEntities,
     relatedPlaceDetails,
   };
 

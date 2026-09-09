@@ -1,5 +1,6 @@
 import type {
   Place,
+  PlaceRelatedEntity,
   PlaceRelatedPlace,
   PlaceRelationship,
   PlaceSource,
@@ -18,6 +19,13 @@ export interface PlaceSectionProps {
   readonly relationships: readonly PlaceRelationship[];
   readonly sources: readonly PlaceSource[];
   readonly relatedPlaces: readonly PlaceRelatedPlace[];
+  /**
+   * Every related entity, whatever its kind — so an `offers` edge to an
+   * Activity resolves to a name instead of being dropped. Optional because an
+   * Atlas predating the field simply returns nothing here, and a section that
+   * needs it renders nothing rather than failing.
+   */
+  readonly relatedEntities?: readonly PlaceRelatedEntity[];
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which
