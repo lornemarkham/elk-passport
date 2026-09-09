@@ -14,7 +14,12 @@ const edge = (
   type: string,
   sourceEntityId: string,
   targetEntityId: string,
-): PlaceRelationship => ({ id: `${type}-${targetEntityId}`, type, sourceEntityId, targetEntityId });
+): PlaceRelationship => ({
+  id: `${type}-${targetEntityId}`,
+  type,
+  sourceEntityId,
+  targetEntityId,
+});
 
 const entity = (
   id: string,
@@ -27,7 +32,10 @@ describe("what a place offers", () => {
     const result = offeredActivities(
       PLACE,
       [edge("offers", PLACE, "a1"), edge("offers", PLACE, "a2")],
-      [entity("a1", "Activity", "Swimming"), entity("a2", "Activity", "Fishing")],
+      [
+        entity("a1", "Activity", "Swimming"),
+        entity("a2", "Activity", "Fishing"),
+      ],
     );
     expect(result.map((a) => a.name)).toEqual(["Swimming", "Fishing"]);
   });
@@ -36,7 +44,10 @@ describe("what a place offers", () => {
     const result = offeredActivities(
       PLACE,
       [edge("near", PLACE, "a1"), edge("contains", PLACE, "a2")],
-      [entity("a1", "Activity", "Swimming"), entity("a2", "Activity", "Fishing")],
+      [
+        entity("a1", "Activity", "Swimming"),
+        entity("a2", "Activity", "Fishing"),
+      ],
     );
     expect(result).toEqual([]);
   });
@@ -52,7 +63,11 @@ describe("what a place offers", () => {
   });
 
   it("skips an entity Atlas did not return rather than rendering an id", () => {
-    const result = offeredActivities(PLACE, [edge("offers", PLACE, "gone")], []);
+    const result = offeredActivities(
+      PLACE,
+      [edge("offers", PLACE, "gone")],
+      [],
+    );
     expect(result).toEqual([]);
   });
 
@@ -68,7 +83,10 @@ describe("what a place offers", () => {
   it("shows one card per activity, however many edges assert it", () => {
     const result = offeredActivities(
       PLACE,
-      [edge("offers", PLACE, "a1"), { ...edge("offers", PLACE, "a1"), id: "dup" }],
+      [
+        edge("offers", PLACE, "a1"),
+        { ...edge("offers", PLACE, "a1"), id: "dup" },
+      ],
       [entity("a1", "Activity", "Swimming")],
     );
     expect(result).toHaveLength(1);

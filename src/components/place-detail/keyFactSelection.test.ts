@@ -19,7 +19,11 @@ const place = (over: Partial<Place> = {}): Place => ({
   ...over,
 });
 
-const fact = (label: string, value: string, category?: string): PlaceKeyFact => ({
+const fact = (
+  label: string,
+  value: string,
+  category?: string,
+): PlaceKeyFact => ({
   label,
   value,
   category,

@@ -18,8 +18,14 @@ import type { Place, PlaceKeyFact } from "@/lib/data/types";
  */
 
 /** Labels the page renders elsewhere, matched loosely on the publisher's word. */
-const ALREADY_SHOWN: readonly { pattern: RegExp; shownWhen: (place: Place) => boolean }[] = [
-  { pattern: /^(hours?|opening hours|operating hours)$/i, shownWhen: (p) => Boolean(p.hours) },
+const ALREADY_SHOWN: readonly {
+  pattern: RegExp;
+  shownWhen: (place: Place) => boolean;
+}[] = [
+  {
+    pattern: /^(hours?|opening hours|operating hours)$/i,
+    shownWhen: (p) => Boolean(p.hours),
+  },
   {
     pattern: /^(fees?|admission|cost|price|pricing)$/i,
     shownWhen: (p) => p.feeRequired !== undefined,
@@ -67,7 +73,8 @@ export function groupKeyFacts(place: Place): KeyFactGroup[] {
   if (usable.length === 0) return [];
 
   const ungrouped = usable.filter((fact) => !fact.category?.trim());
-  const groups: KeyFactGroup[] = ungrouped.length > 0 ? [{ facts: ungrouped }] : [];
+  const groups: KeyFactGroup[] =
+    ungrouped.length > 0 ? [{ facts: ungrouped }] : [];
 
   const seen = new Map<string, PlaceKeyFact[]>();
   for (const fact of usable) {
