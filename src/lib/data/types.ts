@@ -138,6 +138,30 @@ export interface PlaceOperator {
   offers: PlaceRelatedEntity[];
 }
 
+/**
+ * **An Event Atlas asserts happens at this Place — or at its operator.**
+ *
+ * Atlas held 174 Events and Passport rendered none: the ones pointing straight
+ * at a Place arrived as a name with no date, and the ones pointing at the
+ * venue's operator (Davison Orchards' harvest festival hangs off the
+ * Organization, as the publisher states it) never arrived at all. `via` names
+ * the operator when the event was reached across an `operates` edge Atlas
+ * asserted — never by a shared name.
+ *
+ * Times are ISO strings from the publisher's stated dates. Whether a festival
+ * that ended last month belongs on the page is Passport's decision, made in
+ * `PlaceEvents`; that it happened here is Atlas's fact.
+ */
+export interface PlaceEvent {
+  id: string;
+  name: string;
+  eventType?: string;
+  startTime?: string;
+  endTime?: string;
+  description: string;
+  via?: { id: string; name: string };
+}
+
 /** The Place Detail page's one real request — `GET /places/:id/detail`.
  * See that route's own comment in `atlas/src/api/server.ts` for why this
  * is a purpose-built composite, not a change to the canonical `Place`
@@ -151,6 +175,8 @@ export interface PlaceDetail {
   relatedEntities?: PlaceRelatedEntity[];
   /** Same reason. An Atlas without the venue seam simply sends none. */
   operatedBy?: PlaceOperator[];
+  /** Same reason again. */
+  events?: PlaceEvent[];
 }
 
 /**

@@ -1,5 +1,6 @@
 import type {
   Place,
+  PlaceEvent,
   PlaceOperator,
   PlaceRelatedEntity,
   PlaceRelatedPlace,
@@ -33,6 +34,8 @@ export interface PlaceSectionProps {
    * Place itself stated it.
    */
   readonly operatedBy?: readonly PlaceOperator[];
+  /** What Atlas asserts happens here, or at the operator. See `PlaceEvent`. */
+  readonly events?: readonly PlaceEvent[];
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which

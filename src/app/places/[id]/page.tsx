@@ -61,6 +61,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     relatedPlaces,
     relatedEntities,
     operatedBy,
+    events,
   } = detail;
 
   // One request for every related place, not one request each.
@@ -101,6 +102,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     // the other end, and only Atlas knows what kind of thing it is.
     relatedEntities,
     operatedBy,
+    events,
     relatedPlaceDetails,
   };
 

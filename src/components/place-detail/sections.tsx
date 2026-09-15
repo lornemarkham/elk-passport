@@ -16,6 +16,7 @@ import { PlaceMap } from "./PlaceMap";
 import { PlaceSources } from "./PlaceSources";
 import { PlaceKeyFacts } from "./PlaceKeyFacts";
 import { PlaceOffers } from "./PlaceOffers";
+import { PlaceEvents } from "./PlaceEvents";
 import type { PlaceSectionDef } from "./types";
 
 /**
@@ -115,6 +116,9 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
       />
     ),
   },
+  // What Atlas asserts is happening here, with dates — before the typed fields
+  // because "is anything on this weekend" is a decision, not a reference.
+  { key: "events", Component: PlaceEvents },
   // What the publishers actually said. Placed after the typed fields so the
   // page leads with the things it can render as structure, and so a fact that
   // duplicates one of them has already been suppressed.
