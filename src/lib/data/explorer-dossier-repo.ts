@@ -130,6 +130,10 @@ export interface DossierSource {
   observationCount: number;
   /** Why this record is *about* the entity (Atlas ADR 070) — absent when it merely names it. */
   about?: "own-page" | "subject-page" | "declared-subject";
+  /** Whose voice this record is (Atlas ADR 071). Absent from an older Atlas. */
+  role?: string;
+  /** The entity is this site's publisher, so its contact block is the entity's own. Absent from an older Atlas. */
+  publishesAsSubject?: boolean;
   /** How Atlas came to read this address, when a candidate source records it. */
   discovered?: { basis: string; reason: string };
 }
@@ -264,6 +268,8 @@ export interface EntityDossier {
     sources: number;
     /** Sources about the entity, not merely naming it. Absent from an older Atlas. */
     subjectSpecificSources?: number;
+    /** Claims a source stated that Atlas may not let it establish (Atlas ADR 071). Absent from an older Atlas. */
+    withheldClaims?: number;
     media: number;
     /** Absent from an older Atlas. */
     representativeMedia?: number;

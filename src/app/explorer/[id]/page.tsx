@@ -119,6 +119,9 @@ export default async function ExplorerEntityPage({ params }: Props) {
               counts.geographicObservations +
               counts.temporalClaims}{" "}
             observations
+            {counts.withheldClaims !== undefined &&
+              counts.withheldClaims > 0 &&
+              ` (${counts.withheldClaims} withheld claims)`}
           </span>
           <span className="font-mono">
             {dossier.regionMemberships.length} regions

@@ -96,6 +96,14 @@ export function SourcesPanel({ sources }: { sources: DossierSource[] }) {
                 {source.mediaSubject && (
                   <span>media subject: {source.mediaSubject}</span>
                 )}
+                {source.role && (
+                  <span>
+                    voice: {source.role}
+                    {source.publishesAsSubject
+                      ? " (the entity is the publisher)"
+                      : ""}
+                  </span>
+                )}
                 {source.about && (
                   <span className="text-emerald-700 dark:text-emerald-400">
                     about this entity: {source.about}
