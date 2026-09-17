@@ -96,6 +96,16 @@ export function SourcesPanel({ sources }: { sources: DossierSource[] }) {
                 {source.mediaSubject && (
                   <span>media subject: {source.mediaSubject}</span>
                 )}
+                {source.about && (
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    about this entity: {source.about}
+                  </span>
+                )}
+                {source.discovered && (
+                  <span title={source.discovered.reason}>
+                    discovered: {source.discovered.basis}
+                  </span>
+                )}
               </p>
 
               <p className="text-muted-foreground/80 mt-1.5 line-clamp-3 font-mono text-[11px] break-all">

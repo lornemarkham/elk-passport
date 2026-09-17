@@ -104,8 +104,16 @@ export default async function ExplorerEntityPage({ params }: Props) {
           <span className="font-mono">
             {counts.relationships} relationships
           </span>
-          <span className="font-mono">{counts.sources} sources</span>
-          <span className="font-mono">{counts.media} media</span>
+          <span className="font-mono">
+            {counts.sources} sources
+            {counts.subjectSpecificSources !== undefined &&
+              ` (${counts.subjectSpecificSources} about it)`}
+          </span>
+          <span className="font-mono">
+            {counts.media} media
+            {counts.representativeMedia !== undefined &&
+              ` (${counts.representativeMedia} representative)`}
+          </span>
           <span className="font-mono">
             {counts.attributedObservations +
               counts.geographicObservations +
@@ -115,6 +123,14 @@ export default async function ExplorerEntityPage({ params }: Props) {
           <span className="font-mono">
             {dossier.regionMemberships.length} regions
           </span>
+          {dossier.researchNeed?.needed && (
+            <span
+              className="text-amber-700 dark:text-amber-400"
+              title={dossier.researchNeed.detail}
+            >
+              research due: {dossier.researchNeed.reason}
+            </span>
+          )}
           {lens?.destination && (
             <Link
               href={lens.destination}

@@ -128,6 +128,10 @@ export interface DossierSource {
   mediaSubject?: string;
   interpretedUnder?: string;
   observationCount: number;
+  /** Why this record is *about* the entity (Atlas ADR 070) — absent when it merely names it. */
+  about?: "own-page" | "subject-page" | "declared-subject";
+  /** How Atlas came to read this address, when a candidate source records it. */
+  discovered?: { basis: string; reason: string };
 }
 
 export interface AttributedObservation {
@@ -242,6 +246,12 @@ export interface EntityDossier {
   mergeRecords: MergeRecord[];
   corrections: EntityCorrection[];
   research?: ResearchDossierView;
+  /** Whether Atlas holds a source about this entity, and if not, why research is due (Atlas ADR 070). Absent from an older Atlas. */
+  researchNeed?:
+    | { needed: true; reason: string; detail: string }
+    | { needed: false; detail: string };
+  /** The assets Atlas can show as this entity, in order (Atlas ADR 069). Absent from an older Atlas. */
+  representativeMedia?: { url: string; evidence: string }[];
   counts: {
     relationships: number;
     outgoing: number;
@@ -252,7 +262,11 @@ export interface EntityDossier {
     danglingEdges: number;
     relationshipTypes: number;
     sources: number;
+    /** Sources about the entity, not merely naming it. Absent from an older Atlas. */
+    subjectSpecificSources?: number;
     media: number;
+    /** Absent from an older Atlas. */
+    representativeMedia?: number;
     attributedObservations: number;
     geographicObservations: number;
     temporalClaims: number;
