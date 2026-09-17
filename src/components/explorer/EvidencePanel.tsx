@@ -8,6 +8,7 @@ import type {
   MergeRecord,
   ResearchDossierView,
   TemporalClaim,
+  TemporalValidityClaim,
 } from "@/lib/data/explorer-dossier-repo";
 import { Chip, Empty, Id, Panel } from "./primitives";
 
@@ -234,6 +235,64 @@ export function ObservationsPanel({
             </div>
           )}
         </div>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Temporal validity (Atlas ADR 072): every time-bound claim with the three
+ * things Atlas keeps apart — when it was observed, what it states about its
+ * own validity, and whether Atlas will assert it now. A claim that is not
+ * current is withheld from Passport and shown here with the reason.
+ */
+export function TemporalValidityPanel({
+  claims,
+  lapsed,
+}: {
+  claims: TemporalValidityClaim[];
+  lapsed?: number;
+}) {
+  const stale = claims.filter((c) => !c.current).length;
+  const day = (iso?: string) => (iso ? iso.slice(0, 10) : "undated");
+  return (
+    <Panel
+      title="Temporal validity"
+      count={claims.length}
+      subtitle={`observed at, validity and current eligibility, kept apart${lapsed ? ` · ${lapsed} lapsed in history` : ""}`}
+    >
+      {claims.length === 0 ? (
+        <Empty>
+          Nothing time-bound is held about this entity: every claim is timeless
+          and never expires.
+        </Empty>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {stale > 0 && (
+            <li className="text-xs text-amber-700 dark:text-amber-400">
+              {stale} of {claims.length} not current — withheld from Passport
+            </li>
+          )}
+          {claims.map((c, i) => (
+            <li key={i} className="text-sm">
+              <span className="flex flex-wrap items-center gap-1.5">
+                <Chip>{c.class}</Chip>
+                <Chip>{c.current ? "current" : "not current"}</Chip>
+                <span className="font-medium">{c.label ?? c.field}</span>
+                <span className="text-muted-foreground">
+                  {c.value.length > 120 ? `${c.value.slice(0, 120)}…` : c.value}
+                </span>
+              </span>
+              <p className="text-muted-foreground border-border/60 mt-0.5 border-l pl-2 text-xs">
+                observed {day(c.observedAt)}
+                {(c.validFrom || c.validUntil) &&
+                  ` · valid ${day(c.validFrom)} to ${day(c.validUntil)}`}
+                {" · "}
+                {c.reason}
+              </p>
+            </li>
+          ))}
+        </ul>
       )}
     </Panel>
   );

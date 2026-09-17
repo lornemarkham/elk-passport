@@ -21,6 +21,7 @@ import {
   HistoryPanel,
   ObservationsPanel,
   SourcesPanel,
+  TemporalValidityPanel,
 } from "@/components/explorer/EvidencePanel";
 import { PassportLens } from "@/components/explorer/PassportLens";
 
@@ -179,6 +180,12 @@ export default async function ExplorerEntityPage({ params }: Props) {
             geographic={dossier.geographicObservations}
             temporal={dossier.temporalClaims}
           />
+          {dossier.temporalValidity !== undefined && (
+            <TemporalValidityPanel
+              claims={dossier.temporalValidity}
+              lapsed={counts.lapsedClaims}
+            />
+          )}
           <HistoryPanel
             merges={dossier.mergeRecords}
             corrections={dossier.corrections}

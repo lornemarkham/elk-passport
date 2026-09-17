@@ -4,6 +4,7 @@ import type {
   PlaceLocatedHere,
   PlaceOperator,
   PlaceRepresentativeMedia,
+  PlaceTemporal,
   PlaceRelatedEntity,
   PlaceRelatedPlace,
   PlaceRelationship,
@@ -50,6 +51,11 @@ export interface PlaceSectionProps {
    * on the page — `place.imageUrl` is not consulted.
    */
   readonly media?: PlaceRepresentativeMedia;
+  /**
+   * The as-of dates for the time-bound values Atlas kept in `place` (Atlas
+   * ADR 072). Atlas decides what is current; a section only says when.
+   */
+  readonly temporal?: PlaceTemporal;
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which

@@ -228,6 +228,24 @@ export type DossierEntityRecord = Record<string, unknown> & {
   description: string;
 };
 
+export interface TemporalValidityClaim {
+  field: string;
+  label?: string;
+  value: string;
+  class:
+    | "timeless"
+    | "current-state"
+    | "explicit-interval"
+    | "schedule"
+    | "effective-until-changed";
+  observedAt?: string;
+  validFrom?: string;
+  validUntil?: string;
+  current: boolean;
+  asOf?: string;
+  reason: string;
+}
+
 export interface EntityDossier {
   entity: DossierEntityRecord;
   identity: {
@@ -256,6 +274,8 @@ export interface EntityDossier {
     | { needed: false; detail: string };
   /** The assets Atlas can show as this entity, in order (Atlas ADR 069). Absent from an older Atlas. */
   representativeMedia?: { url: string; evidence: string }[];
+  /** Each time-bound claim: when observed, what it states about validity, whether current now (Atlas ADR 072). Absent from an older Atlas. */
+  temporalValidity?: TemporalValidityClaim[];
   counts: {
     relationships: number;
     outgoing: number;
@@ -270,6 +290,8 @@ export interface EntityDossier {
     subjectSpecificSources?: number;
     /** Claims a source stated that Atlas may not let it establish (Atlas ADR 071). Absent from an older Atlas. */
     withheldClaims?: number;
+    /** Claims once current and now kept as history (Atlas ADR 072). Absent from an older Atlas. */
+    lapsedClaims?: number;
     media: number;
     /** Absent from an older Atlas. */
     representativeMedia?: number;

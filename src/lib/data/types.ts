@@ -242,6 +242,40 @@ export interface PlaceDetail {
   locatedHere?: PlaceLocatedHere[];
   /** The images Atlas can vouch for as this Place. Absent from an older Atlas. */
   media?: PlaceRepresentativeMedia;
+  /**
+   * Temporal validity (Atlas ADR 072). Atlas has already withheld from
+   * `place` every time-bound claim that is not current; this says, per
+   * field it kept, the date the value is shown *as of*. Passport renders
+   * that date and infers nothing about currency itself. Absent from an
+   * older Atlas.
+   */
+  temporal?: PlaceTemporal;
+}
+
+export interface PlaceTemporal {
+  policyVersion: number;
+  /** Field name → ISO observation time its current value is shown as of. */
+  asOf: Record<string, string>;
+  claims: PlaceTemporalClaim[];
+  withheld: number;
+}
+
+export interface PlaceTemporalClaim {
+  field: string;
+  label?: string;
+  value: string;
+  class:
+    | "timeless"
+    | "current-state"
+    | "explicit-interval"
+    | "schedule"
+    | "effective-until-changed";
+  observedAt?: string;
+  validFrom?: string;
+  validUntil?: string;
+  current: boolean;
+  asOf?: string;
+  reason: string;
 }
 
 /**
