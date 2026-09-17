@@ -21,11 +21,13 @@ export function PlaceFirstThing({
   place,
   relationships,
   relatedPlaceDetails,
+  relatedPlaces,
 }: PlaceSectionProps) {
   const { grouped } = groupRelatedPlaces(
     place,
     relationships,
     relatedPlaceDetails,
+    relatedPlaces,
   );
   const before = grouped.before;
 

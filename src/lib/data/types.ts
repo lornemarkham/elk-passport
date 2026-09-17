@@ -94,6 +94,36 @@ export interface PlaceRelatedPlace {
   id: string;
   name: string;
   placeType: string;
+  /**
+   * Straight-line distance between the two Places' held points, in km to
+   * the metre, computed by Atlas. Absent when either side holds no point —
+   * never estimated here, and never a travel time.
+   */
+  distanceKm?: number;
+  /** Atlas holds the related Place as a Region — what this Place is *in*, not somewhere nearby to go. */
+  region?: true;
+  /** The related Place's name says nothing beyond its type ("Parking" of type parking). */
+  nameIsOnlyItsType?: true;
+}
+
+/**
+ * **An Organization Atlas asserts is located at this Place** — the inverse
+ * of a `located_at` edge, read from the Place end by Atlas's detail route.
+ * Atlas holds `Kalavida Surf Shop --located_at--> Kal Beach` and never the
+ * reverse; this is a read, not a second edge.
+ *
+ * `offers` is one hop further, along the Organization's own `offers` edges
+ * only. "Paddleboard" is here because Atlas holds that edge — a shop's name
+ * or type never implies a service.
+ */
+export interface PlaceLocatedHere {
+  id: string;
+  name: string;
+  organizationType: string;
+  description: string;
+  address?: string;
+  imageUrl?: string;
+  offers: PlaceRelatedEntity[];
 }
 
 /**
@@ -177,6 +207,8 @@ export interface PlaceDetail {
   operatedBy?: PlaceOperator[];
   /** Same reason again. */
   events?: PlaceEvent[];
+  /** Organizations located at this Place, read from the target end of `located_at`. Absent from an older Atlas. */
+  locatedHere?: PlaceLocatedHere[];
 }
 
 /**

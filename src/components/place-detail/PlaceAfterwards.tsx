@@ -18,11 +18,13 @@ export function PlaceAfterwards({
   place,
   relationships,
   relatedPlaceDetails,
+  relatedPlaces,
 }: PlaceSectionProps) {
   const { grouped } = groupRelatedPlaces(
     place,
     relationships,
     relatedPlaceDetails,
+    relatedPlaces,
   );
   const after = grouped.after;
 

@@ -68,6 +68,36 @@ export const PLANNING_CATEGORY_BY_PLACE_TYPE: Record<string, PlanningCategory> =
   };
 
 /**
+ * QC #4 (2026-09-17) — nearby selection, three deterministic constants.
+ *
+ * `AMENITY_PLACE_TYPES` are the place types that are useful relative to
+ * where a visitor already is — somewhere to park, a toilet, a tap, the road
+ * in — and meaningless as somewhere to go: a parking lot 10 km away is not a
+ * destination. Such a Place is shown only within `AMENITY_REACH_KM` of the
+ * current one, by Atlas's straight-line distance; with no distance held it is
+ * not shown. `NEARBY_CARD_LIMIT` caps the cards after ordering by distance,
+ * so the nearest survive. The values are editorial and small; the rule that
+ * uses them is not a score.
+ */
+export const AMENITY_PLACE_TYPES: ReadonlySet<string> = new Set([
+  "parking",
+  "restroom",
+  "public washroom",
+  "toilets",
+  "drinking_water",
+  "road",
+]);
+export const AMENITY_REACH_KM = 1;
+export const NEARBY_CARD_LIMIT = 12;
+/**
+ * "While You're Here" is a claim of co-location: a beach or viewpoint 11 km
+ * off is not here. A `during` place type is grouped there only within this
+ * distance; further, or with no distance held, it stays in the general list
+ * with its distance as the caption. Before/After carry no such claim.
+ */
+export const WHILE_HERE_REACH_KM = 2;
+
+/**
  * Phase 7.5 — "Should I Come?" signal groups. Deliberately small and
  * generic (not Ellison-specific), because this drives a deterministic
  * recommendation composed from real `place.activities` /

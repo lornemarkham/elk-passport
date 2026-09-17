@@ -1,6 +1,7 @@
 import type {
   Place,
   PlaceEvent,
+  PlaceLocatedHere,
   PlaceOperator,
   PlaceRelatedEntity,
   PlaceRelatedPlace,
@@ -36,6 +37,12 @@ export interface PlaceSectionProps {
   readonly operatedBy?: readonly PlaceOperator[];
   /** What Atlas asserts happens here, or at the operator. See `PlaceEvent`. */
   readonly events?: readonly PlaceEvent[];
+  /**
+   * Organizations Atlas asserts are located at this Place — `located_at`
+   * read from its target end. Optional for the same reason as the rest: an
+   * Atlas predating the field sends none, and the section renders nothing.
+   */
+  readonly locatedHere?: readonly PlaceLocatedHere[];
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which

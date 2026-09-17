@@ -40,6 +40,7 @@ export function PlaceKeepExploring({
   place,
   relationships,
   relatedPlaceDetails,
+  relatedPlaces,
 }: PlaceSectionProps) {
   if (relationships.length === 0 || relatedPlaceDetails.length === 0)
     return null;
@@ -48,6 +49,7 @@ export function PlaceKeepExploring({
     place,
     relationships,
     relatedPlaceDetails,
+    relatedPlaces,
   );
 
   const hasGrouped = CATEGORY_ORDER.some(

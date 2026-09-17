@@ -17,6 +17,7 @@ import { PlaceSources } from "./PlaceSources";
 import { PlaceKeyFacts } from "./PlaceKeyFacts";
 import { PlaceOffers } from "./PlaceOffers";
 import { PlaceEvents } from "./PlaceEvents";
+import { PlaceAtThisPlace } from "./PlaceAtThisPlace";
 import type { PlaceSectionDef } from "./types";
 
 /**
@@ -116,6 +117,11 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
       />
     ),
   },
+  // What Atlas asserts is located here — an Organization at the source end of
+  // a `located_at` edge pointing at this Place (ADR 067), read by Atlas from
+  // the Place end. Next to "what can I do here" because it is the same
+  // question asked of the people here rather than the ground.
+  { key: "at-this-place", Component: PlaceAtThisPlace },
   // What Atlas asserts is happening here, with dates — before the typed fields
   // because "is anything on this weekend" is a decision, not a reference.
   { key: "events", Component: PlaceEvents },
