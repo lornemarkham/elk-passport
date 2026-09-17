@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react";
 import { SaveButton } from "./SaveButton";
 import { computeFitSignals, deriveMoodLine } from "./content";
+import { heroImage } from "./placeMedia";
 import type { PlaceSectionProps } from "./types";
 
 /**
@@ -16,7 +17,9 @@ import type { PlaceSectionProps } from "./types";
  * underneath still always shows; the mood line is additive, never a
  * placeholder for missing feeling.
  */
-export function PlaceHero({ place, operatedBy }: PlaceSectionProps) {
+export function PlaceHero({ place, operatedBy, media }: PlaceSectionProps) {
+  // Only an image Atlas can vouch for as this Place (see `placeMedia.ts`).
+  const hero = heroImage(place, media);
   // A street address beats a decimal coordinate for a reader, and Big White's
   // Place holds none while the Organization that operates it holds
   // "5315 Big White Road". Only ever a fallback: the Place's own address wins,
@@ -37,10 +40,10 @@ export function PlaceHero({ place, operatedBy }: PlaceSectionProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-muted relative aspect-[21/9] w-full overflow-hidden rounded-xl">
-        {place.imageUrl ? (
+        {hero ? (
           // eslint-disable-next-line @next/next/no-img-element -- external source image, no next/image domain config for arbitrary sources
           <img
-            src={place.imageUrl}
+            src={hero}
             alt={place.name}
             className="h-full w-full object-cover"
           />

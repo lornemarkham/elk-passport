@@ -51,6 +51,9 @@ import {
  * 4. **Captioned** with the distance Atlas computed (`distanceCaption`), or
  *    "Nearby." when Atlas asserts `near` without two held points. Never a
  *    travel time: Atlas holds no route, so the page states no minutes.
+ * 5. **Illustrated** only by the destination's representative image as
+ *    Atlas's read carries it (ADR 069) — a card with no evidenced image
+ *    shows none, rather than a photograph of something else.
  *
  * ## One card per destination, not one card per edge
  *
@@ -81,6 +84,12 @@ export interface DestinationCardData {
   readonly caption: string;
   /** Atlas's straight-line distance, when both ends hold a point. */
   readonly distanceKm?: number;
+  /**
+   * The image the card may show as the destination: Atlas's representative
+   * image for it (ADR 069), or none. With an Atlas that predates the field,
+   * the destination's own lead-image scalar. Never chosen here.
+   */
+  readonly imageUrl?: string;
 }
 
 /**
@@ -183,12 +192,17 @@ export function groupRelatedPlaces(
       continue; // an amenity is useful where you are, not a place to drive to
     placed.add(otherId);
 
+    // A card image is the claim "this is what the destination looks like".
+    // Only Atlas's representative image makes it; a related-place view with
+    // none means Atlas has none it can vouch for, and the card shows none.
+    const imageUrl = view ? view.imageUrl : other.imageUrl;
     candidates.push({
       type: r.type,
       card: {
         place: other,
         caption: distanceCaption(r.type, currentIsSource, distanceKm),
         ...(distanceKm !== undefined ? { distanceKm } : {}),
+        ...(imageUrl ? { imageUrl } : {}),
       },
     });
   }

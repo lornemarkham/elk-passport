@@ -369,6 +369,44 @@ describe("groupRelatedPlaces — QC #4 selection, order and captions", () => {
   });
 });
 
+describe("groupRelatedPlaces — card imagery (ADR 069)", () => {
+  it("shows only the destination's representative image from Atlas's view; a view without one shows none even when the Place carries a stale scalar", () => {
+    const stale: Place = { ...KEKULI, imageUrl: "https://cdn/listicle-og.jpg" };
+    const evidenced: Place = { ...LAUNCH, imageUrl: "https://cdn/launch.jpg" };
+    const result = groupRelatedPlaces(
+      KAL_BEACH,
+      [
+        edge("near", KAL_BEACH.id, stale.id),
+        edge("near", KAL_BEACH.id, evidenced.id),
+      ],
+      [stale, evidenced],
+      [
+        view(stale, { distanceKm: 7.5 }),
+        view(evidenced, {
+          distanceKm: 0.3,
+          imageUrl: "https://cdn/launch.jpg",
+        }),
+      ],
+    );
+    expect(
+      Object.fromEntries(allCards(result).map((c) => [c.place.id, c.imageUrl])),
+    ).toEqual({
+      [LAUNCH.id]: "https://cdn/launch.jpg",
+      [KEKULI.id]: undefined,
+    });
+  });
+
+  it("uses the destination's own scalar only when Atlas sends no related-place view (an older Atlas)", () => {
+    const old: Place = { ...VERNON, imageUrl: "https://cdn/vernon.jpg" };
+    const result = groupRelatedPlaces(
+      KAL_BEACH,
+      [edge("near", KAL_BEACH.id, old.id)],
+      [old],
+    );
+    expect(allCards(result)[0]!.imageUrl).toBe("https://cdn/vernon.jpg");
+  });
+});
+
 describe("formatDistance / distanceCaption", () => {
   it("formats to the precision the number supports and states no travel time", () => {
     expect(formatDistance(0.266)).toBe("270 m");

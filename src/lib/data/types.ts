@@ -100,6 +100,11 @@ export interface PlaceRelatedPlace {
    * never estimated here, and never a travel time.
    */
   distanceKm?: number;
+  /**
+   * The related Place's representative image (Atlas ADR 069) — one Atlas
+   * holds subject evidence for — or absent. Never its raw lead-image scalar.
+   */
+  imageUrl?: string;
   /** Atlas holds the related Place as a Region — what this Place is *in*, not somewhere nearby to go. */
   region?: true;
   /** The related Place's name says nothing beyond its type ("Parking" of type parking). */
@@ -116,6 +121,32 @@ export interface PlaceRelatedPlace {
  * only. "Paddleboard" is here because Atlas holds that edge — a shop's name
  * or type never implies a service.
  */
+/**
+ * **An image Atlas can vouch for as the Place** (Atlas ADR 069): only media
+ * with subject evidence reaches this shape, each with the evidence it stands
+ * on. A page renders the Place from here, never from a scalar it cannot
+ * trace.
+ */
+export interface PlaceMediaView {
+  url: string;
+  thumbnailUrl?: string;
+  caption?: string;
+  sourceRecordId: string;
+  evidence:
+    | "curator"
+    | "caption-names-subject"
+    | "source-subject"
+    | "own-page"
+    | "subject-page";
+}
+
+export interface PlaceRepresentativeMedia {
+  /** The lead image, or none: a Place with nothing Atlas can vouch for leads with nothing. */
+  hero?: PlaceMediaView;
+  /** Every representative image, hero first, one per file. */
+  gallery: PlaceMediaView[];
+}
+
 export interface PlaceLocatedHere {
   id: string;
   name: string;
@@ -209,6 +240,8 @@ export interface PlaceDetail {
   events?: PlaceEvent[];
   /** Organizations located at this Place, read from the target end of `located_at`. Absent from an older Atlas. */
   locatedHere?: PlaceLocatedHere[];
+  /** The images Atlas can vouch for as this Place. Absent from an older Atlas. */
+  media?: PlaceRepresentativeMedia;
 }
 
 /**

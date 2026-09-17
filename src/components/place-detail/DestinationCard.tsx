@@ -9,20 +9,20 @@ import { excerpt, type DestinationCardData } from "./relatedPlaceGrouping";
  * `groupRelatedPlaces` result. One visual definition of "here's a real
  * place worth going," not three.
  */
-export function DestinationCard({ place, caption }: DestinationCardData) {
+export function DestinationCard({
+  place,
+  caption,
+  imageUrl,
+}: DestinationCardData) {
   return (
     <Link
       href={`/places/${place.id}`}
       className="group hover:border-primary/40 flex flex-col gap-2 rounded-lg border p-2 transition-colors"
     >
       <div className="bg-muted flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md">
-        {place.imageUrl ? (
+        {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- external source image
-          <img
-            src={place.imageUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <MapPin className="text-muted-foreground h-6 w-6 opacity-30" />
         )}

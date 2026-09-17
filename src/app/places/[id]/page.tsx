@@ -63,6 +63,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     operatedBy,
     events,
     locatedHere,
+    media,
   } = detail;
 
   // One request for every related place, not one request each.
@@ -105,6 +106,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     operatedBy,
     events,
     locatedHere,
+    media,
     relatedPlaceDetails,
   };
 

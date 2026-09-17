@@ -3,6 +3,7 @@ import type {
   PlaceEvent,
   PlaceLocatedHere,
   PlaceOperator,
+  PlaceRepresentativeMedia,
   PlaceRelatedEntity,
   PlaceRelatedPlace,
   PlaceRelationship,
@@ -43,6 +44,12 @@ export interface PlaceSectionProps {
    * Atlas predating the field sends none, and the section renders nothing.
    */
   readonly locatedHere?: readonly PlaceLocatedHere[];
+  /**
+   * The images Atlas can vouch for as this Place (Atlas ADR 069). Optional
+   * for an older Atlas; when present it is the only source of Place imagery
+   * on the page — `place.imageUrl` is not consulted.
+   */
+  readonly media?: PlaceRepresentativeMedia;
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which
