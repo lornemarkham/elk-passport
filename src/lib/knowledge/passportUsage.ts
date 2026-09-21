@@ -64,17 +64,20 @@ const PLACE_FIELD_USAGE: Readonly<Record<string, FieldUsage>> = {
     note: "Drives the hero summary line, the 'Don't leave without…' list, and the fit signals behind 'Should I come?'.",
   },
   facilities: {
-    sections: ["hero", "facilities", "should-i-come"],
-    note: "Rendered as 'Good To Know' chips and used as developed-site fit signals.",
+    sections: ["hero", "practical", "should-i-come"],
+    note: "The Facilities row of 'Good to know' (chips), and developed-site fit signals.",
   },
-  hours: { sections: ["hours"], note: "Rendered verbatim when Atlas has it." },
+  hours: {
+    sections: ["practical"],
+    note: "The Hours & season row of 'Good to know', verbatim, dated as of its observation.",
+  },
   feeRequired: {
-    sections: ["fees", "what-to-bring"],
-    note: "Fee section, and informs 'What should I bring?'.",
+    sections: ["practical", "what-to-bring"],
+    note: "The Fees & reservations row of 'Good to know', and informs 'What should I bring?'.",
   },
   wheelchairAccessible: {
-    sections: ["accessibility", "what-to-bring"],
-    note: "Accessibility section.",
+    sections: ["practical", "what-to-bring"],
+    note: "The Accessibility row of 'Good to know'.",
   },
   hasActiveFireBan: {
     sections: ["fire-ban-notice", "what-to-bring"],
@@ -84,7 +87,10 @@ const PLACE_FIELD_USAGE: Readonly<Record<string, FieldUsage>> = {
   // Known to Atlas, deliberately not surfaced anywhere on the traveler page.
   aliases: { sections: [] },
   externalIds: { sections: [] },
-  keyFacts: { sections: [] },
+  keyFacts: {
+    sections: ["practical"],
+    note: "Composed by Atlas into the rows of 'Good to know' — hours, fees, getting there, facilities, accessibility, dogs, rules, safety, contact — with the rest under 'More details' verbatim.",
+  },
   archivedAt: { sections: [] },
 };
 
@@ -111,14 +117,15 @@ export function fieldUsage(entityKind: string, fieldName: string): FieldUsage {
 }
 
 /**
- * `keyFacts` have no per-fact usage table, and shouldn't: Passport renders
- * none of them today (ADR 017 shipped the storage, not a consumer). Kept
- * as its own function rather than folded into `fieldUsage` so that when a
- * Passport section eventually *does* consume key facts, the change is one
- * obvious place, not a lookup buried in a record.
+ * `keyFacts` have no per-fact usage table: every fact reaches the page
+ * through one section, "Good to know" (`practical`), composed by Atlas —
+ * which row a fact lands in is Atlas's read-model decision
+ * (`atlas/src/application/readmodel/practicalKnowledge.ts`), not something
+ * this table could state per fact without restating that module. Kept as
+ * its own function so the answer stays one obvious place.
  */
 export function keyFactUsage(): FieldUsage {
-  return { sections: [] };
+  return PLACE_FIELD_USAGE.keyFacts!;
 }
 
 /** Section keys that really exist on the page today — used to sanity-check the table above against reality. */

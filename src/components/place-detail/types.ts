@@ -4,6 +4,7 @@ import type {
   PlaceLocatedHere,
   PlaceNearbyPlace,
   PlaceOperator,
+  PlacePractical,
   PlaceRepresentativeMedia,
   PlaceTemporal,
   PlaceRelatedEntity,
@@ -59,6 +60,7 @@ export interface PlaceSectionProps {
    * ADR 072). Atlas decides what is current; a section only says when.
    */
   readonly temporal?: PlaceTemporal;
+  readonly practical?: PlacePractical;
   /**
    * Phase 7.2 — "Keep Exploring" needs an image, description, and place
    * type for each related place to build real destination cards, which

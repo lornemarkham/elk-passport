@@ -8,14 +8,10 @@ import { PlaceGallery } from "./PlaceGallery";
 import { PlaceQuickFacts } from "./PlaceQuickFacts";
 // `PlaceActivities` is intentionally still imported-free here — see the
 // note in PLACE_SECTIONS below for why it no longer renders.
-import { PlaceFacilities } from "./PlaceFacilities";
-import { PlaceAccessibility } from "./PlaceAccessibility";
-import { PlaceHours } from "./PlaceHours";
-import { PlaceFees } from "./PlaceFees";
+import { PlacePractical } from "./PlacePractical";
 import { PlaceKeepExploring } from "./PlaceKeepExploring";
 import { PlaceMap } from "./PlaceMap";
 import { PlaceSources } from "./PlaceSources";
-import { PlaceKeyFacts } from "./PlaceKeyFacts";
 import { PlaceOffers } from "./PlaceOffers";
 import { PlaceEvents } from "./PlaceEvents";
 import { PlaceAtThisPlace } from "./PlaceAtThisPlace";
@@ -130,19 +126,15 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
   // What Atlas asserts is happening here, with dates — before the typed fields
   // because "is anything on this weekend" is a decision, not a reference.
   { key: "events", Component: PlaceEvents },
-  // What the publishers actually said. Placed after the typed fields so the
-  // page leads with the things it can render as structure, and so a fact that
-  // duplicates one of them has already been suppressed.
-  { key: "facilities", Component: PlaceFacilities },
-  { key: "accessibility", Component: PlaceAccessibility },
-  { key: "hours", Component: PlaceHours },
-  { key: "fees", Component: PlaceFees },
-  {
-    key: "key-facts",
-    Component: ({ place, operatedBy }) => (
-      <PlaceKeyFacts place={place} operatedBy={operatedBy} />
-    ),
-  },
+  // The practical questions — open, cost, parking, toilets, dogs, access,
+  // rules, notices — composed by Atlas (`practical` on the detail read) and
+  // laid out one question per row. M7 (2026-09-21): this one section
+  // replaced Facilities, Accessibility, Hours, Fees and the key-fact list,
+  // which had grown into two sections both titled "Good to know", the same
+  // facilities chips twice, and a flat list a reader had to scan to find
+  // the toilet. Nothing those sections showed is gone: what no question
+  // claims still renders under "More details", label and grouping intact.
+  { key: "practical", Component: PlacePractical },
   { key: "keep-exploring", Component: PlaceKeepExploring },
   { key: "map", Component: PlaceMap },
   { key: "sources", Component: PlaceSources },

@@ -273,6 +273,65 @@ export interface PlaceDetail {
    * older Atlas.
    */
   temporal?: PlaceTemporal;
+  /** Practical knowledge composed by Atlas. Absent from an Atlas that predates it. */
+  practical?: PlacePractical;
+}
+
+/**
+ * **The practical questions, composed by Atlas** — is it open, does it cost,
+ * where do I park, are there toilets, can the dog come, is it accessible,
+ * what's closed or unsafe right now. Served on `/places/:id/detail` as
+ * `practical`, composed in `atlas/src/application/readmodel/practicalKnowledge.ts`
+ * from the same record the rest of the page reads.
+ *
+ * Passport renders this and decides nothing about it: which label means
+ * parking, which sentence is a duplicate, which fact restates the hours
+ * string, is Atlas's call, made once, in one place. `groups` render only
+ * when Atlas holds a statement for them — no group is ever a placeholder —
+ * and `other` is every fact no group claimed, under the publisher's own
+ * label, so nothing is lost for not fitting.
+ */
+export interface PlacePracticalItem {
+  /** The publisher's label, present only when it says more than the group does. */
+  label?: string;
+  /** Verbatim. Passport never rewrites it. */
+  text: string;
+  /** ISO observation time for a current, time-bound statement (Atlas ADR 072). */
+  asOf?: string;
+  sourceRecordId?: string;
+  /** The operator that stated it, when Atlas reached it across an `operates` edge. */
+  via?: { id: string; name: string };
+}
+
+export type PlacePracticalGroupKey =
+  | "hours"
+  | "fees"
+  | "getting-there"
+  | "facilities"
+  | "accessibility"
+  | "dogs"
+  | "rules"
+  | "safety"
+  | "contact";
+
+export interface PlacePracticalGroup {
+  key: PlacePracticalGroupKey;
+  title: string;
+  /** The typed facilities list, unchanged — only on `facilities`. */
+  chips?: string[];
+  items: PlacePracticalItem[];
+}
+
+export interface PlacePractical {
+  version: number;
+  groups: PlacePracticalGroup[];
+  other: { category?: string; items: PlacePracticalItem[] }[];
+  /** What Atlas left out and why. Not rendered; kept so the omission is checkable. */
+  omitted: {
+    label: string;
+    reason: string;
+    via?: { id: string; name: string };
+  }[];
 }
 
 export interface PlaceTemporal {

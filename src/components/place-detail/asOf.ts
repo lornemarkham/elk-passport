@@ -11,7 +11,11 @@ export function asOfCaption(
   temporal: PlaceTemporal | undefined,
   field: string,
 ): string {
-  const iso = temporal?.asOf?.[field];
+  return asOfDate(temporal?.asOf?.[field]);
+}
+
+/** The same caption from an ISO time Atlas attached to one statement (`PlacePracticalItem.asOf`). */
+export function asOfDate(iso: string | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";

@@ -65,6 +65,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     locatedHere,
     media,
     temporal,
+    practical,
     nearby,
   } = detail;
 
@@ -114,6 +115,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     locatedHere,
     media,
     temporal,
+    practical,
     nearby,
     relatedPlaceDetails,
   };
