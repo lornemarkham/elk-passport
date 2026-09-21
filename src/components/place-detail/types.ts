@@ -2,6 +2,7 @@ import type {
   Place,
   PlaceEvent,
   PlaceLocatedHere,
+  PlaceNearbyPlace,
   PlaceOperator,
   PlaceRepresentativeMedia,
   PlaceTemporal,
@@ -45,6 +46,8 @@ export interface PlaceSectionProps {
    * Atlas predating the field sends none, and the section renders nothing.
    */
   readonly locatedHere?: readonly PlaceLocatedHere[];
+  /** Destinations within reach, derived by Atlas from held geometry (ADR 068). Absent from an older Atlas. */
+  readonly nearby?: readonly PlaceNearbyPlace[];
   /**
    * The images Atlas can vouch for as this Place (Atlas ADR 069). Optional
    * for an older Atlas; when present it is the only source of Place imagery

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   Place,
+  PlaceNearbyPlace,
   PlaceRelatedPlace,
   PlaceRelationship,
 } from "@/lib/data/types";
@@ -430,5 +431,169 @@ describe("formatDistance / distanceCaption", () => {
     );
     expect(distanceCaption("includes", false, 2.25)).toBe("2.3 km away.");
     expect(distanceCaption("near", true, undefined)).toBe("Nearby.");
+  });
+});
+
+/**
+ * QC: geometry-derived Keep Exploring (Atlas ADR 068). Measured 2026-09-21:
+ * Atlas held 317 Places and stored `near` edges for the ~30 it held on
+ * 2026-08-09, so 65 of the 77 Places a traveller could open rendered no
+ * card at all — Knox Mountain Park with Paul's Tomb 1.7 km away and Dilworth
+ * Mountain Park 2.3 km away, Kasugai Gardens with Stuart Park 200 m away.
+ * Atlas now derives what is within reach per read; Passport merges it after
+ * the stored edges and never presents it as a held fact — the caption is the
+ * measured distance.
+ */
+describe("groupRelatedPlaces — destinations derived from held geometry", () => {
+  const nearbyOf = (
+    p: Place,
+    distanceKm: number,
+    over: Partial<PlaceNearbyPlace> = {},
+  ): PlaceNearbyPlace => ({
+    id: p.id,
+    name: p.name,
+    placeType: p.placeType,
+    distanceKm,
+    ...over,
+  });
+  const KNOX = place("knox", "Knox Mountain Park", "park");
+  const TOMB = place("tomb", "Paul's Tomb", "trail");
+  const DILWORTH = place("dilworth", "Dilworth Mountain Park", "park");
+  const LAKE = place("lake", "Okanagan Lake", "lake");
+
+  it("renders a derived destination with its measured distance when Atlas holds no edge at all", () => {
+    const result = groupRelatedPlaces(
+      KNOX,
+      [],
+      [TOMB, DILWORTH],
+      [],
+      [
+        nearbyOf(TOMB, 1.7),
+        nearbyOf(DILWORTH, 2.3, { imageUrl: "https://x/dilworth.jpg" }),
+      ],
+    );
+    const cards = allCards(result);
+    expect(cards.map((c) => [c.place.id, c.caption])).toEqual([
+      ["dilworth", "2.3 km away."],
+      ["tomb", "1.7 km away."],
+    ]);
+    expect(cards[0]!.imageUrl).toBe("https://x/dilworth.jpg");
+    expect(cards[1]!.imageUrl).toBeUndefined();
+  });
+
+  it("orders a destination with a picture first, then nearer first — for stored and derived alike", () => {
+    const result = groupRelatedPlaces(
+      KNOX,
+      [edge("near", KNOX.id, LAKE.id)],
+      [TOMB, DILWORTH, LAKE],
+      [view(LAKE, { distanceKm: 2.8, imageUrl: "https://x/lake.jpg" })],
+      [
+        nearbyOf(TOMB, 1.7),
+        nearbyOf(DILWORTH, 2.3, { imageUrl: "https://x/d.jpg" }),
+      ],
+    );
+    expect(allCards(result).map((c) => c.place.id)).toEqual([
+      "dilworth",
+      "lake",
+      "tomb",
+    ]);
+  });
+
+  it("a destination Atlas also holds an edge to keeps the edge's card: one card, the stored caption", () => {
+    const result = groupRelatedPlaces(
+      KNOX,
+      [edge("contains", KNOX.id, TOMB.id)],
+      [TOMB],
+      [view(TOMB, { distanceKm: 1.7 })],
+      [nearbyOf(TOMB, 1.7, { connected: true })],
+    );
+    const cards = allCards(result);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]!.caption).toBe("Right here, worth a look.");
+  });
+
+  it("never renders the current place, an unresolvable id, a derived amenity beyond reach, or a subtype Discover refuses to lead with (a city)", () => {
+    const result = groupRelatedPlaces(
+      KNOX,
+      [],
+      [KNOX, TOMB, TRAIL_PARKING, VERNON],
+      [],
+      [
+        nearbyOf(KNOX, 0),
+        nearbyOf(place("ghost", "Ghost", "park"), 1),
+        nearbyOf(TRAIL_PARKING, 3.2),
+        nearbyOf(VERNON, 0.1),
+        nearbyOf(TOMB, 1.7),
+      ],
+    );
+    expect(allCards(result).map((c) => c.place.id)).toEqual(["tomb"]);
+    // The same parking lot 200 m away is useful where you are.
+    const close = groupRelatedPlaces(
+      KNOX,
+      [],
+      [TRAIL_PARKING],
+      [],
+      [nearbyOf(TRAIL_PARKING, 0.2)],
+    );
+    expect(allCards(close).map((c) => c.place.id)).toEqual(["trail-parking"]);
+  });
+
+  it("sorts a derived beach within reach under While You're Here, as a stored `near` edge would", () => {
+    const result = groupRelatedPlaces(
+      KNOX,
+      [],
+      [KAL_BEACH],
+      [],
+      [nearbyOf(KAL_BEACH, 0.8)],
+    );
+    expect(result.grouped.during.map((c) => c.place.id)).toEqual(["kal-beach"]);
+    const far = groupRelatedPlaces(
+      KNOX,
+      [],
+      [KAL_BEACH],
+      [],
+      [nearbyOf(KAL_BEACH, 4.5)],
+    );
+    expect(far.grouped.during).toEqual([]);
+    expect(far.general.map((c) => c.place.id)).toEqual(["kal-beach"]);
+  });
+
+  it("caps the merged list at NEARBY_CARD_LIMIT", () => {
+    const stored = Array.from({ length: 4 }, (_, i) =>
+      place(`s${i}`, `Stored ${i}`, "park"),
+    );
+    const derived = Array.from({ length: NEARBY_CARD_LIMIT }, (_, i) =>
+      place(`d${i}`, `Derived ${i}`, "park"),
+    );
+    const result = groupRelatedPlaces(
+      KNOX,
+      stored.map((p) => edge("near", KNOX.id, p.id)),
+      [...stored, ...derived],
+      stored.map((p, i) => view(p, { distanceKm: 6 + i })),
+      derived.map((p, i) => nearbyOf(p, 0.5 + i * 0.3)),
+    );
+    const cards = allCards(result);
+    expect(cards).toHaveLength(NEARBY_CARD_LIMIT);
+    expect(cards.every((c) => c.place.id.startsWith("d"))).toBe(true);
+  });
+
+  it("an older Atlas without `nearby` renders exactly as before", () => {
+    const withoutArg = groupRelatedPlaces(
+      KNOX,
+      [edge("near", KNOX.id, LAKE.id)],
+      [LAKE],
+      [view(LAKE, { distanceKm: 2.8 })],
+    );
+    const withEmpty = groupRelatedPlaces(
+      KNOX,
+      [edge("near", KNOX.id, LAKE.id)],
+      [LAKE],
+      [view(LAKE, { distanceKm: 2.8 })],
+      [],
+    );
+    expect(withEmpty).toEqual(withoutArg);
+    expect(allCards(withoutArg).map((c) => c.caption)).toEqual([
+      "2.8 km away.",
+    ]);
   });
 });

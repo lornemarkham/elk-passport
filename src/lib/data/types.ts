@@ -90,6 +90,23 @@ export interface PlaceSource {
  * so this is resolved server-side, once, in the same `/detail` request —
  * see that route's comment for why this stays one round trip instead of
  * a follow-up `getPlace()` per relationship. */
+/**
+ * **A destination within reach of this Place, from held geometry.** Atlas
+ * derives it per read from the coordinates it holds; it is not a held `near`
+ * fact and Passport never presents it as one — the caption is the measured
+ * distance. `connected` says Atlas *also* holds a relationship between the two.
+ */
+export interface PlaceNearbyPlace {
+  id: string;
+  name: string;
+  placeType: string;
+  /** Straight-line distance in km to the metre; always present — it is the basis of the entry. */
+  distanceKm: number;
+  /** The destination's representative image (Atlas ADR 069), or absent. */
+  imageUrl?: string;
+  connected?: true;
+}
+
 export interface PlaceRelatedPlace {
   id: string;
   name: string;
@@ -240,6 +257,12 @@ export interface PlaceDetail {
   events?: PlaceEvent[];
   /** Organizations located at this Place, read from the target end of `located_at`. Absent from an older Atlas. */
   locatedHere?: PlaceLocatedHere[];
+  /**
+   * Destinations within reach, derived by Atlas from held geometry at read
+   * time (Atlas ADR 068) — never a stored relationship, never written back.
+   * Absent from an older Atlas.
+   */
+  nearby?: PlaceNearbyPlace[];
   /** The images Atlas can vouch for as this Place. Absent from an older Atlas. */
   media?: PlaceRepresentativeMedia;
   /**

@@ -33,7 +33,7 @@ export type FeedExclusion =
  *
  * Measured against the live corpus: 22 records.
  */
-const NOT_A_DESTINATION_SUBTYPE: ReadonlySet<string> = new Set([
+export const NOT_A_DESTINATION_SUBTYPE: ReadonlySet<string> = new Set([
   // Infrastructure — real, mapped, and not somewhere you set out for.
   "parking",
   "public washroom",
@@ -53,7 +53,7 @@ const NOT_A_DESTINATION_SUBTYPE: ReadonlySet<string> = new Set([
   "company",
 ]);
 
-const normalise = (value: string | undefined): string =>
+export const normaliseSubtype = (value: string | undefined): string =>
   (value ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
@@ -89,7 +89,7 @@ function hasSubstanceBeyondDescription(experience: Experience): boolean {
 export function feedExclusion(
   experience: Experience,
 ): FeedExclusion | undefined {
-  const subtype = normalise(experience.subtype);
+  const subtype = normaliseSubtype(experience.subtype);
 
   // A · A generic concept, structurally: the Activity's name *is* its own type.
   // `Snowboarding` of type `Snowboarding`, `camping` of type `camping`. These
@@ -98,7 +98,7 @@ export function feedExclusion(
   if (
     experience.kind === "Activity" &&
     subtype.length > 0 &&
-    subtype === normalise(experience.title)
+    subtype === normaliseSubtype(experience.title)
   ) {
     return "generic-activity";
   }

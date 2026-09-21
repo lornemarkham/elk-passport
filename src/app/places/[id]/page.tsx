@@ -65,6 +65,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     locatedHere,
     media,
     temporal,
+    nearby,
   } = detail;
 
   // One request for every related place, not one request each.
@@ -92,9 +93,13 @@ export default async function PlacePage({ params }: PlacePageProps) {
   const placesById = new Map(
     (await listPlaces()).map((p) => [p.id, p] as const),
   );
-  const relatedPlaceDetails = relatedPlaces
+  // Stored connections and geometry-derived destinations resolve through the
+  // same index: a destination Atlas measured within reach needs its full
+  // record for a card exactly as a stored neighbour does.
+  const relatedPlaceDetails = [...relatedPlaces, ...(nearby ?? [])]
     .map((rp) => placesById.get(rp.id))
-    .filter((p): p is Place => p !== undefined);
+    .filter((p): p is Place => p !== undefined)
+    .filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i);
 
   const sectionProps = {
     place,
@@ -109,6 +114,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
     locatedHere,
     media,
     temporal,
+    nearby,
     relatedPlaceDetails,
   };
 

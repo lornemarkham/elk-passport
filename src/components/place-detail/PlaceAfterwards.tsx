@@ -19,12 +19,14 @@ export function PlaceAfterwards({
   relationships,
   relatedPlaceDetails,
   relatedPlaces,
+  nearby,
 }: PlaceSectionProps) {
   const { grouped } = groupRelatedPlaces(
     place,
     relationships,
     relatedPlaceDetails,
     relatedPlaces,
+    nearby,
   );
   const after = grouped.after;
 

@@ -41,8 +41,12 @@ export function PlaceKeepExploring({
   relationships,
   relatedPlaceDetails,
   relatedPlaces,
+  nearby,
 }: PlaceSectionProps) {
-  if (relationships.length === 0 || relatedPlaceDetails.length === 0)
+  if (
+    (relationships.length === 0 && (nearby?.length ?? 0) === 0) ||
+    relatedPlaceDetails.length === 0
+  )
     return null;
 
   const { grouped, general } = groupRelatedPlaces(
@@ -50,6 +54,7 @@ export function PlaceKeepExploring({
     relationships,
     relatedPlaceDetails,
     relatedPlaces,
+    nearby,
   );
 
   const hasGrouped = CATEGORY_ORDER.some(

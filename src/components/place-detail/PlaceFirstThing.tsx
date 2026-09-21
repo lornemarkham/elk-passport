@@ -22,12 +22,14 @@ export function PlaceFirstThing({
   relationships,
   relatedPlaceDetails,
   relatedPlaces,
+  nearby,
 }: PlaceSectionProps) {
   const { grouped } = groupRelatedPlaces(
     place,
     relationships,
     relatedPlaceDetails,
     relatedPlaces,
+    nearby,
   );
   const before = grouped.before;
 

@@ -1,8 +1,13 @@
 import type {
   Place,
+  PlaceNearbyPlace,
   PlaceRelatedPlace,
   PlaceRelationship,
 } from "@/lib/data/types";
+import {
+  NOT_A_DESTINATION_SUBTYPE,
+  normaliseSubtype,
+} from "@/domain/discovery/defaultFeed";
 import {
   AMENITY_PLACE_TYPES,
   AMENITY_REACH_KM,
@@ -117,7 +122,9 @@ export function distanceCaption(
   currentIsSource: boolean,
   distanceKm: number | undefined,
 ): string {
-  if (type === "near")
+  // A stored `near` edge and a geometry-derived destination read the same
+  // way to a traveller: this far away. Neither claims more than the distance.
+  if (type === "near" || type === "nearby")
     return distanceKm === undefined
       ? "Nearby."
       : `${formatDistance(distanceKm)} away.`;
@@ -162,6 +169,7 @@ export function groupRelatedPlaces(
   relationships: readonly PlaceRelationship[],
   relatedPlaceDetails: readonly Place[],
   relatedPlaces: readonly PlaceRelatedPlace[] = [],
+  nearby: readonly PlaceNearbyPlace[] = [],
 ): GroupedRelatedPlaces {
   const detailsById = new Map(
     relatedPlaceDetails.map((p) => [p.id, p] as const),
@@ -207,7 +215,55 @@ export function groupRelatedPlaces(
     });
   }
 
+  // **Derived destinations** (Atlas ADR 068): what Atlas measured within
+  // reach of this Place from held coordinates, per read. Merged after the
+  // stored edges so a destination Atlas also holds an edge to keeps that
+  // edge's caption ("Right here, worth a look." for `contains`); the rest
+  // read as a distance, which is all a derived entry is. The same amenity
+  // rule applies — a derived parking lot 3 km away is still not somewhere to
+  // go. Atlas has already excluded regions, generic names and the Place
+  // itself; the checks are repeated here because this function's contract is
+  // "never a card that lies", whichever list the id arrived in.
+  for (const n of nearby) {
+    if (n.id === currentPlace.id) continue;
+    if (placed.has(n.id)) continue;
+    const other = detailsById.get(n.id);
+    if (!other) continue;
+    if (
+      AMENITY_PLACE_TYPES.has(other.placeType) &&
+      n.distanceKm > AMENITY_REACH_KM
+    )
+      continue;
+    // What Discover already refuses to lead with — a city, a region, an
+    // institution — is not somewhere to go from here either: "Kelowna,
+    // 100 m away" from a garden in downtown Kelowna is true and useless. The
+    // feed's own set, not a second list. An amenity was judged just above by
+    // the page's own, more specific rule (useful within reach) and is not
+    // re-judged. Applied to derived entries only: a stored edge is Atlas's
+    // assertion and keeps rendering as it did.
+    if (
+      !AMENITY_PLACE_TYPES.has(other.placeType) &&
+      NOT_A_DESTINATION_SUBTYPE.has(normaliseSubtype(other.placeType))
+    )
+      continue;
+    placed.add(n.id);
+    candidates.push({
+      type: "nearby",
+      card: {
+        place: other,
+        caption: distanceCaption("nearby", false, n.distanceKm),
+        distanceKm: n.distanceKm,
+        ...(n.imageUrl ? { imageUrl: n.imageUrl } : {}),
+      },
+    });
+  }
+
+  // Useful before merely geometric: a destination Atlas can show a picture
+  // of leads, then the nearer of two, then name and id so two renders agree.
   candidates.sort((a, b) => {
+    const ia = a.card.imageUrl !== undefined,
+      ib = b.card.imageUrl !== undefined;
+    if (ia !== ib) return ia ? -1 : 1;
     const da = a.card.distanceKm,
       db = b.card.distanceKm;
     if (da !== undefined && db !== undefined && da !== db) return da - db;
@@ -227,8 +283,10 @@ export function groupRelatedPlaces(
   const general: DestinationCardData[] = [];
 
   for (const { card, type } of candidates.slice(0, NEARBY_CARD_LIMIT)) {
+    // A derived destination is proximity too: a beach measured 800 m away
+    // belongs under While You're Here exactly as one a stored edge names.
     const mapped =
-      type === "near"
+      type === "near" || type === "nearby"
         ? PLANNING_CATEGORY_BY_PLACE_TYPE[card.place.placeType]
         : undefined;
     // "While You're Here" claims co-location; a viewpoint 11 km away is not
