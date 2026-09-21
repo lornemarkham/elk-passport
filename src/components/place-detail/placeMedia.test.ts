@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Place, PlaceRepresentativeMedia } from "@/lib/data/types";
-import { featuredImage, heroImage } from "./placeMedia";
+import {
+  GALLERY_MIN,
+  featuredImage,
+  galleryImages,
+  heroImage,
+} from "./placeMedia";
 
 /**
  * Passport composes Place imagery from Atlas's `media` read and judges
@@ -53,5 +58,61 @@ describe("placeMedia", () => {
       "https://cdn/x.jpg",
     );
     expect(heroImage(place(), undefined)).toBeUndefined();
+  });
+});
+
+describe("galleryImages (M1)", () => {
+  const withEvidence = (
+    url: string,
+    evidence: PlaceRepresentativeMedia["gallery"][number]["evidence"],
+  ) => ({ ...view(url), evidence });
+
+  it("is Atlas's representative set minus the hero's file, in Atlas's order", () => {
+    const media: PlaceRepresentativeMedia = {
+      hero: view("https://cdn/hero.jpg"),
+      gallery: [
+        view("https://cdn/hero.jpg"),
+        withEvidence("https://cdn/b.jpg", "source-subject"),
+        withEvidence("https://cdn/a.jpg", "own-page"),
+        withEvidence("https://cdn/c.jpg", "curator"),
+      ],
+    };
+    expect(galleryImages(media).map((m) => m.url)).toEqual([
+      "https://cdn/b.jpg",
+      "https://cdn/a.jpg",
+      "https://cdn/c.jpg",
+    ]);
+    // Deterministic: the same read yields the same gallery.
+    expect(galleryImages(media)).toEqual(galleryImages(media));
+  });
+
+  it("renders no gallery for fewer than two images beyond the hero — a lone hero, or a hero plus one", () => {
+    expect(galleryImages(undefined)).toEqual([]);
+    expect(galleryImages({ gallery: [] })).toEqual([]);
+    const lone: PlaceRepresentativeMedia = {
+      hero: view("https://cdn/h.jpg"),
+      gallery: [view("https://cdn/h.jpg")],
+    };
+    expect(galleryImages(lone)).toEqual([]);
+    const heroPlusOne: PlaceRepresentativeMedia = {
+      hero: view("https://cdn/h.jpg"),
+      gallery: [view("https://cdn/h.jpg"), view("https://cdn/x.jpg")],
+    };
+    expect(galleryImages(heroPlusOne)).toEqual([]);
+    expect(GALLERY_MIN).toBe(2);
+  });
+
+  it("never consults the Place's raw scalar or anything outside Atlas's representative read", () => {
+    const stale = place("https://cdn/listicle-shop-interior.jpg");
+    expect(galleryImages(undefined)).toEqual([]);
+    expect(featuredImage(stale, { gallery: [] })).toBeUndefined();
+    // With no hero, everything representative is the gallery.
+    const noHero: PlaceRepresentativeMedia = {
+      gallery: [view("https://cdn/a.jpg"), view("https://cdn/b.jpg")],
+    };
+    expect(galleryImages(noHero).map((m) => m.url)).toEqual([
+      "https://cdn/a.jpg",
+      "https://cdn/b.jpg",
+    ]);
   });
 });

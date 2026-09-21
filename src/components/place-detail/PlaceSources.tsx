@@ -10,7 +10,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "passport-local-knowledge": "Passport Local Knowledge",
 };
 
-function sourceLabel(sourceType: string): string {
+export function sourceLabel(sourceType: string): string {
   return (
     SOURCE_LABELS[sourceType] ??
     sourceType.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())

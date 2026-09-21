@@ -4,6 +4,7 @@ import { PlaceDontMiss } from "./PlaceDontMiss";
 import { PlaceWhatToBring } from "./PlaceWhatToBring";
 import { PlaceAfterwards } from "./PlaceAfterwards";
 import { PlaceOverview } from "./PlaceOverview";
+import { PlaceGallery } from "./PlaceGallery";
 import { PlaceQuickFacts } from "./PlaceQuickFacts";
 // `PlaceActivities` is intentionally still imported-free here — see the
 // note in PLACE_SECTIONS below for why it no longer renders.
@@ -94,6 +95,10 @@ export const PLACE_SECTIONS: readonly PlaceSectionDef[] = [
 
   // Facts support the decisions above — repositioned lower, not removed.
   { key: "overview", Component: PlaceOverview },
+  // What it actually looks like — every image Atlas can vouch for beyond the
+  // hero (M1; `galleryImages`). Directly after the prose, because a traveller
+  // reading "is this for me" wants to see it before the reference material.
+  { key: "gallery", Component: PlaceGallery },
   { key: "quick-facts", Component: PlaceQuickFacts },
   // "Perfect For" (`PlaceActivities`) removed from the page in Milestone 0
   // for the same reason as "Come Here If...": it renders `place.activities`
