@@ -1,8 +1,10 @@
 # OCTOBER EXPERIENCE — PRODUCT & CREATIVE BIBLE
 
 **Established:** 2026-09-22, from one long evening of design conversation.
-**Status:** preserved direction. Nothing here is implemented, approved, or
-roadmapped. It is written so that tomorrow starts where tonight stopped.
+**Amended:** 2026-09-22, after the first physical screening of Witching Hour
+v0 (§25). One scene is now implemented as a lab; everything else remains
+preserved direction, not roadmap. It is written so that tomorrow starts where
+tonight stopped.
 
 This document holds two things on purpose and refuses to separate them: the
 Passport _Experience_ architecture that is starting to emerge, and the weird,
@@ -235,6 +237,31 @@ and the engine knows no domain: a scene is authored wording and staging; the
 Director is domain-blind eligibility; Things are Atlas entities the scene
 references and never owns.
 
+### 3.1 Not everything is a scene — CORRECTION (2026-09-22 screening)
+
+The first screening exposed a drift in our own language: "Scene" was
+becoming the word for every screen. It must not. October needs directed
+cinematic experiences **and** excellent functional product surfaces, and the
+Director's most important skill is knowing when to do nothing.
+
+**Provisional vocabulary** — working words, deliberately not yet architecture:
+
+| word         | meaning                                                                               |
+| ------------ | ------------------------------------------------------------------------------------- |
+| **Scene**    | a directed cinematic experience. Witching Hour.                                       |
+| **Surface**  | a functional place: browse, choose, plan, save, rate. Movie Night may mostly be one.  |
+| **Thing**    | the useful object — movie, place, event, activity, recipe, story.                     |
+| **Moment**   | a small cinematic intervention inside or around a surface.                            |
+| **Thread**   | continuity across experiences and time.                                               |
+| **Callback** | a later payoff of something planted earlier.                                          |
+| **Director** | decides when October steps forward — and when Passport simply lets the person use it. |
+
+**The Director must know when NOT to direct.** If everything is cinematic,
+October is exhausting. Browsing movies is a surface; picking one scary movie
+might trigger a moment; rating it afterwards is product learning; a later
+Witching Hour may call back to what October learned. _Scene creates feeling.
+Surface lets the person do something with it._
+
 ---
 
 ## 4. The fear system — OCTOBER (with a reusable shape)
@@ -389,9 +416,25 @@ You aren't.
 Useful choices: take a night walk · hear a local story · put something scary
 on · make something warm · let October decide.
 
-**Lorne is not yet sold on this scene. That is the reason to prototype it
-early.** It must earn its place — it is a test of whether the scene philosophy
-can produce something compelling out of skepticism.
+**Lorne was not sold on this scene, which is why it was prototyped first.**
+It has now been built as v0 at `/labs/october/witching-hour` (commits
+`5f5b518`, `dffc2b6`; deployed at `elk-passport.vercel.app`) and physically
+screened. The verdict, in full, is §25. The short version: the concept is
+emphatically validated and the execution is very rough — _the parts that
+work are already unusually compelling; there is simply far too much nothing
+between them._
+
+**Candidate v0.1 directing goals — recorded, not built:**
+
+- substantially compress dead time; keep atmosphere and restraint
+- more event density **without** constant effects
+- keep "I didn't tell you to pick it up" — the first proven beat
+- make intentional silence read as waiting, not as broken
+- give Stay Inside an earned ending: latch/creak → one hard door slam →
+  silence → immediately into useful Stay Inside content (§25.2)
+- investigate real iPhone screen sleep / Wake Lock on hardware
+- desktop and phone remain _equally capable_ attention owners (§25.5)
+- do not add dozens of effects; do not generalise architecture yet
 
 ### 9.2 Movie Night
 
@@ -405,6 +448,20 @@ asking.
 
 Afterward persist WATCHED and ask for a lightweight reaction and scare rating.
 Movie feedback feeds the Fear Profile and crowdsourced fear.
+
+**Current thinking on what a movie _is_ (2026-09-22):** a screening at a
+theatre can honestly be an Atlas Event. A movie itself is not a Place, an
+Organization, an Activity or an Event, and must not be forced into one. For
+Movie Night, start from a small curated Passport fixture catalogue and let the
+experience expose what information it actually needs before any long-term
+knowledge model is decided — Movie, Work, Media, Content, or something else is
+**unresolved**. The experience discovers the requirement; the ontology follows.
+
+**Directed trailer moments — CANDIDATE.** Where officially hosted, embeddable
+trailers or teasers are permitted, October could use one carefully chosen
+moment from promotional media to _demonstrate a fear mechanism_ — unseen
+presence, dread, startle, isolation — rather than autoplaying previews. Never
+pirated clips. Never a Netflix autoplay wall. Restraint.
 
 ### 9.3 Local Legend
 
@@ -493,7 +550,51 @@ expectation violation. Silence is part of the sound design.
 
 (The existing experiment's `useSoundscape` is mono synthesized noise with
 layers and ducking — a real arc, but not spatial. The "sound predicts
-position" grammar is new.)
+position" grammar is new — and as of v0 it is built and screened: left tick →
+left window lights; right tick → branch stirs; then right tick, four seconds
+of nothing, and the _left_ light goes out, unmentioned. With headphones the
+directional ticks were "very cool".)
+
+### 10.1 Attention handoff, device dormancy, device re-entry — MECHANIC
+
+Three techniques, named after the screening because they were _felt_ before
+they were named:
+
+- **ATTENTION HANDOFF** — deliberately transfer ownership of the person's
+  attention from one participating device to another.
+- **DEVICE DORMANCY** — let a participating device go quiet long enough that
+  the person stops considering it part of the experience.
+- **DEVICE RE-ENTRY** — bring the dormant device back unexpectedly, spending
+  the attention they forgot to guard.
+
+The one that makes the other two possible is **restraint**: if every device
+constantly flashes, speaks, vibrates and updates, re-entry is impossible.
+_Forgetting creates the possibility of surprise._
+
+The v0 beat, preserved in its specific form: _the phone sits face down and
+forgotten beside the monitor; October makes it thump; the person picks it up
+and reads "I didn't tell you to pick it up"; while they are reading, the
+desktop's left-hand tree ceases to exist, with no animation to catch. When
+they look back, the world is simply different, and October does not mention
+it._
+
+### 10.2 The room becomes the soundstage — MECHANIC / OCTOBER
+
+Desktop and phone are physically separated sound sources in the person's real
+room. October may compose with: desktop speakers · phone speaker · headphones ·
+Android haptics where present · screen light · orientation and motion · touch ·
+camera when explicitly invited · multiple displays · the physical distance
+between devices.
+
+Candidate techniques: a sound originates from the phone _beside or behind_ the
+person while they look at the desktop, steals attention, and the desktop
+changes while they look; the reverse; a creak that _begins_ on the desktop and
+_finishes_ on the phone somewhere else in the room.
+
+**Do not demonstrate every capability at once** — that is a technology demo.
+Condition first, violate later. A sound may belong to the desktop for several
+visits before, one night, it comes from the phone. That is a multi-day
+physical callback.
 
 ---
 
@@ -507,6 +608,21 @@ acceptable to spend substantial effort on small details.
 "Cinematic" must not mean excessive motion, generic horror clip-art, skulls
 everywhere, constant glitch effects, loudness, or clutter. Subtle motion can be
 more effective.
+
+**Slow is not suspense** (2026-09-22). Suspense requires anticipation. Quiet
+and restraint remain core values, but dead time is not automatically
+cinematic; on hardware, most of v0's silences read as _"is this broken?"_ and
+"Still awake?" became accidentally literal. The shape to aim for is
+`compress → intensify → payoff → handoff`, with a few long pauses kept
+deliberately **after** attention has been earned. Do not fix bad pacing by
+filling every second with effects. And note the gap between the page and the
+room: timing values that read as restrained in a script felt like abandonment
+in a chair.
+
+**We are not anti-jump-scare; we are anti-_cheap_-jump-scare.** One hard,
+earned scare after sustained restraint can be extremely effective. A scare
+should punctuate a scene and hand the person into something useful, never
+leave them staring at the environment.
 
 Generated video may be used for large atmospheric scene backgrounds — poster
 frame first, compressed and responsive assets, lazy loading, preload the
@@ -723,8 +839,9 @@ Experience Lab found `Prompt`.)
 Fixture-driven context with dev controls that simulate: time · weather · moon ·
 fear level · location label · group context · prior history.
 
-**No implementation in this mission.** Implementation is authorized only after
-this document is reviewed.
+**Done.** v0 shipped as `/labs/october/witching-hour` with fixtured context
+(no dev controls yet), three cuts — phone alone, desktop alone, desktop + phone
+— and was screened on a real desktop and a real iPhone. See §25.
 
 ---
 
@@ -760,8 +877,15 @@ Named so nobody reconciles them silently.
 7. **Points.** The Lab keeps optional scoring ("seasoning"). October has none.
    Not a conflict to resolve — a difference to respect.
 8. **Group Mode.** The existing experiment simulates a group on one device;
-   the Lab is also one browser. Real multi-device presence exists nowhere yet
-   and both say so.
+   the Lab is also one browser. ~~Real multi-device presence exists nowhere
+   yet~~ — as of v0 it exists as an ephemeral two-device pairing, screened.
+9. **"Scene" for everything vs scenes _and_ surfaces.** Earlier sections
+   sometimes used "scene" to mean any October screen. §3.1 corrects this; the
+   older wording is left where it was so the drift is visible.
+10. **Desktop as director vs devices as instruments.** v0's code names the
+    desktop "director" and the phone "prop" — correct for v0's one authored
+    cut, and _wrong as a principle_. §25.5 and the App ADR say no device is
+    permanently primary. Do not read v0's variable names as architecture.
 
 ---
 
@@ -769,7 +893,8 @@ Named so nobody reconciles them silently.
 
 Things that need experiments, not answers written tonight.
 
-1. Can Witching Hour be made compelling at all? (First experiment.)
+1. ~~Can Witching Hour be made compelling at all?~~ **Answered yes** on
+   2026-09-22, by a rough prototype. The open question is now pacing (§11).
 2. What does the Director actually consume — a scene declares its own
    eligibility (context predicates + history predicates), or the Director
    holds a plan? Do not decide before two real scenes exist.
@@ -795,6 +920,233 @@ Things that need experiments, not answers written tonight.
     trick — is scene history a list of scene ids with timestamps, or more?
 12. Generated video: does a poster-first, lazy, unload-on-distance pipeline
     stay under the animation quality bar on a mid-range phone?
+13. Why does a real iPhone still sleep face down with a Screen Wake Lock
+    requested from a gesture? (Suspected: iOS releases it on backgrounding or
+    the request silently failed; needs a real-hardware trace, not a guess.)
+14. Does the earned door slam survive repetition, or is it a once-per-October
+    device? (Related: how does a scene know it has already used its one scare?)
+15. What is the honest boundary for camera ambiguity (§25.10) — what can a
+    live camera view be allowed to _suggest_ without Passport claiming
+    anything about reality?
+
+---
+
+## 25. First physical screening — Witching Hour v0, 2026-09-22 — EVIDENCE
+
+Experienced on a deployed desktop browser and a physical iPhone, with
+headphones, paired through Supabase Realtime, from `elk-passport.vercel.app`.
+This section is the record. It is deliberately specific; the bland version of
+any line here would destroy the thing it is preserving.
+
+**The conclusion, before the detail:** the concept is emphatically validated
+and the execution is very rough. _The parts that work are already unusually
+compelling. There is simply far too much nothing between them._ So the job is
+to **edit and direct**, not to rethink.
+
+### 25.1 What actually happened
+
+**Good.**
+
+- The ambient wind was very good.
+- The strange directional ticks were very cool in headphones.
+- Atmosphere existed immediately.
+- The dark desktop _waiting for the phone_ already felt exciting before
+  pairing succeeded.
+- Physically taking the phone out and pointing its camera at the glowing QR
+  code felt creepy — before anything scary had happened on the phone.
+- The phone physically sitting beside the monitor changed the experience.
+- Cross-device participation felt fundamentally different from using a
+  website.
+- The headphone thump works as a physical cue even though iPhone cannot
+  vibrate.
+- **"I didn't tell you to pick it up."** produced immediate laughter and an
+  emphatic "oh heck yeah." **Keep that beat. It is one of the first proven
+  moments.**
+- The browser briefly disappeared psychologically: it felt like October had
+  _noticed a physical action_.
+- Lorne repeatedly called the rough prototype unreal / freaking cool despite
+  obvious defects — and the concept became _more_ convincing because something
+  so unfinished already produced atmosphere and physical reactions.
+
+**Bad.**
+
+- Pacing is dramatically too slow — worst after the headphones question and
+  before pairing, with further dead stretches around face-down/pickup and
+  after later beats.
+- Silence usually read as "is this broken?" rather than as anticipation. The
+  experience lost attention instead of building it.
+- "Still awake?" became accidentally literal.
+- The physical iPhone still fell asleep despite the Wake Lock request.
+- Several stretches did not communicate whether October was intentionally
+  waiting or the software had stalled.
+- The doorway leads nowhere useful. Stay Inside → desktop: "Good. The door
+  stays closed tonight." → phone: "Okay." → effectively nothing. That reads
+  as unfinished, not mysterious.
+
+### 25.2 The door — a discovery from an unmet expectation
+
+After choosing Stay Inside, Lorne instinctively waited for something to
+happen to the door. Nothing did. His reaction: _"Is it done? No door creaking?
+No door slam?"_ The writing had created an expectation the scene did not
+honour.
+
+Candidate direction, in full:
+
+```
+Stay Inside.
+
+"Good.
+The door stays closed tonight."
+
+beat.
+
+(maybe) a subtle latch, or a creak.
+
+then ONE earned, spatially convincing, hard DOOR SLAM through the headphones.
+
+silence.
+
+(maybe) "Locked."
+
+then, immediately, useful Stay Inside content.
+```
+
+Preserve the joke inside it: the person means _"I choose an indoor
+activity"_; October momentarily hears _"you are staying inside."_ Playful,
+creepy, and it needs no overarching plot. The scare punctuates the scene and
+hands the person into useful Passport; it never leaves them staring at trees.
+
+### 25.3 Not everything is a scene
+
+Recorded at §3.1 as a correction to our own language, with the provisional
+vocabulary (Scene · Surface · Thing · Moment · Thread · Callback · Director).
+The Director must know when not to direct.
+
+### 25.4 Movies
+
+Recorded at §9.2: a movie is not an existing Atlas kind and must not be forced
+into one; a curated fixture catalogue first; directed trailer moments as a
+candidate.
+
+### 25.5 Devices are instruments, not mirrors — PRINCIPLE
+
+One of the largest discoveries of the night. Preserve the phrase:
+
+> **A Passport experience does not belong to a screen. It can move between
+> and coordinate the devices around the people participating in it. Each
+> device is an instrument, not a mirror. There is no permanently primary or
+> secondary device; attention and control can move between them as part of
+> the experience.**
+
+Do not frame the desktop as permanently primary and the phone as secondary.
+Both can be primary at different moments:
+
+```
+desktop owns attention.  phone sits forgotten.
+phone makes a sound.     phone owns attention.  desktop is a dormant object behind the person.
+minutes pass on the phone. the desktop is mentally removed from the experience.
+CREAK — from the desktop.
+the person physically turns around.
+the desktop is different.
+```
+
+The reverse is equally valid. This is also the first App ADR
+(`docs/architecture/decisions/001-devices-are-instruments-not-mirrors.md`).
+
+### 25.6 Attention handoff · device dormancy · device re-entry
+
+Recorded at §10.1 as named techniques, with the v0 beat preserved in its
+specific form.
+
+### 25.7 The room becomes the soundstage
+
+Recorded at §10.2. The origin is worth keeping here: **iPhone's missing
+vibration produced a better idea.** Treated as a degraded capability it was a
+loss; treated as "there are two sound sources in this room" it became a
+composition.
+
+### 25.8 Capability-based cinematic cuts — PRINCIPLE
+
+An unsupported capability should **change the cut**, not produce a worse
+version of the same cut.
+
+| what is in the room | what October does                                                    |
+| ------------------- | -------------------------------------------------------------------- |
+| Android + vibration | real haptic pulses                                                   |
+| iPhone + headphones | a low thump, spatial sound                                           |
+| no headphones       | some other combination — screen, orientation, touch, a second device |
+| camera / motion     | only when explicitly appropriate and permissioned                    |
+
+Never display "Your browser does not support vibration." October simply
+chooses from the instruments available. A future Director context may include
+_"what can the devices in this experience physically do right now?"_, and that
+should shape composition. Origin: this exists because iPhone vibration failed.
+
+### 25.9 Pairing itself can be cinema
+
+Picking up the phone and aiming its camera at the glowing code on the dark
+desktop felt creepy _before_ anything happened on the phone. So pairing is not
+setup plumbing to be hidden. It worked because atmosphere already existed and
+the person knew something was coming. Do not overdecorate it. Preserve: _the
+transition between devices can itself be part of the experience._
+
+### 25.10 The camera / finger accident — CANDIDATE, with a hard boundary
+
+While aiming at the QR code, Lorne's finger crossed the camera. For an instant
+it looked like something on the screen, or behind the phone. It creeped him
+out and immediately suggested a technique — something small and ambiguous
+crossing the live frame, a spider-like silhouette. **Do not implement this
+now. Do not turn October into cheap AR ghosts.**
+
+The deeper discovery: when the live camera view _is_ the person's room, a
+tiny ambiguous intrusion can momentarily confuse "on the screen" · "in the
+camera image" · "physically behind the phone". That boundary uncertainty is
+potentially powerful. Any future camera use: explicit opt-in · honest about
+camera use · no secret recording · preferably local processing · never a claim
+that something was "detected" · restrained. **Ambiguity in presentation,
+never deception about surveillance or reality.**
+
+### 25.11 Building creates the ideas — PRINCIPLE
+
+Tonight's loop, demonstrated repeatedly: `build → experience → discover →
+preserve → build again`.
+
+- iPhone vibration failing → multi-device spatial audio.
+- QR setup → cinematic pairing.
+- physical phone placement → attention ownership.
+- a finger over the camera → screen/reality ambiguity.
+- a boring ending → the scene → surface handoff.
+- timing values on a page → radically different in a chair.
+- "I didn't tell you to pick it up" → proven only when experienced physically.
+
+Therefore: do not design October on paper; do not build a generalised
+Director / Scene Engine from imagined needs. Build authored experiences,
+experience them physically, extract the language that proves itself, preserve
+it, and let architecture emerge from evidence. **Recklessly ambitious
+creatively; conservative architecturally.**
+
+### 25.12 What v0 proved
+
+The question was: _can Passport feel less like a website and more like an
+interactive movie?_ v0 is enough evidence to continue confidently — not
+because of polish, but because the person physically arranged devices;
+pairing created anticipation; sound moved attention; the phone became a prop;
+the experience responded to a physical action; one line on the phone produced
+a strong emotional reaction; the person began thinking about the _room_ as part
+of the experience; and what they wanted afterwards was a missing cinematic
+payoff, not more UI. **The browser briefly ceased to be the mental model.**
+That is the direction.
+
+### 25.13 Preservation rule, reinforced
+
+When a discovery materially changes what October is, preserve it in Passport
+before moving far beyond it. Not every joke — but the why, the weird specific
+mechanics worth protecting, screening evidence good and bad, rejected
+directions and why, cinematic principles, recurring motifs, architecture
+decisions, and anything that came from a physical build. Specificity matters:
+"cross-device support" is worthless; _"the phone sits dormant beside the
+monitor; October makes it speak, stealing attention; while the person looks
+away the desktop silently changes"_ is the idea.
 
 ---
 
