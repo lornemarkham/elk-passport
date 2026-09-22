@@ -1,7 +1,9 @@
 # ADR 001 — Devices are instruments, not mirrors
 
-**Status:** accepted · **Date:** 2026-09-22 · **Origin:** the first physical
-screening of Witching Hour v0 (`docs/product/october-experience-bible.md` §25)
+**Status:** accepted · **Date:** 2026-09-22 · **Amended:** 2026-09-22 after
+the v0.1 screening (evidence only; the decision is unchanged) · **Origin:**
+the first physical screening of Witching Hour v0
+(`docs/product/october-experience-bible.md` §25)
 
 ## Decision
 
@@ -62,3 +64,19 @@ to exist. On real hardware this produced laughter, "oh heck yeah", and the
 sense that the browser had briefly stopped being the mental model. The reverse
 direction — phone holds attention, desktop returns with a sound — was not
 built and is the next thing to test.
+
+**Second screening, v0.1 (bible §26).** Consequence 2 was exercised for the
+first time: the phone reported that it could not hold a wake lock and the
+desktop chose a shorter dormancy, with nothing said on screen. It worked as
+designed and the cut was not visibly worse for it. Two further observations
+support the principle from the sound side: the ambient wind was spatial
+enough that a person wearing one headphone thought it was absent, and the
+real room — a garage — became a more frightening instrument than some of
+the synthesised sound, once attention had been conditioned. The room is an
+instrument too, and Passport neither controls it nor pretends to.
+
+**A limit found, not a contradiction:** the same screening showed that
+"I didn't tell you to pick it up" loses its force when the sequence has
+prompted the pickup. Attention handoff has to feel like the person's own
+decision; the principle does not say how to stage that, and this ADR does
+not either.

@@ -2,7 +2,8 @@
 
 **Established:** 2026-09-22, from one long evening of design conversation.
 **Amended:** 2026-09-22, after the first physical screening of Witching Hour
-v0 (§25). One scene is now implemented as a lab; everything else remains
+v0 (§25), and again after the second, of v0.1 (§26–§29). One scene is
+implemented as a lab and has been screened twice; everything else remains
 preserved direction, not roadmap. It is written so that tomorrow starts where
 tonight stopped.
 
@@ -256,6 +257,12 @@ Director's most important skill is knowing when to do nothing.
 | **Callback** | a later payoff of something planted earlier.                                          |
 | **Director** | decides when October steps forward — and when Passport simply lets the person use it. |
 
+**Evolved after the v0.1 screening (§27.2):** two words joined the table.
+**Your October** — the real story made of what the person actually did, and
+_the product_. **Side Story / Mystery** — an optional authored narrative
+threaded through the month. The table above is unchanged so the addition is
+visible; the model with all of it in place is in §27.2.
+
 **The Director must know when NOT to direct.** If everything is cinematic,
 October is exhausting. Browsing movies is a surface; picking one scary movie
 might trigger a moment; rating it afterwards is product learning; a later
@@ -385,6 +392,15 @@ screen through memory.** That is reality bleed.
 
 Design for it intentionally **without** pretending to track anyone.
 
+**Evolved 2026-09-22, from three real animals and a garage (§26.4):** after
+the first screening an ordinary cat outside startled Lorne badly; during
+later brainstorming real coyotes joined the atmosphere uninvited; during the
+v0.1 screening ordinary garage noises were scarier than some of the headphone
+effects. _October does not always need to provide the scary thing. Sometimes
+it only needs to change how attentively you experience the ordinary world._
+Reality bleed is not only memory carrying a story out of the screen; it is
+**conditioning** carrying attention into the room.
+
 Provenance is non-negotiable, and the existing experiment already has the
 right labels — extend, do not weaken: **documented history · documented
 folklore · legend · user-submitted story.** Never present folklore as
@@ -424,7 +440,14 @@ emphatically validated and the execution is very rough — _the parts that
 work are already unusually compelling; there is simply far too much nothing
 between them._
 
-**Candidate v0.1 directing goals — recorded, not built:**
+**v0.1 was built (`da6b323`) and screened (§26). The pacing goals below were
+met on the clock — doorway at 82 s instead of 115 — and the screening still
+read as too slow, with stretches of "is anything happening?" The conclusion
+is the important part: _stop iterating this sequence as v0.2 through timer
+and polish tweaks. The problem is now narrative and premise_ (§27). The
+goals are kept as the record of what was tried.**
+
+**Candidate v0.1 directing goals — recorded, and now built:**
 
 - substantially compress dead time; keep atmosphere and restraint
 - more event density **without** constant effects
@@ -619,6 +642,15 @@ filling every second with effects. And note the gap between the page and the
 room: timing values that read as restrained in a script felt like abandonment
 in a chair.
 
+**Evolved after v0.1 (§26, §27.4): slow is still not suspense, and shorter
+timers were not the answer either.** A cut that runs on timers cannot tell
+the person whether October is waiting or the software has stopped, however
+tight the timers get. _Timers are a directing tool, not the engine._ Story
+provides momentum; the person's own scroll and tap provide pacing; cinema
+provides atmosphere; October provides continuity; and cinematic techniques
+_interrupt_ the story deliberately, rather than being the thing the person
+waits through.
+
 **We are not anti-jump-scare; we are anti-_cheap_-jump-scare.** One hard,
 earned scare after sustained restraint can be extremely effective. A scare
 should punctuate a scene and hand the person into something useful, never
@@ -810,6 +842,16 @@ entity, secretly knows information it does not legitimately have, or has real
 social activity when it does not. The theatre can be scary without lying about
 danger or surveillance.
 
+**Evolved 2026-09-22 — TRUE / TOLD / OURS (§27.7).** Now that an authored
+October narrative is on the table, the provenance labels above gain a third
+column. **TRUE**: documented history, places, events, facts. **TOLD**:
+documented folklore, legends, the stories people tell — represented as such.
+**OURS**: the fictional October narrative. These can interact beautifully,
+and Passport must never deliberately present TOLD or OURS as TRUE. This is
+the same rule the existing `LocalLegend.kind` labels already enforce
+(Documented · Local Legend · Concept), extended to cover fiction Passport
+itself writes.
+
 ---
 
 ## 21. The 20-day product attitude — PRINCIPLE
@@ -826,6 +868,14 @@ Build a meaningfully different second scene. Only then extract shared
 abstractions that have earned their existence. (This is exactly how the
 Experience Lab found `Prompt`.)
 
+**Working method, added after v0.1 (§26.5): writer's block must not stop
+production.** There are enough lanes that one being stuck never idles the
+project — the October story and mystery · cinematic techniques · practical
+surfaces · Movie Night · Things to Do · My October · the Okanagan corpus ·
+the Vancouver Halloween corpus · the Hockey Night corpus · local folklore and
+history · Atlas improvements exposed by any of those. Move between lanes;
+keep one product direction.
+
 ---
 
 ## 22. Likely first experiment — CANDIDATE
@@ -839,9 +889,12 @@ Experience Lab found `Prompt`.)
 Fixture-driven context with dev controls that simulate: time · weather · moon ·
 fear level · location label · group context · prior history.
 
-**Done.** v0 shipped as `/labs/october/witching-hour` with fixtured context
-(no dev controls yet), three cuts — phone alone, desktop alone, desktop + phone
-— and was screened on a real desktop and a real iPhone. See §25.
+**Done, twice.** v0 shipped as `/labs/october/witching-hour` with fixtured
+context (no dev controls yet), three cuts — phone alone, desktop alone,
+desktop + phone — and was screened on a real desktop and a real iPhone (§25).
+v0.1 recut the pacing and added the door and a Stay Inside surface, and was
+screened the same way (§26). The experiment's finding is no longer "can it be
+compelling" but "the sequence needs a premise, not a shorter clock."
 
 ---
 
@@ -886,6 +939,20 @@ Named so nobody reconciles them silently.
     desktop "director" and the phone "prop" — correct for v0's one authored
     cut, and _wrong as a principle_. §25.5 and the App ADR say no device is
     permanently primary. Do not read v0's variable names as architecture.
+11. **"I didn't tell you to pick it up" — proven in v0, deflated in v0.1.**
+    §25 calls it the first proven beat. §26 found it lost its magic when the
+    sequence had effectively _prompted_ the pickup. Both are true: the line
+    works only when picking up the phone genuinely feels like the person's
+    own decision. That is a constraint on how it is staged, not a reason to
+    cut the line.
+12. **Categories vs desire.** §9.1's doorway and v0's choices ("Stay inside ·
+    Go outside · Tell me something · Surprise me") are abstract categories.
+    §27.3 says choices must emerge from desire the story created. The older
+    copy stays in v0's script as the record of what did not work.
+13. **Surfaces as menus.** §3.1 says a surface "lets the person do something
+    with the feeling." v0.1's Stay Inside surface did exactly that as a menu of
+    cards, and the cards killed the feeling instantly (§26.2). A surface must
+    be useful _without_ becoming a recommendation menu; how is open (§24).
 
 ---
 
@@ -928,6 +995,23 @@ Things that need experiments, not answers written tonight.
 15. What is the honest boundary for camera ambiguity (§25.10) — what can a
     live camera view be allowed to _suggest_ without Passport claiming
     anything about reality?
+16. **What is October?** The season anthropomorphised, a storyteller, a ghost,
+    something connected to Passport, something older, something else — not
+    to be answered on paper (§27.1). The "dead someone" idea is kept because
+    it revealed that a deeper mystery is _possible_, not because it is chosen.
+17. How is a phone pickup staged so that it is the person's own decision and
+    not a prompted one? (§23 #11.) The line depends on the answer.
+18. How can a surface be genuinely useful without becoming a menu of cards?
+    (§26.2.) The Towne Cinema card and The Others card both broke the spell
+    the moment they appeared — the same failure from two directions.
+19. Why did face-down detection not visibly work on the physical iPhone in
+    the v0.1 run — sensor permission, the β threshold, or the fallback path?
+    Needs a hardware trace, not a guess.
+20. How loud should the door be? v0.1's slam was capped for safety and was
+    "much too quiet" in the room. The ceiling was the right idea at the wrong
+    number.
+21. Does an opening that the person paces by scroll and tap (§27.4) hold
+    atmosphere as well as a timed one, or does control dissolve it?
 
 ---
 
@@ -1147,6 +1231,272 @@ decisions, and anything that came from a physical build. Specificity matters:
 "cross-device support" is worthless; _"the phone sits dormant beside the
 monitor; October makes it speak, stealing attention; while the person looks
 away the desktop silently changes"_ is the idea.
+
+---
+
+## 26. Second physical screening — Witching Hour v0.1, 2026-09-22 — EVIDENCE
+
+Same rig as §25: deployed desktop, physical iPhone, headphones, Realtime
+pairing. v0.1 (`da6b323`) had recut every timer, made the desktop change
+pre-attentive, built the door, and added a Stay Inside surface.
+
+**The conclusion, before the detail:** _stop iterating this sequence as v0.2
+through timer and polish tweaks. The problem is now narrative and premise._
+
+### 26.1 What worked
+
+- The ambient wind still works — and it is spatial enough that Lorne at first
+  thought it was _absent_, because he was wearing only the right headphone
+  and the wind sat mostly in the left.
+- Sound materially changes behaviour: he was reluctant to put the second
+  headphone on, because the experience had already made him nervous.
+- The smaller sounds — latch, wood — were good.
+- Pairing and cross-device remain a promising cinematic technique.
+- **The real garage became scarier than some of the generated sounds.**
+  Ordinary noises felt threatening once attention had been conditioned.
+  (Preserved as principle at §8 and §26.4.)
+- The door's _setup_ worked: "Good. The door stays closed tonight." landed,
+  and the latch and wood registered.
+
+### 26.2 What failed
+
+- Still substantially too slow, despite doorway-at-82-seconds. Repeated
+  stretches read as nothing happening.
+- Face-down detection did not visibly work on the physical iPhone.
+- The environmental changes were still too subtle. The reaction was
+  effectively _"am I looking at the same thing? did something change?"_ —
+  not "what the hell?"
+- **"I didn't tell you to pick it up" lost its magic**, because the sequence
+  had effectively prompted the pickup. The line only works when the pickup is
+  genuinely the person's own idea.
+- "Put it back." followed by no perceptible response was brokenness, not
+  tension.
+- "Still awake?" after the waiting produced: _"no shit."_
+- **The door slam was much too quiet.** Setup better than payoff.
+- "Stay inside · Go outside · Tell me something · Surprise me" lacked meaning
+  because the person did not yet understand what October was offering or why
+  those choices mattered.
+- The Stay Inside surface was understandable and **emotionally dead** — a
+  recommendation menu. The Towne Cinema legend card and The Others card
+  showed the same failure from two directions: useful content, presented as a
+  card, broke the cinematic spell the instant it appeared.
+
+### 26.3 What this changes
+
+Pacing was the diagnosis after the first screening and it was half right.
+Cutting the clock made the sequence shorter without making it _mean_ more.
+What is missing is a reason to be there: a premise that creates desire, so
+that the person's own curiosity supplies momentum and the timers only
+interrupt it. That is §27.
+
+### 26.4 Conditioning — the real world as instrument
+
+Across three sessions: a cat outside the garage after the first screening
+startled Lorne badly; real coyotes outside joined the brainstorming
+atmosphere; ordinary garage sounds during v0.1 were scarier than the
+headphones. **October does not always need to provide the scary thing.
+Sometimes it only needs to change how attentively you experience the
+ordinary world.** The room can be part of the experience without Passport
+ever pretending to detect anything in it.
+
+### 26.5 Working method
+
+Writer's block must not stop production. Recorded at §21 with the lanes.
+
+### 26.6 ADR 001, checked against this screening
+
+Unchanged as a decision. Its evidence section is amended: consequence 2 (the
+instrument shapes the cut) was exercised for the first time and held; the
+room proved to be an instrument; and one limit was found — attention
+handoff must feel like the person's own decision, which the ADR does not
+claim to solve.
+
+---
+
+## 27. Storytelling direction — EXPLORATION, not canon
+
+Everything in this section is being explored. Nothing here is decided, and
+the point of writing it down is so that the next conversation does not have
+to reconstruct it.
+
+### 27.1 October may be a presence
+
+October may itself become a presence — companion, director, character. The
+person should gradually begin to wonder: _"What the hell is October?"_ —
+_"Who have I been talking to?"_
+
+We do not know what October is: the season anthropomorphised · a storyteller
+· a ghost, a dead someone · something connected to Passport · something older
+· something else. **Do not canonise an answer.** The "dead someone" idea was
+exciting because it showed that a deeper mystery is _possible_ — that is what
+it is kept for, not as a selection.
+
+October can be helpful, funny, mischievous, warm, creepy and frightening at
+different times. The person should have reasons to return beyond narrative
+curiosity.
+
+### 27.2 The model, as currently imagined
+
+```
+PASSPORT       the useful product
+OCTOBER        a seasonal presence / director / companion
+YOUR OCTOBER   the real story, made of what the person actually did — THE PRODUCT (§28)
+SIDE STORY     an optional authored narrative threaded through the month
+SCENES         directed cinematic experiences
+SURFACES       useful product areas
+THINGS         actual movies, events, places, recipes, activities, stories
+MOMENTS        small cinematic interventions
+THREADS        continuity across time
+CALLBACKS      later references and payoffs
+```
+
+**The story must not consume the product.** (§28 holds the test.)
+
+### 27.3 Choices emerge from desire, not from categories — PRINCIPLE
+
+October creates desire, then offers an action. Same utility, different
+psychology.
+
+| bad                         | potentially strong                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| "Tell me something creepy." | "There is a story people tell about a place near here. I probably shouldn't tell you this one tonight. — Tell me anyway." |
+| "Go outside."               | "There's somewhere I want to show you. It's 11 minutes away. — Take me there."                                            |
+
+This is why v0's doorway failed (§26.2): the categories asked the person to
+want something before anything had made them want it.
+
+### 27.4 Story pacing
+
+Explore an opening — a trailer, almost — where the person controls much of
+the pace through scroll and tap rather than waiting through timers.
+
+```
+story          provides momentum
+interaction    provides pacing
+cinema         provides atmosphere
+October        provides continuity
+technique      interrupts the story, deliberately
+```
+
+Timers are a directing tool, not the engine (§11).
+
+A possible purpose for the opening: make the person feel _"I have absolutely
+no idea what this thing is going to do over the next month, and I need to
+find out."_
+
+Exploratory copy, not canon:
+
+```
+How long do I have you?
+  Just tonight
+  Until Halloween
+
+(Until Halloween)
+Good.
+        beat
+Then we have time.
+```
+
+### 27.5 Music and voice — CANDIDATE
+
+An original October musical language: a tiny recognisable three-to-five-note
+motif, perhaps piano; innocent at first; later buried or reinterpreted; able
+to migrate between devices; completed or transformed near Halloween.
+
+Voice should be rare enough to matter. October might exist entirely as text
+at first. If the person becomes used to _reading_ October, the first time
+October actually speaks could be a major moment. Do not default to constant
+narration.
+
+### 27.6 Reality bleed and conditioning
+
+§8 and §26.4. Preserved strongly.
+
+### 27.7 TRUE / TOLD / OURS
+
+The storytelling integrity model, recorded at §20. TRUE is documented; TOLD
+is folklore represented as folklore; OURS is the fiction. They can interact
+beautifully. Passport never presents TOLD or OURS as TRUE.
+
+---
+
+## 28. The practical product — Your October — PRINCIPLE
+
+**The story is not the product. Your October is the product.** Passport must
+be genuinely useful even if every cinematic and story element were removed.
+
+**The product test:**
+
+> If October disappeared entirely, Passport should still be excellent at
+> helping me have an amazing October. When October appears, it should make
+> that experience unforgettable.
+
+Candidate persistent doors and surfaces — names and boundaries provisional:
+
+- **Tonight** — _"Make me a hell of a night."_ Contextual composition of
+  real things to do: stay-in, go-out, and mixed evenings.
+- **Things to Do** — events, pumpkin patches, haunted attractions, markets,
+  walks, theatre, screenings, seasonal activities, local Halloween.
+- **Movies** — browse, filter, discover; the Fear Profile; couples and
+  groups; watched and reactions; Movie Night.
+- **Food & Drink** — recipes, treats, dinner ideas, seasonal food, useful
+  nearby places.
+- **Games & Fun** — trivia, challenges, date activities, friend and family
+  activities, party material.
+- **Stories** — real history, sourced folklore, local legends, and authored
+  October side stories, with the TRUE / TOLD / OURS boundary visible.
+- **My October** — a beautiful, evolving record of what the person actually
+  did: places visited, events attended, movies watched, recipes made,
+  activities tried, stories experienced, reactions, saved plans, memories,
+  friends where appropriate. **Not points, badges or streaks.** A core
+  motivation can simply be _"I want to have a great October and try as many
+  worthwhile things as I can."_ By Halloween it should feel like a record of
+  the October the person actually had. (§14's DID / WATCHED / MADE / SAVED
+  states are the bones of this.)
+- **Fear Dial** — persistent but unobtrusive; it changes how October treats
+  the person rather than functioning as a settings control (§4, §6).
+
+---
+
+## 29. October as a way to develop Atlas — DIRECTION
+
+October becomes a **demand-driven** way to grow Atlas. Do not grow Atlas to
+raise the entity count; use real Passport experiences to expose missing
+knowledge and modelling weaknesses, then fix them systemically.
+
+Initial geographic and product wedges:
+
+1. **Okanagan / Vernon-area Halloween** — deep enough that Lorne can
+   personally use and test it.
+2. **Vancouver Halloween** — not full Vancouver coverage; Halloween-first is
+   fine.
+3. **Vancouver Hockey Night** — a small useful wedge around the actual
+   evening: the arena, walkable nearby places, food, timing, activities, the
+   practical composition of the night.
+
+The loop:
+
+```
+experience need
+  → discover real-world Things
+  → inspect Atlas capability and gaps
+  → systemic Atlas improvement where warranted
+  → acquire high-quality evidence
+  → compose a useful Passport experience
+  → personally test
+  → repeat
+```
+
+Atlas should eventually know enough about a real Thing to answer the
+questions that decide whether someone actually wants to do it: _What is it?
+Why go? What is happening, and when? Is it open or available tonight? How
+much? Who is it good for? How scary or intense? Indoor or outdoor? How long
+does it take? What should it be combined with? What does the surrounding
+evening look like?_
+
+Do not assume every answer is a scalar field. Atlas's evidence and provenance
+principles hold: an answer is a claim with a source, and "Atlas does not
+know" is a valid answer.
 
 ---
 
