@@ -154,7 +154,13 @@ export interface PlaceMediaView {
     | "caption-names-subject"
     | "source-subject"
     | "own-page"
-    | "subject-page";
+    | "subject-page"
+    | "section-names-subject";
+  /**
+   * The other held renditions of this same asset (Atlas M11.1) — one URL is
+   * shown, every rendition is cited. Provenance, never rendered.
+   */
+  variants?: { url: string; sourceRecordId: string; evidence: string }[];
 }
 
 export interface PlaceRepresentativeMedia {

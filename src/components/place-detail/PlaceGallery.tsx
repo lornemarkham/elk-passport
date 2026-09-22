@@ -11,7 +11,7 @@ import {
 import type { PlaceMediaView, PlaceSource } from "@/lib/data/types";
 import { SectionShell } from "./SectionShell";
 import { sourceLabel } from "./PlaceSources";
-import { galleryImages } from "./placeMedia";
+import { featuredImageShown, galleryImages } from "./placeMedia";
 import type { PlaceSectionProps } from "./types";
 
 /**
@@ -32,7 +32,12 @@ import type { PlaceSectionProps } from "./types";
  * closes (the dialog's own behaviour), and focus stays inside it.
  */
 export function PlaceGallery({ place, media, sources }: PlaceSectionProps) {
-  const images = useMemo(() => galleryImages(media), [media]);
+  // What the page has already placed — the hero always, the featured image
+  // when "Don't leave without…" rendered — stays out of the gallery (M11.1).
+  const images = useMemo(
+    () => galleryImages(media, [featuredImageShown(place, media)]),
+    [place, media],
+  );
   const [open, setOpen] = useState<number | undefined>(undefined);
 
   const publisherOf = useMemo(() => {

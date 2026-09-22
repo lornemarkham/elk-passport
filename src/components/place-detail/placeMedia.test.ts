@@ -3,6 +3,7 @@ import type { Place, PlaceRepresentativeMedia } from "@/lib/data/types";
 import {
   GALLERY_MIN,
   featuredImage,
+  featuredImageShown,
   galleryImages,
   heroImage,
 } from "./placeMedia";
@@ -113,6 +114,72 @@ describe("galleryImages (M1)", () => {
     expect(galleryImages(noHero).map((m) => m.url)).toEqual([
       "https://cdn/a.jpg",
       "https://cdn/b.jpg",
+    ]);
+  });
+});
+
+describe("galleryImages leaves out what the page already placed (M11.1)", () => {
+  const media: PlaceRepresentativeMedia = {
+    hero: view("https://cdn/salmon-1200.jpg"),
+    gallery: [
+      view("https://cdn/salmon-1200.jpg"),
+      view("https://cdn/listing.jpg"),
+      view("https://cdn/falls-1.jpg"),
+      view("https://cdn/falls-2.jpg"),
+      view("https://cdn/falls-3.jpg"),
+    ],
+  };
+
+  it("excludes the featured image when 'Don't leave without…' rendered it", () => {
+    const withActivities = place();
+    withActivities.activities = ["Hiking"];
+    expect(featuredImageShown(withActivities, media)).toBe(
+      "https://cdn/listing.jpg",
+    );
+    expect(
+      galleryImages(media, [featuredImageShown(withActivities, media)]).map(
+        (m) => m.url,
+      ),
+    ).toEqual([
+      "https://cdn/falls-1.jpg",
+      "https://cdn/falls-2.jpg",
+      "https://cdn/falls-3.jpg",
+    ]);
+  });
+
+  it("keeps the featured image in the gallery when that block did not render — nothing is left off the page", () => {
+    const noActivities = place();
+    noActivities.activities = [];
+    expect(featuredImageShown(noActivities, media)).toBeUndefined();
+    expect(
+      galleryImages(media, [featuredImageShown(noActivities, media)]).map(
+        (m) => m.url,
+      ),
+    ).toEqual([
+      "https://cdn/listing.jpg",
+      "https://cdn/falls-1.jpg",
+      "https://cdn/falls-2.jpg",
+      "https://cdn/falls-3.jpg",
+    ]);
+  });
+
+  it("applies the minimum after exclusions: hero plus featured plus one is no gallery", () => {
+    const three: PlaceRepresentativeMedia = {
+      hero: view("https://cdn/h.jpg"),
+      gallery: [
+        view("https://cdn/h.jpg"),
+        view("https://cdn/f.jpg"),
+        view("https://cdn/x.jpg"),
+      ],
+    };
+    const withActivities = place();
+    withActivities.activities = ["Hiking"];
+    expect(
+      galleryImages(three, [featuredImageShown(withActivities, three)]),
+    ).toEqual([]);
+    expect(galleryImages(three).map((m) => m.url)).toEqual([
+      "https://cdn/f.jpg",
+      "https://cdn/x.jpg",
     ]);
   });
 });

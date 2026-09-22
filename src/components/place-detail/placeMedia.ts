@@ -43,8 +43,24 @@ export function featuredImage(
 }
 
 /**
- * **The gallery: every image Atlas can vouch for, except the one already
- * leading the page.** (M1, Atlas ADR 069)
+ * The featured image **as the page actually shows it** — `featuredImage`
+ * when "Don't leave without…" renders (it needs at least one activity), and
+ * nothing otherwise. The gallery leaves out what this returns, so an image
+ * is never on the page twice, and never left off it because a block that
+ * did not render was assumed to have shown it.
+ */
+export function featuredImageShown(
+  place: Place,
+  media: PlaceRepresentativeMedia | undefined,
+): string | undefined {
+  const activities = place.activities?.filter((a) => a.trim()) ?? [];
+  if (activities.length === 0) return undefined;
+  return featuredImage(place, media);
+}
+
+/**
+ * **The gallery: every image Atlas can vouch for, except the ones already
+ * placed on the page.** (M1, Atlas ADR 069; M11.1)
  *
  * Eligibility is not decided here. Atlas's `media.gallery` is exactly the
  * representative set — images with subject evidence (a curator's approval, a
@@ -55,20 +71,25 @@ export function featuredImage(
  * reach the gallery; Passport does not reinterpret evidence, and cannot.
  *
  * Two product rules are Passport's own:
- * - the hero's file is left out — it is the first thing on the page already;
- *   the featured "Don't leave without…" image stays in, because the gallery
- *   is the complete browsable set and that block is an editorial placement;
+ * - an image already placed on the page is left out — the hero, and the
+ *   featured "Don't leave without…" image when that block rendered
+ *   (`featuredImageShown`). Hardy Falls showed one salmon photograph three
+ *   times: hero, featured, and again in the gallery; the gallery is the
+ *   *rest* of what Atlas can vouch for, not the whole of it repeated;
  * - fewer than `GALLERY_MIN` remaining images is no gallery at all: one tile
- *   under a heading is not a gallery, and a Place whose only safe image is
- *   its hero shows no empty shell.
+ *   under a heading is not a gallery, and a Place whose only safe images are
+ *   already on the page shows no empty shell.
  */
 export const GALLERY_MIN = 2;
 
 export function galleryImages(
   media: PlaceRepresentativeMedia | undefined,
+  alreadyShown: readonly (string | undefined)[] = [],
 ): PlaceMediaView[] {
   if (!media) return [];
-  const hero = media.hero?.url;
-  const rest = media.gallery.filter((m) => m.url !== hero);
+  const placed = new Set(
+    [media.hero?.url, ...alreadyShown].filter((u): u is string => Boolean(u)),
+  );
+  const rest = media.gallery.filter((m) => !placed.has(m.url));
   return rest.length >= GALLERY_MIN ? rest : [];
 }
