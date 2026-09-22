@@ -299,6 +299,12 @@ export interface PlacePracticalItem {
   /** ISO observation time for a current, time-bound statement (Atlas ADR 072). */
   asOf?: string;
   sourceRecordId?: string;
+  /**
+   * Every source record that states this item — the shown one and each whose
+   * fact Atlas deduplicated or folded into it (M9). Provenance, not UI: never
+   * rendered. Absent from an Atlas that predates it.
+   */
+  evidence?: string[];
   /** The operator that stated it, when Atlas reached it across an `operates` edge. */
   via?: { id: string; name: string };
 }
@@ -330,6 +336,9 @@ export interface PlacePractical {
   omitted: {
     label: string;
     reason: string;
+    sourceRecordId?: string;
+    /** The text of the visible item this one was deduplicated or folded into. */
+    foldedInto?: string;
     via?: { id: string; name: string };
   }[];
 }

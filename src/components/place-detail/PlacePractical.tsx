@@ -61,8 +61,8 @@ export function PlacePractical({ practical }: PlaceSectionProps) {
                     </h4>
                   )}
                   <dl className="flex flex-col gap-3">
-                    {block.items.map((item) => (
-                      <div key={`${item.label}-${item.text.slice(0, 24)}`}>
+                    {block.items.map((item, index) => (
+                      <div key={`${index}-${item.text.slice(0, 24)}`}>
                         <dt className="text-sm font-medium">{item.label}</dt>
                         <dd className="text-muted-foreground mt-0.5 text-sm leading-relaxed">
                           <Statement item={item} withLabel={false} />
@@ -118,8 +118,8 @@ function PracticalRow({ group }: { group: PlacePracticalGroup }) {
             ))}
           </ul>
         )}
-        {own.map((item) => (
-          <p key={`${item.label}-${item.text.slice(0, 40)}`}>
+        {own.map((item, index) => (
+          <p key={`${index}-${item.text.slice(0, 40)}`}>
             <Statement item={item} />
           </p>
         ))}
@@ -129,8 +129,8 @@ function PracticalRow({ group }: { group: PlacePracticalGroup }) {
               From <span className="font-medium">{name}</span>, which operates
               this place
             </p>
-            {items.map((item) => (
-              <p key={`${item.label}-${item.text.slice(0, 40)}`}>
+            {items.map((item, index) => (
+              <p key={`${index}-${item.text.slice(0, 40)}`}>
                 <Statement item={item} />
               </p>
             ))}
