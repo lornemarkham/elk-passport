@@ -232,6 +232,104 @@ async function main() {
     );
   }
 
+  // -------------------------------------------------------------- my october
+  section("MY OCTOBER — mine, and only lived when I say so");
+  {
+    const entityId = `${RUN}-thing`;
+    const { error } = await A.client.from("passport_october_things").insert({
+      user_id: A.id,
+      entity_id: entityId,
+      entity_kind: "Event",
+      name: "Acceptance Fest",
+      starts_at: "2026-10-09T19:00:00Z",
+      state: "ahead",
+    });
+    assert(!error, "A can want a thing", error?.message ?? "");
+
+    const twice = await A.client.from("passport_october_things").insert({
+      user_id: A.id,
+      entity_id: entityId,
+      entity_kind: "Event",
+      name: "Acceptance Fest",
+      state: "ahead",
+    });
+    assert(Boolean(twice.error), "wanting it twice cannot make two rows");
+
+    const seen = await B.client
+      .from("passport_october_things")
+      .select("entity_id")
+      .eq("user_id", A.id);
+    assert(
+      (seen.data ?? []).length === 0,
+      "B cannot see A's October",
+      `rows=${(seen.data ?? []).length}`,
+    );
+
+    const forged = await B.client.from("passport_october_things").insert({
+      user_id: A.id,
+      entity_id: `${RUN}-forged`,
+      entity_kind: "Place",
+      name: "hijacked",
+      state: "ahead",
+    });
+    assert(Boolean(forged.error), "B cannot put a thing into A's October");
+
+    const sneak = await B.client
+      .from("passport_october_things")
+      .update({ state: "lived", lived_at: new Date().toISOString() })
+      .eq("user_id", A.id)
+      .eq("entity_id", entityId)
+      .select("state");
+    assert(
+      (sneak.data ?? []).length === 0,
+      "B cannot mark A's thing as lived",
+      `rows updated=${(sneak.data ?? []).length}`,
+    );
+
+    const notYet = await A.client
+      .from("passport_october_things")
+      .update({ state: "lived" })
+      .eq("user_id", A.id)
+      .eq("entity_id", entityId)
+      .select("state");
+    assert(
+      Boolean(notYet.error),
+      "a thing cannot be lived without saying when — the constraint holds",
+      notYet.error ? "" : "THE UPDATE SUCCEEDED",
+    );
+
+    const did = await A.client
+      .from("passport_october_things")
+      .update({ state: "lived", lived_at: new Date().toISOString() })
+      .eq("user_id", A.id)
+      .eq("entity_id", entityId)
+      .select("state, lived_at")
+      .maybeSingle();
+    assert(
+      did.data?.state === "lived" && Boolean(did.data?.lived_at),
+      "A says 'did this' and it is lived",
+    );
+
+    if (inspect) {
+      const { data } = await inspect
+        .from("passport_october_things")
+        .select("user_id, state")
+        .eq("entity_id", entityId);
+      assert(
+        (data ?? []).length === 1 &&
+          data[0].user_id === A.id &&
+          data[0].state === "lived",
+        "the stored row is A's, and lived",
+      );
+    }
+
+    await A.client
+      .from("passport_october_things")
+      .delete()
+      .eq("user_id", A.id)
+      .eq("entity_id", entityId);
+  }
+
   // ------------------------------------------------------------------ boards
   section("BOARDS — owned by a real person, invisible to anyone else");
   {

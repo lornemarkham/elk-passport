@@ -11,6 +11,14 @@ interface ExperienceListRowProps {
   saved: boolean;
   saving: boolean;
   onSave: () => void;
+  /**
+   * "Want to do" — the Thing moves from "Passport knows about it" to "I am
+   * considering this for my October." Distinct from Save: a board is a
+   * collection; this is an intention. Omitted where the page has no October
+   * (an anonymous visitor still gets the invitation via `onWant`).
+   */
+  wanted?: boolean;
+  onWant?: () => void;
 }
 
 /** One row: image if the experience has one, title, short description, a
@@ -40,6 +48,8 @@ export function ExperienceListRow({
   saved,
   saving,
   onSave,
+  wanted = false,
+  onWant,
 }: ExperienceListRowProps) {
   const tag =
     experience.subtype ?? experience.activities[0] ?? experience.moods[0];
@@ -121,7 +131,26 @@ export function ExperienceListRow({
         <ChevronRight className="h-4 w-4 shrink-0 text-[#8a5a24]/40" />
       )}
 
-      <div className="relative z-10 shrink-0">
+      <div className="relative z-10 flex shrink-0 items-center gap-2">
+        {/* Quieter than Save on purpose: text, no fill. One word when done. */}
+        {onWant &&
+          (wanted ? (
+            <span
+              className="text-xs font-medium text-[#8a5a24]"
+              data-testid="wanted"
+            >
+              In my October
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onWant}
+              className="min-h-9 rounded-full px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+              data-testid="want-to-do"
+            >
+              Want to do
+            </button>
+          ))}
         {saved ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 py-1.5 text-xs font-medium text-[#8a5a24]">
             <Check className="h-3.5 w-3.5" />

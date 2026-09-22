@@ -33,6 +33,7 @@ import {
   type BoardItem,
 } from "@/lib/data/boards-repo";
 import { AccountControl } from "@/components/auth/AccountControl";
+import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
 import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { DiscoveryListFilters } from "./DiscoveryListFilters";
 import {
@@ -108,6 +109,9 @@ export function DiscoveryListView({
   const boardRequestRef = useRef(0);
 
   const [query, setQuery] = useState("");
+  // Which Things are already in this person's October. Loaded once for a
+  // signed-in person; a visitor has none and is never asked.
+  const [wantedIds, setWantedIds] = useState<ReadonlySet<string>>(new Set());
   // Which way the same catalogue is being browsed. List is the default because
   // a returning traveller usually arrives with something in mind.
   const [mode, setMode] = useState<DiscoveryMode>("List");
@@ -132,8 +136,12 @@ export function DiscoveryListView({
     let cancelled = false;
     (async () => {
       try {
-        const allBoards = await listBoards();
+        const [allBoards, octoberThings] = await Promise.all([
+          listBoards(),
+          listOctoberThings().catch(() => []),
+        ]);
         if (cancelled) return;
+        setWantedIds(new Set(octoberThings.map((t) => t.entityId)));
         setBoards(allBoards);
         setBoardsLoaded(true);
         const storedId = getStoredActiveBoardId();
@@ -405,6 +413,37 @@ export function DiscoveryListView({
     });
   }
 
+  /**
+   * "Want to do." The Thing moves into this person's October as something
+   * Ahead. Idempotent on the server, so a double click is one row. A visitor
+   * gets the same invitation saving gives — this is a durable act.
+   */
+  async function handleWant(experience: Experience) {
+    if (!signedIn) {
+      inviteSignIn(
+        "Sign in to keep this",
+        `${experience.title} will be waiting in your October.`,
+      );
+      return;
+    }
+    try {
+      await wantToDo({
+        entityId: experience.id,
+        entityKind: experience.kind,
+        name: experience.title,
+        startsAt: experience.startTime ?? null,
+      });
+      setWantedIds((prev) => new Set(prev).add(experience.id));
+      toast.success("Kept for your October.");
+    } catch (error) {
+      toast.error(
+        isSignedOut(error)
+          ? "Your session ended. Sign in again to keep this."
+          : "Couldn't keep that. Please try again.",
+      );
+    }
+  }
+
   // Atlas-first, same pattern as DiscoverySpace's performSave: local
   // "saved" state only flips once Atlas confirms the write.
   async function handleSave(experience: Experience) {
@@ -543,6 +582,8 @@ export function DiscoveryListView({
                         experience={experience}
                         saved={savedIds.has(experience.id)}
                         saving={savingId === experience.id}
+                        wanted={wantedIds.has(experience.id)}
+                        onWant={() => handleWant(experience)}
                         onSave={() => handleSave(experience)}
                       />
                     ))}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bookmark, LogOut, UserRound } from "lucide-react";
+import { Bookmark, Leaf, LogOut, UserRound } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
@@ -65,6 +65,14 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
       {/* The two places a signed-in person actually needs to reach. Small, and
           on every screen that shows this control, because a consumer app that
           has no way back to your own stuff is not one. */}
+      <Link
+        href="/october"
+        data-testid="october-link"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10"
+      >
+        <Leaf className="h-4 w-4" aria-hidden />
+        My October
+      </Link>
       <Link
         href="/boards"
         className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10"

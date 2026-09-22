@@ -52,6 +52,10 @@ vi.mock("@/lib/data/boards-repo", () => ({
   renameBoard: async () => board,
   deleteBoard: async () => {},
 }));
+vi.mock("@/lib/october/october-repo", () => ({
+  listOctoberThings: async () => [],
+  wantToDo: async () => ({}),
+}));
 vi.mock("@/lib/data/activeBoardStorage", () => ({
   getStoredActiveBoardId: () => "board-1",
   setStoredActiveBoardId: () => {},

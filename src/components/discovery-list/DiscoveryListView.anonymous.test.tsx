@@ -50,6 +50,14 @@ vi.mock("@/lib/data/boards-repo", () => ({
   isSignedOut: () => false,
 }));
 
+const wantToDo = vi.fn(async () => {
+  throw new Error("a signed-out visitor must never reach an October write");
+});
+vi.mock("@/lib/october/october-repo", () => ({
+  listOctoberThings: async () => [],
+  wantToDo: () => wantToDo(),
+}));
+
 const toastFn = vi.fn();
 vi.mock("sonner", () => {
   const toast = (...args: unknown[]) => toastFn(...args);
@@ -131,6 +139,23 @@ describe("Discovery for someone who has not signed in", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /save/i })[0]!);
 
     expect(saveExperienceToBoard).not.toHaveBeenCalled();
+    expect(toastFn).toHaveBeenCalledWith(
+      "Sign in to keep this",
+      expect.objectContaining({
+        action: expect.objectContaining({ label: "Sign in" }),
+      }),
+    );
+  });
+});
+
+describe("wanting something while signed out", () => {
+  it("invites a sign-in and writes nothing", async () => {
+    render(<DiscoveryListView experiences={experiences} displayName={null} />);
+    await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
+
+    fireEvent.click(screen.getAllByTestId("want-to-do")[0]!);
+
+    expect(wantToDo).not.toHaveBeenCalled();
     expect(toastFn).toHaveBeenCalledWith(
       "Sign in to keep this",
       expect.objectContaining({
