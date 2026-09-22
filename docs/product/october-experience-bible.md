@@ -3,8 +3,9 @@
 **Established:** 2026-09-22, from one long evening of design conversation.
 **Amended:** 2026-09-22, after the first physical screening of Witching Hour
 v0 (§25), again after the second, of v0.1 (§26–§29), and again the same
-night with Side Missions and My October (§9.11, §28.1), and again with the
-execution plan (§30). One scene is
+night with Side Missions and My October (§9.11, §28.1), again with the
+execution plan (§30), and again with the Movie Store (§31) after Movie Night
+v0 was built and used. One scene is
 implemented as a lab and has been screened twice; everything else remains
 preserved direction, not roadmap. It is written so that tomorrow starts where
 tonight stopped.
@@ -265,6 +266,15 @@ _the product_. **Side Story / Mystery** — an optional authored narrative
 threaded through the month. The table above is unchanged so the addition is
 visible; the model with all of it in place is in §27.2.
 
+**DO NOT INTERROGATE BEFORE YOU DELIGHT** (added 2026-09-22, from using Movie
+Night v0). A Surface must show something worth looking at _before_ it asks
+anything. v0 asked who is watching and how frightening, and only then showed
+three films — which makes Passport slower than Google, and an old form is
+what a questionnaire before value feels like however good the questions are.
+Filters and constraints stay available; they stop being a gate. **Learning
+comes from browsing, choosing, saving, watching and reacting**, not from an
+intake.
+
 **The Director must know when NOT to direct.** If everything is cinematic,
 October is exhausting. Browsing movies is a surface; picking one scary movie
 might trigger a moment; rating it afterwards is product learning; a later
@@ -488,7 +498,14 @@ experience expose what information it actually needs before any long-term
 knowledge model is decided — Movie, Work, Media, Content, or something else is
 **unresolved**. The experience discovers the requirement; the ontology follows.
 
-**Now first in the build order (§30.4), and inspected 2026-09-22.** What
+**Built, used, and superseded in shape — see §31.** v0 shipped at
+`/october/movies` (`56afa92`) and proved the mechanics while failing the
+human test: three obvious films is not enough, the questions came before any
+value, and _The Ring · Alien · The Thing_ are correct answers that create no
+discovery and no delight. What it proved worth keeping, and what changes, is
+in §31.6.
+
+**Inspected 2026-09-22 before v0.** What
 exists: no Movie Thing anywhere in Passport; six `MOVIE_PAIRINGS` moods in
 the old October experiment (emoji · mood · line · "then:" a real-world
 follow-on) which are **framing, not a catalogue**; thirty screening-capable
@@ -1033,7 +1050,17 @@ Named so nobody reconciles them silently.
     anyone. Both hold only if the record is the person's own word — a
     contributed memory, not a detected fact. How that is asked without
     turning My October into a form is open (§24 Q23).
-15. **Group scares vs the lowest ceiling.** _Scare Your Friends_ is a group
+15. **Questions-first vs delight-first.** §30.6 says Movie Night must learn
+    taste through use; v0 read that as "ask, then show" and it made Passport
+    slower than a search engine. §3.1 now says delight comes first and
+    learning comes from browsing, choosing, saving and reacting. The two
+    jobs are unchanged; the order is reversed.
+16. **"Three, not twenty" vs a collection.** v0's shortlist was deliberately
+    small to replace a wall of options, and a wall of options is exactly what
+    a video store _is_. The resolution is probably that a shelf is not a
+    wall — but v0's reasoning was not wrong, it was applied to the wrong
+    surface.
+17. **Group scares vs the lowest ceiling.** _Scare Your Friends_ is a group
     scare by construction; §12 says the lowest Fear Dial in the group wins.
     Not a contradiction — a design constraint the mission must be built
     inside — but named so it is not discovered mid-build.
@@ -1105,6 +1132,13 @@ Things that need experiments, not answers written tonight.
     feel like filling in a form? (§23 #14.)
 24. Which Side Missions want a group, which want one person alone in the
     dark, and does the same mission change meaning between the two?
+25. How does a browse-first store keep a child safe without a gate? (§31.7
+    keeps suitability as an axis; §3.1 forbids asking first. Both must hold.)
+26. Which trailers are actually embeddable, under whose terms, and what does
+    Passport do for the films where none is?
+27. Does October's commentary survive being seen twice? (§31.4 — the line
+    that delights on Tuesday may be the reason somebody stops reading on
+    Thursday.)
 
 ---
 
@@ -1514,6 +1548,13 @@ An original October musical language: a tiny recognisable three-to-five-note
 motif, perhaps piano; innocent at first; later buried or reinterpreted; able
 to migrate between devices; completed or transformed near Halloween.
 
+**Promoted 2026-09-22 to its own near-term creative mission** (§31.5). The
+test of the motif is that it survives every arrangement it will need: simple
+piano · warm and playful · a music box · a bad video-store ceiling speaker ·
+orchestral · distant · warped · frightening · barely audible. By late
+October, hearing it alone should say **"October is here."** It is not being
+composed in a preservation pass.
+
 Voice should be rare enough to matter. October might exist entirely as text
 at first. If the person becomes used to _reading_ October, the first time
 October actually speaks could be a major moment. Do not default to constant
@@ -1742,6 +1783,182 @@ Consistency is the world, not the intensity.
 
 Both, or it is not Movie Night. A beautiful chooser that learns nothing is a
 scene; a rating form that helps nobody choose is a survey.
+
+---
+
+## 31. The Movie Store — 2026-09-22
+
+### 31.1 The premise
+
+> **October has been collecting movies for a very long time.**
+
+Movie Night is not a recommendation questionnaire. It is an eclectic
+movie-discovery surface presented through the world of an old, slightly
+impossible 1980s video store — a place October owns, or has inhabited long
+enough that the difference stopped mattering.
+
+October has taste, opinions, favourites, obscure knowledge, nostalgia,
+strange categories, occasional contempt for your choices, and **a long
+history with movies that the person does not fully understand**.
+
+### 31.2 The collection
+
+Not a horror database. A collection with a personality, mixing: mainstream
+anchors · genuinely great horror · cult films · forgotten films · the
+obscure · strange Canadian films · childhood fever-dream films · the ones
+people half-remember and cannot name · beautifully bad films · family
+Halloween films · genuinely frightening films · nostalgic seasonal films ·
+new and recent films. **Chosen for personality, not ranking.**
+
+Directional examples only, not a catalogue: _The Lost Boys_ · _The Peanut
+Butter Solution_ · _The Private Eyes_ · _Coraline_ · _The Ring_ · _The
+Thing_ · obscure Canadian horror.
+
+**Expert human curation may later make this collection much better than
+anything Passport could assemble alone** — somebody with real Canadian and
+obscure-horror knowledge, and a long shared Halloween history, would bring
+things no database surfaces. Preserved as a possibility. Not a product
+feature, not a contributor system, not now.
+
+### 31.3 October's editorial shelves
+
+The store is organised around authored, funny, strange collections rather
+than genre filters alone. Example language, not a taxonomy:
+
+```
+October's Picks
+You Probably Dreamed This
+Why Did Our Parents Let Us Watch This?
+Canadian After Dark
+For Kids, Apparently
+Actually Terrifying
+Beautifully Bad
+Forgotten VHS
+Everyone Should See This Once
+Do Not Watch This Alone
+```
+
+Functional filters still matter — audience suitability, fear intensity, era,
+runtime. **The shelves are what make it October's store; the filters are
+what make it usable.** Both, and the shelves come first.
+
+### 31.4 October has opinions — CANDIDATE
+
+October can react to what somebody picks. Playful, mischievous, specific —
+never canned chatbot commentary:
+
+```
+"Mainstream, eh?"
+"Really? Wow."
+"What is wrong with you?"
+"Children of the Corn. October has a special place for you."
+"October says you have watched enough Lost Boys."
+```
+
+Do not overuse. An opinion every time is a gimmick; an opinion occasionally
+is a personality. These may eventually become part of the movie experience
+itself.
+
+### 31.5 Two different places — do not merge them
+
+```
+THE VIDEO STORE     browse · discover · explore · choose
+THE HAUNTED THEATRE the cinematic trailer / preview / chosen-film moment
+```
+
+A person may find a film in the store and then **enter the theatre** to see
+its trailer. Keeping them separate is what stops either becoming a general
+"movie area" with no idea what it is for.
+
+**The store**, eventually: VHS cases · physical shelves · nobody at the
+counter · worn carpet · fluorescent light · CRT glow · handwritten labels ·
+strange sections · a restricted-looking doorway as a **visual joke, never
+sexual content** · aisles that subtly feel too long or impossible · shelves
+that change · lights that flicker. _Abandoned, but not empty._
+
+**The theatre**, eventually: old curtains · a projector · dust in the beam ·
+empty seats · popcorn · strange sounds · unsettling theatre imagery where it
+fits.
+
+**The store can interfere — preserved, and not built first.** A person
+reaches for a tape. It slides back onto the shelf.
+
+```
+NO.
+```
+
+Another tape pushes itself forward.
+
+```
+This.
+Friday the 13th.
+```
+
+Funny, creepy, and it says October has taste more convincingly than any
+amount of copy. This is a Layer 4 interaction.
+
+### 31.6 Trailers
+
+Many people will not choose a film without one. Movie Night should support
+**officially hosted, legitimately embeddable trailers** where they exist.
+Never pirated clips, never unauthorised edits.
+
+**The experience _around_ the trailer is ours**: VHS tracking and fuzz at
+the start · visual noise · shapes and distractions around the frame · the
+lights going down · projector behaviour · an environmental interruption ·
+October occasionally cutting it short —
+
+```
+"That's enough."
+```
+
+The boundary is exact: **do not falsely alter copyrighted footage and present
+the alteration as the film's own content.** Dress the room, not the film.
+And sometimes October should simply let the trailer play.
+
+### 31.7 What v0 proved, and what changes
+
+**Keep** — these survived contact with a person:
+
+- content suitability and fear intensity as **separate axes**
+- **one** Movie Night for every audience, not a family product and an adult one
+- My October integration
+- explicit reactions: loved / good / meh, and the felt scare
+- **expected fear kept separate from felt fear**
+- the occasional "What got you?"
+- a Passport-owned catalogue while the ontology stays unresolved (§9.2)
+
+**Change** — these failed:
+
+- the three-film dead end
+- questions before value (§3.1, the new principle)
+- no discovery
+- no trailers
+- no editorial personality
+
+### 31.8 Build in layers — do not skip Layer 1
+
+```
+1  A GREAT MOVIE PRODUCT
+   larger eclectic catalogue · browse freely · search · audience/fear/era/
+   runtime filters · authored shelves · movie detail · trailers where legal ·
+   My October · reactions · delight before questions
+
+2  VIDEO STORE PRESENTATION
+   VHS cases · shelves · store layout · atmosphere — highly usable first
+
+3  OCTOBER IS PRESENT
+   opinions · commentary · strange shelf labels · occasional intervention
+
+4  THE STORE BECOMES ALIVE
+   the tape slides away · another appears · flicker · aisles change ·
+   the trailer environment misbehaves · the motif
+
+5  CONTINUITY
+   October remembers what was watched and what scared them · the store
+   changes through the month · choices become callbacks elsewhere · the
+   store may join the larger mystery
+```
 
 ---
 
