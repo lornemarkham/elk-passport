@@ -2,7 +2,8 @@
 
 **Established:** 2026-09-22, from one long evening of design conversation.
 **Amended:** 2026-09-22, after the first physical screening of Witching Hour
-v0 (§25), and again after the second, of v0.1 (§26–§29). One scene is
+v0 (§25), again after the second, of v0.1 (§26–§29), and again the same
+night with Side Missions and My October (§9.11, §28.1). One scene is
 implemented as a lab and has been screened twice; everything else remains
 preserved direction, not roadmap. It is written so that tomorrow starts where
 tonight stopped.
@@ -366,6 +367,12 @@ Lines worth keeping:
 - _"The vampires are going to bed."_ — Sunrise in 18 minutes.
 - _"Go outside. Look at the moon."_
 
+**Evolved (§9.11): the sky is a TRUE input, not a backdrop.** A meteor
+shower, a moonlit night, a genuinely dark forest, a clear cold sky — these are
+real events with dates and sources, and October can turn them into an
+experience _without pretending October caused them_. The real world provides
+the spectacle; October provides the meaning.
+
 **The moon must not always be a fake Halloween full moon.** Prototype a
 real-ish moon in JS/SVG/canvas: correct-ish phase, approximate orientation and
 position, above or below the horizon, cloud interaction. The existing
@@ -544,13 +551,62 @@ directory: the scene should make going out feel like entering the night.
 A small, beautiful scene using real-ish celestial context. May literally
 invite the user outside to see the moon, and connect that to an activity.
 
+_In hindsight this was the first Side Mission (§9.11) before the word
+existed. Kept here as written._
+
 ### 9.10 Broken October / 404
 
 Rare meta-scene. _"404 — YOU WEREN'T SUPPOSED TO FIND THIS."_ The interface
 appears to break or route somewhere unintended; may reveal hidden content.
 Rare enough to stay surprising.
 
-### 9.11 Additional scene bank — preserve, do not roadmap
+### 9.11 Side Missions — CANDIDATE, with a reality rule
+
+October may offer contextual **Side Missions**: small, optional, authored
+experiences tied to a _real opportunity in the world_ — astronomy, weather,
+moonlight, darkness, forests, seasonal conditions, local places, friends,
+time. They are offered when the world makes them possible, not on a schedule.
+
+Examples discovered, kept as examples and **not** as a catalogue or schema:
+
+- **"The Dragon's Eyes"** — the Draconid meteor shower; a dark-sky forest
+  night.
+- **"The Hunter"** — the Orionids; an Orion night.
+- **Werewolf Night** — a suitably moonlit night, folklore, a forest.
+- **Scare Your Friends** — a group forest-at-night experience, potentially
+  using _private instructions across phones_ (the Lab's `reveal: "never"`
+  and per-person consent ceiling apply, §12).
+- **A restrained, Blair-Witch-like forest experience** — creative reference
+  only; protected branding is never product content.
+- **Tell Me a Story Out Here** — a story that unlocks on reaching an
+  appropriate place.
+- **Don't Look Yet** — asymmetric multi-device instructions; a direct
+  instance of ADR 001.
+- **The Quiet Night** — a beautiful night outdoors on which October may
+  _genuinely choose not to scare anyone_. The Director knowing when not to
+  direct (§3.1), as a whole scene.
+
+**The reality rule.** October can turn a real natural event into an
+experience without pretending October caused it. This maps exactly onto
+§20:
+
+```
+TRUE   the astronomical, weather or natural event, and sourced facts about it
+TOLD   documented folklore, legend, mythology around it
+OURS   October's authored narrative and direction on top
+```
+
+_The real world provides the spectacle. October provides the meaning._
+
+Side Missions should use **darkness, isolation, anticipation and the real
+environment** rather than manufacturing constant horror. Being outside in an
+actual forest at night can provide more fear than another screen effect —
+§26.4's garage, deliberately. This is the strongest form of reality bleed
+(§8): October does not need to provide the scary thing.
+
+A Side Mission, when experienced, becomes part of My October (§28.1).
+
+### 9.12 Additional scene bank — preserve, do not roadmap
 
 Dawn / Vampires · October Dare · Friends Tonight · October Memory · Halloween
 Countdown · Recipe / Kitchen · Costume Night · Scary Story · Pumpkin Night ·
@@ -684,6 +740,12 @@ lower always wins, nobody is told what anybody set — for October, each
 person's Fear Dial is their ceiling and the group's intersection is what a
 shared night may aim at.
 
+**Evolved (§9.11):** _Scare Your Friends_ and _Don't Look Yet_ imagine
+**private instructions across phones** — one person told something the
+others are not. That is the Lab's `reveal: "never"` used as a game mechanic,
+and the same rule still governs it: the lowest ceiling in the group wins, so
+a friend on Cozy is never the one the scare is aimed at.
+
 ---
 
 ## 13. Crowdsourced fear — MECHANIC / OCTOBER
@@ -709,18 +771,19 @@ Do not expose it as a clinical scoring system. Keep it playful.
 
 No RPG inventory, no points, no badges. Persist meaningful actions:
 
-| state         | meaning                                                                     |
-| ------------- | --------------------------------------------------------------------------- |
-| DID           | event / place / activity completed                                          |
-| WATCHED       | movie watched                                                               |
-| MADE          | recipe, craft, carving completed                                            |
-| SAVED         | wants to do later                                                           |
-| REACTION      | lightweight quality / fear response                                         |
-| FEAR JOURNEY  | dial changes, challenges, rejections, completions                           |
-| MEMORIES      | photos and moments the user chooses to keep                                 |
-| FRIENDS       | shared nights, votes, reactions                                             |
-| STORIES       | optional submitted stories and nightmares                                   |
-| SCENE HISTORY | enough for the Director to avoid repeating tricks and to build anticipation |
+| state         | meaning                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| DID           | event / place / activity completed                                                                            |
+| WATCHED       | movie watched                                                                                                 |
+| MADE          | recipe, craft, carving completed                                                                              |
+| SAVED         | wants to do later                                                                                             |
+| REACTION      | lightweight quality / fear response                                                                           |
+| FEAR JOURNEY  | dial changes, challenges, rejections, completions                                                             |
+| MEMORIES      | photos and moments the user chooses to keep                                                                   |
+| FRIENDS       | shared nights, votes, reactions                                                                               |
+| STORIES       | optional submitted stories and nightmares                                                                     |
+| SCENE HISTORY | enough for the Director to avoid repeating tricks and to build anticipation                                   |
+| SIDE MISSIONS | which were offered, which were taken, what happened out there — _provisional, added with §9.11; not a schema_ |
 
 The experience gradually becomes **"Your October."** A checklist may exist as
 history, never as score:
@@ -953,6 +1016,16 @@ Named so nobody reconciles them silently.
     with the feeling." v0.1's Stay Inside surface did exactly that as a menu of
     cards, and the cards killed the feeling instantly (§26.2). A surface must
     be useful _without_ becoming a recommendation menu; how is open (§24).
+14. **"Completed" vs "Passport never tracks."** A Side Mission "completed"
+    (§9.11) and a place "visited" (§28.1) are records of something done in
+    the world, and §8 and §20 say Passport never pretends to have tracked
+    anyone. Both hold only if the record is the person's own word — a
+    contributed memory, not a detected fact. How that is asked without
+    turning My October into a form is open (§24 Q23).
+15. **Group scares vs the lowest ceiling.** _Scare Your Friends_ is a group
+    scare by construction; §12 says the lowest Fear Dial in the group wins.
+    Not a contradiction — a design constraint the mission must be built
+    inside — but named so it is not discovered mid-build.
 
 ---
 
@@ -1012,6 +1085,15 @@ Things that need experiments, not answers written tonight.
     number.
 21. Does an opening that the person paces by scroll and tap (§27.4) hold
     atmosphere as well as a timed one, or does control dissolve it?
+22. How does a Side Mission know its real condition holds — a dark enough sky,
+    a visible moon, a clear night — without Passport growing an astronomy
+    subsystem? A dated fixture and a weather source may be enough for a
+    season; deciding that is an experiment, not a design.
+23. How does something the person did outside become a line in My October
+    honestly — self-reported, in their own words, at a moment that does not
+    feel like filling in a form? (§23 #14.)
+24. Which Side Missions want a group, which want one person alone in the
+    dark, and does the same mission change meaning between the two?
 
 ---
 
@@ -1445,16 +1527,53 @@ Candidate persistent doors and surfaces — names and boundaries provisional:
   activities, party material.
 - **Stories** — real history, sourced folklore, local legends, and authored
   October side stories, with the TRUE / TOLD / OURS boundary visible.
-- **My October** — a beautiful, evolving record of what the person actually
-  did: places visited, events attended, movies watched, recipes made,
-  activities tried, stories experienced, reactions, saved plans, memories,
-  friends where appropriate. **Not points, badges or streaks.** A core
-  motivation can simply be _"I want to have a great October and try as many
-  worthwhile things as I can."_ By Halloween it should feel like a record of
-  the October the person actually had. (§14's DID / WATCHED / MADE / SAVED
-  states are the bones of this.)
+- **My October** — the accumulating record of the October the person
+  actually had. Defined in full at §28.1.
 - **Fear Dial** — persistent but unobtrusive; it changes how October treats
   the person rather than functioning as a settings control (§4, §6).
+
+### 28.1 My October — PRINCIPLE
+
+**My October is not an activity log, an achievement system, a streak, or a
+collection of badges.** It is the accumulating record of the October the
+person actually had.
+
+It may contain: places visited · events attended · movies watched · things
+cooked or made · Side Missions completed · stories encountered · the people
+and friends involved · reactions · photos and memories, when intentionally
+contributed · meaningful October callbacks. (§14 holds the states that are
+its bones — DID, WATCHED, MADE, SAVED, REACTION, MEMORIES, FRIENDS, STORIES,
+SCENE HISTORY, and now SIDE MISSIONS — and §14's rule stands: **no points**.)
+
+Example tone only — not copy, not a format:
+
+```
+Oct 8 — The Dragon's Eyes
+Went into the woods. Saw 4 meteors.
+
+Oct 16 — Scare Your Friends
+Matt will not discuss what happened.
+```
+
+The emotional goal: by Halloween, and especially afterwards, the person looks
+at My October and thinks —
+
+> _"Holy shit, we had a good October."_
+
+**The product loop this closes:**
+
+```
+Discovery / October / Passport inspires something worth doing
+  → the person actually does it
+  → it becomes part of My October
+  → that history can shape later October experiences and callbacks
+  → October becomes increasingly personal, because it reflects a month
+    genuinely lived
+```
+
+This is why Your October is the product (§28) and the story is not: the
+story is one of the things that can inspire a line in this record. It is
+never the record.
 
 ---
 
