@@ -54,10 +54,12 @@ export function PhoneCompanion({ code }: { code: string }) {
       const down = Math.abs(beta) > 150;
       if (down && !faceDown.current) {
         faceDown.current = true;
-        if (!reportedDown.current) {
-          reportedDown.current = true;
-          report({ type: "phone-face-down" });
-        }
+        // Reported every time it goes down, not once: the second act asks
+        // for it back on the table, and the desktop paces off the answer.
+        reportedDown.current = true;
+        report({ type: "phone-face-down" });
+        setState("dark");
+        setLine(null);
       } else if (!down && faceDown.current) {
         faceDown.current = false;
         if (awaitingPickup.current) {
@@ -87,9 +89,14 @@ export function PhoneCompanion({ code }: { code: string }) {
         setState("woken");
         setLine(cue.line);
       }
+      if (cue.type === "door") {
+        // The same door, a breath later, on this wall of the room.
+        pulse();
+        sound.current?.slam();
+      }
       if (cue.type === "release") {
         setState("released");
-        setLine(ACT_IV.paired.releaseLine);
+        setLine(cue.line ?? ACT_IV.paired.releaseLine);
       }
     });
 
@@ -114,11 +121,17 @@ export function PhoneCompanion({ code }: { code: string }) {
    * later touch as it being picked up.
    */
   const ready = useCallback(async () => {
+    // The wake lock goes FIRST, before anything is awaited.
+    //
+    // v0 requested it after `await sound.unlock()`, and on the real iPhone
+    // the phone still slept. The likely reason: Safari grants a screen wake
+    // lock only inside the user activation that triggered it, and an
+    // awaited AudioContext.resume() is enough of a gap for that activation
+    // to be spent. So the lock is requested synchronously in the tap, and the
+    // audio unlock follows it.
+    const wakePromise = keepAwake();
     await sound.current?.unlock();
-
-    // Same gesture, second request: the screen must not lock while the phone
-    // is face down waiting to be needed.
-    wake.current = await keepAwake();
+    wake.current = await wakePromise;
     setAwake(wake.current.supported);
 
     const DOE = (
@@ -140,6 +153,15 @@ export function PhoneCompanion({ code }: { code: string }) {
       granted = typeof window.DeviceOrientationEvent !== "undefined";
     }
     setOrientationOk(granted);
+
+    // Tell the desktop what this instrument can do tonight. It shapes the
+    // cut — a phone that could not hold a wake lock gets a shorter dormancy —
+    // and nothing is ever said about it on screen.
+    report({
+      type: "phone-ready",
+      awake: wake.current.supported,
+      sensor: granted,
+    });
 
     setState("dark");
     setLine(null);
@@ -238,7 +260,7 @@ export function PhoneCompanion({ code }: { code: string }) {
       <p className="absolute bottom-5 font-mono text-[10px] tracking-[0.25em] text-[#e9e6da]/25 uppercase">
         {code}
         {orientationOk === false && " · tap when you pick it up"}
-        {awake === false && " · keep the screen from locking"}
+        {awake === false && " · don't let it sleep"}
       </p>
     </div>
   );

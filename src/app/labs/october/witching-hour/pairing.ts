@@ -24,9 +24,17 @@ export type Cue =
   | { type: "phone-joined" }
   | { type: "face-down" }
   | { type: "wake"; line: string }
+  /**
+   * What the phone can physically do tonight, reported once it knows. The
+   * desktop composes with what is in the room (ADR 001): a phone that could
+   * not hold a wake lock gets a shorter dormancy, not a worse cut.
+   */
+  | { type: "phone-ready"; awake: boolean; sensor: boolean }
   | { type: "phone-face-down" }
   | { type: "phone-picked-up" }
-  | { type: "release" };
+  /** The door, on the phone's instrument too — a beat after the desktop's. */
+  | { type: "door" }
+  | { type: "release"; line?: string };
 
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 

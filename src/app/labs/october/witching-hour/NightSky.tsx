@@ -18,6 +18,14 @@ export interface World {
   moonClear: boolean;
   leftTree: boolean;
   branchStir: boolean;
+  /**
+   * The whole sky, darker. Added after the screening: the tree vanishing was
+   * missed, because a change at the edge of the frame is a change the eye
+   * has to go looking for. A drop in overall light is noticed before it is
+   * looked at. Paired with the tree, the return glance lands on a world that
+   * is wrong in two ways, one of them impossible to miss.
+   */
+  dim: boolean;
 }
 
 export const OPENING_WORLD: World = {
@@ -25,6 +33,7 @@ export const OPENING_WORLD: World = {
   moonClear: false,
   leftTree: true,
   branchStir: false,
+  dim: false,
 };
 
 export function NightSky({
@@ -87,6 +96,14 @@ export function NightSky({
       </defs>
 
       <rect width={W} height="1000" fill="url(#wh-sky)" />
+      {/* Dim: a veil over the sky only, so the silhouettes stay black and the
+          moon's glow still reads. No transition — it is simply darker now. */}
+      <rect
+        width={W}
+        height="1000"
+        fill="#020308"
+        opacity={world.dim ? 0.55 : 0}
+      />
 
       {/* Stars: fixed, faint, a few. A sky that twinkles is a screensaver. */}
       {STARS.map(([x, y, r], i) => (

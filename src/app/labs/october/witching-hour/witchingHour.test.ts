@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { newCode } from "./pairing";
 import { pulse } from "./audio";
-import { ACT_I, ACT_II, ACT_III, ACT_IV, ACT_V } from "./script";
+import { ACT_I, ACT_II, ACT_III, ACT_IV, ACT_V, DOOR } from "./script";
 
 /**
  * The night is mostly timing and feel, which a test cannot judge. What it can
@@ -51,8 +51,16 @@ describe("the physical pulse", () => {
 });
 
 describe("the script's restraint", () => {
-  it("opens with silence long enough to be noticed", () => {
-    expect(ACT_I.silenceAfter).toBeGreaterThanOrEqual(4000);
+  it("reaches the first question in well under twenty seconds", () => {
+    // v0 took 20.4 s to ask "Headphones?" and it read as broken on hardware.
+    const toQuestion =
+      ACT_I.before +
+      ACT_I.lines.reduce((sum, l) => sum + l.hold, 0) +
+      ACT_I.lines.length * ACT_I.gap +
+      ACT_I.silenceAfter;
+    expect(toQuestion).toBeLessThan(15_000);
+    // And still keeps one real silence, after "You're not." — earned.
+    expect(ACT_I.silenceAfter).toBeGreaterThanOrEqual(2000);
   });
 
   it("teaches the rule on both sides before breaking it", () => {
@@ -65,11 +73,20 @@ describe("the script's restraint", () => {
     expect(ACT_III.effectSide).toBe(-ACT_III.soundSide);
   });
 
-  it("lets the phone leave the room before asking for it back", () => {
-    // The trick only works if the phone has stopped being the focus. Twenty
-    // seconds is the floor below which it is still in the hand.
-    expect(ACT_IV.paired.quietBeforeWake).toBeGreaterThanOrEqual(20000);
-    expect(ACT_IV.paired.quietBeforeSecondWake).toBeGreaterThanOrEqual(15000);
+  it("lets the phone leave the room, but never long enough to lock", () => {
+    // The screening overturned v0's 24 s: it read as a stalled program, and
+    // the phone slept inside it. The dormancy must be long enough to stop
+    // being the thing in the hand, and shorter than any iPhone auto-lock
+    // (30 s minimum) so the wake can always land — with or without a lock.
+    expect(ACT_IV.paired.dormancy).toBeGreaterThanOrEqual(6000);
+    expect(ACT_IV.paired.dormancy).toBeLessThan(30_000);
+    expect(ACT_IV.paired.secondDormancy).toBeLessThan(ACT_IV.paired.dormancy);
+  });
+
+  it("brings the eyes back with a sound, not a sentence", () => {
+    // After the world changes behind the person, the desktop makes one small
+    // sound. That is the hook. There is no line saying "look".
+    expect(ACT_IV.paired.hookAfter).toBeGreaterThan(0);
   });
 
   it("never explains the world changing", () => {
@@ -87,5 +104,24 @@ describe("the script's restraint", () => {
   it("offers a way out at the doorway", () => {
     expect(ACT_V.escape.label.length).toBeGreaterThan(0);
     expect(ACT_V.choices.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("the door", () => {
+  it("makes them wait between the latch and the slam", () => {
+    // Anticipation is the whole mechanism. A latch followed instantly by a
+    // slam is a sound effect; a latch followed by two and a half seconds of
+    // nothing is a door.
+    expect(DOOR.latchToSlam).toBeGreaterThanOrEqual(2000);
+  });
+
+  it("holds silence after the slam, then says one word", () => {
+    expect(DOOR.silenceAfter).toBeGreaterThanOrEqual(1500);
+    expect(DOOR.locked).toBe("Locked.");
+  });
+
+  it("does not leave them staring at trees afterwards", () => {
+    // The surface arrives inside a couple of seconds of the word.
+    expect(DOOR.lockedHold + DOOR.beforeSurface).toBeLessThan(4000);
   });
 });

@@ -14,7 +14,17 @@ import { NightSky, OPENING_WORLD, type World } from "./NightSky";
 import { createSound, pulse, type Sound } from "./audio";
 import { joinPairing, newCode, type Cue, type Pairing } from "./pairing";
 import { useTimeline } from "./useTimeline";
-import { ACT_I, ACT_II, ACT_III, ACT_IV, ACT_V, BEAT, CONTEXT } from "./script";
+import {
+  ACT_I,
+  ACT_II,
+  ACT_III,
+  ACT_IV,
+  ACT_V,
+  BEAT,
+  CONTEXT,
+  DOOR,
+} from "./script";
+import { StayInside } from "./StayInside";
 
 /**
  * **Witching Hour, v0.**
@@ -40,7 +50,9 @@ type Phase =
   | "paired"
   | "desktop-alone"
   | "doorway"
-  | "chosen";
+  | "chosen"
+  | "door"
+  | "inside";
 
 type Device = "phone" | "desktop";
 
@@ -76,6 +88,8 @@ export function WitchingHour() {
   const [qr, setQr] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [originReachable, setOriginReachable] = useState(true);
+  // What the paired phone reported it can do. Shapes the cut, never the copy.
+  const phoneAwake = useRef<boolean | null>(null);
 
   const sound = useRef<Sound | null>(null);
   const pairing = useRef<Pairing | null>(null);
@@ -118,11 +132,11 @@ export function WitchingHour() {
   // ------------------------------------------------------------ ACT I
   const beginNight = useCallback(async () => {
     setPhase("act1");
-    await tl.wait(BEAT);
+    await tl.wait(ACT_I.before);
     for (const l of ACT_I.lines) {
       await say(l.text, l.hold);
       setLine(null);
-      await tl.wait(520);
+      await tl.wait(ACT_I.gap);
     }
     await tl.wait(ACT_I.silenceAfter);
     if (!tl.isAlive()) return;
@@ -136,9 +150,9 @@ export function WitchingHour() {
       setPhase("teach");
       await sound.current?.unlock();
       sound.current?.wind(0.16, 6);
-      await say(withHeadphones ? ACT_II.yes : ACT_II.no, BEAT * 1.4);
+      await say(withHeadphones ? ACT_II.yes : ACT_II.no, BEAT);
       setLine(null);
-      await tl.wait(BEAT * 2);
+      await tl.wait(ACT_II.settle);
 
       for (const lesson of ACT_II.lessons) {
         sound.current?.tick(lesson.side);
@@ -147,7 +161,7 @@ export function WitchingHour() {
           setWorld((w) => ({ ...w, lights: [true, w.lights[1], w.lights[2]] }));
         } else {
           setWorld((w) => ({ ...w, branchStir: true }));
-          await tl.wait(1600);
+          await tl.wait(1400);
           setWorld((w) => ({ ...w, branchStir: false }));
         }
         await tl.wait(ACT_II.betweenLessons);
@@ -177,14 +191,14 @@ export function WitchingHour() {
     setPhase("phone-alone");
     await say(ACT_IV.phoneAlone.ask, ACT_IV.phoneAlone.beforePulse);
     setLine(null);
-    await tl.wait(700);
+    await tl.wait(500);
     pulse();
     sound.current?.thump();
-    await tl.wait(1400);
+    await tl.wait(1100);
     await say(ACT_IV.phoneAlone.after, ACT_IV.phoneAlone.afterHold);
-    await say(ACT_IV.phoneAlone.second, BEAT * 2.4);
+    await say(ACT_IV.phoneAlone.second, BEAT * 2);
     setLine(null);
-    await tl.wait(BEAT * 2);
+    await tl.wait(BEAT);
     acts.current.doorway?.();
   }, [say, tl]);
 
@@ -216,6 +230,7 @@ export function WitchingHour() {
     const joined = tl.waitFor(180_000);
     pairing.current = joinPairing(c, (cue: Cue) => {
       if (cue.type === "phone-joined") joined.signal();
+      if (cue.type === "phone-ready") phoneAwake.current = cue.awake;
       if (cue.type === "phone-face-down") phoneSignal.current["face-down"]?.();
       if (cue.type === "phone-picked-up") phoneSignal.current["picked-up"]?.();
     });
@@ -233,23 +248,39 @@ export function WitchingHour() {
   const paired = useCallback(async () => {
     setPhase("paired");
     setQr(null);
-    await say(ACT_IV.paired.connected, BEAT * 1.4);
-    await say(ACT_IV.paired.faceDown, BEAT);
+    await say(ACT_IV.paired.connected, BEAT);
+    setLine(ACT_IV.paired.faceDown);
     pairing.current?.send({ type: "face-down" });
 
-    // Wait for the phone to confirm it is face down — or give it eight
-    // seconds and assume. A person who taps "ready" without flipping it is
-    // still holding a dark phone, which is enough.
-    const down = tl.waitFor(8000);
+    // Interaction sets the pace from here. The line stays up until the phone
+    // says it is down; a person who taps "ready" without flipping it is still
+    // holding a dark phone, which is enough. Twenty seconds is the ceiling
+    // so a phone left face-up on the desk does not stall the night.
+    const down = tl.waitFor(20_000);
     phoneSignal.current["face-down"] = down.signal;
     await down.promise;
+    if (!tl.isAlive()) return;
+
+    // The phone leaves the room. This wait is October's, visibly: one line,
+    // then the wind rises a little, then one tick on the left that leads
+    // nowhere — a small promise that something is coming, which is what
+    // separates mystery from a stalled program.
+    //
+    // Shorter still if the phone could not hold a wake lock (ADR 001: the
+    // instrument in the room shapes the cut). No iPhone auto-locks inside
+    // either window.
+    const dormancy =
+      phoneAwake.current === false ? 6000 : ACT_IV.paired.dormancy;
+    await tl.wait(ACT_IV.paired.leaveItAfter);
+    await say(ACT_IV.paired.leaveIt, BEAT * 1.4);
     setLine(null);
+    sound.current?.wind(0.22, 4);
+    await tl.wait(dormancy * 0.45);
+    sound.current?.tick(-1);
+    await tl.wait(dormancy * 0.55);
+    if (!tl.isAlive()) return;
 
-    // The phone stops being the thing in the room.
-    await tl.wait(ACT_IV.paired.quietBeforeWake);
-    sound.current?.wind(0.09, 8);
-
-    // First wake. The phone asks for attention; the phone scolds them for it.
+    // First wake. The phone thumps; the phone scolds them for answering.
     const up1 = tl.waitFor(30_000);
     phoneSignal.current["picked-up"] = up1.signal;
     pairing.current?.send({ type: "wake", line: ACT_IV.paired.wakeLine });
@@ -257,14 +288,23 @@ export function WitchingHour() {
     if (!tl.isAlive()) return;
 
     if (picked1) {
-      // They are looking at the phone. The world changes now, without motion.
+      // They are reading the phone. The world changes now, without motion:
+      // the left tree goes, and the whole sky drops — a change the eye
+      // registers before it looks. Then one small sound from the desktop, the
+      // hook that brings the eyes back. Nothing is explained.
       await tl.wait(ACT_IV.paired.attentionWindow);
-      setWorld((w) => ({ ...w, leftTree: false }));
+      setWorld((w) => ({ ...w, leftTree: false, dim: true }));
+      await tl.wait(ACT_IV.paired.hookAfter);
+      sound.current?.tick(-1);
     }
 
-    await tl.wait(ACT_IV.paired.quietBeforeSecondWake);
+    // Put it back. Conditioned now: they look down faster.
+    await tl.wait(2600);
+    await say(ACT_IV.paired.putItBack, BEAT * 1.2);
+    setLine(null);
+    await tl.wait(ACT_IV.paired.secondDormancy);
+    if (!tl.isAlive()) return;
 
-    // Second wake. Conditioned now: they look down faster.
     const up2 = tl.waitFor(30_000);
     phoneSignal.current["picked-up"] = up2.signal;
     pairing.current?.send({ type: "wake", line: ACT_IV.paired.secondWakeLine });
@@ -272,17 +312,23 @@ export function WitchingHour() {
     if (!tl.isAlive()) return;
 
     if (picked2) {
+      // Second violation, opposite in kind: the lights are gone and the moon
+      // is clear — the sky brighter and emptier, not darker. A different
+      // wrongness, so the second look is not a repeat of the first.
       await tl.wait(ACT_IV.paired.attentionWindow);
       setWorld((w) => ({
         ...w,
         lights: [false, false, false],
         moonClear: true,
+        dim: false,
       }));
+      await tl.wait(ACT_IV.paired.hookAfter);
+      sound.current?.tick(1);
     }
 
-    await tl.wait(BEAT * 3);
-    pairing.current?.send({ type: "release" });
-    await tl.wait(BEAT * 2);
+    await tl.wait(2200);
+    pairing.current?.send({ type: "release", line: ACT_IV.paired.releaseLine });
+    await tl.wait(ACT_IV.paired.afterRelease);
     acts.current.doorway?.();
   }, [say, tl]);
 
@@ -293,22 +339,23 @@ export function WitchingHour() {
     pairing.current?.close();
     pairing.current = null;
     // The desktop's physical beat is sound. One thump, then the last light.
-    await say("That's alright.", BEAT * 1.6);
+    await say("That's alright.", BEAT * 1.4);
     setLine(null);
-    await tl.wait(BEAT * 3);
+    sound.current?.wind(0.22, 4);
+    await tl.wait(BEAT * 2);
     sound.current?.thump();
-    await tl.wait(2600);
-    setWorld((w) => ({ ...w, lights: [false, false, w.lights[2]] }));
-    await tl.wait(BEAT * 4);
+    await tl.wait(1800);
+    setWorld((w) => ({ ...w, lights: [false, false, w.lights[2]], dim: true }));
+    await tl.wait(BEAT * 2.5);
     acts.current.doorway?.();
   }, [say, tl]);
 
   // ------------------------------------------------------------ ACT V
   const doorway = useCallback(async () => {
     setPhase("doorway");
-    sound.current?.wind(0.05, 10);
-    await say(ACT_V.ask, BEAT * 2);
-    await say(ACT_V.then, BEAT * 1.2);
+    sound.current?.wind(0.06, 8);
+    await say(ACT_V.ask, BEAT * 1.6);
+    await say(ACT_V.then, BEAT);
     // Line stays; the choices arrive under it.
   }, [say]);
 
@@ -323,12 +370,43 @@ export function WitchingHour() {
       if (device === "phone" && id !== "escape") {
         pulse();
         sound.current?.thump();
-        await tl.wait(600);
+        await tl.wait(500);
       }
       setLine(reply);
-      sound.current?.wind(0, 8);
+
+      if (id !== "inside") {
+        sound.current?.wind(0, 8);
+        return;
+      }
+
+      // -------------------------------------------------------- THE DOOR
+      // "The door stays closed tonight." Then it does what the line promised.
+      await tl.wait(DOOR.replyHold);
+      setLine(null);
+      await tl.wait(DOOR.beforeLatch);
+      sound.current?.latch();
+      await tl.wait(DOOR.latchToSlam);
+      if (!tl.isAlive()) return;
+
+      setPhase("door");
+      sound.current?.slam();
+      // The phone is another wall in the same room: it takes the hit a
+      // breath later, so the door is somewhere between the two.
+      setTimeout(() => pairing.current?.send({ type: "door" }), 140);
+      if (device === "phone") pulse();
+
+      await tl.wait(DOOR.silenceAfter);
+      await say(DOOR.locked, DOOR.lockedHold);
+      setLine(null);
+      await tl.wait(DOOR.beforeSurface);
+      if (!tl.isAlive()) return;
+
+      // Hand back to Passport. The wind returns, low: the night is still
+      // there, behind the surface.
+      sound.current?.wind(0.08, 6);
+      setPhase("inside");
     },
-    [device, tl],
+    [device, say, tl],
   );
 
   // Registered in an effect, not during render — a ref written during render
@@ -389,7 +467,7 @@ export function WitchingHour() {
                 duration: reduced ? 0.2 : 1.1,
                 ease: [0.22, 0.61, 0.36, 1],
               }}
-              className="max-w-md text-center font-serif text-[clamp(1.35rem,4.2vw,2.1rem)] leading-snug text-balance"
+              className="max-w-md text-center font-serif text-[clamp(1.35rem,4.2vw,2.1rem)] leading-snug text-balance whitespace-pre-line"
             >
               {line}
             </motion.p>
@@ -478,7 +556,7 @@ export function WitchingHour() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 2.4, delay: 1.6 }}
+            transition={{ duration: 1.6, delay: 0.6 }}
             className="absolute inset-x-0 bottom-[7vh] flex flex-col items-center gap-5 px-8"
           >
             <ul className="flex w-full max-w-md flex-col gap-2">
@@ -488,8 +566,10 @@ export function WitchingHour() {
                   initial={{ opacity: 0, y: reduced ? 0 : 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
-                    duration: 1.4,
-                    delay: 2 + i * 0.55,
+                    duration: 1.1,
+                    delay:
+                      ACT_V.choicesAfter / 1000 +
+                      i * (ACT_V.choiceStagger / 1000),
                     ease: [0.22, 0.61, 0.36, 1],
                   }}
                 >
@@ -516,6 +596,15 @@ export function WitchingHour() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {phase === "inside" && (
+        <StayInside
+          onLeave={() => {
+            pairing.current?.send({ type: "release" });
+            window.location.href = "/discovery";
+          }}
+        />
+      )}
 
       {chosen && phase === "chosen" && (
         <p className="absolute inset-x-0 bottom-[7vh] text-center font-mono text-[10px] tracking-[0.2em] text-[#e9e6da]/30 uppercase">

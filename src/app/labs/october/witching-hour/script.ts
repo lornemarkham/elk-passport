@@ -1,14 +1,21 @@
 /**
- * **The night, written down.**
+ * **The night, written down. Director's cut, v0.1.**
  *
- * Director intent, not immutable copy. Every line here is a fixture so the
- * scene can be re-cut without touching a component, and so a second visit can
- * someday be the same night with one thing different.
+ * Every timing here was changed after the first physical screening
+ * (bible §25), and the reason is one sentence: _the pauses were longer than
+ * the tension they contained._ v0 reached the phone at 53 s and then waited
+ * 59 s on timers; on hardware that read as "is this broken?", and "Still
+ * awake?" became literal.
  *
- * Timings are in milliseconds and were chosen by feel, then argued with. A
- * beat is roughly the time it takes to read a short line twice.
+ * The rule for this cut: keep silence where it holds anticipation, remove
+ * silence that holds nothing. A pause is earned by what came just before it,
+ * so the long ones sit **after** a beat that landed — never as filler.
+ * Where a wait must exist (the phone leaving the room), the desktop does one
+ * quiet thing inside it, so the wait reads as October's and not the software's.
+ *
+ * Timings in milliseconds. A beat is roughly one slow breath.
  */
-export const BEAT = 1400;
+export const BEAT = 1200;
 
 /** The fixtured world. No API calls in v0 — the world is authored tonight. */
 export const CONTEXT = {
@@ -22,56 +29,53 @@ export const CONTEXT = {
 } as const;
 
 export const ACT_I = {
+  /** Enough for the sky to register. Not enough to study it. */
+  before: 600,
   lines: [
-    { text: CONTEXT.time, hold: BEAT * 1.6 },
-    { text: `${CONTEXT.place} is quiet tonight.`, hold: BEAT * 2 },
-    {
-      text: "Most people are finished with October for tonight.",
-      hold: BEAT * 2.2,
-    },
-    { text: "You're not.", hold: BEAT * 2.6 },
+    { text: CONTEXT.time, hold: 1500 },
+    { text: `${CONTEXT.place} is quiet tonight.`, hold: 2000 },
+    { text: "Most people are finished with October for tonight.", hold: 2200 },
+    { text: "You're not.", hold: 2600 },
   ],
-  /** Then nothing. Long enough that the silence is noticed. */
-  silenceAfter: 5200,
+  gap: 360,
+  /** The one silence in Act I. It follows "You're not." — it is earned. */
+  silenceAfter: 2400,
 };
 
 export const ACT_II = {
   ask: "Headphones?",
   yes: "Good.",
   no: "That's okay.",
+  /** After the answer, before the first lesson. Short: they just did something. */
+  settle: 1100,
   /**
-   * Teaching. Sound on one side, then — after long enough that the two are
-   * felt as cause and effect rather than one event — something harmless on
-   * that same side. Twice, opposite sides, so the rule is learned and not
-   * merely noticed.
+   * Teaching. Sound on one side, then — after long enough to be felt as
+   * cause and effect — something harmless on that same side. Twice, opposite
+   * sides. Three seconds between is enough for two lessons to be two.
    */
   lessons: [
     { side: -1 as const, delay: 900, effect: "light-on" as const },
-    { side: 1 as const, delay: 1100, effect: "branch" as const },
+    { side: 1 as const, delay: 1000, effect: "branch" as const },
   ],
-  betweenLessons: 6500,
+  betweenLessons: 3000,
 };
 
 export const ACT_III = {
-  /**
-   * The rule breaks. Sound right. Nothing right. Then something small on the
-   * left — the light the scene taught them to look for goes out — and the
-   * scene does not mention it.
-   */
+  /** Sound right. Nothing right. Then the left light goes out, unmentioned. */
   soundSide: 1 as const,
-  nothingFor: 4200,
+  nothingFor: 3200,
   effectSide: -1 as const,
   effect: "light-off" as const,
-  /** Let it sit. If they missed it, the night simply continues. */
-  settle: 7000,
+  /** Let it sit — this one is earned by the violation. */
+  settle: 3400,
 };
 
 export const ACT_IV = {
   phoneAlone: {
     ask: "Hold the phone in your hand.",
-    beforePulse: 5500,
+    beforePulse: 3200,
     after: "That was me.",
-    afterHold: 3600,
+    afterHold: 2400,
     second: "I'll do it again when it matters.",
   },
   paired: {
@@ -79,27 +83,43 @@ export const ACT_IV = {
     scanHint: "Open the camera. Point it here.",
     connected: "Good.",
     faceDown: "Put your phone face down beside you.",
-    /** Long enough that the phone has stopped being the thing in the room. */
-    quietBeforeWake: 24000,
+    /**
+     * While the phone is down. Not silence — the desktop does two quiet
+     * things in it, so the wait is visibly October's. Long enough for the
+     * phone to stop being the thing in the hand; short enough that no
+     * iPhone auto-locks inside it even with no wake lock (the minimum
+     * auto-lock is 30 s).
+     */
+    leaveIt: "Leave it there.",
+    leaveItAfter: 1800,
+    dormancy: 9000,
     wakeLine: "I didn't tell you to pick it up.",
-    /** Long enough to look back at the screen, and settle. */
-    quietBeforeSecondWake: 21000,
+    /**
+     * How long the phone holds their attention before the desktop moves.
+     * Then the desktop makes one small sound — the hook that brings the eyes
+     * back to a world that is already different.
+     */
+    attentionWindow: 1500,
+    hookAfter: 2200,
+    putItBack: "Put it back.",
+    secondDormancy: 7000,
     secondWakeLine: "Look at me for a moment.",
-    /** How long the phone holds their attention before the desktop moves. */
-    attentionWindow: 1800,
     releaseLine: "Okay.",
+    afterRelease: 1400,
   },
 };
 
 export const ACT_V = {
   ask: "Still awake?",
   then: "Then let's do something with the night.",
+  choicesAfter: 900,
+  choiceStagger: 320,
   choices: [
     {
       id: "inside",
       label: "Stay inside",
       whisper: "A film. A story. Something warm.",
-      reply: "Good. The door stays closed tonight.",
+      reply: "Good.\nThe door stays closed tonight.",
     },
     {
       id: "outside",
@@ -124,4 +144,31 @@ export const ACT_V = {
     label: "I've had enough",
     reply: "Sleep well. October will still be here.",
   },
+};
+
+/**
+ * **The door.**
+ *
+ * Screening finding: after "The door stays closed tonight" the person waited
+ * for the door, and nothing happened. The writing had promised it. So:
+ *
+ *   the reply lands → a beat → a latch, somewhere to the right and behind →
+ *   long enough to wonder → ONE heavy door, in the room → silence → "Locked."
+ *
+ * The person meant "I'll pick an indoor activity." For one moment October
+ * hears "you are staying inside." Then it hands them something useful.
+ *
+ * "Locked." is kept after trying the cut without it: the slam alone reads as
+ * an effect; the word turns it into the joke.
+ */
+export const DOOR = {
+  replyHold: 2400,
+  beforeLatch: 1300,
+  /** Latch to slam. The anticipation. Longer than feels comfortable to write. */
+  latchToSlam: 2600,
+  silenceAfter: 2400,
+  locked: "Locked.",
+  lockedHold: 2000,
+  /** Then the surface. Short — do not leave them staring at trees again. */
+  beforeSurface: 900,
 };
