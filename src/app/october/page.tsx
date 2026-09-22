@@ -5,6 +5,7 @@ import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { MyOctober } from "@/components/october/MyOctober";
+import { reactionsFor } from "@/lib/movies/reactions";
 import { AccountControl } from "@/components/auth/AccountControl";
 
 export const metadata: Metadata = {
@@ -54,9 +55,10 @@ export default async function OctoberPage() {
     );
   }
 
-  const [things, candidates] = await Promise.all([
+  const [things, candidates, reactions] = await Promise.all([
     octoberThingsFor(user),
     listDiscoveryCandidates().catch(() => []),
+    reactionsFor(user),
   ]);
   const experiences = candidates.map(candidateToExperience);
 
@@ -65,6 +67,7 @@ export default async function OctoberPage() {
       displayName={user.displayName}
       things={things}
       experiences={experiences}
+      reactions={reactions}
     />
   );
 }

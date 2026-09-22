@@ -9,6 +9,10 @@ import { formatEventWhen } from "@/domain/experience/eventTime";
 import type { Experience } from "@/domain/experience/types";
 import { didThis, forget } from "@/lib/october/october-repo";
 import type { OctoberThing } from "@/lib/october/types";
+import { filmById } from "@/lib/movies/catalogue";
+import { FilmReaction } from "@/components/october/movies/FilmReaction";
+import { saveReaction } from "@/lib/movies/movies-repo";
+import type { MovieReaction } from "@/lib/movies/types";
 
 /**
  * **An October waiting to be lived, and then the one that was.**
@@ -26,6 +30,8 @@ interface MyOctoberProps {
   displayName: string;
   things: OctoberThing[];
   experiences: Experience[];
+  /** What they have already said about films. */
+  reactions?: MovieReaction[];
 }
 
 /** Ahead: dated things by date, undated after, newest intention first. */
@@ -53,9 +59,33 @@ export function MyOctober({
   displayName,
   things: initial,
   experiences,
+  reactions: initialReactions = [],
 }: MyOctoberProps) {
   const [things, setThings] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
+  const [reactions, setReactions] = useState(initialReactions);
+
+  const reactionFor = (entityId: string) =>
+    reactions.find((r) => r.filmId === entityId);
+
+  async function handleReaction(
+    thing: OctoberThing,
+    r: { verdict: "loved" | "good" | "meh"; felt: string; gotMe?: string },
+  ) {
+    try {
+      const saved = await saveReaction(thing.entityId, {
+        verdict: r.verdict,
+        felt: r.felt as never,
+        gotMe: r.gotMe,
+      });
+      setReactions((prev) => [
+        ...prev.filter((x) => x.filmId !== saved.filmId),
+        saved,
+      ]);
+    } catch {
+      toast.error("Couldn't save that. Please try again.");
+    }
+  }
 
   const byId = useMemo(
     () => new Map(experiences.map((e) => [e.id, e] as const)),
@@ -197,6 +227,8 @@ export function MyOctober({
                       experience={byId.get(thing.entityId)}
                       busy={busy === thing.entityId}
                       onForget={() => handleForget(thing)}
+                      reaction={reactionFor(thing.entityId)}
+                      onReact={(r) => void handleReaction(thing, r)}
                     />
                   ))}
                 </ol>
@@ -301,13 +333,26 @@ function LivedRow({
   experience,
   busy,
   onForget,
+  reaction,
+  onReact,
 }: {
   thing: OctoberThing;
   experience?: Experience;
   busy: boolean;
   onForget: () => void;
+  reaction?: MovieReaction;
+  onReact?: (r: {
+    verdict: "loved" | "good" | "meh";
+    felt: string;
+    gotMe?: string;
+  }) => void;
 }) {
   const destination = experience ? destinationFor(experience) : undefined;
+  // A film they watched can say what it was like. Only a film — everything
+  // else in My October is a place or an evening, and the reaction layer for
+  // those is deliberately not built yet.
+  const film =
+    thing.entityKind === "Movie" ? filmById(thing.entityId) : undefined;
   return (
     <li className="relative" data-testid="lived-thing">
       <span
@@ -330,6 +375,25 @@ function LivedRow({
       {experience?.context?.name && (
         <p className="text-sm text-[#2b2015]/60">{experience.context.name}</p>
       )}
+      {film &&
+        onReact &&
+        (reaction ? (
+          <p
+            className="mt-1 text-sm text-[#2b2015]/60"
+            data-testid="film-reaction"
+          >
+            {reaction.verdict === "loved"
+              ? "Loved it"
+              : reaction.verdict === "good"
+                ? "Good"
+                : "Meh"}
+            {reaction.felt && ` · ${reaction.felt}`}
+            {reaction.gotMe && ` · ${reaction.gotMe}`}
+          </p>
+        ) : (
+          <FilmReaction expected={film.fear} onDone={onReact} />
+        ))}
+
       <button
         type="button"
         onClick={onForget}

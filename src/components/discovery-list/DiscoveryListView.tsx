@@ -574,6 +574,16 @@ export function DiscoveryListView({
                     parts October cares about. Dated things first; nothing
                     already over.
                   </p>
+                  {/* Staying in is an October too. */}
+                  <a
+                    href="/october/movies"
+                    className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[#8a5a24]/30 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+                  >
+                    Movie Night
+                    <span className="text-[#8a5a24]/50">
+                      — nobody&apos;s going anywhere tonight
+                    </span>
+                  </a>
                 </div>
                 <InspirationFeed
                   experiences={experiences}
