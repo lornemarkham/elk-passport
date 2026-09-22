@@ -4,7 +4,10 @@ import Link from "next/link";
 import { Bookmark, Check } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
-import { inspirationShelves } from "@/domain/discovery/inspirationShelves";
+import {
+  inspirationShelves,
+  type Shelf,
+} from "@/domain/discovery/inspirationShelves";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 
 /**
@@ -30,6 +33,17 @@ interface InspirationFeedProps {
   readonly onSave: (experience: Experience) => void;
   /** Injected so the feed is deterministic in a test. */
   readonly now?: Date;
+  /**
+   * Shelves composed elsewhere. When given, `experiences` is not re-shelved
+   * here — the October entry composes its own lanes by subtype and date and
+   * borrows only this rendering.
+   */
+  readonly shelves?: readonly (Shelf & { lastYear?: boolean })[];
+  /** "Want to do." Present only where the page has an October to keep it in. */
+  readonly wantedIds?: ReadonlySet<string>;
+  readonly onWant?: (experience: Experience) => void;
+  /** What to say when there is nothing. */
+  readonly emptyLine?: string;
 }
 
 export function InspirationFeed({
@@ -37,16 +51,18 @@ export function InspirationFeed({
   savedIds,
   onSave,
   now,
+  shelves: given,
+  wantedIds,
+  onWant,
+  emptyLine = "Atlas has not placed anything in this area yet.",
 }: InspirationFeedProps) {
-  const shelves = inspirationShelves(experiences, now);
+  const shelves = given ?? inspirationShelves(experiences, now);
 
   if (shelves.length === 0) {
     return (
       <div className="rounded-xl border border-[#8a5a24]/20 bg-white/50 p-10 text-center">
         <p className="font-medium text-[#3b2a17]">Nothing to show yet</p>
-        <p className="mt-1 text-sm text-[#6b5637]">
-          Atlas has not placed anything in this area yet.
-        </p>
+        <p className="mt-1 text-sm text-[#6b5637]">{emptyLine}</p>
       </div>
     );
   }
@@ -62,7 +78,14 @@ export function InspirationFeed({
             >
               {shelf.title}
             </h2>
-            <p className="mt-0.5 text-sm text-[#6b5637]">{shelf.blurb}</p>
+            <p className="mt-0.5 text-sm text-[#6b5637]">
+              {shelf.blurb}
+              {"lastYear" in shelf && shelf.lastYear && (
+                <span className="ml-2 rounded-full border border-[#8a5a24]/30 px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#8a5a24] uppercase">
+                  2025
+                </span>
+              )}
+            </p>
           </div>
 
           {/* One shelf, scrolling on its own. `snap` makes a flick land on a
@@ -77,6 +100,8 @@ export function InspirationFeed({
                 experience={experience}
                 saved={savedIds.has(experience.id)}
                 onSave={() => onSave(experience)}
+                wanted={wantedIds?.has(experience.id) ?? false}
+                onWant={onWant ? () => onWant(experience) : undefined}
               />
             ))}
           </ul>
@@ -90,10 +115,14 @@ function InspirationCard({
   experience,
   saved,
   onSave,
+  wanted,
+  onWant,
 }: {
   experience: Experience;
   saved: boolean;
   onSave: () => void;
+  wanted?: boolean;
+  onWant?: () => void;
 }) {
   const destination = destinationFor(experience);
   const when =
@@ -178,6 +207,27 @@ function InspirationCard({
             No page yet — Atlas is still reading about this one.
           </p>
         )}
+
+        {/* The same intention Discovery's list offers. Above the covering link
+            (z-20) so it is a button and not a navigation. */}
+        {onWant &&
+          (wanted ? (
+            <span
+              className="relative z-20 mt-auto pt-1 text-xs font-medium text-[#8a5a24]"
+              data-testid="wanted"
+            >
+              In my October
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onWant}
+              className="relative z-20 mt-auto -ml-1.5 flex min-h-9 items-center self-start rounded-full px-2 text-xs font-medium text-[#8a5a24] hover:bg-[#8a5a24]/10"
+              data-testid="want-to-do"
+            >
+              Want to do
+            </button>
+          ))}
       </div>
     </li>
   );

@@ -34,6 +34,7 @@ import {
 } from "@/lib/data/boards-repo";
 import { AccountControl } from "@/components/auth/AccountControl";
 import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
+import { octoberLanes } from "@/domain/discovery/octoberLanes";
 import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { DiscoveryListFilters } from "./DiscoveryListFilters";
 import {
@@ -251,6 +252,22 @@ export function DiscoveryListView({
   const inspirationPool = useMemo(
     () => defaultFeed(scopeExperiences(experiences, scope)),
     [experiences, scope],
+  );
+
+  /**
+   * What the October entry browses.
+   *
+   * Everything Passport holds — deliberately *not* the region-scoped pool.
+   * Under that scope the October lanes are empty (Scares 0, October events
+   * 1), because Atlas has asserted membership for 314 of 2,314 entities. The
+   * corpus is Okanagan by construction; the scope is incomplete, not wrong.
+   * Composition is by subtype and date, never by prose, and each card still
+   * says where its Thing is when Atlas knows. The list below stays scoped
+   * exactly as before.
+   */
+  const octoberPool = useMemo(
+    () => octoberLanes(defaultFeed(experiences)),
+    [experiences],
   );
 
   const kinds = useMemo(
@@ -543,7 +560,32 @@ export function DiscoveryListView({
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
           <div className="flex flex-col gap-6">
-            {mode === "Inspiration" ? (
+            {mode === "October" ? (
+              <div className="flex flex-col gap-8">
+                <div className="px-1">
+                  <p className="text-sm font-medium text-[#8a5a24]">
+                    October 2026
+                  </p>
+                  <h2 className="font-heading mt-1 text-3xl text-[#2c1f10]">
+                    What kind of October do you want?
+                  </h2>
+                  <p className="mt-2 max-w-lg text-sm text-[#6b5637]">
+                    Everything Atlas knows about the valley, sorted into the
+                    parts October cares about. Dated things first; nothing
+                    already over.
+                  </p>
+                </div>
+                <InspirationFeed
+                  experiences={experiences}
+                  shelves={octoberPool}
+                  savedIds={savedIds}
+                  onSave={handleSave}
+                  wantedIds={wantedIds}
+                  onWant={handleWant}
+                  emptyLine="Atlas has nothing dated for October yet."
+                />
+              </div>
+            ) : mode === "Inspiration" ? (
               // The same scoped pool the list browses, framed rather than
               // filtered. `scoped` and not `visible`: the feed is a browse, so
               // the search box and kind chips do not apply to it.

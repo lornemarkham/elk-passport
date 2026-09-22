@@ -1,4 +1,4 @@
-import { Bot, ListChecks, Map, Sparkles } from "lucide-react";
+import { Bot, Leaf, ListChecks, Map, Sparkles } from "lucide-react";
 
 /** A mode is a way of browsing the same catalogue.
  *
@@ -10,7 +10,7 @@ import { Bot, ListChecks, Map, Sparkles } from "lucide-react";
  * broken links. The immersive spatial experiment remains untouched at
  * /labs/discovery-space; it is a different idea from this feed, not an earlier
  * draft of it. */
-export type DiscoveryMode = "List" | "Inspiration";
+export type DiscoveryMode = "List" | "Inspiration" | "October";
 
 interface DiscoveryModeOption {
   label: string;
@@ -21,6 +21,9 @@ interface DiscoveryModeOption {
 const MODES: DiscoveryModeOption[] = [
   { label: "List", icon: ListChecks, enabled: true },
   { label: "Inspiration", icon: Sparkles, enabled: true },
+  // Seasonal. The part of the world October cares about, composed from what
+  // Atlas states about each Thing — not a theme laid over the whole page.
+  { label: "October", icon: Leaf, enabled: true },
   { label: "Map", icon: Map, enabled: false },
   { label: "AI", icon: Bot, enabled: false },
 ];
