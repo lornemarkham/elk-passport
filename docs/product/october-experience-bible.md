@@ -3,7 +3,8 @@
 **Established:** 2026-09-22, from one long evening of design conversation.
 **Amended:** 2026-09-22, after the first physical screening of Witching Hour
 v0 (§25), again after the second, of v0.1 (§26–§29), and again the same
-night with Side Missions and My October (§9.11, §28.1). One scene is
+night with Side Missions and My October (§9.11, §28.1), and again with the
+execution plan (§30). One scene is
 implemented as a lab and has been screened twice; everything else remains
 preserved direction, not roadmap. It is written so that tomorrow starts where
 tonight stopped.
@@ -487,6 +488,14 @@ experience expose what information it actually needs before any long-term
 knowledge model is decided — Movie, Work, Media, Content, or something else is
 **unresolved**. The experience discovers the requirement; the ontology follows.
 
+**Now first in the build order (§30.4), and inspected 2026-09-22.** What
+exists: no Movie Thing anywhere in Passport; six `MOVIE_PAIRINGS` moods in
+the old October experiment (emoji · mood · line · "then:" a real-world
+follow-on) which are **framing, not a catalogue**; thirty screening-capable
+venues in Atlas and **zero film screening Events**; and a preferences store
+that already holds `contentComfort` explicitly and is CHECK-constrained
+against learned values (§20, §27.7).
+
 **Directed trailer moments — CANDIDATE.** Where officially hosted, embeddable
 trailers or teasers are permitted, October could use one carefully chosen
 moment from promotional media to _demonstrate a fear mechanism_ — unseen
@@ -585,6 +594,8 @@ Examples discovered, kept as examples and **not** as a catalogue or schema:
 - **The Quiet Night** — a beautiful night outdoors on which October may
   _genuinely choose not to scare anyone_. The Director knowing when not to
   direct (§3.1), as a whole scene.
+- **The Scariest Room** — indoors, and the strongest version of the reality
+  rule. See §30.3; it is the one where the _person_ supplies the fear.
 
 **The reality rule.** October can turn a real natural event into an
 experience without pretending October caused it. This maps exactly onto
@@ -1417,6 +1428,24 @@ October can be helpful, funny, mischievous, warm, creepy and frightening at
 different times. The person should have reasons to return beyond narrative
 curiosity.
 
+**The question the month is asking — EXPLORATION.** The person should
+increasingly wonder: _"What does October want from me?"_ Horror convention
+says the answer must be sinister. A candidate resolution for October 31,
+**not canon**:
+
+```
+Keep your soul.
+Keep your children.
+The doors are unlocked.
+
+Now go have one hell of a day.
+```
+
+The long horror setup resolves into something warm, mischievous and fun:
+October wanted the person to actually _have_ an incredible October. My
+October (§28.1) may become the evidence — _these are the things October got
+you to do_. A dedicated story session decides this; nothing is canonised.
+
 ### 27.2 The model, as currently imagined
 
 ```
@@ -1616,6 +1645,103 @@ evening look like?_
 Do not assume every answer is a scalar field. Atlas's evidence and provenance
 principles hold: an answer is a claim with a source, and "Atlas does not
 know" is a valid answer.
+
+---
+
+## 30. The execution plan — 2026-09-22
+
+Ideation is over for now. This is what is being built, in what order, and
+what it is for.
+
+### 30.1 The wedge
+
+**Okanagan Halloween.** One place, one month, deep enough to personally use.
+Then **Vancouver Halloween**, which tests whether any of it transfers
+geographically. Then **Vancouver hockey night**, which tests which ideas are
+_Passport_ rather than Halloween-specific. General, boring Discovery comes
+after all three, informed by them.
+
+Everything right now should make October genuinely useful, fun, memorable and
+occasionally terrifying.
+
+### 30.2 Track A — Useful October
+
+Concrete things a person can actually do: Movie Night · Pumpkin Day and the
+patches · costume ideas, bought or made, kid or adult or couple or group ·
+decorating, house and yard and door, DIY and bought · Candy Night, making
+handing out candy more fun · Make Something — carving, crafts, baking,
+decorations · Kids October, real things to do with a five-year-old ·
+Halloween food, treats, dinners · haunts, events, parties, theatre, the real
+world.
+
+Discovery **participates** in these. It is not where they all live. Forcing
+everything into Discovery is how a product becomes a directory (§26.2).
+
+### 30.3 Track B — October comes alive
+
+Authored experiences, each teaching something about cinematic interaction:
+The Scariest Room · The Dragon's Eyes / meteor night (§9.11) · Escape or
+Secret Room (§9.7) · a **Witching Hour rewrite** (§26.3 — premise, not
+pacing) · Local Story / Ghost Walk · multi-device experiences (ADR 001) · a
+Halloween-day culmination.
+
+**The Scariest Room — CANDIDATE, preserved in its specific form.** The person
+takes their phone to the part of their own home they find scariest, and
+photographs it. October answers:
+
+```
+Oh.
+Yes.
+October spent many years here.
+```
+
+No explanation. A possible callback, days later:
+
+```
+Come find me.
+I'm playing in your favourite room.
+```
+
+Why it works, and the constraint that keeps it honest: **the person chose the
+room.** October never claims to have known it. This is reality bleed (§8) at
+its strongest — the fear is already in their house, and October only gives it
+a sentence.
+
+### 30.4 Build order
+
+```
+1  Movie Night
+2  The Scariest Room
+3  Pumpkin / Kids Day
+4  Meteor Night
+5  Costume / Decorating / Candy
+6  Escape Room
+```
+
+Directional, not an architecture commitment. We learn from physical use and
+adjust — and physical use has overturned the plan twice already (§25, §26).
+
+### 30.5 Atmosphere is the thing they share
+
+Movie Night, functional Discovery, the Scariest Room, pumpkin activities,
+kids experiences, missions and stories must feel like they belong to **the
+same October world** even when their intensity is radically different.
+October can be cozy, funny, useful, beautiful, mischievous, mysterious or
+frightening.
+
+**Fear is earned** (§2). And a hard boundary in the other direction: **kids
+and family experiences may be drastically less immersive, and must not
+inherit adult psychological-horror mechanics for the sake of consistency.**
+Consistency is the world, not the intensity.
+
+### 30.6 Movie Night's two jobs
+
+1. Be genuinely useful for choosing something great to watch.
+2. Begin learning this person's horror and movie taste **naturally through
+   use** — never a questionnaire (§5).
+
+Both, or it is not Movie Night. A beautiful chooser that learns nothing is a
+scene; a rating form that helps nobody choose is a survey.
 
 ---
 
