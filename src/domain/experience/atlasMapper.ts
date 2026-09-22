@@ -30,6 +30,7 @@ export function candidateToExperience(
     kind: candidate.kind,
     slug: candidate.name.toLowerCase().replaceAll(" ", "-"),
     title: candidate.name,
+    aliases: candidate.aliases ?? [],
     shortDescription: candidate.description,
     description: candidate.description,
     subtype: candidate.subtype,

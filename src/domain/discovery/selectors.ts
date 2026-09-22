@@ -6,24 +6,18 @@
  */
 import type { Experience } from "@/domain/experience/types";
 import { filterExperiences } from "./filterExperiences";
+import { rankQuery } from "./searchRank";
 import type { DiscoveryState } from "./discoveryState";
 
-/** Exported so any renderer of "does this experience match this free-text
- * query" — Discovery's immersive field, List mode, anywhere else this
- * comes up — calls the same function rather than reimplementing it. */
+/**
+ * Does this experience match this free-text query at all. One function for
+ * every renderer of the question — Discovery's immersive field, List mode,
+ * anywhere else. Since M10 the answer comes from `rankQuery`: a match on
+ * the name or an alias by token coverage, or the old description substring
+ * as the floor. Ordering is `rankByQuery`'s; this is only the yes/no.
+ */
 export function matchesQuery(experience: Experience, query: string): boolean {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return true;
-  const haystack = [
-    experience.title,
-    experience.shortDescription,
-    experience.description ?? "",
-    ...experience.moods,
-    ...experience.activities,
-  ]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(trimmed);
+  return rankQuery(experience, query) !== undefined;
 }
 
 /**

@@ -387,6 +387,8 @@ export interface DiscoveryCandidate {
   id: string;
   kind: "Place" | "Organization" | "Activity" | "Event";
   name: string;
+  /** The other names Atlas holds for the same thing; search matches them as names (M10). Absent from an older Atlas. */
+  aliases?: string[];
   subtype?: string;
   description: string;
   heroUrl?: string;

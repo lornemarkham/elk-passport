@@ -64,6 +64,8 @@ export interface Experience {
   kind: ExperienceKind;
   slug: string;
   title: string;
+  /** Other names Atlas holds for this thing. Search matches them exactly as it matches `title`; nothing renders them. */
+  aliases?: readonly string[];
   shortDescription: string;
   description?: string;
 

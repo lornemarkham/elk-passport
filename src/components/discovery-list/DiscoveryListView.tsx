@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
 import { filterExperiences } from "@/domain/discovery/filterExperiences";
-import { matchesQuery } from "@/domain/discovery/selectors";
+import { rankByQuery } from "@/domain/discovery/searchRank";
 import {
   scopeExperiences,
   scopeLabel,
@@ -219,10 +219,16 @@ export function DiscoveryListView({
     // rather than adopted by it — see `geographicScope`.
     const scoped = scopeExperiences(experiences, scope);
     const pool = browsing ? scoped : defaultFeed(scoped);
-    return filterExperiences(pool, filters)
-      .filter((experience) => (kind ? experience.kind === kind : true))
-      .filter((experience) => matchesQuery(experience, query))
-      .filter((experience) => !savedIds.has(experience.id));
+    // Matching and ordering are one decision (`rankByQuery`, M10): what the
+    // query names ranks first, a description mention last, and with no query
+    // the pool keeps its order. Scope, feed, filters, kind and saved-item
+    // exclusion are unchanged around it.
+    return rankByQuery(
+      filterExperiences(pool, filters).filter((experience) =>
+        kind ? experience.kind === kind : true,
+      ),
+      query,
+    ).filter((experience) => !savedIds.has(experience.id));
   }, [experiences, filters, query, savedIds, browsing, kind, scope]);
 
   /**
