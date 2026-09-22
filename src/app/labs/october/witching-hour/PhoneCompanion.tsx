@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { createSound, pulse, type Sound } from "./audio";
 import { joinPairing, type Cue, type Pairing } from "./pairing";
 import { ACT_IV } from "./script";
+import { keepAwake, type WakeLockHandle } from "./wakeLock";
 
 /**
  * **The phone as a prop.**
@@ -33,6 +34,8 @@ export function PhoneCompanion({ code }: { code: string }) {
   const [state, setState] = useState<State>("connecting");
   const [line, setLine] = useState<string | null>(null);
   const [orientationOk, setOrientationOk] = useState<boolean | null>(null);
+  const [awake, setAwake] = useState<boolean | null>(null);
+  const wake = useRef<WakeLockHandle | null>(null);
 
   const sound = useRef<Sound | null>(null);
   const pairing = useRef<Pairing | null>(null);
@@ -100,6 +103,7 @@ export function PhoneCompanion({ code }: { code: string }) {
       clearTimeout(t);
       pairing.current?.close();
       sound.current?.close();
+      wake.current?.release();
     };
   }, [code, report]);
 
@@ -111,6 +115,11 @@ export function PhoneCompanion({ code }: { code: string }) {
    */
   const ready = useCallback(async () => {
     await sound.current?.unlock();
+
+    // Same gesture, second request: the screen must not lock while the phone
+    // is face down waiting to be needed.
+    wake.current = await keepAwake();
+    setAwake(wake.current.supported);
 
     const DOE = (
       window as unknown as {
@@ -229,6 +238,7 @@ export function PhoneCompanion({ code }: { code: string }) {
       <p className="absolute bottom-5 font-mono text-[10px] tracking-[0.25em] text-[#e9e6da]/25 uppercase">
         {code}
         {orientationOk === false && " · tap when you pick it up"}
+        {awake === false && " · keep the screen from locking"}
       </p>
     </div>
   );

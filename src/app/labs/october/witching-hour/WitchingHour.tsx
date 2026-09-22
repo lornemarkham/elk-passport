@@ -75,6 +75,7 @@ export function WitchingHour() {
   const [chosen, setChosen] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
+  const [originReachable, setOriginReachable] = useState(true);
 
   const sound = useRef<Sound | null>(null);
   const pairing = useRef<Pairing | null>(null);
@@ -191,7 +192,17 @@ export function WitchingHour() {
   const offerPairing = useCallback(async () => {
     const c = newCode();
     setCode(c);
-    const url = `${window.location.origin}/labs/october/witching-hour/join/${c}`;
+    // The QR encodes wherever the desktop is loaded from. On a phone,
+    // "localhost" is the phone, and a LAN address is only reachable on the
+    // same network — so the scene says so rather than printing a code that
+    // will 404 in somebody's hand.
+    const origin = window.location.origin;
+    setOriginReachable(
+      !/localhost|127\.0\.0\.1|\.local\b|^https?:\/\/(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./i.test(
+        origin,
+      ),
+    );
+    const url = `${origin}/labs/october/witching-hour/join/${c}`;
     setQr(
       await QRCode.toDataURL(url, {
         margin: 1,
@@ -443,6 +454,13 @@ export function WitchingHour() {
             <p className="font-mono text-xs tracking-[0.3em] text-[#e9e6da]/50">
               {code}
             </p>
+            {!originReachable && (
+              <p className="max-w-xs text-center text-[11px] text-amber-200/70">
+                This code points at {window.location.host}, which your phone
+                probably can&apos;t reach. Open the night from its deployed
+                address to pair.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => void desktopAlone()}
