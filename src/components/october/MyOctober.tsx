@@ -140,7 +140,7 @@ export function MyOctober({
       <div className="mx-auto max-w-3xl px-6 py-14">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1" />
-          <AccountControl displayName={displayName} returnTo="/october" />
+          <AccountControl displayName={displayName} returnTo="/october/mine" />
         </div>
 
         <header className="mt-8">

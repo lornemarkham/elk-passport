@@ -71,11 +71,14 @@ describe("an Event in Discover", () => {
     expect(destinationFor(e)).not.toContain("/places/");
   });
 
-  it("an Event with no date has nowhere truthful to go", () => {
+  it("an Event with no date still opens, it just has no date to show", () => {
     // Atlas drops an Event proposal whose dates the source never stated, so
-    // this should not occur — and if it does, it must not pretend.
+    // this should not occur. When it does, a missing date is a missing *fact*,
+    // not a reason the thing cannot be looked at: the card renders no date and
+    // the traveller page says what it knows.
     const e = candidateToExperience(candidate({}));
-    expect(destinationFor(e)).toBeUndefined();
+    expect(formatEventWhen(e.startTime, e.endTime)).toBeUndefined();
+    expect(destinationFor(e)).toBe("/passport/event-1");
   });
 
   it("no other kind gains a date", () => {

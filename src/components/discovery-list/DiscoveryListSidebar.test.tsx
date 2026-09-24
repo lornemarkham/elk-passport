@@ -74,7 +74,7 @@ describe("saved items that can be navigated to", () => {
     ).toHaveAttribute("href", "/places/eddd9851-b490-45ad-bb20-cb21e7d9e27f");
   });
 
-  it("links an Organization to the Place that contains it, never to its own id", () => {
+  it("links an Organization to itself, never to /places/{organizationId}", () => {
     const { sidebar } = renderSidebar([
       saved({
         id: "org-bullwheel",
@@ -90,13 +90,13 @@ describe("saved items that can be navigated to", () => {
       }),
     ]);
     const link = within(sidebar).getByRole("link", { name: "The BullWheel" });
-    expect(link).toHaveAttribute("href", "/places/place-bigwhite");
-    expect(link.getAttribute("href")).not.toContain("org-bullwheel");
+    expect(link).toHaveAttribute("href", "/passport/org-bullwheel");
+    expect(link.getAttribute("href")).not.toContain("/places/");
   });
 });
 
-describe("saved items with nowhere truthful to go", () => {
-  it("leaves a Place that is not detail-ready as plain text", () => {
+describe("saved items the Place template cannot hold", () => {
+  it("still opens a Place that is not detail-ready, on the neutral page", () => {
     // Kekuli Bay: real and mapped, and Atlas holds no photograph for it.
     const { sidebar } = renderSidebar([
       saved({
@@ -106,14 +106,11 @@ describe("saved items with nowhere truthful to go", () => {
         coordinates: [-119.34027778, 50.18333333],
       }),
     ]);
+    // It has no photograph, so the Place template would render badly — but
+    // a saved thing you cannot reopen is worse than a page with honest gaps.
     expect(
-      within(sidebar).getByText("Kekuli Bay Provincial Park"),
-    ).toBeTruthy();
-    expect(
-      within(sidebar).queryByRole("link", {
-        name: "Kekuli Bay Provincial Park",
-      }),
-    ).toBeNull();
+      within(sidebar).getByRole("link", { name: "Kekuli Bay Provincial Park" }),
+    ).toHaveAttribute("href", "/passport/1d8a002c-a7ac-41d5-9a3e-73ab0849e702");
   });
 
   it("never routes an Organization without context through /places/{id}", () => {

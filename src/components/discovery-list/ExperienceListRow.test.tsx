@@ -84,19 +84,23 @@ describe("the row's navigation", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
-  it("renders no link at all for a Place that is not detail-ready", () => {
+  it("opens a Place that is not detail-ready on the neutral page", () => {
     // Kekuli Bay: real, mapped, described — and Atlas holds no photograph, so
-    // the detail page has nothing to open with.
+    // the Place template has nothing to open with. The traveller page does,
+    // and is built to state what it does not know.
     row({
       id: "1d8a002c-a7ac-41d5-9a3e-73ab0849e702",
       name: "Kekuli Bay Provincial Park",
       subtype: "provincial park",
       coordinates: [-119.34027778, 50.18333333],
     });
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "/passport/1d8a002c-a7ac-41d5-9a3e-73ab0849e702",
+    );
     expect(screen.getByRole("listitem")).toHaveAttribute(
       "data-navigates",
-      "false",
+      "true",
     );
   });
 

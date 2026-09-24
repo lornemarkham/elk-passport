@@ -96,7 +96,7 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
         <div className="flex items-baseline justify-between">
           <p className="text-sm font-medium text-[#8a5a24]">Movie Night</p>
           <Link
-            href="/october"
+            href="/october/mine"
             className="min-h-11 text-xs text-[#e9e6da]/40 underline-offset-4 hover:underline"
           >
             My October
@@ -217,7 +217,7 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
               </p>
               <div className="mt-6 flex items-center gap-5">
                 <Link
-                  href="/october"
+                  href="/october/mine"
                   className="inline-flex min-h-11 items-center rounded-full bg-[#e9e6da] px-5 text-sm font-medium text-[#0b0d14]"
                 >
                   My October

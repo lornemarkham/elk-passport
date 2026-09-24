@@ -15,7 +15,7 @@ const candidate = (over: Partial<DiscoveryCandidate>): DiscoveryCandidate => ({
 });
 
 describe("destinationFor", () => {
-  it("sends a detail-ready Place to its own page", () => {
+  it("sends a detail-ready Place to its own specialised page", () => {
     const experience = candidateToExperience(
       candidate({
         kind: "Place",
@@ -39,8 +39,62 @@ describe("destinationFor", () => {
     expect(destinationFor(experience)).not.toBe("/places/org-bullwheel");
   });
 
-  it("sends an Organization to the Place that physically contains it, when Atlas says so", () => {
+  it("sends an Organization to its own traveller page", () => {
     const experience = candidateToExperience(
+      candidate({
+        id: "org-black-mountain",
+        kind: "Organization",
+        name: "Black Mountain Haunted House",
+      }),
+    );
+    expect(destinationFor(experience)).toBe("/passport/org-black-mountain");
+  });
+
+  it("sends an Activity to its own traveller page", () => {
+    const experience = candidateToExperience(
+      candidate({
+        id: "activity-night-skiing",
+        kind: "Activity",
+        name: "night skiing",
+      }),
+    );
+    expect(destinationFor(experience)).toBe("/passport/activity-night-skiing");
+  });
+
+  it("sends an Event to its own traveller page, dated or not", () => {
+    const dated = candidateToExperience(
+      candidate({
+        id: "event-fireworks",
+        kind: "Event",
+        name: "Saturday Night Fireworks",
+        startTime: "2026-10-31T02:00:00.000Z",
+      }),
+    );
+    const undated = candidateToExperience(
+      candidate({ id: "event-undated", kind: "Event", name: "Someday" }),
+    );
+    expect(destinationFor(dated)).toBe("/passport/event-fireworks");
+    // The date decided whether it could be opened at all, which made an
+    // undated Event a dead card for no reason it could do anything about.
+    expect(destinationFor(undated)).toBe("/passport/event-undated");
+  });
+
+  it("gives a thin Place a page it can actually fill, rather than none", () => {
+    const experience = candidateToExperience(
+      candidate({
+        kind: "Place",
+        name: "Kekuli Bay Provincial Park",
+        coordinates: [-119.34, 50.18],
+      }),
+    );
+    // Readiness still chooses *which* page. It no longer decides whether the
+    // thing is reachable — those were always two different questions.
+    expect(experience.detailReady).toBe(false);
+    expect(destinationFor(experience)).toBe("/passport/id-1");
+  });
+
+  it("goes to the thing itself, not to whatever contains it", () => {
+    const bullwheel = candidateToExperience(
       candidate({
         id: "org-bullwheel",
         kind: "Organization",
@@ -52,43 +106,29 @@ describe("destinationFor", () => {
         },
       }),
     );
-    expect(destinationFor(experience)).toBe("/places/place-bigwhite");
+    // Landing on Big White was the best answer available while Organizations
+    // had no page of their own. They do, so a card for The BullWheel opens
+    // The BullWheel; its context still explains where that is.
+    expect(destinationFor(bullwheel)).toBe("/passport/org-bullwheel");
+    expect(bullwheel.context?.name).toBe("Big White Ski Resort");
   });
 
-  it("never sends an Activity to /places/{activityId}", () => {
-    const experience = candidateToExperience(
-      candidate({
-        id: "activity-night-skiing",
-        kind: "Activity",
-        name: "night skiing",
-      }),
-    );
-    expect(destinationFor(experience)).not.toBe(
-      "/places/activity-night-skiing",
-    );
-    // No context in the corpus for this one, so there is nowhere truthful to go.
-    expect(destinationFor(experience)).toBeUndefined();
-  });
-
-  it("gives a candidate with nowhere truthful to go no destination at all", () => {
-    // A card without a link is a real outcome. Eligibility and having a
-    // destination are separate questions — hence no `hasDetailPage` flag.
-    const experience = candidateToExperience(
-      candidate({ kind: "Event", name: "Saturday Night Fireworks" }),
-    );
-    expect(destinationFor(experience)).toBeUndefined();
-  });
-
-  it("does not send a Place that is not detail-ready to a page it cannot fill", () => {
-    const experience = candidateToExperience(
-      candidate({
-        kind: "Place",
-        name: "Kekuli Bay Provincial Park",
-        coordinates: [-119.34, 50.18],
-      }),
-    );
-    expect(experience.detailReady).toBe(false);
-    expect(destinationFor(experience)).toBeUndefined();
+  it("leaves nothing Atlas holds without a destination", () => {
+    const kinds = ["Place", "Organization", "Activity", "Event"] as const;
+    for (const kind of kinds) {
+      for (const rich of [true, false]) {
+        const experience = candidateToExperience(
+          candidate({
+            id: `${kind}-${rich}`,
+            kind,
+            name: `A ${kind}`,
+            heroUrl: rich ? "https://example.com/x.jpg" : undefined,
+            coordinates: rich ? [-119.4, 49.8] : undefined,
+          }),
+        );
+        expect(destinationFor(experience)).toBeTruthy();
+      }
+    }
   });
 });
 
@@ -165,7 +205,7 @@ describe("card context and affordance data", () => {
         },
       }),
     );
-    expect(destinationFor(bullwheel)).toBe("/places/place-bigwhite");
+    expect(destinationFor(bullwheel)).toBe("/passport/org-bullwheel");
     expect(bullwheel.context?.name).toBe("Big White Ski Resort");
   });
 });

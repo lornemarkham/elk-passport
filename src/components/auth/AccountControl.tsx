@@ -66,7 +66,7 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
           on every screen that shows this control, because a consumer app that
           has no way back to your own stuff is not one. */}
       <Link
-        href="/october"
+        href="/october/mine"
         data-testid="october-link"
         className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10"
       >

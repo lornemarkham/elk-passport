@@ -84,7 +84,7 @@ describe("passportView", () => {
     expect(view.detailReady).toBe(true);
   });
 
-  it("distinguishes a shown card with nowhere to go", () => {
+  it("sends an Organization to its own traveller page", () => {
     const view = passportView(
       candidate({
         kind: "Organization",
@@ -96,8 +96,10 @@ describe("passportView", () => {
     );
 
     expect(view.stage).toBe("in-feed");
-    expect(view.destination).toBeUndefined();
-    expect(view.explanation).toContain("no Passport page exists");
+    // It has no coordinates and is not a Place, so the Place template cannot
+    // hold it — but the neutral traveller page can, and always could.
+    expect(view.destination).toBe("/passport/e1");
+    expect(view.explanation).toContain("leads somewhere");
   });
 
   it("treats no active scope as looking everywhere rather than as a failure", () => {

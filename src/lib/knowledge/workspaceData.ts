@@ -21,7 +21,15 @@ import type {
  * benefit. Client components still use the proxies, unchanged.
  */
 
-const ATLAS_BASE_URL = "http://localhost:3000";
+/**
+ * Where Atlas is — the same variable `atlas-repo` already reads, and for the
+ * same reason. This was a hardcoded `http://localhost:3000`, which was one
+ * developer's port written into product code: with Atlas moved to 3001 every
+ * call here threw, `loadWorkspaceBundle` returned null, and **every**
+ * `/passport/[id]` page answered 404. The traveller page for Organizations
+ * was not missing; it was unreachable.
+ */
+const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
 
 export class WorkspaceNotConfiguredError extends Error {}
 export class WorkspaceUnreachableError extends Error {}

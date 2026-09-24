@@ -128,7 +128,8 @@ describe("the ranker inside the list pipeline", () => {
         );
       }
     }
-    expect(destinationFor(unready)).toBeUndefined();
+    // Readiness chooses which page, not whether there is one.
+    expect(destinationFor(unready)).toBe("/passport/thin");
     expect(destinationFor(knoxPark)).toBe("/places/knox-park");
   });
 

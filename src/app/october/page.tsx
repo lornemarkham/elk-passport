@@ -1,73 +1,281 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "@/lib/auth/currentUser";
-import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
-import { MyOctober } from "@/components/october/MyOctober";
+import { destinationFor } from "@/domain/experience/destination";
+import { formatEventWhen } from "@/domain/experience/eventTime";
+import type { Experience } from "@/domain/experience/types";
+import {
+  happeningThisWeekend,
+  happeningTonight,
+  upcoming,
+} from "@/domain/october/calendar";
+import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
+import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { reactionsFor } from "@/lib/movies/reactions";
-import { AccountControl } from "@/components/auth/AccountControl";
+import { Card, Nothing, Section } from "@/components/october/shell/atoms";
 
 export const metadata: Metadata = {
-  title: "My October — Passport",
+  title: "October — Passport",
 };
 
 /**
- * **My October.** The record of the October this person is going to have,
- * and then had.
+ * **October Home: the room you come back to.**
  *
- * Two lists and nothing else: what is Ahead, what has been Lived. The rows
- * are the person's (`passport_october_things`); everything a row *shows* —
- * a picture, a place, a date — is read from Atlas at render time, because
- * Atlas owns it and a copy would drift. The join is by entity id against
- * the same candidates Discovery loads, so a Thing that Atlas has since
- * retired still appears, by its remembered name, rather than vanishing from
- * somebody's October.
+ * Not a landing page and not a feed. Five questions in the order a person
+ * actually asks them — what could I do tonight, what is on this weekend, what
+ * has October got for me, what can I look through, and what have I already
+ * gathered — and each one answered with the most real thing available rather
+ * than the most impressive.
  *
- * A visitor sees an invitation, not an error: they have no October yet, and
- * that is a fact about them, not a failure.
+ * ## The seam Tonight is built on
+ *
+ * Tonight currently knows two things: the clock, and what Atlas holds. It asks
+ * `happeningTonight` for events on today's local date and shows them. That is
+ * *selection*, not recommendation, and the distinction is deliberate — a
+ * surface that ranked these would be claiming to know something about the
+ * person that Passport has not earned.
+ *
+ * What makes it a seam rather than a dead end is that the shape is already
+ * right: one function turns "everything Passport can see" plus "now" into
+ * "what is on". Weather, location, who you are with, what you saved, what you
+ * did last week — every one of those is another argument to that call and a
+ * richer sort inside it. None of them requires this page to change, which is
+ * the whole reason to build the surface before the engine.
+ *
+ * ## What is real here
+ *
+ * Tonight and This Weekend read live Atlas events. Your October reads the
+ * person's own rows. Nothing on this page invents an entity, a date or a piece
+ * of personal history: where there is nothing, it says there is nothing.
  */
-export default async function OctoberPage() {
+export default async function OctoberHomePage() {
+  const now = new Date();
   const user = await currentUser();
 
-  if (!user) {
-    return (
-      <main className="mx-auto min-h-screen max-w-3xl px-6 py-14">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1" />
-          <AccountControl displayName={null} returnTo="/october" />
-        </div>
-        <h1 className="font-heading mt-10 text-4xl font-semibold tracking-tight text-[#2b2015]">
-          My October
-        </h1>
-        <p className="mt-4 max-w-md text-[#2b2015]/65">
-          The October you&apos;re going to have, and then the one you had. Sign
-          in and the things you mean to do wait for you here — on any device,
-          until you say you did them.
-        </p>
-        <Link
-          href="/auth?next=/october"
-          className="mt-8 inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-5 text-sm font-medium text-[#f7ecd3]"
-        >
-          Sign in
-        </Link>
-      </main>
-    );
-  }
-
-  const [things, candidates, reactions] = await Promise.all([
-    octoberThingsFor(user),
+  const [candidates, things, reactions] = await Promise.all([
+    // Atlas being unreachable is an ordinary outcome, not a crash: October
+    // still has films, the Video Store and your own things.
     listDiscoveryCandidates().catch(() => []),
-    reactionsFor(user),
+    user ? octoberThingsFor(user) : Promise.resolve([]),
+    user ? reactionsFor(user) : Promise.resolve([]),
   ]);
   const experiences = candidates.map(candidateToExperience);
 
+  const tonight = happeningTonight(experiences, now).slice(0, 3);
+  const weekend = happeningThisWeekend(experiences, now).slice(0, 6);
+  const soon = upcoming(experiences, now).slice(0, 4);
+
+  const ahead = things.filter((t) => t.state === "ahead").length;
+  const lived = things.filter((t) => t.state === "lived").length;
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Vancouver",
+  }).format(now);
+
   return (
-    <MyOctober
-      displayName={user.displayName}
-      things={things}
-      experiences={experiences}
-      reactions={reactions}
+    <main className="mx-auto max-w-5xl px-4 pt-10 pb-24 sm:px-6">
+      <header>
+        <p className="text-sm text-[#e9e6da]/40">{today}</p>
+        <h1 className="font-heading mt-1 text-4xl tracking-tight text-[#f3efe4] sm:text-5xl">
+          October
+        </h1>
+      </header>
+
+      {/* ------------------------------------------------------------ TONIGHT */}
+      <div className="mt-12">
+        <Section
+          title="Tonight"
+          note={
+            tonight.length > 0
+              ? undefined
+              : "Nothing Passport knows about is on tonight. That is most nights."
+          }
+        >
+          {tonight.length > 0 ? (
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {tonight.map((e) => (
+                <li key={e.id}>
+                  <EventCard experience={e} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Card
+                href="/october/movies"
+                eyebrow="Indoors"
+                title="Movie Night"
+                line="Pick something that suits who is actually on the sofa."
+              />
+              {soon[0] ? (
+                <Card
+                  href={destinationFor(soon[0])}
+                  eyebrow="Not tonight, but soon"
+                  title={soon[0].title}
+                  line={formatEventWhen(soon[0].startTime, soon[0].endTime)}
+                />
+              ) : null}
+            </div>
+          )}
+        </Section>
+
+        {/* ---------------------------------------------------- THIS WEEKEND */}
+        <Section
+          title="This weekend"
+          note="Real events in the Okanagan, from Atlas."
+          action={
+            <Link
+              href="/october/discover"
+              className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
+            >
+              All of it
+            </Link>
+          }
+        >
+          {weekend.length > 0 ? (
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {weekend.map((e) => (
+                <li key={e.id}>
+                  <EventCard experience={e} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Nothing>
+              Atlas has nothing dated for this weekend yet. What it does have is
+              in{" "}
+              <Link
+                href="/october/discover"
+                className="text-[#d09a4e] underline-offset-4 hover:underline"
+              >
+                Discover
+              </Link>
+              .
+            </Nothing>
+          )}
+        </Section>
+
+        {/* ------------------------------------------------------ FROM OCTOBER */}
+        <Section
+          title="From October"
+          note="Things October has made for you. These are not always here."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Card
+              href="/labs/october/video-store"
+              eyebrow="Tonight only, apparently"
+              title="The Video Store"
+              line="Somebody has already been through the horror section."
+              external
+            />
+            <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-[#e9e6da]/10 p-4">
+              <p className="font-heading text-lg text-[#e9e6da]/25">Not yet.</p>
+            </div>
+          </div>
+        </Section>
+
+        {/* ------------------------------------------------------------ EXPLORE */}
+        <Section
+          title="Explore"
+          note="Ordinary, useful corners of October. Some of them are still only a door."
+        >
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {OCTOBER_AREAS.map((area) => (
+              <li key={area.id}>
+                <Card
+                  href={hrefForArea(area)}
+                  title={area.label}
+                  line={area.line}
+                  status={area.status}
+                />
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        {/* ------------------------------------------------------ YOUR OCTOBER */}
+        <Section
+          title="Your October"
+          action={
+            <Link
+              href="/october/mine"
+              className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
+            >
+              Open
+            </Link>
+          }
+        >
+          {!user ? (
+            <Nothing>
+              Nothing is kept until you sign in — and then everything is, on
+              whatever you are holding.{" "}
+              <Link
+                href="/auth?next=/october"
+                className="text-[#d09a4e] not-italic underline-offset-4 hover:underline"
+              >
+                Sign in
+              </Link>
+            </Nothing>
+          ) : ahead + lived + reactions.length === 0 ? (
+            <Nothing>
+              Nothing yet. That is the good part — everything you decide on will
+              wait here.
+            </Nothing>
+          ) : (
+            <dl
+              data-testid="your-october"
+              className="flex flex-wrap gap-x-10 gap-y-4"
+            >
+              <Tally n={ahead} label={ahead === 1 ? "thing ahead" : "ahead"} />
+              <Tally n={lived} label="lived" />
+              <Tally
+                n={reactions.length}
+                label={reactions.length === 1 ? "film" : "films"}
+              />
+            </dl>
+          )}
+        </Section>
+      </div>
+    </main>
+  );
+}
+
+/** A real Atlas event, with the date it actually has. */
+function EventCard({ experience }: { readonly experience: Experience }) {
+  return (
+    <Card
+      href={destinationFor(experience)}
+      eyebrow={formatEventWhen(experience.startTime, experience.endTime)}
+      title={experience.title}
+      line={experience.shortDescription}
+      media={
+        experience.heroMedia
+          ? {
+              src: experience.heroMedia.src,
+              alt: experience.heroMedia.alt ?? "",
+            }
+          : undefined
+      }
     />
+  );
+}
+
+/** A count the person actually produced. Never a score, never a percentage. */
+function Tally({ n, label }: { readonly n: number; readonly label: string }) {
+  return (
+    <div>
+      <dt className="sr-only">{label}</dt>
+      <dd className="font-heading text-3xl text-[#f3efe4] tabular-nums">
+        {n}
+        <span className="ml-2 align-middle text-sm text-[#e9e6da]/45">
+          {label}
+        </span>
+      </dd>
+    </div>
   );
 }
