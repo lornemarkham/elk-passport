@@ -12,6 +12,9 @@ import {
   Utensils,
 } from "lucide-react";
 import { loadWorkspaceBundle } from "@/lib/knowledge/workspaceData";
+import { getSubjectDetail } from "@/lib/data/atlas-repo";
+import { subjectPageView } from "@/lib/passport/subjectPage";
+import { ComposedSubjectPage } from "@/components/passport/ComposedSubject";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
   loadComposition,
@@ -26,7 +29,10 @@ import {
   type SourceSummary,
 } from "@/lib/passport/buildPage";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -54,9 +60,53 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * this page improves on the next request, with no republish step. That
  * property is the entire reason the engine is worth building, and it is
  * the first thing to protect if this page is ever extended.
+ *
+ * ## Two loaders, and why the composed one is tried first
+ *
+ * This page used to build its own world out of `/admin/entities` and
+ * `/admin/relationships` — the whole corpus, joined by uuid here — which let
+ * it show what a single record held and nothing about what that record was
+ * connected to. Black Mountain was the proof: an address, a generic sentence
+ * and *"Operation period: Every October"*, while Atlas held the eight nights,
+ * the six afternoons, both price tables and the two modes, one hop away
+ * along edges this page never asked for.
+ *
+ * So a subject Atlas can compose (`GET /organizations/:id/detail`,
+ * `GET /experiences/:id/detail`, Atlas 2846f50) is rendered from that one
+ * **public** read — no admin token, no relationship table, no uuid join, and
+ * no second implementation of `claimCoversDay`: `?on=YYYY-MM-DD` on this page
+ * is handed straight to Atlas. Every other kind falls through to the loader
+ * below, exactly as it was.
+ *
+ * ## Operator tooling is not the traveller's page
+ *
+ * The curator bar, the completeness score and the *"N things would make this
+ * page better"* block are a curator's instruments — *Research hours*,
+ * *Research the menu*, *Find more images* — and a traveller reading about a
+ * haunted house should not be handed them. They are not deleted: `?curator=1`
+ * restores every one of them, which is also how the Knowledge workspace
+ * should link here.
  */
-export default async function PassportPage({ params }: Props) {
+export default async function PassportPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const query = await searchParams;
+  const on = typeof query.on === "string" ? query.on : undefined;
+  const curator = query.curator === "1";
+
+  // A subject Atlas composes is rendered from the composed read alone. Tried
+  // in the order a consumer is most likely to arrive: October Discover routes
+  // an Organization card to its Organization id.
+  for (const kind of ["organizations", "experiences"] as const) {
+    const composition = await getSubjectDetail(kind, id, on).catch(() => null);
+    if (composition) {
+      return (
+        <main className="bg-background min-h-screen">
+          {curator && <CuratorBar id={id} />}
+          <ComposedSubjectPage view={subjectPageView(composition)} />
+        </main>
+      );
+    }
+  }
 
   const bundle = await loadWorkspaceBundle().catch(() => null);
   const entity = (
@@ -112,44 +162,46 @@ export default async function PassportPage({ params }: Props) {
 
   return (
     <main className="bg-background min-h-screen">
-      {/* Curator bar. The only non-traveller element, and deliberately thin. */}
-      <div className="border-border bg-muted/30 border-b">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <Link
-            href="/admin/entities"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to entities
-          </Link>
-          <div className="flex items-center gap-3 text-xs">
-            <span
-              className={`rounded-full border px-2.5 py-1 font-medium ${
-                composition.status === "published"
-                  ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-500"
-                  : composition.status === "ready"
-                    ? "border-amber-500/40 text-amber-700 dark:text-amber-500"
-                    : "border-border text-muted-foreground"
-              }`}
-            >
-              {composition.status === "published"
-                ? "Published"
-                : composition.status === "ready"
-                  ? "Ready"
-                  : "Draft"}
-            </span>
-            <span className="text-muted-foreground tabular-nums">
-              {page.completeness}% complete
-            </span>
+      {/* Curator instruments, off by default — see this file's doc comment. */}
+      {curator && (
+        <div className="border-border bg-muted/30 border-b">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-6 py-3">
             <Link
-              href={`/admin/entities/${id}`}
-              className="text-muted-foreground hover:text-foreground"
+              href="/admin/entities"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs"
             >
-              Evidence
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to entities
             </Link>
+            <div className="flex items-center gap-3 text-xs">
+              <span
+                className={`rounded-full border px-2.5 py-1 font-medium ${
+                  composition.status === "published"
+                    ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-500"
+                    : composition.status === "ready"
+                      ? "border-amber-500/40 text-amber-700 dark:text-amber-500"
+                      : "border-border text-muted-foreground"
+                }`}
+              >
+                {composition.status === "published"
+                  ? "Published"
+                  : composition.status === "ready"
+                    ? "Ready"
+                    : "Draft"}
+              </span>
+              <span className="text-muted-foreground tabular-nums">
+                {page.completeness}% complete
+              </span>
+              <Link
+                href={`/admin/entities/${id}`}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Evidence
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ---- The traveller page ---- */}
       <article className="mx-auto max-w-3xl px-6 pb-24">
@@ -163,8 +215,8 @@ export default async function PassportPage({ params }: Props) {
             ))}
         </div>
 
-        {/* ---- What would make this page better ---- */}
-        {missing.length > 0 && (
+        {/* ---- What would make this page better: a curator's list, not a traveller's ---- */}
+        {curator && missing.length > 0 && (
           <section className="border-border mt-16 rounded-2xl border border-dashed p-6">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Sparkles className="h-4 w-4" />
@@ -194,6 +246,33 @@ export default async function PassportPage({ params }: Props) {
         )}
       </article>
     </main>
+  );
+}
+
+/**
+ * The curator's strip: where this record lives and what evidence stands
+ * behind it. Kept out of the traveller's way rather than deleted — a page
+ * with no route back to its evidence is a page nobody can correct.
+ */
+function CuratorBar({ id }: { id: string }) {
+  return (
+    <div className="border-border bg-muted/30 border-b">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-6 py-3">
+        <Link
+          href="/admin/entities"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to entities
+        </Link>
+        <Link
+          href={`/admin/entities/${id}`}
+          className="text-muted-foreground hover:text-foreground text-xs"
+        >
+          Evidence
+        </Link>
+      </div>
+    </div>
   );
 }
 

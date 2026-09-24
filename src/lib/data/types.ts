@@ -408,3 +408,117 @@ export interface DiscoveryCandidate {
   startTime?: string;
   endTime?: string;
 }
+
+/**
+ * **A subject and the knowledge that lives one and two hops away from it**
+ * — `GET /organizations/:id/detail`, `GET /experiences/:id/detail`
+ * (Atlas `subjectComposition.ts`, commit 2846f50).
+ *
+ * Atlas walks the asserted edges — `offers`, `includes`, `hosts` — two hops
+ * and no further, and hands back each subject with **its own** key facts,
+ * **its own** temporal claims and its own ADR 072 observation state. Passport
+ * reads this and reconstructs nothing: no relationship tables, no uuid joins,
+ * no admin token, and no second implementation of `claimCoversDay`.
+ *
+ * Every field below is optional-tolerant in the same way `PlaceDetail` is: an
+ * older Atlas simply sends less.
+ */
+export interface SubjectKeyFact {
+  label: string;
+  value: string;
+  category?: string;
+  sourceRecordId: string;
+  confidence?: number;
+  asOf?: string;
+}
+
+/** Per time-bound fact: what class it is, when Atlas last saw it, and whether anyone decided it is still true. */
+export interface SubjectTemporalClaimState {
+  field: string;
+  label?: string;
+  value: string;
+  class: string;
+  observedAt?: string;
+  validFrom?: string;
+  validUntil?: string;
+  /** Absent where Atlas does not decide currency for the kind — an Experience. Never read as `false`. */
+  current?: boolean;
+  currency: string;
+  asOf?: string;
+  reason: string;
+}
+
+export interface SubjectTemporalView {
+  policyVersion: number;
+  claims: SubjectTemporalClaimState[];
+  asOf: Record<string, string>;
+  withheld: number;
+}
+
+/** A stored temporal claim, as evidence. Atlas computed the days; Passport never does. */
+export interface SubjectClaim {
+  id: string;
+  shape: string;
+  intervals: { startsOn: string; endsOn: string }[];
+  weekdays: number[];
+  excludes: string[];
+  timesOfDay: string[];
+  editionLabel?: string;
+  /** What the reading could not carry over from the passage. Shown, never hidden. */
+  unresolved?: string;
+  supportingPassage: string;
+  sourceRecordId: string;
+  publishedAt?: string;
+  observedAt: string;
+  /** Only when a day was asked about. */
+  statesRequestedDay?: boolean;
+}
+
+/**
+ * Atlas's answer to *does a claim Atlas holds state this day?* — and nothing
+ * more. `stated: false` is **not** a closure, and `meaning` says so in the
+ * payload; Passport renders that sentence rather than inventing one.
+ */
+export interface SubjectDayStatement {
+  day: string;
+  stated: boolean;
+  byClaims: string[];
+  meaning: string;
+}
+
+export interface SubjectEdge {
+  verb: string;
+  direction: "outgoing" | "incoming";
+  subject: ComposedSubject;
+}
+
+export interface ComposedSubject {
+  id: string;
+  kind: string;
+  name: string;
+  subtype?: string;
+  description: string;
+  address?: string;
+  coordinates?: [number, number];
+  keyFacts: SubjectKeyFact[];
+  temporal: SubjectTemporalView;
+  when: SubjectClaim[];
+  on?: SubjectDayStatement;
+  related: SubjectEdge[];
+  depth: number;
+}
+
+export interface SubjectSource {
+  id: string;
+  url: string;
+  sourceType?: string;
+  retrievedAt?: string;
+}
+
+export interface SubjectComposition {
+  root: ComposedSubject;
+  sources: SubjectSource[];
+  verbs: string[];
+  maxDepth: number;
+  on?: string;
+}

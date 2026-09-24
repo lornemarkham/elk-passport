@@ -32,7 +32,12 @@ const atlasFetch = (path: string, init?: RequestInit): Promise<Response> =>
     signal: AbortSignal.timeout(ATLAS_TIMEOUT_MS),
   });
 
-import type { DiscoveryCandidate, Place, PlaceDetail } from "./types";
+import type {
+  DiscoveryCandidate,
+  Place,
+  PlaceDetail,
+  SubjectComposition,
+} from "./types";
 
 export async function listPlaces(): Promise<Place[]> {
   const response = await atlasFetch("/places");
@@ -73,6 +78,45 @@ export async function getPlaceDetail(id: string): Promise<PlaceDetail | null> {
 
   if (!response.ok) {
     throw new Error("Failed to load place detail.");
+  }
+
+  return response.json();
+}
+
+/**
+ * **One subject, composed** — `GET /organizations/:id/detail` and
+ * `GET /experiences/:id/detail` (Atlas 2846f50).
+ *
+ * The public read that replaced an admin token on the traveller page. Atlas
+ * walks `offers`, `includes` and `hosts` two hops from the id and returns each
+ * subject with its own facts, its own temporal claims and its own ADR 072
+ * state — so Passport asks one question instead of downloading the corpus and
+ * joining it by uuid.
+ *
+ * `on` is an explicit day (`YYYY-MM-DD`) the caller chose. Atlas answers
+ * *does a claim it holds state that day?* with its own `claimCoversDay`;
+ * Passport has no copy of that logic and must never grow one.
+ *
+ * `null` on a 404 — no such subject, or an id of a different kind — so the
+ * caller can fall through rather than render half a page. Any other failure
+ * throws, like every other function here.
+ */
+export async function getSubjectDetail(
+  kind: "organizations" | "experiences",
+  id: string,
+  on?: string,
+): Promise<SubjectComposition | null> {
+  const query = on ? `?on=${encodeURIComponent(on)}` : "";
+  const response = await atlasFetch(
+    `/${kind}/${encodeURIComponent(id)}/detail${query}`,
+  );
+
+  if (response.status === 404 || response.status === 400) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("Failed to load subject detail.");
   }
 
   return response.json();
