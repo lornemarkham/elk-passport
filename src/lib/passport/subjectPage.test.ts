@@ -284,3 +284,213 @@ describe("subjectPageView", () => {
     expect(view.offerings).toEqual([]);
   });
 });
+
+/**
+ * **"Where this comes from" must answer where what you just read came from.**
+ *
+ * Not "which sources exist somewhere in the reachable graph". Atlas composes
+ * outward across `offers`, `includes` and `hosts`, so opening one subject
+ * legitimately pulls in neighbours — and those neighbours cite their own
+ * sources for their own facts, none of which this page prints.
+ *
+ * Neutral fixtures throughout. Nothing here matches a domain, a source type or
+ * a name, and a third-party source is expected to survive on equal terms with
+ * a first-party one whenever a rendered fact cites it.
+ */
+describe("sources support what is rendered", () => {
+  const FIRST: SubjectSource = {
+    id: "s-first",
+    url: "https://example-one.test/a",
+  };
+  const THIRD: SubjectSource = {
+    id: "s-third",
+    url: "https://example-two.test/b",
+  };
+  const UNRELATED: SubjectSource = {
+    id: "s-unrelated",
+    url: "https://example-three.test/c",
+  };
+
+  const factFrom = (label: string, sourceRecordId: string) => ({
+    label,
+    value: "v",
+    sourceRecordId,
+  });
+
+  const compose = (root: ComposedSubject, sources: SubjectSource[]) =>
+    ({ root, sources, verbs: [], maxDepth: 2 }) as SubjectComposition;
+
+  it("keeps a source a rendered fact cites", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Experience",
+          name: "Root",
+          keyFacts: [factFrom("Shown", FIRST.id)],
+        }),
+        [FIRST],
+      ),
+    );
+    expect(view.sources.map((s) => s.id)).toEqual(["s-first"]);
+  });
+
+  it("drops a source only a provider's unrendered facts cite", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Experience",
+          name: "Root",
+          keyFacts: [factFrom("Shown", FIRST.id)],
+          related: [
+            {
+              verb: "offers",
+              direction: "incoming",
+              subject: subject({
+                id: "provider",
+                kind: "Organization",
+                name: "Provider",
+                keyFacts: [factFrom("Never printed", UNRELATED.id)],
+              }),
+            },
+          ],
+        }),
+        [FIRST, UNRELATED],
+      ),
+    );
+    // The provider is still on the page — as a name and a link.
+    expect(view.offeredBy?.name).toBe("Provider");
+    // Its sources are not, because none of its facts were printed.
+    expect(view.sources.map((s) => s.id)).toEqual(["s-first"]);
+  });
+
+  it("keeps a third-party source when a rendered fact cites it", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Experience",
+          name: "Root",
+          keyFacts: [factFrom("A", FIRST.id), factFrom("B", THIRD.id)],
+        }),
+        [FIRST, THIRD],
+      ),
+    );
+    // Nothing prefers first-party. Supporting a rendered fact is the only test.
+    expect(view.sources.map((s) => s.id)).toEqual(["s-first", "s-third"]);
+  });
+
+  it("keeps sources cited by an offering and by its parts", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Organization",
+          name: "Provider",
+          related: [
+            {
+              verb: "offers",
+              direction: "outgoing",
+              subject: subject({
+                id: "offering",
+                kind: "Experience",
+                name: "Offering",
+                keyFacts: [factFrom("Offered", FIRST.id)],
+                related: [
+                  {
+                    verb: "includes",
+                    direction: "outgoing",
+                    subject: subject({
+                      id: "part",
+                      kind: "Experience",
+                      name: "Part",
+                      keyFacts: [factFrom("Part fact", THIRD.id)],
+                    }),
+                  },
+                ],
+              }),
+            },
+          ],
+        }),
+        [FIRST, THIRD, UNRELATED],
+      ),
+    );
+    expect(view.sources.map((s) => s.id)).toEqual(["s-first", "s-third"]);
+  });
+
+  it("does not leak sources between two subjects that merely both appear", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Experience",
+          name: "Root",
+          keyFacts: [factFrom("Mine", FIRST.id)],
+          related: [
+            {
+              verb: "hosts",
+              direction: "incoming",
+              subject: subject({
+                id: "venue",
+                kind: "Organization",
+                name: "Venue",
+                address: "1 Somewhere",
+                keyFacts: [factFrom("Venue's own", UNRELATED.id)],
+              }),
+            },
+          ],
+        }),
+        [FIRST, UNRELATED],
+      ),
+    );
+    expect(view.venue?.name).toBe("Venue");
+    expect(view.sources.map((s) => s.id)).toEqual(["s-first"]);
+  });
+
+  it("leaves each fact's own provenance exactly as it was", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Experience",
+          name: "Root",
+          keyFacts: [factFrom("Shown", FIRST.id)],
+          related: [
+            {
+              verb: "offers",
+              direction: "incoming",
+              subject: subject({
+                id: "provider",
+                kind: "Organization",
+                name: "Provider",
+                keyFacts: [factFrom("Never printed", UNRELATED.id)],
+              }),
+            },
+          ],
+        }),
+        [FIRST, UNRELATED],
+      ),
+    );
+    // Narrowing the page list changes no fact's attribution — including the
+    // provider's, which still knows where it came from even though the page
+    // does not print it.
+    expect(view.subject.facts[0]!.source?.id).toBe("s-first");
+    expect(view.offeredBy?.facts[0]!.source?.id).toBe("s-unrelated");
+  });
+
+  it("keeps Atlas's own ordering of whatever survives", () => {
+    const view = subjectPageView(
+      compose(
+        subject({
+          id: "root",
+          kind: "Experience",
+          name: "Root",
+          keyFacts: [factFrom("B", THIRD.id), factFrom("A", FIRST.id)],
+        }),
+        [FIRST, THIRD],
+      ),
+    );
+    expect(view.sources.map((s) => s.id)).toEqual(["s-first", "s-third"]);
+  });
+});

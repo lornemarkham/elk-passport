@@ -95,6 +95,10 @@ export interface SubjectPageView {
   readonly offeredBy?: SubjectView;
   readonly partOf?: SubjectView;
   readonly venue?: SubjectView;
+  /**
+   * The sources behind what this page actually prints — not every source
+   * reachable through the composed graph. See `citedBy`.
+   */
   readonly sources: readonly SubjectSource[];
   /** The day the caller asked Atlas about, if any. */
   readonly on?: string;
@@ -165,6 +169,24 @@ function subjectView(
   };
 }
 
+/**
+ * **The sources these subjects' own facts and claims cite.**
+ *
+ * Every fact and every claim Atlas sends carries a `sourceRecordId`, so which
+ * source stands behind a rendered line is known exactly and needs no guessing.
+ * Nothing here looks at a URL, a domain, a source type or a name — a tourism
+ * blog is a perfectly good source for a fact it actually supports, and the
+ * only question asked is whether the page printed something that cites it.
+ */
+function citedBy(views: readonly SubjectView[]): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const view of views) {
+    for (const fact of view.facts) if (fact.source) ids.add(fact.source.id);
+    for (const claim of view.claims) if (claim.source) ids.add(claim.source.id);
+  }
+  return ids;
+}
+
 export function subjectPageView(
   composition: SubjectComposition,
 ): SubjectPageView {
@@ -178,20 +200,49 @@ export function subjectPageView(
     ),
   );
 
+  const subject = subjectView(root, sources);
+  const offerings: OfferingView[] = offered
+    .filter((offering) => !includedByAnother.has(offering.id))
+    .map((offering) => {
+      const venue = edges(offering, "hosts", "incoming")[0];
+      return {
+        subject: subjectView(offering, sources),
+        parts: edges(offering, "includes", "outgoing").map((part) =>
+          subjectView(part, sources),
+        ),
+        ...(venue ? { venue: subjectView(venue, sources) } : {}),
+      };
+    });
+
+  /**
+   * **Which subjects the page prints facts for**, and therefore whose sources
+   * belong under "Where this comes from".
+   *
+   * The root, the things it offers, and the parts of those. Deliberately not
+   * `offeredBy`, `partOf` or a venue: those appear as a name and a link, so
+   * none of their facts is on the page and none of their sources supports
+   * anything a reader just read.
+   *
+   * That distinction is the whole defect. Opening *The Fall of the House of
+   * Usher* pulled in its provider, Caravan Farm Theatre, whose own facts cite
+   * a Tourism Kelowna business profile and three Tourism Vernon trip ideas
+   * about summer, winter and romantic weekends. All four were listed as
+   * sources for a page that printed not one word of Caravan's facts — seven
+   * sources for content backed by one.
+   *
+   * A venue's address is printed, but an address carries no `sourceRecordId`
+   * in the composition contract, so there is nothing to attribute and nothing
+   * is claimed.
+   */
+  const presented: SubjectView[] = [
+    subject,
+    ...offerings.flatMap((offering) => [offering.subject, ...offering.parts]),
+  ];
+  const cited = citedBy(presented);
+
   return {
-    subject: subjectView(root, sources),
-    offerings: offered
-      .filter((offering) => !includedByAnother.has(offering.id))
-      .map((offering) => {
-        const venue = edges(offering, "hosts", "incoming")[0];
-        return {
-          subject: subjectView(offering, sources),
-          parts: edges(offering, "includes", "outgoing").map((part) =>
-            subjectView(part, sources),
-          ),
-          ...(venue ? { venue: subjectView(venue, sources) } : {}),
-        };
-      }),
+    subject,
+    offerings,
     ...(edges(root, "offers", "incoming")[0]
       ? {
           offeredBy: subjectView(
@@ -208,12 +259,13 @@ export function subjectPageView(
     ...(edges(root, "hosts", "incoming")[0]
       ? { venue: subjectView(edges(root, "hosts", "incoming")[0]!, sources) }
       : {}),
-    sources,
+    // Atlas's own order, narrowed. Facts keep the provenance they always had;
+    // only the page-level list stops over-claiming.
+    sources: sources.filter((source) => cited.has(source.id)),
     ...(composition.on ? { on: composition.on } : {}),
   };
 }
 
-/** A day Atlas stated, as a person reads it. Formatting only — the day itself is Atlas's. */
 export function formatStatedDay(day: string): string {
   const parsed = new Date(`${day}T00:00:00Z`);
   return Number.isNaN(parsed.getTime())
