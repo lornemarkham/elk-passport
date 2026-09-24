@@ -146,6 +146,7 @@ export function availableKinds(
     "Organization",
     "Activity",
     "Event",
+    "Experience",
   ];
   const present = new Set(experiences.map((experience) => experience.kind));
   return order.filter((kind) => present.has(kind));
@@ -162,5 +163,9 @@ export function kindLabel(kind: ExperienceKind): string {
       return "Things to do";
     case "Event":
       return "Events";
+    case "Experience":
+      // Atlas's word for one bookable offering — a production, a dinner show,
+      // a session. Plural here because the control names groups.
+      return "Experiences";
   }
 }

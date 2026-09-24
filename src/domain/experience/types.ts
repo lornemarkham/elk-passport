@@ -46,7 +46,18 @@ export interface ExperienceMedia {
  * and a real containment edge from Big White, and it was invisible to Discover
  * for exactly as long as this model assumed Place.
  */
-export type ExperienceKind = "Place" | "Organization" | "Activity" | "Event";
+export type ExperienceKind =
+  | "Place"
+  | "Organization"
+  | "Activity"
+  | "Event"
+  /**
+   * Atlas materialises an `Experience` — a single offering such as a
+   * production, a dinner show or a session — and eight of them already flow
+   * through this union from `/discovery/candidates`. Leaving it out did not
+   * keep them away; it only meant the type disagreed with the data.
+   */
+  | "Experience";
 
 /**
  * What physically contains this, one hop, derived by Atlas from a non-region

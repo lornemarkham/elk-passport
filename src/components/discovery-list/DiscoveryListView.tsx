@@ -34,6 +34,7 @@ import {
 } from "@/lib/data/boards-repo";
 import { AccountControl } from "@/components/auth/AccountControl";
 import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
+import { isOctoberKind } from "@/lib/october/types";
 import { octoberLanes } from "@/domain/discovery/octoberLanes";
 import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { DiscoveryListFilters } from "./DiscoveryListFilters";
@@ -441,6 +442,13 @@ export function DiscoveryListView({
         "Sign in to keep this",
         `${experience.title} will be waiting in your October.`,
       );
+      return;
+    }
+    if (!isOctoberKind(experience.kind)) {
+      // My October cannot store this kind yet — `passport_october_things`
+      // constrains `entity_kind`, and Atlas now publishes `Experience`.
+      // Saying so beats a control that fails at the database.
+      toast.error("That can't be kept in your October yet.");
       return;
     }
     try {

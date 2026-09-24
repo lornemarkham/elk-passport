@@ -11,6 +11,10 @@ import {
   hrefForArea,
   throughLens,
 } from "@/domain/october/areas";
+import {
+  collectionBySlug,
+  resolveCollection,
+} from "@/domain/collections/editorial";
 import { Card, Nothing, Section } from "@/components/october/shell/atoms";
 
 export const metadata: Metadata = {
@@ -28,19 +32,49 @@ export const metadata: Metadata = {
  * else.
  *
  * The groupings are Passport's, not Atlas's. Atlas holds no notion of October
- * and is not being taught one; the lens that produces "haunts" is keyword
- * matching over names and descriptions Atlas already publishes, which is why
- * the sections that lean on it say so.
+ * and is not being taught one.
+ *
+ * ## Two different kinds of section, and the difference matters
+ *
+ * Where an area names an **editorial collection**, that stated membership is
+ * authoritative: a human decided those Things belong, and the keyword lens has
+ * no vote. Everywhere else the lens still runs, and those sections say that
+ * they were found by matching words.
+ *
+ * The lens is not being tuned away — it is being demoted. It found *Caravan
+ * Farm Theatre* and missed *The Fall of the House of Usher*, the production
+ * Caravan was staging, because nothing in Poe's title says Halloween. That is
+ * not a threshold to adjust; it is the wrong question. The lens remains useful
+ * for finding candidates a curator might not have thought of, which is exactly
+ * what it is still doing below.
  */
 export default async function OctoberDiscoverPage() {
   const now = new Date();
   const candidates = await listDiscoveryCandidates().catch(() => []);
   const experiences = candidates.map(candidateToExperience);
 
-  const dated = upcoming(experiences, now).slice(0, 6);
-  const lensed = OCTOBER_AREAS.filter((a) => a.terms?.length).map((area) => ({
+  // Stated membership, resolved live against Atlas. Nothing about these Things
+  // is stored by Passport beyond which ones belong.
+  const curated = OCTOBER_AREAS.flatMap((area) => {
+    const collection = area.collectionSlug
+      ? collectionBySlug(area.collectionSlug)
+      : undefined;
+    if (!collection) return [];
+    return [{ area, ...resolveCollection(collection, experiences) }];
+  });
+
+  // Anything a human has already placed is spoken for, so the inferred
+  // sections below cannot list it a second time under a different heading.
+  const spokenFor = new Set(curated.flatMap((c) => c.members.map((m) => m.id)));
+  const free = (list: readonly Experience[]) =>
+    list.filter((e) => !spokenFor.has(e.id));
+
+  const dated = free(upcoming(experiences, now)).slice(0, 6);
+  const lensed = OCTOBER_AREAS.filter(
+    (a) => a.terms?.length && !a.collectionSlug,
+  ).map((area) => ({
     area,
-    found: throughLens(experiences, area, 6),
+    found: free(throughLens(experiences, area, 12)).slice(0, 6),
   }));
 
   return (
@@ -57,6 +91,45 @@ export default async function OctoberDiscoverPage() {
       </header>
 
       <div className="mt-12">
+        {curated.map(({ area, members }) => (
+          <Section
+            key={area.id}
+            title={area.label}
+            note={area.line}
+            action={
+              <Link
+                href={hrefForArea(area)}
+                className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
+              >
+                More
+              </Link>
+            }
+          >
+            {members.length > 0 ? (
+              <ul
+                data-testid={`collection-${area.collectionSlug}`}
+                className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {members.map((e) => (
+                  <li key={e.id}>
+                    <Card
+                      href={destinationFor(e)}
+                      eyebrow={
+                        formatEventWhen(e.startTime, e.endTime) ?? e.subtype
+                      }
+                      title={e.title}
+                      line={e.shortDescription}
+                      media={hero(e)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Nothing>Nothing is in this collection yet.</Nothing>
+            )}
+          </Section>
+        ))}
+
         <Section
           title="Dated and coming"
           note="Events with a real date on them, soonest first."

@@ -42,14 +42,7 @@ const fromRow = (r: Row): OctoberThing => ({
   livedAt: r.lived_at,
 });
 
-const KINDS: readonly OctoberKind[] = [
-  "Place",
-  "Organization",
-  "Activity",
-  "Event",
-];
-export const isOctoberKind = (v: unknown): v is OctoberKind =>
-  typeof v === "string" && (KINDS as readonly string[]).includes(v);
+export { isOctoberKind } from "./types";
 
 export async function octoberThingsFor(
   user: PassportUser,

@@ -52,6 +52,13 @@ export interface OctoberArea {
   readonly terms?: readonly string[];
   /** Said plainly on the surface when there is nothing real behind it yet. */
   readonly nothingYet?: string;
+  /**
+   * An editorial collection whose stated membership is **authoritative** for
+   * this area. Where one is named, the keyword lens stops deciding what a
+   * traveller sees — it found Caravan Farm Theatre and missed the production
+   * Caravan was staging, which is not a tuning problem.
+   */
+  readonly collectionSlug?: string;
 }
 
 export const OCTOBER_AREAS: readonly OctoberArea[] = [
@@ -67,6 +74,7 @@ export const OCTOBER_AREAS: readonly OctoberArea[] = [
     label: "Events & Haunts",
     line: "What is actually on, and what is actually frightening.",
     status: "live",
+    collectionSlug: "okanagan-halloween-2026",
     terms: [
       "haunt",
       "haunted",
