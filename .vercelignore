@@ -1,0 +1,7 @@
+# Raw source material and unreferenced images that live in the working tree
+# but are not part of the product. Deliberately untracked in git for the same
+# reason; this keeps them out of the deployed bundle too, so nothing
+# unreferenced ends up sitting at a public URL.
+public/october-vhs-assets/
+public/october/2830947-full-body-portrait-of-a-pretty-little-girl-standing-isolated-on-a-png-background-fit_400_400.jpg
+public/october/ghostly-figure-shrouded-in-mist-on-a-transparent-background-evokes-a-sense-of-mystery-paranormal-ghost-background-free-png.webp
