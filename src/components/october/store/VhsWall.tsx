@@ -19,6 +19,7 @@ import {
 import { Sleeve, Spine } from "./Sleeve";
 import { BackCover } from "./BackCover";
 import { CarvedHeader } from "./CarvedHeader";
+import { Waiting } from "@/components/october/shell/Waiting";
 import { Atmosphere, type AtmosphereHandle } from "./Atmosphere";
 import { Presence, type PresenceVariant } from "./Presence";
 import {
@@ -506,8 +507,51 @@ export function VhsWall({
   const [carving, setCarving] = useState(0);
   const onCarve = useCallback((progress: number) => setCarving(progress), []);
 
+  /**
+   * **Whether the shelf exists yet.**
+   *
+   * The plate is 2.3MB and the twelve sleeves are not, so without this the
+   * cases arrive first and hang in a black void — which does not read as
+   * loading, it reads as broken. Held until the video can actually play.
+   */
+  const [shelfReady, setShelfReady] = useState(false);
+  useEffect(() => {
+    const video = plate.current;
+    if (!video) return;
+    // A video restored from cache may already be past `canplay`, which never
+    // fires again — the same trap the presence image fell into.
+    if (video.readyState >= 3) {
+      setShelfReady(true);
+      return;
+    }
+    const ready = () => setShelfReady(true);
+    video.addEventListener("canplay", ready);
+    // If the plate is broken or blocked, the wall is still worth showing.
+    video.addEventListener("error", ready);
+    // A loader that never lifts is a worse failure than one that lifts early,
+    // and on a slow connection the wall without its plate is at least a wall.
+    const backstop = setTimeout(ready, 8000);
+    return () => {
+      clearTimeout(backstop);
+      video.removeEventListener("canplay", ready);
+      video.removeEventListener("error", ready);
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-black">
+      {/* The store, before the lights are on. Covers the stage rather than
+          delaying it, so the plate goes on loading underneath and the wall is
+          already assembled the moment this lifts. */}
+      <div
+        aria-hidden
+        data-testid="store-waiting"
+        className="pointer-events-none absolute inset-0 z-50 bg-black transition-opacity duration-[1200ms]"
+        style={{ opacity: shelfReady ? 0 : 1 }}
+      >
+        <Waiting className="h-full" />
+      </div>
+
       {/* Putting it back by putting it down: anywhere that is not the tape. */}
       {inHand && (
         <button

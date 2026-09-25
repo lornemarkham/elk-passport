@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Waiting } from "@/components/october/shell/Waiting";
 import {
   CONTROL_DELAY,
   DIM_AT,
@@ -53,6 +54,17 @@ export function HasBeenHere() {
   const [line, setLine] = useState(-1);
   const [showControl, setShowControl] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
+  /**
+   * **Whether the photograph is actually on the screen.**
+   *
+   * October's long look is a *written* silence, and it has to start when the
+   * person can see their room — not when the file was chosen. A twelve
+   * megapixel photograph off a phone can take a second or two to decode, and
+   * without this the clock began early: October would start speaking over a
+   * black screen, and the wait would read as the software hanging instead of
+   * as something looking.
+   */
+  const [shown, setShown] = useState(false);
   /** -1 = October is not speaking. */
   const [spoken, setSpoken] = useState(-1);
   const [dim, setDim] = useState(false);
@@ -95,7 +107,7 @@ export function HasBeenHere() {
 
   // -------------------------------------------------------- the long look
   useEffect(() => {
-    if (!photo) return;
+    if (!photo || !shown) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (ms: number, run: () => void) =>
       timers.push(setTimeout(run, ms));
@@ -114,7 +126,7 @@ export function HasBeenHere() {
     at(EXIT_AT, () => setExit(true));
 
     return () => timers.forEach(clearTimeout);
-  }, [photo]);
+  }, [photo, shown]);
 
   const speaking = spoken >= 0 ? SPOKEN[spoken] : undefined;
 
@@ -147,6 +159,13 @@ export function HasBeenHere() {
           <img
             src={photo}
             alt=""
+            // A blob URL decoded before React attached a handler never fires
+            // `load`, so the readiness is read off the element itself.
+            ref={(el) => {
+              if (el?.complete) setShown(true);
+            }}
+            onLoad={() => setShown(true)}
+            onError={() => setShown(true)}
             className="h-full w-full object-cover"
             style={{
               opacity: dim ? 0.12 : 1,
@@ -191,6 +210,16 @@ export function HasBeenHere() {
                 "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
             }}
           />
+        </div>
+      ) : null}
+
+      {/* The gap between handing the photograph over and it appearing. Usually
+          imperceptible; on a phone with a large image it is a second or two of
+          black that would otherwise be indistinguishable from October's long
+          look — except that nothing would be happening. */}
+      {photo && !shown ? (
+        <div className="absolute inset-0">
+          <Waiting className="h-full" />
         </div>
       ) : null}
 
