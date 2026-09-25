@@ -173,10 +173,28 @@ export default async function OctoberHomePage() {
               line="Somebody has already been through the horror section."
               external
             />
-            <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-[#e9e6da]/10 p-4">
-              <p className="font-heading text-lg text-[#e9e6da]/25">Not yet.</p>
-            </div>
+            <Card
+              href="/labs/october/witching-hour"
+              eyebrow="Late, and better with headphones"
+              title="Witching Hour"
+              line="Most people are finished with October for tonight. You're not."
+              external
+            />
           </div>
+          {/* The way in to the workshop, and deliberately not a door in the
+              gallery. Everything above is a room October actually made and a
+              person can walk into knowing nothing about how we work; this is
+              for us, so it gets a line of text and no card. If it ever looks
+              like one of the things above it, it has become too loud. */}
+          <p className="mt-5">
+            <Link
+              href="/labs/october/sketchbook"
+              data-testid="sketchbook-door"
+              className="inline-flex min-h-11 items-center text-sm text-[#e9e6da]/30 underline decoration-dotted underline-offset-4 transition-colors hover:text-[#e9e6da]/60"
+            >
+              There is a door at the back of October.
+            </Link>
+          </p>
         </Section>
 
         {/* ------------------------------------------------------------ EXPLORE */}
