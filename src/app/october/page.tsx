@@ -15,6 +15,7 @@ import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { reactionsFor } from "@/lib/movies/reactions";
 import { Card, Nothing, Section } from "@/components/october/shell/atoms";
+import { Remembered } from "@/components/october/shell/Remembered";
 
 export const metadata: Metadata = {
   title: "October — Passport",
@@ -165,6 +166,10 @@ export default async function OctoberHomePage() {
           title="From October"
           note="Things October has made for you. These are not always here."
         >
+          {/* The one place anything notices a completed encounter. One line,
+              and only for somebody she has actually met. */}
+          <Remembered />
+
           <div className="grid gap-3 sm:grid-cols-2">
             <Card
               href="/labs/october/video-store"
