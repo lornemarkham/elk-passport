@@ -78,6 +78,8 @@ export function Card({
   status,
   media,
   external,
+  options,
+  optionsLabel,
 }: {
   readonly href?: string;
   readonly eyebrow?: string;
@@ -86,6 +88,14 @@ export function Card({
   readonly status?: AreaStatus;
   readonly media?: { src: string; alt: string };
   readonly external?: boolean;
+  /**
+   * The ways into this Thing that the lane actually matched — the modes of an
+   * attraction, the parts of a festival. Named, never counted: "2 options" tells
+   * a person nothing they can act on, and "and more" hides what they asked for.
+   */
+  readonly options?: readonly string[];
+  /** What the options are relative to — "Tonight", "This weekend", "In October". */
+  readonly optionsLabel?: string;
 }) {
   const surface =
     "group flex min-h-24 flex-col justify-between rounded-xl border p-4 transition-colors";
@@ -117,6 +127,19 @@ export function Card({
         {line ? (
           <p className="mt-1.5 line-clamp-2 text-sm text-[#e9e6da]/50">
             {line}
+          </p>
+        ) : null}
+        {options && options.length > 0 ? (
+          <p
+            data-testid="card-options"
+            className="mt-2.5 text-sm text-[#e9e6da]/70"
+          >
+            {optionsLabel ? (
+              <span className="text-[11px] tracking-wider text-[#d09a4e] uppercase">
+                {optionsLabel}{" "}
+              </span>
+            ) : null}
+            {options.join(" · ")}
           </p>
         ) : null}
       </div>

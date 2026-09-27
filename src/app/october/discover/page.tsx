@@ -15,6 +15,11 @@ import {
   collectionBySlug,
   resolveCollection,
 } from "@/domain/collections/editorial";
+import {
+  asDiscoveryUnits,
+  namesOf,
+  type DiscoveryUnit,
+} from "@/domain/discovery/discoveryUnits";
 import { Card, Nothing, Section } from "@/components/october/shell/atoms";
 
 export const metadata: Metadata = {
@@ -69,16 +74,25 @@ export default async function OctoberDiscoverPage() {
   const free = (list: readonly Experience[]) =>
     list.filter((e) => !spokenFor.has(e.id));
 
-  const dated = free(upcoming(experiences, now)).slice(0, 6);
+  // One attraction is one discovery: a lane's matches are grouped by the
+  // `includes` edges Atlas asserts, so the modes of a haunt arrive as options
+  // inside it rather than as cards competing with it (`discoveryUnits.ts`).
+  const dated = asDiscoveryUnits(
+    free(upcoming(experiences, now)),
+    experiences,
+  ).slice(0, 6);
   // The whole month, from whatever evidence each Thing has: an Event's own
   // interval, or the days a source named for a claim-bearing subject. The year
   // is today's in the Okanagan, because this is October's own surface.
-  const october = free(
-    happeningWithin(
-      experiences,
-      `${localDay(now).slice(0, 4)}-10-01`,
-      `${localDay(now).slice(0, 4)}-10-31`,
+  const october = asDiscoveryUnits(
+    free(
+      happeningWithin(
+        experiences,
+        `${localDay(now).slice(0, 4)}-10-01`,
+        `${localDay(now).slice(0, 4)}-10-31`,
+      ),
     ),
+    experiences,
   );
   const lensed = OCTOBER_AREAS.filter(
     (a) => a.terms?.length && !a.collectionSlug,
@@ -154,15 +168,9 @@ export default async function OctoberDiscoverPage() {
         >
           {dated.length > 0 ? (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {dated.map((e) => (
-                <li key={e.id}>
-                  <Card
-                    href={destinationFor(e)}
-                    eyebrow={formatEventWhen(e.startTime, e.endTime)}
-                    title={e.title}
-                    line={e.shortDescription}
-                    media={hero(e)}
-                  />
+              {dated.map((unit) => (
+                <li key={unit.head.id}>
+                  <UnitCard unit={unit} label="Coming up" />
                 </li>
               ))}
             </ul>
@@ -180,18 +188,9 @@ export default async function OctoberDiscoverPage() {
               data-testid="all-october"
               className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {october.map((e) => (
-                <li key={e.id}>
-                  <Card
-                    href={destinationFor(e)}
-                    eyebrow={
-                      formatEventWhen(e.startTime, e.endTime) ??
-                      statedDaysLine(e)
-                    }
-                    title={e.title}
-                    line={e.shortDescription}
-                    media={hero(e)}
-                  />
+              {october.map((unit) => (
+                <li key={unit.head.id}>
+                  <UnitCard unit={unit} label="In October" />
                 </li>
               ))}
             </ul>
@@ -235,6 +234,37 @@ export default async function OctoberDiscoverPage() {
         ))}
       </div>
     </main>
+  );
+}
+
+/**
+ * One discovery, whether Atlas holds it as one Thing or as an attraction with
+ * modes. The card is the whole, the link goes to the whole — which is the
+ * subject whose composed detail page carries every mode's own prices and
+ * hours — and the options are the parts this lane actually matched.
+ */
+function UnitCard({
+  unit,
+  label,
+}: {
+  readonly unit: DiscoveryUnit;
+  readonly label: string;
+}) {
+  const { head } = unit;
+  const when =
+    formatEventWhen(head.startTime, head.endTime) ??
+    statedDaysLine(head) ??
+    (unit.options.length > 0 ? statedDaysLine(unit.options[0]!) : undefined);
+  return (
+    <Card
+      href={destinationFor(head)}
+      eyebrow={when}
+      title={head.title}
+      line={head.shortDescription}
+      media={hero(head)}
+      options={namesOf(unit)}
+      optionsLabel={unit.options.length > 0 ? label : undefined}
+    />
   );
 }
 

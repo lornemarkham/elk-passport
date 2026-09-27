@@ -43,6 +43,9 @@ export function candidateToExperience(
     // Event. Carried, never derived: the days are Atlas's reading of a
     // publisher's own claim, and a missing day list is not an empty schedule.
     ...(candidate.availability ? { availability: candidate.availability } : {}),
+    // The whole this is one part of, when Atlas asserts an `includes` edge.
+    // Carried, never guessed: a shared name groups nothing.
+    ...(candidate.partOf ? { partOf: candidate.partOf } : {}),
     // Derived here, from the same function the admin surfaces use, so there is
     // one definition of "has enough for its own page". It decides the
     // destination and never whether the candidate appears — a strong Activity

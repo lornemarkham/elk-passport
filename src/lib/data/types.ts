@@ -385,7 +385,7 @@ export interface PlaceTemporalClaim {
  */
 export interface DiscoveryCandidateContext {
   id: string;
-  kind: "Place" | "Organization" | "Activity" | "Event";
+  kind: "Place" | "Organization" | "Activity" | "Event" | "Experience";
   name: string;
 }
 
@@ -435,6 +435,14 @@ export interface DiscoveryCandidate {
   coordinates?: [number, number];
   /** Physical containment only. Region membership is deliberately kept out of this. */
   context?: DiscoveryCandidateContext;
+  /**
+   * **The thing Atlas asserts this is a part of** — the source of an `includes`
+   * edge, one hop, and only ever a candidate Discovery also offers. Kept apart
+   * from `context`, which is physical containment: being inside a park and
+   * being one of the ways to experience an attraction are different facts.
+   * Absent from an older Atlas.
+   */
+  partOf?: DiscoveryCandidateContext;
   containsCount: number;
   regionIds: string[];
   /** Events only. ISO 8601 UTC, exactly as Atlas stores the instant. */
