@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
-import { destinationFor } from "@/domain/experience/destination";
-import { formatEventWhen } from "@/domain/experience/eventTime";
 import type { Experience } from "@/domain/experience/types";
-import { happeningWithin, localDay, upcoming } from "@/domain/october/calendar";
+import {
+  happeningThisWeekend,
+  happeningTonight,
+  happeningWithin,
+  localDay,
+  nextRelevantDay,
+  upcoming,
+} from "@/domain/october/calendar";
 import {
   OCTOBER_AREAS,
   hrefForArea,
@@ -16,47 +21,55 @@ import {
   resolveCollection,
 } from "@/domain/collections/editorial";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
-import { Card, Nothing, Section } from "@/components/october/shell/atoms";
-import { UnitCard, hero } from "@/components/october/shell/UnitCard";
+import { byDay, leadOf, withoutLead } from "@/domain/discovery/presentation";
+import {
+  BrowseRow,
+  CompactRow,
+  DiscoverCard,
+  LeadCard,
+  ShelfCard,
+  dayLabel,
+} from "@/components/october/discover/cards";
 
 export const metadata: Metadata = {
   title: "Discover — October",
 };
 
 /**
- * **Discover, from October's side of the door.**
+ * **Discover, arranged around a decision rather than around a corpus.**
  *
- * Passport already has a Discovery product at `/discovery`: a list optimised
- * for finding and saving quickly, with scope, search and filters. This is not
- * a replacement for it and deliberately does not rebuild any of it. It is a
- * *composition* — the same Atlas read, arranged by the questions October makes
- * a person ask, with a plain door through to the full list for everything
- * else.
+ * The question a person actually arrives with is *what looks fun tonight*, and
+ * the page is ordered by how soon they could act on the answer: Tonight, then
+ * the weekend, then a calendar of what is coming, then the month to browse,
+ * then themes to wander into. Weight follows immediacy — **not** record count,
+ * which is why the largest lane in the corpus is the quietest one on the page.
  *
- * The groupings are Passport's, not Atlas's. Atlas holds no notion of October
- * and is not being taught one.
+ * ## What the evidence will support, and what it will not
  *
- * ## Two different kinds of section, and the difference matters
+ * Of the 180 datable things Atlas currently holds, all have a title, a
+ * description and a date; about a quarter have a picture; and **none has a
+ * location** — no venue, no town, no coordinate. So there is no place line on
+ * any card here. The brief asked for one and the corpus cannot answer it, and
+ * an invented "Vernon" would be worse than its absence.
  *
- * Where an area names an **editorial collection**, that stated membership is
- * authoritative: a human decided those Things belong, and the keyword lens has
- * no vote. Everywhere else the lens still runs, and those sections say that
- * they were found by matching words.
+ * Presentation treatment is decided by what is *known* (`presentation.ts`) —
+ * whether a record can carry a picture, how complete it is, how soon it is.
+ * Nothing on this page is called best, top, featured or recommended, because
+ * Atlas supports no such claim and Passport does not manufacture one.
  *
- * The lens is not being tuned away — it is being demoted. It found *Caravan
- * Farm Theatre* and missed *The Fall of the House of Usher*, the production
- * Caravan was staging, because nothing in Poe's title says Halloween. That is
- * not a threshold to adjust; it is the wrong question. The lens remains useful
- * for finding candidates a curator might not have thought of, which is exactly
- * what it is still doing below.
+ * ## The groupings are Passport's
+ *
+ * Atlas holds no notion of October and is not being taught one. Where an area
+ * names an **editorial collection** that stated membership is authoritative;
+ * everywhere else a keyword lens still runs, and those shelves say so.
  */
 export default async function OctoberDiscoverPage() {
   const now = new Date();
+  const today = localDay(now);
   const candidates = await listDiscoveryCandidates().catch(() => []);
   const experiences = candidates.map(candidateToExperience);
 
-  // Stated membership, resolved live against Atlas. Nothing about these Things
-  // is stored by Passport beyond which ones belong.
+  // Stated membership, resolved live against Atlas.
   const curated = OCTOBER_AREAS.flatMap((area) => {
     const collection = area.collectionSlug
       ? collectionBySlug(area.collectionSlug)
@@ -64,172 +77,267 @@ export default async function OctoberDiscoverPage() {
     if (!collection) return [];
     return [{ area, ...resolveCollection(collection, experiences) }];
   });
-
-  // Anything a human has already placed is spoken for, so the inferred
-  // sections below cannot list it a second time under a different heading.
   const spokenFor = new Set(curated.flatMap((c) => c.members.map((m) => m.id)));
   const free = (list: readonly Experience[]) =>
     list.filter((e) => !spokenFor.has(e.id));
 
-  // One attraction is one discovery: a lane's matches are grouped by the
-  // `includes` edges Atlas asserts, so the modes of a haunt arrive as options
-  // inside it rather than as cards competing with it (`discoveryUnits.ts`).
-  const dated = asDiscoveryUnits(
-    free(upcoming(experiences, now)),
-    experiences,
-  ).slice(0, 6);
-  // The whole month, from whatever evidence each Thing has: an Event's own
-  // interval, or the days a source named for a claim-bearing subject. The year
-  // is today's in the Okanagan, because this is October's own surface.
-  const october = asDiscoveryUnits(
+  // One attraction is one discovery, everywhere on this page.
+  const units = (list: readonly Experience[]) =>
+    asDiscoveryUnits(list, experiences);
+
+  const tonight = units(happeningTonight(experiences, now));
+  const weekend = units(free(happeningThisWeekend(experiences, now)));
+  const soon = units(free(upcoming(experiences, now)));
+  const month = units(
     free(
       happeningWithin(
         experiences,
-        `${localDay(now).slice(0, 4)}-10-01`,
-        `${localDay(now).slice(0, 4)}-10-31`,
+        `${today.slice(0, 4)}-10-01`,
+        `${today.slice(0, 4)}-10-31`,
       ),
     ),
-    experiences,
   );
+
+  const lead = leadOf(tonight);
+  const alsoTonight = withoutLead(tonight).slice(0, 3);
+  // A fortnight is a scannable calendar; the rest of the month is browsing,
+  // and that is the lane underneath.
+  const comingDays = byDay(soon, today).slice(0, 8);
+
   const lensed = OCTOBER_AREAS.filter(
     (a) => a.terms?.length && !a.collectionSlug,
-  ).map((area) => ({
-    area,
-    found: free(throughLens(experiences, area, 12)).slice(0, 6),
-  }));
+  ).map((area) => ({ area, found: free(throughLens(experiences, area, 12)) }));
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-10 pb-24 sm:px-6">
+    <main className="mx-auto max-w-6xl px-4 pt-10 pb-24 sm:px-6">
       <header>
         <h1 className="font-heading text-4xl tracking-tight text-[#f3efe4] sm:text-5xl">
-          Discover
+          What&apos;s on
         </h1>
-        <p className="mt-3 max-w-xl text-[#e9e6da]/50">
-          What is out there — {experiences.length.toLocaleString()} places,
-          organizations, activities and events Passport can currently see in the
-          Okanagan.
-        </p>
+        <p className="mt-2 text-[#e9e6da]/50">October in the Okanagan.</p>
       </header>
 
-      <div className="mt-12">
-        {curated.map(({ area, members }) => (
-          <Section
-            key={area.id}
-            title={area.label}
-            note={area.line}
-            action={
-              <Link
-                href={hrefForArea(area)}
-                className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
-              >
-                More
-              </Link>
-            }
-          >
-            {members.length > 0 ? (
-              <ul
-                data-testid={`collection-${area.collectionSlug}`}
-                className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-              >
-                {members.map((e) => (
-                  <li key={e.id}>
-                    <Card
-                      href={destinationFor(e)}
-                      eyebrow={
-                        formatEventWhen(e.startTime, e.endTime) ?? e.subtype
-                      }
-                      title={e.title}
-                      line={e.shortDescription}
-                      media={hero(e)}
-                    />
+      {/* ================================================== TONIGHT ======== */}
+      <section className="mt-10" data-testid="lane-tonight">
+        <LaneHead title="Tonight" />
+        {lead ? (
+          <>
+            <LeadCard unit={lead} eyebrow="On tonight" />
+            {alsoTonight.length > 0 ? (
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {alsoTonight.map((unit) => (
+                  <li key={unit.head.id}>
+                    <DiscoverCard unit={unit} label="Tonight" />
                   </li>
                 ))}
               </ul>
-            ) : (
-              <Nothing>Nothing is in this collection yet.</Nothing>
-            )}
-          </Section>
-        ))}
+            ) : null}
+          </>
+        ) : (
+          <Quiet>
+            Nothing Passport can date is on tonight. Most nights are like that —
+            what is coming is below.
+          </Quiet>
+        )}
+      </section>
 
-        <Section
-          title="Dated and coming"
-          note="Events with a real date on them, soonest first."
+      {/* ============================================= THIS WEEKEND ======== */}
+      <section className="mt-16" data-testid="lane-weekend">
+        <LaneHead title="This weekend" />
+        {weekend.length > 0 ? (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {weekend.slice(0, 6).map((unit) => (
+              <li key={unit.head.id}>
+                <DiscoverCard unit={unit} label="This weekend" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Quiet>Nothing dated falls on the coming weekend.</Quiet>
+        )}
+      </section>
+
+      {/* ================================================ COMING UP ======== */}
+      <section className="mt-16" data-testid="lane-coming">
+        <LaneHead title="Coming up" note="The next few weeks, by date." />
+        {comingDays.length > 0 ? (
+          <div className="flex flex-col gap-1">
+            {comingDays.map(({ day, units: onDay }) => (
+              <div
+                key={day}
+                data-testid="coming-day"
+                // `minmax(0,1fr)` and `min-w-0`: a grid column is `auto` by
+                // default, which sizes to max-content, so a long title in a
+                // truncating row cannot shrink and pushes the whole page into
+                // a horizontal scroll on a phone. Measured at 375px: 713px
+                // wide before this.
+                className="grid gap-x-6 border-t border-[#e9e6da]/[0.07] py-3 sm:grid-cols-[9rem_minmax(0,1fr)]"
+              >
+                <p className="font-heading pt-2 text-sm text-[#d09a4e] tabular-nums">
+                  {dayLabel(day)}
+                </p>
+                <ul className="min-w-0">
+                  {onDay.map((unit) => (
+                    <li key={unit.head.id}>
+                      <CompactRow unit={unit} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Quiet>Nothing dated is ahead of us right now.</Quiet>
+        )}
+      </section>
+
+      {/* =============================================== ALL OCTOBER ======= */}
+      <section className="mt-16" data-testid="lane-month">
+        <LaneHead
+          title="Browse the month"
+          note={
+            month.length > 0
+              ? `${month.length} things Atlas can date inside October.`
+              : undefined
+          }
           action={
             <Link
               href="/discovery"
               className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
             >
-              Full discovery
+              Search everything
             </Link>
           }
-        >
-          {dated.length > 0 ? (
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {dated.map((unit) => (
-                <li key={unit.head.id}>
-                  <UnitCard unit={unit} label="Coming up" />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Nothing>Nothing dated is ahead of us right now.</Nothing>
-          )}
-        </Section>
+        />
+        {month.length > 0 ? (
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+            {month.map((unit) => (
+              <BrowseRow
+                key={unit.head.id}
+                unit={unit}
+                day={nextRelevantDay(unit.head, `${today.slice(0, 4)}-10-01`)}
+              />
+            ))}
+          </div>
+        ) : (
+          <Quiet>Atlas can date nothing inside October yet.</Quiet>
+        )}
+      </section>
 
-        <Section
-          title="All of October"
-          note="Everything Atlas can date inside the month — an event's own dates, or the nights a place named."
-        >
-          {october.length > 0 ? (
-            <ul
-              data-testid="all-october"
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {october.map((unit) => (
-                <li key={unit.head.id}>
-                  <UnitCard unit={unit} label="In October" />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Nothing>Atlas can date nothing inside October yet.</Nothing>
-          )}
-        </Section>
-
-        {lensed.map(({ area, found }) => (
-          <Section
-            key={area.id}
-            title={area.label}
-            note={area.line}
-            action={
-              <Link
-                href={hrefForArea(area)}
-                className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
-              >
-                More
-              </Link>
-            }
-          >
-            {found.length > 0 ? (
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {found.map((e) => (
-                  <li key={e.id}>
-                    <Card
-                      href={destinationFor(e)}
-                      eyebrow={e.subtype}
-                      title={e.title}
-                      line={e.shortDescription}
-                      media={hero(e)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Nothing>Nothing in the corpus matches this yet.</Nothing>
-            )}
-          </Section>
-        ))}
+      {/* ================================================== THEMES ========= */}
+      <div className="mt-20 flex flex-col gap-14">
+        {curated.map(({ area, members }) =>
+          members.length > 0 ? (
+            <Shelf
+              key={area.id}
+              title={area.label}
+              note={area.line}
+              href={hrefForArea(area)}
+              items={members}
+              testid={`collection-${area.collectionSlug}`}
+            />
+          ) : null,
+        )}
+        {lensed.map(({ area, found }) =>
+          found.length > 0 ? (
+            <Shelf
+              key={area.id}
+              title={area.label}
+              note={area.line}
+              href={hrefForArea(area)}
+              items={found}
+              /* Said plainly: these were found by matching words, and the lens
+                 misses as often as it hits. */
+              caveat="Found by matching words"
+            />
+          ) : null,
+        )}
       </div>
     </main>
+  );
+}
+
+function LaneHead({
+  title,
+  note,
+  action,
+}: {
+  readonly title: string;
+  readonly note?: string;
+  readonly action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <h2 className="font-heading text-2xl text-[#f3efe4] sm:text-3xl">
+          {title}
+        </h2>
+        {note ? <p className="text-sm text-[#e9e6da]/40">{note}</p> : null}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/** A lane with nothing in it, said without apology or filler. */
+function Quiet({ children }: { readonly children: React.ReactNode }) {
+  return (
+    <p
+      data-testid="october-nothing"
+      className="max-w-xl text-[#e9e6da]/45 italic"
+    >
+      {children}
+    </p>
+  );
+}
+
+/**
+ * A theme, as a shelf you can push along rather than a block of taxonomy
+ * output. Horizontal on every width: it reads as "a way into October" instead
+ * of "the rest of the result set".
+ */
+function Shelf({
+  title,
+  note,
+  href,
+  items,
+  caveat,
+  testid,
+}: {
+  readonly title: string;
+  readonly note?: string;
+  readonly href: string;
+  readonly items: readonly Experience[];
+  readonly caveat?: string;
+  readonly testid?: string;
+}) {
+  return (
+    <section>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <h2 className="font-heading text-xl text-[#f3efe4]">{title}</h2>
+          {note ? <p className="text-sm text-[#e9e6da]/40">{note}</p> : null}
+        </div>
+        <Link
+          href={href}
+          className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
+        >
+          More
+        </Link>
+      </div>
+      {caveat ? (
+        <p className="mb-3 text-xs text-[#e9e6da]/25">{caveat}</p>
+      ) : null}
+      <ul
+        data-testid={testid}
+        className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6"
+      >
+        {items.slice(0, 12).map((e) => (
+          <li key={e.id}>
+            <ShelfCard experience={e} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
