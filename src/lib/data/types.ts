@@ -450,6 +450,25 @@ export interface DiscoveryCandidate {
   endTime?: string;
   /** What Atlas knows about when this is on. Absent from an older Atlas. */
   availability?: CandidateAvailability;
+  /**
+   * **Where this happens**, when Atlas can say so without guessing — an
+   * asserted `happens_at` to a held Place, or a source's own stated venue.
+   * Absent means Atlas does not know, which is the answer for most of the
+   * corpus. Passport must render nothing rather than fill it in.
+   */
+  location?: CandidateLocation;
+}
+
+/** Atlas's smallest truthful answer to "where?" (`candidateLocation.ts`). */
+export interface CandidateLocation {
+  /** Present only when an asserted edge reaches a Place Atlas holds. */
+  placeId?: string;
+  /** The venue, held or as a source stated it. */
+  name?: string;
+  /** The town, where a source stated one. */
+  locality?: string;
+  /** `happens-at` was asserted by somebody; `stated-venue` was only read. */
+  basis: "happens-at" | "stated-venue";
 }
 
 /**

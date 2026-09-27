@@ -35,6 +35,41 @@ export function whenLine(unit: DiscoveryUnit): string | undefined {
 
 const src = (e: Experience) => e.heroMedia?.src;
 
+/**
+ * **Where it is, in as many words as Atlas can vouch for.**
+ *
+ * `Vernon Jazz Club · Vernon` when both are known, one of them when only one
+ * is, and **nothing at all** when Atlas knows neither — which is most of the
+ * corpus. The absence is the honest answer and is never padded out with a
+ * region, a publisher's town, or "Okanagan".
+ */
+export function whereLine(unit: DiscoveryUnit): string | undefined {
+  const venue = unit.head.venue ?? unit.options.find((o) => o.venue)?.venue;
+  if (!venue) return undefined;
+  const parts = [venue.name, venue.locality].filter((p): p is string =>
+    Boolean(p && p.trim()),
+  );
+  // "Vernon Jazz Club · Vernon" reads well; "Vernon · Vernon" does not.
+  const unique = parts.filter((p, i) => parts.indexOf(p) === i);
+  return unique.length > 0 ? unique.join(" · ") : undefined;
+}
+
+function Where({
+  unit,
+  className,
+}: {
+  readonly unit: DiscoveryUnit;
+  readonly className: string;
+}) {
+  const where = whereLine(unit);
+  if (!where) return null;
+  return (
+    <p data-testid="card-where" className={className}>
+      {where}
+    </p>
+  );
+}
+
 /** The modes of an attraction, named. Never counted. */
 function Options({
   unit,
@@ -101,6 +136,7 @@ export function LeadCard({
         {when ? (
           <p className="mt-3 text-sm text-[#e9e6da]/70 tabular-nums">{when}</p>
         ) : null}
+        <Where unit={unit} className="mt-1 text-sm text-[#e9e6da]/50" />
         {head.shortDescription ? (
           <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[#e9e6da]/55">
             {head.shortDescription}
@@ -147,6 +183,7 @@ export function DiscoverCard({
         <h3 className="font-heading mt-1 text-lg leading-snug text-[#f3efe4]">
           {head.title}
         </h3>
+        <Where unit={unit} className="mt-0.5 text-xs text-[#e9e6da]/45" />
         {head.shortDescription ? (
           <p className="mt-1.5 line-clamp-2 text-sm text-[#e9e6da]/50">
             {head.shortDescription}
@@ -188,6 +225,13 @@ export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
         {unit.options.length > 0 ? (
           <span className="mt-0.5 block truncate text-xs text-[#d09a4e]/80">
             {namesOf(unit).join(" · ")}
+          </span>
+        ) : whereLine(unit) ? (
+          <span
+            data-testid="card-where"
+            className="mt-0.5 block truncate text-xs text-[#e9e6da]/40"
+          >
+            {whereLine(unit)}
           </span>
         ) : null}
       </span>

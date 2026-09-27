@@ -81,6 +81,10 @@ export function candidateToExperience(
     petFriendly: false,
     requiresReservation: false,
 
+    // Passed through exactly as Atlas served it. Nothing is derived here: a
+    // candidate with no location gets none, and a publisher's address is
+    // never promoted into one.
+    venue: candidate.location,
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

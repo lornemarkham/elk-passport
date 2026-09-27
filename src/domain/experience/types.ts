@@ -72,6 +72,14 @@ export interface ExperienceContext {
   name: string;
 }
 
+export interface ExperienceVenue {
+  readonly placeId?: string;
+  readonly name?: string;
+  readonly locality?: string;
+  /** Whether somebody asserted this, or a source merely stated it. */
+  readonly basis: "happens-at" | "stated-venue";
+}
+
 export interface Experience {
   id: string;
   kind: ExperienceKind;
@@ -145,6 +153,17 @@ export interface Experience {
   requiresReservation: boolean;
 
   location?: ExperienceLocation;
+  /**
+   * **Where it happens, in words** — the venue and town Atlas can vouch for.
+   *
+   * Kept apart from `location`, which is a coordinate for a Place's own point
+   * on a map. This is the answer to *where is this on?*, which for an Event is
+   * a different question and usually a different entity: 0 of the 180 dated
+   * candidates carry coordinates, and 18 carry a venue.
+   *
+   * Absent means Atlas does not know. Never inferred from a publisher.
+   */
+  venue?: ExperienceVenue;
   pairsWith?: string[];
 
   isActive: boolean;
