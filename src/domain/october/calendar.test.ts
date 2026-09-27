@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   happeningThisWeekend,
   happeningTonight,
+  happeningWithin,
   localDay,
   upcoming,
   weekendDays,
@@ -142,5 +143,221 @@ describe("upcoming", () => {
       now,
     );
     expect(out.map((e) => e.id)).toEqual(["october", "november"]);
+  });
+});
+
+/**
+ * **A window used to be able to see only Events.**
+ *
+ * The two shapes Atlas actually serves, so the lanes are tested against the
+ * evidence the corpus holds rather than against a convenient one:
+ *
+ * - the Black Mountain Haunted House's Evening Haunt — eight October 2026
+ *   nights, named by a source, expanded by Atlas
+ * - Caravan's *The Fall of the House of Usher* — Tuesday-to-Sunday showtimes on
+ *   a page that prints no year, so Atlas names weekdays and no day at all
+ */
+const claimBearing = (
+  id: string,
+  availability: Experience["availability"],
+): Experience =>
+  ({
+    id,
+    kind: "Experience",
+    slug: id,
+    title: id,
+    shortDescription: "",
+    detailReady: true,
+    moods: [],
+    activities: [],
+    seasons: [],
+    timeOfDay: [],
+    weather: [],
+    companions: [],
+    energyLevel: 3,
+    priceLevel: 1,
+    duration: { min: 60, max: 120 },
+    availability,
+  }) as unknown as Experience;
+
+const EVENING_HAUNT = claimBearing("Evening Haunt", {
+  basis: "stated-days",
+  days: [
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-23",
+    "2026-10-24",
+    "2026-10-25",
+    "2026-10-30",
+    "2026-10-31",
+  ],
+  unresolved: "time 18:00 is not in the passage",
+});
+
+const FAMILY_FUN = claimBearing("Family Fun Hours", {
+  basis: "stated-days",
+  days: [
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-23",
+    "2026-10-24",
+    "2026-10-25",
+    "2026-10-31",
+  ],
+});
+
+const USHER = claimBearing("The Fall of the House of Usher", {
+  basis: "weekly-pattern",
+  weekdays: [2, 3, 4, 5, 6, 7],
+  timesOfDay: ["14:00", "16:00", "17:00", "19:00"],
+  unresolved:
+    "a opening-hours claim names no calendar days, so it cannot answer whether a given date is covered",
+});
+
+const A_PARK = claimBearing("A park", { basis: "unstated" });
+
+const ALL = [EVENING_HAUNT, FAMILY_FUN, USHER, A_PARK];
+const titles = (list: readonly Experience[]) => list.map((e) => e.title);
+
+/** Saturday 17 October 2026, 18:00 in the Okanagan. */
+const SATURDAY_THE_17TH = new Date("2026-10-18T01:00:00Z");
+
+describe("a subject whose days a source named", () => {
+  it("is on tonight when tonight is one of its days", () => {
+    expect(localDay(SATURDAY_THE_17TH)).toBe("2026-10-17");
+    expect(titles(happeningTonight(ALL, SATURDAY_THE_17TH))).toEqual([
+      "Evening Haunt",
+      "Family Fun Hours",
+    ]);
+  });
+
+  it("is not on a day its source did not name", () => {
+    // Monday 19 October: the haunt states eight nights and this is not one.
+    const monday = new Date("2026-10-20T01:00:00Z");
+    expect(localDay(monday)).toBe("2026-10-19");
+    expect(titles(happeningTonight(ALL, monday))).toEqual([]);
+    // Nor in July, which is the case a windowed feed used to get wrong.
+    expect(
+      titles(happeningTonight(ALL, new Date("2026-07-05T01:00:00Z"))),
+    ).toEqual([]);
+  });
+
+  it("appears in the weekend it states, and today belongs to Tonight", () => {
+    // Thursday 22 October looks forward to the 23rd, 24th and 25th.
+    const thursday = new Date("2026-10-23T01:00:00Z");
+    expect(titles(happeningThisWeekend(ALL, thursday))).toEqual([
+      "Evening Haunt",
+      "Family Fun Hours",
+    ]);
+    // On the Saturday itself, the 17th is Tonight's and the weekend is the 18th.
+    expect(titles(happeningThisWeekend(ALL, SATURDAY_THE_17TH))).toEqual([
+      "Evening Haunt",
+      "Family Fun Hours",
+    ]);
+  });
+
+  it("is upcoming while any of its days is still ahead, and not after the last one", () => {
+    expect(titles(upcoming(ALL, new Date("2026-09-28T01:00:00Z")))).toEqual([
+      "Evening Haunt",
+      "Family Fun Hours",
+    ]);
+    expect(titles(upcoming(ALL, new Date("2026-11-02T01:00:00Z")))).toEqual([]);
+  });
+
+  it("appears in a whole-October window, once", () => {
+    expect(titles(happeningWithin(ALL, "2026-10-01", "2026-10-31"))).toEqual([
+      "Evening Haunt",
+      "Family Fun Hours",
+    ]);
+    expect(titles(happeningWithin(ALL, "2026-11-01", "2026-11-30"))).toEqual(
+      [],
+    );
+  });
+
+  it("distinguishes the two modes by the days each one states", () => {
+    // Opening night is an Evening Haunt night with no afternoon hours, and the
+    // model says so rather than assuming the attraction is simply "open".
+    const openingNight = new Date("2026-10-17T01:00:00Z");
+    expect(localDay(openingNight)).toBe("2026-10-16");
+    expect(titles(happeningTonight(ALL, openingNight))).toEqual([
+      "Evening Haunt",
+    ]);
+  });
+});
+
+describe("a subject whose source stated a pattern and no year", () => {
+  it("is never placed on a particular day", () => {
+    for (const now of [
+      SATURDAY_THE_17TH,
+      new Date("2026-10-20T01:00:00Z"),
+      new Date("2026-10-23T01:00:00Z"),
+    ]) {
+      expect(titles(happeningTonight(ALL, now))).not.toContain(USHER.title);
+      expect(titles(happeningThisWeekend(ALL, now))).not.toContain(USHER.title);
+      expect(titles(upcoming(ALL, now))).not.toContain(USHER.title);
+    }
+    expect(
+      titles(happeningWithin(ALL, "2026-10-01", "2026-10-31")),
+    ).not.toContain(USHER.title);
+  });
+
+  it("keeps the weekdays and times Atlas read, and no Monday among them", () => {
+    expect(USHER.availability?.weekdays).not.toContain(1);
+    expect(USHER.availability?.days).toBeUndefined();
+    expect(USHER.startTime).toBeUndefined();
+    expect(USHER.endTime).toBeUndefined();
+  });
+});
+
+describe("a subject Atlas knows nothing temporal about", () => {
+  it("is never on tonight, this weekend, or upcoming — and that is not a closure", () => {
+    expect(titles(happeningTonight(ALL, SATURDAY_THE_17TH))).not.toContain(
+      "A park",
+    );
+    expect(titles(happeningThisWeekend(ALL, SATURDAY_THE_17TH))).not.toContain(
+      "A park",
+    );
+    expect(titles(upcoming(ALL, SATURDAY_THE_17TH))).not.toContain("A park");
+    // It is still a candidate Atlas serves, with its silence stated as such.
+    expect(A_PARK.availability?.basis).toBe("unstated");
+  });
+});
+
+describe("Events keep the behaviour they had", () => {
+  const festival = event(
+    "A festival",
+    "2026-10-17T02:00:00Z",
+    "2026-10-17T05:00:00Z",
+  );
+  const later = event("Later", "2026-10-24T02:00:00Z", "2026-10-24T05:00:00Z");
+  const mixed = [festival, later, ...ALL];
+
+  it("still reads its own instants, and Events come first in a lane", () => {
+    // 03:00Z is 20:00 on the 16th in the Okanagan — opening night, which is an
+    // Evening Haunt night and has no afternoon hours.
+    const openingNight = new Date("2026-10-17T03:00:00Z");
+    expect(localDay(openingNight)).toBe("2026-10-16");
+    expect(titles(happeningTonight(mixed, openingNight))).toEqual([
+      "A festival",
+      "Evening Haunt",
+    ]);
+  });
+
+  it("still drops out of Tonight once it has finished", () => {
+    expect(
+      titles(happeningTonight([festival], new Date("2026-10-17T06:00:00Z"))),
+    ).toEqual([]);
+  });
+
+  it("intersects a window with its whole interval, not only its first day", () => {
+    const run = event(
+      "A long run",
+      "2026-09-30T02:00:00Z",
+      "2026-11-03T05:00:00Z",
+    );
+    expect(titles(happeningWithin([run], "2026-10-01", "2026-10-31"))).toEqual([
+      "A long run",
+    ]);
   });
 });

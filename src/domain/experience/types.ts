@@ -1,3 +1,5 @@
+import type { CandidateAvailability } from "@/lib/data/types";
+
 /**
  * Canonical Experience domain model (IMP-002).
  *
@@ -112,6 +114,13 @@ export interface Experience {
    */
   startTime?: string;
   endTime?: string;
+  /**
+   * **What Atlas knows about when this is on**, for everything that is not an
+   * Event: the days a claim names, or a weekday pattern that names none
+   * (Atlas `candidateAvailability.ts`). Carried exactly as Atlas served it —
+   * Passport decides which local day each named day is, and invents none.
+   */
+  availability?: CandidateAvailability;
   /**
    * The regions Atlas has placed this in — **exactly** what Atlas served, never
    * synthesized and never defaulted. Empty means Atlas has placed it in no

@@ -389,9 +389,42 @@ export interface DiscoveryCandidateContext {
   name: string;
 }
 
+/**
+ * **When Atlas can say a candidate is on, and on what evidence**
+ * (Atlas `candidateAvailability.ts`). Absent from an older Atlas.
+ *
+ * Four bases, deliberately kept apart, because the difference is the product:
+ *
+ * ```
+ * event-interval   an Event's own stated instants — `startTime`/`endTime` below
+ * stated-days      days a source names: discrete dates, or a weekday pattern
+ *                  inside a dated window, already expanded by Atlas
+ * weekly-pattern   weekdays and times and no day at all — a page that prints
+ *                  "7pm nightly, Tuesdays to Fridays" and never prints a year
+ * unstated         Atlas holds nothing about when this is on
+ * ```
+ *
+ * `unstated` and `weekly-pattern` are **not** "closed", and a surface that
+ * hides them on that basis is asserting something Atlas did not say.
+ */
+export interface CandidateAvailability {
+  basis: "event-interval" | "stated-days" | "weekly-pattern" | "unstated";
+  /** Calendar days, `YYYY-MM-DD`, with no timezone — which is what they are in the evidence. */
+  days?: string[];
+  /** ISO weekdays, Monday 1. */
+  weekdays?: number[];
+  /** Start times the publisher printed, `HH:MM`. */
+  timesOfDay?: string[];
+  /** What Atlas's reading could not carry over — e.g. that the page states no year. */
+  unresolved?: string;
+  /** Atlas cut the day list at its horizon rather than exhausting it. */
+  moreDays?: true;
+}
+
 export interface DiscoveryCandidate {
   id: string;
-  kind: "Place" | "Organization" | "Activity" | "Event";
+  /** `Experience` arrived with ADR 054 and Atlas has served it since 2026-09-23. */
+  kind: "Place" | "Organization" | "Activity" | "Event" | "Experience";
   name: string;
   /** The other names Atlas holds for the same thing; search matches them as names (M10). Absent from an older Atlas. */
   aliases?: string[];
@@ -407,6 +440,8 @@ export interface DiscoveryCandidate {
   /** Events only. ISO 8601 UTC, exactly as Atlas stores the instant. */
   startTime?: string;
   endTime?: string;
+  /** What Atlas knows about when this is on. Absent from an older Atlas. */
+  availability?: CandidateAvailability;
 }
 
 /**

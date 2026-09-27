@@ -39,6 +39,10 @@ export function candidateToExperience(
     // Carried, not invented. This is the field Passport used to drop on the
     // floor, which is why region scope had nothing to filter on.
     regionIds: candidate.regionIds ?? [],
+    // What Atlas knows about when this is on, for everything that is not an
+    // Event. Carried, never derived: the days are Atlas's reading of a
+    // publisher's own claim, and a missing day list is not an empty schedule.
+    ...(candidate.availability ? { availability: candidate.availability } : {}),
     // Derived here, from the same function the admin surfaces use, so there is
     // one definition of "has enough for its own page". It decides the
     // destination and never whether the candidate appears — a strong Activity
