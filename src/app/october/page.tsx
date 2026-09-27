@@ -3,9 +3,6 @@ import Link from "next/link";
 import { currentUser } from "@/lib/auth/currentUser";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
-import { destinationFor } from "@/domain/experience/destination";
-import { formatEventWhen } from "@/domain/experience/eventTime";
-import type { Experience } from "@/domain/experience/types";
 import {
   happeningThisWeekend,
   happeningTonight,
@@ -15,6 +12,8 @@ import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { reactionsFor } from "@/lib/movies/reactions";
 import { Card, Nothing, Section } from "@/components/october/shell/atoms";
+import { UnitCard } from "@/components/october/shell/UnitCard";
+import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
 import { Remembered } from "@/components/october/shell/Remembered";
 
 export const metadata: Metadata = {
@@ -64,9 +63,29 @@ export default async function OctoberHomePage() {
   ]);
   const experiences = candidates.map(candidateToExperience);
 
-  const tonight = happeningTonight(experiences, now).slice(0, 3);
-  const weekend = happeningThisWeekend(experiences, now).slice(0, 6);
-  const soon = upcoming(experiences, now).slice(0, 4);
+  // **The same candidate has to mean the same thing here as it does on
+  // Discover.** The windows below were already shared — Tonight, This weekend
+  // and Coming up all come from `october/calendar`, occasions, stated days and
+  // all. What Home was missing was the last step: grouping each window's
+  // matches by the `includes` edges Atlas asserts, so an attraction and its
+  // modes arrive as one discovery with options rather than as three cards
+  // competing with one another. Home may show fewer of them. It may not count
+  // them differently.
+  //
+  // Grouped before slicing, or the cap would be spent on parts of the same
+  // thing and Tonight would show one haunt three times instead of three things.
+  const tonight = asDiscoveryUnits(
+    happeningTonight(experiences, now),
+    experiences,
+  ).slice(0, 3);
+  const weekend = asDiscoveryUnits(
+    happeningThisWeekend(experiences, now),
+    experiences,
+  ).slice(0, 6);
+  const soon = asDiscoveryUnits(upcoming(experiences, now), experiences).slice(
+    0,
+    4,
+  );
 
   const ahead = things.filter((t) => t.state === "ahead").length;
   const lived = things.filter((t) => t.state === "lived").length;
@@ -99,9 +118,9 @@ export default async function OctoberHomePage() {
         >
           {tonight.length > 0 ? (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {tonight.map((e) => (
-                <li key={e.id}>
-                  <EventCard experience={e} />
+              {tonight.map((unit) => (
+                <li key={unit.head.id}>
+                  <UnitCard unit={unit} label="Tonight" />
                 </li>
               ))}
             </ul>
@@ -114,12 +133,7 @@ export default async function OctoberHomePage() {
                 line="Pick something that suits who is actually on the sofa."
               />
               {soon[0] ? (
-                <Card
-                  href={destinationFor(soon[0])}
-                  eyebrow="Not tonight, but soon"
-                  title={soon[0].title}
-                  line={formatEventWhen(soon[0].startTime, soon[0].endTime)}
-                />
+                <UnitCard unit={soon[0]} label="Not tonight, but soon" />
               ) : null}
             </div>
           )}
@@ -140,9 +154,9 @@ export default async function OctoberHomePage() {
         >
           {weekend.length > 0 ? (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {weekend.map((e) => (
-                <li key={e.id}>
-                  <EventCard experience={e} />
+              {weekend.map((unit) => (
+                <li key={unit.head.id}>
+                  <UnitCard unit={unit} label="This weekend" />
                 </li>
               ))}
             </ul>
@@ -267,27 +281,6 @@ export default async function OctoberHomePage() {
     </main>
   );
 }
-
-/** A real Atlas event, with the date it actually has. */
-function EventCard({ experience }: { readonly experience: Experience }) {
-  return (
-    <Card
-      href={destinationFor(experience)}
-      eyebrow={formatEventWhen(experience.startTime, experience.endTime)}
-      title={experience.title}
-      line={experience.shortDescription}
-      media={
-        experience.heroMedia
-          ? {
-              src: experience.heroMedia.src,
-              alt: experience.heroMedia.alt ?? "",
-            }
-          : undefined
-      }
-    />
-  );
-}
-
 /** A count the person actually produced. Never a score, never a percentage. */
 function Tally({ n, label }: { readonly n: number; readonly label: string }) {
   return (
