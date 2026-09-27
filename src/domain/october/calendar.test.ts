@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  OCCASION_MAX_DAYS,
   happeningThisWeekend,
   happeningTonight,
   happeningWithin,
@@ -359,5 +360,120 @@ describe("Events keep the behaviour they had", () => {
     expect(titles(happeningWithin([run], "2026-10-01", "2026-10-31"))).toEqual([
       "A long run",
     ]);
+  });
+});
+
+/**
+ * **Which lane a thing belongs in, when its Event interval is a season.**
+ *
+ * Every fixture here is a real shape from the corpus, and none of them is
+ * matched by name: a booking year, a hiring window, a fortnight-and-a-bit
+ * festival and a one-night concert.
+ */
+describe("an Event whose interval is a span rather than an occasion", () => {
+  const BOOKING_YEAR = event(
+    "Japan Tours 2027",
+    "2027-01-01T08:00:00Z",
+    "2027-12-31T08:00:00Z",
+  );
+  const HIRING = event(
+    "Hiring Event Staff",
+    "2026-09-29T07:00:00Z",
+    "2027-06-25T07:00:00Z",
+  );
+  const FESTIVAL = event(
+    "Culture Days",
+    "2026-09-18T07:00:00Z",
+    "2026-10-04T07:00:00Z",
+  );
+  const CONCERT = event(
+    "A concert",
+    "2026-10-17T02:00:00Z",
+    "2026-10-17T05:00:00Z",
+  );
+  const SEASON = event(
+    "Farmers' market",
+    "2026-06-15T07:00:00Z",
+    "2026-09-30T07:00:00Z",
+  );
+  const ALL_EVENTS = [BOOKING_YEAR, HIRING, FESTIVAL, CONCERT, SEASON];
+
+  /** Friday 2 October 2026, 18:00 in the Okanagan — inside the festival, inside both spans. */
+  const OCTOBER_2ND = new Date("2026-10-03T01:00:00Z");
+
+  it("is three weeks, and the corpus's own shapes fall either side of it", () => {
+    expect(OCCASION_MAX_DAYS).toBe(21);
+  });
+
+  it("keeps a booking year and a hiring window out of every near lane", () => {
+    for (const lane of [happeningTonight, happeningThisWeekend, upcoming]) {
+      const titles_ = titles(lane(ALL_EVENTS, OCTOBER_2ND));
+      expect(titles_).not.toContain("Japan Tours 2027");
+      expect(titles_).not.toContain("Hiring Event Staff");
+      expect(titles_).not.toContain("Farmers' market");
+    }
+  });
+
+  it("still lets a month window see them, because there they are the answer", () => {
+    // The hiring window and the market genuinely overlap October; the 2027
+    // booking year does not, and is not admitted by a looser test either.
+    const inOctober = titles(
+      happeningWithin(ALL_EVENTS, "2026-10-01", "2026-10-31"),
+    );
+    expect(inOctober).toContain("Hiring Event Staff");
+    expect(inOctober).toContain("Culture Days");
+    expect(inOctober).not.toContain("Japan Tours 2027");
+    expect(inOctober).not.toContain("Farmers' market");
+  });
+
+  it("puts an occasion that is already running into Tonight", () => {
+    // Culture Days opened on 18 September and runs to 4 October: on the 2nd it
+    // is something a person can go and do this evening, and it used to be in no
+    // near lane at all.
+    expect(titles(happeningTonight(ALL_EVENTS, OCTOBER_2ND))).toEqual([
+      "Culture Days",
+    ]);
+  });
+
+  it("means by Coming Up that it has not started", () => {
+    // The concert is a fortnight away; the festival is already open, so it is
+    // here rather than coming.
+    expect(titles(upcoming(ALL_EVENTS, OCTOBER_2ND))).toEqual(["A concert"]);
+  });
+});
+
+describe("one order for every lane", () => {
+  it("sorts by the next day a person could turn up, not by entity kind", () => {
+    const laterEvent = event(
+      "A later concert",
+      "2026-10-25T02:00:00Z",
+      "2026-10-25T05:00:00Z",
+    );
+    const mixed = [laterEvent, EVENING_HAUNT];
+    // The haunt's first October night is the 16th; the concert is the 25th.
+    expect(titles(happeningWithin(mixed, "2026-10-01", "2026-10-31"))).toEqual([
+      "Evening Haunt",
+      "A later concert",
+    ]);
+    expect(titles(upcoming(mixed, new Date("2026-10-02T01:00:00Z")))).toEqual([
+      "Evening Haunt",
+      "A later concert",
+    ]);
+  });
+
+  it("puts a stated clock time ahead of no clock time on the same day", () => {
+    const sameDay = event(
+      "A timed thing",
+      "2026-10-18T02:00:00Z",
+      "2026-10-18T05:00:00Z",
+    );
+    expect(
+      titles(
+        happeningTonight(
+          [EVENING_HAUNT, sameDay],
+          new Date("2026-10-18T03:00:00Z"),
+        ),
+      ),
+    ).toEqual(["A timed thing", "Evening Haunt"]);
   });
 });

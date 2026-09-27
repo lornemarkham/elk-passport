@@ -105,14 +105,115 @@ function statedDays(experience: Experience): readonly string[] {
   return experience.availability?.days ?? [];
 }
 
-/** Claim-bearing subjects whose evidence names at least one of `days`, by name for a stable order. */
+/** Claim-bearing subjects whose evidence names at least one of `days`. */
 function onStatedDays(
   experiences: readonly Experience[],
   days: ReadonlySet<string>,
 ): Experience[] {
-  return experiences
-    .filter((e) => statedDays(e).some((day) => days.has(day)))
-    .sort((a, b) => a.title.localeCompare(b.title));
+  return experiences.filter((e) => statedDays(e).some((day) => days.has(day)));
+}
+
+/**
+ * **An occasion, or a span in which something is available.**
+ *
+ * Atlas holds 174 Events and 40 of them run for longer than a fortnight. Some
+ * are real — a sixteen-day arts festival is one thing that happens — and some
+ * are a different shape of fact wearing an Event's clothes:
+ *
+ * ```
+ * 364d  Japan Tours 2027      "now booking paragliding tours for 2027"
+ * 269d  Hiring Event Staff    "is hiring vendor staff … for the entire season"
+ * 147d  Sunday Fundays        every Sunday, May to September
+ * 107d  Farmers' Market       June to September
+ * ```
+ *
+ * None of those is something a person attends on a particular evening, and
+ * asking "is it on tonight?" of a hiring window is a category error. Three
+ * weeks is where the line goes: a festival can run a fortnight and a bit, and
+ * anything longer is a season or an availability window whatever it is called.
+ *
+ * This is a **product judgement about which lane a thing belongs in**, not a
+ * claim that the Event is wrong. A long Event is still dated, still true, and
+ * still appears in a month window — where "what is on in October" is exactly
+ * the right question for it.
+ */
+export const OCCASION_MAX_DAYS = 21;
+
+const DAY_MS = 86_400_000;
+
+/** How many local days an Event's own interval covers. */
+function spanDays(experience: Experience): number {
+  if (!experience.startTime) return 0;
+  const from = Date.parse(`${localDay(experience.startTime)}T12:00:00Z`);
+  const to = Date.parse(
+    `${localDay(experience.endTime ?? experience.startTime)}T12:00:00Z`,
+  );
+  return Number.isNaN(from) || Number.isNaN(to)
+    ? 0
+    : Math.round((to - from) / DAY_MS);
+}
+
+/** An Event short enough to be one occasion rather than a season. */
+const isOccasion = (experience: Experience): boolean =>
+  spanDays(experience) <= OCCASION_MAX_DAYS;
+
+/** The local days an Event's interval covers. */
+function eventDays(experience: Experience): readonly string[] {
+  if (!experience.startTime) return [];
+  const first = Date.parse(`${localDay(experience.startTime)}T12:00:00Z`);
+  const last = Date.parse(
+    `${localDay(experience.endTime ?? experience.startTime)}T12:00:00Z`,
+  );
+  if (Number.isNaN(first) || Number.isNaN(last)) return [];
+  const out: string[] = [];
+  for (let at = first; at <= last; at += DAY_MS)
+    out.push(localDay(new Date(at)));
+  return out;
+}
+
+/**
+ * **When the next thing a person could turn up for happens**, as a day, from
+ * `fromDay` onwards — the one signal every lane orders by.
+ *
+ * Deliberately the same question for both shapes of evidence, because a
+ * traveller does not sort by entity kind: an Event answers with its own start,
+ * or with today if it is already running, and a claim-bearing subject answers
+ * with the next day its source named. `undefined` means nothing is ahead.
+ */
+export function nextRelevantDay(
+  experience: Experience,
+  fromDay: string,
+): string | undefined {
+  const days = experience.startTime
+    ? eventDays(experience)
+    : statedDays(experience);
+  return days.find((day) => day >= fromDay);
+}
+
+/**
+ * One deterministic order for every lane: soonest first, then the time of day
+ * where a publisher stated one, then the name.
+ *
+ * A stated clock time sorts ahead of no clock time at all — which is about how
+ * much is known, not about what kind of record it is. Two things with the same
+ * day and no time fall back to the name, so a lane never shuffles between
+ * renders.
+ */
+function bySoonest(fromDay: string) {
+  const day = (e: Experience) => nextRelevantDay(e, fromDay) ?? "9999-99-99";
+  // Plain comparison for anything ISO-shaped, and `localeCompare` only for a
+  // title. A locale collator treats punctuation as nearly weightless, so a
+  // sentinel like "~" sorted *before* a timestamp and a timed Event lost its
+  // place to an untimed one — found by the test that pins this order.
+  return (a: Experience, b: Experience): number => {
+    if (day(a) !== day(b)) return day(a) < day(b) ? -1 : 1;
+    const untimed = (e: Experience) => (e.startTime ? 0 : 1);
+    if (untimed(a) !== untimed(b)) return untimed(a) - untimed(b);
+    if (a.startTime && b.startTime && a.startTime !== b.startTime) {
+      return a.startTime < b.startTime ? -1 : 1;
+    }
+    return a.title.localeCompare(b.title);
+  };
 }
 
 /**
@@ -127,14 +228,23 @@ export function happeningTonight(
 ): Experience[] {
   const today = localDay(now);
   const events = dated(experiences).filter((e) => {
-    if (localDay(e.startTime!) !== today) return false;
-    const ends = e.endTime ? new Date(e.endTime) : new Date(e.startTime!);
-    return ends.getTime() >= now.getTime();
+    // An Event that starts today is on tonight until it has finished.
+    if (localDay(e.startTime!) === today) {
+      const ends = e.endTime ? new Date(e.endTime) : new Date(e.startTime!);
+      return ends.getTime() >= now.getTime();
+    }
+    // One that began earlier and is still running is also on tonight — but only
+    // if it is an occasion. An exhibition open until Sunday is something to do
+    // this evening; a nine-month hiring window is not, and neither is a booking
+    // year (`OCCASION_MAX_DAYS`).
+    return isOccasion(e) && eventDays(e).includes(today);
   });
   // A stated day has no clock on it, so an attraction open tonight stays in
   // Tonight for the whole of tonight. An Event knows when it ends and is
   // dropped once it has; that difference is in the evidence, not a policy.
-  return [...events, ...onStatedDays(experiences, new Set([today]))];
+  return [...events, ...onStatedDays(experiences, new Set([today]))].sort(
+    bySoonest(today),
+  );
 }
 
 /** What is on across the coming Friday, Saturday and Sunday. */
@@ -144,10 +254,15 @@ export function happeningThisWeekend(
 ): Experience[] {
   const today = localDay(now);
   const window = new Set(weekendDays(now).filter((day) => day !== today));
-  const events = dated(experiences).filter((e) =>
-    window.has(localDay(e.startTime!)),
+  const first = [...window].sort()[0] ?? today;
+  const events = dated(experiences).filter(
+    (e) =>
+      window.has(localDay(e.startTime!)) ||
+      (isOccasion(e) && eventDays(e).some((day) => window.has(day))),
   );
-  return [...events, ...onStatedDays(experiences, window)];
+  return [...events, ...onStatedDays(experiences, window)].sort(
+    bySoonest(first),
+  );
 }
 
 /**
@@ -160,20 +275,18 @@ export function upcoming(
   now: Date,
 ): Experience[] {
   const today = localDay(now);
-  const events = dated(experiences).filter((e) => {
-    const ends = e.endTime ? new Date(e.endTime) : new Date(e.startTime!);
-    return ends.getTime() >= now.getTime();
-  });
-  const claimed = experiences
-    .filter((e) => statedDays(e).some((day) => day >= today))
-    .sort((a, b) => {
-      const soonest = (x: Experience) =>
-        statedDays(x).find((day) => day >= today) ?? "";
-      return (
-        soonest(a).localeCompare(soonest(b)) || a.title.localeCompare(b.title)
-      );
-    });
-  return [...events, ...claimed];
+  // **Coming up means it has not started yet.** It used to mean "its end is
+  // still in the future", which put a market that opened in June at the head of
+  // the lane and a hiring window running until next summer above tonight's
+  // concert. Something already under way is not coming; it is here, and
+  // Tonight, This weekend and a month window are where a person meets it.
+  const events = dated(experiences).filter(
+    (e) => isOccasion(e) && localDay(e.startTime!) > today,
+  );
+  const claimed = experiences.filter((e) =>
+    statedDays(e).some((day) => day > today),
+  );
+  return [...events, ...claimed].sort(bySoonest(today));
 }
 
 /**
@@ -196,11 +309,10 @@ export function happeningWithin(
     const ends = localDay(e.endTime ?? e.startTime!);
     return starts <= toDay && ends >= fromDay;
   });
-  const claimed = experiences
-    .filter((e) => statedDays(e).some(inRange))
-    .sort((a, b) => {
-      const first = (x: Experience) => statedDays(x).find(inRange) ?? "";
-      return first(a).localeCompare(first(b)) || a.title.localeCompare(b.title);
-    });
-  return [...events, ...claimed];
+  const claimed = experiences.filter((e) => statedDays(e).some(inRange));
+  // Soonest inside the window, whatever kind of evidence says so. A month's
+  // Events used to sort ahead of every claim-bearing Thing simply because they
+  // were Events, which put a haunt running all month below a one-off that had
+  // already happened.
+  return [...events, ...claimed].sort(bySoonest(fromDay));
 }
