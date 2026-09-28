@@ -48,6 +48,21 @@ export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
         {subject.description && (
           <p className="mt-4 text-lg leading-relaxed">{subject.description}</p>
         )}
+        {/* **The one image Atlas chose, and only that one.**
+            Not "its media": Field of Screams holds seventeen assets of which
+            none is evidenced to depict it — ticket buttons and sponsor logos —
+            so a gallery here would have shown those. The media lane picks a
+            lead image or picks none, and a subject with none simply has no
+            picture, which is the honest page. */}
+        {subject.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={subject.imageUrl}
+            alt=""
+            className="border-border mt-6 aspect-[3/2] w-full rounded-2xl border object-cover"
+            loading="lazy"
+          />
+        )}
       </header>
 
       {/* **When and where, before anything else.** A person deciding whether

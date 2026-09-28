@@ -78,6 +78,8 @@ export interface SubjectView {
    * at one.
    */
   readonly coordinates?: readonly [number, number];
+  /** The one image Atlas chose to show as this subject, where the media lane chose one. */
+  readonly imageUrl?: string;
   /**
    * An Event's own interval. Kept apart from `claims`, which are what sources
    * *said* about when something is on: an Event simply has a start and an end.
@@ -195,6 +197,7 @@ function subjectView(
     description: subject.description,
     ...(subject.address ? { address: subject.address } : {}),
     ...(subject.coordinates ? { coordinates: subject.coordinates } : {}),
+    ...(subject.imageUrl ? { imageUrl: subject.imageUrl } : {}),
     ...(subject.startTime ? { startTime: subject.startTime } : {}),
     ...(subject.endTime ? { endTime: subject.endTime } : {}),
     ...(subject.timePrecision ? { timePrecision: subject.timePrecision } : {}),

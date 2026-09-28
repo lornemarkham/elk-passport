@@ -562,6 +562,8 @@ export interface SubjectEdge {
 }
 
 export interface ComposedSubject {
+  /** The one image Atlas chose to show as this subject, where the media lane chose one. */
+  imageUrl?: string;
   id: string;
   kind: string;
   name: string;
