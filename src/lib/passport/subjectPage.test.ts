@@ -494,3 +494,68 @@ describe("sources support what is rendered", () => {
     expect(view.sources.map((s) => s.id)).toEqual(["s-first", "s-third"]);
   });
 });
+
+describe("where it happens beats who runs it", () => {
+  const PLACE = {
+    id: "pl-ranch",
+    kind: "Place",
+    name: "O'Keefe Ranch Historic Site",
+    description: "A historic ranch.",
+    coordinates: [-119.32, 50.41] as [number, number],
+    keyFacts: [],
+    when: [],
+    related: [],
+    depth: 1,
+  };
+  const HOST = {
+    id: "org-ranch",
+    kind: "Organization",
+    name: "O'Keefe Ranch",
+    description: "The society that runs the ranch.",
+    address: "9380 HWY 97 SPALLUMCHEEN, BC V1H 1W9",
+    keyFacts: [],
+    when: [],
+    related: [],
+    depth: 1,
+  };
+  const occurrence = (related: unknown[]) => ({
+    root: {
+      id: "exp-fos",
+      kind: "Experience",
+      name: "Field of Screams",
+      description: "A scare park.",
+      keyFacts: [],
+      when: [],
+      related,
+      depth: 0,
+    },
+    sources: [],
+    verbs: ["offers", "includes", "hosts", "happens_at"],
+    maxDepth: 2,
+  });
+
+  it("uses the Place it happens at, not the Organization that hosts it", () => {
+    const view = subjectPageView(
+      occurrence([
+        { verb: "hosts", direction: "incoming", subject: HOST },
+        { verb: "happens_at", direction: "outgoing", subject: PLACE },
+      ]) as never,
+    );
+    expect(view.venue?.name).toBe("O'Keefe Ranch Historic Site");
+    // The operator's office address must not be the door.
+    expect(view.venue?.address).toBeUndefined();
+  });
+
+  it("falls back to the host only when nothing states a venue", () => {
+    const view = subjectPageView(
+      occurrence([
+        { verb: "hosts", direction: "incoming", subject: HOST },
+      ]) as never,
+    );
+    expect(view.venue?.name).toBe("O'Keefe Ranch");
+  });
+
+  it("has no venue when Atlas states neither", () => {
+    expect(subjectPageView(occurrence([]) as never).venue).toBeUndefined();
+  });
+});

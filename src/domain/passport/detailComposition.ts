@@ -123,8 +123,19 @@ export function actionsFor(view: SubjectPageView): DetailAction[] {
     actions.push({ label: "Official site", href: official, kind: "official" });
   }
 
+  // **A coordinate is a door; a name is a guess at one.** A Place Atlas holds
+  // a point for sends a person to that point, which is the difference between
+  // arriving and searching a map for a name two businesses share.
+  const venue = view.venue ?? view.offerings.find((o) => o.venue)?.venue;
+  const point = venue?.coordinates;
   const where = whereLine(view);
-  if (where) {
+  if (point) {
+    actions.push({
+      label: "Directions",
+      href: `https://www.google.com/maps/search/?api=1&query=${point[1]},${point[0]}`,
+      kind: "directions",
+    });
+  } else if (where) {
     actions.push({
       label: "Directions",
       href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(where)}`,

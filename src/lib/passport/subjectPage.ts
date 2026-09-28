@@ -73,6 +73,12 @@ export interface SubjectView {
   readonly description: string;
   readonly address?: string;
   /**
+   * `[longitude, latitude]`, where Atlas holds a point for this subject. Read
+   * only to send a person to a door: a coordinate is a door, a name is a guess
+   * at one.
+   */
+  readonly coordinates?: readonly [number, number];
+  /**
    * An Event's own interval. Kept apart from `claims`, which are what sources
    * *said* about when something is on: an Event simply has a start and an end.
    */
@@ -93,6 +99,23 @@ export interface OfferingView {
   readonly parts: readonly SubjectView[];
   /** The venue Atlas says hosts it. */
   readonly venue?: SubjectView;
+}
+
+/**
+ * The venue of a composed subject: the Place it `happens_at`, or — only when
+ * nothing states one — the Organization that hosts it.
+ *
+ * The order is the whole point. A host is not a venue (ADR 019), and reading
+ * one as the other is how an operator's office comes to be printed as the door.
+ */
+function venueOf(
+  root: Parameters<typeof subjectView>[0],
+  sources: Parameters<typeof subjectView>[1],
+): ReturnType<typeof subjectView> | undefined {
+  const happensAt = edges(root, "happens_at", "outgoing")[0];
+  if (happensAt) return subjectView(happensAt, sources);
+  const host = edges(root, "hosts", "incoming")[0];
+  return host ? subjectView(host, sources) : undefined;
 }
 
 export interface SubjectPageView {
@@ -171,6 +194,7 @@ function subjectView(
     ...(subject.subtype ? { subtype: subject.subtype } : {}),
     description: subject.description,
     ...(subject.address ? { address: subject.address } : {}),
+    ...(subject.coordinates ? { coordinates: subject.coordinates } : {}),
     ...(subject.startTime ? { startTime: subject.startTime } : {}),
     ...(subject.endTime ? { endTime: subject.endTime } : {}),
     ...(subject.timePrecision ? { timePrecision: subject.timePrecision } : {}),
@@ -228,7 +252,9 @@ export function subjectPageView(
   const offerings: OfferingView[] = offered
     .filter((offering) => !includedByAnother.has(offering.id))
     .map((offering) => {
-      const venue = edges(offering, "hosts", "incoming")[0];
+      const venue =
+        edges(offering, "happens_at", "outgoing")[0] ??
+        edges(offering, "hosts", "incoming")[0];
       return {
         subject: subjectView(offering, sources),
         parts: edges(offering, "includes", "outgoing").map((part) =>
@@ -284,17 +310,35 @@ export function subjectPageView(
           ),
         }
       : {}),
-    ...(edges(root, "includes", "incoming")[0]
+    // A subject whose parent is also its venue would otherwise be printed
+    // twice, once under WHERE and again under PART OF, saying nothing new the
+    // second time.
+    ...(edges(root, "includes", "incoming")[0] &&
+    edges(root, "includes", "incoming")[0]!.id !== venueOf(root, sources)?.id
       ? {
           partOf: subjectView(edges(root, "includes", "incoming")[0]!, sources),
         }
       : {}),
-    ...(edges(root, "hosts", "incoming")[0]
-      ? { venue: subjectView(edges(root, "hosts", "incoming")[0]!, sources) }
-      : {}),
+    // **Where it happens beats who runs it.**
+    //
+    // `hosts` was the only venue edge Passport could see, so an occurrence's
+    // WHERE was its operator — and `detailComposition` says in its own words
+    // that "the address may be the operator's office", which is exactly what
+    // it was then printing. Atlas now composes `happens_at`, which is the
+    // physical Place and the only edge that answers *where do I go*. A host is
+    // read only when nothing states a venue, and a host with no venue is still
+    // better than nothing to say.
+    ...(venueOf(root, sources) ? { venue: venueOf(root, sources) } : {}),
     // Atlas's own order, narrowed. Facts keep the provenance they always had;
     // only the page-level list stops over-claiming.
-    sources: sources.filter((source) => cited.has(source.id)),
+    // Narrowed to what this page prints — plus every source Atlas says
+    // describes the subject itself. `downtownkelowna.com` was verified for
+    // Miniature Expo, contributed six images this page renders and cites no
+    // fact, so the fact-only rule dropped it from "where this comes from" —
+    // the one place a person checks whether a thing is real.
+    sources: sources.filter(
+      (source) => cited.has(source.id) || source.describesSubject === true,
+    ),
     ...(composition.on ? { on: composition.on } : {}),
   };
 }

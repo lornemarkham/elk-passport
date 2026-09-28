@@ -582,6 +582,8 @@ export interface ComposedSubject {
 }
 
 export interface SubjectSource {
+  /** Set when Atlas says this record describes the composed subject itself. */
+  describesSubject?: true;
   id: string;
   url: string;
   sourceType?: string;
