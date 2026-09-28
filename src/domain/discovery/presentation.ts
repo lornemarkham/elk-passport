@@ -1,4 +1,4 @@
-import { nextRelevantDay } from "@/domain/october/calendar";
+import { localDay, nextRelevantDay } from "@/domain/october/calendar";
 import type { DiscoveryUnit } from "./discoveryUnits";
 
 /**
@@ -95,4 +95,76 @@ export function byDay(
   return [...groups.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([day, list]) => ({ day, units: list }));
+}
+
+/**
+ * **What a lane still has to offer once an earlier lane has had its turn.**
+ *
+ * Tonight answers *what can I do tonight*; This weekend answers *what **else**
+ * can I do this weekend*. A multi-day run is legitimately eligible for both,
+ * and before this the weekend lane opened with the same four cards the reader
+ * had just finished looking at — 4 of its 6 were repeats.
+ *
+ * Subtracted by stable unit identity, never by title. This is composition
+ * only: the removed units are untouched in Coming up, in Browse the month and
+ * on their own pages, because they have not stopped being on.
+ */
+export function withoutAlreadyShown(
+  units: readonly DiscoveryUnit[],
+  alreadyShown: readonly DiscoveryUnit[],
+): DiscoveryUnit[] {
+  const seen = new Set(alreadyShown.map((u) => u.head.id));
+  return units.filter((u) => !seen.has(u.head.id));
+}
+
+/**
+ * **Beginning in the window beats merely running through it.**
+ *
+ * Browse the month is ordered soonest-first, and `nextRelevantDay` answers
+ * "Oct 1" for anything already under way when October starts. That is correct
+ * — it *is* on on the 1st — but it put a hiring window open until next June,
+ * a 148-day tournament and a farmers' market at the head of the month, above
+ * the things that actually happen on October 1st.
+ *
+ * So among units sharing a day, one whose own run starts on that day sorts
+ * above one that was already running. Generic and evidence-shaped: it asks
+ * *did this begin here*, not how long it lasts. No duration threshold, no
+ * title, no id — a 270-day run that genuinely starts on October 1st still
+ * leads that day.
+ */
+export function beginsWithin(
+  unit: DiscoveryUnit,
+  windowStart: string,
+): boolean {
+  const first = firstDayOf(unit);
+  return first !== undefined && first >= windowStart;
+}
+
+/** The earliest day this unit's own evidence names, ignoring the window. */
+function firstDayOf(unit: DiscoveryUnit): string | undefined {
+  const candidates = [unit.head, ...unit.options].flatMap((e) => {
+    const days = e.availability?.days ?? [];
+    const start = e.startTime ? localDay(e.startTime) : undefined;
+    return [...days, ...(start ? [start] : [])];
+  });
+  return candidates.length > 0 ? candidates.sort()[0] : undefined;
+}
+
+/**
+ * Browse the month, ordered so a specific October occurrence is not buried
+ * under something that has been running since June. Stable: the lane's
+ * existing soonest-first order decides everything else.
+ */
+export function byOctoberSpecificity(
+  units: readonly DiscoveryUnit[],
+  windowStart: string,
+): DiscoveryUnit[] {
+  return units
+    .map((unit, index) => ({ unit, index }))
+    .sort((a, b) => {
+      const A = beginsWithin(a.unit, windowStart) ? 0 : 1;
+      const B = beginsWithin(b.unit, windowStart) ? 0 : 1;
+      return A !== B ? A - B : a.index - b.index;
+    })
+    .map((x) => x.unit);
 }

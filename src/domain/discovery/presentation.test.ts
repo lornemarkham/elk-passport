@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  beginsWithin,
   byDay,
+  byOctoberSpecificity,
   hasMedia,
   knownFacts,
   leadOf,
+  withoutAlreadyShown,
   withoutLead,
 } from "./presentation";
 import type { DiscoveryUnit } from "./discoveryUnits";
@@ -124,5 +127,88 @@ describe("presentation", () => {
     const days = byDay([haunt], "2026-10-17");
     expect(days).toHaveLength(1);
     expect(days[0]!.day).toBe("2026-10-17");
+  });
+});
+
+describe("composing one lane against another", () => {
+  const u = (id: string, days?: string[], startTime?: string) =>
+    ({
+      head: {
+        id,
+        slug: id,
+        title: id,
+        kind: "Event",
+        subtype: "Event",
+        shortDescription: "",
+        regionIds: [],
+        ...(days
+          ? { availability: { basis: "stated-days" as const, days } }
+          : {}),
+        ...(startTime ? { startTime } : {}),
+      },
+      options: [],
+    }) as unknown as DiscoveryUnit;
+
+  it("asks This weekend for what Tonight has not already shown", () => {
+    const tonight = [u("a"), u("b")];
+    const weekend = [u("a"), u("b"), u("c"), u("d")];
+    expect(withoutAlreadyShown(weekend, tonight).map((x) => x.head.id)).toEqual(
+      ["c", "d"],
+    );
+  });
+
+  it("subtracts by identity, never by title", () => {
+    // Two different records that share a name are two things, and both stay.
+    const tonight = [u("id-1")];
+    const same = u("id-2");
+    (same.head as { title: string }).title = "id-1";
+    expect(withoutAlreadyShown([same], tonight)).toHaveLength(1);
+  });
+
+  it("removes nothing when the earlier lane is empty", () => {
+    const weekend = [u("a"), u("b")];
+    expect(withoutAlreadyShown(weekend, [])).toHaveLength(2);
+  });
+
+  it("ranks a thing that begins in the window above one already running", () => {
+    // Hiring Event Staff runs Sep 29 → next June and clamps to Oct 1; a real
+    // October 1st occurrence should not sit underneath it.
+    const running = u("already-running", ["2026-09-29", "2026-10-01"]);
+    const begins = u("begins-oct-1", ["2026-10-01"]);
+    const order = byOctoberSpecificity([running, begins], "2026-10-01");
+    expect(order.map((x) => x.head.id)).toEqual([
+      "begins-oct-1",
+      "already-running",
+    ]);
+  });
+
+  it("is not a duration rule — a long run that starts in the window still leads", () => {
+    const longButStartsHere = u("long", [
+      "2026-10-01",
+      "2026-10-31",
+      "2027-06-25",
+    ]);
+    const shortButRunning = u("short", ["2026-09-30", "2026-10-01"]);
+    expect(
+      byOctoberSpecificity(
+        [shortButRunning, longButStartsHere],
+        "2026-10-01",
+      ).map((x) => x.head.id),
+    ).toEqual(["long", "short"]);
+  });
+
+  it("keeps the lane's existing order among equals", () => {
+    const a = u("a", ["2026-10-02"]);
+    const b = u("b", ["2026-10-03"]);
+    const c = u("c", ["2026-10-04"]);
+    expect(
+      byOctoberSpecificity([a, b, c], "2026-10-01").map((x) => x.head.id),
+    ).toEqual(["a", "b", "c"]);
+  });
+
+  it("reads an Event's own start, not only stated days", () => {
+    const begins = u("ev", undefined, "2026-10-05T02:00:00.000Z");
+    expect(beginsWithin(begins, "2026-10-01")).toBe(true);
+    expect(beginsWithin(begins, "2026-11-01")).toBe(false);
   });
 });

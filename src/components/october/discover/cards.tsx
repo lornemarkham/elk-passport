@@ -220,9 +220,19 @@ export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
       data-testid="compact-row"
       className="group flex items-baseline gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-[#e9e6da]/[0.05]"
     >
-      <span className="w-20 shrink-0 text-xs text-[#e9e6da]/40 tabular-nums">
-        {clock ?? "—"}
-      </span>
+      {/* **The clock column exists only when there is a clock.**
+
+          It was a fixed 5rem lane holding an em dash for the 47 of October's
+          86 Events that truthfully have no stated time — a column of
+          placeholders, which reads as fields that failed to load rather than
+          as a date-only event. Nothing is invented and nothing stated is
+          hidden: a real time still gets the same prominence it always had,
+          and a date-only row simply begins at the title. */}
+      {clock ? (
+        <span className="w-20 shrink-0 text-xs text-[#e9e6da]/60 tabular-nums">
+          {clock}
+        </span>
+      ) : null}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[#e9e6da]/85 group-hover:text-[#f3efe4]">
           {head.title}

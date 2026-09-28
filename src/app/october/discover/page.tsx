@@ -11,20 +11,22 @@ import {
   nextRelevantDay,
   upcoming,
 } from "@/domain/october/calendar";
-import {
-  OCTOBER_AREAS,
-  hrefForArea,
-  throughLens,
-} from "@/domain/october/areas";
+import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
 import { octoberNow, octoberWindow } from "@/domain/october/octoberWindow";
 import {
   collectionBySlug,
   resolveCollection,
 } from "@/domain/collections/editorial";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
-import { byDay, leadOf, withoutLead } from "@/domain/discovery/presentation";
 import {
-  BrowseRow,
+  byDay,
+  byOctoberSpecificity,
+  leadOf,
+  withoutAlreadyShown,
+  withoutLead,
+} from "@/domain/discovery/presentation";
+import { BrowseMonth } from "@/components/october/discover/BrowseMonth";
+import {
   CompactRow,
   DiscoverCard,
   LeadCard,
@@ -93,10 +95,19 @@ export default async function OctoberDiscoverPage() {
     asDiscoveryUnits(list, experiences);
 
   const tonight = units(happeningTonight(experiences, now));
-  const weekend = units(free(happeningThisWeekend(experiences, now)));
+  // **This weekend answers "what *else*".** A multi-day run is legitimately
+  // eligible for both lanes, and unsubtracted the weekend opened with the four
+  // cards the reader had just looked at. Removed here and nowhere else: these
+  // units are untouched in Coming up, in Browse the month and on their own
+  // pages, because they have not stopped being on.
+  const weekend = withoutAlreadyShown(
+    units(free(happeningThisWeekend(experiences, now))),
+    tonight,
+  );
   const soon = units(free(upcoming(experiences, now)));
-  const month = units(
-    free(happeningWithin(experiences, octoberFrom, octoberTo)),
+  const month = byOctoberSpecificity(
+    units(free(happeningWithin(experiences, octoberFrom, octoberTo))),
+    octoberFrom,
   );
 
   const lead = leadOf(tonight);
@@ -104,10 +115,6 @@ export default async function OctoberDiscoverPage() {
   // A fortnight is a scannable calendar; the rest of the month is browsing,
   // and that is the lane underneath.
   const comingDays = byDay(soon, today).slice(0, 8);
-
-  const lensed = OCTOBER_AREAS.filter(
-    (a) => a.terms?.length && !a.collectionSlug,
-  ).map((area) => ({ area, found: free(throughLens(experiences, area, 12)) }));
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-10 pb-24 sm:px-6">
@@ -211,21 +218,36 @@ export default async function OctoberDiscoverPage() {
           }
         />
         {month.length > 0 ? (
-          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
-            {month.map((unit) => (
-              <BrowseRow
-                key={unit.head.id}
-                unit={unit}
-                day={nextRelevantDay(unit.head, octoberFrom)}
-              />
-            ))}
-          </div>
+          <BrowseMonth
+            rows={month.map((unit) => ({
+              unit,
+              day: nextRelevantDay(unit.head, octoberFrom),
+            }))}
+          />
         ) : (
           <Quiet>Atlas can date nothing inside October yet.</Quiet>
         )}
       </section>
 
-      {/* ================================================== THEMES ========= */}
+      {/* ================================================== THEMES =========
+          **Only shelves whose membership is evidence.**
+
+          An October recommendation has to be connected to October by
+          something. An editorial collection is: a person decided those Things
+          belong. A keyword lens is not — it matches words in a description
+          over the whole corpus, with no temporal evidence of any kind.
+
+          Measured on the rendered page before this changed: of the 36 cards
+          the three lens shelves produced, **0 had October temporal evidence**.
+          What they did produce was five wineries under "Kids October",
+          "Kids snowmobile rides", and two pairs of near-duplicate bakeries.
+          Truthfully labelling that "found by matching words" made it honest
+          without making it useful, and a smaller truthful product beats a
+          larger misleading one.
+
+          The lens itself is untouched and still runs `/october/explore/[area]`,
+          where a person has asked for that specific browse. It is only not
+          allowed to make recommendations here. */}
       <div className="mt-20 flex flex-col gap-14">
         {curated.map(({ area, members }) =>
           members.length > 0 ? (
@@ -236,20 +258,6 @@ export default async function OctoberDiscoverPage() {
               href={hrefForArea(area)}
               items={members}
               testid={`collection-${area.collectionSlug}`}
-            />
-          ) : null,
-        )}
-        {lensed.map(({ area, found }) =>
-          found.length > 0 ? (
-            <Shelf
-              key={area.id}
-              title={area.label}
-              note={area.line}
-              href={hrefForArea(area)}
-              items={found}
-              /* Said plainly: these were found by matching words, and the lens
-                 misses as often as it hits. */
-              caveat="Found by matching words"
             />
           ) : null,
         )}
