@@ -72,6 +72,13 @@ export interface SubjectView {
   readonly subtype?: string;
   readonly description: string;
   readonly address?: string;
+  /**
+   * An Event's own interval. Kept apart from `claims`, which are what sources
+   * *said* about when something is on: an Event simply has a start and an end.
+   */
+  readonly startTime?: string;
+  readonly endTime?: string;
+  readonly timePrecision?: string;
   readonly facts: readonly SubjectFactView[];
   readonly claims: readonly SubjectClaimView[];
   /** Every day any of this subject's claims states, ascending and deduplicated. */
@@ -95,6 +102,20 @@ export interface SubjectPageView {
   readonly offeredBy?: SubjectView;
   readonly partOf?: SubjectView;
   readonly venue?: SubjectView;
+  /**
+   * **The root's own parts** — what Atlas says this thing `includes`.
+   *
+   * An attraction with modes is the common case: the Black Mountain Haunted
+   * House includes its Evening Haunt and its Family Fun Hours, and each of
+   * those is the record that actually carries the nights and the prices. The
+   * view read `offers` and nothing else, so opening the attraction showed the
+   * story and silently dropped both — $20 / $15 / $7.50, the door times and
+   * the dates were all received from Atlas and thrown away here.
+   *
+   * Read from the same asserted edge the discovery feed groups on, so the
+   * page and the card agree about what one thing is.
+   */
+  readonly parts: readonly SubjectView[];
   /**
    * The sources behind what this page actually prints — not every source
    * reachable through the composed graph. See `citedBy`.
@@ -150,6 +171,9 @@ function subjectView(
     ...(subject.subtype ? { subtype: subject.subtype } : {}),
     description: subject.description,
     ...(subject.address ? { address: subject.address } : {}),
+    ...(subject.startTime ? { startTime: subject.startTime } : {}),
+    ...(subject.endTime ? { endTime: subject.endTime } : {}),
+    ...(subject.timePrecision ? { timePrecision: subject.timePrecision } : {}),
     facts: subject.keyFacts.map((fact) => {
       const state = stateOf(fact.label);
       return {
@@ -234,8 +258,16 @@ export function subjectPageView(
    * in the composition contract, so there is nothing to attribute and nothing
    * is claimed.
    */
+  // What Atlas says the root itself includes. Excluded from `offerings` above
+  // only because that list is built from `offers`; these are the same kind of
+  // thing a person chooses between.
+  const parts: SubjectView[] = edges(root, "includes", "outgoing").map((part) =>
+    subjectView(part, sources),
+  );
+
   const presented: SubjectView[] = [
     subject,
+    ...parts,
     ...offerings.flatMap((offering) => [offering.subject, ...offering.parts]),
   ];
   const cited = citedBy(presented);
@@ -243,6 +275,7 @@ export function subjectPageView(
   return {
     subject,
     offerings,
+    parts,
     ...(edges(root, "offers", "incoming")[0]
       ? {
           offeredBy: subjectView(

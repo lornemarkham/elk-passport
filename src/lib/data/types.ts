@@ -569,6 +569,10 @@ export interface ComposedSubject {
   description: string;
   address?: string;
   coordinates?: [number, number];
+  /** An Event's own interval, and how precisely the source stated it. */
+  startTime?: string;
+  endTime?: string;
+  timePrecision?: string;
   keyFacts: SubjectKeyFact[];
   temporal: SubjectTemporalView;
   when: SubjectClaim[];

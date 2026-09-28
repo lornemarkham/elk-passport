@@ -6,6 +6,12 @@ import {
   type SubjectPageView,
   type SubjectView,
 } from "@/lib/passport/subjectPage";
+import { formatEventWhen } from "@/domain/experience/eventTime";
+import {
+  actionsFor,
+  whenSummary,
+  whereLine,
+} from "@/domain/passport/detailComposition";
 
 /**
  * The traveller's view of a subject Atlas composed.
@@ -19,6 +25,11 @@ import {
  */
 export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
   const { subject, offerings } = view;
+  // Composed from evidence, not from kind: each of these is absent when the
+  // thing it needs is (`detailComposition.ts`).
+  const actions = actionsFor(view);
+  const where = whereLine(view);
+  const when = whenSummary(view);
 
   return (
     <article className="mx-auto max-w-3xl px-6 pt-10 pb-24">
@@ -29,21 +40,102 @@ export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
         <h1 className="mt-2 text-4xl font-bold tracking-tight">
           {subject.name}
         </h1>
+        {when.edition && when.edition !== subject.name && (
+          <p className="text-muted-foreground mt-1.5 text-base">
+            {when.edition}
+          </p>
+        )}
         {subject.description && (
           <p className="mt-4 text-lg leading-relaxed">{subject.description}</p>
         )}
-        {subject.address && (
-          <p className="text-muted-foreground mt-4 flex items-start gap-2.5 text-base">
-            <MapPin className="mt-1 h-4 w-4 shrink-0" />
-            {subject.address}
-          </p>
-        )}
-        {/* A root that holds its own schedule — an Experience opened directly
-            — states it here; a provider that holds none shows nothing. */}
-        <Days subject={subject} />
       </header>
 
+      {/* **When and where, before anything else.** A person deciding whether
+          to go asks these two first, and both used to be somewhere inside a
+          list of twenty-three facts. Each half appears only if Atlas can
+          answer it. */}
+      {(when.days.length > 0 || subject.startTime || where) && (
+        <div className="border-border mt-8 grid gap-6 rounded-2xl border p-5 sm:grid-cols-2">
+          {(when.days.length > 0 || subject.startTime) && (
+            <div>
+              <p className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-widest uppercase">
+                <CalendarDays className="h-3.5 w-3.5" />
+                When
+              </p>
+              {/* An Event answers from its own interval; anything else from
+                  what sources stated. The clock appears only where the source
+                  stated one — `timePrecision` is Atlas's word for that. */}
+              <p className="mt-2 text-base">
+                {subject.startTime
+                  ? (formatEventWhen(
+                      subject.startTime,
+                      subject.endTime,
+                      subject.timePrecision as "day" | "minute" | undefined,
+                    ) ?? formatStatedDay(when.days[0] ?? ""))
+                  : `${formatStatedDay(when.days[0]!)}${
+                      when.days.length > 1
+                        ? ` – ${formatStatedDay(when.days[when.days.length - 1]!)}`
+                        : ""
+                    }`}
+              </p>
+              {!subject.startTime && when.days.length > 1 && !when.isRange && (
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {when.days.length} dates
+                </p>
+              )}
+            </div>
+          )}
+          {where && (
+            <div>
+              <p className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-widest uppercase">
+                <MapPin className="h-3.5 w-3.5" />
+                Where
+              </p>
+              <p className="mt-2 text-base">{where}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Only links a publisher actually published. The directions search is
+          the one constructed link, and only from a stated address. */}
+      {actions.length > 0 && (
+        <div
+          data-testid="detail-actions"
+          className="mt-5 flex flex-wrap gap-2.5"
+        >
+          {actions.map((action) => (
+            <a
+              key={action.href}
+              href={action.href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={
+                action.kind === "tickets"
+                  ? "bg-foreground text-background inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium transition hover:opacity-90"
+                  : "border-border hover:border-foreground/40 inline-flex min-h-11 items-center rounded-full border px-5 text-sm transition"
+              }
+            >
+              {action.label}
+            </a>
+          ))}
+        </div>
+      )}
+
       {view.on && <DayAnswer view={view} />}
+
+      {/* **The ways you can actually go.** Each part carries its own nights
+          and its own prices, which is why dropping them left the attraction
+          unable to say what it costs. */}
+      {view.parts.length > 0 && (
+        <Section title="Ways to go">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {view.parts.map((part) => (
+              <PartCard key={part.id} part={part} />
+            ))}
+          </div>
+        </Section>
+      )}
 
       {offerings.map((offering) => (
         <Offering key={offering.subject.id} offering={offering} />
@@ -196,6 +288,52 @@ function Offering({ offering }: { offering: OfferingView }) {
 }
 
 /** The days Atlas stated, formatted. No day is derived, filtered or extended here. */
+/**
+ * One way to attend: its own name, its own nights, its own prices.
+ *
+ * Facts are printed as the publisher wrote them — a label and a value, which
+ * for a mode is usually a ticket tier and an amount. Nothing is summed, no
+ * "from £x" is computed, and a part with no facts simply shows fewer lines.
+ */
+function PartCard({ part }: { part: SubjectView }) {
+  return (
+    <Link
+      href={`/passport/${part.id}`}
+      data-testid="part-card"
+      className="border-border hover:border-foreground/40 block rounded-xl border p-4 transition"
+    >
+      <p className="font-semibold">{part.name}</p>
+      {part.description && (
+        <p className="text-muted-foreground mt-1 text-sm">{part.description}</p>
+      )}
+      {part.days.length > 0 && (
+        <p className="text-muted-foreground mt-2 text-xs tabular-nums">
+          {formatStatedDay(part.days[0]!)}
+          {part.days.length > 1 &&
+            ` – ${formatStatedDay(part.days[part.days.length - 1]!)}`}
+          {part.days.length > 1 && ` · ${part.days.length} dates`}
+        </p>
+      )}
+      {part.facts.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1">
+          {part.facts
+            .filter((f) => f.value !== part.description)
+            .slice(0, 5)
+            .map((f) => (
+              <li
+                key={f.label + f.value}
+                className="flex justify-between gap-3 text-sm"
+              >
+                <span className="text-muted-foreground">{f.label}</span>
+                <span className="shrink-0 tabular-nums">{f.value}</span>
+              </li>
+            ))}
+        </ul>
+      )}
+    </Link>
+  );
+}
+
 function Days({ subject }: { subject: SubjectView }) {
   if (subject.days.length === 0) return null;
   return (

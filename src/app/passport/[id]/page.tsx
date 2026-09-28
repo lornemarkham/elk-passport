@@ -96,7 +96,9 @@ export default async function PassportPage({ params, searchParams }: Props) {
   // A subject Atlas composes is rendered from the composed read alone. Tried
   // in the order a consumer is most likely to arrive: October Discover routes
   // an Organization card to its Organization id.
-  for (const kind of ["organizations", "experiences"] as const) {
+  // Events last only because an Organization id is the likeliest arrival;
+  // every kind Atlas composes is tried, and an Event is most of a month.
+  for (const kind of ["organizations", "experiences", "events"] as const) {
     const composition = await getSubjectDetail(kind, id, on).catch(() => null);
     if (composition) {
       return (

@@ -102,7 +102,7 @@ export async function getPlaceDetail(id: string): Promise<PlaceDetail | null> {
  * throws, like every other function here.
  */
 export async function getSubjectDetail(
-  kind: "organizations" | "experiences",
+  kind: "organizations" | "experiences" | "events",
   id: string,
   on?: string,
 ): Promise<SubjectComposition | null> {
