@@ -184,7 +184,7 @@ export default async function OctoberDiscoverPage() {
                 <p className="font-heading pt-2 text-sm text-[#d09a4e] tabular-nums">
                   {dayLabel(day)}
                 </p>
-                <ul className="min-w-0">
+                <ul className="min-w-0 divide-y divide-transparent">
                   {onDay.map((unit) => (
                     <li key={unit.head.id}>
                       <CompactRow unit={unit} />

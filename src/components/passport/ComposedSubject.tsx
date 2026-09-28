@@ -23,7 +23,14 @@ import {
  * Deliberately plain: this mission is about what the page can *say*, not what
  * it looks like. No October styling, no attraction-specific layout.
  */
-export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
+export function ComposedSubjectPage({
+  view,
+  october = false,
+}: {
+  readonly view: SubjectPageView;
+  /** Drawn inside October's frame, which supplies its own back link and actions. */
+  readonly october?: boolean;
+}) {
   const { subject, offerings } = view;
   // Composed from evidence, not from kind: each of these is absent when the
   // thing it needs is (`detailComposition.ts`).
@@ -114,7 +121,7 @@ export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
 
       {/* Only links a publisher actually published. The directions search is
           the one constructed link, and only from a stated address. */}
-      {actions.length > 0 && (
+      {!october && actions.length > 0 && (
         <div
           data-testid="detail-actions"
           className="mt-5 flex flex-wrap gap-2.5"
@@ -156,7 +163,7 @@ export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
         <Offering key={offering.subject.id} offering={offering} />
       ))}
 
-      {(view.offeredBy || view.partOf || view.venue) && (
+      {!october && (view.offeredBy || view.partOf || view.venue) && (
         <Section title="Part of">
           <ul className="mt-3 flex flex-wrap gap-2">
             {[view.partOf, view.offeredBy, view.venue]
@@ -181,7 +188,7 @@ export function ComposedSubjectPage({ view }: { view: SubjectPageView }) {
         </Section>
       )}
 
-      {view.sources.length > 0 && (
+      {!october && view.sources.length > 0 && (
         <Section title="Where this comes from">
           <ul className="mt-3 flex flex-col gap-2">
             {view.sources.map((source) => (

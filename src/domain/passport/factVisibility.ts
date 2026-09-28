@@ -55,7 +55,12 @@ export interface VisibleFact {
 
 export interface HiddenFact extends VisibleFact {
   /** Which rule hid it, so a curator can see what the page decided and why. */
-  readonly rule: "placed" | "already-rendered" | "in-description" | "empty";
+  readonly rule:
+    | "placed"
+    | "already-rendered"
+    | "in-description"
+    | "empty"
+    | "restates-label";
 }
 
 /** Lowercase, unpunctuated, single-spaced — enough to compare two renderings of one sentence. */
@@ -191,6 +196,17 @@ export function partitionFacts(
 
     if (isEmpty(fact.value)) {
       hidden.push({ ...fact, rule: "empty" });
+      continue;
+    }
+    // **A value that only repeats its own label states nothing.** A checkbox
+    // on a ticketing page arrives as `Wheelchair Accessible — Wheelchair
+    // Accessible` and `Includes fees & charges — Includes fees & charges`:
+    // true, and shaped like storage. The label is kept and printed on its own
+    // where a page wants it; the row is not.
+    if (
+      normalizeForComparison(fact.label) === normalizeForComparison(fact.value)
+    ) {
+      hidden.push({ ...fact, rule: "restates-label" });
       continue;
     }
     if (context.placed?.has(fact.label)) {

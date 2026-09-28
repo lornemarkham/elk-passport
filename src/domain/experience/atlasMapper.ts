@@ -61,7 +61,7 @@ export function candidateToExperience(
         : undefined,
     }).ready,
     heroMedia: candidate.heroUrl
-      ? { type: "image", src: candidate.heroUrl }
+      ? { type: "image", src: unescapeUrl(candidate.heroUrl) }
       : undefined,
 
     // Atlas states none of these. Empty is the honest answer; the filters that
@@ -115,4 +115,20 @@ export function placeToExperience(place: Place): Experience {
     containsCount: 0,
     regionIds: [],
   });
+}
+
+/**
+ * A URL as it was written in the page, not as HTML wrote it.
+ *
+ * Media URLs are lifted from markup, so a query string arrives with its
+ * separators escaped — West Kelowna's Fall Fest poster is stored as
+ * `...?width=500&amp;height=345&format=webp`, which a browser requests
+ * literally and the CDN rejects. Decoding the entity is reading the URL the
+ * publisher actually published, not rewriting it.
+ */
+function unescapeUrl(url: string): string {
+  return url
+    .replace(/&amp;/g, "&")
+    .replace(/&#38;/g, "&")
+    .replace(/&quot;/g, '"');
 }

@@ -87,14 +87,23 @@ export function CuratedSubjectPage({
     },
   );
 
+  // **Every fact under a label, not the first one.** A ticketing page states
+  // `Price = $35.00 Adult` and `Price = $33.00 Senior (60+)`; a lookup keyed
+  // by label printed the adult amount twice and lost the concession.
   const groups = (curation.groups ?? [])
     .map((g) => ({
       ...g,
-      facts: g.factLabels
-        .map((l) => factByLabel.get(l))
-        .filter((f): f is NonNullable<typeof f> => Boolean(f?.value?.trim())),
+      facts: g.factLabels.flatMap((l) =>
+        subject.facts.filter((f) => f.label === l && f.value?.trim()),
+      ),
     }))
     .filter((g) => g.facts.length > 0);
+
+  // A tile is a way in, never a replacement for the sentence it came from —
+  // the fact itself still prints in its group below.
+  const highlights = (curation.highlights ?? []).filter((h) =>
+    subject.facts.some((f) => f.label === h.factLabel && f.value?.trim()),
+  );
 
   const tiers = (curation.pricing?.tiers ?? [])
     .map((t) => ({ ...t, amount: valueOf(t.factLabel) }))
@@ -205,6 +214,30 @@ export function CuratedSubjectPage({
       </header>
 
       <main className="mx-auto max-w-6xl px-6 pb-28 lg:px-10">
+        {/* ---------------- HIGHLIGHTS ----------------
+            Two or three numbers a person needs before anything else, each
+            carrying the condition its source attached. The sentence they came
+            from is printed in full further down. */}
+        {highlights.length > 0 && (
+          <section
+            data-testid="curated-highlights"
+            className="border-border/60 grid gap-6 border-t py-12 sm:grid-cols-3"
+          >
+            {highlights.map((h) => (
+              <div key={h.factLabel}>
+                <p className="text-3xl font-bold tracking-tight sm:text-4xl">
+                  {h.display}
+                </p>
+                {h.caption && (
+                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                    {h.caption}
+                  </p>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+
         {/* ---------------- THE EXPERIENCE ---------------- */}
         {curation.editorialSummary && subject.description && (
           <section className="border-border/60 grid gap-8 border-t py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:gap-16">
@@ -313,7 +346,10 @@ export function CuratedSubjectPage({
                   } => Boolean(x.fact?.value?.trim()),
                 )
                 .map(({ note, fact }) => (
-                  <p key={fact.label} className="text-muted-foreground text-sm">
+                  <p
+                    key={`${fact.label}|${fact.value}`}
+                    className="text-muted-foreground text-sm"
+                  >
                     {note.prefix ? `${note.prefix}: ` : ""}
                     {fact.value}
                   </p>
@@ -361,7 +397,7 @@ export function CuratedSubjectPage({
                   </h3>
                   <dl className="mt-3 space-y-3">
                     {g.facts.map((f) => (
-                      <div key={f.label}>
+                      <div key={`${f.label}|${f.value}`}>
                         <dt className="text-sm font-medium">{f.label}</dt>
                         <dd className="text-muted-foreground mt-0.5 text-sm leading-relaxed">
                           {f.value}

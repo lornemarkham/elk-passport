@@ -91,6 +91,22 @@ export interface Curation {
   readonly logo?: CuratedAsset;
   /** A repeating texture behind a section. Decoration, never information. */
   readonly texture?: CuratedAsset;
+  /**
+   * **Two or three things a person needs at a glance**, each built from one
+   * Atlas fact and each keeping that fact's own qualification.
+   *
+   * `display` is a short human rendering of a value Atlas holds — "10 / hour"
+   * for *"Under a dark sky with no moon, you might catch 10 Draconid meteors
+   * per hour."* — and `caption` carries the condition that makes it true. The
+   * full sentence still appears below in its group: a tile is a way in, never
+   * a replacement for the evidence, and one may never drop a qualifier the
+   * source attached.
+   */
+  readonly highlights?: readonly {
+    readonly factLabel: string;
+    readonly display: string;
+    readonly caption?: string;
+  }[];
   readonly featuredCta?: { readonly label: string; readonly factLabel: string };
   readonly cards?: {
     readonly title: string;
@@ -295,7 +311,125 @@ const FIELD_OF_SCREAMS: Curation = {
   ],
 };
 
-const REGISTER: readonly Curation[] = [FIELD_OF_SCREAMS];
+/**
+ * **The Draconids.** An astronomy subject decides a different question from a
+ * venue event: not *should I buy a ticket* but *is tonight the night, and will
+ * I see anything*. So the page leads with when to look and what to expect, and
+ * every number keeps the condition earthsky.org attached to it.
+ *
+ * Nothing here is an astronomical claim of ours. Each tile names the fact it
+ * came from, and that fact is printed in full below it.
+ */
+const DRACONIDS: Curation = {
+  collection: OCTOBER_2026,
+  entityId: "ddf146c6-7117-4520-a9fe-8326209fd5db",
+  eyebrow: "Meteor shower",
+  heroImage: {
+    url: "https://earthsky.org/upl/2021/08/Draco-Big-Dipper-Little-Dipper-1500x1500-1-e1629087063730.jpg",
+    caption:
+      "Where to look: the radiant sits near Draco, between the Big and Little Dippers.",
+    provenance:
+      "https://earthsky.org/astronomy-essentials/everything-you-need-to-know-draconid-meteor-shower/",
+  },
+  editorialSummary:
+    "Look up on the evening of October 8. The Draconids are one of the few showers that perform best in the evening rather than before dawn, and this year the moon is nearly out of the way.",
+  highlights: [
+    {
+      factLabel: "When to watch",
+      display: "Evening of Oct 8",
+      caption: "as darkness falls",
+    },
+    {
+      factLabel: "Expected meteors at peak, under ideal conditions",
+      display: "~10 / hour",
+      caption: "under a dark sky with no moon",
+    },
+    {
+      factLabel: "Nearest moon phase",
+      display: "Almost no moon",
+      caption: "new moon on October 10",
+    },
+  ],
+  groups: [
+    {
+      id: "when-to-look",
+      title: "When to look",
+      factLabels: [
+        "When to watch",
+        "Predicted peak",
+        "Overall duration of shower",
+      ],
+    },
+    {
+      id: "conditions",
+      title: "What you can expect",
+      factLabels: [
+        "Expected meteors at peak, under ideal conditions",
+        "Nearest moon phase",
+        "Radiant",
+      ],
+    },
+  ],
+};
+
+/**
+ * **Fall Fest.** The City of West Kelowna published one strong piece of
+ * artwork and almost nothing else — no price, no activity list, no age
+ * guidance. So the page is its poster, its date, its address and a way there,
+ * and it does not pretend to know whether it is free or what is on.
+ */
+const FALL_FEST: Curation = {
+  collection: OCTOBER_2026,
+  entityId: "1a188a25-5320-4eab-9c4e-953f727682a2",
+  eyebrow: "Festival",
+  heroImage: {
+    url: "https://media-003-ca.cdn.govstack.com/westkelownacity-ca/media/voipjoka/fall-fest-6875-x-475-in.jpg?width=500&height=345&format=webp",
+    caption: "Fall Fest at Paynter's Fruit Market.",
+    provenance:
+      "https://www.westkelownacity.ca/parks-recreation-facilities/community-events",
+  },
+  editorialSummary:
+    "An afternoon at Paynter's Fruit Market, put on by the City of West Kelowna.",
+};
+
+/**
+ * **Valdy.** A concert decides on who, when, where and what a seat costs. The
+ * two prices Atlas holds become the tiers; the ticketing page's own checkbox
+ * labels — "Includes fees & charges", "Wheelchair Accessible" — are handled by
+ * the general rule that a value repeating its label states nothing, so no list
+ * here names them.
+ */
+const VALDY: Curation = {
+  collection: OCTOBER_2026,
+  entityId: "22ee5c51-7dc8-49a1-b752-d6785fda6c2b",
+  eyebrow: "SPOTLIGHT Special Presentations",
+  heroImage: {
+    url: "https://www.tourismvernon.com/sites/default/files/styles/scale_1440/public/2026-07/26-10-18-Valdy-Banner_1600x901.jpg?itok=iA4bJCYR",
+    caption: "Valdy.",
+    provenance:
+      "https://www.tourismvernon.com/events/valdy-spotlight-special-presentations",
+  },
+  editorialSummary:
+    "An evening with Valdy at the Vernon and District Performing Arts Centre.",
+  // Not `pricing`: Atlas holds both tiers under the same label — `Price =
+  // $35.00 Adult` and `Price = $33.00 Senior (60+)` — and a map keyed by
+  // label would print the first amount twice. The values already name their
+  // own tier, so a group prints both correctly and invents nothing.
+  groups: [{ id: "tickets", title: "Tickets", factLabels: ["Price"] }],
+  suppressFacts: [
+    {
+      label: "Date",
+      because: "the page prints the date and time in its own When block",
+    },
+  ],
+};
+
+const REGISTER: readonly Curation[] = [
+  FIELD_OF_SCREAMS,
+  DRACONIDS,
+  FALL_FEST,
+  VALDY,
+];
 
 /** Whether this exact entity is part of the curated launch collection. */
 export const isCurated = (entityId: string): boolean =>

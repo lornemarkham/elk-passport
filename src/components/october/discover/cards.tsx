@@ -218,7 +218,13 @@ export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
     <Link
       href={destinationFor(head) ?? "#"}
       data-testid="compact-row"
-      className="group flex items-baseline gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-[#e9e6da]/[0.05]"
+      // **Two rows that touch are one target.** Measured on the rendered page:
+      // the Draconids row ended at 2629px and the Valdy row began at 2629px —
+      // no gap, no divider — so a click aimed a few pixels low at one opened
+      // the other. Each row is now its own bounded object: a hairline between
+      // them, breathing room, a hover that covers the whole band, and a
+      // visible focus ring for anyone arriving by keyboard.
+      className="group flex items-baseline gap-4 rounded-lg border-b border-[#e9e6da]/[0.06] px-3 py-3.5 transition-colors last:border-b-0 hover:bg-[#e9e6da]/[0.06] focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"
     >
       {/* **The clock column exists only when there is a clock.**
 

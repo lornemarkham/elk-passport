@@ -16,7 +16,22 @@ import { getSubjectDetail } from "@/lib/data/atlas-repo";
 import { subjectPageView } from "@/lib/passport/subjectPage";
 import { ComposedSubjectPage } from "@/components/passport/ComposedSubject";
 import { CuratedSubjectPage } from "@/components/passport/CuratedSubject";
-import { curationFor } from "@/lib/passport/curation/october2026";
+import {
+  curatedAssets,
+  curationFor,
+} from "@/lib/passport/curation/october2026";
+import { isOctoberSubject } from "@/domain/passport/octoberContext";
+import type { SubjectPageView } from "@/lib/passport/subjectPage";
+import { currentUser } from "@/lib/auth/currentUser";
+import {
+  OctoberActions,
+  OctoberProvenance,
+  OctoberShell,
+} from "@/components/october/detail/OctoberShell";
+import { SaveToOctober } from "@/components/october/detail/SaveToOctober";
+import { actionsFor } from "@/domain/passport/detailComposition";
+import { isOctoberKind } from "@/lib/october/types";
+import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
   loadComposition,
@@ -108,16 +123,31 @@ export default async function PassportPage({ params, searchParams }: Props) {
       // the October launch collection gets the curated layout; every other
       // subject in Atlas renders exactly as it did before, from the same view.
       const curation = curationFor(id);
+      // **Context, decided from the subject rather than from how you got
+      // here.** A curated subject is October's; so is anything whose own
+      // evidence puts it inside the month, which is what Discovery surfaces.
+      // Clicking an October card used to land on a cream dossier, and a
+      // refresh used to change the product.
+      const october = isOctoberSubject(view);
+      const actions = october ? await octoberActions(view) : null;
       return (
         // The theme sits on the page wrapper, not inside the renderer, so it
         // covers the whole viewport rather than a column floating on the
         // default background.
         <main
           className="bg-background min-h-screen"
-          {...(curation ? { "data-theme": "october" } : {})}
+          {...(october ? { "data-theme": "october" } : {})}
         >
           {curator && <CuratorBar id={id} />}
-          {curation ? (
+          {october ? (
+            <OctoberShell actions={actions}>
+              {curation ? (
+                <CuratedSubjectPage view={view} curation={curation} />
+              ) : (
+                <ComposedSubjectPage view={view} october />
+              )}
+            </OctoberShell>
+          ) : curation ? (
             <CuratedSubjectPage view={view} curation={curation} />
           ) : (
             <ComposedSubjectPage view={view} />
@@ -499,5 +529,79 @@ function Section({ section }: { section: PageSection }) {
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * Ours and theirs, composed once for whichever renderer is drawing the page.
+ *
+ * Saving needs a signed-in person and a kind My October can hold; an external
+ * action needs a publisher who actually published one. Each half is absent
+ * when its evidence is, and the note appears only where there is something to
+ * be booked elsewhere.
+ */
+async function octoberActions(view: SubjectPageView) {
+  const user = await currentUser().catch(() => null);
+  const saved = user
+    ? await octoberThingsFor(user)
+        .then((things) => things.some((t) => t.entityId === view.subject.id))
+        .catch(() => false)
+    : false;
+  const external = actionsFor(view);
+  const kind = view.subject.kind;
+  const sources = view.sources.map((s) => ({
+    id: s.id,
+    url: s.url,
+    sourceType: s.sourceType,
+  }));
+  const curation = curationFor(view.subject.id);
+
+  return (
+    <>
+      <OctoberActions
+        save={
+          isOctoberKind(kind) ? (
+            <SaveToOctober
+              entityId={view.subject.id}
+              entityKind={kind}
+              name={view.subject.name}
+              startsAt={view.subject.startTime ?? null}
+              initiallySaved={saved}
+              signedIn={Boolean(user)}
+            />
+          ) : undefined
+        }
+        external={
+          external.length > 0 ? (
+            <>
+              {external.map((action) => (
+                <a
+                  key={action.href}
+                  href={action.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className={
+                    action.kind === "tickets"
+                      ? "inline-flex min-h-11 items-center rounded-full bg-[#d09a4e] px-5 text-sm font-medium text-[#1a1207] transition-opacity hover:opacity-90"
+                      : "inline-flex min-h-11 items-center rounded-full border border-[#e9e6da]/25 px-5 text-sm text-[#e9e6da]/85 transition-colors hover:border-[#d09a4e]/60 hover:text-[#f3efe4]"
+                  }
+                >
+                  {action.label}
+                </a>
+              ))}
+            </>
+          ) : undefined
+        }
+        note={
+          external.some((a) => a.kind === "tickets")
+            ? "Booking, tickets and terms are handled on their site."
+            : undefined
+        }
+      />
+      <OctoberProvenance
+        sources={sources}
+        {...(curation ? { assetCount: curatedAssets(curation).length } : {})}
+      />
+    </>
   );
 }
