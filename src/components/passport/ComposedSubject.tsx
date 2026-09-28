@@ -20,16 +20,14 @@ import {
  * date, nothing is merged between subjects, and where Atlas said *no claim I
  * hold states this day* the page says that sentence rather than "closed".
  *
- * Deliberately plain: this mission is about what the page can *say*, not what
- * it looks like. No October styling, no attraction-specific layout.
+ * Deliberately plain: the page a subject nobody has composed deserves. A
+ * subject October surfaces is arranged by `ComposedOctoberSubject` instead —
+ * same view, same helpers, October’s frame around it.
  */
 export function ComposedSubjectPage({
   view,
-  october = false,
 }: {
   readonly view: SubjectPageView;
-  /** Drawn inside October's frame, which supplies its own back link and actions. */
-  readonly october?: boolean;
 }) {
   const { subject, offerings } = view;
   // Composed from evidence, not from kind: each of these is absent when the
@@ -121,7 +119,7 @@ export function ComposedSubjectPage({
 
       {/* Only links a publisher actually published. The directions search is
           the one constructed link, and only from a stated address. */}
-      {!october && actions.length > 0 && (
+      {actions.length > 0 && (
         <div
           data-testid="detail-actions"
           className="mt-5 flex flex-wrap gap-2.5"
@@ -163,7 +161,7 @@ export function ComposedSubjectPage({
         <Offering key={offering.subject.id} offering={offering} />
       ))}
 
-      {!october && (view.offeredBy || view.partOf || view.venue) && (
+      {(view.offeredBy || view.partOf || view.venue) && (
         <Section title="Part of">
           <ul className="mt-3 flex flex-wrap gap-2">
             {[view.partOf, view.offeredBy, view.venue]
@@ -188,7 +186,7 @@ export function ComposedSubjectPage({
         </Section>
       )}
 
-      {!october && view.sources.length > 0 && (
+      {view.sources.length > 0 && (
         <Section title="Where this comes from">
           <ul className="mt-3 flex flex-col gap-2">
             {view.sources.map((source) => (

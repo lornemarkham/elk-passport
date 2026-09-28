@@ -26,7 +26,7 @@
  * Three rules, and no fourth. Each exists because the live corpus produced it:
  *
  * ```
- * already-rendered   the value restates the WHEN or the WHERE this page prints
+ * already-rendered   the value restates the WHEN, WHERE or kind this page prints
  * in-description     the value is a sentence already inside the description
  * empty              the value carries no information — a label with a colon
  * ```
@@ -42,6 +42,12 @@ export interface VisibilityContext {
   readonly when?: string;
   /** The venue line as the page renders it, e.g. "O'Keefe Ranch Historic Site, 9380 Hwy 97". */
   readonly where?: string;
+  /**
+   * The kind line above the title, e.g. "Special Events" — which is also what
+   * the Sockeye festival's `Event Category` fact says, word for word, four
+   * inches lower.
+   */
+  readonly eyebrow?: string;
   /** The description the page prints above the facts. */
   readonly description?: string;
   /** Labels a curator has placed somewhere of their own on this page. */
@@ -97,7 +103,17 @@ const MONTHS: Readonly<Record<string, string>> = {
  * states exactly one — which is what makes `Sep 25 - Nov 01, 2026` two days
  * rather than one and a fragment.
  */
-export function daysIn(text: string): ReadonlySet<string> {
+export function daysIn(
+  text: string,
+  /**
+   * The year to read a bare month-and-day as, when the text states none of its
+   * own. Only ever the year the page itself is printing: `Start — October 9 @
+   * 10:00 am` is a fact about the interval rendered right above it, and
+   * refusing to read it as 2026 left the page saying the same morning twice.
+   * Never guessed from today's date, which would quietly re-date an archive.
+   */
+  fallbackYear?: string,
+): ReadonlySet<string> {
   const days = new Set<string>();
   for (const m of text.matchAll(/(\d{4})-(\d{2})-(\d{2})/g))
     days.add(`${m[1]}-${m[2]}-${m[3]}`);
@@ -105,7 +121,7 @@ export function daysIn(text: string): ReadonlySet<string> {
   const years = [
     ...new Set([...text.matchAll(/\b(20\d{2})\b/g)].map((m) => m[1]!)),
   ];
-  const soleYear = years.length === 1 ? years[0] : undefined;
+  const soleYear = years.length === 1 ? years[0] : fallbackYear;
   const monthDay =
     /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(20\d{2}))?/gi;
   for (const m of text.matchAll(monthDay)) {
@@ -154,9 +170,17 @@ export function restates(value: string, rendered: string): boolean {
   if (v.length === 0 || r.length === 0) return false;
   if (contains(r, v) || contains(v, r)) return true;
 
-  const mine = daysIn(value);
+  const theirs = daysIn(rendered);
+  // A fact quoting a day with no year is read against the year the page
+  // prints, and only when the page prints exactly one.
+  const renderedYears = [
+    ...new Set([...rendered.matchAll(/\b(20\d{2})\b/g)].map((m) => m[1]!)),
+  ];
+  const mine = daysIn(
+    value,
+    renderedYears.length === 1 ? renderedYears[0] : undefined,
+  );
   if (mine.size > 0) {
-    const theirs = daysIn(rendered);
     const covered = theirs.size > 0 && [...mine].every((d) => theirs.has(d));
     if (covered && wordsBesidesTheDate(value) <= 2) return true;
   }
@@ -215,7 +239,8 @@ export function partitionFacts(
     }
     if (
       (context.when && restates(fact.value, context.when)) ||
-      (context.where && restates(fact.value, context.where))
+      (context.where && restates(fact.value, context.where)) ||
+      (context.eyebrow && restates(fact.value, context.eyebrow))
     ) {
       hidden.push({ ...fact, rule: "already-rendered" });
       continue;

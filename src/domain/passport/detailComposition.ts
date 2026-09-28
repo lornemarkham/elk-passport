@@ -1,8 +1,14 @@
-import type {
-  SubjectPageView,
-  SubjectView,
-  SubjectFactView,
+import {
+  formatStatedDay,
+  type SubjectPageView,
+  type SubjectView,
+  type SubjectFactView,
 } from "@/lib/passport/subjectPage";
+import { formatEventWhen } from "@/domain/experience/eventTime";
+import {
+  partitionFacts,
+  type HiddenFact,
+} from "@/domain/passport/factVisibility";
 
 /**
  * **Turning what Atlas knows into what a person is deciding.**
@@ -241,4 +247,161 @@ export const knowsWhere = (view: SubjectPageView): boolean =>
 /** Every part a person could actually attend, across offerings. */
 export function attendableParts(view: SubjectPageView): readonly SubjectView[] {
   return [...view.parts, ...view.offerings.flatMap((o) => o.parts)];
+}
+
+/**
+ * **The shape of a value decides how it is printed. Never its label.**
+ *
+ * Atlas holds two very different things under one word. `Per person — $5.00`
+ * is a row in a table. The Okanagan coffee festival's *Sessions* is four
+ * sentences about how the day is organised, and its *Summary* is the paragraph
+ * the publisher leads its own page with. Printed at the same weight, in the
+ * same `label — value` line, the paragraph becomes a wall and the page reads
+ * as a database dump.
+ *
+ * So the page asks the value what it is:
+ *
+ * ```
+ * prose     long, sentences, no table punctuation  → its own block, as written
+ * detail    everything else                        → a row in a grid
+ * ```
+ *
+ * A label test would have been faster and wrong: this corpus labels prose
+ * *Summary*, *Social Media*, *New Features* and
+ * *Visit our farm animals after the trail*, and there is no list of labels
+ * that survives the next publisher. Nothing is rewritten either way — both
+ * branches print the value exactly as Atlas holds it.
+ */
+export function looksLikeProse(value: string): boolean {
+  const text = value.trim();
+  // A short value fits on a row, whatever it is made of.
+  if (text.length < 120) return false;
+  // Table punctuation: `$15.00 | 2 & under: Free`, `Sat • October 3, 2026`.
+  if (/[|•]/.test(text)) return false;
+  // More than one break is a list of lines, not a paragraph.
+  if ((text.match(/\n/g) ?? []).length > 1) return false;
+  const words = text.split(/\s+/).length;
+  const sentences = (text.match(/[.!?](\s|$)/g) ?? []).length;
+  return words >= 20 && sentences >= 1;
+}
+
+/** One section's facts, split by the shape of what they say. */
+export function splitFactsByShape(facts: readonly SubjectFactView[]): {
+  readonly prose: readonly SubjectFactView[];
+  readonly details: readonly SubjectFactView[];
+} {
+  return {
+    prose: facts.filter((f) => looksLikeProse(f.value)),
+    details: facts.filter((f) => !looksLikeProse(f.value)),
+  };
+}
+
+/**
+ * **A heading that only repeats the subject's name is not a heading.**
+ *
+ * Several publishers in this corpus put every fact under one `<h1>` — the
+ * event's own title — so `KeyFact.category` faithfully records
+ * *"Haunted Halloween Trail at Sagebrush Ranch"* as the heading those facts
+ * sat under. It is true, and as a section title on that subject's own page it
+ * says the name twice and organises nothing.
+ *
+ * Atlas keeps it, because it is what the page said. Passport declines to print
+ * it, because the page already carries the name in its title.
+ */
+export const headingWorthPrinting = (
+  title: string | undefined,
+  subjectName: string,
+): string | undefined => {
+  if (!title?.trim()) return undefined;
+  const normal = (v: string) =>
+    v
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  return normal(title) === normal(subjectName) ? undefined : title.trim();
+};
+
+/**
+ * The interval this page prints, as one line — or nothing, where Atlas holds
+ * no dates at all.
+ *
+ * An Event answers from its own interval; anything else from the days sources
+ * stated. `timePrecision` is Atlas's word for whether a clock was stated, so a
+ * date-only claim never grows a time here.
+ */
+export function renderedWhen(view: SubjectPageView): string | undefined {
+  const { subject } = view;
+  const when = whenSummary(view);
+  if (subject.startTime) {
+    return (
+      formatEventWhen(
+        subject.startTime,
+        subject.endTime,
+        subject.timePrecision as "day" | "minute" | undefined,
+      ) ?? (when.days[0] ? formatStatedDay(when.days[0]) : undefined)
+    );
+  }
+  if (when.days.length === 0) return undefined;
+  const first = formatStatedDay(when.days[0]!);
+  return when.days.length > 1
+    ? `${first} – ${formatStatedDay(when.days[when.days.length - 1]!)}`
+    : first;
+}
+
+export interface ComposedFactSection {
+  /** The publisher's heading, where it had one worth printing. */
+  readonly title?: string;
+  /** Values shaped like paragraphs, printed as paragraphs. */
+  readonly prose: readonly SubjectFactView[];
+  /** Values shaped like rows, printed as rows. */
+  readonly details: readonly SubjectFactView[];
+}
+
+/**
+ * **What an October page prints, and what it deliberately does not.**
+ *
+ * One decision made in one place, because two parts of the page need the same
+ * answer: the body prints the sections, and the provenance drawer lists what
+ * was held back with the rule that held it. A page that hid a fact without
+ * saying so would be exactly the quiet editing this product exists to refuse.
+ *
+ * Pure, so both callers agree by construction rather than by being kept in
+ * step.
+ */
+export function composedFactSections(
+  view: SubjectPageView,
+  actions: readonly DetailAction[],
+): {
+  readonly sections: readonly ComposedFactSection[];
+  readonly hidden: readonly HiddenFact[];
+} {
+  const where = whereLine(view);
+  const when = renderedWhen(view);
+  const hidden: HiddenFact[] = [];
+
+  const sections = factSections(view, actions)
+    .map((section) => {
+      const { visible, hidden: dropped } = partitionFacts(
+        section.facts.map((f) => ({ label: f.label, value: f.value })),
+        {
+          ...(when ? { when } : {}),
+          ...(where ? { where } : {}),
+          ...(view.subject.subtype ? { eyebrow: view.subject.subtype } : {}),
+          description: view.subject.description,
+        },
+      );
+      hidden.push(...dropped);
+      const kept = section.facts.filter((fact) =>
+        visible.some((v) => v.label === fact.label && v.value === fact.value),
+      );
+      return {
+        ...(headingWorthPrinting(section.title, view.subject.name)
+          ? { title: headingWorthPrinting(section.title, view.subject.name)! }
+          : {}),
+        ...splitFactsByShape(kept),
+      };
+    })
+    .filter((s) => s.prose.length > 0 || s.details.length > 0);
+
+  return { sections, hidden };
 }

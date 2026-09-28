@@ -15,11 +15,9 @@ import { loadWorkspaceBundle } from "@/lib/knowledge/workspaceData";
 import { getSubjectDetail } from "@/lib/data/atlas-repo";
 import { subjectPageView } from "@/lib/passport/subjectPage";
 import { ComposedSubjectPage } from "@/components/passport/ComposedSubject";
+import { ComposedOctoberSubject } from "@/components/october/detail/ComposedOctoberSubject";
 import { CuratedSubjectPage } from "@/components/passport/CuratedSubject";
-import {
-  curatedAssets,
-  curationFor,
-} from "@/lib/passport/curation/october2026";
+import { curationFor } from "@/lib/passport/curation/october2026";
 import { isOctoberSubject } from "@/domain/passport/octoberContext";
 import type { SubjectPageView } from "@/lib/passport/subjectPage";
 import { currentUser } from "@/lib/auth/currentUser";
@@ -29,7 +27,10 @@ import {
   OctoberShell,
 } from "@/components/october/detail/OctoberShell";
 import { SaveToOctober } from "@/components/october/detail/SaveToOctober";
-import { actionsFor } from "@/domain/passport/detailComposition";
+import {
+  actionsFor,
+  composedFactSections,
+} from "@/domain/passport/detailComposition";
 import { isOctoberKind } from "@/lib/october/types";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { formatEventWhen } from "@/domain/experience/eventTime";
@@ -144,7 +145,7 @@ export default async function PassportPage({ params, searchParams }: Props) {
               {curation ? (
                 <CuratedSubjectPage view={view} curation={curation} />
               ) : (
-                <ComposedSubjectPage view={view} october />
+                <ComposedOctoberSubject view={view} />
               )}
             </OctoberShell>
           ) : curation ? (
@@ -598,10 +599,15 @@ async function octoberActions(view: SubjectPageView) {
             : undefined
         }
       />
-      <OctoberProvenance
-        sources={sources}
-        {...(curation ? { assetCount: curatedAssets(curation).length } : {})}
-      />
+      {/* A curated page carries its own evidence drawer, with its curated
+          media and its own held-back list. Rendering this one as well printed
+          the same summary twice on the reference page. */}
+      {!curation && (
+        <OctoberProvenance
+          sources={sources}
+          hidden={composedFactSections(view, external).hidden}
+        />
+      )}
     </>
   );
 }

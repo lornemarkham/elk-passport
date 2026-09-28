@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   actionsFor,
+  composedFactSections,
   factSections,
+  headingWorthPrinting,
+  looksLikeProse,
   officialSite,
+  splitFactsByShape,
   urlIn,
   whenSummary,
   whereLine,
@@ -203,5 +207,126 @@ describe("when", () => {
       },
     } as Partial<SubjectPageView>);
     expect(whenSummary(v).isRange).toBe(false);
+  });
+});
+
+describe("the shape of a value, not the name of its label", () => {
+  it("reads a paragraph as prose and a row as a row", () => {
+    // Both of these are real, and both are labelled by their publisher in a
+    // way that says nothing about which is which.
+    expect(
+      looksLikeProse(
+        "Roasters will be submitting varieties of coffee into the OK COFFEE FEST AWARDS. These coffees will be blind tasted by a panel of judges and the winning roasters will be able to slap that accolade on their packaging.",
+      ),
+    ).toBe(true);
+    expect(looksLikeProse("$20.00")).toBe(false);
+    expect(looksLikeProse("Laurel Packing House in Kelowna BC")).toBe(false);
+  });
+
+  it("does not mistake a long table or a list of nights for writing", () => {
+    expect(
+      looksLikeProse(
+        "$15.00 | 2 & under: Free | Group Rates Available | Season passes available at the gate for $40.00 each night of the run",
+      ),
+    ).toBe(false);
+    expect(
+      looksLikeProse(
+        "Sat • October 3, 2026 • 12:00 PM\nSun • October 4, 2026 • 12:00 PM\nFri • October 9, 2026 • 12:00 PM\nSat • October 10, 2026 • 12:00 PM",
+      ),
+    ).toBe(false);
+  });
+
+  it("splits a section into what is read and what is scanned", () => {
+    const facts = [
+      { label: "Per person", value: "$5.00" },
+      {
+        label: "Summary",
+        value:
+          "We are thrilled to welcome Honeybear, the Band to our stage on Saturday for a night of vintage soul, blues and roots music played the way it was first recorded.",
+      },
+    ];
+    const { prose, details } = splitFactsByShape(facts as never);
+    expect(prose.map((f) => f.label)).toEqual(["Summary"]);
+    expect(details.map((f) => f.label)).toEqual(["Per person"]);
+  });
+});
+
+describe("a heading has to organise something", () => {
+  it("drops a heading that only repeats the subject's own name", () => {
+    expect(
+      headingWorthPrinting(
+        "Haunted Halloween Trail at Sagebrush Ranch",
+        "Haunted Halloween Trail at Sagebrush Ranch",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("keeps a heading the publisher actually wrote", () => {
+    expect(
+      headingWorthPrinting(
+        "Eight nights only",
+        "The Black Mountain Haunted House",
+      ),
+    ).toBe("Eight nights only");
+    expect(headingWorthPrinting(undefined, "Anything")).toBeUndefined();
+  });
+});
+
+describe("what an October page prints, and what it says it held back", () => {
+  const sockeye = view({
+    subject: {
+      id: "sockeye",
+      kind: "Event",
+      name: "2026 Salute to the Sockeye Festival",
+      subtype: "Special Events",
+      description:
+        "A festival celebrating the dominant spawn of the Sockeye Salmon.",
+      startTime: "2026-10-09T17:00:00.000Z",
+      endTime: "2026-10-25T23:30:00.000Z",
+      timePrecision: "minute",
+      facts: [
+        { label: "Start", value: "October 9 @ 10:00 am", category: "Details" },
+        { label: "End", value: "October 25 @ 4:30 pm", category: "Details" },
+        {
+          label: "Event Category",
+          value: "Special Events",
+          category: "Details",
+        },
+        {
+          label: "What happens",
+          value:
+            "Interpretive guided tours run every day of the festival, and First Nations ceremonies open and close it. Volunteers walk the trails with visitors and explain what they are looking at.",
+          category: "Details",
+        },
+      ],
+      claims: [],
+      days: [],
+    },
+  } as never);
+
+  const built = composedFactSections(sockeye, []);
+
+  it("holds back a date the interval above already states, even with no year on it", () => {
+    // `October 9 @ 10:00 am` says nothing the rendered interval does not, and
+    // its year is only knowable from the interval itself.
+    const held = built.hidden.map((f) => f.label);
+    expect(held).toContain("Start");
+    expect(held).toContain("End");
+  });
+
+  it("holds back a fact that restates the kind printed above the title", () => {
+    expect(built.hidden.map((f) => f.label)).toContain("Event Category");
+  });
+
+  it("keeps everything else, and says which rule held each one back", () => {
+    const printed = built.sections.flatMap((s) => [
+      ...s.prose.map((f) => f.label),
+      ...s.details.map((f) => f.label),
+    ]);
+    expect(printed).toEqual(["What happens"]);
+    expect(built.sections[0]!.prose.map((f) => f.label)).toEqual([
+      "What happens",
+    ]);
+    for (const fact of built.hidden) expect(fact.rule).toBeTruthy();
   });
 });

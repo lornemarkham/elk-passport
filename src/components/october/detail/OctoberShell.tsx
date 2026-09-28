@@ -87,10 +87,17 @@ export function OctoberActions({
  * A count a normal reader can skip and a sceptical one can open. Removing it
  * would throw away the thing that makes any of this trustworthy; leading with
  * it makes a consumer feel they are reading an evidence audit.
+ *
+ * `hidden` is the other half of the promise. An October page prints a fact
+ * once, in the place it reads best, which means it declines to print some of
+ * what Atlas holds — `Start` and `End` under a WHEN block that already says
+ * both. Listing those here, with the rule that dropped each one, is what
+ * separates a page that composes its evidence from a page that edits it.
  */
 export function OctoberProvenance({
   sources,
   assetCount,
+  hidden = [],
 }: {
   readonly sources: readonly {
     id: string;
@@ -98,6 +105,7 @@ export function OctoberProvenance({
     sourceType?: string;
   }[];
   readonly assetCount?: number;
+  readonly hidden?: readonly { label: string; rule: string }[];
 }) {
   if (sources.length === 0) return null;
   return (
@@ -129,6 +137,27 @@ export function OctoberProvenance({
           </li>
         ))}
       </ul>
+      {hidden.length > 0 && (
+        <div className="pb-4">
+          <p className="text-xs tracking-widest text-[#e9e6da]/35 uppercase">
+            Held by Atlas, not printed above
+          </p>
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-[#e9e6da]/35">
+            Nothing is removed from Atlas. These are facts this page already
+            says somewhere it reads better.
+          </p>
+          <ul className="mt-3 flex flex-col gap-1">
+            {hidden.map((fact) => (
+              <li
+                key={`${fact.label}|${fact.rule}`}
+                className="text-xs text-[#e9e6da]/45"
+              >
+                <span className="font-medium">{fact.label}</span> — {fact.rule}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </details>
   );
 }
