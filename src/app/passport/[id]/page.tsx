@@ -15,6 +15,8 @@ import { loadWorkspaceBundle } from "@/lib/knowledge/workspaceData";
 import { getSubjectDetail } from "@/lib/data/atlas-repo";
 import { subjectPageView } from "@/lib/passport/subjectPage";
 import { ComposedSubjectPage } from "@/components/passport/ComposedSubject";
+import { CuratedSubjectPage } from "@/components/passport/CuratedSubject";
+import { curationFor } from "@/lib/passport/curation/october2026";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
   loadComposition,
@@ -101,10 +103,25 @@ export default async function PassportPage({ params, searchParams }: Props) {
   for (const kind of ["organizations", "experiences", "events"] as const) {
     const composition = await getSubjectDetail(kind, id, on).catch(() => null);
     if (composition) {
+      const view = subjectPageView(composition);
+      // **One route, one read, two arrangements.** A subject a human put in
+      // the October launch collection gets the curated layout; every other
+      // subject in Atlas renders exactly as it did before, from the same view.
+      const curation = curationFor(id);
       return (
-        <main className="bg-background min-h-screen">
+        // The theme sits on the page wrapper, not inside the renderer, so it
+        // covers the whole viewport rather than a column floating on the
+        // default background.
+        <main
+          className="bg-background min-h-screen"
+          {...(curation ? { "data-theme": "october" } : {})}
+        >
           {curator && <CuratorBar id={id} />}
-          <ComposedSubjectPage view={subjectPageView(composition)} />
+          {curation ? (
+            <CuratedSubjectPage view={view} curation={curation} />
+          ) : (
+            <ComposedSubjectPage view={view} />
+          )}
         </main>
       );
     }
