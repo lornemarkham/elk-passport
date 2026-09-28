@@ -36,6 +36,14 @@ export const OCTOBER_2026 = "october-2026-launch" as const;
 
 export interface CuratedAsset {
   readonly url: string;
+  /**
+   * How the image should meet its frame. `cover` is right for a photograph,
+   * where cropping loses only background. `contain` is for an image whose
+   * whole area carries information — a star chart cropped to a tall phone
+   * hero loses the constellation it exists to show, which is the one thing
+   * the page is for.
+   */
+  readonly fit?: "cover" | "contain";
   /** What it is, in a caption a traveller could read. */
   readonly caption: string;
   /** The page this asset was found on. Required: an asset with no source is not verified. */
@@ -326,6 +334,7 @@ const DRACONIDS: Curation = {
   eyebrow: "Meteor shower",
   heroImage: {
     url: "https://earthsky.org/upl/2021/08/Draco-Big-Dipper-Little-Dipper-1500x1500-1-e1629087063730.jpg",
+    fit: "contain",
     caption:
       "Where to look: the radiant sits near Draco, between the Big and Little Dippers.",
     provenance:

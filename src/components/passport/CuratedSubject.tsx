@@ -137,7 +137,14 @@ export function CuratedSubjectPage({
             <img
               src={curation.heroImage.url}
               alt=""
-              className="h-full w-full object-cover"
+              // A photograph may be cropped; a chart may not. The Draco chart
+              // is square and its whole area is the information — cropped into
+              // a tall phone hero it lost the constellation it exists to show.
+              className={`h-full w-full ${
+                curation.heroImage.fit === "contain"
+                  ? "object-contain object-top"
+                  : "object-cover"
+              }`}
             />
           ) : null}
           {/* Legibility, not decoration: the text below sits on footage whose

@@ -11,13 +11,17 @@ import {
   nextRelevantDay,
   upcoming,
 } from "@/domain/october/calendar";
-import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
+import { OCTOBER_AREAS } from "@/domain/october/areas";
 import { octoberNow, octoberWindow } from "@/domain/october/octoberWindow";
 import {
   collectionBySlug,
   resolveCollection,
 } from "@/domain/collections/editorial";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
+import {
+  OCTOBER_FEATURE,
+  OCTOBER_SHELVES,
+} from "@/lib/passport/curation/octoberShelves";
 import {
   byDay,
   byOctoberSpecificity,
@@ -28,9 +32,9 @@ import {
 import { BrowseMonth } from "@/components/october/discover/BrowseMonth";
 import {
   CompactRow,
+  FeatureCard,
   DiscoverCard,
   LeadCard,
-  ShelfCard,
   dayLabel,
 } from "@/components/october/discover/cards";
 
@@ -110,6 +114,19 @@ export default async function OctoberDiscoverPage() {
     octoberFrom,
   );
 
+  // **Editorial shelves, drawn only from what is genuinely on.** The register
+  // names ids; the lanes decide which of them October can still offer, and in
+  // what order. A shelf whose subjects have all finished renders nothing.
+  const everything = [...month, ...tonight, ...weekend, ...soon];
+  const unitById = new Map(everything.map((u) => [u.head.id, u]));
+  const shelves = OCTOBER_SHELVES.map((shelf) => ({
+    ...shelf,
+    units: shelf.entityIds
+      .map((id) => unitById.get(id))
+      .filter((u): u is NonNullable<typeof u> => Boolean(u)),
+  })).filter((shelf) => shelf.units.length > 0);
+  const feature = unitById.get(OCTOBER_FEATURE.entityId);
+
   const lead = leadOf(tonight);
   const alsoTonight = withoutLead(tonight).slice(0, 3);
   // A fortnight is a scannable calendar; the rest of the month is browsing,
@@ -164,6 +181,52 @@ export default async function OctoberDiscoverPage() {
           <Quiet>Nothing dated falls on the coming weekend.</Quiet>
         )}
       </section>
+
+      {/* ================================================= EDITORIAL =======
+          Between the two immediate lanes and the calendar: the shapes October
+          actually has, in different forms so the page has a rhythm rather
+          than four identical grids. Each is drawn from the same units the
+          lanes are, so nothing here can show something that is not on. */}
+      {shelves.map((shelf, index) => (
+        <section
+          key={shelf.id}
+          className="mt-16"
+          data-testid={`shelf-${shelf.id}`}
+        >
+          <LaneHead title={shelf.title} note={shelf.blurb} />
+          {index === 0 ? (
+            // The haunts get room: they are what the month is for, and they
+            // are the subjects with the strongest media.
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {shelf.units.slice(0, 4).map((unit) => (
+                <li key={unit.head.id}>
+                  <DiscoverCard unit={unit} label={shelf.title} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+              {shelf.units.slice(0, 10).map((unit) => (
+                <li key={unit.head.id} className="w-64 shrink-0 sm:w-72">
+                  <DiscoverCard unit={unit} label={shelf.title} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* The one subject October has exactly one of. A shelf of one is a
+              heading with a card under it; a feature is the honest shape. */}
+          {index === 0 && feature && (
+            <div className="mt-6">
+              <FeatureCard
+                unit={feature}
+                eyebrow={OCTOBER_FEATURE.eyebrow}
+                title={OCTOBER_FEATURE.title}
+                blurb={OCTOBER_FEATURE.blurb}
+              />
+            </div>
+          )}
+        </section>
+      ))}
 
       {/* ================================================ COMING UP ======== */}
       <section className="mt-16" data-testid="lane-coming">
@@ -229,39 +292,11 @@ export default async function OctoberDiscoverPage() {
         )}
       </section>
 
-      {/* ================================================== THEMES =========
-          **Only shelves whose membership is evidence.**
-
-          An October recommendation has to be connected to October by
-          something. An editorial collection is: a person decided those Things
-          belong. A keyword lens is not — it matches words in a description
-          over the whole corpus, with no temporal evidence of any kind.
-
-          Measured on the rendered page before this changed: of the 36 cards
-          the three lens shelves produced, **0 had October temporal evidence**.
-          What they did produce was five wineries under "Kids October",
-          "Kids snowmobile rides", and two pairs of near-duplicate bakeries.
-          Truthfully labelling that "found by matching words" made it honest
-          without making it useful, and a smaller truthful product beats a
-          larger misleading one.
-
-          The lens itself is untouched and still runs `/october/explore/[area]`,
-          where a person has asked for that specific browse. It is only not
-          allowed to make recommendations here. */}
-      <div className="mt-20 flex flex-col gap-14">
-        {curated.map(({ area, members }) =>
-          members.length > 0 ? (
-            <Shelf
-              key={area.id}
-              title={area.label}
-              note={area.line}
-              href={hrefForArea(area)}
-              items={members}
-              testid={`collection-${area.collectionSlug}`}
-            />
-          ) : null,
-        )}
-      </div>
+      {/* The editorial collection shelves that used to sit here are gone:
+          "Events & Haunts" held two subjects, both of which now lead Haunted
+          October above. A second heading over the same two cards is
+          repetition, not navigation. The collection mechanism is untouched and
+          still runs /october/explore/[area]. */}
     </main>
   );
 }
@@ -297,56 +332,5 @@ function Quiet({ children }: { readonly children: React.ReactNode }) {
     >
       {children}
     </p>
-  );
-}
-
-/**
- * A theme, as a shelf you can push along rather than a block of taxonomy
- * output. Horizontal on every width: it reads as "a way into October" instead
- * of "the rest of the result set".
- */
-function Shelf({
-  title,
-  note,
-  href,
-  items,
-  caveat,
-  testid,
-}: {
-  readonly title: string;
-  readonly note?: string;
-  readonly href: string;
-  readonly items: readonly Experience[];
-  readonly caveat?: string;
-  readonly testid?: string;
-}) {
-  return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <div className="flex flex-wrap items-baseline gap-x-3">
-          <h2 className="font-heading text-xl text-[#f3efe4]">{title}</h2>
-          {note ? <p className="text-sm text-[#e9e6da]/40">{note}</p> : null}
-        </div>
-        <Link
-          href={href}
-          className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
-        >
-          More
-        </Link>
-      </div>
-      {caveat ? (
-        <p className="mb-3 text-xs text-[#e9e6da]/25">{caveat}</p>
-      ) : null}
-      <ul
-        data-testid={testid}
-        className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6"
-      >
-        {items.slice(0, 12).map((e) => (
-          <li key={e.id}>
-            <ShelfCard experience={e} />
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

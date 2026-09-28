@@ -354,3 +354,64 @@ export function dayLabel(day: string): string {
     timeZone: "UTC",
   });
 }
+
+/**
+ * **A subject given the whole width**, used where October has exactly one of
+ * something rather than a row of them. Different in form from every card
+ * above it on purpose: a page of identical grids reads as a database however
+ * good the contents are.
+ */
+export function FeatureCard({
+  unit,
+  eyebrow,
+  title,
+  blurb,
+}: {
+  readonly unit: DiscoveryUnit;
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly blurb: string;
+}) {
+  const { head } = unit;
+  const image = src(head);
+  const when = whenLine(unit);
+  return (
+    <Link
+      href={destinationFor(head) ?? "#"}
+      data-testid="feature-card"
+      className="group relative isolate flex min-h-[22rem] items-end overflow-hidden rounded-2xl border border-[#e9e6da]/10 sm:min-h-[26rem]"
+    >
+      {image && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image}
+            alt={head.heroMedia?.alt ?? ""}
+            className="absolute inset-0 -z-10 h-full w-full object-cover opacity-70 transition-transform duration-[1200ms] group-hover:scale-[1.03]"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10"
+            style={{
+              background:
+                "linear-gradient(to top, rgba(8,7,10,0.96) 18%, rgba(8,7,10,0.55) 55%, rgba(8,7,10,0.25))",
+            }}
+          />
+        </>
+      )}
+      <div className="max-w-xl p-6 sm:p-9">
+        <p className="text-[11px] tracking-[0.3em] text-[#d09a4e] uppercase">
+          {eyebrow}
+        </p>
+        <h3 className="font-heading mt-3 text-2xl leading-tight text-balance text-[#f3efe4] sm:text-4xl">
+          {title}
+        </h3>
+        <p className="mt-3 leading-relaxed text-[#e9e6da]/70">{blurb}</p>
+        <p className="mt-4 text-sm text-[#e9e6da]/55">
+          {head.title}
+          {when ? ` · ${when}` : ""}
+        </p>
+      </div>
+    </Link>
+  );
+}
