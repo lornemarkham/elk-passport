@@ -1,4 +1,5 @@
 import type { Experience } from "@/domain/experience/types";
+import { localDay, statedDay } from "@/domain/experience/eventTime";
 
 /**
  * **When "tonight" and "this weekend" actually are.**
@@ -35,22 +36,31 @@ import type { Experience } from "@/domain/experience/types";
 
 const ZONE = "America/Vancouver";
 
-const ymd = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  timeZone: ZONE,
-});
 const weekday = new Intl.DateTimeFormat("en-CA", {
   weekday: "short",
   timeZone: ZONE,
 });
 
-/** The local calendar day an instant falls on, as `2026-10-31`. */
-export function localDay(at: Date | string): string {
-  const d = at instanceof Date ? at : new Date(at);
-  return Number.isNaN(d.getTime()) ? "" : ymd.format(d);
-}
+/**
+ * Re-exported so the surfaces that ask "what local day is it *now*" keep one
+ * import. The definition moved to `eventTime`, which owns the zone, the local
+ * day and `statedDay` together — there were three independent localisers and
+ * that is how a date-only Event came to be a day early on the cards and a day
+ * early in the buckets, separately.
+ */
+export { localDay };
+
+/**
+ * **The calendar day an Event's own timestamp means** — `statedDay`, never
+ * `localDay`.
+ *
+ * `localDay` is right for `now`, which really is an instant. It is wrong for a
+ * date-only Event, whose stored instant is UTC midnight on the date its
+ * publisher printed: localising that lands on the evening before. Every window
+ * below reads Event timestamps through here so one rule decides every bucket.
+ */
+const dayOfEvent = (experience: Experience, at: string | undefined): string =>
+  statedDay(at, experience.timePrecision);
 
 /**
  * Successive local days from `now`, anchored at midday UTC.
@@ -144,9 +154,11 @@ const DAY_MS = 86_400_000;
 /** How many local days an Event's own interval covers. */
 function spanDays(experience: Experience): number {
   if (!experience.startTime) return 0;
-  const from = Date.parse(`${localDay(experience.startTime)}T12:00:00Z`);
+  const from = Date.parse(
+    `${dayOfEvent(experience, experience.startTime)}T12:00:00Z`,
+  );
   const to = Date.parse(
-    `${localDay(experience.endTime ?? experience.startTime)}T12:00:00Z`,
+    `${dayOfEvent(experience, experience.endTime ?? experience.startTime)}T12:00:00Z`,
   );
   return Number.isNaN(from) || Number.isNaN(to)
     ? 0
@@ -160,14 +172,18 @@ const isOccasion = (experience: Experience): boolean =>
 /** The local days an Event's interval covers. */
 function eventDays(experience: Experience): readonly string[] {
   if (!experience.startTime) return [];
-  const first = Date.parse(`${localDay(experience.startTime)}T12:00:00Z`);
+  const first = Date.parse(
+    `${dayOfEvent(experience, experience.startTime)}T12:00:00Z`,
+  );
   const last = Date.parse(
-    `${localDay(experience.endTime ?? experience.startTime)}T12:00:00Z`,
+    `${dayOfEvent(experience, experience.endTime ?? experience.startTime)}T12:00:00Z`,
   );
   if (Number.isNaN(first) || Number.isNaN(last)) return [];
   const out: string[] = [];
+  // Each step is a midday-UTC anchor, so the day it names is read off UTC —
+  // these are already calendar days, not instants to be localised again.
   for (let at = first; at <= last; at += DAY_MS)
-    out.push(localDay(new Date(at)));
+    out.push(new Date(at).toISOString().slice(0, 10));
   return out;
 }
 
@@ -229,7 +245,17 @@ export function happeningTonight(
   const today = localDay(now);
   const events = dated(experiences).filter((e) => {
     // An Event that starts today is on tonight until it has finished.
-    if (localDay(e.startTime!) === today) {
+    if (dayOfEvent(e, e.startTime) === today) {
+      // **"Has it finished?" can only be asked of an event that said when.**
+      // A date-only Event's stored instant is UTC midnight on its stated date,
+      // which in this region is the evening BEFORE — so comparing it to the
+      // clock dropped every day-precision event from Tonight before the day it
+      // is on had begun. HorrorFest XVII, stated for Oct 24, was already "over"
+      // at 10 a.m. on Oct 24. A publisher who printed no time stated a whole
+      // day, and the thing is on for all of it. This is the same distinction
+      // the stated-days branch below already makes, and it is in the evidence
+      // rather than in a policy.
+      if (e.timePrecision === "day") return true;
       const ends = e.endTime ? new Date(e.endTime) : new Date(e.startTime!);
       return ends.getTime() >= now.getTime();
     }
@@ -257,7 +283,7 @@ export function happeningThisWeekend(
   const first = [...window].sort()[0] ?? today;
   const events = dated(experiences).filter(
     (e) =>
-      window.has(localDay(e.startTime!)) ||
+      window.has(dayOfEvent(e, e.startTime)) ||
       (isOccasion(e) && eventDays(e).some((day) => window.has(day))),
   );
   return [...events, ...onStatedDays(experiences, window)].sort(
@@ -281,7 +307,7 @@ export function upcoming(
   // concert. Something already under way is not coming; it is here, and
   // Tonight, This weekend and a month window are where a person meets it.
   const events = dated(experiences).filter(
-    (e) => isOccasion(e) && localDay(e.startTime!) > today,
+    (e) => isOccasion(e) && dayOfEvent(e, e.startTime) > today,
   );
   const claimed = experiences.filter((e) =>
     statedDays(e).some((day) => day > today),
@@ -305,8 +331,8 @@ export function happeningWithin(
 ): Experience[] {
   const inRange = (day: string) => day >= fromDay && day <= toDay;
   const events = dated(experiences).filter((e) => {
-    const starts = localDay(e.startTime!);
-    const ends = localDay(e.endTime ?? e.startTime!);
+    const starts = dayOfEvent(e, e.startTime);
+    const ends = dayOfEvent(e, e.endTime ?? e.startTime);
     return starts <= toDay && ends >= fromDay;
   });
   const claimed = experiences.filter((e) => statedDays(e).some(inRange));

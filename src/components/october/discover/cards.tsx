@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { destinationFor } from "@/domain/experience/destination";
-import { formatEventWhen } from "@/domain/experience/eventTime";
+import { formatEventWhen, ZONE } from "@/domain/experience/eventTime";
 import type { Experience } from "@/domain/experience/types";
 import { namesOf, type DiscoveryUnit } from "@/domain/discovery/discoveryUnits";
 import { statedDaysLine } from "@/components/october/shell/UnitCard";
@@ -27,7 +27,7 @@ import { statedDaysLine } from "@/components/october/shell/UnitCard";
 export function whenLine(unit: DiscoveryUnit): string | undefined {
   const { head } = unit;
   return (
-    formatEventWhen(head.startTime, head.endTime) ??
+    formatEventWhen(head.startTime, head.endTime, head.timePrecision) ??
     statedDaysLine(head) ??
     (unit.options.length > 0 ? statedDaysLine(unit.options[0]!) : undefined)
   );
@@ -202,13 +202,18 @@ export function DiscoverCard({
  */
 export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
   const { head } = unit;
-  const clock = head.startTime
-    ? new Intl.DateTimeFormat("en-CA", {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: "America/Vancouver",
-      }).format(new Date(head.startTime))
-    : undefined;
+  // **A clock only where a publisher stated one.** This column used to render
+  // every Event's instant, so a date-only Event — 47 of October's 86 — printed
+  // `5:00 p.m.`, which is UTC midnight read in Vancouver and a time nobody
+  // published. An em dash is the honest answer; the day is the card's own.
+  const clock =
+    head.startTime && head.timePrecision === "minute"
+      ? new Intl.DateTimeFormat("en-CA", {
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: ZONE,
+        }).format(new Date(head.startTime))
+      : undefined;
   return (
     <Link
       href={destinationFor(head) ?? "#"}

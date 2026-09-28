@@ -127,7 +127,11 @@ function InspirationCard({
   const destination = destinationFor(experience);
   const when =
     experience.kind === "Event"
-      ? formatEventWhen(experience.startTime, experience.endTime)
+      ? formatEventWhen(
+          experience.startTime,
+          experience.endTime,
+          experience.timePrecision,
+        )
       : undefined;
 
   return (

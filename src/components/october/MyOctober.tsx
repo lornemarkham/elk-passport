@@ -257,7 +257,11 @@ function ThingRow({
   const destination = experience ? destinationFor(experience) : undefined;
   const when =
     thing.entityKind === "Event" && thing.startsAt
-      ? formatEventWhen(thing.startsAt, experience?.endTime)
+      ? formatEventWhen(
+          thing.startsAt,
+          experience?.endTime,
+          experience?.timePrecision,
+        )
       : undefined;
   const where = experience?.context?.name;
 

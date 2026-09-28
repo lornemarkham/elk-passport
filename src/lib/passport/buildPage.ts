@@ -38,6 +38,12 @@ export interface EntityKnowledge {
   /** Events only. ISO 8601, as Atlas stores the instant. */
   readonly startTime?: string;
   readonly endTime?: string;
+  /**
+   * Whether the publisher stated a clock or only a date (Atlas
+   * `Event.timePrecision`). Absent means Atlas does not know, and the date is
+   * read exactly as it was before this field existed — see `statedDay`.
+   */
+  readonly timePrecision?: "day" | "minute";
   readonly geometry?: { type?: string; coordinates?: number[] };
   readonly externalIds?: readonly { system: string; id: string }[];
   readonly keyFacts?: readonly {

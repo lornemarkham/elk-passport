@@ -133,6 +133,17 @@ export interface Experience {
   startTime?: string;
   endTime?: string;
   /**
+   * **Whether `startTime` is a stated clock time or a stated calendar date.**
+   *
+   * Carried because the difference is not cosmetic: a publisher who wrote
+   * `2026-10-24` and no time has its date stored as that date at UTC midnight,
+   * and reading that instant in any zone west of Greenwich moves it to the
+   * previous day. `undefined` means Atlas does not know and must not be read as
+   * `"day"`. `statedDay` and `formatEventWhen` are the only two places that act
+   * on it.
+   */
+  timePrecision?: "day" | "minute";
+  /**
    * **What Atlas knows about when this is on**, for everything that is not an
    * Event: the days a claim names, or a weekday pattern that names none
    * (Atlas `candidateAvailability.ts`). Carried exactly as Atlas served it —

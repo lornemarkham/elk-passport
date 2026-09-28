@@ -288,7 +288,11 @@ function HeroBlock({
     entity.organizationType && entity.organizationType !== "unknown"
       ? entity.organizationType
       : (entity.placeType ?? entity.kind);
-  const when = formatEventWhen(entity.startTime, entity.endTime);
+  const when = formatEventWhen(
+    entity.startTime,
+    entity.endTime,
+    entity.timePrecision,
+  );
 
   return (
     <header className="pt-10">

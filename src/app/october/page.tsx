@@ -9,6 +9,7 @@ import {
   upcoming,
 } from "@/domain/october/calendar";
 import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
+import { octoberNow } from "@/domain/october/octoberWindow";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { reactionsFor } from "@/lib/movies/reactions";
 import { Card, Nothing, Section } from "@/components/october/shell/atoms";
@@ -51,7 +52,12 @@ export const metadata: Metadata = {
  * of personal history: where there is nothing, it says there is nothing.
  */
 export default async function OctoberHomePage() {
-  const now = new Date();
+  // The real instant is what the date line at the top says; the lanes read from
+  // a day inside October, so before the month starts this page previews it from
+  // the first rather than leading with the last weekend of September
+  // (`octoberNow`).
+  const realNow = new Date();
+  const now = octoberNow(realNow);
   const user = await currentUser();
 
   const [candidates, things, reactions] = await Promise.all([
@@ -95,7 +101,7 @@ export default async function OctoberHomePage() {
     month: "long",
     day: "numeric",
     timeZone: "America/Vancouver",
-  }).format(now);
+  }).format(realNow);
 
   return (
     <main className="mx-auto max-w-5xl px-4 pt-10 pb-24 sm:px-6">

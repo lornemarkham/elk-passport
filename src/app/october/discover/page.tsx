@@ -16,6 +16,7 @@ import {
   hrefForArea,
   throughLens,
 } from "@/domain/october/areas";
+import { octoberNow, octoberWindow } from "@/domain/october/octoberWindow";
 import {
   collectionBySlug,
   resolveCollection,
@@ -64,8 +65,14 @@ export const metadata: Metadata = {
  * everywhere else a keyword lens still runs, and those shelves say so.
  */
 export default async function OctoberDiscoverPage() {
-  const now = new Date();
+  // **An October surface reads from a day inside October.** Before the month
+  // begins `octoberNow` anchors on the first of it, so Tonight stops leading
+  // with the last Sunday in September and This weekend stops being empty
+  // because the weekend it offered had already gone. Once October is under way
+  // this is the real instant and the page advances by itself.
+  const now = octoberNow(new Date());
   const today = localDay(now);
+  const { from: octoberFrom, to: octoberTo } = octoberWindow(now);
   const candidates = await listDiscoveryCandidates().catch(() => []);
   const experiences = candidates.map(candidateToExperience);
 
@@ -89,13 +96,7 @@ export default async function OctoberDiscoverPage() {
   const weekend = units(free(happeningThisWeekend(experiences, now)));
   const soon = units(free(upcoming(experiences, now)));
   const month = units(
-    free(
-      happeningWithin(
-        experiences,
-        `${today.slice(0, 4)}-10-01`,
-        `${today.slice(0, 4)}-10-31`,
-      ),
-    ),
+    free(happeningWithin(experiences, octoberFrom, octoberTo)),
   );
 
   const lead = leadOf(tonight);
@@ -215,7 +216,7 @@ export default async function OctoberDiscoverPage() {
               <BrowseRow
                 key={unit.head.id}
                 unit={unit}
-                day={nextRelevantDay(unit.head, `${today.slice(0, 4)}-10-01`)}
+                day={nextRelevantDay(unit.head, octoberFrom)}
               />
             ))}
           </div>

@@ -29,7 +29,7 @@ export function UnitCard({
 }) {
   const { head } = unit;
   const when =
-    formatEventWhen(head.startTime, head.endTime) ??
+    formatEventWhen(head.startTime, head.endTime, head.timePrecision) ??
     statedDaysLine(head) ??
     (unit.options.length > 0 ? statedDaysLine(unit.options[0]!) : undefined);
   return (

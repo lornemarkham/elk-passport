@@ -57,7 +57,11 @@ export function ExperienceListRow({
   // Events only, and the single most important thing on the card: an event
   // without its date cannot be attended, and is indistinguishable from one
   // that already happened.
-  const when = formatEventWhen(experience.startTime, experience.endTime);
+  const when = formatEventWhen(
+    experience.startTime,
+    experience.endTime,
+    experience.timePrecision,
+  );
   // `UNKNOWN` is Atlas saying it has not classified this yet — true, and not
   // worth shouting at a traveller in a badge.
   const showTag = tag && tag.toLowerCase() !== "unknown";

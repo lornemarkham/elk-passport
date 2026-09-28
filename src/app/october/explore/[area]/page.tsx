@@ -89,7 +89,11 @@ export default async function OctoberAreaPage({
                   <Card
                     href={destinationFor(e)}
                     eyebrow={
-                      formatEventWhen(e.startTime, e.endTime) ?? e.subtype
+                      formatEventWhen(
+                        e.startTime,
+                        e.endTime,
+                        e.timePrecision,
+                      ) ?? e.subtype
                     }
                     title={e.title}
                     line={e.shortDescription}

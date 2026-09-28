@@ -77,6 +77,7 @@ export function candidateToExperience(
     duration: { minMinutes: 0, maxMinutes: 0 },
     startTime: candidate.startTime,
     endTime: candidate.endTime,
+    timePrecision: candidate.timePrecision,
     familyFriendly: false,
     petFriendly: false,
     requiresReservation: false,

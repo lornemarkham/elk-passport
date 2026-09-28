@@ -448,6 +448,13 @@ export interface DiscoveryCandidate {
   /** Events only. ISO 8601 UTC, exactly as Atlas stores the instant. */
   startTime?: string;
   endTime?: string;
+  /**
+   * **Whether the publisher stated a clock time or only a calendar date**
+   * (Atlas `Event.timePrecision`). Absent from an older Atlas, and absent on a
+   * record Atlas read before the field existed — which is a third answer, not
+   * `"day"`. See `statedDay` for what Passport does with each.
+   */
+  timePrecision?: "day" | "minute";
   /** What Atlas knows about when this is on. Absent from an older Atlas. */
   availability?: CandidateAvailability;
   /**
