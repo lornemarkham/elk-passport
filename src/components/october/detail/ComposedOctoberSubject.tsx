@@ -15,6 +15,7 @@ import {
   whenSummary,
   whereLine,
 } from "@/domain/passport/detailComposition";
+import { OctoberHero } from "./OctoberHero";
 
 /**
  * **Every October subject nobody curated.**
@@ -86,110 +87,76 @@ export function ComposedOctoberSubject({
   // bottom of the page lists exactly what this body held back.
   const { sections } = composedFactSections(view, actions);
 
-  const hasHero = Boolean(subject.imageUrl);
-
   return (
     <div className="october-page text-foreground">
-      <header
-        className={
-          hasHero
-            ? "relative isolate mt-4 flex min-h-[52vh] items-end overflow-hidden sm:min-h-[62vh]"
-            : "mx-auto w-full max-w-5xl px-5 pt-14 sm:px-8"
-        }
-      >
-        {hasHero && (
-          <div className="absolute inset-0 -z-10">
-            {/* The one image Atlas chose, never "its media". A subject whose
-                media lane picked nothing gets no picture here, which is the
-                honest hero rather than a stock pumpkin. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={subject.imageUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-            <div className="from-background via-background/70 absolute inset-0 bg-gradient-to-t to-transparent" />
-            <div className="from-background/85 absolute inset-0 bg-gradient-to-r to-transparent" />
+      <HeroFrame imageUrl={subject.imageUrl}>
+        <p className="text-primary text-xs font-semibold tracking-[0.2em] uppercase">
+          {subject.subtype ?? subject.kind}
+        </p>
+        <h1 className="mt-2 text-4xl font-bold tracking-tight text-balance sm:text-5xl">
+          {subject.name}
+        </h1>
+        {when.edition && when.edition !== subject.name && (
+          <p className="text-muted-foreground mt-2 text-base">{when.edition}</p>
+        )}
+        {subject.description && (
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl">
+            {subject.description}
+          </p>
+        )}
+        {(whenLine || where) && (
+          <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3 text-base">
+            {whenLine && (
+              <span className="flex items-center gap-2.5">
+                <CalendarDays className="text-primary h-5 w-5 shrink-0" />
+                {whenLine}
+              </span>
+            )}
+            {where && (
+              <span className="flex items-center gap-2.5">
+                <MapPin className="text-primary h-5 w-5 shrink-0" />
+                {where}
+              </span>
+            )}
+            {/* A list of nights is not an interval, and saying how many
+                  there are is the difference between "sometime in October"
+                  and a plan. */}
+            {!subject.startTime && when.days.length > 1 && !when.isRange && (
+              <span className="text-muted-foreground">
+                {when.days.length} dates
+              </span>
+            )}
           </div>
         )}
 
-        <div
-          className={
-            hasHero
-              ? "mx-auto w-full max-w-5xl px-5 pt-28 pb-10 sm:px-8 sm:pb-14"
-              : ""
-          }
-        >
-          <p className="text-primary text-xs font-semibold tracking-[0.2em] uppercase">
-            {subject.subtype ?? subject.kind}
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-balance sm:text-5xl">
-            {subject.name}
-          </h1>
-          {when.edition && when.edition !== subject.name && (
-            <p className="text-muted-foreground mt-2 text-base">
-              {when.edition}
-            </p>
-          )}
-          {subject.description && (
-            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl">
-              {subject.description}
-            </p>
-          )}
-          {(whenLine || where) && (
-            <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3 text-base">
-              {whenLine && (
-                <span className="flex items-center gap-2.5">
-                  <CalendarDays className="text-primary h-5 w-5 shrink-0" />
-                  {whenLine}
-                </span>
-              )}
-              {where && (
-                <span className="flex items-center gap-2.5">
-                  <MapPin className="text-primary h-5 w-5 shrink-0" />
-                  {where}
-                </span>
-              )}
-              {/* A list of nights is not an interval, and saying how many
-                  there are is the difference between "sometime in October"
-                  and a plan. */}
-              {!subject.startTime && when.days.length > 1 && !when.isRange && (
-                <span className="text-muted-foreground">
-                  {when.days.length} dates
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Theirs on one line, ours on the next. The publisher owns booking
+        {/* Theirs on one line, ours on the next. The publisher owns booking
               and terms; Passport owns keeping it. A single row would blur two
               different promises together. */}
-          {(actions.length > 0 || save) && (
-            <div className="mt-8 flex flex-col items-start gap-4">
-              {actions.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {actions.map((action) => (
-                    <a
-                      key={action.href}
-                      href={action.href}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className={
-                        action.kind === "tickets"
-                          ? "bg-primary text-primary-foreground inline-flex min-h-11 items-center rounded-full px-6 text-sm font-semibold transition hover:brightness-110"
-                          : "border-border/80 bg-card/60 inline-flex min-h-11 items-center rounded-full border px-5 text-sm backdrop-blur transition hover:brightness-125"
-                      }
-                    >
-                      {action.label}
-                    </a>
-                  ))}
-                </div>
-              )}
-              {save}
-            </div>
-          )}
-        </div>
-      </header>
+        {(actions.length > 0 || save) && (
+          <div className="mt-8 flex flex-col items-start gap-4">
+            {actions.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {actions.map((action) => (
+                  <a
+                    key={action.href}
+                    href={action.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={
+                      action.kind === "tickets"
+                        ? "bg-primary text-primary-foreground inline-flex min-h-11 items-center rounded-full px-6 text-sm font-semibold transition hover:brightness-110"
+                        : "border-border/80 bg-card/60 inline-flex min-h-11 items-center rounded-full border px-5 text-sm backdrop-blur transition hover:brightness-125"
+                    }
+                  >
+                    {action.label}
+                  </a>
+                ))}
+              </div>
+            )}
+            {save}
+          </div>
+        )}
+      </HeroFrame>
 
       <main className="mx-auto w-full max-w-5xl px-5 pb-2 sm:px-8">
         {parts.length > 0 && (
@@ -253,6 +220,29 @@ export function ComposedOctoberSubject({
             is how a composed page slides back into being a record dump. */}
       </main>
     </div>
+  );
+}
+
+/**
+ * The hero, with or without a picture.
+ *
+ * A subject whose media lane chose nothing leads with its own words on the
+ * dark canvas — which is a real hero, not a broken one. Where there is an
+ * image, `OctoberHero` decides how to show it from the image's own shape.
+ */
+function HeroFrame({
+  imageUrl,
+  children,
+}: {
+  readonly imageUrl?: string;
+  readonly children: ReactNode;
+}) {
+  if (imageUrl)
+    return <OctoberHero imageUrl={imageUrl}>{children}</OctoberHero>;
+  return (
+    <header className="mx-auto w-full max-w-5xl px-5 pt-14 sm:px-8">
+      {children}
+    </header>
   );
 }
 

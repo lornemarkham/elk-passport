@@ -46,6 +46,12 @@ export interface VisibilityContext {
    * The kind line above the title, e.g. "Special Events" — which is also what
    * the Sockeye festival's `Event Category` fact says, word for word, four
    * inches lower.
+   *
+   * Matched by equality, never by containment. An eyebrow is one or two
+   * words, and "Rave" appears inside *"SHREK RAVE RETURNS! Unleash your inner
+   * ogre this fall! IT'S DUMB, JUST COME HAVE FUN."* — which is the best
+   * sentence anybody wrote about that night, and a containment test quietly
+   * deleted it.
    */
   readonly eyebrow?: string;
   /** The description the page prints above the facts. */
@@ -240,7 +246,9 @@ export function partitionFacts(
     if (
       (context.when && restates(fact.value, context.when)) ||
       (context.where && restates(fact.value, context.where)) ||
-      (context.eyebrow && restates(fact.value, context.eyebrow))
+      (context.eyebrow &&
+        normalizeForComparison(fact.value) ===
+          normalizeForComparison(context.eyebrow))
     ) {
       hidden.push({ ...fact, rule: "already-rendered" });
       continue;

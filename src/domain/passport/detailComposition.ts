@@ -7,6 +7,7 @@ import {
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
   partitionFacts,
+  restates,
   type HiddenFact,
 } from "@/domain/passport/factVisibility";
 
@@ -297,20 +298,28 @@ export function splitFactsByShape(facts: readonly SubjectFactView[]): {
 }
 
 /**
- * **A heading that only repeats the subject's name is not a heading.**
+ * **A heading has to organise something it does not already say.**
  *
- * Several publishers in this corpus put every fact under one `<h1>` — the
- * event's own title — so `KeyFact.category` faithfully records
- * *"Haunted Halloween Trail at Sagebrush Ranch"* as the heading those facts
- * sat under. It is true, and as a section title on that subject's own page it
- * says the name twice and organises nothing.
+ * Two ways a real `KeyFact.category` fails as a section title, both from the
+ * live corpus:
  *
- * Atlas keeps it, because it is what the page said. Passport declines to print
- * it, because the page already carries the name in its title.
+ * ```
+ * the subject's own name    every fact under one <h1>: "Haunted Halloween
+ *                           Trail at Sagebrush Ranch", above the page whose
+ *                           title is already that
+ * the fact's own value      Caravan Farm Theatre's heading is the sentence
+ *                           "Shows nightly at 5 pm & 7 pm. No shows Mondays
+ *                           & Tuesdays." and so is the only fact beneath it
+ * the fact's own label       DATE, over one row labelled Date
+ * ```
+ *
+ * Atlas keeps both, because both are what the page said. Passport declines to
+ * print them, because the page already carries the words.
  */
 export const headingWorthPrinting = (
   title: string | undefined,
   subjectName: string,
+  facts: readonly SubjectFactView[] = [],
 ): string | undefined => {
   if (!title?.trim()) return undefined;
   const normal = (v: string) =>
@@ -318,7 +327,12 @@ export const headingWorthPrinting = (
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, " ")
       .trim();
-  return normal(title) === normal(subjectName) ? undefined : title.trim();
+  if (normal(title) === normal(subjectName)) return undefined;
+  if (facts.length > 0 && facts.every((f) => restates(f.value, title)))
+    return undefined;
+  if (facts.length > 0 && facts.every((f) => normal(f.label) === normal(title)))
+    return undefined;
+  return title.trim();
 };
 
 /**
@@ -394,10 +408,13 @@ export function composedFactSections(
       const kept = section.facts.filter((fact) =>
         visible.some((v) => v.label === fact.label && v.value === fact.value),
       );
+      const heading = headingWorthPrinting(
+        section.title,
+        view.subject.name,
+        kept,
+      );
       return {
-        ...(headingWorthPrinting(section.title, view.subject.name)
-          ? { title: headingWorthPrinting(section.title, view.subject.name)! }
-          : {}),
+        ...(heading ? { title: heading } : {}),
         ...splitFactsByShape(kept),
       };
     })

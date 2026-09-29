@@ -10,7 +10,7 @@ import {
   whenSummary,
   whereLine,
 } from "@/domain/passport/detailComposition";
-import { partitionFacts } from "@/domain/passport/factVisibility";
+import { partitionFacts, restates } from "@/domain/passport/factVisibility";
 import {
   curatedAssets,
   placedFactLabels,
@@ -122,46 +122,82 @@ export function CuratedSubjectPage({
     .filter((c): c is typeof c & { body: string } => Boolean(c.body));
 
   const assets = curatedAssets(curation);
+  /** Whether anything was printed between the hero and the foot of the page. */
+  const bodyPrinted =
+    cards.length > 0 ||
+    tiers.length > 0 ||
+    groups.length > 0 ||
+    visible.length > 0 ||
+    highlights.length > 0;
+  // A flyer is not a backdrop. Video always wins the hero, because a video is
+  // never a poster.
+  const poster = !curation.heroVideo && curation.heroImage?.fit === "panel";
   const sourceCount = view.sources?.length ?? 0;
 
   return (
     <div className="october-page text-foreground">
-      {/* ---------------- HERO ---------------- */}
-      <header className="relative isolate flex min-h-[78vh] items-end overflow-hidden sm:min-h-[86vh]">
-        <div className="absolute inset-0 -z-10">
-          {curation.heroVideo ? (
-            <video
-              className="october-hero-video h-full w-full object-cover"
-              src={curation.heroVideo.url}
-              poster={curation.heroImage?.url}
-              autoPlay
-              muted
-              loop
-              playsInline
-              aria-label={curation.heroVideo.caption}
-            />
-          ) : curation.heroImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
+      {/* ---------------- HERO ----------------
+          A poster stands beside the title; everything else sits behind it.
+          See `CuratedAsset.fit`. */}
+      <header
+        className={
+          poster
+            ? "mx-auto grid w-full max-w-6xl items-center gap-8 px-6 pt-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-14 lg:px-10"
+            : "relative isolate flex min-h-[78vh] items-end overflow-hidden sm:min-h-[86vh]"
+        }
+      >
+        {poster && (
+          <div className="october-edge border-border/60 bg-card order-2 min-w-0 overflow-hidden rounded-2xl border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={curation.heroImage.url}
-              alt=""
-              // A photograph may be cropped; a chart may not. The Draco chart
-              // is square and its whole area is the information — cropped into
-              // a tall phone hero it lost the constellation it exists to show.
-              className={`h-full w-full ${
-                curation.heroImage.fit === "contain"
-                  ? "object-contain object-top"
-                  : "object-cover"
-              }`}
+              src={curation.heroImage!.url}
+              alt={curation.heroImage!.caption}
+              className="h-auto w-full object-contain"
             />
-          ) : null}
-          {/* Legibility, not decoration: the text below sits on footage whose
+          </div>
+        )}
+        {!poster && (
+          <div className="absolute inset-0 -z-10">
+            {curation.heroVideo ? (
+              <video
+                className="october-hero-video h-full w-full object-cover"
+                src={curation.heroVideo.url}
+                poster={curation.heroImage?.url}
+                autoPlay
+                muted
+                loop
+                playsInline
+                aria-label={curation.heroVideo.caption}
+              />
+            ) : curation.heroImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={curation.heroImage.url}
+                alt=""
+                // A photograph may be cropped; a chart may not. The Draco chart
+                // is square and its whole area is the information — cropped into
+                // a tall phone hero it lost the constellation it exists to show.
+                className={`h-full w-full ${
+                  curation.heroImage.fit === "contain"
+                    ? "object-contain object-top"
+                    : "object-cover"
+                }`}
+              />
+            ) : null}
+            {/* Legibility, not decoration: the text below sits on footage whose
                 brightness nobody controls. */}
-          <div className="from-background via-background/70 absolute inset-0 bg-gradient-to-t to-transparent" />
-          <div className="from-background/90 absolute inset-0 bg-gradient-to-r to-transparent" />
-        </div>
+            <div className="from-background via-background/70 absolute inset-0 bg-gradient-to-t to-transparent" />
+            <div className="from-background/90 absolute inset-0 bg-gradient-to-r to-transparent" />
+          </div>
+        )}
 
-        <div className="mx-auto w-full max-w-6xl px-6 pt-32 pb-14 sm:pb-20 lg:px-10">
+        <div
+          className={
+            poster
+              ? "order-1 min-w-0"
+              : "mx-auto w-full max-w-6xl px-6 pt-32 pb-14 sm:pb-20 lg:px-10"
+          }
+        >
           {curation.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -258,17 +294,24 @@ export function CuratedSubjectPage({
           </section>
         )}
 
-        {/* ---------------- THE EXPERIENCE ---------------- */}
-        {curation.editorialSummary && subject.description && (
-          <section className="border-border/60 grid gap-8 border-t py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:gap-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              The experience
-            </h2>
-            <p className="text-lg leading-relaxed lg:text-xl">
-              {subject.description}
-            </p>
-          </section>
-        )}
+        {/* ---------------- THE EXPERIENCE ----------------
+            A lead written from Atlas's own sentence sometimes *is* Atlas's own
+            sentence. Fall Fest printed "An afternoon at Paynter's Fruit
+            Market, put on by the City of West Kelowna" and then, under a
+            heading, "A festival event hosted by the City of West Kelowna at
+            Paynter's Fruit Market" — one fact, twice, looking like two. */}
+        {curation.editorialSummary &&
+          subject.description &&
+          !restates(subject.description, curation.editorialSummary) && (
+            <section className="border-border/60 grid gap-8 border-t py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:gap-16">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                The experience
+              </h2>
+              <p className="text-lg leading-relaxed lg:text-xl">
+                {subject.description}
+              </p>
+            </section>
+          )}
 
         {/* ---------------- CARDS (the mazes) ---------------- */}
         {cards.length > 0 && (
@@ -450,8 +493,12 @@ export function CuratedSubjectPage({
           </section>
         )}
 
-        {/* ---------------- WHERE ---------------- */}
-        {where && (
+        {/* ---------------- WHERE ----------------
+            Repeated at the foot of a page somebody has scrolled — not on a
+            page that ends where it began. Fall Fest holds no facts, so its
+            "Where" sat two inches under the identical line in the hero, with
+            the third copy of Directions in it. */}
+        {where && bodyPrinted && (
           <section className="border-border/60 border-t py-14">
             <SectionHeading title="Where" />
             <div className="october-edge border-border/60 bg-card mt-8 flex flex-wrap items-center justify-between gap-6 rounded-2xl border p-6">
@@ -542,7 +589,10 @@ export function CuratedSubjectPage({
                 <ul className="mt-3 space-y-1">
                   {hidden.map((f) => (
                     <li
-                      key={`${f.label}-${f.rule}`}
+                      // Two facts can share a label and a rule — a ticketing
+                      // page states `Price` once per tier — so the value is
+                      // part of what makes this row itself.
+                      key={`${f.label}|${f.value}|${f.rule}`}
                       className="text-muted-foreground text-xs"
                     >
                       <span className="font-medium">{f.label}</span> — {f.rule}

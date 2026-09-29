@@ -111,7 +111,11 @@ export function OctoberProvenance({
     sourceType?: string;
   }[];
   readonly assetCount?: number;
-  readonly hidden?: readonly { label: string; rule: string }[];
+  readonly hidden?: readonly {
+    label: string;
+    value: string;
+    rule: string;
+  }[];
 }) {
   if (sources.length === 0) return null;
   return (
@@ -155,7 +159,7 @@ export function OctoberProvenance({
           <ul className="mt-3 flex flex-col gap-1">
             {hidden.map((fact) => (
               <li
-                key={`${fact.label}|${fact.rule}`}
+                key={`${fact.label}|${fact.value}|${fact.rule}`}
                 className="text-xs text-[#e9e6da]/45"
               >
                 <span className="font-medium">{fact.label}</span> — {fact.rule}

@@ -600,7 +600,10 @@ function octoberFoot(
 
   return (
     <>
-      {hasBody && (external.length > 0 || save) && (
+      {/* Only where the publisher has somewhere to send a decided person.
+          A box holding one Save button and an empty rule under it is the
+          empty-container version of consistency: the hero already has it. */}
+      {hasBody && external.length > 0 && (
         <OctoberActions
           save={save}
           external={

@@ -37,13 +37,22 @@ export const OCTOBER_2026 = "october-2026-launch" as const;
 export interface CuratedAsset {
   readonly url: string;
   /**
-   * How the image should meet its frame. `cover` is right for a photograph,
-   * where cropping loses only background. `contain` is for an image whose
-   * whole area carries information — a star chart cropped to a tall phone
-   * hero loses the constellation it exists to show, which is the one thing
-   * the page is for.
+   * How the image should meet its frame.
+   *
+   * ```
+   * cover    a photograph; cropping it loses only background
+   * contain  a diagram, shown whole behind the title — a star chart cropped
+   *          to a tall phone hero loses the constellation it exists to show
+   * panel    a poster, stood beside the title rather than behind it
+   * ```
+   *
+   * `panel` exists because a publisher's flyer is not a backdrop: it carries
+   * its own headline, its own hours and its own prices, and type laid over it
+   * produces two headlines arguing. Where a subject's poster is most of what
+   * anybody knows about it, showing it whole and unobstructed is not
+   * decoration — it is the content.
    */
-  readonly fit?: "cover" | "contain";
+  readonly fit?: "cover" | "contain" | "panel";
   /** What it is, in a caption a traveller could read. */
   readonly caption: string;
   /** The page this asset was found on. Required: an asset with no source is not verified. */
@@ -393,12 +402,20 @@ const FALL_FEST: Curation = {
   eyebrow: "Festival",
   heroImage: {
     url: "https://media-003-ca.cdn.govstack.com/westkelownacity-ca/media/voipjoka/fall-fest-6875-x-475-in.jpg?width=500&height=345&format=webp",
+    // The City's own flyer, and — since Atlas holds no key fact for this
+    // event — most of what anybody can actually learn about the afternoon:
+    // the pumpkin patch, the mini farmers market, the apple stamping, the
+    // hours. Behind the title it was wallpaper with words in it.
+    fit: "panel",
     caption: "Fall Fest at Paynter's Fruit Market.",
     provenance:
       "https://www.westkelownacity.ca/parks-recreation-facilities/community-events",
   },
-  editorialSummary:
-    "An afternoon at Paynter's Fruit Market, put on by the City of West Kelowna.",
+  // No `editorialSummary`. The one that was here — "An afternoon at Paynter's
+  // Fruit Market, put on by the City of West Kelowna" — was Atlas's own
+  // sentence in different words, so the page led with it and then printed the
+  // original under a heading: one fact, twice, looking like two. A lead is
+  // worth writing when it says something the description does not.
 };
 
 /**

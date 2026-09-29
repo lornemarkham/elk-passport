@@ -261,6 +261,43 @@ describe("a heading has to organise something", () => {
     ).toBeUndefined();
   });
 
+  it("drops a heading that is the sentence the fact under it already says", () => {
+    // Caravan Farm Theatre puts one sentence over one fact, so the page
+    // printed it twice at two weights.
+    expect(
+      headingWorthPrinting(
+        "Shows nightly at 5 pm & 7 pm. No shows Mondays & Tuesdays.",
+        "The Fall of the House of Usher",
+        [
+          {
+            label: "Shows",
+            value: "Shows nightly at 5 pm & 7 pm. No shows Mondays & Tuesdays.",
+          },
+        ] as never,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("drops a heading that is the label of the row under it", () => {
+    expect(
+      headingWorthPrinting("Date", "The Fall of the House of Usher", [
+        { label: "Date", value: "Sep 23 - Oct 4, 2026" },
+      ] as never),
+    ).toBeUndefined();
+  });
+
+  it("keeps a heading that organises facts it does not restate", () => {
+    expect(
+      headingWorthPrinting(
+        "Eight nights only",
+        "The Black Mountain Haunted House",
+        [
+          { label: "Pick your night", value: "Fri, Oct 16 6pm to 10pm" },
+        ] as never,
+      ),
+    ).toBe("Eight nights only");
+  });
+
   it("keeps a heading the publisher actually wrote", () => {
     expect(
       headingWorthPrinting(
@@ -312,6 +349,33 @@ describe("what an October page prints, and what it says it held back", () => {
     const held = built.hidden.map((f) => f.label);
     expect(held).toContain("Start");
     expect(held).toContain("End");
+  });
+
+  it("keeps a sentence that merely contains the kind word", () => {
+    // "Rave" is inside this, and it is the only thing anybody wrote about the
+    // night. An eyebrow matches by equality or not at all.
+    const shrek = view({
+      subject: {
+        id: "shrek",
+        kind: "Event",
+        name: "Shrek Rave Swamp-O-Ween",
+        subtype: "Rave",
+        description:
+          "A fun event where attendees can unleash their inner ogre.",
+        facts: [
+          {
+            label: "Summary",
+            value:
+              "SHREK RAVE RETURNS! Unleash your inner ogre this fall! IT'S DUMB, JUST COME HAVE FUN. WHO CARES. COOL IS DEAD.",
+          },
+        ],
+        claims: [],
+        days: [],
+      },
+    } as never);
+    const { sections, hidden } = composedFactSections(shrek, []);
+    expect(hidden).toEqual([]);
+    expect(sections[0]!.details.map((f) => f.label)).toEqual(["Summary"]);
   });
 
   it("holds back a fact that restates the kind printed above the title", () => {
