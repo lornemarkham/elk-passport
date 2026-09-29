@@ -48,9 +48,17 @@ import {
 export function CuratedSubjectPage({
   view,
   curation,
+  save,
 }: {
   view: SubjectPageView;
   curation: Curation;
+  /**
+   * Save to My October. Drawn by the route, placed here — at the end of the
+   * hero, on its own line under the publisher's buttons — because every
+   * October subject puts it in the same place, however different the page
+   * above it looks.
+   */
+  save?: React.ReactNode;
 }) {
   const { subject } = view;
   const actions = actionsFor(view);
@@ -217,6 +225,11 @@ export function CuratedSubjectPage({
               </a>
             ))}
           </div>
+
+          {/* Ours, under theirs. Booking is the publisher's; keeping it is
+              this product's, and a person should not have to reach the foot
+              of a long page to find that out. */}
+          {save && <div className="mt-5">{save}</div>}
         </div>
       </header>
 

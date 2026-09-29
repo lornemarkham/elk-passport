@@ -130,7 +130,10 @@ export default async function PassportPage({ params, searchParams }: Props) {
       // Clicking an October card used to land on a cream dossier, and a
       // refresh used to change the product.
       const october = isOctoberSubject(view);
-      const actions = october ? await octoberActions(view) : null;
+      const save = october ? await saveControl(view) : null;
+      const actions = october
+        ? octoberFoot(view, Boolean(curation), save)
+        : null;
       return (
         // The theme sits on the page wrapper, not inside the renderer, so it
         // covers the whole viewport rather than a column floating on the
@@ -143,9 +146,13 @@ export default async function PassportPage({ params, searchParams }: Props) {
           {october ? (
             <OctoberShell actions={actions}>
               {curation ? (
-                <CuratedSubjectPage view={view} curation={curation} />
+                <CuratedSubjectPage
+                  view={view}
+                  curation={curation}
+                  save={save}
+                />
               ) : (
-                <ComposedOctoberSubject view={view} />
+                <ComposedOctoberSubject view={view} save={save} />
               )}
             </OctoberShell>
           ) : curation ? (
@@ -534,46 +541,69 @@ function Section({ section }: { section: PageSection }) {
 }
 
 /**
- * Ours and theirs, composed once for whichever renderer is drawing the page.
+ * **Save to My October, drawn once and placed by the page.**
  *
- * Saving needs a signed-in person and a kind My October can hold; an external
- * action needs a publisher who actually published one. Each half is absent
- * when its evidence is, and the note appears only where there is something to
- * be booked elsewhere.
+ * Saving needs a signed-in person and a kind My October can actually hold, so
+ * this is absent where either is. Everything else about it — where it sits,
+ * what it sits beside — belongs to the renderer, because the hero of a
+ * bespoke experience and the hero of a composed one look nothing alike and
+ * still have to put this control in the same place.
  */
-async function octoberActions(view: SubjectPageView) {
+async function saveControl(view: SubjectPageView) {
+  const kind = view.subject.kind;
+  if (!isOctoberKind(kind)) return null;
   const user = await currentUser().catch(() => null);
   const saved = user
     ? await octoberThingsFor(user)
         .then((things) => things.some((t) => t.entityId === view.subject.id))
         .catch(() => false)
     : false;
+  return (
+    <SaveToOctober
+      entityId={view.subject.id}
+      entityKind={kind}
+      name={view.subject.name}
+      startsAt={view.subject.startTime ?? null}
+      initiallySaved={saved}
+      signedIn={Boolean(user)}
+    />
+  );
+}
+
+/**
+ * **The foot of an October page: what to do next, and where it all came from.**
+ *
+ * Both halves are repeated deliberately. Somebody who has just read four
+ * paragraphs about a haunted house has scrolled a long way from the hero, and
+ * "now what" is a fair question to answer twice. The two Save buttons share
+ * one state, so they can never disagree about whether it is kept.
+ *
+ * It appears only where there is a page to have read. A subject Atlas knows
+ * one sentence about ends at its hero, and a person who has not moved should
+ * not be handed the same two buttons again three inches lower — that is the
+ * empty-container version of consistency, which is worse than none.
+ */
+function octoberFoot(
+  view: SubjectPageView,
+  curated: boolean,
+  save: React.ReactNode,
+) {
   const external = actionsFor(view);
-  const kind = view.subject.kind;
-  const sources = view.sources.map((s) => ({
-    id: s.id,
-    url: s.url,
-    sourceType: s.sourceType,
-  }));
-  const curation = curationFor(view.subject.id);
+  const { sections, hidden } = composedFactSections(view, external);
+  // Curated pages are curated precisely because they have a great deal to
+  // show; a composed one has a body when Atlas gave it something to put there.
+  const hasBody =
+    curated ||
+    sections.length > 0 ||
+    view.parts.length > 0 ||
+    view.offerings.length > 0;
 
   return (
     <>
-      <OctoberActions
-        save={
-          isOctoberKind(kind) ? (
-            <SaveToOctober
-              entityId={view.subject.id}
-              entityKind={kind}
-              name={view.subject.name}
-              startsAt={view.subject.startTime ?? null}
-              initiallySaved={saved}
-              signedIn={Boolean(user)}
-            />
-          ) : undefined
-        }
-        external={
-          external.length > 0 ? (
+      {hasBody && (external.length > 0 || save) && (
+        <OctoberActions
+          save={save}
+          external={
             <>
               {external.map((action) => (
                 <a
@@ -591,21 +621,25 @@ async function octoberActions(view: SubjectPageView) {
                 </a>
               ))}
             </>
-          ) : undefined
-        }
-        note={
-          external.some((a) => a.kind === "tickets")
-            ? "Booking, tickets and terms are handled on their site."
-            : undefined
-        }
-      />
+          }
+          note={
+            external.some((a) => a.kind === "tickets")
+              ? "Booking, tickets and terms are handled on their site."
+              : undefined
+          }
+        />
+      )}
       {/* A curated page carries its own evidence drawer, with its curated
           media and its own held-back list. Rendering this one as well printed
           the same summary twice on the reference page. */}
-      {!curation && (
+      {!curated && (
         <OctoberProvenance
-          sources={sources}
-          hidden={composedFactSections(view, external).hidden}
+          sources={view.sources.map((s) => ({
+            id: s.id,
+            url: s.url,
+            ...(s.sourceType ? { sourceType: s.sourceType } : {}),
+          }))}
+          hidden={hidden}
         />
       )}
     </>

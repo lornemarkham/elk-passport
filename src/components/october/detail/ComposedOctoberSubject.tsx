@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 import {
@@ -60,7 +61,19 @@ import {
  * page decides not to print are listed, by rule, in the provenance drawer at
  * the bottom rather than quietly dropped.
  */
-export function ComposedOctoberSubject({ view }: { view: SubjectPageView }) {
+export function ComposedOctoberSubject({
+  view,
+  save,
+}: {
+  readonly view: SubjectPageView;
+  /**
+   * Save to My October, drawn by the route because it needs the session.
+   * It sits at the end of the hero on every October subject, bespoke or
+   * composed, so a person never has to find out how long a page is before
+   * they can keep the thing it is about.
+   */
+  readonly save?: ReactNode;
+}) {
   const { subject } = view;
   const actions = actionsFor(view);
   const where = whereLine(view);
@@ -145,6 +158,34 @@ export function ComposedOctoberSubject({ view }: { view: SubjectPageView }) {
                   {when.days.length} dates
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Theirs on one line, ours on the next. The publisher owns booking
+              and terms; Passport owns keeping it. A single row would blur two
+              different promises together. */}
+          {(actions.length > 0 || save) && (
+            <div className="mt-8 flex flex-col items-start gap-4">
+              {actions.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {actions.map((action) => (
+                    <a
+                      key={action.href}
+                      href={action.href}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={
+                        action.kind === "tickets"
+                          ? "bg-primary text-primary-foreground inline-flex min-h-11 items-center rounded-full px-6 text-sm font-semibold transition hover:brightness-110"
+                          : "border-border/80 bg-card/60 inline-flex min-h-11 items-center rounded-full border px-5 text-sm backdrop-blur transition hover:brightness-125"
+                      }
+                    >
+                      {action.label}
+                    </a>
+                  ))}
+                </div>
+              )}
+              {save}
             </div>
           )}
         </div>

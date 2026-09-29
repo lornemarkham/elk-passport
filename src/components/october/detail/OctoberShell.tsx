@@ -65,10 +65,16 @@ export function OctoberActions({
       className="mx-auto mt-14 max-w-5xl px-5 sm:px-8"
     >
       <div className="rounded-2xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-3">{save}</div>
+        {save && (
+          <div className="flex flex-wrap items-center gap-3">{save}</div>
+        )}
         {external && (
           <>
-            <div className="mt-5 border-t border-[#e9e6da]/10 pt-5">
+            <div
+              className={
+                save ? "mt-5 border-t border-[#e9e6da]/10 pt-5" : undefined
+              }
+            >
               {note && <p className="mb-3 text-sm text-[#e9e6da]/45">{note}</p>}
               <div className="flex flex-wrap items-center gap-3">
                 {external}

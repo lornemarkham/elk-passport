@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Check, Heart, Loader2 } from "lucide-react";
 import type { OctoberKind } from "@/lib/october/types";
 
@@ -27,6 +27,33 @@ import type { OctoberKind } from "@/lib/october/types";
  * that blurred those two would be the one place this product could mislead
  * somebody about who they are dealing with.
  */
+/**
+ * **One saved state, however many buttons the page draws.**
+ *
+ * A long October subject offers Save at the top, where somebody decides
+ * quickly, and again at the foot, where somebody decides after reading. They
+ * are two controls for one fact: two `useState`s would let the page show
+ * *Saved* at the top and *Save* at the bottom at the same moment, which is a
+ * page lying about what it just did.
+ *
+ * Deliberately not a context or a store module — it is one boolean per
+ * subject, read by the only component that can change it.
+ */
+const savedByEntity = new Map<string, boolean>();
+const listeners = new Set<() => void>();
+
+function publishSaved(entityId: string, saved: boolean) {
+  savedByEntity.set(entityId, saved);
+  for (const listener of listeners) listener();
+}
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
 export function SaveToOctober({
   entityId,
   entityKind,
@@ -42,7 +69,11 @@ export function SaveToOctober({
   readonly initiallySaved?: boolean;
   readonly signedIn: boolean;
 }) {
-  const [saved, setSaved] = useState(initiallySaved);
+  const saved = useSyncExternalStore(
+    subscribe,
+    () => savedByEntity.get(entityId) ?? initiallySaved,
+    () => initiallySaved,
+  );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -76,7 +107,7 @@ export function SaveToOctober({
             }),
       });
       if (!response.ok) throw new Error(String(response.status));
-      setSaved((was) => !was);
+      publishSaved(entityId, !saved);
     } catch {
       // Said plainly rather than swallowed: a save that silently failed would
       // send somebody back for a thing that was never kept.
