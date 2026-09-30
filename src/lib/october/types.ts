@@ -2,9 +2,10 @@
  * What a row in My October points at.
  *
  * Five of these name an Atlas entity. `"Movie"` names an id in Passport's own
- * curated catalogue — **not an Atlas ontology change** (bible §9.2). A film
- * watched in October belongs in the record of that October beside a pumpkin
- * patch, and where movies eventually live as knowledge is still open.
+ * hand-authored catalogue (`lib/movies/catalogue.ts`) — **not an Atlas
+ * ontology change** (bible §9.2). A film watched in October belongs in the
+ * record of that October beside a pumpkin patch, and where movies eventually
+ * live as knowledge is still open.
  */
 export type OctoberKind =
   "Place" | "Organization" | "Activity" | "Event" | "Experience" | "Movie";
@@ -23,15 +24,17 @@ export interface OctoberThing {
 /**
  * The kinds My October can actually store.
  *
- * This list and the column's check constraint say the same thing, and they
- * have to: a kind named here but refused there is a control that fails at the
- * database, which is why `Experience` waited for the migration
- * (`202609281400`) rather than being added to satisfy a page.
+ * **This list and the column's check constraint say the same thing, and they
+ * have to.** A kind named here but refused there is a control that fails at
+ * the database; a kind a page *writes* but neither names is worse, because it
+ * fails at this guard with a 400 and the page has already said it worked.
  *
- * `Movie` is in the union above and deliberately **not** here. Passport means
- * to keep a film in October's record one day, but nothing writes one through
- * this path today and the column does not accept it. Widening this is a schema
- * change, not a type change.
+ * Both have happened. `Experience` waited for its migration rather than being
+ * added to satisfy a page. `Movie` went the other way: Movie Night has called
+ * `wantToDo({ entityKind: "Movie" })` since 2026-09-22 and every one of those
+ * calls was refused here, while the screen behind the toast read *"It's in
+ * your October."* Any change to this array is a change to
+ * `passport_october_things`, in both directions.
  *
  * Lives here rather than in `octoberThings` because that module is
  * `server-only` and the control that must ask this question is a client
@@ -46,6 +49,10 @@ export const OCTOBER_KINDS: readonly OctoberKind[] = [
   // October's two flagship haunts are Experiences, so without this the
   // reference page was the one page that could not offer to keep itself.
   "Experience",
+  // Added 2026-09-30 with `202609301000_october_things_movie`. My October is
+  // what somebody means to experience this October, and a film on the sofa on
+  // the 12th is one of those.
+  "Movie",
 ];
 
 export const isOctoberKind = (v: unknown): v is OctoberKind =>

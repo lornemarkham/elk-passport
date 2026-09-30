@@ -62,7 +62,6 @@ export default async function MyOctoberPage() {
 
   return (
     <MyOctober
-      displayName={user.displayName}
       things={things}
       experiences={experiences}
       reactions={reactions}

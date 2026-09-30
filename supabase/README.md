@@ -101,6 +101,30 @@ Supabase's own `auth` schema (`auth.users`, `auth.uid()`) and the standard
 `anon`, `authenticated` and `service_role` roles, which every Supabase project
 has.
 
+## Where the baseline is already out of date
+
+`passport_october_things.entity_kind` has been rewritten twice since the
+capture, both times by a migration in **Atlas's** chain, because that is the
+repository that owns this project's history (hazard 1 above). The baseline
+records the constraint as it stood on 2026-09-27 and must not be edited, so
+the current list is here instead:
+
+| When       | Migration                                      | `entity_kind` after it                                      |
+| ---------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| 2026-09-27 | _(the baseline's capture)_                     | Place, Organization, Activity, Event, Movie                 |
+| 2026-09-28 | `atlas 202609281400_october_things_experience` | Place, Organization, Activity, Event, **Experience**        |
+| 2026-09-30 | `atlas 202609301000_october_things_movie`      | Place, Organization, Activity, Event, Experience, **Movie** |
+
+The middle row is the hazard made real. `Movie` had been added to the live
+check by hand, outside both chains; the Experience migration rebuilt the list
+from the previous _migration_ rather than from `pg_get_constraintdef`, and
+dropped it again without anyone noticing. Passport's own `OCTOBER_KINDS`
+(`src/lib/october/types.ts`) is the other half of this contract and is tested
+against this table's list — see `src/lib/october/types.test.ts`.
+
+**Open:** these files say this table is Passport's and every statement that
+has ever changed it lives in Atlas. One of those two things should move.
+
 ## How to add a Passport schema change from here on
 
 A new file in `migrations/`, named `<UTC timestamp>_<what it does>.sql`, holding

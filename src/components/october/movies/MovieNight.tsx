@@ -53,7 +53,16 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
   const [fear, setFear] = useState<Fear | null>(null);
   const [chosen, setChosen] = useState<Film | null>(null);
   const [seed, setSeed] = useState(0);
-  const [busy, setBusy] = useState(false);
+  /**
+   * **What actually happened to the film**, rather than whether a request is
+   * in flight.
+   *
+   * `busy` could only say "waiting" or "not waiting", so a refused save landed
+   * on the same sentence as a successful one — *"It's in your October."* —
+   * with a toast underneath it saying the opposite. The panel now reads the
+   * outcome, and `null` is the visitor who was never keeping anything.
+   */
+  const [kept, setKept] = useState<"keeping" | "kept" | "failed" | null>(null);
 
   /** Films they have already told us about — a shortlist should move on. */
   const seen = useMemo(
@@ -68,9 +77,10 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
   async function commit(film: Film) {
     setChosen(film);
     setStep("committed");
+    setKept(null);
     if (!signedIn) return;
 
-    setBusy(true);
+    setKept("keeping");
     try {
       // The same October everything else goes into. Movie Night does not
       // invent a second place to keep things.
@@ -79,14 +89,14 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
         entityKind: "Movie",
         name: `${film.title} (${film.year})`,
       });
+      setKept("kept");
     } catch (error) {
+      setKept("failed");
       toast.error(
         isSignedOut(error)
           ? "Your session ended. Sign in again to keep this."
           : "Couldn't add that to your October.",
       );
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -208,12 +218,19 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
               <p className="mt-5 max-w-md leading-relaxed text-[#e9e6da]/75">
                 {chosen.line}
               </p>
-              <p className="mt-8 text-sm text-[#e9e6da]/45">
-                {signedIn
-                  ? busy
-                    ? "Keeping it…"
-                    : "It's in your October. Tell me what you thought when it's over."
-                  : "Sign in and it would be waiting in your October."}
+              <p
+                data-testid={`keep-${kept ?? "signed-out"}`}
+                className={`mt-8 text-sm ${
+                  kept === "failed" ? "text-[#d09a4e]/80" : "text-[#e9e6da]/45"
+                }`}
+              >
+                {kept === "keeping"
+                  ? "Keeping it…"
+                  : kept === "kept"
+                    ? "It's in your October. Tell me what you thought when it's over."
+                    : kept === "failed"
+                      ? "I couldn't keep that one. Pick it again in a moment."
+                      : "Sign in and it would be waiting in your October."}
               </p>
               <div className="mt-6 flex items-center gap-5">
                 <Link

@@ -660,6 +660,21 @@ export function VhsWall({
           }}
         />
       </div>
+
+      {/* **The door out of the shop.**
+
+          Outside the stage, so the camera never carries it off-screen, and
+          quiet enough to be ignored — the aisle is the point and a chrome bar
+          over it would end the illusion before anybody had picked anything
+          up. Until now the only way out of this room was the browser's own
+          back button, which is not an exit, it is an escape. */}
+      <a
+        href="/october"
+        data-testid="leave-store"
+        className="absolute top-5 left-5 z-20 min-h-11 text-[11px] tracking-wide text-[#e9e6da]/30 underline-offset-4 transition-colors hover:text-[#e9e6da]/70 hover:underline"
+      >
+        back to October
+      </a>
     </div>
   );
 }

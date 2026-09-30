@@ -134,7 +134,7 @@ export function StayInside({ onLeave }: { onLeave: () => void }) {
               onClick={onLeave}
               className="min-h-11 text-sm text-[#e9e6da]/60 underline-offset-4 hover:underline"
             >
-              back to Passport
+              back to October
             </button>
           </div>
         </motion.div>

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AccountControl } from "@/components/auth/AccountControl";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import type { Experience } from "@/domain/experience/types";
@@ -27,7 +26,6 @@ import type { MovieReaction } from "@/lib/movies/types";
  * deliberately not here.
  */
 interface MyOctoberProps {
-  displayName: string;
   things: OctoberThing[];
   experiences: Experience[];
   /** What they have already said about films. */
@@ -56,7 +54,6 @@ function dayOf(iso: string): string {
 }
 
 export function MyOctober({
-  displayName,
   things: initial,
   experiences,
   reactions: initialReactions = [],
@@ -130,39 +127,28 @@ export function MyOctober({
   const empty = things.length === 0;
 
   return (
-    <main
-      className="min-h-screen bg-[#ecdfc4]"
-      style={{
-        backgroundImage:
-          "radial-gradient(circle at 12% 8%, rgba(181,101,29,0.12), transparent 45%), radial-gradient(circle at 88% 92%, rgba(120,72,26,0.10), transparent 50%)",
-      }}
-    >
-      <div className="mx-auto max-w-3xl px-6 py-14">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1" />
-          <AccountControl displayName={displayName} returnTo="/october/mine" />
-        </div>
-
-        <header className="mt-8">
-          <p className="text-sm font-medium text-[#8a5a24]">October 2026</p>
-          <h1 className="font-heading mt-1 text-4xl font-semibold tracking-tight text-[#2b2015] sm:text-5xl">
+    <main>
+      <div className="mx-auto max-w-3xl px-6 pt-10 pb-24">
+        <header>
+          <p className="text-sm font-medium text-[#d09a4e]">October 2026</p>
+          <h1 className="font-heading mt-1 text-4xl font-semibold tracking-tight text-[#f3efe4] sm:text-5xl">
             My October
           </h1>
         </header>
 
         {empty ? (
           <section className="mt-12 max-w-md" data-testid="october-empty">
-            <p className="font-heading text-2xl text-[#2b2015]">
+            <p className="font-heading text-2xl text-[#f3efe4]">
               Nothing yet. That&apos;s the good part.
             </p>
-            <p className="mt-3 text-[#2b2015]/65">
+            <p className="mt-3 text-[#e9e6da]/60">
               Everything you decide to do this month will wait here, and
               everything you actually do will stay. Start with something you
               already want.
             </p>
             <Link
-              href="/discovery"
-              className="mt-6 inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-5 text-sm font-medium text-[#f7ecd3]"
+              href="/october/discover"
+              className="mt-6 inline-flex min-h-11 items-center rounded-full bg-[#e9e6da] px-5 text-sm font-medium text-[#0c0a0c]"
             >
               Find something
             </Link>
@@ -175,14 +161,14 @@ export function MyOctober({
               aria-labelledby="ahead"
               data-testid="october-ahead"
             >
-              <h2 id="ahead" className="font-heading text-2xl text-[#2b2015]">
+              <h2 id="ahead" className="font-heading text-2xl text-[#f3efe4]">
                 Ahead
               </h2>
               {ahead.length === 0 ? (
-                <p className="mt-3 text-sm text-[#2b2015]/55">
+                <p className="mt-3 text-sm text-[#e9e6da]/50">
                   Nothing planned right now.{" "}
                   <Link
-                    href="/discovery"
+                    href="/october/discover"
                     className="underline underline-offset-4"
                   >
                     Find something
@@ -211,15 +197,15 @@ export function MyOctober({
               aria-labelledby="lived"
               data-testid="october-lived"
             >
-              <h2 id="lived" className="font-heading text-2xl text-[#2b2015]">
+              <h2 id="lived" className="font-heading text-2xl text-[#f3efe4]">
                 Lived
               </h2>
               {lived.length === 0 ? (
-                <p className="mt-3 text-sm text-[#2b2015]/55">
+                <p className="mt-3 text-sm text-[#e9e6da]/50">
                   Not yet. When you do one of those, say so, and it stays here.
                 </p>
               ) : (
-                <ol className="mt-4 flex flex-col gap-4 border-l border-[#8a5a24]/25 pl-5">
+                <ol className="mt-4 flex flex-col gap-4 border-l border-[#d09a4e]/25 pl-5">
                   {lived.map((thing) => (
                     <LivedRow
                       key={thing.entityId}
@@ -267,7 +253,7 @@ function ThingRow({
 
   return (
     <li
-      className="flex items-center gap-4 rounded-xl border border-[#8a5a24]/20 bg-white/60 p-3"
+      className="flex items-center gap-4 rounded-xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] p-3"
       data-testid="ahead-thing"
     >
       {experience?.heroMedia ? (
@@ -280,7 +266,7 @@ function ThingRow({
         />
       ) : (
         <div
-          className="h-16 w-16 shrink-0 rounded-lg bg-[#efe7d8]"
+          className="h-16 w-16 shrink-0 rounded-lg bg-[#e9e6da]/[0.06]"
           aria-hidden
         />
       )}
@@ -289,19 +275,19 @@ function ThingRow({
         {destination ? (
           <Link
             href={destination}
-            className="font-medium text-[#2b2015] hover:underline"
+            className="font-medium text-[#f3efe4] hover:underline"
           >
             {thing.name}
           </Link>
         ) : (
-          <p className="font-medium text-[#2b2015]">{thing.name}</p>
+          <p className="font-medium text-[#f3efe4]">{thing.name}</p>
         )}
         {when && (
-          <p className="mt-0.5 text-xs font-medium text-[#8a5a24]">{when}</p>
+          <p className="mt-0.5 text-xs font-medium text-[#d09a4e]">{when}</p>
         )}
-        {where && <p className="mt-0.5 text-xs text-[#8a5a24]">at {where}</p>}
+        {where && <p className="mt-0.5 text-xs text-[#d09a4e]">at {where}</p>}
         {!when && !where && experience?.subtype && (
-          <p className="mt-0.5 text-[11px] tracking-wide text-[#8a5a24] uppercase">
+          <p className="mt-0.5 text-[11px] tracking-wide text-[#d09a4e] uppercase">
             {experience.subtype}
           </p>
         )}
@@ -312,7 +298,7 @@ function ThingRow({
           type="button"
           onClick={onDid}
           disabled={busy}
-          className="min-h-9 rounded-full bg-[#2b2015] px-3.5 text-xs font-medium text-[#f7ecd3] hover:bg-[#3a2a1c] disabled:opacity-50"
+          className="min-h-9 rounded-full bg-[#e9e6da] px-3.5 text-xs font-medium text-[#0c0a0c] hover:bg-[#f3efe4] disabled:opacity-50"
           data-testid="did-this"
         >
           Did this
@@ -322,7 +308,7 @@ function ThingRow({
           onClick={onForget}
           disabled={busy}
           aria-label={`Remove ${thing.name} from your October`}
-          className="min-h-9 rounded-full px-2.5 text-xs text-[#2b2015]/50 hover:bg-[#2b2015]/5 disabled:opacity-50"
+          className="min-h-9 rounded-full px-2.5 text-xs text-[#e9e6da]/45 hover:bg-[#e9e6da]/10 disabled:opacity-50"
           data-testid="forget"
         >
           not this one
@@ -361,29 +347,29 @@ function LivedRow({
     <li className="relative" data-testid="lived-thing">
       <span
         aria-hidden
-        className="absolute top-2 -left-[1.55rem] h-2.5 w-2.5 rounded-full bg-[#8a5a24]"
+        className="absolute top-2 -left-[1.55rem] h-2.5 w-2.5 rounded-full bg-[#d09a4e]"
       />
-      <p className="text-xs font-medium text-[#8a5a24]">
+      <p className="text-xs font-medium text-[#d09a4e]">
         {dayOf(livedOn(thing))}
       </p>
       {destination ? (
         <Link
           href={destination}
-          className="font-heading text-xl text-[#2b2015] hover:underline"
+          className="font-heading text-xl text-[#f3efe4] hover:underline"
         >
           {thing.name}
         </Link>
       ) : (
-        <p className="font-heading text-xl text-[#2b2015]">{thing.name}</p>
+        <p className="font-heading text-xl text-[#f3efe4]">{thing.name}</p>
       )}
       {experience?.context?.name && (
-        <p className="text-sm text-[#2b2015]/60">{experience.context.name}</p>
+        <p className="text-sm text-[#e9e6da]/55">{experience.context.name}</p>
       )}
       {film &&
         onReact &&
         (reaction ? (
           <p
-            className="mt-1 text-sm text-[#2b2015]/60"
+            className="mt-1 text-sm text-[#e9e6da]/55"
             data-testid="film-reaction"
           >
             {reaction.verdict === "loved"
@@ -402,7 +388,7 @@ function LivedRow({
         type="button"
         onClick={onForget}
         disabled={busy}
-        className="mt-1 text-[11px] text-[#2b2015]/40 underline-offset-4 hover:underline disabled:opacity-50"
+        className="mt-1 text-[11px] text-[#e9e6da]/35 underline-offset-4 hover:underline disabled:opacity-50"
       >
         that didn&apos;t happen
       </button>

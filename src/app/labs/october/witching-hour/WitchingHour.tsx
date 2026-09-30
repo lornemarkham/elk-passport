@@ -601,7 +601,7 @@ export function WitchingHour() {
         <StayInside
           onLeave={() => {
             pairing.current?.send({ type: "release" });
-            window.location.href = "/discovery";
+            window.location.href = "/october";
           }}
         />
       )}
@@ -612,9 +612,12 @@ export function WitchingHour() {
         </p>
       )}
 
-      {/* A quiet way out, always. Theatre may disobey; the controls do not. */}
+      {/* A quiet way out, always. Theatre may disobey; the controls do not.
+          It goes back to October, not to Passport's general Discovery: this
+          night was entered from `/october` and leaving it in the middle
+          should not also leave the month. */}
       <a
-        href="/discovery"
+        href="/october"
         className="absolute top-5 right-5 min-h-11 text-[11px] text-[#e9e6da]/30 underline-offset-4 hover:underline"
       >
         leave

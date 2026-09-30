@@ -70,14 +70,14 @@ export function FilmReaction({
   if (verdict && felt && shouldAskWhat(felt, expected, verdict)) {
     return (
       <div className="mt-3" data-testid="what-got-you">
-        <p className="text-xs text-[#2b2015]/60">What got you?</p>
+        <p className="text-xs text-[#e9e6da]/55">What got you?</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {MECHANISMS.map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => onDone({ verdict, felt, gotMe: m })}
-              className="min-h-9 rounded-full border border-[#8a5a24]/30 px-2.5 text-xs text-[#8a5a24] hover:bg-[#8a5a24]/10"
+              className="min-h-9 rounded-full border border-[#d09a4e]/30 px-2.5 text-xs text-[#d09a4e] hover:bg-[#d09a4e]/10"
             >
               {m}
             </button>
@@ -85,7 +85,7 @@ export function FilmReaction({
           <button
             type="button"
             onClick={() => onDone({ verdict, felt })}
-            className="min-h-9 px-2 text-xs text-[#2b2015]/40 underline-offset-4 hover:underline"
+            className="min-h-9 px-2 text-xs text-[#e9e6da]/35 underline-offset-4 hover:underline"
           >
             skip
           </button>
@@ -102,7 +102,7 @@ export function FilmReaction({
     >
       {!verdict ? (
         <div data-testid="verdict">
-          <p className="text-xs text-[#2b2015]/60">How was it?</p>
+          <p className="text-xs text-[#e9e6da]/55">How was it?</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {VERDICTS.map((v) => (
               <button
@@ -110,7 +110,7 @@ export function FilmReaction({
                 type="button"
                 onClick={() => setVerdict(v.id)}
                 data-testid={`verdict-${v.id}`}
-                className="min-h-9 rounded-full border border-[#8a5a24]/30 px-3 text-xs font-medium text-[#8a5a24] hover:bg-[#8a5a24]/10"
+                className="min-h-9 rounded-full border border-[#d09a4e]/30 px-3 text-xs font-medium text-[#d09a4e] hover:bg-[#d09a4e]/10"
               >
                 {v.label}
               </button>
@@ -119,7 +119,7 @@ export function FilmReaction({
         </div>
       ) : (
         <div data-testid="felt">
-          <p className="text-xs text-[#2b2015]/60">And how scary, actually?</p>
+          <p className="text-xs text-[#e9e6da]/55">And how scary, actually?</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {FELT.map((f) => (
               <button
@@ -132,7 +132,7 @@ export function FilmReaction({
                     onDone({ verdict, felt: f.id });
                   }
                 }}
-                className="min-h-9 rounded-full border border-[#8a5a24]/30 px-3 text-xs text-[#8a5a24] hover:bg-[#8a5a24]/10"
+                className="min-h-9 rounded-full border border-[#d09a4e]/30 px-3 text-xs text-[#d09a4e] hover:bg-[#d09a4e]/10"
               >
                 <span aria-hidden>{f.emoji}</span> {f.label}
               </button>
