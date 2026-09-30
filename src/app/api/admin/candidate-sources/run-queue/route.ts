@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * **Read the pages Atlas has discovered, from the mission that owns them.**
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
       `${ATLAS_BASE_URL}/admin/candidate-sources/run-queue`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: body || "{}",
       },
     );

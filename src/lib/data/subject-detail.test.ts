@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPlaceDetail, getSubjectDetail } from "./atlas-repo";
 
 /**
@@ -8,6 +8,11 @@ import { getPlaceDetail, getSubjectDetail } from "./atlas-repo";
  * `/admin/entities` and `/admin/relationships` — an admin token in a page a
  * visitor opens, and a uuid join Passport had no business performing. These
  * pin what replaced it, and that nothing here reaches an admin route.
+ *
+ * "No headers at all" used to stand in for "no admin token". It cannot any
+ * more: since Atlas `e6f94f9` every route needs Passport's service identity,
+ * so the read that must not carry `ADMIN_TOKEN` now *must* carry a bearer.
+ * The rule was never about headers; it was about which claim.
  */
 function respondWith(status: number, body?: unknown) {
   const fetchMock = vi.fn(
@@ -23,8 +28,17 @@ function respondWith(status: number, body?: unknown) {
   return fetchMock;
 }
 
+// A bearer is only present when Passport is configured to identify itself,
+// which is the state these assertions are about.
+const ORIGINAL_TOKEN = process.env.ATLAS_SERVICE_TOKEN;
+beforeEach(() => {
+  process.env.ATLAS_SERVICE_TOKEN = "subject-detail-test-token";
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  if (ORIGINAL_TOKEN === undefined) delete process.env.ATLAS_SERVICE_TOKEN;
+  else process.env.ATLAS_SERVICE_TOKEN = ORIGINAL_TOKEN;
 });
 
 const composition = {
@@ -81,7 +95,14 @@ describe("getSubjectDetail", () => {
       expect(url).not.toMatch(/\/admin\//);
       expect(url).not.toMatch(/relationships/);
     }
-    expect(fetchMock.mock.calls.every(([, init]) => !init?.headers)).toBe(true);
+    for (const [, init] of fetchMock.mock.calls) {
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      // The traveller's question, asked as Passport and not as an operator.
+      expect(headers["x-admin-token"]).toBeUndefined();
+      expect(headers.Authorization ?? headers.authorization ?? "").toMatch(
+        /^Bearer /,
+      );
+    }
   });
 
   it("returns null when there is no such subject, or the id is another kind", async () => {

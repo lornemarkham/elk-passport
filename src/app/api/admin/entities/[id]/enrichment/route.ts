@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 // Same proxy reasoning as every other /api/admin/* route — ADMIN_TOKEN
 // stays server-side.
@@ -25,7 +26,7 @@ export async function GET(
   const response = await fetch(
     `${ATLAS_BASE_URL}/admin/entities/${encodeURIComponent(id)}/enrichment`,
     {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
     },
   );
@@ -48,7 +49,10 @@ export async function POST(
     `${ATLAS_BASE_URL}/admin/entities/${encodeURIComponent(id)}/enrichment`,
     {
       method: "POST",
-      headers: { "x-admin-token": token, "Content-Type": "application/json" },
+      headers: atlasAuthHeaders({
+        "x-admin-token": token,
+        "Content-Type": "application/json",
+      }),
       body,
     },
   );

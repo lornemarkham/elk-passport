@@ -11,6 +11,11 @@ import { join } from "node:path";
  * the traveller page that Organizations, Events and thin Places all depend on
  * appeared not to exist. It existed; nothing could reach it.
  *
+ * The invariant did not move when Atlas started requiring a service token; its
+ * home did. `atlasAuth` now owns the address for every Atlas caller, so what
+ * this module must not do is name one of its own — and `atlasAuth.test.ts`
+ * holds the other half, that the shared constant reads `ATLAS_API_URL`.
+ *
  * Asserted against the source rather than by importing, because the value is
  * read at module scope: any import here would bind whatever the test
  * environment happened to hold, which is exactly the class of bug this guards.
@@ -21,19 +26,18 @@ describe("workspaceData", () => {
     "utf8",
   );
 
-  it("reads Atlas's base URL from ATLAS_API_URL", () => {
-    expect(source).toMatch(
-      /const ATLAS_BASE_URL = process\.env\.ATLAS_API_URL \?\?/,
-    );
+  it("takes Atlas's address from the one module that owns it", () => {
+    expect(source).toMatch(/from "@\/lib\/data\/atlasAuth"/);
+    expect(source).toMatch(/const \{ ATLAS_BASE_URL \} = AtlasAuth;/);
   });
 
-  it("names no port of its own outside that one fallback", () => {
+  it("names no address of its own at all", () => {
     // Comments stripped first: the rule is about what the module *does*, and
     // the doc comment quotes the old address precisely to explain the bug.
     const code = source
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
-    const hardcoded = code.match(/["'`]https?:\/\/localhost:\d+/g) ?? [];
-    expect(hardcoded).toHaveLength(1);
+    expect(code.match(/["'`]https?:\/\/localhost:\d+/g) ?? []).toHaveLength(0);
+    expect(code).not.toMatch(/process\.env\.ATLAS_API_URL/);
   });
 });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Start region-scoped growth. Same proxy reasoning as every other
@@ -32,7 +33,10 @@ export async function POST(
       `${ATLAS_BASE_URL}/admin/regions/${encodeURIComponent(regionId)}/grow`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: body || "{}",
       },
     );

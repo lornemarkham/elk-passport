@@ -1,15 +1,21 @@
+import "server-only";
+import {
+  ATLAS_BASE_URL,
+  atlasAuthHeaders,
+  AtlasUnavailableError,
+  describeAtlasFailure,
+  isAtlasUnavailable,
+  type AtlasFailure,
+} from "./atlasAuth";
+
 /**
- * Where Atlas is.
+ * Where Atlas is, and how Passport proves it is Passport: both now come from
+ * `atlasAuth`, because a service token added in some call sites and not others
+ * is worse than one added in none.
  *
- * One constant instead of the five hardcoded `http://localhost:3000` strings
- * that were here, which were a laptop's address written into product code:
- * nothing but this developer's machine could serve them, and moving Atlas to
- * another port — as a live population run made necessary — meant editing five
- * call sites. `boards-server` already read this variable; now everything does.
- *
- * Server-side only. The browser never names Atlas at all.
+ * Server-side only, enforced rather than asserted. The browser never names
+ * Atlas at all and must never hold its secret.
  */
-const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
 
 /**
  * How long Passport waits for Atlas.
@@ -26,11 +32,27 @@ const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
  */
 const ATLAS_TIMEOUT_MS = 120_000;
 
-const atlasFetch = (path: string, init?: RequestInit): Promise<Response> =>
-  fetch(`${ATLAS_BASE_URL}${path}`, {
-    ...init,
-    signal: AbortSignal.timeout(ATLAS_TIMEOUT_MS),
-  });
+/**
+ * Every request Passport makes of Atlas, carrying its identity.
+ *
+ * A network failure arrives here as an `AtlasUnavailableError` with
+ * `unreachable`, so that "Atlas is not there" and "Atlas answered with
+ * nothing" cannot be the same value by the time a page sees them.
+ */
+const atlasFetch = async (
+  path: string,
+  init?: RequestInit,
+): Promise<Response> => {
+  try {
+    return await fetch(`${ATLAS_BASE_URL}${path}`, {
+      ...init,
+      headers: atlasAuthHeaders(init?.headers as Record<string, string>),
+      signal: AbortSignal.timeout(ATLAS_TIMEOUT_MS),
+    });
+  } catch (cause) {
+    throw new AtlasUnavailableError("unreachable", undefined, { cause });
+  }
+};
 
 import type {
   DiscoveryCandidate,
@@ -132,12 +154,48 @@ export async function getSubjectDetail(
 export async function listDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
   const response = await atlasFetch("/discovery/candidates");
   if (!response.ok) {
+    // A refusal is not an absence. Every October surface used to `.catch()`
+    // this into `[]`, so a wrong service token rendered as "nothing is on".
+    const failure = describeAtlasFailure(response.status);
+    if (failure) throw failure;
     throw new Error(
       `Atlas discovery candidates request failed: ${response.status}`,
     );
   }
   const body = (await response.json()) as { candidates: DiscoveryCandidate[] };
   return body.candidates;
+}
+
+/**
+ * **Discovery candidates, or the reason there are none.**
+ *
+ * Every October surface used to write `listDiscoveryCandidates().catch(() => [])`,
+ * which turned four different failures — no service token, a refused token,
+ * Atlas not configured, Atlas not answering — into the same empty array. The
+ * page then said *"Nothing Passport knows about is on tonight. That is most
+ * nights."* over a corpus of two and a half thousand things, and it said it
+ * calmly, which is what made it dangerous.
+ *
+ * An empty corpus and an unanswered question are different answers and this
+ * returns them differently. The operator's detail — which secret is wrong —
+ * goes to the server log, never to the page: a visitor must not be shown the
+ * name of a credential.
+ */
+export async function discoveryCandidates(): Promise<{
+  readonly candidates: DiscoveryCandidate[];
+  /** Absent when Atlas answered, whatever it answered with. */
+  readonly outage?: AtlasFailure;
+}> {
+  try {
+    return { candidates: await listDiscoveryCandidates() };
+  } catch (error) {
+    const outage = isAtlasUnavailable(error) ? error.reason : "unreachable";
+    console.error(
+      `[atlas] discovery candidates unavailable (${outage}):`,
+      error instanceof Error ? error.message : error,
+    );
+    return { candidates: [], outage };
+  }
 }
 
 export interface AtlasRegion {
@@ -163,7 +221,7 @@ export async function listRegions(): Promise<AtlasRegion[]> {
   if (!token) return [];
   try {
     const response = await atlasFetch("/admin/regions", {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
     });
     if (!response.ok) return [];

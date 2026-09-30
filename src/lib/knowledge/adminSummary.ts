@@ -1,5 +1,6 @@
 import "server-only";
 import { loadRuns } from "./runData";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * The live numbers the Atlas home page puts on its rows.
@@ -55,7 +56,7 @@ export async function duplicateGroupCount(): Promise<number | null> {
   if (!token) return null;
   try {
     const response = await fetch(`${ATLAS_BASE_URL}/admin/duplicates`, {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 // Same proxy reasoning as ../duplicates/route.ts — ADMIN_TOKEN stays
 // server-side, the browser only ever talks to this same-origin route.
@@ -20,10 +21,10 @@ export async function POST(request: Request) {
 
   const response = await fetch(`${ATLAS_BASE_URL}/admin/merge`, {
     method: "POST",
-    headers: {
+    headers: atlasAuthHeaders({
       "x-admin-token": token,
       "Content-Type": "application/json",
-    },
+    }),
     body,
   });
 

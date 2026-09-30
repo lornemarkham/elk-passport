@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 // Same proxy reasoning as every other /api/admin/* route — ADMIN_TOKEN
 // stays server-side.
@@ -19,7 +20,7 @@ export async function GET() {
   const response = await fetch(
     `${ATLAS_BASE_URL}/admin/relationship-candidates`,
     {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
     },
   );

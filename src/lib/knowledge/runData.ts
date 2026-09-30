@@ -1,4 +1,5 @@
 import "server-only";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Server-side reads for the Ingestion Observatory.
@@ -52,7 +53,7 @@ async function adminGet<T>(path: string): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${ATLAS_BASE_URL}${path}`, {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       // Bounded: the home page awaits this, and an untimed fetch is a
       // page that never renders.
       signal: AbortSignal.timeout(3000),

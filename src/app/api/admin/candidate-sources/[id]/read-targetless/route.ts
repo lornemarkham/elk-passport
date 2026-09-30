@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Read a queued source about something Atlas does not hold yet.
@@ -24,7 +25,7 @@ export async function POST(
   try {
     const response = await fetch(
       `${ATLAS_BASE_URL}/admin/candidate-sources/${encodeURIComponent(id)}/read-targetless`,
-      { method: "POST", headers: { "x-admin-token": token } },
+      { method: "POST", headers: atlasAuthHeaders({ "x-admin-token": token }) },
     );
     // A 404 here means the running API predates this route, not that the
     // candidate is missing. Forwarding it verbatim sends a curator hunting

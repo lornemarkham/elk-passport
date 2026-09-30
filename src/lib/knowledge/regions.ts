@@ -1,4 +1,5 @@
 import "server-only";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Regions, from the app's side.
@@ -126,7 +127,7 @@ export async function loadRegions(): Promise<RegionsResult> {
   if (!token) return NO_TOKEN;
   try {
     const response = await fetch(`${ATLAS_BASE_URL}/admin/regions`, {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
       signal: AbortSignal.timeout(ADMIN_FETCH_TIMEOUT_MS),
     });

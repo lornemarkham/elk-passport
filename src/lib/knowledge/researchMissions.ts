@@ -1,4 +1,5 @@
 import "server-only";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Research Missions, from the app's side.
@@ -88,11 +89,11 @@ async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
   if (!token) throw new Error("ADMIN_TOKEN is not configured for this app.");
   return fetch(`${ATLAS_BASE_URL}${path}`, {
     ...init,
-    headers: {
+    headers: atlasAuthHeaders({
       "x-admin-token": token,
       "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+      ...((init?.headers ?? {}) as Record<string, string>),
+    }),
     cache: "no-store",
     signal: AbortSignal.timeout(ADMIN_FETCH_TIMEOUT_MS),
   });

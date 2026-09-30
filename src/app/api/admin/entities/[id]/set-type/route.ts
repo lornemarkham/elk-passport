@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * **Set one entity's type, as a curator's assertion.**
@@ -93,7 +94,10 @@ export async function POST(
       `${ATLAS_BASE_URL}/admin/entities/${encodeURIComponent(id)}/enrichment`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: JSON.stringify({
           chosen: {
             [field]: { value, sourceRecordId: body.sourceRecordId },

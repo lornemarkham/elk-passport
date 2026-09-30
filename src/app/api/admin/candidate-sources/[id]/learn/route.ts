@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * **Learn it.** The only Discovery call that creates an entity.
@@ -30,7 +31,10 @@ export async function POST(
       `${ATLAS_BASE_URL}/admin/candidate-sources/${encodeURIComponent(id)}/learn`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: body || "{}",
       },
     );

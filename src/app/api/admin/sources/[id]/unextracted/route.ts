@@ -4,6 +4,7 @@ import type {
   UnextractedAnalysis,
   UnextractedFinding,
 } from "@/lib/knowledge/unextractedTypes";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * The first scoped AI curator action: **"What's in this source that we
@@ -130,11 +131,11 @@ export async function POST(
   // Read through the same admin endpoints every other view uses — no new data path.
   const [sourcesRes, relsRes] = await Promise.all([
     fetch(`${ATLAS_BASE_URL}/admin/source-records`, {
-      headers: { "x-admin-token": adminToken },
+      headers: atlasAuthHeaders({ "x-admin-token": adminToken }),
       cache: "no-store",
     }),
     fetch(`${ATLAS_BASE_URL}/admin/relationships`, {
-      headers: { "x-admin-token": adminToken },
+      headers: atlasAuthHeaders({ "x-admin-token": adminToken }),
       cache: "no-store",
     }),
   ]);
@@ -179,7 +180,7 @@ export async function POST(
       .map((r) => r.targetEntityId),
   );
   const entitiesRes = await fetch(`${ATLAS_BASE_URL}/admin/entities`, {
-    headers: { "x-admin-token": adminToken },
+    headers: atlasAuthHeaders({ "x-admin-token": adminToken }),
     cache: "no-store",
   });
   const allEntities = entitiesRes.ok

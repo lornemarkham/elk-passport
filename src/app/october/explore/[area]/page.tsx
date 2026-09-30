@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
+import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
@@ -50,9 +50,13 @@ export default async function OctoberAreaPage({
   const area = areaById(id);
   if (!area || area.href) notFound();
 
-  const candidates = area.terms?.length
-    ? await listDiscoveryCandidates().catch(() => [])
-    : [];
+  // A lens over an empty corpus and a lens over an unanswered one look the
+  // same here, and this surface already says a keyword lens found whatever it
+  // shows — so it takes the candidates and leaves the admission to the two
+  // lanes that lead with it.
+  const { candidates } = area.terms?.length
+    ? await discoveryCandidates()
+    : { candidates: [] };
   const found = throughLens(candidates.map(candidateToExperience), area, 24);
 
   return (

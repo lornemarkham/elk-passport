@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
+import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { Experience } from "@/domain/experience/types";
 import {
@@ -29,6 +29,7 @@ import {
   withoutAlreadyShown,
   withoutLead,
 } from "@/domain/discovery/presentation";
+import { Unanswered } from "@/components/october/shell/atoms";
 import { BrowseMonth } from "@/components/october/discover/BrowseMonth";
 import {
   CompactRow,
@@ -79,8 +80,10 @@ export default async function OctoberDiscoverPage() {
   const now = octoberNow(new Date());
   const today = localDay(now);
   const { from: octoberFrom, to: octoberTo } = octoberWindow(now);
-  const candidates = await listDiscoveryCandidates().catch(() => []);
-  const experiences = candidates.map(candidateToExperience);
+  // An empty corpus and an unanswered question are different answers, and
+  // this page used to render both as "nothing is on".
+  const atlas = await discoveryCandidates();
+  const experiences = atlas.candidates.map(candidateToExperience);
 
   // Stated membership, resolved live against Atlas.
   const curated = OCTOBER_AREAS.flatMap((area) => {
@@ -158,6 +161,8 @@ export default async function OctoberDiscoverPage() {
               </ul>
             ) : null}
           </>
+        ) : atlas.outage ? (
+          <Unanswered />
         ) : (
           <Quiet>
             Nothing Passport can date is on tonight. Most nights are like that —
@@ -177,6 +182,8 @@ export default async function OctoberDiscoverPage() {
               </li>
             ))}
           </ul>
+        ) : atlas.outage ? (
+          <Unanswered />
         ) : (
           <Quiet>Nothing dated falls on the coming weekend.</Quiet>
         )}

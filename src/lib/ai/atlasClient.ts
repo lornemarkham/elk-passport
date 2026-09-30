@@ -1,3 +1,5 @@
+import "server-only";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
 import {
   type PlanInput,
   type Recommendation,
@@ -6,7 +8,11 @@ import {
 
 // Only this file knows Atlas exists — the API route and every page still
 // just deal in Recommendation, exactly as before.
-const ATLAS_API_URL = process.env.ATLAS_API_URL ?? "http://localhost:4200";
+//
+// The base URL and the service identity come from `atlasAuth` like every other
+// Atlas caller's. The default port here was 4200 while everything else used
+// 3000, which meant this fallback recommender had quietly been pointing at
+// nothing for as long as the two disagreed; `atlasAuth` ends that too.
 
 interface AtlasEntity {
   kind: string;
@@ -20,7 +26,9 @@ function truncate(text: string, max: number): string {
 }
 
 async function fetchAtlasEntities(path: string): Promise<AtlasEntity[]> {
-  const res = await fetch(`${ATLAS_API_URL}${path}`);
+  const res = await fetch(`${ATLAS_BASE_URL}${path}`, {
+    headers: atlasAuthHeaders(),
+  });
   if (!res.ok) {
     throw new Error(
       `Atlas API request to ${path} failed with status ${res.status}`,

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "@/lib/auth/currentUser";
-import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
+import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import {
   happeningThisWeekend,
@@ -12,7 +12,12 @@ import { OCTOBER_AREAS, hrefForArea } from "@/domain/october/areas";
 import { octoberNow } from "@/domain/october/octoberWindow";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { reactionsFor } from "@/lib/movies/reactions";
-import { Card, Nothing, Section } from "@/components/october/shell/atoms";
+import {
+  Card,
+  Nothing,
+  Section,
+  Unanswered,
+} from "@/components/october/shell/atoms";
 import { UnitCard } from "@/components/october/shell/UnitCard";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
 import { Remembered } from "@/components/october/shell/Remembered";
@@ -60,14 +65,15 @@ export default async function OctoberHomePage() {
   const now = octoberNow(realNow);
   const user = await currentUser();
 
-  const [candidates, things, reactions] = await Promise.all([
+  const [atlas, things, reactions] = await Promise.all([
     // Atlas being unreachable is an ordinary outcome, not a crash: October
-    // still has films, the Video Store and your own things.
-    listDiscoveryCandidates().catch(() => []),
+    // still has films, the Video Store and your own things. What it must not
+    // become is an empty month — `discoveryCandidates` keeps the difference.
+    discoveryCandidates(),
     user ? octoberThingsFor(user) : Promise.resolve([]),
     user ? reactionsFor(user) : Promise.resolve([]),
   ]);
-  const experiences = candidates.map(candidateToExperience);
+  const experiences = atlas.candidates.map(candidateToExperience);
 
   // **The same candidate has to mean the same thing here as it does on
   // Discover.** The windows below were already shared — Tonight, This weekend
@@ -117,12 +123,14 @@ export default async function OctoberHomePage() {
         <Section
           title="Tonight"
           note={
-            tonight.length > 0
+            tonight.length > 0 || atlas.outage
               ? undefined
               : "Nothing Passport knows about is on tonight. That is most nights."
           }
         >
-          {tonight.length > 0 ? (
+          {atlas.outage ? (
+            <Unanswered />
+          ) : tonight.length > 0 ? (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {tonight.map((unit) => (
                 <li key={unit.head.id}>
@@ -158,7 +166,9 @@ export default async function OctoberHomePage() {
             </Link>
           }
         >
-          {weekend.length > 0 ? (
+          {atlas.outage ? (
+            <Unanswered />
+          ) : weekend.length > 0 ? (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {weekend.map((unit) => (
                 <li key={unit.head.id}>

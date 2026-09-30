@@ -22,6 +22,7 @@ import {
   type MergeRecommendation,
 } from "./mergeRecommendation";
 import type { DomainScope } from "./domainHealth";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * **What happened after the run, and what still needs a person — for this
@@ -79,7 +80,7 @@ async function adminGet<T>(path: string, timeoutMs = 4000): Promise<T | null> {
   if (!token) return null;
   try {
     const response = await fetch(`${ATLAS_BASE_URL}${path}`, {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store",
     });

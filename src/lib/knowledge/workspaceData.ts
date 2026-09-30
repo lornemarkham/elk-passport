@@ -1,4 +1,5 @@
 import "server-only";
+import * as AtlasAuth from "@/lib/data/atlasAuth";
 import type {
   AdminEntity,
   CompletenessScoreResult,
@@ -29,7 +30,7 @@ import type {
  * `/passport/[id]` page answered 404. The traveller page for Organizations
  * was not missing; it was unreachable.
  */
-const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
+const { ATLAS_BASE_URL } = AtlasAuth;
 
 export class WorkspaceNotConfiguredError extends Error {}
 export class WorkspaceUnreachableError extends Error {}
@@ -44,7 +45,9 @@ async function adminGet<T>(path: string): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${ATLAS_BASE_URL}${path}`, {
-      headers: { "x-admin-token": token },
+      // Both claims, because Atlas now asks for both: the service token says
+      // this is Passport, the admin token says it may read the corpus.
+      headers: AtlasAuth.atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
     });
   } catch (error) {
@@ -52,8 +55,13 @@ async function adminGet<T>(path: string): Promise<T> {
       `Atlas is unreachable at ${ATLAS_BASE_URL}: ${(error as Error).message}`,
     );
   }
-  if (response.status === 401) {
-    throw new WorkspaceNotConfiguredError("Atlas rejected ADMIN_TOKEN.");
+  if (response.status === 401 || response.status === 503) {
+    // Two different missing secrets, said apart, because the fix differs.
+    throw new WorkspaceNotConfiguredError(
+      AtlasAuth.atlasIsConfigured()
+        ? `Atlas rejected Passport's credentials (${response.status}).`
+        : "ATLAS_SERVICE_TOKEN is not configured for this app.",
+    );
   }
   if (!response.ok) {
     throw new WorkspaceUnreachableError(

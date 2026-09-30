@@ -1,4 +1,5 @@
 import "server-only";
+import * as AtlasAuth from "./atlasAuth";
 
 /**
  * **The Atlas Explorer's one way of talking to Atlas.**
@@ -17,7 +18,7 @@ import "server-only";
  * the right thing rather than inheriting the wrong one — the same pattern
  * `atlas-repo.ts` and `boards-server.ts` already use.
  */
-const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
+const { ATLAS_BASE_URL } = AtlasAuth;
 
 /**
  * Atlas answers a dossier by reading the whole entity table, the whole
@@ -42,7 +43,7 @@ async function atlasGet<T>(path: string): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${ATLAS_BASE_URL}${path}`, {
-      headers: { "x-admin-token": token },
+      headers: AtlasAuth.atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -52,8 +53,12 @@ async function atlasGet<T>(path: string): Promise<T> {
     );
   }
 
-  if (response.status === 401) {
-    throw new ExplorerNotConfiguredError("Atlas rejected ADMIN_TOKEN.");
+  if (response.status === 401 || response.status === 503) {
+    throw new ExplorerNotConfiguredError(
+      AtlasAuth.atlasIsConfigured()
+        ? `Atlas rejected Passport's credentials (${response.status}).`
+        : "ATLAS_SERVICE_TOKEN is not set, so Atlas refuses every route.",
+    );
   }
   if (response.status === 404) {
     throw new ExplorerNotFoundError(`Atlas has nothing at ${path}.`);
@@ -406,6 +411,7 @@ export async function getDiscoveryVerdict(
   let response: Response;
   try {
     response = await fetch(`${ATLAS_BASE_URL}/discovery/candidates`, {
+      headers: AtlasAuth.atlasAuthHeaders(),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

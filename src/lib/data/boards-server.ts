@@ -1,4 +1,5 @@
 import "server-only";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "./atlasAuth";
 import { currentUser } from "@/lib/auth/currentUser";
 import type { Board, BoardItem } from "./boards-repo";
 
@@ -24,7 +25,6 @@ import type { Board, BoardItem } from "./boards-repo";
  * Atlas independently refuses to cross owners (`BoardService`), so a bug here
  * produces a 404 rather than somebody else's saved places.
  */
-const ATLAS_BASE_URL = process.env.ATLAS_API_URL ?? "http://localhost:3000";
 
 /**
  * Same reasoning as `atlas-repo`: Node's 30-second default header timeout was
@@ -40,6 +40,9 @@ const ATLAS_TIMEOUT_MS = 120_000;
 const atlasFetch = (url: string, init?: RequestInit): Promise<Response> =>
   fetch(url, {
     ...init,
+    // Boards are Atlas's tables, reached server-to-server, so this call needs
+    // Passport's service identity exactly as every other Atlas read does.
+    headers: atlasAuthHeaders(init?.headers as Record<string, string>),
     cache: "no-store",
     signal: AbortSignal.timeout(ATLAS_TIMEOUT_MS),
   });

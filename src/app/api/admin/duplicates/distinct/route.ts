@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * **Record that a proposed duplicate is two different things.**
@@ -29,7 +30,10 @@ export async function POST(request: Request) {
       `${ATLAS_BASE_URL}/admin/duplicates/distinct`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: body || "{}",
       },
     );

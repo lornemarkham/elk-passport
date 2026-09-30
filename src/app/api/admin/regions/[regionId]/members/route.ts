@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Assert region membership for a set of entities.
@@ -29,7 +30,10 @@ export async function POST(
       `${ATLAS_BASE_URL}/admin/regions/${encodeURIComponent(regionId)}/members`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: body || "{}",
       },
     );

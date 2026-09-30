@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 // Proxies to Atlas's admin API so ADMIN_TOKEN never reaches the browser —
 // it's a server-only env var here (no NEXT_PUBLIC_ prefix), read and
@@ -29,7 +30,7 @@ export async function GET() {
   let response: Response;
   try {
     response = await fetch(`${ATLAS_BASE_URL}/admin/duplicates`, {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
     });
   } catch (err) {

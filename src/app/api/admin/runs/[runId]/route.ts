@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * One run and its events, for the Region workspace to poll while growth
@@ -29,7 +30,7 @@ export async function GET(
   }
 
   const { runId } = await params;
-  const headers = { "x-admin-token": token };
+  const headers = atlasAuthHeaders({ "x-admin-token": token });
 
   try {
     const [runsResponse, eventsResponse] = await Promise.all([

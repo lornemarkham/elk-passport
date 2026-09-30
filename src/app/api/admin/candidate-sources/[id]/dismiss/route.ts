@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * **Abandon a candidate source.** The curator saying Atlas should not read
@@ -31,7 +32,10 @@ export async function POST(
       `${ATLAS_BASE_URL}/admin/candidate-sources/${encodeURIComponent(id)}/dismiss`,
       {
         method: "POST",
-        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        headers: atlasAuthHeaders({
+          "x-admin-token": token,
+          "Content-Type": "application/json",
+        }),
         body: body || "{}",
       },
     );

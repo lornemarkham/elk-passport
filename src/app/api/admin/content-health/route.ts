@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 // Same proxy shape as /api/admin/duplicates/route.ts — see that file's
 // comment for why this exists (keeping ADMIN_TOKEN server-only).
@@ -31,7 +32,7 @@ export async function GET() {
   let response: Response;
   try {
     response = await fetch(`${ATLAS_BASE_URL}/admin/content-health`, {
-      headers: { "x-admin-token": token },
+      headers: atlasAuthHeaders({ "x-admin-token": token }),
       cache: "no-store",
     });
   } catch (err) {

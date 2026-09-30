@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Named discovery — *"who would know about Hidden Lake?"*
@@ -21,7 +22,10 @@ export async function POST(request: Request) {
   try {
     const response = await fetch(`${ATLAS_BASE_URL}/admin/discovery/named`, {
       method: "POST",
-      headers: { "x-admin-token": token, "Content-Type": "application/json" },
+      headers: atlasAuthHeaders({
+        "x-admin-token": token,
+        "Content-Type": "application/json",
+      }),
       body: body || "{}",
     });
     // Atlas serves a compiled build loaded at startup, so a 404 here does

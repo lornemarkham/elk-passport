@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "@/lib/auth/currentUser";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
-import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
+import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { MyOctober } from "@/components/october/MyOctober";
 import { reactionsFor } from "@/lib/movies/reactions";
@@ -55,7 +55,7 @@ export default async function MyOctoberPage() {
 
   const [things, candidates, reactions] = await Promise.all([
     octoberThingsFor(user),
-    listDiscoveryCandidates().catch(() => []),
+    discoveryCandidates().then((a) => a.candidates),
     reactionsFor(user),
   ]);
   const experiences = candidates.map(candidateToExperience);

@@ -188,3 +188,24 @@ export function Nothing({ children }: { readonly children: ReactNode }) {
     </p>
   );
 }
+
+/**
+ * **Atlas could not answer, and the page says so.**
+ *
+ * The one sentence that keeps a fault from reading as a quiet month. It names
+ * no credential and no host: which secret is wrong is in the server log, and
+ * a visitor is owed the fact that this is our fault rather than the details of
+ * how. Deliberately the same weight as `Nothing` — this is not an error
+ * screen, it is a lane admitting it cannot see.
+ */
+export function Unanswered() {
+  return (
+    <p
+      data-testid="atlas-unanswered"
+      className="max-w-xl text-[#e9e6da]/55 italic"
+    >
+      October can&apos;t see what&apos;s on right now — something at our end is
+      not answering. This is a fault, not a quiet month.
+    </p>
+  );
+}
