@@ -7,6 +7,8 @@ import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import { OCTOBER_AREAS, areaById, throughLens } from "@/domain/october/areas";
 import { Card, Honesty, Nothing } from "@/components/october/shell/atoms";
+import { keptOnThisPage } from "@/lib/october/keptOnThisPage";
+import { keepFor } from "@/components/october/save/keepFor";
 
 /** Every area has a door, including the ones with nothing behind them yet. */
 export function generateStaticParams() {
@@ -54,9 +56,11 @@ export default async function OctoberAreaPage({
   // same here, and this surface already says a keyword lens found whatever it
   // shows — so it takes the candidates and leaves the admission to the two
   // lanes that lead with it.
-  const { candidates } = area.terms?.length
-    ? await discoveryCandidates()
-    : { candidates: [] };
+  const [{ candidates }, page] = await Promise.all([
+    area.terms?.length ? discoveryCandidates() : { candidates: [] },
+    // One read for the area, not one per card.
+    keptOnThisPage(),
+  ]);
   const found = throughLens(candidates.map(candidateToExperience), area, 24);
 
   return (
@@ -91,6 +95,7 @@ export default async function OctoberAreaPage({
               {found.map((e) => (
                 <li key={e.id}>
                   <Card
+                    keep={keepFor(e, page, `/october/explore/${area.id}`)}
                     href={destinationFor(e)}
                     eyebrow={
                       formatEventWhen(

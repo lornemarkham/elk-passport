@@ -30,6 +30,8 @@ import {
   withoutLead,
 } from "@/domain/discovery/presentation";
 import { Unanswered } from "@/components/october/shell/atoms";
+import { keptOnThisPage } from "@/lib/october/keptOnThisPage";
+import { keepFor } from "@/components/october/save/keepFor";
 import { BrowseMonth } from "@/components/october/discover/BrowseMonth";
 import {
   CompactRow,
@@ -82,8 +84,15 @@ export default async function OctoberDiscoverPage() {
   const { from: octoberFrom, to: octoberTo } = octoberWindow(now);
   // An empty corpus and an unanswered question are different answers, and
   // this page used to render both as "nothing is on".
-  const atlas = await discoveryCandidates();
+  // Two reads for the whole page, not two per card: what October holds, and
+  // what this person has already kept out of it.
+  const [atlas, page] = await Promise.all([
+    discoveryCandidates(),
+    keptOnThisPage(),
+  ]);
   const experiences = atlas.candidates.map(candidateToExperience);
+  const keep = (unit: { head: Experience }) =>
+    keepFor(unit.head, page, "/october/discover");
 
   // Stated membership, resolved live against Atlas.
   const curated = OCTOBER_AREAS.flatMap((area) => {
@@ -150,12 +159,16 @@ export default async function OctoberDiscoverPage() {
         <LaneHead title="Tonight" />
         {lead ? (
           <>
-            <LeadCard unit={lead} eyebrow="On tonight" />
+            <LeadCard unit={lead} eyebrow="On tonight" keep={keep(lead)} />
             {alsoTonight.length > 0 ? (
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {alsoTonight.map((unit) => (
                   <li key={unit.head.id}>
-                    <DiscoverCard unit={unit} label="Tonight" />
+                    <DiscoverCard
+                      unit={unit}
+                      label="Tonight"
+                      keep={keep(unit)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -178,7 +191,11 @@ export default async function OctoberDiscoverPage() {
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {weekend.slice(0, 6).map((unit) => (
               <li key={unit.head.id}>
-                <DiscoverCard unit={unit} label="This weekend" />
+                <DiscoverCard
+                  unit={unit}
+                  label="This weekend"
+                  keep={keep(unit)}
+                />
               </li>
             ))}
           </ul>
@@ -207,7 +224,11 @@ export default async function OctoberDiscoverPage() {
             <ul className="grid gap-4 sm:grid-cols-2">
               {shelf.units.slice(0, 4).map((unit) => (
                 <li key={unit.head.id}>
-                  <DiscoverCard unit={unit} label={shelf.title} />
+                  <DiscoverCard
+                    unit={unit}
+                    label={shelf.title}
+                    keep={keep(unit)}
+                  />
                 </li>
               ))}
             </ul>
@@ -215,7 +236,11 @@ export default async function OctoberDiscoverPage() {
             <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
               {shelf.units.slice(0, 10).map((unit) => (
                 <li key={unit.head.id} className="w-64 shrink-0 sm:w-72">
-                  <DiscoverCard unit={unit} label={shelf.title} />
+                  <DiscoverCard
+                    unit={unit}
+                    label={shelf.title}
+                    keep={keep(unit)}
+                  />
                 </li>
               ))}
             </ul>
@@ -225,6 +250,7 @@ export default async function OctoberDiscoverPage() {
           {index === 0 && feature && (
             <div className="mt-6">
               <FeatureCard
+                keep={keep(feature)}
                 unit={feature}
                 eyebrow={OCTOBER_FEATURE.eyebrow}
                 title={OCTOBER_FEATURE.title}

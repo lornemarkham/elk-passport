@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
 import { Check, Heart, Loader2 } from "lucide-react";
+import { useKeeping } from "@/components/october/save/keeping";
 import type { OctoberKind } from "@/lib/october/types";
 
 /**
@@ -26,34 +26,19 @@ import type { OctoberKind } from "@/lib/october/types";
  * owns the booking, the terms and the refund. *Save* keeps it here. A button
  * that blurred those two would be the one place this product could mislead
  * somebody about who they are dealing with.
+ *
+ * ## The saved state lives in `october/save/keeping.ts`
+ *
+ * A card, this hero button and the one at the foot of the page are the same
+ * control drawn three sizes. They share one boolean by construction rather
+ * than by being kept in step, and the fetch that changes it is written once.
  */
 /**
- * **One saved state, however many buttons the page draws.**
- *
- * A long October subject offers Save at the top, where somebody decides
- * quickly, and again at the foot, where somebody decides after reading. They
- * are two controls for one fact: two `useState`s would let the page show
- * *Saved* at the top and *Save* at the bottom at the same moment, which is a
- * page lying about what it just did.
- *
- * Deliberately not a context or a store module — it is one boolean per
- * subject, read by the only component that can change it.
+ * The store moved to `october/save/keeping.ts` when cards learned to save
+ * too: a card, this hero button and the one at the foot of the page are the
+ * same control drawn three sizes, and they now share one boolean by
+ * construction rather than by being kept in step.
  */
-const savedByEntity = new Map<string, boolean>();
-const listeners = new Set<() => void>();
-
-function publishSaved(entityId: string, saved: boolean) {
-  savedByEntity.set(entityId, saved);
-  for (const listener of listeners) listener();
-}
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-};
-
 export function SaveToOctober({
   entityId,
   entityKind,
@@ -69,13 +54,12 @@ export function SaveToOctober({
   readonly initiallySaved?: boolean;
   readonly signedIn: boolean;
 }) {
-  const saved = useSyncExternalStore(
-    subscribe,
-    () => savedByEntity.get(entityId) ?? initiallySaved,
-    () => initiallySaved,
+  const { saved, state, toggle } = useKeeping(
+    { entityId, entityKind, name, startsAt },
+    initiallySaved,
   );
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const busy = state === "saving";
+  const failed = state === "failed";
 
   if (!signedIn) {
     return (
@@ -89,39 +73,11 @@ export function SaveToOctober({
     );
   }
 
-  const toggle = async () => {
-    setBusy(true);
-    setFailed(false);
-    try {
-      const response = await fetch(`/api/october/things/${entityId}`, {
-        method: saved ? "DELETE" : "PUT",
-        headers: { "content-type": "application/json" },
-        ...(saved
-          ? {}
-          : {
-              body: JSON.stringify({
-                entityKind,
-                name,
-                startsAt: startsAt ?? null,
-              }),
-            }),
-      });
-      if (!response.ok) throw new Error(String(response.status));
-      publishSaved(entityId, !saved);
-    } catch {
-      // Said plainly rather than swallowed: a save that silently failed would
-      // send somebody back for a thing that was never kept.
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <button
         type="button"
-        onClick={toggle}
+        onClick={() => void toggle()}
         disabled={busy}
         data-testid="save-to-october"
         aria-pressed={saved}

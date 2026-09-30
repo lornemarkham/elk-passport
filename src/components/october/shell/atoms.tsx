@@ -69,6 +69,15 @@ export function Section({
  * of information the person supplied by tapping it — which is *which* thing
  * they meant. A card that cannot be opened is an honest outcome; a card that
  * lies about where it goes is not.
+ *
+ * ## The link is an overlay, not a wrapper
+ *
+ * It used to be a `<Link>` around everything, which is the simplest way to
+ * make a whole card clickable and the one way that cannot hold a second
+ * control: a `<button>` inside an `<a>` is invalid HTML, and pressing it
+ * navigates. So the link is now `absolute inset-0` beneath the content and
+ * `keep` sits above it. Same target, same single link for a screen reader,
+ * and room for exactly one other thing to be pressable.
  */
 export function Card({
   href,
@@ -80,6 +89,7 @@ export function Card({
   external,
   options,
   optionsLabel,
+  keep,
 }: {
   readonly href?: string;
   readonly eyebrow?: string;
@@ -96,9 +106,16 @@ export function Card({
   readonly options?: readonly string[];
   /** What the options are relative to — "Tonight", "This weekend", "In October". */
   readonly optionsLabel?: string;
+  /**
+   * Save to My October, for a card that stands for a subject somebody could
+   * keep. Absent on the cards that are doors rather than things — Movie
+   * Night, the Video Store, an Explore area — because there is nothing to put
+   * in an October.
+   */
+  readonly keep?: ReactNode;
 }) {
   const surface =
-    "group flex min-h-24 flex-col justify-between rounded-xl border p-4 transition-colors";
+    "group relative flex min-h-24 flex-col justify-between rounded-xl border p-4 transition-colors";
   const body = (
     <>
       {media ? (
@@ -123,6 +140,7 @@ export function Card({
             </p>
           </div>
           {status ? <Honesty status={status} /> : null}
+          {keep}
         </div>
         {line ? (
           <p className="mt-1.5 line-clamp-2 text-sm text-[#e9e6da]/50">
@@ -164,13 +182,20 @@ export function Card({
   }
 
   return (
-    <Link
-      href={href}
+    <div
       data-testid="october-card"
       className={`${surface} border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] hover:border-[#d09a4e]/40 hover:bg-[#e9e6da]/[0.06]`}
     >
+      {/* The whole card, as one target, underneath everything else on it. */}
+      <Link
+        href={href}
+        data-testid="october-card-link"
+        className="absolute inset-0 rounded-xl focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"
+      >
+        <span className="sr-only">{title}</span>
+      </Link>
       {body}
-    </Link>
+    </div>
   );
 }
 

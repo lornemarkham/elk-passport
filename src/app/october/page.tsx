@@ -3,6 +3,7 @@ import Link from "next/link";
 import { currentUser } from "@/lib/auth/currentUser";
 import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
+import type { Experience } from "@/domain/experience/types";
 import {
   happeningThisWeekend,
   happeningTonight,
@@ -21,6 +22,7 @@ import {
 import { UnitCard } from "@/components/october/shell/UnitCard";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
 import { Remembered } from "@/components/october/shell/Remembered";
+import { keepFor } from "@/components/october/save/keepFor";
 
 export const metadata: Metadata = {
   title: "October — Passport",
@@ -99,6 +101,16 @@ export default async function OctoberHomePage() {
     4,
   );
 
+  // The page already knows what this person kept — the same rows the tallies
+  // below are counted from. Every card reads that one answer rather than
+  // asking for itself.
+  const page = {
+    signedIn: Boolean(user),
+    kept: new Set(things.map((t) => t.entityId)),
+  };
+  const keep = (unit: { head: Experience }) =>
+    keepFor(unit.head, page, "/october");
+
   const ahead = things.filter((t) => t.state === "ahead").length;
   const lived = things.filter((t) => t.state === "lived").length;
 
@@ -134,7 +146,7 @@ export default async function OctoberHomePage() {
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {tonight.map((unit) => (
                 <li key={unit.head.id}>
-                  <UnitCard unit={unit} label="Tonight" />
+                  <UnitCard unit={unit} label="Tonight" keep={keep(unit)} />
                 </li>
               ))}
             </ul>
@@ -147,7 +159,11 @@ export default async function OctoberHomePage() {
                 line="Pick something that suits who is actually on the sofa."
               />
               {soon[0] ? (
-                <UnitCard unit={soon[0]} label="Not tonight, but soon" />
+                <UnitCard
+                  unit={soon[0]}
+                  label="Not tonight, but soon"
+                  keep={keep(soon[0])}
+                />
               ) : null}
             </div>
           )}
@@ -172,7 +188,11 @@ export default async function OctoberHomePage() {
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {weekend.map((unit) => (
                 <li key={unit.head.id}>
-                  <UnitCard unit={unit} label="This weekend" />
+                  <UnitCard
+                    unit={unit}
+                    label="This weekend"
+                    keep={keep(unit)}
+                  />
                 </li>
               ))}
             </ul>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen, ZONE } from "@/domain/experience/eventTime";
@@ -21,6 +22,14 @@ import { statedDaysLine } from "@/components/october/shell/UnitCard";
  * alternative to a missing value is its absence rather than a guess.
  *
  * A card degrades in one direction only: less is drawn, never less is true.
+ *
+ * ## Why these cards hold their link in an overlay
+ *
+ * The whole surface navigates, which is right on a phone. That makes a nested
+ * `<button>` two problems at once — invalid HTML, and a press that navigates
+ * instead of doing its own job — so the ones that can be kept put the link in
+ * an `absolute inset-0` layer and `keep` above it. Two siblings, each doing
+ * exactly one thing.
  */
 
 /** What a lane can say about when, from whichever evidence the thing has. */
@@ -103,19 +112,27 @@ function Options({
 export function LeadCard({
   unit,
   eyebrow,
+  keep,
 }: {
   readonly unit: DiscoveryUnit;
   readonly eyebrow: string;
+  readonly keep?: ReactNode;
 }) {
   const { head } = unit;
   const image = src(head);
   const when = whenLine(unit);
   return (
-    <Link
-      href={destinationFor(head) ?? "#"}
+    <div
       data-testid="lead-card"
-      className="group grid overflow-hidden rounded-2xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] transition-colors hover:border-[#d09a4e]/40 sm:grid-cols-2"
+      className="group relative grid overflow-hidden rounded-2xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] transition-colors hover:border-[#d09a4e]/40 sm:grid-cols-2"
     >
+      <Link
+        href={destinationFor(head) ?? "#"}
+        data-testid="lead-card-link"
+        className="absolute inset-0 rounded-2xl focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"
+      >
+        <span className="sr-only">{head.title}</span>
+      </Link>
       {image ? (
         <div className="relative aspect-[16/10] overflow-hidden sm:aspect-auto sm:h-full sm:min-h-64">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -127,9 +144,14 @@ export function LeadCard({
         </div>
       ) : null}
       <div className="flex flex-col justify-center p-6 sm:p-8">
-        <p className="text-[11px] tracking-[0.25em] text-[#d09a4e] uppercase">
-          {eyebrow}
-        </p>
+        {/* In flow, not over the top: the mark shares a row with the eyebrow
+            so nothing it sits beside can ever be underneath it. */}
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-[11px] tracking-[0.25em] text-[#d09a4e] uppercase">
+            {eyebrow}
+          </p>
+          {keep}
+        </div>
         <h3 className="font-heading mt-3 text-2xl leading-tight text-balance text-[#f3efe4] sm:text-3xl">
           {head.title}
         </h3>
@@ -144,7 +166,7 @@ export function LeadCard({
         ) : null}
         <Options unit={unit} label={eyebrow} />
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -152,19 +174,27 @@ export function LeadCard({
 export function DiscoverCard({
   unit,
   label,
+  keep,
 }: {
   readonly unit: DiscoveryUnit;
   readonly label: string;
+  readonly keep?: ReactNode;
 }) {
   const { head } = unit;
   const image = src(head);
   const when = whenLine(unit);
   return (
-    <Link
-      href={destinationFor(head) ?? "#"}
+    <div
       data-testid="october-card"
-      className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] transition-colors hover:border-[#d09a4e]/40 hover:bg-[#e9e6da]/[0.06]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] transition-colors hover:border-[#d09a4e]/40 hover:bg-[#e9e6da]/[0.06]"
     >
+      <Link
+        href={destinationFor(head) ?? "#"}
+        data-testid="october-card-link"
+        className="absolute inset-0 rounded-xl focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"
+      >
+        <span className="sr-only">{head.title}</span>
+      </Link>
       {image ? (
         <div className="aspect-[16/9] overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -177,9 +207,19 @@ export function DiscoverCard({
         </div>
       ) : null}
       <div className="flex flex-1 flex-col p-4">
-        {when ? (
-          <p className="text-xs text-[#d09a4e]/90 tabular-nums">{when}</p>
-        ) : null}
+        {/* The date and the mark share a row and neither covers the other:
+            these cards often have no image, and an absolute mark landed on
+            top of a multi-day interval — measured, not guessed. */}
+        <div className="flex items-start justify-between gap-2">
+          {when ? (
+            <p className="min-w-0 text-xs text-[#d09a4e]/90 tabular-nums">
+              {when}
+            </p>
+          ) : (
+            <span />
+          )}
+          {keep}
+        </div>
         <h3 className="font-heading mt-1 text-lg leading-snug text-[#f3efe4]">
           {head.title}
         </h3>
@@ -191,7 +231,7 @@ export function DiscoverCard({
         ) : null}
         <Options unit={unit} label={label} />
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -199,6 +239,11 @@ export function DiscoverCard({
  * One line in a calendar. No picture, no description — a person scanning what
  * is coming wants the shape of the month, and eleven paragraphs is not a
  * shape.
+ *
+ * **No save control, deliberately.** Eight rows of hearts down the side of a
+ * fortnight would make the calendar about the hearts. Somebody scanning what
+ * is coming has not decided yet; the decision is made on a card with a
+ * photograph on it, or on the page itself.
  */
 export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
   const { head } = unit;
@@ -366,21 +411,29 @@ export function FeatureCard({
   eyebrow,
   title,
   blurb,
+  keep,
 }: {
   readonly unit: DiscoveryUnit;
   readonly eyebrow: string;
   readonly title: string;
   readonly blurb: string;
+  readonly keep?: ReactNode;
 }) {
   const { head } = unit;
   const image = src(head);
   const when = whenLine(unit);
   return (
-    <Link
-      href={destinationFor(head) ?? "#"}
+    <div
       data-testid="feature-card"
       className="group relative isolate flex min-h-[22rem] items-end overflow-hidden rounded-2xl border border-[#e9e6da]/10 sm:min-h-[26rem]"
     >
+      <Link
+        href={destinationFor(head) ?? "#"}
+        data-testid="feature-card-link"
+        className="absolute inset-0 rounded-2xl focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"
+      >
+        <span className="sr-only">{title}</span>
+      </Link>
       {image && (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -412,6 +465,9 @@ export function FeatureCard({
           {when ? ` · ${when}` : ""}
         </p>
       </div>
-    </Link>
+      {/* The one card whose mark stays absolute: it sits in the corner of a
+          full-bleed photograph, well clear of the text block at the foot. */}
+      {keep ? <div className="absolute top-4 right-4">{keep}</div> : null}
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import type { Experience } from "@/domain/experience/types";
@@ -23,9 +24,12 @@ import { Card } from "./atoms";
 export function UnitCard({
   unit,
   label,
+  keep,
 }: {
   readonly unit: DiscoveryUnit;
   readonly label: string;
+  /** Save to My October, drawn by the surface because it knows the session. */
+  readonly keep?: ReactNode;
 }) {
   const { head } = unit;
   const when =
@@ -41,6 +45,7 @@ export function UnitCard({
       media={hero(head)}
       options={namesOf(unit)}
       optionsLabel={unit.options.length > 0 ? label : undefined}
+      keep={keep}
     />
   );
 }
