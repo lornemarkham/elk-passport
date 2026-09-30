@@ -12,6 +12,11 @@ import { filmById } from "@/lib/movies/catalogue";
 import { FilmReaction } from "@/components/october/movies/FilmReaction";
 import { saveReaction } from "@/lib/movies/movies-repo";
 import type { MovieReaction } from "@/lib/movies/types";
+import {
+  anticipate,
+  bySoonestAnticipated,
+  type Anticipation,
+} from "@/domain/october/anticipation";
 
 /**
  * **An October waiting to be lived, and then the one that was.**
@@ -30,15 +35,25 @@ interface MyOctoberProps {
   experiences: Experience[];
   /** What they have already said about films. */
   reactions?: MovieReaction[];
+  /**
+   * **The instant every "how close is it" is measured from.**
+   *
+   * Supplied by the page, defaulted here, and never read from the clock
+   * inside the rows — a list whose order depended on when each row happened
+   * to render could not be reasoned about or tested.
+   */
+  now?: Date;
 }
 
-/** Ahead: dated things by date, undated after, newest intention first. */
-function aheadOrder(a: OctoberThing, b: OctoberThing): number {
-  if (a.startsAt && b.startsAt) return a.startsAt.localeCompare(b.startsAt);
-  if (a.startsAt) return -1;
-  if (b.startsAt) return 1;
-  return b.wantedAt.localeCompare(a.wantedAt);
-}
+/**
+ * **Ahead, in the order a person would ask for it**: soonest first, then what
+ * October holds no date for, then what the calendar has gone past.
+ *
+ * The old order read `startsAt` alone — a snapshot set for Events and nothing
+ * else — so Field of Screams, on tonight, sorted below a concert three weeks
+ * out because its nights live in `availability.days` rather than a timestamp.
+ * `anticipation.ts` answers both shapes with one rule.
+ */
 
 /** Lived: by the day it happened — the event's day, else the day they said so. */
 const livedOn = (t: OctoberThing): string =>
@@ -57,6 +72,7 @@ export function MyOctober({
   things: initial,
   experiences,
   reactions: initialReactions = [],
+  now = new Date(),
 }: MyOctoberProps) {
   const [things, setThings] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
@@ -89,9 +105,28 @@ export function MyOctober({
     [experiences],
   );
 
+  /** How close each thing is, from its own evidence, measured once. */
+  const closeness = useMemo(() => {
+    const out = new Map<string, Anticipation>();
+    for (const thing of things) {
+      out.set(thing.entityId, anticipate(thing, byId.get(thing.entityId), now));
+    }
+    return out;
+  }, [things, byId, now]);
+
   const ahead = useMemo(
-    () => things.filter((t) => t.state === "ahead").sort(aheadOrder),
-    [things],
+    () =>
+      things
+        .filter((t) => t.state === "ahead")
+        .sort(
+          bySoonestAnticipated((t) => ({
+            anticipation: closeness.get(t.entityId)!,
+            startsAt: t.startsAt,
+            name: t.name,
+            wantedAt: t.wantedAt,
+          })),
+        ),
+    [things, closeness],
   );
   const lived = useMemo(
     () => things.filter((t) => t.state === "lived").sort(livedOrder),
@@ -181,6 +216,7 @@ export function MyOctober({
                     <ThingRow
                       key={thing.entityId}
                       thing={thing}
+                      anticipation={closeness.get(thing.entityId)!}
                       experience={byId.get(thing.entityId)}
                       busy={busy === thing.entityId}
                       onDid={() => handleDid(thing)}
@@ -229,12 +265,14 @@ export function MyOctober({
 
 function ThingRow({
   thing,
+  anticipation,
   experience,
   busy,
   onDid,
   onForget,
 }: {
   thing: OctoberThing;
+  anticipation: Anticipation;
   experience?: Experience;
   busy: boolean;
   onDid: () => void;
@@ -251,10 +289,18 @@ function ThingRow({
       : undefined;
   const where = experience?.context?.name;
 
+  const passed = anticipation.nearness === "passed";
+
   return (
     <li
-      className="flex items-center gap-4 rounded-xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] p-3"
+      className={`flex items-center gap-4 rounded-xl border p-3 ${
+        passed
+          ? // Still theirs, still Ahead, and visibly no longer coming.
+            "border-[#e9e6da]/[0.07] bg-transparent"
+          : "border-[#e9e6da]/10 bg-[#e9e6da]/[0.03]"
+      }`}
       data-testid="ahead-thing"
+      data-nearness={anticipation.nearness}
     >
       {experience?.heroMedia ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -272,15 +318,24 @@ function ThingRow({
       )}
 
       <div className="min-w-0 flex-1">
+        <Nearness anticipation={anticipation} />
         {destination ? (
           <Link
             href={destination}
-            className="font-medium text-[#f3efe4] hover:underline"
+            className={`font-medium hover:underline ${
+              passed ? "text-[#f3efe4]/55" : "text-[#f3efe4]"
+            }`}
           >
             {thing.name}
           </Link>
         ) : (
-          <p className="font-medium text-[#f3efe4]">{thing.name}</p>
+          <p
+            className={`font-medium ${
+              passed ? "text-[#f3efe4]/55" : "text-[#f3efe4]"
+            }`}
+          >
+            {thing.name}
+          </p>
         )}
         {when && (
           <p className="mt-0.5 text-xs font-medium text-[#d09a4e]">{when}</p>
@@ -315,6 +370,68 @@ function ThingRow({
         </button>
       </div>
     </li>
+  );
+}
+
+/**
+ * **How close it is, said in three words at most.**
+ *
+ * The one line that turns a list of saved things into an answer to *what is
+ * coming up for me*. It is the first thing in the row and the only ember on
+ * it, so the eye lands on "Tonight" before it reads the name — which is the
+ * whole point of opening this page in the evening.
+ *
+ * Nothing is drawn where Atlas holds no day. A film and a subject whose
+ * nights live on its modes get a name and no urgency, because inventing one
+ * would be the only lie this page could tell.
+ */
+function Nearness({ anticipation }: { anticipation: Anticipation }) {
+  const { nearness, label, lastChance, nights } = anticipation;
+  if (nearness === "unknown") return null;
+
+  const imminent =
+    nearness === "running" || nearness === "tonight" || nearness === "tomorrow";
+  const gone = nearness === "passed";
+
+  return (
+    <p className="mb-0.5 flex flex-wrap items-baseline gap-x-2">
+      <span
+        data-testid="nearness"
+        className={`text-[11px] font-medium tracking-[0.14em] uppercase ${
+          gone
+            ? "text-[#e9e6da]/35"
+            : imminent
+              ? "text-[#d09a4e]"
+              : "text-[#d09a4e]/70"
+        }`}
+      >
+        {label}
+      </span>
+
+      {/* Said only on the night it is true, and only where there were other
+          nights to have missed. */}
+      {lastChance ? (
+        <span
+          data-testid="last-chance"
+          className="text-[10px] tracking-wider text-[#d09a4e]/70 uppercase"
+        >
+          last night of it
+        </span>
+      ) : null}
+
+      {/* A run is a run. "8 nights" is the fact; a range would claim the
+          nights between, and Field of Screams' 38 are a list with gaps. */}
+      {!gone && nights && nights > 1 ? (
+        <span data-testid="nights" className="text-[10px] text-[#e9e6da]/35">
+          {nights} nights
+        </span>
+      ) : null}
+
+      {/* The calendar has an opinion; only they have the answer. */}
+      {gone ? (
+        <span className="text-[10px] text-[#e9e6da]/35">did you go?</span>
+      ) : null}
+    </p>
   );
 }
 

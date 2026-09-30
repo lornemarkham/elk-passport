@@ -188,6 +188,24 @@ function eventDays(experience: Experience): readonly string[] {
 }
 
 /**
+ * **Every local day a subject is on**, ascending, whichever shape its evidence
+ * has: an Event's own interval expanded, or the days its sources named.
+ *
+ * The same answer `nextRelevantDay` is built on, exported because knowing
+ * *which* days matters as well as the next one — whether today is the last of
+ * them, and whether they are all behind us. Passport holds no second copy of
+ * the rule that produced them, which is the whole reason this is here rather
+ * than recomputed by a caller.
+ *
+ * Empty is the common and honest answer: Black Mountain's own record states
+ * nothing (`availability.basis: "unstated"`) because its nights live on its
+ * modes, and a film has no date at all.
+ */
+export function daysOn(experience: Experience): readonly string[] {
+  return experience.startTime ? eventDays(experience) : statedDays(experience);
+}
+
+/**
  * **When the next thing a person could turn up for happens**, as a day, from
  * `fromDay` onwards — the one signal every lane orders by.
  *
@@ -200,10 +218,7 @@ export function nextRelevantDay(
   experience: Experience,
   fromDay: string,
 ): string | undefined {
-  const days = experience.startTime
-    ? eventDays(experience)
-    : statedDays(experience);
-  return days.find((day) => day >= fromDay);
+  return daysOn(experience).find((day) => day >= fromDay);
 }
 
 /**
