@@ -212,8 +212,10 @@ export function MovieNight({ signedIn, reactions }: MovieNightProps) {
               </p>
               <h1 className="font-heading mt-5 text-3xl">{chosen.title}</h1>
               <p className="mt-1 text-sm text-[#e9e6da]/50">
-                {chosen.year} · {chosen.runtimeMinutes} min ·{" "}
-                {chosen.certification.code} ({chosen.certification.system})
+                {chosen.year} · {chosen.runtimeMinutes} min
+                {chosen.certification
+                  ? ` · ${chosen.certification.code} (${chosen.certification.system})`
+                  : ""}
               </p>
               <p className="mt-5 max-w-md leading-relaxed text-[#e9e6da]/75">
                 {chosen.line}
@@ -318,8 +320,15 @@ function FilmCard({ film, onPick }: { film: Film; onPick: () => void }) {
       >
         <span className="font-heading text-xl">{film.title}</span>
         <span className="mt-0.5 text-xs text-[#e9e6da]/45">
-          {film.year} · {film.runtimeMinutes} min ·{" "}
-          <span data-testid={`cert-${film.id}`}>{film.certification.code}</span>
+          {film.year} · {film.runtimeMinutes} min
+          {film.certification ? (
+            <>
+              {" · "}
+              <span data-testid={`cert-${film.id}`}>
+                {film.certification.code}
+              </span>
+            </>
+          ) : null}
         </span>
         <span className="mt-2 text-sm leading-relaxed text-[#e9e6da]/70">
           {film.line}

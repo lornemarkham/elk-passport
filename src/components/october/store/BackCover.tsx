@@ -336,8 +336,10 @@ export function BackCover({
         }}
       >
         <span>
-          {film.runtimeMinutes} min · {film.certification.code} (
-          {film.certification.system})
+          {film.runtimeMinutes} min
+          {film.certification
+            ? ` · ${film.certification.code} (${film.certification.system})`
+            : ""}
         </span>
         <span
           style={{

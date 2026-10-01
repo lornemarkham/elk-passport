@@ -263,6 +263,28 @@ export function MyOctober({
   );
 }
 
+/**
+ * **Where a row in My October goes when you press it.**
+ *
+ * An Atlas subject goes to its own page, which `destinationFor` has always
+ * answered. A film is not an Atlas subject and had no answer at all, so a
+ * saved movie sat here as a dead string — the one row in October you could
+ * not open. It goes to its page in the catalogue.
+ */
+function destinationOf(
+  thing: OctoberThing,
+  experience?: Experience,
+): string | undefined {
+  if (thing.entityKind === "Movie") {
+    // Only where the catalogue still holds it. A film id that has since been
+    // removed gets no link rather than a 404.
+    return filmById(thing.entityId)
+      ? `/october/movies/${thing.entityId}`
+      : undefined;
+  }
+  return experience ? destinationFor(experience) : undefined;
+}
+
 function ThingRow({
   thing,
   anticipation,
@@ -278,7 +300,7 @@ function ThingRow({
   onDid: () => void;
   onForget: () => void;
 }) {
-  const destination = experience ? destinationFor(experience) : undefined;
+  const destination = destinationOf(thing, experience);
   const when =
     thing.entityKind === "Event" && thing.startsAt
       ? formatEventWhen(
@@ -318,7 +340,20 @@ function ThingRow({
       )}
 
       <div className="min-w-0 flex-1">
-        <Nearness anticipation={anticipation} />
+        {/* A film has no date, so the urgency slot is empty and the row read
+            as an untitled nothing beside a haunt. It says what it is instead
+            — and only while it genuinely has no day, so a movie somebody one
+            day plans for a Tuesday still gets the real signal. */}
+        {thing.entityKind === "Movie" && anticipation.nearness === "unknown" ? (
+          <p
+            data-testid="thing-kind"
+            className="mb-0.5 text-[11px] font-medium tracking-[0.14em] text-[#e9e6da]/35 uppercase"
+          >
+            Film
+          </p>
+        ) : (
+          <Nearness anticipation={anticipation} />
+        )}
         {destination ? (
           <Link
             href={destination}
@@ -454,7 +489,7 @@ function LivedRow({
     gotMe?: string;
   }) => void;
 }) {
-  const destination = experience ? destinationFor(experience) : undefined;
+  const destination = destinationOf(thing, experience);
   // A film they watched can say what it was like. Only a film — everything
   // else in My October is a place or an evening, and the reaction layer for
   // those is deliberately not built yet.

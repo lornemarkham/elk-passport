@@ -23,6 +23,7 @@ import { UnitCard } from "@/components/october/shell/UnitCard";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
 import { Remembered } from "@/components/october/shell/Remembered";
 import { keepFor } from "@/components/october/save/keepFor";
+import { OctoberPicks } from "@/components/october/movies/OctoberPicks";
 
 export const metadata: Metadata = {
   title: "October — Passport",
@@ -153,7 +154,7 @@ export default async function OctoberHomePage() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <Card
-                href="/october/movies"
+                href="/october/movies/night"
                 eyebrow="Indoors"
                 title="Movie Night"
                 line="Pick something that suits who is actually on the sofa."
@@ -210,6 +211,14 @@ export default async function OctoberHomePage() {
             </Nothing>
           )}
         </Section>
+
+        {/* -------------------------------------------------- OCTOBER PICKS */}
+        {/* Films are a first-class October thing, and until now the only way
+            to reach one was a card that said "Movie Night" and a catalogue
+            behind it. Taste has to be shown, not linked to. */}
+        <div className="mt-12">
+          <OctoberPicks kept={page.kept} signedIn={page.signedIn} />
+        </div>
 
         {/* ------------------------------------------------------ FROM OCTOBER */}
         <Section

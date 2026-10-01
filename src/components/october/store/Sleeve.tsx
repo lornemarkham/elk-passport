@@ -144,7 +144,7 @@ export function Sleeve({
 }: {
   cover: Cover;
   width: number;
-  film: { certification: { code: string }; runtimeMinutes: number };
+  film: { certification?: { code: string }; runtimeMinutes: number };
 }) {
   if (cover.art) {
     return (
@@ -164,7 +164,7 @@ function DrawnSleeve({
 }: {
   cover: Cover;
   width: number;
-  film: { certification: { code: string }; runtimeMinutes: number };
+  film: { certification?: { code: string }; runtimeMinutes: number };
 }) {
   // Everything fixed below is authored in shelf pixels — what it would be on
   // a case asleep in its cubby — and multiplied up by however much bigger this
@@ -241,7 +241,8 @@ function DrawnSleeve({
       >
         <span>VHS</span>
         <span>{film.runtimeMinutes} MIN</span>
-        <span>{film.certification.code}</span>
+        {/* An unrated film's spine simply has no rating on it. */}
+        {film.certification ? <span>{film.certification.code}</span> : null}
       </span>
 
       <Plastic width={width} />

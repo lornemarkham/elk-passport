@@ -61,8 +61,31 @@ export interface Film {
   readonly title: string;
   readonly year: number;
   readonly runtimeMinutes: number;
-  /** As published, with the board named. Shown, never filtered on. */
-  readonly certification: { readonly system: "MPA"; readonly code: string };
+  /**
+   * As published, with the board named. Shown, never filtered on.
+   *
+   * **Optional, and often absent.** A verified MPA rating exists for some of
+   * this catalogue and genuinely not for the rest — several of these are
+   * Canadian, Japanese, Spanish or Italian films the MPA never rated. A
+   * plausible guess here would be a fabricated fact about a real film, so the
+   * field is simply missing and the page says nothing. `audience` is
+   * Passport's own authored ceiling and is what actually does the work.
+   */
+  readonly certification?: { readonly system: "MPA"; readonly code: string };
+  /**
+   * Country of origin, verified. Present where it is worth saying — which in
+   * practice means "not the United States", because for a product built in
+   * the Okanagan the fact that a film is *Canadian* is a reason to watch it
+   * and the fact that it is American is not information.
+   */
+  readonly origin?: string;
+  /**
+   * A **verified** YouTube id for the trailer — confirmed to exist and to be
+   * titled as a trailer for this film. Never guessed: undefined renders a
+   * search link instead, exactly as `about/vision` does for music. A wrong
+   * embed is worse than no embed.
+   */
+  readonly trailerId?: string;
   /** Passport's own ceiling. Filtered on. Authored, never derived from fear. */
   readonly audience: Audience;
   /** How frightening. Authored, never derived from the certification. */
@@ -84,6 +107,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight"],
     line: "Twenty-five minutes. Linus waits in the pumpkin patch for something that never comes, and it is somehow perfect.",
+    trailerId: "l8biWHrNWjM",
   },
   {
     id: "were-rabbit",
@@ -95,6 +119,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight"],
     line: "A monster movie where the monster is a rabbit and the stakes are a vegetable competition.",
+    trailerId: "ruLoRKs7dSo",
   },
   {
     id: "nightmare-before-christmas",
@@ -106,6 +131,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight", "uncanny"],
     line: "Skeletons, a song every ten minutes, and nothing that will keep anybody up.",
+    trailerId: "wr6N_hZyBCk",
   },
   {
     id: "hocus-pocus",
@@ -117,6 +143,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight"],
     line: "Three witches, one talking cat, and absolutely no intention of being frightening.",
+    trailerId: "Oryofd_T-ng",
   },
   {
     id: "casper",
@@ -128,6 +155,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight"],
     line: "A ghost story where the ghost would just like a friend.",
+    trailerId: "e8RATQJIngU",
   },
   {
     id: "corpse-bride",
@@ -139,6 +167,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["uncanny", "delight"],
     line: "The land of the dead has better music than the land of the living. That's the whole joke.",
+    trailerId: "AGACeWVdFqo",
   },
   {
     id: "scooby-doo",
@@ -150,6 +179,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight"],
     line: "It was a person in a mask. It was always a person in a mask.",
+    trailerId: "o3dbeI0BU1k",
   },
   {
     id: "monster-house",
@@ -161,6 +191,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "spooky",
     mechanisms: ["dread", "jump"],
     line: "The house across the road eats things. Genuinely tense for about twenty minutes, then it lets you go.",
+    trailerId: "yB9vThNAIjs",
   },
   {
     id: "paranorman",
@@ -172,6 +203,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "spooky",
     mechanisms: ["uncanny", "delight"],
     line: "A boy who sees the dead, in a town that would rather he didn't. Kinder than it looks.",
+    trailerId: "hgwSpajMw3s",
   },
   {
     id: "beetlejuice",
@@ -183,6 +215,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "spooky",
     mechanisms: ["uncanny", "delight"],
     line: "Loud, strange, and funnier than it is frightening — though the sandworms land for some kids.",
+    trailerId: "GuyNP-XyFHs",
   },
   {
     id: "ghostbusters",
@@ -194,6 +227,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "spooky",
     mechanisms: ["jump", "delight"],
     line: "A comedy first. The librarian in the opening scene is the only part anyone remembers being scared by.",
+    trailerId: "wQAljlSmjC8",
   },
   {
     id: "coraline",
@@ -207,6 +241,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["uncanny", "being watched", "dread"],
     line: "Buttons for eyes. Rated for children and quietly one of the most unsettling films on this list.",
+    trailerId: "m9bOpeuvNwY",
   },
 
   // ----------------------------------------------------------------- teens
@@ -221,6 +256,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "cozy",
     mechanisms: ["delight"],
     line: "Gothic, warm, and about a family that likes each other. The certification is doing the heavy lifting, not the fear.",
+    trailerId: "A6X4VAHdDVg",
   },
   {
     id: "jaws",
@@ -232,6 +268,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["the unseen", "dread", "jump"],
     line: "The shark barely appears. That was a budget problem, and it made the film.",
+    trailerId: "U1fu_sA7XhE",
   },
   {
     id: "poltergeist",
@@ -243,6 +280,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["reality-wrong", "helplessness", "jump"],
     line: "A suburban house turns on a family. Rated PG in 1982, which tells you something about 1982.",
+    trailerId: "9eZgEKjYJqA",
   },
   {
     id: "sixth-sense",
@@ -254,6 +292,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["dread", "uncanny"],
     line: "Sad more than frightening, in the end. Watch it with someone who hasn't.",
+    trailerId: "HXG4HTIlc1U",
   },
   {
     id: "signs",
@@ -265,6 +304,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["the unseen", "isolation", "dread"],
     line: "A farmhouse, a cornfield, and something you mostly don't see. The birthday party footage is the whole film.",
+    trailerId: "-9iQMK2YVcw",
   },
   {
     id: "the-others",
@@ -276,6 +316,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["dread", "the unseen", "isolation"],
     line: "A big house, a mother, children who cannot be in daylight. Almost nothing is shown. Everything is heard.",
+    trailerId: "C7pKqaPtMiA",
   },
   {
     id: "a-quiet-place",
@@ -287,6 +328,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["dread", "jump", "helplessness"],
     line: "Ninety minutes where the sound design is the villain. Do not eat crisps.",
+    trailerId: "WR7cc5t7tv8",
   },
   {
     id: "arachnophobia",
@@ -298,6 +340,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "spooky",
     mechanisms: ["jump", "too real"],
     line: "It is about spiders and it knows exactly what it is doing. Fine unless it is about spiders for you.",
+    trailerId: "p2EZkRcw3LA",
   },
   {
     id: "the-ring",
@@ -311,6 +354,7 @@ export const CATALOGUE: readonly Film[] = [
     // direction from Coraline.
     mechanisms: ["reality-wrong", "dread", "being watched"],
     line: "A videotape, seven days, and a green-grey palette you will keep seeing. PG-13, and it will not feel like it.",
+    trailerId: "CG7BAY6_hsw",
   },
 
   // ---------------------------------------------------------------- adults
@@ -324,6 +368,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["dread", "too real", "helplessness"],
     line: "The scariest thing in it is a conversation. Funnier than people remember, right up until it isn't.",
+    trailerId: "DzfpyUB60YY",
   },
   {
     id: "halloween-1978",
@@ -335,6 +380,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "creepy",
     mechanisms: ["being watched", "dread", "jump"],
     line: "The one the month is named after. He is standing in the background of shots nobody is looking at.",
+    trailerId: "3JsrH8eUVOo",
   },
   {
     id: "alien",
@@ -346,6 +392,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "nightmare",
     mechanisms: ["isolation", "the unseen", "helplessness"],
     line: "A haunted house in space, and nobody is coming. Slower than you remember, and better.",
+    trailerId: "jQ5lPt9edzQ",
   },
   {
     id: "the-thing",
@@ -357,6 +404,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "nightmare",
     mechanisms: ["isolation", "reality-wrong", "dread"],
     line: "Twelve men, one outpost, and no way to know which of them is still a man.",
+    trailerId: "5ftmr17M-a4",
   },
   {
     id: "the-shining",
@@ -368,6 +416,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "nightmare",
     mechanisms: ["isolation", "uncanny", "dread"],
     line: "Corridors that are the wrong shape. Nothing chases anybody for an hour and it is unbearable.",
+    trailerId: "S014oGZiSdI",
   },
   {
     id: "the-witch",
@@ -379,6 +428,7 @@ export const CATALOGUE: readonly Film[] = [
     fear: "nightmare",
     mechanisms: ["dread", "isolation", "the unseen"],
     line: "A family alone at the edge of a wood in 1630. Almost no jumps. Ninety minutes of something closing in.",
+    trailerId: "iQXmlf3Sefg",
   },
   {
     id: "hereditary",
@@ -390,6 +440,197 @@ export const CATALOGUE: readonly Film[] = [
     fear: "nightmare",
     mechanisms: ["dread", "reality-wrong", "helplessness"],
     line: "Grief as a horror film. It goes somewhere in the first half hour that you will not be ready for.",
+  },
+
+  // ------------------------------------- the ones you were not expecting
+  {
+    id: "peanut-butter-solution",
+    title: "The Peanut Butter Solution",
+    year: 1985,
+    runtimeMinutes: 90,
+    origin: "Canada",
+    audience: "kids",
+    fear: "creepy",
+    mechanisms: ["reality-wrong", "uncanny"],
+    line: "A boy loses his hair from fright, and a paintbrush grows it back. This is a children's film. Canada made it on purpose.",
+    trailerId: "7-kgfLpvIU8",
+  },
+  {
+    id: "the-changeling",
+    title: "The Changeling",
+    year: 1980,
+    runtimeMinutes: 107,
+    certification: { system: "MPA", code: "R" },
+    origin: "Canada",
+    audience: "adults",
+    fear: "creepy",
+    mechanisms: ["dread", "the unseen", "isolation"],
+    line: "A grieving composer, an enormous empty house, and a seance. One of the best ghost films ever made, and nobody mentions it.",
+    trailerId: "UwUI7d5TgGA",
+  },
+  {
+    id: "cube",
+    title: "Cube",
+    year: 1997,
+    runtimeMinutes: 90,
+    origin: "Canada",
+    audience: "adults",
+    fear: "nightmare",
+    mechanisms: ["helplessness", "isolation", "dread"],
+    line: "Six strangers wake in a lethal geometric maze with no memory of arriving. Made for almost nothing. Does not matter.",
+    trailerId: "Esjc0rPj3K4",
+  },
+  {
+    id: "ginger-snaps",
+    title: "Ginger Snaps",
+    year: 2000,
+    runtimeMinutes: 103,
+    origin: "Canada",
+    audience: "teens",
+    fear: "creepy",
+    mechanisms: ["too real", "uncanny", "dread"],
+    line: "Two sisters, one bite, and a film that worked out puberty was the horror all along.",
+    trailerId: "lRXT1J0kqdY",
+  },
+  {
+    id: "the-gate",
+    title: "The Gate",
+    year: 1987,
+    runtimeMinutes: 85,
+    origin: "Canada",
+    audience: "teens",
+    fear: "spooky",
+    mechanisms: ["the unseen", "jump", "reality-wrong"],
+    line: "Two kids find a hole in the back garden and accidentally open hell. The demons are stop-motion, which is somehow worse.",
+    trailerId: "l4mDMM_uFsE",
+  },
+  {
+    id: "hausu",
+    title: "House",
+    year: 1977,
+    runtimeMinutes: 88,
+    origin: "Japan",
+    audience: "teens",
+    fear: "spooky",
+    mechanisms: ["reality-wrong", "delight", "uncanny"],
+    line: "A house eats seven schoolgirls. A piano eats one of them. No description of this film has ever sounded true.",
+    trailerId: "WQ_Yo06kIIA",
+  },
+  {
+    id: "the-platform",
+    title: "The Platform",
+    year: 2019,
+    runtimeMinutes: 94,
+    origin: "Spain",
+    audience: "adults",
+    fear: "nightmare",
+    mechanisms: ["helplessness", "too real", "dread"],
+    line: "A vertical prison where a feast descends one floor at a time. Everyone above you decides what is left.",
+    trailerId: "RlfooqeZcdY",
+  },
+  {
+    id: "something-wicked",
+    title: "Something Wicked This Way Comes",
+    year: 1983,
+    runtimeMinutes: 95,
+    audience: "kids",
+    fear: "spooky",
+    mechanisms: ["dread", "uncanny", "being watched"],
+    line: "A carnival arrives in October and offers everybody exactly what they want. Bradbury wrote it. Disney made it. It is stranger than that sounds.",
+    trailerId: "n3u5kFUUJ2A",
+  },
+  {
+    id: "watcher-in-the-woods",
+    title: "The Watcher in the Woods",
+    year: 1980,
+    runtimeMinutes: 80,
+    audience: "kids",
+    fear: "creepy",
+    mechanisms: ["being watched", "the unseen", "dread"],
+    line: "Disney made a real ghost story, gave it Bette Davis, then could not decide how to end it. The unease survives anyway.",
+    trailerId: "3DFacqQp8uw",
+  },
+  {
+    id: "the-witches",
+    title: "The Witches",
+    year: 1990,
+    runtimeMinutes: 91,
+    audience: "kids",
+    fear: "creepy",
+    mechanisms: ["uncanny", "helplessness"],
+    line: "Anjelica Huston takes her face off in a hotel ballroom. A generation has not recovered.",
+    trailerId: "d_ZyqaN_XNM",
+  },
+  {
+    id: "lady-in-white",
+    title: "Lady in White",
+    year: 1988,
+    runtimeMinutes: 112,
+    audience: "teens",
+    fear: "creepy",
+    mechanisms: ["the unseen", "dread", "uncanny"],
+    line: "A boy shut in the cloakroom on Halloween watches a murder that already happened. Autumn in upstate New York, and it looks it.",
+    trailerId: "dzBK95kyxNg",
+  },
+  {
+    id: "the-burbs",
+    title: "The 'Burbs",
+    year: 1989,
+    runtimeMinutes: 101,
+    certification: { system: "MPA", code: "PG" },
+    audience: "teens",
+    fear: "cozy",
+    mechanisms: ["delight", "being watched"],
+    line: "Tom Hanks decides his new neighbours are murderers. He is on holiday. He has nothing else to do.",
+    trailerId: "pyRUijyrXr4",
+  },
+  {
+    id: "the-frighteners",
+    title: "The Frighteners",
+    year: 1996,
+    runtimeMinutes: 110,
+    certification: { system: "MPA", code: "R" },
+    origin: "New Zealand",
+    audience: "teens",
+    fear: "spooky",
+    mechanisms: ["delight", "jump", "the unseen"],
+    line: "Michael J. Fox can see ghosts and has them running a scam for him. Peter Jackson, before the ring.",
+    trailerId: "lKWiQLwr9Xs",
+  },
+  {
+    id: "dead-alive",
+    title: "Dead Alive",
+    year: 1992,
+    runtimeMinutes: 104,
+    origin: "New Zealand",
+    audience: "adults",
+    fear: "nightmare",
+    mechanisms: ["delight", "too real"],
+    line: "The goriest film ever made, and a comedy. There is a lawnmower. Peter Jackson, also before the ring.",
+    trailerId: "O8LIug1cP04",
+  },
+  {
+    id: "people-under-the-stairs",
+    title: "The People Under the Stairs",
+    year: 1991,
+    runtimeMinutes: 102,
+    audience: "adults",
+    fear: "creepy",
+    mechanisms: ["helplessness", "isolation", "dread"],
+    line: "A boy robs his landlords and finds what they keep downstairs. Wes Craven made a film about rent in 1991.",
+    trailerId: "gx4jKIzvVUo",
+  },
+  {
+    id: "cemetery-man",
+    title: "Cemetery Man",
+    year: 1994,
+    runtimeMinutes: 92,
+    origin: "Italy",
+    audience: "adults",
+    fear: "creepy",
+    mechanisms: ["reality-wrong", "uncanny", "isolation"],
+    line: "The caretaker of a cemetery where the dead will not stay down. It becomes a love story, then a philosophy, then something else.",
+    trailerId: "I6o0TJNC77I",
   },
 ];
 

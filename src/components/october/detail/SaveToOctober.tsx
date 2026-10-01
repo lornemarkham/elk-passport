@@ -46,6 +46,7 @@ export function SaveToOctober({
   startsAt,
   initiallySaved = false,
   signedIn,
+  returnTo,
 }: {
   readonly entityId: string;
   readonly entityKind: OctoberKind;
@@ -53,6 +54,12 @@ export function SaveToOctober({
   readonly startsAt?: string | null;
   readonly initiallySaved?: boolean;
   readonly signedIn: boolean;
+  /**
+   * Where signing in should land them. Defaults to the Atlas subject page,
+   * which is where every caller but one lives — a film has no `/passport/:id`
+   * to come back to, because it is not an Atlas entity.
+   */
+  readonly returnTo?: string;
 }) {
   const { saved, state, toggle } = useKeeping(
     { entityId, entityKind, name, startsAt },
@@ -64,7 +71,7 @@ export function SaveToOctober({
   if (!signedIn) {
     return (
       <a
-        href={`/auth?next=${encodeURIComponent(`/passport/${entityId}`)}`}
+        href={`/auth?next=${encodeURIComponent(returnTo ?? `/passport/${entityId}`)}`}
         className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#e9e6da]/25 px-5 text-sm text-[#e9e6da]/80 transition-colors hover:border-[#d09a4e]/60 hover:text-[#f3efe4]"
       >
         <Heart className="h-4 w-4" />

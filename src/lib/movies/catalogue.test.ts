@@ -24,7 +24,7 @@ describe("suitability and fear are separate", () => {
 
   it("has a higher-certificate film that is not scary at all", () => {
     const addams = CATALOGUE.find((f) => f.id === "addams-family")!;
-    expect(addams.certification.code).toBe("PG-13");
+    expect(addams.certification?.code).toBe("PG-13");
     expect(addams.fear).toBe("cozy");
   });
 
@@ -41,8 +41,22 @@ describe("suitability and fear are separate", () => {
 
   it("names the board rather than implying a rating is universal", () => {
     for (const film of CATALOGUE) {
+      if (!film.certification) continue;
       expect(film.certification.system).toBe("MPA");
       expect(film.certification.code.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("leaves the rating off rather than guessing one", () => {
+    // The MPA never rated the Canadian, Japanese, Spanish and Italian films
+    // in here. An absent certification is the honest answer; a plausible one
+    // would be a fabricated fact about a real film.
+    const unrated = CATALOGUE.filter((f) => !f.certification);
+    expect(unrated.length).toBeGreaterThan(0);
+    // And `audience` — Passport's own authored ceiling — is always present,
+    // which is what the product actually filters on.
+    for (const film of unrated) {
+      expect(["kids", "teens", "adults"]).toContain(film.audience);
     }
   });
 });

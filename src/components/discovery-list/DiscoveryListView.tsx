@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
@@ -583,15 +584,15 @@ export function DiscoveryListView({
                     already over.
                   </p>
                   {/* Staying in is an October too. */}
-                  <a
-                    href="/october/movies"
+                  <Link
+                    href="/october/movies/night"
                     className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[#8a5a24]/30 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
                   >
                     Movie Night
                     <span className="text-[#8a5a24]/50">
                       — nobody&apos;s going anywhere tonight
                     </span>
-                  </a>
+                  </Link>
                 </div>
                 <InspirationFeed
                   experiences={experiences}
