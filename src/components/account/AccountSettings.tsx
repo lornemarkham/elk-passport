@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { PassportProfile } from "@/lib/profile/profileService";
+import { OCTOBER_PLACES, placeFrom } from "@/domain/environment/places";
 import {
   CONTENT_COMFORT_OPTIONS,
   INTEREST_OPTIONS,
@@ -103,11 +104,8 @@ export function AccountSettings({
           busy={busy === "displayName"}
           onCommit={(v) => saveProfileField("displayName", v)}
         />
-        <TextField
-          label="Home area"
-          help="In your own words — “Vernon, BC”. Passport never reads your device location."
+        <AreaField
           value={profile.homeArea ?? ""}
-          placeholder="Not set"
           busy={busy === "homeArea"}
           onCommit={(v) => saveProfileField("homeArea", v)}
         />
@@ -246,6 +244,79 @@ function TextField({
         }}
         className="mt-2 min-h-11 w-full rounded-lg border border-[#8a5a24]/25 bg-white px-3 text-base text-[#2c1f10] disabled:opacity-60"
       />
+    </label>
+  );
+}
+
+/**
+ * **My October area** — the one thing weather needs and Passport cannot work
+ * out on its own.
+ *
+ * It writes to `home_area`, the field that has existed on `passport_profiles`
+ * since the profile did and that nothing has ever read. No migration, no new
+ * table, no preference vocabulary: the column was already the right shape and
+ * was only ever missing a reader.
+ *
+ * ## Why a list rather than the text box it replaces
+ *
+ * October resolves an area to coordinates through a hand-verified list of the
+ * twenty places this product serves, and an area outside that list gets no
+ * weather at all. A text box invites "vernon" and then silently fails to
+ * match, which is a worse experience than not offering the feature. A list
+ * cannot be typed wrong.
+ *
+ * Anything already stored that is not on the list is kept and offered as its
+ * own option, because quietly overwriting what somebody typed is not an
+ * upgrade. It simply gets no forecast until they pick a listed area.
+ */
+function AreaField({
+  value,
+  busy,
+  onCommit,
+}: {
+  value: string;
+  busy: boolean;
+  onCommit: (value: string) => void;
+}) {
+  const known = OCTOBER_PLACES.some((a) => a.name === value);
+  const resolves = Boolean(placeFrom(value));
+
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-[#2c1f10]">
+        My October area
+      </span>
+      <span className="mt-0.5 block text-xs text-[#8a7a60]">
+        Where your October mostly happens. Used for sunset and weather. Passport
+        never reads your device location.
+      </span>
+      <select
+        data-testid="october-area"
+        value={value}
+        disabled={busy}
+        onChange={(e) => onCommit(e.target.value)}
+        className="mt-2 min-h-11 w-full rounded-lg border border-[#8a5a24]/25 bg-white px-3 text-base text-[#2c1f10] disabled:opacity-60"
+      >
+        <option value="">Not set</option>
+        {/* Kept rather than overwritten, and honestly labelled. */}
+        {value && !known ? (
+          <option value={value}>{value} — not a listed area</option>
+        ) : null}
+        {OCTOBER_PLACES.map((area) => (
+          <option key={area.id} value={area.name}>
+            {area.name}
+          </option>
+        ))}
+      </select>
+      {value && !resolves ? (
+        <span
+          data-testid="october-area-unresolved"
+          className="mt-1 block text-xs text-[#8a7a60]"
+        >
+          October has no forecast for that one. Pick a listed area to see sunset
+          and weather.
+        </span>
+      ) : null}
     </label>
   );
 }

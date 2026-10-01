@@ -90,6 +90,7 @@ export function Card({
   options,
   optionsLabel,
   keep,
+  note,
 }: {
   readonly href?: string;
   readonly eyebrow?: string;
@@ -113,6 +114,13 @@ export function Card({
    * in an October.
    */
   readonly keep?: ReactNode;
+  /**
+   * One quiet line October added because it knows something about the world —
+   * the weather after dark, usually. Absent far more often than present: see
+   * `forEventOn`, which speaks only for a subject known to be outdoors on a
+   * day the forecast actually reaches.
+   */
+  readonly note?: ReactNode;
 }) {
   const surface =
     "group relative flex min-h-24 flex-col justify-between rounded-xl border p-4 transition-colors";
@@ -142,6 +150,7 @@ export function Card({
           {status ? <Honesty status={status} /> : null}
           {keep}
         </div>
+        {note}
         {line ? (
           <p className="mt-1.5 line-clamp-2 text-sm text-[#e9e6da]/50">
             {line}

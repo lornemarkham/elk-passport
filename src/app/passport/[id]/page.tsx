@@ -27,6 +27,8 @@ import {
   OctoberShell,
 } from "@/components/october/detail/OctoberShell";
 import { SaveToOctober } from "@/components/october/detail/SaveToOctober";
+import { BeforeYouGo } from "@/components/october/environment/BeforeYouGo";
+import { briefingFor } from "@/lib/environment/briefing";
 import {
   actionsFor,
   composedFactSections,
@@ -131,6 +133,15 @@ export default async function PassportPage({ params, searchParams }: Props) {
       // refresh used to change the product.
       const october = isOctoberSubject(view);
       const save = october ? await saveControl(view) : null;
+      // What the conditions mean for *this* thing, on its own next day, at
+      // its own place. Null for an indoor subject on an ordinary evening,
+      // for anything beyond the forecast, and for everything unclassified.
+      const briefing = october
+        ? await briefingFor(
+            view,
+            typeof query.sim === "string" ? query.sim : undefined,
+          )
+        : null;
       const actions = october
         ? octoberFoot(view, Boolean(curation), save)
         : null;
@@ -146,13 +157,19 @@ export default async function PassportPage({ params, searchParams }: Props) {
           {october ? (
             <OctoberShell actions={actions}>
               {curation ? (
-                <CuratedSubjectPage
-                  view={view}
-                  curation={curation}
-                  save={save}
-                />
+                <>
+                  <CuratedSubjectPage
+                    view={view}
+                    curation={curation}
+                    save={save}
+                  />
+                  {briefing ? <BeforeYouGo read={briefing} /> : null}
+                </>
               ) : (
-                <ComposedOctoberSubject view={view} save={save} />
+                <>
+                  <ComposedOctoberSubject view={view} save={save} />
+                  {briefing ? <BeforeYouGo read={briefing} /> : null}
+                </>
               )}
             </OctoberShell>
           ) : curation ? (

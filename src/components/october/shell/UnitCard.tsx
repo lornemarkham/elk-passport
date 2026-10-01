@@ -25,11 +25,14 @@ export function UnitCard({
   unit,
   label,
   keep,
+  note,
 }: {
   readonly unit: DiscoveryUnit;
   readonly label: string;
   /** Save to My October, drawn by the surface because it knows the session. */
   readonly keep?: ReactNode;
+  /** What October noticed about the world on this thing's day. */
+  readonly note?: ReactNode;
 }) {
   const { head } = unit;
   const when =
@@ -46,6 +49,7 @@ export function UnitCard({
       options={namesOf(unit)}
       optionsLabel={unit.options.length > 0 ? label : undefined}
       keep={keep}
+      note={note}
     />
   );
 }

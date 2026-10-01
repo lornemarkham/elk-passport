@@ -33,6 +33,24 @@ import { Unanswered } from "@/components/october/shell/atoms";
 import { keptOnThisPage } from "@/lib/october/keptOnThisPage";
 import { keepFor } from "@/components/october/save/keepFor";
 import { BrowseMonth } from "@/components/october/discover/BrowseMonth";
+import { currentUser } from "@/lib/auth/currentUser";
+import { profileFor } from "@/lib/profile/profileService";
+import { OCTOBER_PLACES, placeFrom } from "@/domain/environment/places";
+import { classifySubject } from "@/domain/october/subjectKind";
+import { conditionsFor } from "@/domain/october/conditions";
+import { environmentsForPoints, nearestPlace } from "@/lib/environment/atEvent";
+import {
+  localnessOf,
+  byNearest,
+  type PlacePoints,
+} from "@/domain/october/localness";
+import { RightNow } from "@/components/october/environment/RightNow";
+import { temporalContext } from "@/domain/october/temporal";
+import { lightPhaseAt } from "@/domain/environment/daylight";
+import { SkyWash } from "@/components/october/environment/SkyWash";
+import { placeById } from "@/domain/environment/places";
+import { scenarioFrom, simulatedEnvironment } from "@/lib/environment/scenario";
+import { CardWeather } from "@/components/october/environment/CardWeather";
 import {
   CompactRow,
   FeatureCard,
@@ -73,7 +91,13 @@ export const metadata: Metadata = {
  * names an **editorial collection** that stated membership is authoritative;
  * everywhere else a keyword lens still runs, and those shelves say so.
  */
-export default async function OctoberDiscoverPage() {
+export default async function OctoberDiscoverPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sim?: string }>;
+}) {
+  // Development only; inert in any deployed build.
+  const scenario = scenarioFrom((await searchParams).sim);
   // **An October surface reads from a day inside October.** Before the month
   // begins `octoberNow` anchors on the first of it, so Tonight stops leading
   // with the last Sunday in September and This weekend stops being empty
@@ -86,11 +110,71 @@ export default async function OctoberDiscoverPage() {
   // this page used to render both as "nothing is on".
   // Two reads for the whole page, not two per card: what October holds, and
   // what this person has already kept out of it.
-  const [atlas, page] = await Promise.all([
+  const [atlas, page, user] = await Promise.all([
     discoveryCandidates(),
     keptOnThisPage(),
+    currentUser().catch(() => null),
   ]);
   const experiences = atlas.candidates.map(candidateToExperience);
+
+  // Where this person's October is, and what the sky is doing — at each
+  // thing's own place, not at theirs.
+  const profile = user ? await profileFor(user).catch(() => null) : null;
+  const place = scenario
+    ? placeById(scenario.areaId)
+    : placeFrom(profile?.homeArea);
+  const nowReal = scenario ? scenario.now : new Date();
+
+  const points: PlacePoints = new Map(
+    atlas.candidates
+      .filter((c) => c.coordinates)
+      .map((c) => [
+        c.id,
+        { latitude: c.coordinates![1], longitude: c.coordinates![0] },
+      ]),
+  );
+  const venuePoints = experiences
+    .map((e) => (e.venue?.placeId ? points.get(e.venue.placeId) : undefined))
+    .filter((pt): pt is { latitude: number; longitude: number } => Boolean(pt));
+  const environments = scenario
+    ? new Map(
+        OCTOBER_PLACES.map((p) => [p.id, simulatedEnvironment(scenario, p)]),
+      )
+    : await environmentsForPoints(venuePoints, place);
+  const outside = place ? environments.get(place.id) : undefined;
+  const near = (e: Experience) => localnessOf(e, place, points);
+
+  const environmentAt = (e: Experience) => {
+    const pt = e.venue?.placeId ? points.get(e.venue.placeId) : undefined;
+    const at = pt ? nearestPlace(pt) : undefined;
+    return at ? environments.get(at.id) : pt ? undefined : outside;
+  };
+
+  /** Town, and how far that is from the October this person is having. */
+  const NEARNESS_SAYS = {
+    here: undefined,
+    nearby: "nearby",
+    "a-drive": "worth the drive",
+    unknown: undefined,
+  } as const;
+  const whereFor = (unit: { head: Experience }) => {
+    const l = near(unit.head);
+    const town = l.locality;
+    const far = NEARNESS_SAYS[l.nearness];
+    if (!town && !far) return undefined;
+    return [town, far].filter(Boolean).join(" · ");
+  };
+
+  /** Coming up rows say what conditions mean, when they mean anything. */
+  const weatherNote = (unit: { head: Experience }, day: string) => {
+    const head = unit.head;
+    const venueSubtype = head.venue?.placeId
+      ? atlas.candidates.find((c) => c.id === head.venue!.placeId)?.subtype
+      : undefined;
+    const { kind } = classifySubject(head, venueSubtype);
+    const read = conditionsFor(kind, day, environmentAt(head), nowReal);
+    return read ? <CardWeather read={read} /> : undefined;
+  };
   const keep = (unit: { head: Experience }) =>
     keepFor(unit.head, page, "/october/discover");
 
@@ -139,198 +223,237 @@ export default async function OctoberDiscoverPage() {
   })).filter((shelf) => shelf.units.length > 0);
   const feature = unitById.get(OCTOBER_FEATURE.entityId);
 
-  const lead = leadOf(tonight);
-  const alsoTonight = withoutLead(tonight).slice(0, 3);
+  // **Local first, everywhere a lane is capped.** Sorting before the cap is
+  // the whole point: it changes *which* things survive it, not merely their
+  // order. Nothing is filtered — a Vernon thing still appears for a Kelowna
+  // person, below the Kelowna ones, marked as worth the drive.
+  const localFirst = byNearest<{ head: Experience }>((u) => near(u.head));
+  const tonightLocal = [...tonight].sort(localFirst);
+  const weekendLocal = [...weekend].sort(localFirst);
+
+  const lead = leadOf(tonightLocal);
+  const alsoTonight = withoutLead(tonightLocal).slice(0, 3);
   // A fortnight is a scannable calendar; the rest of the month is browsing,
   // and that is the lane underneath.
-  const comingDays = byDay(soon, today).slice(0, 8);
+  // Within a day, nearest first — so a Kelowna person's Saturday leads with
+  // Kelowna rather than with whatever Atlas happened to return first.
+  const comingDays = byDay(soon, today)
+    .slice(0, 8)
+    .map(({ day, units }) => ({
+      day,
+      units: [...units].sort(
+        byNearest<{ head: Experience }>((u) => near(u.head)),
+      ),
+    }));
+
+  const when = temporalContext(nowReal);
+  const phase = place
+    ? lightPhaseAt(place.latitude, place.longitude, nowReal)
+    : undefined;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pt-10 pb-24 sm:px-6">
-      <header>
-        <h1 className="font-heading text-4xl tracking-tight text-[#f3efe4] sm:text-5xl">
-          What&apos;s on
-        </h1>
-        <p className="mt-2 text-[#e9e6da]/50">October in the Okanagan.</p>
-      </header>
+    <SkyWash phase={phase}>
+      <main className="mx-auto max-w-6xl px-4 pt-10 pb-24 sm:px-6">
+        <header>
+          <h1 className="font-heading text-4xl tracking-tight text-[#f3efe4] sm:text-5xl">
+            What&apos;s on
+          </h1>
+          {/* Where October is standing. The question "is this using my area?"
+            should never need answering by squinting at the results. */}
+          <div className="mt-3">
+            <RightNow
+              area={place}
+              environment={outside}
+              now={nowReal}
+              when={when}
+              phase={phase}
+              simulated={scenario?.label}
+            />
+          </div>
+        </header>
 
-      {/* ================================================== TONIGHT ======== */}
-      <section className="mt-10" data-testid="lane-tonight">
-        <LaneHead title="Tonight" />
-        {lead ? (
-          <>
-            <LeadCard unit={lead} eyebrow="On tonight" keep={keep(lead)} />
-            {alsoTonight.length > 0 ? (
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {alsoTonight.map((unit) => (
+        {/* ================================================== TONIGHT ======== */}
+        <section className="mt-10" data-testid="lane-tonight">
+          <LaneHead title="Tonight" />
+          {lead ? (
+            <>
+              <LeadCard unit={lead} eyebrow="On tonight" keep={keep(lead)} />
+              {alsoTonight.length > 0 ? (
+                <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {alsoTonight.map((unit) => (
+                    <li key={unit.head.id}>
+                      <DiscoverCard
+                        unit={unit}
+                        label="Tonight"
+                        keep={keep(unit)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
+          ) : atlas.outage ? (
+            <Unanswered />
+          ) : (
+            <Quiet>
+              Nothing Passport can date is on tonight. Most nights are like that
+              — what is coming is below.
+            </Quiet>
+          )}
+        </section>
+
+        {/* ============================================= THIS WEEKEND ======== */}
+        <section className="mt-16" data-testid="lane-weekend">
+          <LaneHead title="This weekend" />
+          {weekendLocal.length > 0 ? (
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {weekendLocal.slice(0, 6).map((unit) => (
+                <li key={unit.head.id}>
+                  <DiscoverCard
+                    unit={unit}
+                    label="This weekend"
+                    keep={keep(unit)}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : atlas.outage ? (
+            <Unanswered />
+          ) : (
+            <Quiet>Nothing dated falls on the coming weekend.</Quiet>
+          )}
+        </section>
+
+        {/* ================================================= EDITORIAL =======
+          Between the two immediate lanes and the calendar: the shapes October
+          actually has, in different forms so the page has a rhythm rather
+          than four identical grids. Each is drawn from the same units the
+          lanes are, so nothing here can show something that is not on. */}
+        {shelves.map((shelf, index) => (
+          <section
+            key={shelf.id}
+            className="mt-16"
+            data-testid={`shelf-${shelf.id}`}
+          >
+            <LaneHead title={shelf.title} note={shelf.blurb} />
+            {index === 0 ? (
+              // The haunts get room: they are what the month is for, and they
+              // are the subjects with the strongest media.
+              <ul className="grid gap-4 sm:grid-cols-2">
+                {shelf.units.slice(0, 4).map((unit) => (
                   <li key={unit.head.id}>
                     <DiscoverCard
                       unit={unit}
-                      label="Tonight"
+                      label={shelf.title}
                       keep={keep(unit)}
                     />
                   </li>
                 ))}
               </ul>
-            ) : null}
-          </>
-        ) : atlas.outage ? (
-          <Unanswered />
-        ) : (
-          <Quiet>
-            Nothing Passport can date is on tonight. Most nights are like that —
-            what is coming is below.
-          </Quiet>
-        )}
-      </section>
-
-      {/* ============================================= THIS WEEKEND ======== */}
-      <section className="mt-16" data-testid="lane-weekend">
-        <LaneHead title="This weekend" />
-        {weekend.length > 0 ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {weekend.slice(0, 6).map((unit) => (
-              <li key={unit.head.id}>
-                <DiscoverCard
-                  unit={unit}
-                  label="This weekend"
-                  keep={keep(unit)}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : atlas.outage ? (
-          <Unanswered />
-        ) : (
-          <Quiet>Nothing dated falls on the coming weekend.</Quiet>
-        )}
-      </section>
-
-      {/* ================================================= EDITORIAL =======
-          Between the two immediate lanes and the calendar: the shapes October
-          actually has, in different forms so the page has a rhythm rather
-          than four identical grids. Each is drawn from the same units the
-          lanes are, so nothing here can show something that is not on. */}
-      {shelves.map((shelf, index) => (
-        <section
-          key={shelf.id}
-          className="mt-16"
-          data-testid={`shelf-${shelf.id}`}
-        >
-          <LaneHead title={shelf.title} note={shelf.blurb} />
-          {index === 0 ? (
-            // The haunts get room: they are what the month is for, and they
-            // are the subjects with the strongest media.
-            <ul className="grid gap-4 sm:grid-cols-2">
-              {shelf.units.slice(0, 4).map((unit) => (
-                <li key={unit.head.id}>
-                  <DiscoverCard
-                    unit={unit}
-                    label={shelf.title}
-                    keep={keep(unit)}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
-              {shelf.units.slice(0, 10).map((unit) => (
-                <li key={unit.head.id} className="w-64 shrink-0 sm:w-72">
-                  <DiscoverCard
-                    unit={unit}
-                    label={shelf.title}
-                    keep={keep(unit)}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-          {/* The one subject October has exactly one of. A shelf of one is a
+            ) : (
+              <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+                {shelf.units.slice(0, 10).map((unit) => (
+                  <li key={unit.head.id} className="w-64 shrink-0 sm:w-72">
+                    <DiscoverCard
+                      unit={unit}
+                      label={shelf.title}
+                      keep={keep(unit)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* The one subject October has exactly one of. A shelf of one is a
               heading with a card under it; a feature is the honest shape. */}
-          {index === 0 && feature && (
-            <div className="mt-6">
-              <FeatureCard
-                keep={keep(feature)}
-                unit={feature}
-                eyebrow={OCTOBER_FEATURE.eyebrow}
-                title={OCTOBER_FEATURE.title}
-                blurb={OCTOBER_FEATURE.blurb}
-              />
+            {index === 0 && feature && (
+              <div className="mt-6">
+                <FeatureCard
+                  keep={keep(feature)}
+                  unit={feature}
+                  eyebrow={OCTOBER_FEATURE.eyebrow}
+                  title={OCTOBER_FEATURE.title}
+                  blurb={OCTOBER_FEATURE.blurb}
+                />
+              </div>
+            )}
+          </section>
+        ))}
+
+        {/* ================================================ COMING UP ======== */}
+        <section className="mt-16" data-testid="lane-coming">
+          <LaneHead title="Coming up" note="The next few weeks, by date." />
+          {comingDays.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {comingDays.map(({ day, units: onDay }) => (
+                <div
+                  key={day}
+                  data-testid="coming-day"
+                  // `minmax(0,1fr)` and `min-w-0`: a grid column is `auto` by
+                  // default, which sizes to max-content, so a long title in a
+                  // truncating row cannot shrink and pushes the whole page into
+                  // a horizontal scroll on a phone. Measured at 375px: 713px
+                  // wide before this.
+                  className="grid gap-x-6 border-t border-[#e9e6da]/[0.07] py-3 sm:grid-cols-[9rem_minmax(0,1fr)]"
+                >
+                  <p className="font-heading pt-2 text-sm text-[#d09a4e] tabular-nums">
+                    {dayLabel(day)}
+                  </p>
+                  <ul className="min-w-0 divide-y divide-transparent">
+                    {onDay.map((unit) => (
+                      <li key={unit.head.id}>
+                        <CompactRow
+                          unit={unit}
+                          where={whereFor(unit)}
+                          note={weatherNote(unit, day)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
+          ) : (
+            <Quiet>Nothing dated is ahead of us right now.</Quiet>
           )}
         </section>
-      ))}
 
-      {/* ================================================ COMING UP ======== */}
-      <section className="mt-16" data-testid="lane-coming">
-        <LaneHead title="Coming up" note="The next few weeks, by date." />
-        {comingDays.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {comingDays.map(({ day, units: onDay }) => (
-              <div
-                key={day}
-                data-testid="coming-day"
-                // `minmax(0,1fr)` and `min-w-0`: a grid column is `auto` by
-                // default, which sizes to max-content, so a long title in a
-                // truncating row cannot shrink and pushes the whole page into
-                // a horizontal scroll on a phone. Measured at 375px: 713px
-                // wide before this.
-                className="grid gap-x-6 border-t border-[#e9e6da]/[0.07] py-3 sm:grid-cols-[9rem_minmax(0,1fr)]"
+        {/* =============================================== ALL OCTOBER ======= */}
+        <section className="mt-16" data-testid="lane-month">
+          <LaneHead
+            title="Browse the month"
+            note={
+              month.length > 0
+                ? `${month.length} things Atlas can date inside October.`
+                : undefined
+            }
+            action={
+              <Link
+                href="/discovery"
+                className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
               >
-                <p className="font-heading pt-2 text-sm text-[#d09a4e] tabular-nums">
-                  {dayLabel(day)}
-                </p>
-                <ul className="min-w-0 divide-y divide-transparent">
-                  {onDay.map((unit) => (
-                    <li key={unit.head.id}>
-                      <CompactRow unit={unit} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Quiet>Nothing dated is ahead of us right now.</Quiet>
-        )}
-      </section>
-
-      {/* =============================================== ALL OCTOBER ======= */}
-      <section className="mt-16" data-testid="lane-month">
-        <LaneHead
-          title="Browse the month"
-          note={
-            month.length > 0
-              ? `${month.length} things Atlas can date inside October.`
-              : undefined
-          }
-          action={
-            <Link
-              href="/discovery"
-              className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
-            >
-              Search everything
-            </Link>
-          }
-        />
-        {month.length > 0 ? (
-          <BrowseMonth
-            rows={month.map((unit) => ({
-              unit,
-              day: nextRelevantDay(unit.head, octoberFrom),
-            }))}
+                Search everything
+              </Link>
+            }
           />
-        ) : (
-          <Quiet>Atlas can date nothing inside October yet.</Quiet>
-        )}
-      </section>
+          {month.length > 0 ? (
+            <BrowseMonth
+              rows={month.map((unit) => ({
+                unit,
+                day: nextRelevantDay(unit.head, octoberFrom),
+              }))}
+            />
+          ) : (
+            <Quiet>Atlas can date nothing inside October yet.</Quiet>
+          )}
+        </section>
 
-      {/* The editorial collection shelves that used to sit here are gone:
+        {/* The editorial collection shelves that used to sit here are gone:
           "Events & Haunts" held two subjects, both of which now lead Haunted
           October above. A second heading over the same two cards is
           repetition, not navigation. The collection mechanism is untouched and
           still runs /october/explore/[area]. */}
-    </main>
+      </main>
+    </SkyWash>
   );
 }
 

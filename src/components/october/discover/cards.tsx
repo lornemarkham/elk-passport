@@ -245,7 +245,20 @@ export function DiscoverCard({
  * is coming has not decided yet; the decision is made on a card with a
  * photograph on it, or on the page itself.
  */
-export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
+export function CompactRow({
+  unit,
+  note,
+  where,
+}: {
+  readonly unit: DiscoveryUnit;
+  /** Town and how near it is — "Kelowna · worth the drive". */
+  readonly where?: string;
+  /**
+   * What October noticed about this day's weather, where it earned saying.
+   * Absent on most rows — see `forEventOn`.
+   */
+  readonly note?: ReactNode;
+}) {
   const { head } = unit;
   // **A clock only where a publisher stated one.** This column used to render
   // every Event's instant, so a date-only Event — 47 of October's 86 — printed
@@ -292,6 +305,13 @@ export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
           <span className="mt-0.5 block truncate text-xs text-[#d09a4e]/80">
             {namesOf(unit).join(" · ")}
           </span>
+        ) : where ? (
+          <span
+            data-testid="card-where"
+            className="mt-0.5 block truncate text-xs text-[#e9e6da]/40"
+          >
+            {where}
+          </span>
         ) : whereLine(unit) ? (
           <span
             data-testid="card-where"
@@ -300,6 +320,7 @@ export function CompactRow({ unit }: { readonly unit: DiscoveryUnit }) {
             {whereLine(unit)}
           </span>
         ) : null}
+        {note}
       </span>
     </Link>
   );
