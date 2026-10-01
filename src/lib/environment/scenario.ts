@@ -31,6 +31,11 @@ export const SCENARIOS = [
   "vernon-clear-night",
   "vernon-rainy-evening",
   "halloween-cold-cloudy",
+  "vernon-quiet-week",
+  "draconid-final-weekend",
+  "draconids-building",
+  "draconids-clouded",
+  "halloween-week",
 ] as const;
 
 export type ScenarioName = (typeof SCENARIOS)[number];
@@ -102,6 +107,62 @@ const RECIPES: Record<ScenarioName, Recipe> = {
     highC: 12,
     pop: 80,
     label: "Vernon · rainy evening",
+  },
+  // Mid-shower with a clear sky: the one state in which October is allowed
+  // to let the sky onto the page. Two nights before the predicted peak.
+  "draconids-building": {
+    areaId: "vernon",
+    at: "2026-10-08T03:00:00Z", // 8 PM Wednesday, Oct 7
+    sky: "clear",
+    lowC: 4,
+    highC: 14,
+    pop: 0,
+    label: "Vernon · the Draconids building, clear sky",
+  },
+  // The same night, clouded out. Hype must refuse it: a meteor shower nobody
+  // can see is not something to be excited about.
+  "draconids-clouded": {
+    areaId: "vernon",
+    at: "2026-10-08T03:00:00Z",
+    sky: "precipitating",
+    lowC: 8,
+    highC: 13,
+    pop: 80,
+    label: "Vernon · the Draconids, rained out",
+  },
+  // The best Don't Miss case the corpus holds: a 162-day farmers' market
+  // season and a five-night meteor shower, both down to their last two days.
+  "draconid-final-weekend": {
+    areaId: "vernon",
+    at: "2026-10-10T04:00:00Z", // 9 PM Friday, Oct 9
+    sky: "clear",
+    lowC: 3,
+    highC: 14,
+    pop: 0,
+    label: "Vernon · the Draconids' final weekend",
+  },
+  // Late October, when the Halloween-night things are in range. Exists to
+  // show the middle of the Hypometer rather than its extremes.
+  "halloween-week": {
+    areaId: "vernon",
+    at: "2026-10-30T02:00:00Z", // 7 PM Thursday, Oct 29
+    sky: "partly-cloudy",
+    lowC: 3,
+    highC: 11,
+    pop: 10,
+    label: "Vernon · Halloween week",
+  },
+  // Mid-October, when nothing in the corpus is closing. Exists so the
+  // *absence* of Don't Miss can be looked at, which is as much a state as
+  // its presence.
+  "vernon-quiet-week": {
+    areaId: "vernon",
+    at: "2026-10-18T02:00:00Z", // 7 PM Saturday
+    sky: "partly-cloudy",
+    lowC: 5,
+    highC: 13,
+    pop: 10,
+    label: "Vernon · a quiet week, nothing closing",
   },
   "halloween-cold-cloudy": {
     areaId: "vernon",

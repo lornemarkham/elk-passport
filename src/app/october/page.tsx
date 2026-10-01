@@ -36,6 +36,7 @@ import {
 } from "@/domain/october/localness";
 import { SkyWash } from "@/components/october/environment/SkyWash";
 import { CardWeather } from "@/components/october/environment/CardWeather";
+import { quickFor } from "@/components/october/quick/quickFor";
 import { RightNow } from "@/components/october/environment/RightNow";
 import { classifySubject } from "@/domain/october/subjectKind";
 import { conditionsFor } from "@/domain/october/conditions";
@@ -148,7 +149,6 @@ export default async function OctoberHomePage({
 
   // October reports the sky because of something *they saved*, never as a
   // weather report. A meteor shower asks about cloud; a haunt asks about rain.
-  const byId = new Map(experiences.map((e) => [e.id, e]));
   const today = localDay(realNow);
 
   // Where things are. Atlas gives a dated subject a `happens_at` Place, and
@@ -207,7 +207,14 @@ export default async function OctoberHomePage({
   /** The conditions line a card gets, when they mean something for it. */
   const weatherNote = (unit: { head: Experience }) => {
     const read = readFor(unit.head);
-    return read ? <CardWeather read={read} /> : undefined;
+    const quick = quickFor(unit.head);
+    if (!read && !quick) return undefined;
+    return (
+      <>
+        {quick}
+        {read ? <CardWeather read={read} /> : null}
+      </>
+    );
   };
 
   // ------------------------------------------------------------- the boost

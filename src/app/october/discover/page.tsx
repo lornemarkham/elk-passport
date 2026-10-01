@@ -34,6 +34,8 @@ import { keptOnThisPage } from "@/lib/october/keptOnThisPage";
 import { keepFor } from "@/components/october/save/keepFor";
 import { BrowseMonth } from "@/components/october/discover/BrowseMonth";
 import { currentUser } from "@/lib/auth/currentUser";
+import { getSubjectDetail } from "@/lib/data/atlas-repo";
+import { subjectPageView } from "@/lib/passport/subjectPage";
 import { profileFor } from "@/lib/profile/profileService";
 import { OCTOBER_PLACES, placeFrom } from "@/domain/environment/places";
 import { classifySubject } from "@/domain/october/subjectKind";
@@ -51,6 +53,12 @@ import { SkyWash } from "@/components/october/environment/SkyWash";
 import { placeById } from "@/domain/environment/places";
 import { scenarioFrom, simulatedEnvironment } from "@/lib/environment/scenario";
 import { CardWeather } from "@/components/october/environment/CardWeather";
+import { quickFor } from "@/components/october/quick/quickFor";
+import { closingFor, dontMiss } from "@/domain/october/dontMiss";
+import { DontMiss } from "@/components/october/discover/DontMiss";
+import { hypeFor, savedContextFor, strongestHype } from "@/domain/october/hype";
+import { HypeSky } from "@/components/october/discover/HypeSky";
+import { HypeCard } from "@/components/october/discover/HypeCard";
 import {
   CompactRow,
   FeatureCard,
@@ -103,8 +111,13 @@ export default async function OctoberDiscoverPage({
   // with the last Sunday in September and This weekend stops being empty
   // because the weekend it offered had already gone. Once October is under way
   // this is the real instant and the page advances by itself.
-  const now = octoberNow(new Date());
-  const today = localDay(now);
+  //
+  // A dev scenario moves this instant too, not only the weather — otherwise
+  // the lanes keep showing today while the forecast claims to be Halloween,
+  // which is a harness that cannot be used to look at a different day.
+  const nowReal = scenario ? scenario.now : new Date();
+  const now = octoberNow(nowReal);
+  const today = localDay(nowReal);
   const { from: octoberFrom, to: octoberTo } = octoberWindow(now);
   // An empty corpus and an unanswered question are different answers, and
   // this page used to render both as "nothing is on".
@@ -123,8 +136,6 @@ export default async function OctoberDiscoverPage({
   const place = scenario
     ? placeById(scenario.areaId)
     : placeFrom(profile?.homeArea);
-  const nowReal = scenario ? scenario.now : new Date();
-
   const points: PlacePoints = new Map(
     atlas.candidates
       .filter((c) => c.coordinates)
@@ -246,6 +257,84 @@ export default async function OctoberDiscoverPage({
       ),
     }));
 
+  // **What is closing.** Drawn from everything Atlas dates rather than from a
+  // lane, because a thing on its final night is worth saying whether or not it
+  // happened to survive Tonight's cap. Usually one; often none.
+  const closing = dontMiss(experiences, (e) => {
+    const venueSubtype = e.venue?.placeId
+      ? atlas.candidates.find((c) => c.id === e.venue!.placeId)?.subtype
+      : undefined;
+    const atNight = classifySubject(e, venueSubtype).kind === "outdoor-night";
+    return closingFor(e, today, atNight, nowReal);
+  });
+
+  // **What October would mention unprompted.** Evaluated across everything
+  // Atlas dates, capped at one, and absent most days. Nothing the person has
+  // already saved can qualify — that has become Anticipate's.
+  const hyped = strongestHype(
+    experiences
+      .map((e) => {
+        const venueSubtype = e.venue?.placeId
+          ? atlas.candidates.find((c) => c.id === e.venue!.placeId)?.subtype
+          : undefined;
+        return hypeFor(e, {
+          today,
+          now: nowReal,
+          kind: classifySubject(e, venueSubtype).kind,
+          environment: environmentAt(e),
+          saved: savedContextFor(Boolean(scenario), page.kept),
+        });
+      })
+      .filter((h): h is NonNullable<typeof h> => Boolean(h)),
+  );
+
+  // Every subject's level, so a lane can treat a card without re-deciding.
+  const hypeLevels = new Map(
+    experiences
+      .map((e) => {
+        const venueSubtype = e.venue?.placeId
+          ? atlas.candidates.find((c) => c.id === e.venue!.placeId)?.subtype
+          : undefined;
+        const h = hypeFor(e, {
+          today,
+          now: nowReal,
+          kind: classifySubject(e, venueSubtype).kind,
+          environment: environmentAt(e),
+          saved: savedContextFor(Boolean(scenario), page.kept),
+        });
+        return [e.id, h?.level ?? 0] as const;
+      })
+      .filter(([, level]) => level > 0),
+  );
+  /** Wraps a card in its treatment. Level 0 is the card, untouched. */
+  const treat = (unit: { head: Experience }, card: React.ReactNode) => {
+    const level = hypeLevels.get(unit.head.id) ?? 0;
+    // The takeover has its own surface; a card never tries to be one.
+    if (level === 0 || level >= 4) return card;
+    return (
+      <HypeCard level={level} hasImage={Boolean(unit.head.heroMedia)}>
+        {card}
+      </HypeCard>
+    );
+  };
+
+  // One request, and only when a takeover is actually on screen: Atlas's own
+  // facts for the single hyped subject, for the optional drawer. A failure
+  // means no drawer, never a broken page.
+  const hypePanels =
+    hyped?.level === 4
+      ? await getSubjectDetail("events", hyped.subject.id)
+          .then((composition) =>
+            composition
+              ? subjectPageView(composition).subject.facts.map((f) => ({
+                  label: f.label,
+                  value: f.value,
+                }))
+              : [],
+          )
+          .catch(() => [])
+      : [];
+
   const when = temporalContext(nowReal);
   const phase = place
     ? lightPhaseAt(place.latitude, place.longitude, nowReal)
@@ -253,6 +342,32 @@ export default async function OctoberDiscoverPage({
 
   return (
     <SkyWash phase={phase}>
+      {/* **The entrance.** Outside the page's column and before its header,
+          because a takeover that renders inside the flow under "What's on" is
+          a card — and a card is what nobody noticed. Only an astronomy
+          subject with a clear forecast can reach this; see `hype.ts`. */}
+      {/* Hype leads, because it is the thing you had not thought about. The
+        only expression built is the sky, and only an astronomy subject with
+        a clear forecast can reach it — see `hype.ts`. */}
+      {hyped && hyped.level === 4 && hyped.kind === "astronomy" ? (
+        <HypeSky
+          hype={hyped}
+          panels={hypePanels}
+          thing={{
+            entityId: hyped.subject.id,
+            entityKind: "Event",
+            name: hyped.subject.title,
+            startsAt: hyped.subject.startTime ?? null,
+          }}
+          signedIn={page.signedIn}
+          // Same simulation: under a scenario the block opens in its unsaved
+          // state so the first-encounter language can be seen. The control
+          // underneath is real — pressing it writes the real row.
+          initiallySaved={scenario ? false : page.kept.has(hyped.subject.id)}
+          detailHref={`/passport/${hyped.subject.id}`}
+        />
+      ) : null}
+
       <main className="mx-auto max-w-6xl px-4 pt-10 pb-24 sm:px-6">
         <header>
           <h1 className="font-heading text-4xl tracking-tight text-[#f3efe4] sm:text-5xl">
@@ -272,21 +387,32 @@ export default async function OctoberDiscoverPage({
           </div>
         </header>
 
+        <DontMiss
+          items={closing}
+          keep={(experience) => keepFor(experience, page, "/october/discover")}
+        />
+
         {/* ================================================== TONIGHT ======== */}
         <section className="mt-10" data-testid="lane-tonight">
           <LaneHead title="Tonight" />
           {lead ? (
             <>
-              <LeadCard unit={lead} eyebrow="On tonight" keep={keep(lead)} />
+              {treat(
+                lead,
+                <LeadCard unit={lead} eyebrow="On tonight" keep={keep(lead)} />,
+              )}
               {alsoTonight.length > 0 ? (
                 <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {alsoTonight.map((unit) => (
                     <li key={unit.head.id}>
-                      <DiscoverCard
-                        unit={unit}
-                        label="Tonight"
-                        keep={keep(unit)}
-                      />
+                      {treat(
+                        unit,
+                        <DiscoverCard
+                          unit={unit}
+                          label="Tonight"
+                          keep={keep(unit)}
+                        />,
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -309,11 +435,14 @@ export default async function OctoberDiscoverPage({
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {weekendLocal.slice(0, 6).map((unit) => (
                 <li key={unit.head.id}>
-                  <DiscoverCard
-                    unit={unit}
-                    label="This weekend"
-                    keep={keep(unit)}
-                  />
+                  {treat(
+                    unit,
+                    <DiscoverCard
+                      unit={unit}
+                      label="This weekend"
+                      keep={keep(unit)}
+                    />,
+                  )}
                 </li>
               ))}
             </ul>
@@ -342,11 +471,14 @@ export default async function OctoberDiscoverPage({
               <ul className="grid gap-4 sm:grid-cols-2">
                 {shelf.units.slice(0, 4).map((unit) => (
                   <li key={unit.head.id}>
-                    <DiscoverCard
-                      unit={unit}
-                      label={shelf.title}
-                      keep={keep(unit)}
-                    />
+                    {treat(
+                      unit,
+                      <DiscoverCard
+                        unit={unit}
+                        label={shelf.title}
+                        keep={keep(unit)}
+                      />,
+                    )}
                   </li>
                 ))}
               </ul>
@@ -365,17 +497,22 @@ export default async function OctoberDiscoverPage({
             )}
             {/* The one subject October has exactly one of. A shelf of one is a
               heading with a card under it; a feature is the honest shape. */}
-            {index === 0 && feature && (
-              <div className="mt-6">
-                <FeatureCard
-                  keep={keep(feature)}
-                  unit={feature}
-                  eyebrow={OCTOBER_FEATURE.eyebrow}
-                  title={OCTOBER_FEATURE.title}
-                  blurb={OCTOBER_FEATURE.blurb}
-                />
-              </div>
-            )}
+            {/* The curated feature stands down while October is actively
+                hyping the same subject — the Draconids appearing twice on one
+                page reads as a bug, not as emphasis. */}
+            {index === 0 &&
+              feature &&
+              feature.head.id !== hyped?.subject.id && (
+                <div className="mt-6">
+                  <FeatureCard
+                    keep={keep(feature)}
+                    unit={feature}
+                    eyebrow={OCTOBER_FEATURE.eyebrow}
+                    title={OCTOBER_FEATURE.title}
+                    blurb={OCTOBER_FEATURE.blurb}
+                  />
+                </div>
+              )}
           </section>
         ))}
 
@@ -406,6 +543,10 @@ export default async function OctoberDiscoverPage({
                           where={whereFor(unit)}
                           note={weatherNote(unit, day)}
                         />
+                        {/* Outside the row, because the row is itself one
+                            <a> and an anchor inside an anchor is invalid
+                            HTML that fails hydration. */}
+                        <div className="px-3 pb-3">{quickFor(unit.head)}</div>
                       </li>
                     ))}
                   </ul>
