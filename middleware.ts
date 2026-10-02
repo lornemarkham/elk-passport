@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { experienceRewriteFor } from "@/lib/domains/experience-domains";
 
 /**
  * **Keeps the session cookie fresh so the server can trust it.**
@@ -23,7 +24,15 @@ import { createServerClient } from "@supabase/ssr";
  * triggers the refresh; discarding the result is intentional.
  */
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({ request });
+  // An experience domain's root is served by its experience's route; see
+  // `experience-domains.ts`. The session refresh below applies either way.
+  const rewriteTo = experienceRewriteFor(
+    request.headers.get("host"),
+    request.nextUrl.pathname,
+  );
+  const response = rewriteTo
+    ? NextResponse.rewrite(new URL(rewriteTo, request.url), { request })
+    : NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
