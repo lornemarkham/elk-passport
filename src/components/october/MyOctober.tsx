@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { destinationFor } from "@/domain/experience/destination";
-import { formatEventWhen } from "@/domain/experience/eventTime";
+import { formatEventWhen, localDay } from "@/domain/experience/eventTime";
 import type { Experience } from "@/domain/experience/types";
 import { didThis, forget } from "@/lib/october/october-repo";
 import type { OctoberThing } from "@/lib/october/types";
 import { filmById } from "@/lib/movies/catalogue";
 import { FilmReaction } from "@/components/october/movies/FilmReaction";
+import { PlanDay } from "./PlanDay";
 import { saveReaction } from "@/lib/movies/movies-repo";
 import type { MovieReaction } from "@/lib/movies/types";
 import {
@@ -241,19 +242,43 @@ export function MyOctober({
                   Not yet. When you do one of those, say so, and it stays here.
                 </p>
               ) : (
-                <ol className="mt-4 flex flex-col gap-4 border-l border-[#d09a4e]/25 pl-5">
-                  {lived.map((thing) => (
-                    <LivedRow
-                      key={thing.entityId}
-                      thing={thing}
-                      experience={byId.get(thing.entityId)}
-                      busy={busy === thing.entityId}
-                      onForget={() => handleForget(thing)}
-                      reaction={reactionFor(thing.entityId)}
-                      onReact={(r) => void handleReaction(thing, r)}
-                    />
-                  ))}
-                </ol>
+                /* **Grouped by what you actually did.** A month is not one
+                   list — going somewhere, watching something and making
+                   something are different kinds of memory, and reading them
+                   back as "Went / Watched / Made" is the difference between a
+                   record and a log. Empty groups are never drawn. */
+                <div className="mt-4 flex flex-col gap-10">
+                  {LIVED_GROUPS.map((group) => {
+                    const inGroup = lived.filter(
+                      (thing) => groupOf(thing) === group.id,
+                    );
+                    if (inGroup.length === 0) return null;
+                    return (
+                      <div
+                        key={group.id}
+                        data-testid="lived-group"
+                        data-group={group.id}
+                      >
+                        <h3 className="text-[11px] font-medium tracking-[0.2em] text-[#d09a4e] uppercase">
+                          {group.label}
+                        </h3>
+                        <ol className="mt-3 flex flex-col gap-4 border-l border-[#d09a4e]/25 pl-5">
+                          {inGroup.map((thing) => (
+                            <LivedRow
+                              key={thing.entityId}
+                              thing={thing}
+                              experience={byId.get(thing.entityId)}
+                              busy={busy === thing.entityId}
+                              onForget={() => handleForget(thing)}
+                              reaction={reactionFor(thing.entityId)}
+                              onReact={(r) => void handleReaction(thing, r)}
+                            />
+                          ))}
+                        </ol>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </section>
           </>
@@ -261,6 +286,35 @@ export function MyOctober({
       </div>
     </main>
   );
+}
+
+/**
+ * **The verbs a lived October is read back in.**
+ *
+ * Deliberately three, and deliberately not an ontology. "Ate" is not here
+ * because Eat does not exist yet, and drawing an empty heading for it would
+ * be the product promising something it cannot do. When Eat ships, a row is
+ * added here and nothing else changes.
+ */
+const LIVED_GROUPS = [
+  { id: "went", label: "Went" },
+  { id: "watched", label: "Watched" },
+  { id: "made", label: "Made" },
+] as const;
+
+/**
+ * Which verb a thing is remembered under.
+ *
+ * A film is watched, a Doing is made, and everything Atlas holds — a place,
+ * an organisation, an activity, an event, an experience — is somewhere you
+ * went. That last grouping is a simplification and an honest one: every Atlas
+ * kind in this table is a thing that happens at a place, so "went" is true of
+ * all of them without having to decide anything finer.
+ */
+function groupOf(thing: OctoberThing): (typeof LIVED_GROUPS)[number]["id"] {
+  if (thing.entityKind === "Movie") return "watched";
+  if (thing.entityKind === "Doing") return "made";
+  return "went";
 }
 
 /**
@@ -381,6 +435,19 @@ function ThingRow({
             {experience.subtype}
           </p>
         )}
+
+        {/* **A day, for the things that do not come with one.** An Atlas
+            event already has its own date and must never be overwritten by a
+            guess; a film and a Doing have none until somebody decides, and
+            deciding is what turns "carve pumpkins" into a plan. */}
+        {thing.entityKind === "Doing" || thing.entityKind === "Movie" ? (
+          <p className="mt-2">
+            <PlanDay
+              entityId={thing.entityId}
+              day={thing.startsAt ? localDay(thing.startsAt) : undefined}
+            />
+          </p>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-2">

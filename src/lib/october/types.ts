@@ -8,7 +8,25 @@
  * live as knowledge is still open.
  */
 export type OctoberKind =
-  "Place" | "Organization" | "Activity" | "Event" | "Experience" | "Movie";
+  | "Place"
+  | "Organization"
+  | "Activity"
+  | "Event"
+  | "Experience"
+  | "Movie"
+  /**
+   * **Something you mean to do, that nothing in the world owns.**
+   *
+   * Carving a pumpkin has no venue, no start time and no publisher, so Atlas
+   * correctly knows nothing about it — *I am going to carve a pumpkin this
+   * weekend* is not a fact about the world. A `Doing` names a row in
+   * Passport's own authored catalogue (`lib/making/catalogue.ts`), exactly as
+   * `Movie` names a film in that one.
+   *
+   * Without it the only October a person could record was the part somebody
+   * else had scheduled, which is why My October read as a list of bookmarks.
+   */
+  | "Doing";
 export type OctoberState = "ahead" | "lived";
 
 export interface OctoberThing {
@@ -53,6 +71,7 @@ export const OCTOBER_KINDS: readonly OctoberKind[] = [
   // what somebody means to experience this October, and a film on the sofa on
   // the 12th is one of those.
   "Movie",
+  "Doing",
 ];
 
 export const isOctoberKind = (v: unknown): v is OctoberKind =>

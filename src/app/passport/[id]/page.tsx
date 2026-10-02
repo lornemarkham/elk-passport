@@ -113,13 +113,31 @@ export default async function PassportPage({ params, searchParams }: Props) {
   const on = typeof query.on === "string" ? query.on : undefined;
   const curator = query.curator === "1";
 
-  // A subject Atlas composes is rendered from the composed read alone. Tried
-  // in the order a consumer is most likely to arrive: October Discover routes
-  // an Organization card to its Organization id.
-  // Events last only because an Organization id is the likeliest arrival;
-  // every kind Atlas composes is tried, and an Event is most of a month.
-  for (const kind of ["organizations", "experiences", "events"] as const) {
-    const composition = await getSubjectDetail(kind, id, on).catch(() => null);
+  // A subject Atlas composes is rendered from the composed read alone.
+  //
+  // **Asked all at once, resolved in priority order.** This was a serial loop
+  // — Organization, then Experience, then Event — and each miss costs a full
+  // Atlas round trip. Measured on 2026-10-01 those round trips were ~17
+  // seconds each, so an Event, which is tried last and is most of October,
+  // took **56 seconds** to open. Asking in parallel makes the slowest case
+  // one round trip instead of three.
+  //
+  // The order below is unchanged and still decides which composition wins:
+  // October Discover routes an Organization card to its Organization id, so
+  // an Organization is the likeliest arrival.
+  //
+  // A caller that already knows the kind says so with `?kind=`, and then only
+  // one read happens. Discovery knows it — the possibility carries it — so the
+  // common path costs Atlas one query instead of three. An unknown or absent
+  // hint falls back to asking all three, so no link can break by omitting it.
+  const KINDS = ["organizations", "experiences", "events"] as const;
+  const hinted = KINDS.find((k) => k === query.kind);
+  const asking = hinted ? [hinted] : KINDS;
+  const compositions = await Promise.all(
+    asking.map((kind) => getSubjectDetail(kind, id, on).catch(() => null)),
+  );
+
+  for (const composition of compositions) {
     if (composition) {
       const view = subjectPageView(composition);
       // **One route, one read, two arrangements.** A subject a human put in
@@ -155,7 +173,15 @@ export default async function PassportPage({ params, searchParams }: Props) {
         >
           {curator && <CuratorBar id={id} />}
           {october ? (
-            <OctoberShell actions={actions}>
+            <OctoberShell
+              backTo={
+                query.from === "october" ? "/october/discover" : undefined
+              }
+              backLabel={
+                query.from === "october" ? "Back to October" : undefined
+              }
+              actions={actions}
+            >
               {curation ? (
                 <>
                   <CuratedSubjectPage

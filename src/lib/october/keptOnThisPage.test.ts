@@ -117,17 +117,34 @@ describe("which subjects may be kept at all", () => {
  */
 describe("the October surfaces", () => {
   const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
+  // Discover is now a three-line route over a shared surface component, so
+  // the properties below live where the behaviour does. The route file itself
+  // holds no cards, no reads and no return path to assert.
+  const DISCOVER =
+    "src/components/labs/october/synthesis/OctoberDiscoverySurface.tsx";
+
   const SURFACES = [
     "src/app/october/page.tsx",
-    "src/app/october/discover/page.tsx",
+    DISCOVER,
     "src/app/october/explore/[area]/page.tsx",
   ];
 
   it("all pass a keep control to their cards", () => {
-    for (const surface of SURFACES) {
-      expect(read(surface)).toMatch(/keep(For)?\(/);
-      expect(read(surface)).toContain("keep=");
-    }
+    // October Home is excluded on purpose. It stopped rendering Atlas cards
+    // when it stopped being Discover-lite: it now composes one approaching
+    // thing, one closing, one hyped and two doors, and a door is not a
+    // subject anybody can save. The surfaces that still show cards must
+    // still carry the control.
+    expect(read("src/app/october/explore/[area]/page.tsx")).toMatch(
+      /keep(For)?\(/,
+    );
+    expect(read("src/app/october/explore/[area]/page.tsx")).toContain("keep=");
+    // Discover hands the whole kept set down once and every card draws its own
+    // control from it — the same `useKeeping` mechanism, reached differently.
+    expect(read(DISCOVER)).toContain("kept={[...pool.page.kept]}");
+    expect(read("src/components/labs/october/synthesis/cards.tsx")).toContain(
+      "LabKeep",
+    );
   });
 
   it("read the saved state once per page, not once per card", () => {
@@ -138,6 +155,13 @@ describe("the October surfaces", () => {
       if (surface.endsWith("october/page.tsx")) {
         expect(reads).toHaveLength(0);
         expect(source).toContain("octoberThingsFor");
+      } else if (surface === DISCOVER) {
+        // Discover reads it inside `octoberPool`, once, with Atlas and the
+        // profile — one await for the whole page.
+        expect(reads).toHaveLength(0);
+        expect(read("src/lib/labs/october/pool.ts")).toContain(
+          "keptOnThisPage()",
+        );
       } else {
         expect(reads).toHaveLength(1);
       }
@@ -146,8 +170,9 @@ describe("the October surfaces", () => {
 
   it("send a visitor back to the surface they were on", () => {
     expect(read("src/app/october/page.tsx")).toContain('"/october"');
-    expect(read("src/app/october/discover/page.tsx")).toContain(
-      '"/october/discover"',
+    // Discover's cards all sign in and return through one constant.
+    expect(read("src/components/labs/october/synthesis/cards.tsx")).toContain(
+      'HERE = "/october/discover"',
     );
     expect(read("src/app/october/explore/[area]/page.tsx")).toContain(
       "/october/explore/${area.id}",

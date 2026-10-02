@@ -51,6 +51,12 @@ function fakeSupabase() {
   return api;
 }
 
+// My October now offers a day on the things that do not come with one, and
+// that control refreshes the route — so the router has to exist here.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }),
+  usePathname: () => "/october/mine",
+}));
 vi.mock("@/lib/october/october-repo", () => ({
   didThis: async () => ({}),
   forget: async () => {},

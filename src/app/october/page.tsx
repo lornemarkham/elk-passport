@@ -27,6 +27,10 @@ import { OctoberPicks } from "@/components/october/movies/OctoberPicks";
 import { OCTOBER_PLACES, placeFrom } from "@/domain/environment/places";
 import { profileFor } from "@/lib/profile/profileService";
 import { daysOn } from "@/domain/october/calendar";
+import { anticipate } from "@/domain/october/anticipation";
+import { closingFor, dontMiss } from "@/domain/october/dontMiss";
+import { hypeFor, savedContextFor, strongestHype } from "@/domain/october/hype";
+import { destinationFor } from "@/domain/experience/destination";
 import { lightPhaseAt } from "@/domain/environment/daylight";
 import { temporalContext } from "@/domain/october/temporal";
 import {
@@ -163,6 +167,7 @@ export default async function OctoberHomePage({
       ]),
   );
   const near = (e: Experience) => localnessOf(e, place, points);
+  const byIdExp = new Map(experiences.map((e) => [e.id, e] as const));
 
   // **A forecast for where each thing is, not for where you live.** Every
   // dated subject's venue point is collected, deduped to areas, and fetched in
@@ -237,6 +242,89 @@ export default async function OctoberHomePage({
     return conditionsFor("indoor", today, home, realNow, { surface: "page" });
   })();
 
+  // ------------------------------------------------- what Home composes
+  //
+  // Three candidates, each allowed to be absent. Home shows what it has and
+  // says so plainly when it has nothing, rather than filling the space with
+  // the browse grids that made it indistinguishable from Discover.
+
+  /** The nearest thing this person already chose, with its conditions. */
+  const nextOfMine = (() => {
+    const ahead = things.filter((thing) => thing.state === "ahead");
+    if (ahead.length === 0) return undefined;
+    const scored = ahead
+      .map((thing) => {
+        const experience = byIdExp.get(thing.entityId);
+        const day = experience
+          ? daysOn(experience).find((d) => d >= today)
+          : undefined;
+        return { thing, experience, day };
+      })
+      // Dated things first, soonest first; undated keep their saved order.
+      .sort((a, b) => (a.day ?? "9999").localeCompare(b.day ?? "9999"));
+    const best = scored[0]!;
+    const anticipation = anticipate(best.thing, best.experience, realNow);
+    const read = best.experience
+      ? (() => {
+          const venueSubtype = best.experience!.venue?.placeId
+            ? atlas.candidates.find(
+                (c) => c.id === best.experience!.venue!.placeId,
+              )?.subtype
+            : undefined;
+          const kind = classifySubject(best.experience!, venueSubtype).kind;
+          return best.day
+            ? conditionsFor(
+                kind,
+                best.day,
+                environmentAt(best.experience!),
+                realNow,
+              )
+            : undefined;
+        })()
+      : undefined;
+    return {
+      name: best.thing.name,
+      href: best.experience ? destinationFor(best.experience) : undefined,
+      anticipation,
+      read,
+    };
+  })();
+
+  /** The one thing closing, and the one October would mention unprompted. */
+  const closing = dontMiss(
+    experiences,
+    (e) => {
+      const venueSubtype = e.venue?.placeId
+        ? atlas.candidates.find((c) => c.id === e.venue!.placeId)?.subtype
+        : undefined;
+      const atNight = classifySubject(e, venueSubtype).kind === "outdoor-night";
+      return closingFor(e, today, atNight, realNow);
+    },
+    1,
+  );
+
+  const hyped = strongestHype(
+    experiences
+      .map((e) => {
+        const venueSubtype = e.venue?.placeId
+          ? atlas.candidates.find((c) => c.id === e.venue!.placeId)?.subtype
+          : undefined;
+        return hypeFor(e, {
+          today,
+          now: realNow,
+          kind: classifySubject(e, venueSubtype).kind,
+          environment: environmentAt(e),
+          saved: savedContextFor(Boolean(scenario), page.kept),
+        });
+      })
+      .filter((h): h is NonNullable<typeof h> => Boolean(h)),
+  );
+
+  // Counts for the door into Discover. A number is a better promise than an
+  // adjective, and it costs nothing — these lanes were already computed.
+  const tonightCount = allTonight.length;
+  const weekendCount = allWeekend.length;
+
   const when = temporalContext(realNow);
   const lightPhase = place
     ? lightPhaseAt(place.latitude, place.longitude, realNow)
@@ -274,197 +362,119 @@ export default async function OctoberHomePage({
           </div>
         </header>
 
-        {/* ------------------------------------------------------------ TONIGHT */}
-        <div className="mt-12">
-          <Section
-            title="Tonight"
-            note={
-              tonight.length > 0 || atlas.outage
-                ? undefined
-                : "Nothing Passport knows about is on tonight. That is most nights."
-            }
-          >
-            {atlas.outage ? (
-              <Unanswered />
-            ) : tonight.length > 0 ? (
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {tonight.map((unit) => (
-                  <li key={unit.head.id}>
-                    <UnitCard
-                      unit={unit}
-                      label="Tonight"
-                      keep={keep(unit)}
-                      note={weatherNote(unit)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Card
-                  href="/october/movies/night"
-                  eyebrow="Indoors"
-                  title="Movie Night"
-                  line="Pick something that suits who is actually on the sofa."
-                />
-                {soon[0] ? (
-                  <UnitCard
-                    unit={soon[0]}
-                    label="Not tonight, but soon"
-                    keep={keep(soon[0])}
-                    note={weatherNote(soon[0])}
-                  />
-                ) : null}
-              </div>
-            )}
-          </Section>
+        {/* ===================================================================
+            **October composes the moment. It does not browse.**
 
-          {/* ---------------------------------------------------- THIS WEEKEND */}
-          <Section
-            title="This weekend"
-            note="Real events in the Okanagan, from Atlas."
-            action={
-              <Link
-                href="/october/discover"
-                className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
-              >
-                All of it
-              </Link>
-            }
-          >
-            {atlas.outage ? (
-              <Unanswered />
-            ) : weekend.length > 0 ? (
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {weekend.map((unit) => (
-                  <li key={unit.head.id}>
-                    <UnitCard
-                      unit={unit}
-                      label="This weekend"
-                      keep={keep(unit)}
-                      note={weatherNote(unit)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Nothing>
-                Atlas has nothing dated for this weekend yet. What it does have
-                is in{" "}
-                <Link
-                  href="/october/discover"
-                  className="text-[#d09a4e] underline-offset-4 hover:underline"
-                >
-                  Discover
-                </Link>
-                .
-              </Nothing>
-            )}
-          </Section>
+            Everything between here and "Your October" used to be Tonight and
+            This weekend — the same two grids Discover opens with, which is
+            why nobody could say what either page was for. Home now chooses:
+            the nearest thing you saved, the one thing October is excited
+            about, the one thing closing, and two doors. If it cannot decide
+            anything it says so in one line rather than filling the space.
+            =================================================================== */}
 
-          {/* Weather as context, not as a dictator: nothing is hidden and the
-            lanes are untouched. On a wet evening the films simply move up,
-            because staying in is the better suggestion and October is allowed
-            to notice that. */}
-          {/* The boost, stated. A thing moved and the page says why it moved
-            — because an unexplained reordering is indistinguishable from a
-            random one. Nothing was hidden to make room for it. */}
-          {boosted?.read ? (
-            <div className="mt-12" data-testid="boosted">
-              <p className="text-[11px] tracking-[0.14em] text-[#d09a4e] uppercase">
-                Because of the forecast
-              </p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <UnitCard
-                  unit={boosted.unit}
-                  label="Worth knowing about"
-                  keep={keep(boosted.unit)}
-                  note={<CardWeather read={boosted.read} />}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {/* The indoor read: October only mentions staying in when the evening
-            genuinely makes that the better suggestion. */}
-          {tonightRead ? (
-            <p
-              data-testid="wet-evening"
-              className="mt-12 text-sm text-[#d09a4e]"
+        {/* What you already chose, and how close it is. The only block that
+            is about you, so it leads. */}
+        {nextOfMine ? (
+          <div className="mt-10" data-testid="home-yours">
+            <p className="text-[11px] font-medium tracking-[0.2em] text-[#d09a4e] uppercase">
+              {nextOfMine.anticipation.label === ""
+                ? "In your October"
+                : nextOfMine.anticipation.label}
+            </p>
+            <Link
+              href={nextOfMine.href ?? "/october/mine"}
+              className="font-heading mt-1 block text-3xl leading-tight tracking-tight text-[#f3efe4] hover:underline sm:text-4xl"
             >
-              {tonightRead.line}
-            </p>
-          ) : null}
-
-          {/* -------------------------------------------------- OCTOBER PICKS */}
-          {/* Films are a first-class October thing, and until now the only way
-            to reach one was a card that said "Movie Night" and a catalogue
-            behind it. Taste has to be shown, not linked to. */}
-          <div className="mt-12">
-            <OctoberPicks kept={page.kept} signedIn={page.signedIn} />
+              {nextOfMine.name}
+            </Link>
+            {nextOfMine.read ? (
+              <p className="mt-2 text-base text-[#e9e6da]/70">
+                {nextOfMine.read.line}
+                {nextOfMine.read.facts ? (
+                  <span className="block text-sm text-[#e9e6da]/40">
+                    {nextOfMine.read.facts}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
           </div>
+        ) : null}
 
-          {/* ------------------------------------------------------ FROM OCTOBER */}
-          <Section
-            title="From October"
-            note="Things October has made for you. These are not always here."
-          >
-            {/* The one place anything notices a completed encounter. One line,
-              and only for somebody she has actually met. */}
-            <Remembered />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Card
-                href="/labs/october/video-store"
-                eyebrow="Tonight only, apparently"
-                title="The Video Store"
-                line="Somebody has already been through the horror section."
-                external
-              />
-              <Card
-                href="/labs/october/witching-hour"
-                eyebrow="Late, and better with headphones"
-                title="Witching Hour"
-                line="Most people are finished with October for tonight. You're not."
-                external
-              />
-            </div>
-            {/* The way in to the workshop, and deliberately not a door in the
-              gallery. Everything above is a room October actually made and a
-              person can walk into knowing nothing about how we work; this is
-              for us, so it gets a line of text and no card. If it ever looks
-              like one of the things above it, it has become too loud. */}
-            <p className="mt-5">
-              <Link
-                href="/labs/october/sketchbook"
-                data-testid="sketchbook-door"
-                className="inline-flex min-h-11 items-center text-sm text-[#e9e6da]/30 underline decoration-dotted underline-offset-4 transition-colors hover:text-[#e9e6da]/60"
-              >
-                There is a door at the back of October.
-              </Link>
+        {/* The one thing closing. Usually absent. */}
+        {closing.length > 0 ? (
+          <div className="mt-10" data-testid="home-closing">
+            <p className="text-[11px] font-medium tracking-[0.2em] text-[#d09a4e] uppercase">
+              Don&apos;t miss
             </p>
-          </Section>
+            <Link
+              href={destinationFor(closing[0]!.item) ?? "/october/discover"}
+              className="font-heading mt-1 block text-2xl leading-tight text-[#f3efe4] hover:underline"
+            >
+              {closing[0]!.item.title}
+            </Link>
+            <p className="mt-0.5 text-base font-medium text-[#d09a4e]">
+              {closing[0]!.closing.reason}
+            </p>
+          </div>
+        ) : null}
 
-          {/* ------------------------------------------------------------ EXPLORE */}
-          <Section
-            title="Explore"
-            note="Ordinary, useful corners of October. Some of them are still only a door."
+        {/* The one thing October would mention unprompted. */}
+        {hyped ? (
+          <div className="mt-10" data-testid="home-hype">
+            <p className="text-[11px] font-medium tracking-[0.2em] text-[#9fb4d8] uppercase">
+              October is watching this one
+            </p>
+            <Link
+              href={destinationFor(hyped.subject) ?? "/october/discover"}
+              className="font-heading mt-1 block text-2xl leading-tight text-[#f3efe4] hover:underline"
+            >
+              {hyped.subject.title}
+            </Link>
+            <p className="mt-0.5 text-base text-[#e9e6da]/70">
+              {hyped.now} {hyped.because}
+            </p>
+          </div>
+        ) : null}
+
+        {/* **An unanswered question is not a quiet night.** With Atlas
+            unreachable every block above goes empty, and saying "a quiet one
+            so far" would be the page inventing calm out of a failure. */}
+        {atlas.outage ? (
+          <div className="mt-10">
+            <Unanswered />
+          </div>
+        ) : !nextOfMine && closing.length === 0 && !hyped ? (
+          <p
+            className="mt-10 text-base text-[#e9e6da]/55"
+            data-testid="home-quiet"
           >
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {OCTOBER_AREAS.map((area) => (
-                <li key={area.id}>
-                  <Card
-                    href={hrefForArea(area)}
-                    title={area.label}
-                    line={area.line}
-                    status={area.status}
-                  />
-                </li>
-              ))}
-            </ul>
-          </Section>
+            A quiet one so far. Nothing of yours is close and nothing is about
+            to vanish.
+          </p>
+        ) : null}
 
-          {/* ------------------------------------------------------ YOUR OCTOBER */}
+        {/* Two doors. One into the month, one into a world. */}
+        <div
+          className="mt-12 grid gap-3 sm:grid-cols-2"
+          data-testid="home-doors"
+        >
+          <Card
+            href="/october/discover"
+            eyebrow="Find something"
+            title="What's on"
+            line={`${tonightCount} tonight, ${weekendCount} this weekend near you.`}
+          />
+          <Card
+            href="/october/movies"
+            eyebrow="Feel like staying in?"
+            title="Movies"
+            line="Forty-four films, each one watched and written about by somebody."
+          />
+        </div>
+
+        {/* ------------------------------------------------------ YOUR OCTOBER */}
+        <div className="mt-12">
           <Section
             title="Your October"
             action={

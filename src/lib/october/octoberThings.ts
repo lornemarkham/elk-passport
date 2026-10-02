@@ -155,3 +155,43 @@ export async function forgetThing(
     .eq("entity_id", entityId);
   if (error) throw new Error(`Could not remove that: ${error.message}`);
 }
+
+/**
+ * **Give something a day.**
+ *
+ * The one interaction that turns *carve pumpkins* into *carve pumpkins,
+ * Saturday* — which is the difference between a wish and a plan, and the
+ * thing this experiment exists to test.
+ *
+ * Only the day is stored, anchored at local midday. The column is an instant
+ * and a date-only value written at UTC midnight reads as the previous evening
+ * in Vancouver — the bug already recorded in `anticipation.ts` for Atlas
+ * snapshots. Writing midday means `localDay` returns the day somebody picked.
+ *
+ * Owner-scoped like everything else here: the update is filtered on the
+ * caller's own id *and* runs through their session, so row-level security is
+ * the boundary rather than this filter being the only thing standing between
+ * two people's Octobers.
+ */
+export async function planThing(
+  user: PassportUser,
+  entityId: string,
+  /** `YYYY-MM-DD`, or null to take the day back off. */
+  day: string | null,
+): Promise<OctoberThing | null> {
+  const supabase = await createSupabaseServerClient();
+  const startsAt = day ? `${day}T12:00:00-07:00` : null;
+
+  const { data, error } = await supabase
+    .from("passport_october_things")
+    .update({ starts_at: startsAt })
+    .eq("user_id", user.id)
+    .eq("entity_id", entityId)
+    .select(
+      "entity_id, entity_kind, name, starts_at, state, wanted_at, lived_at",
+    )
+    .maybeSingle<Row>();
+
+  if (error) throw new Error(`Could not plan that: ${error.message}`);
+  return data ? fromRow(data) : null;
+}

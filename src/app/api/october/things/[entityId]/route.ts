@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import {
+  planThing,
   forgetThing,
   isOctoberKind,
   livedThing,
@@ -37,6 +38,41 @@ export async function PUT(request: Request, { params }: Params) {
     startsAt,
   });
   return NextResponse.json(thing, { status: 201 });
+}
+
+/**
+ * PATCH = "do it on this day". The only thing it can change is the day.
+ *
+ * Separate from PUT because PUT is idempotent by design — saving the same
+ * thing twice must never rewrite what is already there — so it cannot also be
+ * the way a date is set. A body of `{ day: null }` takes the day back off.
+ */
+export async function PATCH(request: Request, { params }: Params) {
+  const auth = await requireUser();
+  if ("response" in auth) return auth.response;
+
+  const { entityId } = await params;
+  const body = await request.json().catch(() => null);
+  const day: unknown = body?.day;
+
+  const valid =
+    day === null ||
+    (typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day));
+  if (!valid) {
+    return NextResponse.json(
+      { error: "A day is YYYY-MM-DD, or null to remove it." },
+      { status: 400 },
+    );
+  }
+
+  const thing = await planThing(auth.user, entityId, day as string | null);
+  if (!thing) {
+    return NextResponse.json(
+      { error: "Not in your October." },
+      { status: 404 },
+    );
+  }
+  return NextResponse.json(thing);
 }
 
 /** POST = "did this". The only way a Thing becomes lived. */

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { OCTOBER_KINDS, isOctoberKind, type OctoberKind } from "./types";
@@ -28,24 +28,38 @@ function kindsInTheCheckConstraint(): string[] {
   // Atlas owns this project's migration history, so the statements that change
   // a Passport table live there (`supabase/README.md`). The path is relative to
   // this repository inside the workspace both products sit in.
-  const migration = resolve(
-    process.cwd(),
-    "../atlas/supabase/migrations/202609301000_october_things_movie.sql",
-  );
-  if (!existsSync(migration)) {
+  const dir = resolve(process.cwd(), "../atlas/supabase/migrations");
+  if (!existsSync(dir)) {
     // Loudly, not skipped. A contract test that quietly passes when it cannot
     // read one side of the contract is how the Movie bug lasted eight days.
     throw new Error(
-      `Cannot check OCTOBER_KINDS against the database: ${migration} is not here. ` +
+      `Cannot check OCTOBER_KINDS against the database: ${dir} is not here. ` +
         `Atlas and Passport are checked out side by side in one workspace (see the root CLAUDE.md).`,
     );
   }
-  const sql = readFileSync(migration, "utf8");
+
+  // **The latest migration that sets it wins**, found rather than named. This
+  // used to point at one filename, which meant the test was correct only
+  // until the next time the constraint changed — the very event it exists to
+  // catch. Migration names sort chronologically, so the last match is live.
+  const setters = readdirSync(dir)
+    .filter((name) => name.endsWith(".sql") && /^\d/.test(name))
+    .sort()
+    .filter((name) =>
+      /add constraint passport_october_things_entity_kind_check/i.test(
+        readFileSync(resolve(dir, name), "utf8"),
+      ),
+    );
+  const latest = setters[setters.length - 1];
+  if (!latest) {
+    throw new Error("No migration sets the entity_kind check constraint.");
+  }
+
+  const sql = readFileSync(resolve(dir, latest), "utf8");
   const check = sql.match(
-    /add constraint passport_october_things_entity_kind_check\s*check \(entity_kind in \(([^)]*)\)\)/i,
+    /add constraint passport_october_things_entity_kind_check\s*check\s*\(\s*entity_kind in \(([^)]*)\)/i,
   );
-  if (!check)
-    throw new Error("No entity_kind check constraint in the migration.");
+  if (!check) throw new Error(`No entity_kind check constraint in ${latest}.`);
   return [...check[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
 }
 
@@ -82,5 +96,63 @@ describe("what My October may hold", () => {
     expect(isOctoberKind(undefined)).toBe(false);
     expect(isOctoberKind(null)).toBe(false);
     expect(isOctoberKind(7)).toBe(false);
+  });
+});
+
+describe("a new kind is never a reason to loosen a policy", () => {
+  /** The migration that introduced `Doing`, read as text. */
+  const doingMigration = (() => {
+    const path = resolve(
+      process.cwd(),
+      "../atlas/supabase/migrations/202610012100_october_doing.sql",
+    );
+    return existsSync(path) ? readFileSync(path, "utf8") : "";
+  })();
+
+  it("exists, and is the one that added Doing", () => {
+    expect(doingMigration).not.toBe("");
+    expect(doingMigration).toContain("'Doing'");
+  });
+
+  it("touches no row-level security at all", () => {
+    // Ownership on `passport_october_things` is `auth.uid() = user_id` and
+    // has been since the table was created. A Doing is exactly as private as
+    // everything else in somebody's October *because this migration does not
+    // go near the policies* — so the check is that it says nothing about
+    // them, which is stronger than asserting it says the right thing.
+    for (const forbidden of [
+      /create\s+policy/i,
+      /drop\s+policy/i,
+      /alter\s+policy/i,
+      /disable\s+row\s+level\s+security/i,
+      /\bgrant\b/i,
+      /\bto\s+anon\b/i,
+    ]) {
+      expect(doingMigration, String(forbidden)).not.toMatch(forbidden);
+    }
+  });
+
+  it("changes only the one constraint, and backfills nothing", () => {
+    expect(doingMigration).toMatch(/entity_kind_check/);
+    for (const forbidden of [
+      /\bupdate\s+passport/i,
+      /\bdelete\s+from\b/i,
+      /\binsert\s+into\b/i,
+    ]) {
+      expect(doingMigration, String(forbidden)).not.toMatch(forbidden);
+    }
+  });
+
+  it("keeps every kind that already worked", () => {
+    for (const kind of [
+      "Place",
+      "Organization",
+      "Activity",
+      "Event",
+      "Experience",
+      "Movie",
+    ]) {
+      expect(doingMigration, kind).toContain(`'${kind}'`);
+    }
   });
 });

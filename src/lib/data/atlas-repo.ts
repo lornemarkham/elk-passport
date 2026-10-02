@@ -54,6 +54,70 @@ const atlasFetch = async (
   }
 };
 
+/**
+ * **A short memory in front of Atlas, because Atlas is slow to answer.**
+ *
+ * Measured on 2026-10-01, against the live corpus of 2,664 entities:
+ *
+ * | request | time to first byte |
+ * |---|---|
+ * | `/discovery/candidates` | 8–19s (median ~12s) |
+ * | `/{kind}/{id}/detail` | ~17s |
+ *
+ * None of that is transfer — `connect` is sub-millisecond on localhost and
+ * `total` equals `ttfb`. Atlas spends the time computing: every candidates
+ * request reads five whole entity tables plus relationships, venues, temporal
+ * claims and geographic observations out of a remote Supabase, paged, with no
+ * memory between requests. Nothing Passport sends changes that; a windowed
+ * request (`?from=&to=`) was measured at 17s against 19s, because the window
+ * narrows Events and the cost is in the other four tables.
+ *
+ * **So this is a mask, not a fix.** The fix belongs in Atlas and is recorded
+ * as such. What this does is stop Passport paying the bill more than once a
+ * few minutes: five seconds of October browsing used to mean five 12-second
+ * reads of an identical answer.
+ *
+ * Three properties matter and all three are deliberate:
+ *
+ * - **Successes only.** A rejection is never stored, so an Atlas outage does
+ *   not get remembered for five minutes. The reason this module exists is to
+ *   tell "Atlas is not there" apart from "Atlas said nothing", and a cached
+ *   failure would undo that.
+ * - **Single flight.** Concurrent callers share one in-flight request rather
+ *   than starting a second 12-second read. October home, Discover and My
+ *   October all ask for the same list.
+ * - **Short.** Five minutes. The corpus changes when an ingestion run lands,
+ *   which is not while somebody is browsing.
+ */
+const FRESH_MS = 5 * 60_000;
+const fresh = new Map<string, { at: number; value: unknown }>();
+const inflight = new Map<string, Promise<unknown>>();
+
+async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = fresh.get(key);
+  if (hit && Date.now() - hit.at < FRESH_MS) return hit.value as T;
+
+  const running = inflight.get(key);
+  if (running) return running as Promise<T>;
+
+  const started = load()
+    .then((value) => {
+      fresh.set(key, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => {
+      inflight.delete(key);
+    });
+  inflight.set(key, started);
+  return started;
+}
+
+/** Forget everything. For tests, which share a module instance. */
+export function forgetAtlasReads(): void {
+  fresh.clear();
+  inflight.clear();
+}
+
 import type {
   DiscoveryCandidate,
   Place,
@@ -128,6 +192,18 @@ export async function getSubjectDetail(
   id: string,
   on?: string,
 ): Promise<SubjectComposition | null> {
+  // A 404 is cached too, deliberately: a detail page tries several kinds and
+  // the misses cost exactly as much as the hit.
+  return cached(`detail/${kind}/${id}/${on ?? ""}`, () =>
+    readSubjectDetail(kind, id, on),
+  );
+}
+
+async function readSubjectDetail(
+  kind: "organizations" | "experiences" | "events",
+  id: string,
+  on?: string,
+): Promise<SubjectComposition | null> {
   const query = on ? `?on=${encodeURIComponent(on)}` : "";
   const response = await atlasFetch(
     `/${kind}/${encodeURIComponent(id)}/detail${query}`,
@@ -152,6 +228,10 @@ export async function getSubjectDetail(
  * only what Discover consumes.
  */
 export async function listDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
+  return cached("discovery/candidates", readDiscoveryCandidates);
+}
+
+async function readDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
   const response = await atlasFetch("/discovery/candidates");
   if (!response.ok) {
     // A refusal is not an absence. Every October surface used to `.catch()`

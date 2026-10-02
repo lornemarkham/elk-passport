@@ -122,7 +122,8 @@ describe("the October surfaces", () => {
 
   const SURFACES = [
     "src/app/october/page.tsx",
-    "src/app/october/discover/page.tsx",
+    "src/components/labs/october/synthesis/OctoberDiscoverySurface.tsx",
+    "src/lib/labs/october/pool.ts",
     "src/app/october/explore/[area]/page.tsx",
     "src/app/october/mine/page.tsx",
   ];
@@ -134,13 +135,17 @@ describe("the October surfaces", () => {
   });
 
   it("say so on the two lanes that lead with what is on", () => {
-    for (const surface of [
-      "src/app/october/page.tsx",
-      "src/app/october/discover/page.tsx",
-    ]) {
-      expect(read(surface)).toContain("atlas.outage");
-      expect(read(surface)).toContain("<Unanswered />");
-    }
+    expect(read("src/app/october/page.tsx")).toContain("atlas.outage");
+    expect(read("src/app/october/page.tsx")).toContain("<Unanswered />");
+
+    // Discover is a route over a shared surface now. The outage travels on
+    // the pool it reads, and the surface renders the same `Unanswered`.
+    const surface = read(
+      "src/components/labs/october/synthesis/OctoberDiscoverySurface.tsx",
+    );
+    expect(surface).toContain("pool.outage");
+    expect(surface).toContain("<Unanswered />");
+    expect(read("src/lib/labs/october/pool.ts")).toContain("atlas.outage");
   });
 
   it("do not print a credential's name to a visitor", () => {

@@ -17,21 +17,34 @@ import { ArrowLeft } from "lucide-react";
 export function OctoberShell({
   children,
   actions,
+  backTo = "/october/discover",
+  backLabel = "Back to October",
 }: {
   readonly children: ReactNode;
   /** Save, and whatever the publisher genuinely published. */
   readonly actions?: ReactNode;
+  /**
+   * **Where "back" goes.**
+   *
+   * `/october/discover` by default, which is October's one discovery surface
+   * — and which, since the synthesis was promoted, is the surface a reader
+   * actually came from. For a while it was not: Discover had been replaced
+   * and this still returned people to the page it replaced, with their search
+   * and filters gone. Overridable because this shell is not only October's.
+   */
+  readonly backTo?: string;
+  readonly backLabel?: string;
 }) {
   return (
     <div className="min-h-screen bg-[#0c0a0c] text-[#e9e6da]">
       <div className="mx-auto max-w-5xl px-5 pt-6 sm:px-8">
         <Link
-          href="/october/discover"
+          href={backTo}
           data-testid="back-to-october"
           className="inline-flex min-h-11 items-center gap-2 text-sm text-[#e9e6da]/45 transition-colors hover:text-[#e9e6da]/85"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to October
+          {backLabel}
         </Link>
       </div>
       {children}
@@ -102,7 +115,6 @@ export function OctoberActions({
  */
 export function OctoberProvenance({
   sources,
-  assetCount,
   hidden = [],
 }: {
   readonly sources: readonly {
@@ -110,7 +122,6 @@ export function OctoberProvenance({
     url: string;
     sourceType?: string;
   }[];
-  readonly assetCount?: number;
   readonly hidden?: readonly {
     label: string;
     value: string;
@@ -124,9 +135,11 @@ export function OctoberProvenance({
       className="mx-auto mt-14 max-w-5xl px-5 sm:px-8"
     >
       <summary className="inline-flex min-h-11 cursor-pointer list-none items-center text-sm text-[#e9e6da]/35 transition-colors hover:text-[#e9e6da]/70">
-        Verified from {sources.length}{" "}
-        {sources.length === 1 ? "source" : "sources"}
-        {assetCount ? ` · ${assetCount} curated assets` : ""}
+        {/* **Where this came from**, not *how sure we are*. The evidence is
+            unchanged in the data and still one press away; what has gone is
+            the internal verification language — "Verified from 1 source" is
+            Atlas talking to its curators, in a page a traveller is reading. */}
+        Where this came from
       </summary>
       <ul className="mt-4 flex flex-col gap-2 pb-4">
         {sources.map((source) => (

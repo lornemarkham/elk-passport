@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getPlaceDetail, getSubjectDetail } from "./atlas-repo";
+import {
+  forgetAtlasReads,
+  getPlaceDetail,
+  getSubjectDetail,
+} from "./atlas-repo";
 
 /**
  * **Passport asks Atlas one public question.**
@@ -13,6 +17,10 @@ import { getPlaceDetail, getSubjectDetail } from "./atlas-repo";
  * more: since Atlas `e6f94f9` every route needs Passport's service identity,
  * so the read that must not carry `ADMIN_TOKEN` now *must* carry a bearer.
  * The rule was never about headers; it was about which claim.
+ *
+ * Atlas reads are cached for five minutes, so each case forgets what the last
+ * one learned — otherwise a test that asks what happens on a 500 is answered
+ * from the success the previous test stored.
  */
 function respondWith(status: number, body?: unknown) {
   const fetchMock = vi.fn(
@@ -32,6 +40,7 @@ function respondWith(status: number, body?: unknown) {
 // which is the state these assertions are about.
 const ORIGINAL_TOKEN = process.env.ATLAS_SERVICE_TOKEN;
 beforeEach(() => {
+  forgetAtlasReads();
   process.env.ATLAS_SERVICE_TOKEN = "subject-detail-test-token";
 });
 

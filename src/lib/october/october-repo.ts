@@ -69,3 +69,27 @@ export async function forget(entityId: string): Promise<void> {
     "Couldn't remove that.",
   );
 }
+
+/**
+ * **Give something in your October a day** — or take the day back off.
+ *
+ * PATCH rather than PUT because PUT is idempotent by design: saving the same
+ * thing twice must never rewrite what is already there, so it cannot also be
+ * how a date is set.
+ */
+export async function planFor(
+  entityId: string,
+  day: string | null,
+): Promise<OctoberThing> {
+  return (
+    await request(
+      `/${encodeURIComponent(entityId)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ day }),
+      },
+      "Couldn't plan that.",
+    )
+  ).json();
+}
