@@ -25,10 +25,23 @@ const DESTINATIONS = [
 
 export function OctoberNav({
   displayName,
+  activePath = null,
 }: {
   readonly displayName: string | null;
+  /**
+   * **The route this page really is**, when that is not the route the browser
+   * is showing.
+   *
+   * `iamoctober.com/` is served by rewriting the root to `/october/discover`
+   * without changing the URL, which is deliberate — but it means
+   * `usePathname()` reports `/` and the bar highlighted nothing. The layout
+   * passes the rewritten path through when there is one. `null` everywhere
+   * else, including Passport's own `/`, which must keep highlighting nothing.
+   */
+  readonly activePath?: string | null;
 }) {
-  const pathname = usePathname() ?? "";
+  const browserPath = usePathname() ?? "";
+  const pathname = activePath ?? browserPath;
 
   /** `/october` only matches itself; the others own everything beneath them. */
   const isHere = (href: string) =>

@@ -75,3 +75,70 @@ describe("OctoberNav", () => {
     expect(screen.getByTestId("october-account")).toHaveTextContent("Lorne");
   });
 });
+
+/**
+ * **A domain's front door is still a route.**
+ *
+ * `iamoctober.com/` is served by rewriting the root to `/october/discover`
+ * and deliberately leaving the URL alone, so `usePathname()` reports `/` and
+ * the bar used to highlight nothing at all — the one page most people will
+ * ever see of October looked like it was nowhere.
+ */
+describe("OctoberNav on an experience domain", () => {
+  const atDomainRoot = (rewrittenTo: string) => {
+    pathname = "/";
+    return render(<OctoberNav displayName={null} activePath={rewrittenTo} />);
+  };
+
+  const current = () =>
+    screen
+      .getByRole("navigation", { name: "October" })
+      .querySelectorAll('[aria-current="page"]');
+
+  it("marks Discover current at the domain root, where the URL says /", () => {
+    atDomainRoot("/october/discover");
+    expect(current()).toHaveLength(1);
+    expect(current()[0]).toHaveAttribute("data-testid", "october-nav-discover");
+  });
+
+  it("still links to the real routes, not to the bare domain root", () => {
+    atDomainRoot("/october/discover");
+    expect(
+      screen.getByTestId("october-nav-discover").getAttribute("href"),
+    ).toBe("/october/discover");
+    expect(screen.getByTestId("october-nav-october").getAttribute("href")).toBe(
+      "/october",
+    );
+  });
+
+  it("marks nothing current on Passport's own homepage", () => {
+    // The same `/` the browser reports, with no rewrite behind it. October
+    // must not claim a page that is not October's.
+    pathname = "/";
+    render(<OctoberNav displayName={null} />);
+    expect(current()).toHaveLength(0);
+  });
+
+  it("leaves every other October route deciding from the browser path", () => {
+    for (const [path, testid] of [
+      ["/october", "october-nav-october"],
+      ["/october/discover", "october-nav-discover"],
+      ["/october/mine", "october-nav-my-october"],
+      ["/october/mine/anything", "october-nav-my-october"],
+    ] as const) {
+      pathname = path;
+      const { unmount } = render(<OctoberNav displayName={null} />);
+      expect(current(), path).toHaveLength(1);
+      expect(current()[0], path).toHaveAttribute("data-testid", testid);
+      unmount();
+    }
+  });
+
+  it("would rather highlight nothing than guess from a path it was not given", () => {
+    // A future domain mapped somewhere outside October: the bar is still
+    // October's, and none of its three destinations is where you are.
+    pathname = "/";
+    render(<OctoberNav displayName={null} activePath="/january/discover" />);
+    expect(current()).toHaveLength(0);
+  });
+});

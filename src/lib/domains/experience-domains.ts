@@ -29,6 +29,21 @@ function normalizeHost(host: string): string {
 }
 
 /**
+ * **The header that carries "this page is an experience domain's front door".**
+ *
+ * A rewrite changes the route the server renders and deliberately does not
+ * change the URL the browser shows — that is the whole point of the domain
+ * mapping. It also means `usePathname()` on `iamoctober.com/` reports `/`,
+ * and anything deciding where you are from the browser path cannot tell this
+ * page from Passport's own homepage.
+ *
+ * So the middleware states the rewrite on the request, and the one component
+ * that needs to know — October's navigation — is told rather than guessing.
+ * No component ever looks at a hostname.
+ */
+export const EXPERIENCE_PATH_HEADER = "x-experience-path";
+
+/**
  * The internal path a request should be rewritten to, or `null` to serve it
  * as requested.
  */

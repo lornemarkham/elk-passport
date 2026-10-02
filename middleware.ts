@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { experienceRewriteFor } from "@/lib/domains/experience-domains";
+import {
+  EXPERIENCE_PATH_HEADER,
+  experienceRewriteFor,
+} from "@/lib/domains/experience-domains";
 
 /**
  * **Keeps the session cookie fresh so the server can trust it.**
@@ -30,9 +33,21 @@ export async function middleware(request: NextRequest) {
     request.headers.get("host"),
     request.nextUrl.pathname,
   );
+  //
+  // The rewrite is also *stated*, so a server component can tell that this
+  // render is a domain's front door rather than the path the browser shows.
+  // The header is set or removed on every request and never merely read: an
+  // incoming one is a forgery, and leaving it in place would let a caller
+  // light up the wrong tab in October's navigation.
+  const headers = new Headers(request.headers);
+  if (rewriteTo) headers.set(EXPERIENCE_PATH_HEADER, rewriteTo);
+  else headers.delete(EXPERIENCE_PATH_HEADER);
+
   const response = rewriteTo
-    ? NextResponse.rewrite(new URL(rewriteTo, request.url), { request })
-    : NextResponse.next({ request });
+    ? NextResponse.rewrite(new URL(rewriteTo, request.url), {
+        request: { headers },
+      })
+    : NextResponse.next({ request: { headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

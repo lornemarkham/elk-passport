@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { currentUser } from "@/lib/auth/currentUser";
+import { EXPERIENCE_PATH_HEADER } from "@/lib/domains/experience-domains";
 import { OctoberNav } from "@/components/october/shell/OctoberNav";
 
 /**
@@ -20,10 +22,18 @@ export default async function OctoberLayout({
 }: {
   readonly children: ReactNode;
 }) {
-  const user = await currentUser();
+  const [user, requestHeaders] = await Promise.all([currentUser(), headers()]);
+  // On `iamoctober.com/` the middleware rewrote the root to a route under
+  // `/october`, and the browser still shows `/`. The nav is told which route
+  // it is actually on; everywhere else this is absent and the browser path
+  // decides, exactly as before.
+  const activePath = requestHeaders.get(EXPERIENCE_PATH_HEADER);
   return (
     <div className="min-h-screen bg-[#0c0a0c] text-[#e9e6da]">
-      <OctoberNav displayName={user?.displayName ?? null} />
+      <OctoberNav
+        displayName={user?.displayName ?? null}
+        activePath={activePath}
+      />
       {children}
     </div>
   );
