@@ -44,14 +44,20 @@ export interface Report {
 
 /** Anything that looks like a secret or a person, removed before it is logged. */
 export function scrub(text: string): string {
-  return text
-    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[email]")
-    .replace(/\beyJ[\w-]{10,}\.[\w-]+\.[\w-]+/g, "[jwt]")
-    .replace(/\b(sb|sbp|eyJ)[\w-]{20,}/g, "[token]")
-    .replace(
-      /(?<=[?&](code|token|access_token|refresh_token)=)[^&\s]+/gi,
-      "[redacted]",
-    );
+  return (
+    text
+      .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[email]")
+      .replace(/\beyJ[\w-]{10,}\.[\w-]+\.[\w-]+/g, "[jwt]")
+      .replace(/\b(sb|sbp|eyJ)[\w-]{20,}/g, "[token]")
+      // **Not only inside a URL.** The first version required `?` or `&` before
+      // the key, and an error message does not write URLs — it says "reset
+      // failed with code=…". Found in a real production log line, which
+      // cheerfully carried the code.
+      .replace(
+        /\b(code|token|access_token|refresh_token|apikey|api_key)=[^&\s"']+/gi,
+        "$1=[redacted]",
+      )
+  );
 }
 
 /** A report with every string scrubbed and nothing oversized. */

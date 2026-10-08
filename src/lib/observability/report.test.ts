@@ -36,6 +36,19 @@ describe("what never reaches a log line", () => {
     expect(got).toContain("/auth/callback");
   });
 
+  it("removes an auth code written in prose, not only in a URL", () => {
+    // Found in a real production log line: the first version of this only
+    // matched after `?` or `&`, and an error message does not write URLs.
+    const got = scrub("reset failed with code=pkce_secret123 for that user");
+    expect(got).not.toContain("pkce_secret123");
+    expect(got).toContain("code=[redacted]");
+  });
+
+  it("removes an api key however it is spelled", () => {
+    expect(scrub("apikey=abc123def")).toBe("apikey=[redacted]");
+    expect(scrub("access_token=xyz789")).toBe("access_token=[redacted]");
+  });
+
   it("removes a Supabase key prefix", () => {
     expect(scrub("key sbp_0123456789abcdefghijklmno")).not.toContain("sbp_0");
   });
