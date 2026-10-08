@@ -272,7 +272,7 @@ function Deal({
         {!signedIn ? (
           <p className="mt-3 text-xs text-[#e9e6da]/30">
             <Link
-              href={`/signin?returnTo=${encodeURIComponent(HERE)}`}
+              href={`/auth?next=${encodeURIComponent(HERE)}`}
               className="underline underline-offset-2 hover:text-[#e9e6da]"
             >
               Sign in

@@ -143,7 +143,7 @@ test.describe("choosing, signed out", () => {
     // And it comes back here afterwards, rather than dumping you on a homepage.
     await expect(signIn.first()).toHaveAttribute(
       "href",
-      /returnTo=%2Foctober%2Fdiscover/,
+      /^\/auth\?next=%2Foctober%2Fdiscover$/,
     );
   });
 
@@ -203,5 +203,139 @@ test.describe("auth links point at this origin, never at localhost in production
   }) => {
     await page.goto("/auth/callback?code=definitely-not-a-real-code");
     await expect(page).toHaveURL(/\/auth\?notice=link-expired/);
+  });
+});
+
+/**
+ * **The journeys that broke in production after thirteen tests said fine.**
+ *
+ * The existing suite checked that a signed-out visitor is *invited* to sign
+ * in. It never followed the invitation. So a link to `/signin` — a route that
+ * has never existed — sat in production looking exactly like a working one,
+ * and a password reset begun in October finished in a different product.
+ *
+ * These follow the links.
+ */
+test.describe("an October visitor can reach authentication and get back", () => {
+  test("Sign in to choose reaches real auth, not a dead route", async ({
+    page,
+  }) => {
+    await page.goto("/october/discover");
+    const invite = page
+      .getByRole("link", { name: /sign in to choose/i })
+      .first();
+    await expect(invite).toBeVisible();
+
+    await invite.click();
+    await page.waitForURL(/\/auth/);
+
+    // The failure was `/signin`, which rendered Passport's "nothing at this
+    // address" page and ejected the person from October entirely.
+    expect(new URL(page.url()).pathname).toBe("/auth");
+    await expect(page.locator("body")).not.toContainText(
+      /nothing at this address/i,
+    );
+    await expect(page.getByPlaceholder(/email/i).first()).toBeVisible();
+  });
+
+  test("and auth knows to send them back to October", async ({ page }) => {
+    await page.goto("/october/discover");
+    await page
+      .getByRole("link", { name: /sign in to choose/i })
+      .first()
+      .click();
+    await page.waitForURL(/\/auth\?/);
+
+    expect(new URL(page.url()).searchParams.get("next")).toBe(
+      "/october/discover",
+    );
+  });
+
+  test("the way out of auth is October, never generic Passport", async ({
+    page,
+  }) => {
+    await page.goto("/auth?next=%2Foctober%2Fdiscover");
+    const back = page.getByRole("link", { name: /^←\s*Back$/ });
+    await expect(back).toHaveAttribute("href", "/october/discover");
+  });
+
+  test("a bare /auth offers a way out that is correct on either product", async ({
+    page,
+  }) => {
+    // With nothing asked for, `/` is October's front door on the mapped
+    // domain and Passport's home everywhere else — one href, right on both.
+    await page.goto("/auth");
+    await expect(
+      page.getByRole("link", { name: /^←\s*Back$/ }),
+    ).toHaveAttribute("href", "/");
+  });
+});
+
+test.describe("password recovery keeps hold of where it began", () => {
+  test("the forgot link carries the destination with it", async ({ page }) => {
+    await page.goto("/auth?next=%2Foctober%2Fdiscover");
+    const forgot = page.getByRole("link", { name: /forgot/i });
+    await expect(forgot).toHaveAttribute(
+      "href",
+      "/auth/forgot?next=%2Foctober%2Fdiscover",
+    );
+  });
+
+  test("the recovery email is asked to come back through October", async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto("/auth/forgot?next=%2Foctober%2Fdiscover");
+
+    const asked = page.waitForRequest((r) =>
+      r.url().includes("/auth/v1/recover"),
+    );
+    await page.getByPlaceholder(/email/i).fill("nobody@example.invalid");
+    await page
+      .getByRole("button", { name: /send|reset|link/i })
+      .first()
+      .click();
+
+    const redirectTo = new URL(
+      new URL((await asked).url()).searchParams.get("redirect_to")!,
+    );
+    expect(redirectTo.origin).toBe(new URL(baseURL!).origin);
+    expect(redirectTo.pathname).toBe("/auth/callback");
+    // The whole point: update-password is told where the journey started, so
+    // the sign-in after it can finish in the right product.
+    const onward = redirectTo.searchParams.get("next")!;
+    expect(onward).toContain("/auth/update-password");
+    expect(onward).toContain(encodeURIComponent("/october/discover"));
+  });
+});
+
+test.describe("no control is offered that cannot work", () => {
+  test("no Google button while the provider is unavailable", async ({
+    page,
+  }) => {
+    await page.goto("/auth");
+    // Previously rendered disabled with the reason in a `title` — invisible
+    // on a phone and to most screen readers.
+    await expect(
+      page.getByRole("button", { name: /continue with google/i }),
+    ).toHaveCount(0);
+    await expect(page.getByText(/^or$/)).toHaveCount(0);
+  });
+});
+
+test.describe("the auth form can be used without seeing it", () => {
+  test("every input has an accessible name", async ({ page }) => {
+    await page.goto("/auth");
+    await expect(
+      page.getByRole("textbox", { name: /email address/i }),
+    ).toBeVisible();
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+  });
+
+  test("including on the forgot screen", async ({ page }) => {
+    await page.goto("/auth/forgot");
+    await expect(
+      page.getByRole("textbox", { name: /email address/i }),
+    ).toBeVisible();
   });
 });

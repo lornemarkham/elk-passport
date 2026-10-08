@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Compass } from "lucide-react";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { safeNext } from "@/lib/auth/safeNext";
+import { DEFAULT_NEXT, safeNext } from "@/lib/auth/safeNext";
+import { experienceHomeFor } from "@/lib/domains/experience-domains";
 import {
   friendlyAuthError,
   PASSWORD_RULE,
@@ -15,7 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordField } from "@/components/auth/PasswordField";
-import { GoogleButton } from "@/components/auth/GoogleButton";
+import {
+  GoogleButton,
+  googleSignInAvailable,
+} from "@/components/auth/GoogleButton";
 
 /**
  * Sign in, sign up, and go back to whatever you were doing.
@@ -41,7 +45,21 @@ const NOTICES: Record<string, string> = {
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = safeNext(searchParams.get("next"));
+  // **Resolved when it is used, not when it is rendered.** The fallback
+  // depends on the host, and reading `window` during render would make the
+  // server and the browser disagree. Every use below is inside a handler.
+  const asked = searchParams.get("next");
+  const nextDestination = () =>
+    safeNext(asked, experienceHomeFor(window.location.host) ?? DEFAULT_NEXT);
+  /**
+   * The same destination for things rendered rather than navigated to.
+   *
+   * It cannot consult `window`, so when nothing was asked for it falls back
+   * to `/` — which is October's own front door on `iamoctober.com` and
+   * Passport's home everywhere else. One link, correct on both, no host
+   * check and nothing for hydration to disagree about.
+   */
+  const renderNext = asked ? safeNext(asked, "/") : "/";
   const noticeKey = searchParams.get("notice");
   const notice = noticeKey
     ? (NOTICES[noticeKey] ?? decodeURIComponent(noticeKey))
@@ -73,7 +91,7 @@ function AuthForm() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextDestination())}`,
           },
         });
         if (error) throw error;
@@ -82,7 +100,7 @@ function AuthForm() {
         // page cannot know, so it reports whichever actually happened rather
         // than always claiming the inbox step.
         if (data.session) {
-          router.replace(next);
+          router.replace(nextDestination());
           router.refresh();
         } else {
           setMessage(
@@ -99,7 +117,7 @@ function AuthForm() {
         // `refresh()` and not `replace()` alone: the session now lives in a
         // cookie the *server* reads, and every Server Component rendered
         // before this moment resolved an anonymous user.
-        router.replace(next);
+        router.replace(nextDestination());
         router.refresh();
       }
     } catch (err: unknown) {
@@ -140,13 +158,18 @@ function AuthForm() {
           </p>
         )}
 
-        <GoogleButton next={next} />
-
-        <div className="my-6 flex items-center gap-3">
-          <span className="h-px flex-1 bg-current opacity-10" />
-          <span className="text-muted-foreground text-xs">or</span>
-          <span className="h-px flex-1 bg-current opacity-10" />
-        </div>
+        {/* Both of these disappear together: an "or" above a single option
+            is a seam where a second option used to be. */}
+        {googleSignInAvailable() ? (
+          <>
+            <GoogleButton next={renderNext} />
+            <div className="my-6 flex items-center gap-3">
+              <span className="h-px flex-1 bg-current opacity-10" />
+              <span className="text-muted-foreground text-xs">or</span>
+              <span className="h-px flex-1 bg-current opacity-10" />
+            </div>
+          </>
+        ) : null}
 
         <div
           className="mb-6 flex rounded-lg border p-1"
@@ -176,6 +199,10 @@ function AuthForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             type="email"
+            // A placeholder is not a name: it disappears on focus and most
+            // screen readers do not announce it. Both auth screens relied on
+            // one, so neither email field had an accessible name at all.
+            aria-label="Email address"
             placeholder="Email"
             autoComplete="email"
             required
@@ -215,7 +242,11 @@ function AuthForm() {
         {mode === "login" && (
           <div className="mt-4 text-center">
             <Link
-              href="/auth/forgot"
+              href={
+                asked
+                  ? `/auth/forgot?next=${encodeURIComponent(asked)}`
+                  : "/auth/forgot"
+              }
               className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm underline"
             >
               Forgot your password?
@@ -236,10 +267,10 @@ function AuthForm() {
 
         <div className="mt-7 text-center">
           <Link
-            href={next}
+            href={renderNext}
             className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
           >
-            ← Back to Passport
+            ← Back
           </Link>
         </div>
       </div>

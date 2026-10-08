@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Compass } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { friendlyAuthError } from "@/lib/auth/passwordPolicy";
+import { DEFAULT_NEXT, safeNext } from "@/lib/auth/safeNext";
+import { experienceHomeFor } from "@/lib/domains/experience-domains";
 
 /**
  * **Ask for a reset link.**
@@ -22,8 +25,18 @@ import { friendlyAuthError } from "@/lib/auth/passwordPolicy";
  *
  * The redirect goes through `/auth/callback`, which exchanges the PKCE code for
  * a session and only then forwards to the page where a new password is chosen.
+ *
+ * ## It remembers where the person started
+ *
+ * `?next=` is threaded all the way to the far side of the email: into the
+ * callback, through the update-password screen, and into the sign-in that
+ * follows. Without it the chain forgot twice over, and somebody who began in
+ * I Am October finished in Passport's generic Discovery — a different
+ * product, reached by resetting a password.
  */
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -38,8 +51,13 @@ export default function ForgotPasswordPage() {
       const { error } = await supabaseBrowser().auth.resetPasswordForEmail(
         email.trim(),
         {
+          // The callback forwards to update-password, which in turn needs to
+          // know where the whole thing started — so the destination is
+          // nested inside the callback's own `next`.
           redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-            "/auth/update-password",
+            next
+              ? `/auth/update-password?next=${encodeURIComponent(safeNext(next, experienceHomeFor(window.location.host) ?? DEFAULT_NEXT))}`
+              : "/auth/update-password",
           )}`,
         },
       );
@@ -97,6 +115,7 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 type="email"
+                aria-label="Email address"
                 placeholder="Email"
                 autoComplete="email"
                 required
@@ -121,7 +140,7 @@ export default function ForgotPasswordPage() {
 
             <div className="mt-7 text-center">
               <Link
-                href="/auth"
+                href={next ? `/auth?next=${encodeURIComponent(next)}` : "/auth"}
                 className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
               >
                 ← Back to sign in
@@ -131,5 +150,17 @@ export default function ForgotPasswordPage() {
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * `useSearchParams` forces a Suspense boundary at the page level; without one
+ * the whole route opts out of static rendering and Next says so at build.
+ */
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

@@ -116,7 +116,7 @@ function Keep({
   if (!signedIn) {
     return (
       <Link
-        href={`/signin?returnTo=${encodeURIComponent(returnTo)}`}
+        href={`/auth?next=${encodeURIComponent(returnTo)}`}
         className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-[#e9e6da]/20 ${size} text-[#e9e6da]/60 transition-colors hover:border-[#d09a4e]/50 hover:text-[#e9e6da]`}
       >
         <Heart className="h-4 w-4" aria-hidden />

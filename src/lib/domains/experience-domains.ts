@@ -44,6 +44,27 @@ function normalizeHost(host: string): string {
 export const EXPERIENCE_PATH_HEADER = "x-experience-path";
 
 /**
+ * **Where "back to where you were" means, on a domain that is an experience.**
+ *
+ * A person who arrives on `iamoctober.com`, signs in, and is handed
+ * Passport's generic `/discovery` has been ejected from the product they
+ * chose. That happened in production: the whole auth chain defaults to
+ * `/discovery` whenever it loses track of a destination, and the password
+ * recovery chain lost track of one twice.
+ *
+ * This is the same table the rewrite uses, asked a different question —
+ * *what is home here* — so a mapped domain only ever has to be declared once.
+ * `null` for every other host, including `elk-passport.vercel.app`, which is
+ * ordinary Passport and must keep ordinary Passport's defaults.
+ */
+export function experienceHomeFor(
+  host: string | null | undefined,
+): string | null {
+  if (!host) return null;
+  return EXPERIENCE_DOMAINS[normalizeHost(host)] ?? null;
+}
+
+/**
  * The internal path a request should be rewritten to, or `null` to serve it
  * as requested.
  */

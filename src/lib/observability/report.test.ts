@@ -118,3 +118,20 @@ describe("reporting is safe to call from inside a failure", () => {
     expect(body).toContain("[email]");
   });
 });
+
+describe("a huge report is cheap, not just small", () => {
+  it("caps before it scrubs, so a long stack cannot stall the page", () => {
+    // Scrubbing first and slicing after made the email pattern backtrack
+    // across the whole input: eight seconds for one report, inside an error
+    // boundary that is already the last thing standing.
+    const started = Date.now();
+    const report = sanitize({ message: "x", stack: "y".repeat(200_000) });
+    expect(Date.now() - started).toBeLessThan(250);
+    expect(report.stack!.length).toBeLessThanOrEqual(4000);
+  });
+
+  it("still scrubs what survives the cut", () => {
+    const stack = `at handler (ana@example.com) ${"z".repeat(50_000)}`;
+    expect(sanitize({ message: "x", stack }).stack).toContain("[email]");
+  });
+});

@@ -11,15 +11,20 @@ import { supabaseBrowser } from "@/lib/supabase/client";
  * session cookie server-side.
  *
  * **Whether it works is a Supabase project setting, not a code question.** The
- * provider is disabled on this project today, so this button is rendered
- * disabled with the reason on it rather than throwing somebody at a consent
- * screen that will refuse them. `NEXT_PUBLIC_GOOGLE_SSO_ENABLED` flips it on
- * once the provider is configured in the dashboard — a deliberate switch, so
- * nobody ships a live-looking button that cannot work.
+ * provider is disabled on this project today, so **nothing is rendered at
+ * all**. It used to render disabled, with the reason in a `title` — which is
+ * invisible on a phone and to most screen readers, so what a person actually
+ * met was a greyed-out Google button and no explanation. Not offering a way
+ * in that does not exist is the more truthful of the two.
+ *
+ * `NEXT_PUBLIC_GOOGLE_SSO_ENABLED=true` brings it back, and that is the only
+ * thing to change once the provider is configured in the Supabase dashboard.
  */
+export const googleSignInAvailable = (): boolean =>
+  process.env.NEXT_PUBLIC_GOOGLE_SSO_ENABLED === "true";
+
 export function GoogleButton({ next }: { next: string }) {
   const [busy, setBusy] = useState(false);
-  const enabled = process.env.NEXT_PUBLIC_GOOGLE_SSO_ENABLED === "true";
 
   async function signIn() {
     setBusy(true);
@@ -32,13 +37,14 @@ export function GoogleButton({ next }: { next: string }) {
     // No navigation here on purpose — signInWithOAuth redirects the page.
   }
 
+  if (!googleSignInAvailable()) return null;
+
   return (
     <div>
       <button
         type="button"
         onClick={signIn}
-        disabled={!enabled || busy}
-        title={enabled ? undefined : "Google sign-in is not configured yet"}
+        disabled={busy}
         className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-md border text-sm font-medium transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
@@ -61,12 +67,6 @@ export function GoogleButton({ next }: { next: string }) {
         </svg>
         {busy ? "Redirecting…" : "Continue with Google"}
       </button>
-
-      {!enabled && (
-        <p className="text-muted-foreground mt-1.5 text-center text-xs">
-          Not configured yet — use email and password below.
-        </p>
-      )}
     </div>
   );
 }

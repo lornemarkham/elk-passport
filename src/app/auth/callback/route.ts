@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { safeNext } from "@/lib/auth/safeNext";
+import { DEFAULT_NEXT, safeNext } from "@/lib/auth/safeNext";
+import { experienceHomeFor } from "@/lib/domains/experience-domains";
 
 /**
  * **Where every link from an email or an identity provider lands.**
@@ -28,7 +29,12 @@ import { safeNext } from "@/lib/auth/safeNext";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = safeNext(url.searchParams.get("next"));
+  // A link with no destination lands wherever the host says home is:
+  // October on `iamoctober.com`, Passport's own Discovery everywhere else.
+  const next = safeNext(
+    url.searchParams.get("next"),
+    experienceHomeFor(request.headers.get("host") ?? url.host) ?? DEFAULT_NEXT,
+  );
 
   // Supabase reports provider-side refusals this way, e.g. a cancelled Google
   // consent screen. It is not an error worth alarming anyone about.

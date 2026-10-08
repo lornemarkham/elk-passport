@@ -428,7 +428,7 @@ function DealCard({
           <p className="mt-3 text-xs text-[#e9e6da]/30">
             Yes keeps it for this session.{" "}
             <Link
-              href={`/signin?returnTo=${encodeURIComponent(HERE)}`}
+              href={`/auth?next=${encodeURIComponent(HERE)}`}
               className="underline underline-offset-2 hover:text-[#e9e6da]"
             >
               Sign in

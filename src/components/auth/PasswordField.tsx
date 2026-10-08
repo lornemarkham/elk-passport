@@ -37,6 +37,7 @@ export function PasswordField({
     <div className="relative">
       <Input
         type={visible ? "text" : "password"}
+        aria-label={placeholder}
         placeholder={placeholder}
         autoComplete={autoComplete}
         value={value}

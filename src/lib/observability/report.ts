@@ -62,8 +62,13 @@ export function scrub(text: string): string {
 
 /** A report with every string scrubbed and nothing oversized. */
 export function sanitize(report: Report): Report {
+  // **Cut first, then scrub.** Scrubbing a 50,000-character stack and then
+  // throwing away all but 4,000 of it meant the email pattern backtracked
+  // across the whole thing — measured at eight seconds for one report, inside
+  // an error boundary. Only what is emitted needs scrubbing, so only what is
+  // emitted gets scrubbed.
   const cap = (value: string | undefined, max: number) =>
-    value ? scrub(value).slice(0, max) : undefined;
+    value ? scrub(value.slice(0, max)) : undefined;
   return {
     message: cap(report.message, 500) ?? "Unknown error",
     ...(report.stack ? { stack: cap(report.stack, 4000) } : {}),

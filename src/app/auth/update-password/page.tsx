@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Compass } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { DEFAULT_NEXT, safeNext } from "@/lib/auth/safeNext";
+import { experienceHomeFor } from "@/lib/domains/experience-domains";
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/auth/PasswordField";
 import {
@@ -24,8 +26,12 @@ import {
  * If somebody opens this page without having come through a link, there is no
  * session and the page says so rather than presenting a form that cannot work.
  */
-export default function UpdatePasswordPage() {
+function UpdatePasswordForm() {
   const router = useRouter();
+  // Where the reset began, threaded here from `/auth/forgot` through the
+  // callback. Sending somebody who started in October back to Passport's
+  // generic Discovery is how a password reset becomes a change of product.
+  const next = useSearchParams().get("next");
   const [checking, setChecking] = useState(true);
   const [recoverable, setRecoverable] = useState(false);
   const [password, setPassword] = useState("");
@@ -84,7 +90,15 @@ export default function UpdatePasswordPage() {
    */
   async function finish() {
     await supabaseBrowser().auth.signOut({ scope: "global" });
-    router.replace("/auth?notice=password-updated");
+    const destination = next
+      ? `/auth?notice=password-updated&next=${encodeURIComponent(
+          safeNext(
+            next,
+            experienceHomeFor(window.location.host) ?? DEFAULT_NEXT,
+          ),
+        )}`
+      : "/auth?notice=password-updated";
+    router.replace(destination);
     router.refresh();
   }
 
@@ -171,5 +185,14 @@ export default function UpdatePasswordPage() {
         )}
       </div>
     </main>
+  );
+}
+
+/** `useSearchParams` needs a Suspense boundary at the page level. */
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense>
+      <UpdatePasswordForm />
+    </Suspense>
   );
 }
