@@ -47,6 +47,13 @@ export function OctoberNav({
   const isHere = (href: string) =>
     href === "/october" ? pathname === "/october" : pathname.startsWith(href);
 
+  // **Both of these used to throw away where you were.** Signing in from
+  // anywhere in October returned you to `/october`, and tapping your own name
+  // landed you in `/account` — a cream Passport page whose only way out is
+  // Passport's Discovery. Carrying the current path means auth comes back
+  // here, and the account page can offer October as the way back.
+  const from = encodeURIComponent(pathname || "/october");
+
   return (
     <header className="border-b border-[#e9e6da]/10">
       <nav
@@ -76,7 +83,7 @@ export function OctoberNav({
 
         {displayName ? (
           <Link
-            href="/account"
+            href={`/account?next=${from}`}
             data-testid="october-account"
             className="inline-flex min-h-12 shrink-0 items-center px-3 text-sm text-[#e9e6da]/50 transition-colors hover:text-[#e9e6da]/80"
           >
@@ -84,7 +91,7 @@ export function OctoberNav({
           </Link>
         ) : (
           <Link
-            href="/auth?next=/october"
+            href={`/auth?next=${from}`}
             data-testid="october-sign-in"
             className="inline-flex min-h-12 shrink-0 items-center px-3 text-sm text-[#d09a4e] transition-colors hover:text-[#e0b06a]"
           >

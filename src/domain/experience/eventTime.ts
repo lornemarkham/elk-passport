@@ -135,6 +135,14 @@ export function formatEventWhen(
   if (Number.isNaN(end.getTime()))
     return `${day.format(start)} · ${clock.format(start)}`;
 
+  // **An interval that ends when it starts is a start time, not a range.**
+  // Atlas stores an Event whose publisher stated only a start as `startTime`
+  // equal to `endTime`, so Urge/Detour read `Fri, Oct 9, 2026 · 7:30 p.m. –
+  // 7:30 p.m.` — which looks like a bug in the page rather than a show that
+  // begins at half past seven.
+  if (start.getTime() === end.getTime())
+    return `${day.format(start)} · ${clock.format(start)}`;
+
   const sameDay = day.format(start) === day.format(end);
   return sameDay
     ? `${day.format(start)} · ${clock.format(start)} – ${clock.format(end)}`

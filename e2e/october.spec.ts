@@ -339,3 +339,91 @@ test.describe("the auth form can be used without seeing it", () => {
     ).toBeVisible();
   });
 });
+
+/**
+ * **Every card goes somewhere, and the account page comes back.**
+ *
+ * The suite above follows the links out of October into auth. It did not
+ * follow the links *into* a possibility, and six of the seventeen cards on
+ * production pointed at `/october/discover` — the page the reader was already
+ * standing on. The cause was `detailReady` requiring an `imageUrl`, so Atlas
+ * declining to vouch for a photograph silently produced a dead link.
+ *
+ * These drive the whole product, because that is the only place the defect was
+ * visible: the unit tests were all green while it shipped.
+ */
+test.describe("nothing on Discover is a link to Discover", () => {
+  test("every card opens something other than the page it is on", async ({
+    page,
+  }) => {
+    await page.goto("/october/discover");
+    const titles = page.locator(
+      '[data-testid="lead"] h2 a, [data-testid="lead"] h3 a, [data-testid="tile"] h3 a, [data-testid="row"] h3 a',
+    );
+    await expect(titles.first()).toBeVisible();
+
+    const hrefs = await titles.evaluateAll((nodes) =>
+      nodes.map((n) => n.getAttribute("href") ?? ""),
+    );
+    expect(hrefs.length).toBeGreaterThan(5);
+    expect(hrefs.filter((h) => h === "/october/discover")).toEqual([]);
+    expect(hrefs.every((h) => h.startsWith("/"))).toBe(true);
+  });
+
+  test("a card with no photograph still opens its own page", async ({
+    page,
+  }) => {
+    await page.goto("/october/discover");
+    // `data-has-image="false"` is the treatment for a subject Atlas holds no
+    // usable picture for — 118 of the 144 October subjects, so this is the
+    // common case rather than the edge one.
+    const bare = page.locator('[data-has-image="false"]').first();
+    await expect(bare).toBeVisible();
+
+    const name = (await bare.locator("h3").first().innerText()).trim();
+    const to = await bare.locator("h3 a").first().getAttribute("href");
+    expect(to).not.toBe("/october/discover");
+
+    await bare.locator("h3 a").first().click();
+    // A subject page is a remote read against Atlas and can take seconds the
+    // first time; waiting for the load state alone resolved on the page we
+    // were still standing on.
+    await page.waitForURL((url) => url.pathname !== "/october/discover", {
+      timeout: 30_000,
+    });
+    await expect(page.locator("h1, h2").first()).toContainText(
+      name.slice(0, 12),
+      { ignoreCase: true },
+    );
+    await expect(page.locator("body")).not.toContainText(
+      /nothing at this address/i,
+    );
+  });
+});
+
+test.describe("the account page is reachable from October and gives October back", () => {
+  test("a signed-out reader is asked to sign in and kept pointed at October", async ({
+    page,
+  }) => {
+    await page.goto("/account?next=%2Foctober%2Fdiscover");
+    const invite = page.getByRole("link", { name: /sign in/i }).first();
+    // Auth returns to the account page, which still knows where October was.
+    await expect(invite).toHaveAttribute(
+      "href",
+      /\/auth\?next=.*october.*discover/,
+    );
+  });
+
+  test("October's bar hands the account page the path, not a bare link", async ({
+    page,
+  }) => {
+    await page.goto("/october/mine");
+    const signIn = page.getByTestId("october-sign-in");
+    // Signed out the bar shows a way in rather than a name; either way it must
+    // carry where the reader stands, which is what used to be thrown away.
+    await expect(signIn).toHaveAttribute(
+      "href",
+      "/auth?next=%2Foctober%2Fmine",
+    );
+  });
+});

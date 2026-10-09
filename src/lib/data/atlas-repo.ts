@@ -89,17 +89,51 @@ const atlasFetch = async (
  * - **Short.** Five minutes. The corpus changes when an ingestion run lands,
  *   which is not while somebody is browsing.
  */
-const FRESH_MS = 5 * 60_000;
+/**
+ * Fresh enough to serve without thinking. The corpus changes when an
+ * ingestion run lands, which is not while somebody is browsing.
+ */
+const FRESH_MS = 10 * 60_000;
+
+/**
+ * **How long a stale answer is still better than a six-second wait.**
+ *
+ * Past `FRESH_MS` the value is refreshed — but the refresh happens *behind*
+ * the request rather than in front of it, and the caller gets the old answer
+ * immediately. Only the very first reader of a cold instance pays the full
+ * read; after that nobody waits again, however long they browse.
+ *
+ * Beyond this, a value is too old to serve at all and the next reader waits
+ * for a real one. An hour is comfortably longer than any gap between
+ * ingestion runs and comfortably shorter than a day of drift.
+ */
+const USABLE_MS = 60 * 60_000;
+
 const fresh = new Map<string, { at: number; value: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   const hit = fresh.get(key);
-  if (hit && Date.now() - hit.at < FRESH_MS) return hit.value as T;
+  const age = hit ? Date.now() - hit.at : Infinity;
+
+  if (hit && age < FRESH_MS) return hit.value as T;
 
   const running = inflight.get(key);
-  if (running) return running as Promise<T>;
 
+  // **Stale, but usable: answer now and catch up behind the request.**
+  // Measured against the live corpus: a cold `/discovery/candidates` takes
+  // 6–7 seconds, and expiring a cache simply hands that wait to whoever
+  // happens to arrive next. They did nothing to deserve it.
+  if (hit && age < USABLE_MS) {
+    if (!running) void refresh(key, load);
+    return hit.value as T;
+  }
+
+  if (running) return running as Promise<T>;
+  return refresh(key, load);
+}
+
+function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
   const started = load()
     .then((value) => {
       fresh.set(key, { at: Date.now(), value });
@@ -109,6 +143,9 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
       inflight.delete(key);
     });
   inflight.set(key, started);
+  // A background refresh that rejects must not become an unhandled rejection;
+  // the stale value stays and the next reader tries again.
+  started.catch(() => {});
   return started;
 }
 

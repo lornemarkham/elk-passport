@@ -14,9 +14,37 @@
  * `/january/discover`); nothing else has to learn about it. Hosts not listed —
  * `elk-passport.vercel.app`, previews, localhost — are plain Passport.
  */
-const EXPERIENCE_DOMAINS: Readonly<Record<string, string>> = {
-  "iamoctober.com": "/october/discover",
-};
+/**
+ * **One experience, declared once.**
+ *
+ * This was a `host → path` map, and then two other places needed to ask the
+ * same question a different way — *is this path part of an experience*, and
+ * *what does a person call it* — which is how special-case hostname and
+ * `startsWith("/october")` checks start spreading through components.
+ *
+ * So the table holds the whole fact. A future month is still one more entry
+ * (`{ host: "iamjanuary.com", home: "/january/discover", at: "/january",
+ * name: "January" }`) and nothing else has to learn about it.
+ */
+interface ExperienceDomain {
+  /** The domain whose root is this experience's front door. */
+  readonly host: string;
+  /** Where "home here" means — what the root rewrites to, and where auth returns. */
+  readonly home: string;
+  /** The path prefix every page of this experience lives under. */
+  readonly at: string;
+  /** What a person calls it, for a link back to it. */
+  readonly name: string;
+}
+
+const EXPERIENCES: readonly ExperienceDomain[] = [
+  {
+    host: "iamoctober.com",
+    home: "/october/discover",
+    at: "/october",
+    name: "October",
+  },
+];
 
 /** `WWW.IAmOctober.com:443` and `iamoctober.com` are the same front door. */
 function normalizeHost(host: string): string {
@@ -61,7 +89,8 @@ export function experienceHomeFor(
   host: string | null | undefined,
 ): string | null {
   if (!host) return null;
-  return EXPERIENCE_DOMAINS[normalizeHost(host)] ?? null;
+  const normalized = normalizeHost(host);
+  return EXPERIENCES.find((e) => e.host === normalized)?.home ?? null;
 }
 
 /**
@@ -73,5 +102,28 @@ export function experienceRewriteFor(
   pathname: string,
 ): string | null {
   if (!host || pathname !== "/") return null;
-  return EXPERIENCE_DOMAINS[normalizeHost(host)] ?? null;
+  return experienceHomeFor(host);
+}
+
+/**
+ * **Which experience a path belongs to, whatever host it is served from.**
+ *
+ * `/account` is shared: the same page serves a Passport user and an October
+ * one, and on `elk-passport.vercel.app` the host says nothing. What it does
+ * have is where the person came from, so a page that has been handed a
+ * destination can ask what that destination *is* and name the way back
+ * truthfully — "← October" rather than "← Discovery", which on production
+ * walked an October reader into a cream page titled Passport with no route
+ * home.
+ *
+ * `null` for a Passport path, which keeps Passport's own wording.
+ */
+export function experienceForPath(
+  path: string | null | undefined,
+): ExperienceDomain | null {
+  if (!path) return null;
+  return (
+    EXPERIENCES.find((e) => path === e.at || path.startsWith(`${e.at}/`)) ??
+    null
+  );
 }

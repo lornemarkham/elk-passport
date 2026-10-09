@@ -44,7 +44,7 @@ export function ChoicesLink({
           .querySelector<HTMLButtonElement>("[data-testid='choices-tray']")
           ?.click()
       }
-      className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e9e6da]/15 px-3 text-sm text-[#e9e6da]/60 transition-colors hover:border-[#d09a4e]/50 hover:text-[#e9e6da]"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#e9e6da]/15 px-3 text-sm text-[#e9e6da]/60 transition-colors hover:border-[#d09a4e]/50 hover:text-[#e9e6da]"
     >
       <Heart className="h-3.5 w-3.5" aria-hidden />
       <span className="tracking-[0.12em] uppercase">Choices</span>

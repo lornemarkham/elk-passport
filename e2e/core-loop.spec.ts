@@ -2,17 +2,35 @@ import { test, expect } from "@playwright/test";
 
 // The one test that matters most: the founder's actual path tonight.
 // Dream -> Plan -> Reveal -> Adventure -> Capture -> Summary.
+//
+// **It starts at `/plan` rather than at the homepage**, and that is a finding
+// rather than a tidy-up: this test had been failing on `main` because the
+// homepage it drove no longer exists. `/` is now "Discover the Okanagan." with
+// two links, `/places` and `/discovery`, and the copy this used to click
+// ("this is going to be dope") is nowhere in the codebase. Every route of the
+// loop — `/plan`, `/reveal`, `/adventure`, `/summary` — still works, so the
+// loop is intact and simply unreachable from the front door.
+//
+// Repointing it here is the smallest thing that makes the safety net work
+// again. Whether Passport's homepage should link to its own core loop is a
+// product decision, recorded for Lorne rather than answered here.
+//
+// ## The second failure was latency, not a break
+//
+// After repointing, this failed once at the Reveal step and passed on the next
+// run. Reveal waits on a remote read, and production Atlas answers
+// `/discovery/candidates` in about six seconds cold — so a 15-second budget
+// was a coin toss rather than a verdict. The wait below is sized for the
+// measured latency, and the flake is why it is stated here: a test that fails
+// a third of the time teaches people to ignore the suite.
 test("plans, reveals, experiences, captures, and recaps an adventure", async ({
   page,
 }) => {
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: /make today unforgettable/i }),
-  ).toBeVisible();
-
-  await page.getByRole("link", { name: /this is going to be dope/i }).click();
-
   // Step 1: intent
+  await page.goto("/plan");
+  await expect(
+    page.getByRole("heading", { name: /what kind of day is this/i }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Relax" }).click();
 
   // Step 2: constraints
@@ -31,7 +49,7 @@ test("plans, reveals, experiences, captures, and recaps an adventure", async ({
 
   // Reveal
   await expect(page.getByText(/going to love/i)).toBeVisible({
-    timeout: 15_000,
+    timeout: 45_000,
   });
   await page.getByRole("button", { name: /show me/i }).click();
   await page.getByRole("button", { name: /let's go/i }).click();

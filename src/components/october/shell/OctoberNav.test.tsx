@@ -63,9 +63,11 @@ describe("OctoberNav", () => {
 
   it("offers a way in when nobody is signed in", () => {
     at("/october");
+    // Percent-encoded now that the destination is the reader's own path
+    // rather than the constant `/october` this used to assert.
     expect(screen.getByTestId("october-sign-in")).toHaveAttribute(
       "href",
-      "/auth?next=/october",
+      "/auth?next=%2Foctober",
     );
   });
 
@@ -140,5 +142,46 @@ describe("OctoberNav on an experience domain", () => {
     pathname = "/";
     render(<OctoberNav displayName={null} activePath="/january/discover" />);
     expect(current()).toHaveLength(0);
+  });
+});
+
+/**
+ * **Leaving October must not lose October.**
+ *
+ * Both of the bar's two personal links used to throw away where you were:
+ * signed out it sent you to `/auth?next=/october` from wherever you stood, and
+ * signed in your own name linked a bare `/account` — a cream page titled
+ * Passport whose only exit was Passport's Discovery. Six of the seventeen
+ * cards on production had the matching defect in their own links.
+ */
+describe("the bar carries where you are", () => {
+  it("sends a signed-out reader to auth and back to this very page", () => {
+    pathname = "/october/mine";
+    render(<OctoberNav displayName={null} />);
+    expect(screen.getByTestId("october-sign-in")).toHaveAttribute(
+      "href",
+      "/auth?next=%2Foctober%2Fmine",
+    );
+  });
+
+  it("tells the account page which experience the reader came from", () => {
+    pathname = "/october/discover";
+    render(<OctoberNav displayName="Lorne" />);
+    expect(screen.getByTestId("october-account")).toHaveAttribute(
+      "href",
+      "/account?next=%2Foctober%2Fdiscover",
+    );
+  });
+
+  it("uses the rewritten path on the mapped domain, where the URL says `/`", () => {
+    // `iamoctober.com/` renders Discover without changing the URL, so the
+    // browser path is `/` and only the header knows better. Without this the
+    // account link would send the reader back to Passport's own homepage.
+    pathname = "/";
+    render(<OctoberNav displayName="Lorne" activePath="/october/discover" />);
+    expect(screen.getByTestId("october-account")).toHaveAttribute(
+      "href",
+      "/account?next=%2Foctober%2Fdiscover",
+    );
   });
 });

@@ -1,4 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+  beforeEach,
+} from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { OctoberThing } from "@/lib/october/types";
 
@@ -8,7 +16,18 @@ import type { OctoberThing } from "@/lib/october/types";
  * These pin the shape of My October rather than its looks: no counts in the
  * empty state, Ahead and Lived kept apart, "Did this" the sole path between
  * them, and nothing moving on its own.
+ *
+ * **The clock is frozen inside October.** The fixtures are written as real
+ * October dates, and whether a dated thing is still ahead depends on today —
+ * so without this the ordering test passed in early October and started
+ * failing on the 9th, when the thing called "Sooner" quietly became the past.
+ * A test that changes its answer with the wall clock is not a safety net.
  */
+beforeAll(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date("2026-10-01T12:00:00.000Z"));
+});
+afterAll(() => vi.useRealTimers());
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }),
   usePathname: () => "/october",

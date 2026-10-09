@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { experienceRewriteFor } from "./experience-domains";
+import {
+  experienceForPath,
+  experienceHomeFor,
+  experienceRewriteFor,
+} from "./experience-domains";
 
 describe("experienceRewriteFor", () => {
   it("opens iamoctober.com on October Discover", () => {
@@ -95,5 +99,55 @@ describe("the experience-path header", () => {
     // And nothing to carry anywhere else.
     expect(experienceRewriteFor("elk-passport.vercel.app", "/")).toBeNull();
     expect(experienceRewriteFor("localhost:3100", "/")).toBeNull();
+  });
+});
+
+/**
+ * **Which experience a path belongs to.**
+ *
+ * This exists because `/account` is shared and looks like Passport. The
+ * production defect it closes: October's nav linked a bare `/account`, so a
+ * signed-in October reader tapped their own name and landed on a cream page
+ * titled Passport whose only exit was Passport's Discovery.
+ */
+describe("experienceForPath", () => {
+  it("recognises October's own pages", () => {
+    for (const path of [
+      "/october",
+      "/october/discover",
+      "/october/mine",
+      "/october/movies/jaws",
+    ]) {
+      expect(experienceForPath(path)?.name).toBe("October");
+    }
+  });
+
+  it("leaves a Passport path to Passport's own wording", () => {
+    for (const path of [
+      "/discovery",
+      "/boards",
+      "/account",
+      "/",
+      "/passport/x",
+    ]) {
+      expect(experienceForPath(path)).toBeNull();
+    }
+  });
+
+  it("does not claim a path that merely starts with the same letters", () => {
+    // `/octoberfest` is not October, and a bare `startsWith` would say it was.
+    expect(experienceForPath("/octoberfest")).toBeNull();
+  });
+
+  it("says nothing when there is nothing to read", () => {
+    expect(experienceForPath(null)).toBeNull();
+    expect(experienceForPath(undefined)).toBeNull();
+    expect(experienceForPath("")).toBeNull();
+  });
+
+  it("names home the same way the host lookup does, from one table", () => {
+    expect(experienceForPath("/october/mine")?.home).toBe(
+      experienceHomeFor("iamoctober.com"),
+    );
   });
 });

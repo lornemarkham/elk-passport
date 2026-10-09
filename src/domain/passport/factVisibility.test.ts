@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { partitionFacts, restates } from "./factVisibility";
+import {
+  daysIn,
+  normalizeForComparison,
+  partitionFacts,
+  restates,
+} from "./factVisibility";
 import {
   OCTOBER_2026,
   curationFor,
@@ -185,5 +190,73 @@ describe("the October 2026 curated launch collection", () => {
     expect(placed.has("Season")).toBe(true);
     // A fact nobody placed stays visible — a missing group should be obvious.
     expect(placed.has("Something Atlas Learns Tomorrow")).toBe(false);
+  });
+});
+
+/**
+ * **A page that says the same thing twice reads as a page nobody finished.**
+ *
+ * Measured on production, Urge/Detour's subject page printed the evening twice
+ * and the address twice — once in its own voice at the top, once underneath
+ * under the publisher's own headings — and the duplication also made the page
+ * look substantial enough to earn a second copy of the whole action row.
+ *
+ * Three misses caused it, all in how two renderings of one fact are compared.
+ */
+describe("the same evening, written the way most of Canada writes it", () => {
+  const when = "Fri, Oct 9, 2026 · 7:30 p.m. – 7:30 p.m.";
+
+  it("reads a date day-before-month, which the American order missed", () => {
+    expect(daysIn("9th October, 2026")).toContain("2026-10-09");
+    expect(restates("9th October, 2026, Starts: 7:30 pm", when)).toBe(true);
+  });
+
+  it("reads one whose ordinal came out of a <sup> with a space in it", () => {
+    expect(restates("9 th October, 2026", when)).toBe(true);
+  });
+
+  it("still reads the American order, which most of the corpus uses", () => {
+    expect(daysIn("October 9th, 2026")).toContain("2026-10-09");
+    expect(restates("Start — October 9 @ 7:30 pm", when)).toBe(true);
+  });
+
+  it("does not read a street number as a day of the month", () => {
+    // `421 Cawston Avenue` has no ordinal suffix, so nothing here sees a date
+    // in it — which is why the suffix is required rather than optional.
+    expect(daysIn("421 Cawston Avenue, Kelowna", "2026").size).toBe(0);
+  });
+
+  it("keeps a fact that states a day and then says something new", () => {
+    expect(
+      restates("9th October, 2026 is the final night of the run", when),
+    ).toBe(false);
+  });
+});
+
+describe("the same street, spelled two ways", () => {
+  const where =
+    "Rotary Centre for the Arts, 421 Cawston Avenue, Kelowna, BC, V1Y 6Z1";
+
+  it("recognises the publisher's abbreviation of its own address", () => {
+    expect(
+      restates(
+        "Rotary Centre for the Arts, 421 Cawston Ave, Kelowna, BC, V1Y 6Z1",
+        where,
+      ),
+    ).toBe(true);
+  });
+
+  it("expands only abbreviations that mean one thing", () => {
+    expect(normalizeForComparison("1200 Water St")).toBe("1200 water st");
+    expect(normalizeForComparison("1200 Water Ave")).toBe("1200 water avenue");
+  });
+
+  it("does not rewrite a word that merely starts with one", () => {
+    expect(normalizeForComparison("Avenue Theatre")).toBe("avenue theatre");
+    expect(normalizeForComparison("Dresden")).toBe("dresden");
+  });
+
+  it("keeps a different address, however it is abbreviated", () => {
+    expect(restates("500 Doyle Ave, Kelowna", where)).toBe(false);
   });
 });

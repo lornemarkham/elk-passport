@@ -91,3 +91,26 @@ describe("an Event in Discover", () => {
     }
   });
 });
+
+describe("an interval that ends where it starts", () => {
+  it("prints the start, not a range from a time to itself", () => {
+    // Atlas stores a publisher's lone start time as both ends, which read as
+    // `7:30 p.m. – 7:30 p.m.` on Urge/Detour's page.
+    expect(
+      formatEventWhen(
+        "2026-10-10T02:30:00.000Z",
+        "2026-10-10T02:30:00.000Z",
+        "minute",
+      ),
+    ).not.toMatch(/–/);
+  });
+
+  it("still prints a real range", () => {
+    const line = formatEventWhen(
+      "2026-10-10T02:30:00.000Z",
+      "2026-10-10T04:30:00.000Z",
+      "minute",
+    );
+    expect(line).toMatch(/–/);
+  });
+});

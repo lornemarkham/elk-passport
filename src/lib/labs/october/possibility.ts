@@ -1,3 +1,4 @@
+import { destinationFor } from "@/domain/experience/destination";
 import type { Experience } from "@/domain/experience/types";
 import type { Film } from "@/lib/movies/catalogue";
 import type { Doing } from "@/lib/making/catalogue";
@@ -392,7 +393,7 @@ export function possibilityFromAtlas(
     id: experience.id,
     source: "atlas",
     title: experience.title,
-    ...(description ? { line: description } : {}),
+    ...(description ? { line: clipTo(description, LINE_MAX) } : {}),
     availability: availabilityForAtlas(experience, days, today),
     setting,
     ...(experience.venue?.locality
@@ -412,9 +413,17 @@ export function possibilityFromAtlas(
     // Atlas three times — organizations, experiences, events — because it has
     // no way to know, and each miss is a full remote read. Discovery does
     // know, so it says, and a subject opens with one query instead of three.
-    href: experience.detailReady
-      ? `/passport/${experience.id}${detailHint(experience.kind)}`
-      : `/october/discover`,
+    //
+    // **Where it goes is Passport's decision, not a second one.** This used to
+    // read `detailReady ? /passport/… : /october/discover` — so a subject with
+    // no photograph linked to the page the reader was already on. Six of the
+    // seventeen cards on production did, because `detailReady` requires an
+    // `imageUrl`: a missing picture quietly became a dead link.
+    //
+    // `destinationFor` already settled this for Passport's own discovery —
+    // readiness chooses *which* page a Place gets and never whether it has one
+    // — and the October surface simply wasn't asking it.
+    href: hrefFor(experience),
     ...(experience.kind === "Place" ||
     experience.kind === "Organization" ||
     experience.kind === "Activity" ||
@@ -423,18 +432,21 @@ export function possibilityFromAtlas(
       ? { keepAs: experience.kind as OctoberKind }
       : {}),
     startsAt: experience.startTime ?? null,
-    text: [
-      experience.title,
-      description,
-      experience.venue?.locality,
-      experience.venue?.name,
-      experience.subtype,
-      ...(experience.aliases ?? []),
-      setting.replace(/-/g, " "),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase(),
+    text: clipTo(
+      [
+        experience.title,
+        description,
+        experience.venue?.locality,
+        experience.venue?.name,
+        experience.subtype,
+        ...(experience.aliases ?? []),
+        setting.replace(/-/g, " "),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+      TEXT_MAX,
+    ),
     tags: [
       "go-out",
       setting,
@@ -442,6 +454,28 @@ export function possibilityFromAtlas(
     ],
   };
 }
+
+/**
+ * Where this subject opens, and what it tells the detail page on the way.
+ *
+ * The destination is Passport's (`destinationFor`); the `?kind=` is October's
+ * own saving of two remote reads. A Place rich enough for `/places/[id]` needs
+ * no hint — that route knows what it is already.
+ */
+function hrefFor(experience: Experience): string {
+  const to = destinationFor(experience);
+  if (!to) return HERE;
+  return to.startsWith("/passport/")
+    ? `${to}${detailHint(experience.kind)}`
+    : to;
+}
+
+/**
+ * Where a subject with no id would have gone. Nothing Atlas holds reaches it —
+ * `destinationFor` only declines an entity with no id, and a candidate without
+ * one never became a possibility — but a card must always have somewhere to go.
+ */
+const HERE = "/october/discover";
 
 /** Which composed-detail route this Atlas kind lives on, if any. */
 function detailHint(kind: Experience["kind"]): string {
@@ -454,6 +488,39 @@ function detailHint(kind: Experience["kind"]): string {
           ? "events"
           : undefined;
   return route ? `?kind=${route}` : "";
+}
+
+/**
+ * **The whole pool travels to the browser, so the whole pool is trimmed.**
+ *
+ * Discovery sends every possibility to the client because search and
+ * filtering happen there — that is what makes them instant, and it is worth
+ * keeping. Measured on production, the page was 308 KB of HTML to render
+ * seventeen cards, and 87 KB of that was `line` and `text`.
+ *
+ * **This recovered about 5 KB of it, not 30.** The caps catch outliers — the
+ * longest `text` went from 616 characters to 385 — and almost nothing else
+ * exceeded them, so the honest description of this is a guard against a
+ * pathological description rather than a payload fix. The payload is 238
+ * possibilities travelling by design; shrinking it means sending fewer of
+ * them, which is a change to how Discovery works and not one to make inside
+ * a performance pass.
+ *
+ * `line` is capped at rather more than any card displays (the longest clip is
+ * 200 characters), so nothing visible changes. `text` is the search index and
+ * is capped further out, because the words that make a thing findable are at
+ * the start of what a publisher wrote, not at the end.
+ */
+const LINE_MAX = 240;
+const TEXT_MAX = 320;
+
+/** Cut on a word boundary where there is one nearby, so nothing ends mid-word. */
+function clipTo(value: string, max: number): string {
+  const flat = value.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return space > max * 0.6 ? cut.slice(0, space) : cut;
 }
 
 /** Deterministic order for anything that has to be stable across renders. */

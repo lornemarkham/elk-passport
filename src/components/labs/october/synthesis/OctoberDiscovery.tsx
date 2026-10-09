@@ -174,7 +174,7 @@ export function OctoberDiscovery({
             <button
               type="button"
               onClick={clear}
-              className="inline-flex min-h-9 items-center gap-1.5 text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da] hover:underline"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da] hover:underline"
             >
               ← October
             </button>
@@ -227,12 +227,16 @@ export function OctoberDiscovery({
             type="button"
             data-testid="trust-me-open"
             onClick={() => setTrusting(true)}
-            className="inline-flex min-h-9 items-center gap-1.5 text-sm text-[#d09a4e] underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-[#d09a4e] underline-offset-4 hover:underline"
           >
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             Not sure? Trust me
           </button>
         </div>
+        {/* **44px, not 36.** These phrases are the whole way a person steers
+            this page, and on a phone they were the smallest things on it —
+            `min-h-9` where the rest of October uses `min-h-11`. Measured at
+            375px: 36px tall, against the 44px both platforms ask for. */}
         <ul className="mt-3 flex flex-wrap gap-2">
           {PHRASES.map((p) => {
             const on = said(intent, p.id);
@@ -248,7 +252,7 @@ export function OctoberDiscovery({
                       on ? subtract(intent, p.means) : merge(intent, p.means),
                     )
                   }
-                  className={`inline-flex min-h-9 items-center rounded-full border px-3.5 text-[13px] transition-colors ${
+                  className={`inline-flex min-h-11 items-center rounded-full border px-3.5 text-[13px] transition-colors ${
                     on
                       ? "border-[#d09a4e] bg-[#d09a4e]/15 text-[#f0c88a]"
                       : "border-[#e9e6da]/15 text-[#e9e6da]/65 hover:border-[#e9e6da]/35 hover:text-[#e9e6da]"
@@ -275,8 +279,13 @@ export function OctoberDiscovery({
               className="h-4 w-4 shrink-0 text-[#e9e6da]/35"
               aria-hidden
             />
+            {/* **No autofocus.** On a phone this opened the keyboard the
+                moment Discover loaded, covering half of what the page had
+                just gone and found; on a desktop it scrolled the reader past
+                October's own opening to a field they had not asked for. The
+                field is the first thing under the heading either way, so
+                somebody who came to search still reaches it in one tap. */}
             <input
-              autoFocus
               value={intent.query ?? ""}
               onChange={(e) => change({ ...intent, query: e.target.value })}
               placeholder="Search anything — pumpkin, haunted, draconids"

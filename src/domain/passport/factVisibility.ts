@@ -83,7 +83,39 @@ export const normalizeForComparison = (value: string): string =>
     .replace(/[‐-―]/g, "-")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
+    .replace(STREET_ABBREVIATION, (_, abbr: string) => ` ${STREETS[abbr]!}`)
+    .replace(/\s+/g, " ")
     .trim();
+
+/**
+ * **The same street, spelled two ways, is the same street.**
+ *
+ * Atlas holds the Rotary Centre's address from two reads of the same page:
+ * `421 Cawston Avenue` in the venue record and `421 Cawston Ave` in the
+ * publisher's own *Event location* fact. Nothing in either is new, and the
+ * page printed both, one under the other, three lines apart.
+ *
+ * Only abbreviations with a single expansion are here. `st` is deliberately
+ * absent: it is Street and it is Saint, and a comparison that rewrites
+ * `St. Paul's` to `street paul s` would be inventing a match rather than
+ * recognising one.
+ */
+const STREETS: Readonly<Record<string, string>> = {
+  ave: "avenue",
+  rd: "road",
+  blvd: "boulevard",
+  hwy: "highway",
+  dr: "drive",
+  ln: "lane",
+  cres: "crescent",
+  pkwy: "parkway",
+};
+
+/** An abbreviation standing on its own, never a fragment of a longer word. */
+const STREET_ABBREVIATION = new RegExp(
+  `\\b(${Object.keys(STREETS).join("|")})\\b`,
+  "g",
+);
 
 const MONTHS: Readonly<Record<string, string>> = {
   jan: "01",
@@ -103,8 +135,18 @@ const MONTHS: Readonly<Record<string, string>> = {
 /**
  * Every calendar day a piece of text states, as `YYYY-MM-DD`.
  *
- * Two spellings, because both appear in this corpus: `2026-10-03` from a
- * publisher's structured data, and `October 3rd and 4th, 2026` from its prose.
+ * Three spellings, because all three appear in this corpus: `2026-10-03` from
+ * a publisher's structured data, `October 3rd and 4th, 2026` from its prose,
+ * and **`9th October, 2026`** — day before month, which is how the Rotary
+ * Centre for the Arts writes every date on its own event pages, and how most
+ * of Canada writes one. Reading only the American order meant that page
+ * printed the same evening twice: once as the page's own
+ * `Fri, Oct 9, 2026 · 7:30 p.m.` and again underneath as the publisher's
+ * `Event date and time — 9th October, 2026, Starts: 7:30 pm`.
+ *
+ * `9 th October` is read too: a `<sup>th</sup>` in the source comes out of
+ * extraction with the space still in it.
+ *
  * A month-and-day with no year of its own takes the text's year when the text
  * states exactly one — which is what makes `Sep 25 - Nov 01, 2026` two days
  * rather than one and a fragment.
@@ -136,12 +178,32 @@ export function daysIn(
     if (!year) continue;
     days.add(`${year}-${month}-${String(m[2]).padStart(2, "0")}`);
   }
+
+  // Day before month. The ordinal suffix is required, so a bare `9 October`
+  // is not read — and neither is the `421 Cawston Avenue` in an address,
+  // which is the shape this would otherwise mistake for the 421st of a month.
+  const dayMonth =
+    /\b(\d{1,2})\s*(?:st|nd|rd|th)\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:\s*,?\s*(20\d{2}))?/gi;
+  for (const m of text.matchAll(dayMonth)) {
+    const month = MONTHS[m[2]!.toLowerCase()]!;
+    const year = m[3] ?? soleYear;
+    if (!year) continue;
+    days.add(`${year}-${month}-${String(m[1]).padStart(2, "0")}`);
+  }
   return days;
 }
 
-/** Words that are only ever part of writing a date down. */
+/**
+ * Words that are only ever part of writing a date down.
+ *
+ * The ordinal suffix is taken with the number it belongs to — `9th` is one
+ * piece of date-writing, not a digit plus a word. Left separate, the stranded
+ * `th` counted as content and `9th October, 2026, Starts: 7:30 pm` read as
+ * three words besides the date instead of two, which was one over the line
+ * and the reason that fact printed under the evening it restated.
+ */
 const DATE_WORDS =
-  /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b|\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\b|\b(and|to|through|from|until|till|the|of|st|nd|rd|th)\b|\d+/gi;
+  /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b|\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\b|\b(and|to|through|from|until|till|the|of|st|nd|rd|th)\b|\d+(?:st|nd|rd|th)?/gi;
 
 /** How many words are left once the date itself is taken out. */
 function wordsBesidesTheDate(value: string): number {

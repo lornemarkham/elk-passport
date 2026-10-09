@@ -54,13 +54,48 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+/**
+ * **The tab, the bookmark and the shared link say what the thing is.**
+ *
+ * This read `Passport — 32e9c9e2`: eight characters of a uuid, which is what
+ * a person saw in their tab and what they got if they sent the link to
+ * somebody. The subject's own name is one cached read away — the page below
+ * asks for exactly the same composition, and `getSubjectDetail` answers the
+ * second caller from memory — so naming it costs nothing.
+ *
+ * Still `noindex`: a traveller page assembled live from Atlas is not a
+ * published document, and that was a deliberate decision rather than an
+ * oversight this is tidying.
+ */
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const hinted = KINDS.find((k) => k === query.kind);
+  const on = typeof query.on === "string" ? query.on : undefined;
+
+  const compositions = await Promise.all(
+    (hinted ? [hinted] : KINDS).map((kind) =>
+      getSubjectDetail(kind, id, on).catch(() => null),
+    ),
+  );
+  const named = compositions.find((c) => c)?.root.name.trim();
+
   return {
-    title: `Passport — ${id.slice(0, 8)}`,
+    // The uuid stays as the fallback rather than a cheerful invention: a
+    // subject Atlas cannot compose has no name to print.
+    title: named ? `${named} — October` : `Passport — ${id.slice(0, 8)}`,
     robots: { index: false, follow: false },
   };
 }
+
+/**
+ * The composed-detail routes, in the order a miss falls through them. Shared
+ * with the page itself so the title and the body ask the same question — and
+ * therefore hit the same cache entry.
+ */
+const KINDS = ["organizations", "experiences", "events"] as const;
 
 /**
  * `/passport/[id]` — the traveller page, for any entity kind.
@@ -130,7 +165,6 @@ export default async function PassportPage({ params, searchParams }: Props) {
   // one read happens. Discovery knows it — the possibility carries it — so the
   // common path costs Atlas one query instead of three. An unknown or absent
   // hint falls back to asking all three, so no link can break by omitting it.
-  const KINDS = ["organizations", "experiences", "events"] as const;
   const hinted = KINDS.find((k) => k === query.kind);
   const asking = hinted ? [hinted] : KINDS;
   const compositions = await Promise.all(

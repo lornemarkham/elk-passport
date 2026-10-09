@@ -186,3 +186,72 @@ describe("a run that crosses years", () => {
     expect(a.label).toBe("OCT 1–25");
   });
 });
+
+/**
+ * **A card always goes somewhere, and never to the page it is already on.**
+ *
+ * Measured on production: six of the seventeen visible Discover cards linked
+ * to `/october/discover`. The cause was this file deciding where a subject
+ * opens from `detailReady`, which requires an `imageUrl` — so Atlas not
+ * vouching for a photograph quietly turned the title into a dead link.
+ *
+ * Passport had already settled the same question once, in `destinationFor`:
+ * readiness chooses *which* page a Place gets, never whether it has one. These
+ * pin that October asks it rather than deciding again.
+ */
+describe("where a possibility opens", () => {
+  const on = {
+    days: ["2026-10-09"],
+    setting: "unknown" as const,
+    today: "2026-10-09",
+  };
+
+  it("opens a subject with no picture, rather than linking to Discover", () => {
+    const thin = possibilityFromAtlas(
+      atlas({ id: "no-photo-1", kind: "Event", detailReady: false }),
+      on,
+    );
+    expect(thin.href).toBe("/passport/no-photo-1?kind=events");
+    expect(thin.href).not.toBe("/october/discover");
+  });
+
+  it("still tells the detail page which kind it is, so it asks Atlas once", () => {
+    for (const [kind, hint] of [
+      ["Organization", "organizations"],
+      ["Experience", "experiences"],
+      ["Event", "events"],
+    ] as const) {
+      const p = possibilityFromAtlas(
+        atlas({ id: "k", kind, detailReady: false }),
+        on,
+      );
+      expect(p.href).toBe(`/passport/k?kind=${hint}`);
+    }
+  });
+
+  it("sends a Place rich enough for the Place template there, with no hint", () => {
+    const place = possibilityFromAtlas(
+      atlas({ id: "p1", kind: "Place", detailReady: true }),
+      on,
+    );
+    expect(place.href).toBe("/places/p1");
+  });
+
+  it("sends a thin Place to the neutral page, which states its gaps", () => {
+    const place = possibilityFromAtlas(
+      atlas({ id: "p2", kind: "Place", detailReady: false }),
+      on,
+    );
+    expect(place.href).toBe("/passport/p2");
+  });
+
+  it("gives every possibility in the real pool somewhere other than here", () => {
+    // The guarantee, stated once over everything rather than per kind.
+    for (const film of CATALOGUE) {
+      expect(possibilityFromFilm(film).href).not.toBe("/october/discover");
+    }
+    for (const doing of MAKING) {
+      expect(possibilityFromDoing(doing).href).not.toBe("/october/discover");
+    }
+  });
+});

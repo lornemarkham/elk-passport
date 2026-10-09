@@ -12,15 +12,26 @@ import { stableJitter } from "@/lib/labs/october/intents";
 /**
  * **A picture, or something deliberate instead of one.**
  *
- * Roughly a third of October's Atlas inventory has a usable photograph, every
- * film has a trailer still, and six Doings have a Commons photograph. The rest
- * have nothing, and the current Discover renders that nothing as a large black
- * rectangle, which is why it looks unfinished.
+ * Measured against production Atlas on 2026-10-09: **26 of the 144
+ * October-dated subjects have a lead image** — 18%, not the third this once
+ * claimed. Every film has a trailer still and six Doings have a Commons
+ * photograph, so most of what has a picture is not Atlas's.
+ *
+ * Of the 118 without one, 60 hold no media at all, 35 hold images that nothing
+ * evidences as being *of* the subject (ADR 069), and 23 hold evidenced images
+ * that are all graphics — posters, text banners, a map — which ADR 074 refuses
+ * at hero scale. None of that is a mapping bug on this side: Passport shows
+ * what Atlas vouches for, and no image is better than the wrong image.
  *
  * So a possibility with no image never gets an image-shaped hole. It gets a
  * tinted ground carrying **when it is**, set large — a treatment, not a
  * fallback. The tint is derived from the id, so the same thing looks the same
  * on every surface and a row of them does not read as one block of colour.
+ *
+ * `Tile` and `Row` go further and drop the picture slot altogether (see
+ * `synthesis/cards.tsx`), because at small sizes a tinted rectangle still read
+ * as a failed load. This treatment is what `Lead` and Trust Me's dealt card
+ * use, where the slot is large enough to be read as deliberate.
  *
  * It carries the time rather than the title because the card underneath
  * already carries the title. The first version set the title here too, and a

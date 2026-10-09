@@ -82,12 +82,16 @@ describe("a Doing in Ahead", () => {
       />,
     );
     // One date control, on the Doing — never on the event, whose date is
-    // Atlas's and must not be overwritten by a guess.
-    expect(screen.getAllByTestId("plan-day")).toHaveLength(1);
+    // Atlas's and must not be overwritten by a guess. Undated, it offers the
+    // day in words; an empty `<input type="date">` painted `yyyy-mm-dd` into
+    // the list, which read as a form rather than as a plan.
+    expect(screen.getAllByTestId("plan-ask")).toHaveLength(1);
+    expect(screen.queryByTestId("plan-day")).toBeNull();
   });
 
   it("turns a wish into a plan", async () => {
     render(<MyOctober things={[carve()]} experiences={[]} now={NOW} />);
+    fireEvent.click(screen.getByTestId("plan-ask"));
     fireEvent.change(screen.getByTestId("plan-day"), {
       target: { value: "2026-10-17" },
     });
