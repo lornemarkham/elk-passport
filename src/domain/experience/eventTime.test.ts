@@ -114,3 +114,74 @@ describe("an interval that ends where it starts", () => {
     expect(line).toMatch(/–/);
   });
 });
+
+/**
+ * **A five-month market is not a five-month sitting.**
+ *
+ * Osoyoos Farmers' Market is one Event from the first Saturday in May to the
+ * last in October, which printed as
+ * `Sat, May 2, 2026 9:00 a.m. – Sat, Oct 10, 2026 1:00 p.m.` on production.
+ * The fix is a removal, not an invention: past a day the dates are printed and
+ * the clock is dropped, because the clock was the only part asserting that it
+ * never stopped.
+ */
+describe("an interval far too long to be one sitting", () => {
+  const may = "2026-05-02T16:00:00.000Z"; // 9 a.m. PDT
+  const october = "2026-10-10T20:00:00.000Z"; // 1 p.m. PDT
+
+  it("prints the span and no clock", () => {
+    const line = formatEventWhen(may, october, "minute")!;
+    expect(line).toContain("May 2, 2026");
+    expect(line).toContain("Oct 10, 2026");
+    expect(line).not.toMatch(/a\.m\.|p\.m\./);
+  });
+
+  it("does not invent a recurrence nobody stated here", () => {
+    // The publisher's "Saturdays … 9 am – 1 pm" is printed verbatim lower on
+    // the page. This line has no evidence of it and must not guess.
+    const line = formatEventWhen(may, october, "minute")!;
+    expect(line).not.toMatch(/saturday|weekly|season|every/i);
+  });
+
+  it("keeps the clock on a night that merely crosses midnight", () => {
+    // Fri 7 p.m. to Sat 2 a.m. changes date and is genuinely continuous, so
+    // the rule is the real duration rather than whether the day changed.
+    const line = formatEventWhen(
+      "2026-10-10T02:00:00.000Z",
+      "2026-10-10T09:00:00.000Z",
+      "minute",
+    )!;
+    expect(line).toMatch(/p\.m\.|a\.m\./);
+  });
+
+  it("keeps the clock on a festival running overnight into the next day", () => {
+    // 26 hours — long, but one continuous thing somebody could attend.
+    const line = formatEventWhen(
+      "2026-10-10T17:00:00.000Z",
+      "2026-10-11T19:00:00.000Z",
+      "minute",
+    )!;
+    expect(line).toMatch(/a\.m\.|p\.m\./);
+  });
+
+  it("drops the clock once the span passes a day and a half", () => {
+    const line = formatEventWhen(
+      "2026-10-10T17:00:00.000Z",
+      "2026-10-12T19:00:00.000Z",
+      "minute",
+    )!;
+    expect(line).not.toMatch(/a\.m\.|p\.m\./);
+    expect(line).toContain("Oct 10, 2026");
+    expect(line).toContain("Oct 12, 2026");
+  });
+
+  it("leaves a single evening exactly as it was", () => {
+    expect(
+      formatEventWhen(
+        "2026-10-10T02:30:00.000Z",
+        "2026-10-10T04:30:00.000Z",
+        "minute",
+      ),
+    ).toMatch(/·.*–/);
+  });
+});

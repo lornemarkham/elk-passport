@@ -42,7 +42,7 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
       <Link
         href={`/auth?next=${encodeURIComponent(next)}`}
         data-testid="sign-in-link"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#8a5a24]/25 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+        className="border-primary/25 text-primary hover:bg-primary/10 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors"
       >
         <UserRound className="h-4 w-4" aria-hidden />
         Sign in
@@ -68,14 +68,14 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
       <Link
         href="/october/mine"
         data-testid="october-link"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10"
+        className="text-muted-foreground hover:bg-primary/10 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 transition-colors"
       >
         <Leaf className="h-4 w-4" aria-hidden />
         My October
       </Link>
       <Link
         href="/boards"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10"
+        className="text-muted-foreground hover:bg-primary/10 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 transition-colors"
       >
         <Bookmark className="h-4 w-4" aria-hidden />
         Boards
@@ -83,9 +83,9 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
       <Link
         href="/account"
         data-testid="account-link"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 font-medium text-[#3b2a17] transition-colors hover:bg-[#8a5a24]/10"
+        className="text-foreground hover:bg-primary/10 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 font-medium transition-colors"
       >
-        <UserRound className="h-4 w-4 text-[#8a5a24]" aria-hidden />
+        <UserRound className="text-primary h-4 w-4" aria-hidden />
         <span data-testid="account-name">{displayName}</span>
       </Link>
       <button
@@ -93,7 +93,7 @@ export function AccountControl({ displayName, returnTo }: AccountControlProps) {
         onClick={handleSignOut}
         disabled={signingOut}
         data-testid="sign-out-button"
-        className="inline-flex min-h-11 items-center gap-1 rounded-full border border-[#8a5a24]/25 px-3 text-xs text-[#6b5637] transition-colors hover:bg-[#8a5a24]/10 disabled:opacity-50"
+        className="border-primary/25 text-muted-foreground hover:bg-primary/10 inline-flex min-h-11 items-center gap-1 rounded-full border px-3 text-xs transition-colors disabled:opacity-50"
       >
         <LogOut className="h-3.5 w-3.5" aria-hidden />
         {signingOut ? "Signing out…" : "Sign out"}

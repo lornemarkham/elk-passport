@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Compass } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { useExperienceName } from "@/components/auth/ExperienceName";
 import { DEFAULT_NEXT, safeNext } from "@/lib/auth/safeNext";
 import { experienceHomeFor } from "@/lib/domains/experience-domains";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,11 @@ function UpdatePasswordForm() {
   // callback. Sending somebody who started in October back to Passport's
   // generic Discovery is how a password reset becomes a change of product.
   const next = useSearchParams().get("next");
+  // "ELK Passport" on an October sign-in named the wrong product at the one
+  // moment the product is asking to be trusted with a password. Outside an
+  // experience this is the string it always was.
+  const experience = useExperienceName();
+  const wordmark = experience === "Passport" ? "ELK Passport" : experience;
   const [checking, setChecking] = useState(true);
   const [recoverable, setRecoverable] = useState(false);
   const [password, setPassword] = useState("");
@@ -107,13 +113,20 @@ function UpdatePasswordForm() {
       <div className="bg-background w-full max-w-md rounded-2xl border p-7">
         <div className="text-primary mb-5 flex items-center justify-center gap-2">
           <Compass className="h-5 w-5" aria-hidden />
-          <span className="font-semibold">ELK Passport</span>
+          <span className="font-semibold">{wordmark}</span>
         </div>
 
         {checking ? (
-          <p className="text-muted-foreground text-center text-sm">
-            Checking your link…
-          </p>
+          // The server always renders this state, so without a heading the
+          // page arrives with none at all — every resolved state below has
+          // one, and a screen reader should not have to wait for hydration
+          // to find out where it is.
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Set a new password</h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Checking your link…
+            </p>
+          </div>
         ) : done ? (
           <div className="text-center">
             <h1 className="text-2xl font-bold">Password updated</h1>

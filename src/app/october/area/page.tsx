@@ -5,7 +5,7 @@ import { profileFor } from "@/lib/profile/profileService";
 import { OCTOBER_PLACES, placeFrom } from "@/domain/environment/places";
 import { AreaPicker } from "@/components/october/environment/AreaPicker";
 
-export const metadata: Metadata = { title: "Your October area — Passport" };
+export const metadata: Metadata = { title: "Your October area — October" };
 
 /**
  * Choosing where your October happens, one tap, from October itself.
@@ -32,8 +32,8 @@ export default async function OctoberAreaPage() {
       </h1>
       <p className="mt-2 max-w-md text-sm text-[#e9e6da]/50">
         October uses this to work out what is near you, when it gets dark, and
-        what the sky is doing. Approximate is the point — Passport never reads
-        your device location.
+        what the sky is doing. Approximate is the point — your device location
+        is never read.
       </p>
 
       {user ? (

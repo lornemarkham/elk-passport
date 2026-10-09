@@ -3,7 +3,7 @@ import { currentUser } from "@/lib/auth/currentUser";
 import { reactionsFor } from "@/lib/movies/reactions";
 import { MovieNight } from "@/components/october/movies/MovieNight";
 
-export const metadata: Metadata = { title: "Movie Night — Passport" };
+export const metadata: Metadata = { title: "Movie Night — October" };
 
 /**
  * Movie Night, unchanged, moved here from `/october/movies` so the ordinary

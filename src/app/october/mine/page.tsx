@@ -8,7 +8,7 @@ import { MyOctober } from "@/components/october/MyOctober";
 import { reactionsFor } from "@/lib/movies/reactions";
 
 export const metadata: Metadata = {
-  title: "My October — Passport",
+  title: "My October",
 };
 
 /**

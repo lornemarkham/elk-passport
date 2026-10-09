@@ -298,6 +298,89 @@ export function splitFactsByShape(facts: readonly SubjectFactView[]): {
 }
 
 /**
+ * The same split, **after** the rows have been grouped by their label.
+ *
+ * Splitting first tore a group in half. Grizzli's four *What to Expect* lines
+ * include one long enough to read as prose, so that one went to the paragraph
+ * block and the other three to the rows — and the label printed in both, out
+ * of the order the publisher wrote them. Grouping first keeps a run together
+ * and puts it in one place: a group goes wherever its longest member belongs,
+ * because a paragraph squeezed into a two-column row list is the worse of the
+ * two mistakes.
+ */
+export function splitGroupsByShape(groups: readonly FactGroup[]): {
+  readonly prose: readonly FactGroup[];
+  readonly details: readonly FactGroup[];
+} {
+  const isProse = (g: FactGroup) => g.values.some(looksLikeProse);
+  return {
+    prose: groups.filter(isProse),
+    details: groups.filter((g) => !isProse(g)),
+  };
+}
+
+/** A label, said once, with everything stated under it. */
+export interface FactGroup {
+  readonly label: string;
+  readonly values: readonly string[];
+}
+
+/**
+ * **A label repeated down a list is one heading, not four.**
+ *
+ * A publisher writing a programme writes the same heading beside each line:
+ * Grizzli's page holds four facts labelled *Music & Activity Schedule* and
+ * four labelled *What to Expect*, which rendered as the label printed eight
+ * times, each with a single line beneath it. It reads as a page that has lost
+ * its place.
+ *
+ * Grouping is by label and only across a run, because order is Atlas's and
+ * Atlas's order is the order the page was read in. Two separated runs of the
+ * same label are two things the publisher said in two places, and collapsing
+ * them would rearrange the source rather than present it.
+ *
+ * No special-casing: a label that happens once is a group of one and renders
+ * exactly as it always did.
+ */
+export function groupByLabel(
+  facts: readonly SubjectFactView[],
+): readonly FactGroup[] {
+  const groups: FactGroup[] = [];
+  for (const fact of facts) {
+    const last = groups[groups.length - 1];
+    const value = tidyValue(fact.value);
+    if (last && last.label === fact.label) {
+      (last.values as string[]).push(value);
+    } else {
+      groups.push({ label: fact.label, values: [value] });
+    }
+  }
+  return groups;
+}
+
+/**
+ * **A value that says the same fragment twice says it once.**
+ *
+ * Atlas holds Grizzli's location as
+ * `2550 Boucherie Rd, 2550 Boucherie Rd, Kelowna, BC V1Z 2E6, Canada` —
+ * technically what the publisher's structured data contained, and visibly
+ * broken on the page. This is presentation only: nothing is written back, and
+ * the corpus keeps exactly what it was given.
+ *
+ * Only an *adjacent* exact repeat of a comma-separated part is removed, and
+ * only after normalising case and spacing. `Kelowna, Kelowna` is a stutter;
+ * `Main St, Penticton, Main St` is two different things said about one place
+ * and is left alone, because at that point the rule would be guessing.
+ */
+export function tidyValue(value: string): string {
+  const parts = value.split(",").map((p) => p.trim());
+  if (parts.length < 2) return value;
+  const key = (p: string) => p.toLowerCase().replace(/\s+/g, " ");
+  const kept = parts.filter((p, i) => i === 0 || key(p) !== key(parts[i - 1]!));
+  return kept.length === parts.length ? value : kept.join(", ");
+}
+
+/**
  * **A heading has to organise something it does not already say.**
  *
  * Two ways a real `KeyFact.category` fails as a section title, both from the
@@ -365,10 +448,10 @@ export function renderedWhen(view: SubjectPageView): string | undefined {
 export interface ComposedFactSection {
   /** The publisher's heading, where it had one worth printing. */
   readonly title?: string;
-  /** Values shaped like paragraphs, printed as paragraphs. */
-  readonly prose: readonly SubjectFactView[];
-  /** Values shaped like rows, printed as rows. */
-  readonly details: readonly SubjectFactView[];
+  /** Labelled groups shaped like paragraphs, printed as paragraphs. */
+  readonly prose: readonly FactGroup[];
+  /** Labelled groups shaped like rows, printed as rows. */
+  readonly details: readonly FactGroup[];
 }
 
 /**
@@ -415,7 +498,9 @@ export function composedFactSections(
       );
       return {
         ...(heading ? { title: heading } : {}),
-        ...splitFactsByShape(kept),
+        // Grouped before it is split, so a run of one label never lands in
+        // two different blocks under two copies of its own heading.
+        ...splitGroupsByShape(groupByLabel(kept)),
       };
     })
     .filter((s) => s.prose.length > 0 || s.details.length > 0);

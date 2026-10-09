@@ -2,9 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  activeExperience,
   experienceForPath,
+  experienceFromHeader,
   experienceHomeFor,
   experienceRewriteFor,
+  themeFor,
 } from "./experience-domains";
 
 describe("experienceRewriteFor", () => {
@@ -149,5 +152,86 @@ describe("experienceForPath", () => {
     expect(experienceForPath("/october/mine")?.home).toBe(
       experienceHomeFor("iamoctober.com"),
     );
+  });
+});
+
+/**
+ * **Which product a shared page is being used inside.**
+ *
+ * `/account`, `/auth`, `/auth/forgot` and `/auth/update-password` are one
+ * implementation serving two. On production they only ever rendered as
+ * Passport: an October reader tapping their own name landed on a cream page
+ * titled *Your account — Passport*, offering to remember what they were
+ * "into" for a product they had never heard of.
+ */
+describe("activeExperience", () => {
+  it("takes the host as decisive, whatever page is being served", () => {
+    for (const host of [
+      "iamoctober.com",
+      "www.iamoctober.com",
+      "IAMOCTOBER.com:443",
+    ]) {
+      expect(activeExperience({ host, next: "/account" })?.name).toBe(
+        "October",
+      );
+    }
+  });
+
+  it("reads the destination when the host says nothing", () => {
+    // `elk-passport.vercel.app/auth?next=/october/discover` is somebody
+    // signing in to October from the ordinary Passport host.
+    expect(
+      activeExperience({
+        host: "elk-passport.vercel.app",
+        next: "/october/discover",
+      })?.name,
+    ).toBe("October");
+  });
+
+  it("leaves ordinary Passport as ordinary Passport", () => {
+    expect(
+      activeExperience({ host: "elk-passport.vercel.app", next: "/discovery" }),
+    ).toBeNull();
+    expect(
+      activeExperience({ host: "localhost:3100", next: "/account" }),
+    ).toBeNull();
+    expect(activeExperience({})).toBeNull();
+  });
+
+  it("does not claim a path that merely begins with the same letters", () => {
+    expect(
+      activeExperience({
+        host: "elk-passport.vercel.app",
+        next: "/octoberfest",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("the theme a shared page carries", () => {
+  it("is October's inside October", () => {
+    expect(themeFor(activeExperience({ host: "iamoctober.com" }))).toBe(
+      "october",
+    );
+  });
+
+  it("is the account surface's own named palette otherwise", () => {
+    // Named rather than left to `:root`: the account page's cream is its own
+    // palette, written as literal hex, and giving it a name is what let those
+    // literals become tokens without moving a single rendered colour.
+    expect(themeFor(null)).toBe("passport");
+  });
+});
+
+describe("the experience stated on the request", () => {
+  it("round-trips what the middleware stamped", () => {
+    const stamped = activeExperience({ host: "www.iamoctober.com" })!;
+    expect(experienceFromHeader(stamped.host)?.name).toBe("October");
+  });
+
+  it("refuses anything it does not recognise, including a forgery", () => {
+    expect(experienceFromHeader("evil.example")).toBeNull();
+    expect(experienceFromHeader("")).toBeNull();
+    expect(experienceFromHeader(null)).toBeNull();
   });
 });

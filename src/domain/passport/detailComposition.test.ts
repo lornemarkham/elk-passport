@@ -3,15 +3,21 @@ import {
   actionsFor,
   composedFactSections,
   factSections,
+  groupByLabel,
   headingWorthPrinting,
   looksLikeProse,
   officialSite,
   splitFactsByShape,
+  splitGroupsByShape,
+  tidyValue,
   urlIn,
   whenSummary,
   whereLine,
 } from "./detailComposition";
-import type { SubjectPageView } from "@/lib/passport/subjectPage";
+import type {
+  SubjectFactView,
+  SubjectPageView,
+} from "@/lib/passport/subjectPage";
 
 /**
  * A detail page may say less than Atlas knows. It may never say more.
@@ -392,5 +398,153 @@ describe("what an October page prints, and what it says it held back", () => {
       "What happens",
     ]);
     for (const fact of built.hidden) expect(fact.rule).toBeTruthy();
+  });
+});
+
+/**
+ * **A label repeated down a list is one heading.**
+ *
+ * Grizzli Winery's Fall Fest holds four facts labelled *Music & Activity
+ * Schedule* and four labelled *What to Expect* — a publisher writing a
+ * programme repeats the heading beside each line. Printed back one-for-one,
+ * production showed eight headings for eight single lines.
+ */
+describe("grouping rows that share a label", () => {
+  const fact = (label: string, value: string) =>
+    ({ label, value }) as SubjectFactView;
+
+  it("says a repeated label once, with every value under it", () => {
+    const groups = groupByLabel([
+      fact("Music & Activity Schedule", "2:00 PM – Market opens"),
+      fact("Music & Activity Schedule", "2:15–2:45 PM – Laila Moriarity live"),
+      fact("Music & Activity Schedule", "3:15–5:15 PM – Poppa Dawg live"),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.label).toBe("Music & Activity Schedule");
+    expect(groups[0]!.values).toHaveLength(3);
+  });
+
+  it("leaves a label that happens once exactly as it was", () => {
+    const groups = groupByLabel([
+      fact("Registration Deadline", "Friday, October 2"),
+      fact("Adult Category Entry Fee", "$25"),
+    ]);
+    expect(groups.map((g) => g.label)).toEqual([
+      "Registration Deadline",
+      "Adult Category Entry Fee",
+    ]);
+    expect(groups.every((g) => g.values.length === 1)).toBe(true);
+  });
+
+  it("keeps two separated runs of one label apart", () => {
+    // Order is Atlas's, and Atlas's order is the order the page was read in.
+    // Merging across a gap would rearrange the source rather than present it.
+    const groups = groupByLabel([
+      fact("Note", "first"),
+      fact("Price", "$10"),
+      fact("Note", "second"),
+    ]);
+    expect(groups).toHaveLength(3);
+  });
+
+  it("preserves the order the publisher wrote", () => {
+    const groups = groupByLabel([
+      fact("What to Expect", "Local Vendor Market"),
+      fact("What to Expect", "Live Music"),
+    ]);
+    expect(groups[0]!.values).toEqual(["Local Vendor Market", "Live Music"]);
+  });
+});
+
+/**
+ * **A value that says the same fragment twice says it once.**
+ *
+ * Presentation only — nothing is written back to Atlas, which keeps exactly
+ * what the publisher's structured data contained.
+ */
+describe("tidying a value that repeats itself", () => {
+  it("collapses an address that stutters", () => {
+    expect(
+      tidyValue("2550 Boucherie Rd, 2550 Boucherie Rd, Kelowna, BC V1Z 2E6"),
+    ).toBe("2550 Boucherie Rd, Kelowna, BC V1Z 2E6");
+  });
+
+  it("ignores case and spacing when deciding it is the same fragment", () => {
+    expect(tidyValue("Kelowna,  kelowna, BC")).toBe("Kelowna, BC");
+  });
+
+  it("leaves a repeat that is not adjacent alone", () => {
+    // `Main St, Penticton, Main St` is two things said about one place, and a
+    // rule that collapsed it would be guessing which to keep.
+    expect(tidyValue("Main St, Penticton, Main St")).toBe(
+      "Main St, Penticton, Main St",
+    );
+  });
+
+  it("does not touch a value with nothing repeated", () => {
+    const v = "421 Cawston Avenue, Kelowna, BC, V1Y 6Z1";
+    expect(tidyValue(v)).toBe(v);
+  });
+
+  it("does not touch a value with no commas at all", () => {
+    expect(tidyValue("Doors at 7")).toBe("Doors at 7");
+  });
+});
+
+/**
+ * **A run of one label must not be torn across the two blocks.**
+ *
+ * Grizzli's four *What to Expect* lines include one long enough to read as
+ * prose. Splitting prose from rows before grouping sent that one to the
+ * paragraph block and the other three to the row list — so the label printed
+ * twice, in the wrong order, on a page already criticised for repeating it.
+ */
+describe("grouping before splitting by shape", () => {
+  const fact = (label: string, value: string) =>
+    ({ label, value }) as SubjectFactView;
+
+  const expectations = [
+    fact(
+      "What to Expect",
+      "Local Vendor Market – Shop unique handmade goods and fall favourites.",
+    ),
+    fact(
+      "What to Expect",
+      "Family Fun – Colouring and crafts, face painting, lawn games, apple bobbing, s’mores, a Thankful Tree, and a fall photo corner for the whole family to enjoy together.",
+    ),
+  ];
+
+  it("keeps one label in one place", () => {
+    const { prose, details } = splitGroupsByShape(groupByLabel(expectations));
+    const labels = [...prose, ...details].map((g) => g.label);
+    expect(labels).toEqual(["What to Expect"]);
+  });
+
+  it("sends the whole group where its longest member belongs", () => {
+    // A paragraph squeezed into a two-column row list is the worse mistake.
+    const { prose, details } = splitGroupsByShape(groupByLabel(expectations));
+    expect(prose).toHaveLength(1);
+    expect(prose[0]!.values).toHaveLength(2);
+    expect(details).toHaveLength(0);
+  });
+
+  it("keeps the publisher's order inside the group", () => {
+    const { prose } = splitGroupsByShape(groupByLabel(expectations));
+    expect(prose[0]!.values[0]).toContain("Local Vendor Market");
+    expect(prose[0]!.values[1]).toContain("Family Fun");
+  });
+
+  it("still sends short labelled rows to the row list", () => {
+    const { prose, details } = splitGroupsByShape(
+      groupByLabel([
+        fact("Adult Category Entry Fee", "$25"),
+        fact("Youth Category Entry Fee", "FREE"),
+      ]),
+    );
+    expect(prose).toHaveLength(0);
+    expect(details.map((g) => g.label)).toEqual([
+      "Adult Category Entry Fee",
+      "Youth Category Entry Fee",
+    ]);
   });
 });

@@ -68,14 +68,35 @@ describe("when", () => {
    * distinction has to arrive as evidence, not be inferred here.
    */
   it("does not try to guess which midnight instants were date-only", () => {
+    // Still open, and still visible, on an interval short enough to be one
+    // sitting: a stated midnight prints as 5 p.m. Pacific because that is
+    // what the instant is, and nothing here knows whether a clock was meant.
     const dateOnly = formatEventWhen(
+      "2026-10-17T00:00:00.000Z",
+      "2026-10-17T04:00:00.000Z",
+    );
+    expect(dateOnly).toContain("5:00");
+  });
+
+  it("stops exposing that seam once the span is far too long to be a sitting", () => {
+    // This case used to print `Mon, Sep 28, 2026 5:00 p.m. – Thu, Jun 24,
+    // 2027 5:00 p.m.` — nine months of continuous running, with a phantom
+    // clock on both ends. The original version of the test above asserted
+    // that 5 p.m. and said in its own comment: *if this ever fails because
+    // the value became a bare date, the contract arrived — update the test.*
+    //
+    // It did not quite arrive; what changed is narrower and worth stating
+    // exactly. Nothing here can still tell a stated midnight from a stated
+    // 5 p.m. The clock is dropped beyond a day and a half because at that
+    // length it is asserting continuity rather than telling the time, so the
+    // ambiguity stops *showing* without being resolved.
+    const long = formatEventWhen(
       "2026-09-29T00:00:00.000Z",
       "2027-06-25T00:00:00.000Z",
-    );
-    // Documented, not endorsed: this is the seam Mission 7 traced and could
-    // not close truthfully. If this assertion ever fails because the value
-    // became a bare date, the contract arrived — update the test, not the data.
-    expect(dateOnly).toContain("5:00");
+    )!;
+    expect(long).not.toContain("5:00");
+    expect(long).toContain("Sep 28, 2026");
+    expect(long).toContain("Jun 24, 2027");
   });
 });
 

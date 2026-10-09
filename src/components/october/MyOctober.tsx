@@ -11,6 +11,7 @@ import type { OctoberThing } from "@/lib/october/types";
 import { filmById } from "@/lib/movies/catalogue";
 import { FilmReaction } from "@/components/october/movies/FilmReaction";
 import { PlanDay } from "./PlanDay";
+import { LivedOn } from "./LivedOn";
 import { saveReaction } from "@/lib/movies/movies-repo";
 import type { MovieReaction } from "@/lib/movies/types";
 import {
@@ -455,7 +456,11 @@ function ThingRow({
           type="button"
           onClick={onDid}
           disabled={busy}
-          className="min-h-9 rounded-full bg-[#e9e6da] px-3.5 text-xs font-medium text-[#0c0a0c] hover:bg-[#f3efe4] disabled:opacity-50"
+          // 44px, not 36. This is the one verb the whole page exists for and
+          // it was the smallest control on it — the Films filter chips keep
+          // their 36 because they are a dense row somebody scans, which this
+          // is not.
+          className="min-h-11 rounded-full bg-[#e9e6da] px-4 text-xs font-medium text-[#0c0a0c] hover:bg-[#f3efe4] disabled:opacity-50"
           data-testid="did-this"
         >
           Did this
@@ -465,7 +470,7 @@ function ThingRow({
           onClick={onForget}
           disabled={busy}
           aria-label={`Remove ${thing.name} from your October`}
-          className="min-h-9 rounded-full px-2.5 text-xs text-[#e9e6da]/45 hover:bg-[#e9e6da]/10 disabled:opacity-50"
+          className="min-h-11 rounded-full px-3 text-xs text-[#e9e6da]/45 hover:bg-[#e9e6da]/10 disabled:opacity-50"
           data-testid="forget"
         >
           not this one
@@ -568,9 +573,22 @@ function LivedRow({
         aria-hidden
         className="absolute top-2 -left-[1.55rem] h-2.5 w-2.5 rounded-full bg-[#d09a4e]"
       />
-      <p className="text-xs font-medium text-[#d09a4e]">
-        {dayOf(livedOn(thing))}
-      </p>
+      {/* **The day is editable only where it is the person's own stamp.**
+          An Atlas event happened on the day Atlas holds, and offering to move
+          that would be offering to disagree with the source. What somebody can
+          correct is when *they* say they did it — which is what `lived_at`
+          records, and which "Did this" set to today. */}
+      {thing.startsAt || !thing.livedAt ? (
+        <p className="text-xs font-medium text-[#d09a4e]">
+          {dayOf(livedOn(thing))}
+        </p>
+      ) : (
+        <LivedOn
+          entityId={thing.entityId}
+          day={localDay(thing.livedAt)}
+          label={dayOf(thing.livedAt)}
+        />
+      )}
       {destination ? (
         <Link
           href={destination}

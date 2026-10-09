@@ -427,3 +427,156 @@ test.describe("the account page is reachable from October and gives October back
     );
   });
 });
+
+/**
+ * **A shared page should not announce a different product than the one you
+ * are in.**
+ *
+ * `/account` and the three auth screens are one implementation serving
+ * October and Passport. On production they only ever rendered as Passport: a
+ * cream page titled *Your account — Passport*, offering to remember what you
+ * were "into" for a product you may never have heard of.
+ */
+test.describe("October keeps hold of a reader through the shared pages", () => {
+  test("the account page is October when it was reached from October", async ({
+    page,
+  }) => {
+    await page.goto("/account?next=%2Foctober%2Fdiscover");
+    const shell = page.locator("main[data-theme]");
+    await expect(shell).toHaveAttribute("data-theme", "october");
+    await expect(shell).toHaveAttribute("data-experience", "October");
+    await expect(page).toHaveTitle(/Your account — October/);
+    // October's own bar, so the way back is the one the reader already knows.
+    await expect(page.getByTestId("october-nav-discover")).toBeVisible();
+  });
+
+  test("and it names October rather than Passport in its own copy", async ({
+    page,
+  }) => {
+    await page.goto("/account?next=%2Foctober%2Fdiscover");
+    await expect(page.locator("body")).toContainText(/Browsing October/i);
+    await expect(page.locator("body")).not.toContainText(/tell Passport/i);
+  });
+
+  test("signing in from October looks like October", async ({ page }) => {
+    await page.goto("/auth?next=%2Foctober%2Fdiscover");
+    await expect(page.locator("[data-theme]").first()).toHaveAttribute(
+      "data-theme",
+      "october",
+    );
+    await expect(page).toHaveTitle(/Sign in — October/);
+    // The wordmark said ELK Passport at the one moment a product is asking
+    // to be trusted with a password.
+    await expect(page.locator("body")).not.toContainText("ELK Passport");
+  });
+
+  test("so does recovering a password begun in October", async ({ page }) => {
+    await page.goto("/auth/forgot?next=%2Foctober%2Fdiscover");
+    await expect(page.locator("[data-theme]").first()).toHaveAttribute(
+      "data-theme",
+      "october",
+    );
+    await expect(page.locator("body")).not.toContainText("ELK Passport");
+  });
+
+  test("and setting the new one at the end of it", async ({ page }) => {
+    await page.goto("/auth/update-password?next=%2Foctober%2Fdiscover");
+    await expect(page.locator("[data-theme]").first()).toHaveAttribute(
+      "data-theme",
+      "october",
+    );
+  });
+});
+
+/**
+ * **Generic Passport has to stay generic Passport.**
+ *
+ * The account page's cream was written as literal hex, so it could not be
+ * themed at all. Those literals are tokens now and the cream is a named
+ * `passport` theme holding the very same values — which is only worth doing
+ * if nothing on Passport moved.
+ */
+test.describe("Passport is untouched", () => {
+  test("its account page keeps its own palette and its own name", async ({
+    page,
+  }) => {
+    await page.goto("/account");
+    const shell = page.locator("main[data-theme]");
+    await expect(shell).toHaveAttribute("data-theme", "passport");
+    await expect(page).toHaveTitle(/Your account — Passport/);
+    await expect(shell).toHaveCSS("background-color", "rgb(236, 223, 196)");
+    // October's bar belongs to October.
+    await expect(page.getByTestId("october-nav-discover")).toHaveCount(0);
+  });
+
+  test("its sign-in page is themed by nothing at all, as before", async ({
+    page,
+  }) => {
+    await page.goto("/auth");
+    // Not `data-theme="passport"` either: these pages inherit `:root`, and
+    // the named passport theme is the account surface's own cream.
+    await expect(page.locator("[data-theme]")).toHaveCount(0);
+    await expect(page.locator("body")).toContainText("ELK Passport");
+  });
+});
+
+/**
+ * **Every page needs a heading, and the detail template needs to stop
+ * repeating itself.**
+ */
+test.describe("the finishing defects", () => {
+  test("the Draconids page has a heading, not a styled paragraph", async ({
+    page,
+  }) => {
+    await page.goto("/quick/draconids");
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator("h1")).not.toBeEmpty();
+  });
+
+  test("a detail page offers one action area, not two", async ({ page }) => {
+    await page.goto("/october/discover");
+    const first = page
+      .locator('[data-testid="row"] h3 a, [data-testid="tile"] h3 a')
+      .first();
+    await first.click();
+    await page.waitForURL((url) => url.pathname !== "/october/discover", {
+      timeout: 30_000,
+    });
+
+    const body = page.locator("body");
+    for (const control of ["Sign in to save", "Official site", "Directions"]) {
+      const count = await page.getByRole("link", { name: control }).count();
+      expect(count, `${control} should appear at most once`).toBeLessThan(2);
+    }
+    await expect(body).toBeVisible();
+  });
+
+  test("a label used for several rows is printed once", async ({ page }) => {
+    // Grizzli's four "Music & Activity Schedule" lines printed the heading
+    // four times, and "What to Expect" three more.
+    await page.goto(
+      "/passport/d6669552-d390-4ab1-9b81-4a2d800ccc56?kind=events",
+    );
+    // `body`, not `main`: a composed subject renders its own `<main>` inside
+    // the route's, and two of them is a strict-mode violation rather than a
+    // page defect.
+    const text = (await page.locator("body").innerText()).toLowerCase();
+    expect(text.split("music & activity schedule").length - 1).toBe(1);
+    expect(text.split("what to expect").length - 1).toBe(1);
+    // And the address no longer stutters.
+    expect(text).not.toContain("2550 boucherie rd, 2550 boucherie rd");
+  });
+
+  test("a five-month season is not shown as one continuous event", async ({
+    page,
+  }) => {
+    await page.goto(
+      "/passport/2cd9a809-0a47-4b4d-92b7-043f33338578?kind=events",
+    );
+    const text = await page.locator("body").innerText();
+    expect(text).toContain("May 2, 2026");
+    expect(text).toContain("Oct 10, 2026");
+    // The clock was the only part claiming it never stopped.
+    expect(text).not.toMatch(/May 2, 2026 9:00/);
+  });
+});

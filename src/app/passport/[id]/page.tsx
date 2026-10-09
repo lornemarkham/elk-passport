@@ -22,7 +22,6 @@ import { isOctoberSubject } from "@/domain/passport/octoberContext";
 import type { SubjectPageView } from "@/lib/passport/subjectPage";
 import { currentUser } from "@/lib/auth/currentUser";
 import {
-  OctoberActions,
   OctoberProvenance,
   OctoberShell,
 } from "@/components/october/detail/OctoberShell";
@@ -194,9 +193,7 @@ export default async function PassportPage({ params, searchParams }: Props) {
             typeof query.sim === "string" ? query.sim : undefined,
           )
         : null;
-      const actions = october
-        ? octoberFoot(view, Boolean(curation), save)
-        : null;
+      const actions = october ? octoberFoot(view, Boolean(curation)) : null;
       return (
         // The theme sits on the page wrapper, not inside the renderer, so it
         // covers the whole viewport rather than a column floating on the
@@ -648,67 +645,32 @@ async function saveControl(view: SubjectPageView) {
 }
 
 /**
- * **The foot of an October page: what to do next, and where it all came from.**
+ * **The foot of an October page: where it all came from.**
  *
- * Both halves are repeated deliberately. Somebody who has just read four
- * paragraphs about a haunted house has scrolled a long way from the hero, and
- * "now what" is a fair question to answer twice. The two Save buttons share
- * one state, so they can never disagree about whether it is kept.
+ * It used to repeat the whole action row as well — Save, Official site,
+ * Directions — on the reasoning that somebody who has read four paragraphs
+ * about a haunted house has scrolled a long way from the hero and may fairly
+ * be asked "now what" twice.
  *
- * It appears only where there is a page to have read. A subject Atlas knows
- * one sentence about ends at its hero, and a person who has not moved should
- * not be handed the same two buttons again three inches lower — that is the
- * empty-container version of consistency, which is worse than none.
+ * In production that reasoning did not hold. Most October subjects have a
+ * short body, so the second row sat a few inches under the first: the same
+ * three controls, twice, on one screen. A page with two identical action
+ * areas does not read as thorough, it reads as unfinished, and it makes the
+ * reader stop and work out whether the two are different.
+ *
+ * So there is **one action area**, at the hero, where the decision is made.
+ * This decision was taken from production rather than from the code comment
+ * that defended it. Provenance stays here, where it belongs — at the end,
+ * after the page, for the reader who wants to know who said all this.
  */
-function octoberFoot(
-  view: SubjectPageView,
-  curated: boolean,
-  save: React.ReactNode,
-) {
-  const external = actionsFor(view);
-  const { sections, hidden } = composedFactSections(view, external);
-  // Curated pages are curated precisely because they have a great deal to
-  // show; a composed one has a body when Atlas gave it something to put there.
-  const hasBody =
-    curated ||
-    sections.length > 0 ||
-    view.parts.length > 0 ||
-    view.offerings.length > 0;
+function octoberFoot(view: SubjectPageView, curated: boolean) {
+  // The hidden list is the whole reason this is computed here: a fact the
+  // page declined to print is listed in the drawer with the rule that held it
+  // back, so nothing is edited out silently.
+  const { hidden } = composedFactSections(view, actionsFor(view));
 
   return (
     <>
-      {/* Only where the publisher has somewhere to send a decided person.
-          A box holding one Save button and an empty rule under it is the
-          empty-container version of consistency: the hero already has it. */}
-      {hasBody && external.length > 0 && (
-        <OctoberActions
-          save={save}
-          external={
-            <>
-              {external.map((action) => (
-                <a
-                  key={action.href}
-                  href={action.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className={
-                    action.kind === "tickets"
-                      ? "inline-flex min-h-11 items-center rounded-full bg-[#d09a4e] px-5 text-sm font-medium text-[#1a1207] transition-opacity hover:opacity-90"
-                      : "inline-flex min-h-11 items-center rounded-full border border-[#e9e6da]/25 px-5 text-sm text-[#e9e6da]/85 transition-colors hover:border-[#d09a4e]/60 hover:text-[#f3efe4]"
-                  }
-                >
-                  {action.label}
-                </a>
-              ))}
-            </>
-          }
-          note={
-            external.some((a) => a.kind === "tickets")
-              ? "Booking, tickets and terms are handled on their site."
-              : undefined
-          }
-        />
-      )}
       {/* A curated page carries its own evidence drawer, with its curated
           media and its own held-back list. Rendering this one as well printed
           the same summary twice on the reference page. */}

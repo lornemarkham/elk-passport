@@ -93,3 +93,28 @@ export async function planFor(
     )
   ).json();
 }
+
+/**
+ * **Correct the day something happened on.**
+ *
+ * "Did this" stamps today, which is right almost every time and wrong for
+ * anybody catching up on Sunday about Friday. The only repair before this was
+ * *that didn't happen* and say it again, which throws the record away.
+ */
+export async function livedOn(
+  entityId: string,
+  /** `YYYY-MM-DD`. */
+  day: string,
+): Promise<OctoberThing> {
+  return (
+    await request(
+      `/${encodeURIComponent(entityId)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ livedOn: day }),
+      },
+      "Couldn't move that day.",
+    )
+  ).json();
+}

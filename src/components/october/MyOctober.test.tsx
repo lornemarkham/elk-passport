@@ -35,9 +35,15 @@ vi.mock("next/navigation", () => ({
 
 const didThis = vi.fn<(id: string) => Promise<OctoberThing>>();
 const forget = vi.fn<(id: string) => Promise<void>>(async () => {});
+const livedOn = vi.fn<(id: string, day: string) => Promise<OctoberThing>>();
+const planFor = vi.fn<(id: string, day: string | null) => Promise<void>>(
+  async () => {},
+);
 vi.mock("@/lib/october/october-repo", () => ({
   didThis: (id: string) => didThis(id),
   forget: (id: string) => forget(id),
+  livedOn: (id: string, day: string) => livedOn(id, day),
+  planFor: (id: string, day: string | null) => planFor(id, day),
 }));
 
 const saveReaction = vi.fn(async (filmId: string, r: unknown) => ({
@@ -350,5 +356,114 @@ describe("the world My October is drawn in", () => {
   it("leaves the account to the nav bar, which already has it", () => {
     const { container } = render(<MyOctober things={[]} experiences={[]} />);
     expect(container.textContent).not.toMatch(/sign out/i);
+  });
+});
+
+/**
+ * **The loop the product is built around, end to end.**
+ *
+ * Ahead → *Did this* → Lived, with the day defaulting to today and editable
+ * afterwards. Supabase is stubbed at the repository seam (`didThis`,
+ * `livedOn`), so what this proves is that the surface drives the right calls
+ * and renders the right result — **not** that a real signed-in session
+ * persists across a page load. That walk is Lorne's and is written down in
+ * `docs/RELEASE.md`.
+ */
+describe("ahead → did this → lived", () => {
+  const TODAY = "2026-10-01T12:00:00.000Z";
+
+  it("shows a chosen thing in Ahead, not in Lived", () => {
+    render(
+      <MyOctober
+        things={[thing({ entityId: "carve", name: "Carve a pumpkin" })]}
+        experiences={[]}
+      />,
+    );
+    expect(screen.getAllByTestId("ahead-thing")).toHaveLength(1);
+    expect(screen.queryAllByTestId("lived-thing")).toHaveLength(0);
+  });
+
+  it("stamps today and moves it to Lived when they say they did it", async () => {
+    // The server stamps `lived_at` with now; the clock is frozen at Oct 1.
+    didThis.mockResolvedValueOnce(
+      thing({
+        entityId: "carve",
+        name: "Carve a pumpkin",
+        state: "lived",
+        livedAt: TODAY,
+      }),
+    );
+    render(
+      <MyOctober
+        things={[thing({ entityId: "carve", name: "Carve a pumpkin" })]}
+        experiences={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("did-this"));
+    await waitFor(() => expect(didThis).toHaveBeenCalledWith("carve"));
+    await waitFor(() =>
+      expect(screen.getAllByTestId("lived-thing")).toHaveLength(1),
+    );
+    expect(screen.queryAllByTestId("ahead-thing")).toHaveLength(0);
+    // Today, read off what came back rather than invented by the surface.
+    expect(screen.getByTestId("lived-on")).toHaveTextContent("Oct 1");
+  });
+
+  it("offers to correct the day it recorded", async () => {
+    render(
+      <MyOctober
+        things={[
+          thing({
+            entityId: "carve",
+            name: "Carve a pumpkin",
+            state: "lived",
+            livedAt: TODAY,
+          }),
+        ]}
+        experiences={[]}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("lived-on"));
+    fireEvent.change(screen.getByTestId("lived-on-day"), {
+      target: { value: "2026-09-29" },
+    });
+    await waitFor(() =>
+      expect(livedOn).toHaveBeenCalledWith("carve", "2026-09-29"),
+    );
+  });
+
+  it("does not offer to move a day Atlas holds", () => {
+    // An Atlas event happened when Atlas says it did. Offering to move that
+    // would be offering to disagree with the source.
+    render(
+      <MyOctober
+        things={[
+          thing({
+            entityId: "evt",
+            name: "Corn maze",
+            entityKind: "Event",
+            startsAt: "2026-10-03T02:00:00.000Z",
+            state: "lived",
+            livedAt: TODAY,
+          }),
+        ]}
+        experiences={[]}
+      />,
+    );
+    expect(screen.getAllByTestId("lived-thing")).toHaveLength(1);
+    expect(screen.queryByTestId("lived-on")).toBeNull();
+  });
+
+  it("never moves anything on its own", () => {
+    // The whole contract: `lived` is one explicit act and nothing else.
+    render(
+      <MyOctober
+        things={[thing({ entityId: "a" }), thing({ entityId: "b" })]}
+        experiences={[]}
+      />,
+    );
+    expect(screen.getAllByTestId("ahead-thing")).toHaveLength(2);
+    expect(didThis).not.toHaveBeenCalled();
   });
 });

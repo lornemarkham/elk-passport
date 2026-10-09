@@ -144,7 +144,40 @@ export function formatEventWhen(
     return `${day.format(start)} · ${clock.format(start)}`;
 
   const sameDay = day.format(start) === day.format(end);
-  return sameDay
-    ? `${day.format(start)} · ${clock.format(start)} – ${clock.format(end)}`
-    : `${day.format(start)} ${clock.format(start)} – ${day.format(end)} ${clock.format(end)}`;
+  if (sameDay)
+    return `${day.format(start)} · ${clock.format(start)} – ${clock.format(end)}`;
+
+  // **Past a day, the clock stops being a time and starts being a claim.**
+  //
+  // Osoyoos Farmers' Market is held as one Event from 2026-05-02T09:00 to
+  // 2026-10-10T13:00, because that is the first Saturday and the last. Printed
+  // with its clock it read `Sat, May 2, 2026 9:00 a.m. – Sat, Oct 10, 2026
+  // 1:00 p.m.` — a market that runs continuously, through every night, for
+  // five months. Atlas's own temporal claim calls it a schedule and the
+  // publisher's words ("Saturdays … 9 am – 1 pm") are printed in full further
+  // down the page; neither is what the interval's endpoints say.
+  //
+  // So beyond a day this prints the dates and drops the clock. That is a
+  // *removal*: the span is exactly what Atlas holds, and the only thing lost
+  // is the implication of a single continuous sitting. Nothing is invented —
+  // no "Saturdays", no "Season", because this function has no evidence of
+  // either. Where Atlas does hold recurrence (`recurring-days` with
+  // `weekdays`), saying so is a separate change with that evidence in hand.
+  //
+  // A night that crosses midnight keeps its clock: `Fri 7 p.m. – Sat 2 a.m.`
+  // is seven hours and genuinely continuous, which is why the test is the
+  // real duration rather than whether the date changed.
+  const hours = (end.getTime() - start.getTime()) / 3_600_000;
+  if (hours > CONTINUOUS_HOURS_MAX)
+    return `${day.format(start)} – ${day.format(end)}`;
+
+  return `${day.format(start)} ${clock.format(start)} – ${day.format(end)} ${clock.format(end)}`;
 }
+
+/**
+ * The longest a stated interval can be and still plausibly describe one
+ * continuous sitting. A day and a half covers an all-nighter and a festival
+ * that runs from Saturday morning into Sunday; anything longer is a span of
+ * dates with the publisher's daily hours stamped on its ends.
+ */
+const CONTINUOUS_HOURS_MAX = 36;

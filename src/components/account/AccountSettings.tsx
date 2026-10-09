@@ -95,7 +95,7 @@ export function AccountSettings({
     <div className="flex flex-col gap-10">
       <Section
         title="You"
-        blurb="Account details. Only what changes something Passport does."
+        blurb="Account details. Only what actually changes something."
       >
         <TextField
           label="Display name"
@@ -110,11 +110,11 @@ export function AccountSettings({
           onCommit={(v) => saveProfileField("homeArea", v)}
         />
         <div>
-          <p className="text-sm font-medium text-[#2c1f10]">Email</p>
-          <p className="mt-0.5 text-sm text-[#6b5637]">
+          <p className="text-foreground text-sm font-medium">Email</p>
+          <p className="text-muted-foreground mt-0.5 text-sm">
             {profile.email ?? "—"}
           </p>
-          <p className="mt-1 text-xs text-[#8a7a60]">
+          <p className="text-muted-foreground mt-1 text-xs">
             Changing this is handled by your sign-in provider.
           </p>
         </div>
@@ -122,13 +122,13 @@ export function AccountSettings({
 
       <Section
         title="What you like"
-        blurb="Things you have told Passport. Nothing here is guessed, and nothing is required."
+        blurb="Things you have said about yourself. Nothing here is guessed, and nothing is required."
       >
         <fieldset>
-          <legend className="text-sm font-medium text-[#2c1f10]">
+          <legend className="text-foreground text-sm font-medium">
             {PREFERENCES.interests.label}
           </legend>
-          <p className="mt-0.5 mb-2 text-xs text-[#8a7a60]">
+          <p className="text-muted-foreground mt-0.5 mb-2 text-xs">
             {PREFERENCES.interests.help}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -142,8 +142,8 @@ export function AccountSettings({
                   onClick={() => toggleInterest(interest)}
                   className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${
                     on
-                      ? "border-[#8a5a24]/60 bg-[#8a5a24]/15 text-[#2c1f10]"
-                      : "border-[#8a5a24]/20 text-[#6b5637] hover:border-[#8a5a24]/40"
+                      ? "border-primary/60 bg-primary/15 text-foreground"
+                      : "border-primary/20 text-muted-foreground hover:border-primary/40"
                   }`}
                 >
                   {interest}
@@ -199,8 +199,8 @@ function Section({
   return (
     <section className="flex flex-col gap-5">
       <div>
-        <h2 className="font-serif text-2xl text-[#2c1f10]">{title}</h2>
-        <p className="mt-0.5 text-sm text-[#6b5637]">{blurb}</p>
+        <h2 className="text-foreground font-serif text-2xl">{title}</h2>
+        <p className="text-muted-foreground mt-0.5 text-sm">{blurb}</p>
       </div>
       {children}
     </section>
@@ -231,8 +231,8 @@ function TextField({
 
   return (
     <label className="block">
-      <span className="text-sm font-medium text-[#2c1f10]">{label}</span>
-      <span className="mt-0.5 block text-xs text-[#8a7a60]">{help}</span>
+      <span className="text-foreground text-sm font-medium">{label}</span>
+      <span className="text-muted-foreground mt-0.5 block text-xs">{help}</span>
       <input
         value={draft}
         placeholder={placeholder}
@@ -242,7 +242,7 @@ function TextField({
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
-        className="mt-2 min-h-11 w-full rounded-lg border border-[#8a5a24]/25 bg-white px-3 text-base text-[#2c1f10] disabled:opacity-60"
+        className="border-primary/25 text-foreground mt-2 min-h-11 w-full rounded-lg border bg-white px-3 text-base disabled:opacity-60"
       />
     </label>
   );
@@ -283,19 +283,19 @@ function AreaField({
 
   return (
     <label className="block">
-      <span className="text-sm font-medium text-[#2c1f10]">
+      <span className="text-foreground text-sm font-medium">
         My October area
       </span>
-      <span className="mt-0.5 block text-xs text-[#8a7a60]">
-        Where your October mostly happens. Used for sunset and weather. Passport
-        never reads your device location.
+      <span className="text-muted-foreground mt-0.5 block text-xs">
+        Where your October mostly happens. Used for sunset and weather. Your
+        device location is never read.
       </span>
       <select
         data-testid="october-area"
         value={value}
         disabled={busy}
         onChange={(e) => onCommit(e.target.value)}
-        className="mt-2 min-h-11 w-full rounded-lg border border-[#8a5a24]/25 bg-white px-3 text-base text-[#2c1f10] disabled:opacity-60"
+        className="border-primary/25 text-foreground mt-2 min-h-11 w-full rounded-lg border bg-white px-3 text-base disabled:opacity-60"
       >
         <option value="">Not set</option>
         {/* Kept rather than overwritten, and honestly labelled. */}
@@ -311,7 +311,7 @@ function AreaField({
       {value && !resolves ? (
         <span
           data-testid="october-area-unresolved"
-          className="mt-1 block text-xs text-[#8a7a60]"
+          className="text-muted-foreground mt-1 block text-xs"
         >
           October has no forecast for that one. Pick a listed area to see sunset
           and weather.
@@ -336,8 +336,8 @@ function ChoiceField<T extends string>({
 }) {
   return (
     <fieldset>
-      <legend className="text-sm font-medium text-[#2c1f10]">{label}</legend>
-      <p className="mt-0.5 mb-2 text-xs text-[#8a7a60]">{help}</p>
+      <legend className="text-foreground text-sm font-medium">{label}</legend>
+      <p className="text-muted-foreground mt-0.5 mb-2 text-xs">{help}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -347,8 +347,8 @@ function ChoiceField<T extends string>({
             onClick={() => onChange(option)}
             className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${
               option === value
-                ? "border-[#8a5a24]/60 bg-[#8a5a24]/15 text-[#2c1f10]"
-                : "border-[#8a5a24]/20 text-[#6b5637] hover:border-[#8a5a24]/40"
+                ? "border-primary/60 bg-primary/15 text-foreground"
+                : "border-primary/20 text-muted-foreground hover:border-primary/40"
             }`}
           >
             {option}
@@ -376,13 +376,13 @@ function ToggleField({
         type="checkbox"
         checked={value}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 h-5 w-5 shrink-0 accent-[#8a5a24]"
+        className="accent-primary mt-1 h-5 w-5 shrink-0"
       />
       <span>
-        <span className="block text-sm font-medium text-[#2c1f10]">
+        <span className="text-foreground block text-sm font-medium">
           {label}
         </span>
-        <span className="block text-xs text-[#8a7a60]">{help}</span>
+        <span className="text-muted-foreground block text-xs">{help}</span>
       </span>
     </label>
   );

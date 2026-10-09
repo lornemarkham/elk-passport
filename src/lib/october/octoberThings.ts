@@ -173,6 +173,42 @@ export async function forgetThing(
  * the boundary rather than this filter being the only thing standing between
  * two people's Octobers.
  */
+/**
+ * **Move the day something actually happened on.**
+ *
+ * "Did this" stamps now, which is right almost every time and wrong whenever
+ * somebody is catching up on Sunday for a Friday. Until this existed the only
+ * repair was *that didn't happen* followed by saying it again — which deletes
+ * the record and re-creates it, and loses the original wanting.
+ *
+ * Only `lived_at` moves, and only on something already lived: this is a
+ * correction to a memory, never a way to make one. Anchored at local midday
+ * for the reason `planThing` gives below — a date written at UTC midnight
+ * reads as the previous evening in Vancouver.
+ */
+export async function livedOnDay(
+  user: PassportUser,
+  entityId: string,
+  /** `YYYY-MM-DD`. */
+  day: string,
+): Promise<OctoberThing | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("passport_october_things")
+    .update({ lived_at: `${day}T12:00:00-07:00` })
+    .eq("user_id", user.id)
+    .eq("entity_id", entityId)
+    .eq("state", "lived")
+    .select(
+      "entity_id, entity_kind, name, starts_at, state, wanted_at, lived_at",
+    )
+    .maybeSingle<Row>();
+
+  if (error) throw new Error(`Could not move that day: ${error.message}`);
+  return data ? fromRow(data) : null;
+}
+
 export async function planThing(
   user: PassportUser,
   entityId: string,

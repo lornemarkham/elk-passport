@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Compass } from "lucide-react";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { useExperienceName } from "@/components/auth/ExperienceName";
 import { DEFAULT_NEXT, safeNext } from "@/lib/auth/safeNext";
 import { experienceHomeFor } from "@/lib/domains/experience-domains";
 import {
@@ -45,6 +46,11 @@ const NOTICES: Record<string, string> = {
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // "ELK Passport" on an October sign-in named the wrong product at the one
+  // moment the product is asking to be trusted with a password. Outside an
+  // experience this is the string it always was.
+  const experience = useExperienceName();
+  const wordmark = experience === "Passport" ? "ELK Passport" : experience;
   // **Resolved when it is used, not when it is rendered.** The fallback
   // depends on the host, and reading `window` during render would make the
   // server and the browser disagree. Every use below is inside a handler.
@@ -137,10 +143,10 @@ function AuthForm() {
         <div className="mb-7 text-center">
           <div className="text-primary mb-4 flex items-center justify-center gap-2">
             <Compass className="h-5 w-5" aria-hidden />
-            <span className="font-semibold">ELK Passport</span>
+            <span className="font-semibold">{wordmark}</span>
           </div>
           <h1 className="text-3xl font-bold">
-            {mode === "signup" ? "Create your Passport" : "Welcome back"}
+            {mode === "signup" ? `Create your ${experience}` : "Welcome back"}
           </h1>
           <p className="text-muted-foreground mt-2 text-sm">
             {mode === "signup"

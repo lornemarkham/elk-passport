@@ -17,7 +17,7 @@ export async function generateMetadata({
   params: Promise<{ filmId: string }>;
 }): Promise<Metadata> {
   const film = filmById((await params).filmId);
-  return { title: film ? `${film.title} — Passport` : "Film — Passport" };
+  return { title: film ? `${film.title} — October` : "Film — October" };
 }
 
 const VERDICT_SAYS = {

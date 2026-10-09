@@ -121,12 +121,18 @@ export function QuickStage({
         {beat.art === "radiant" ? <Radiant /> : null}
 
         <div key={beat.id} className="animate-[fadeUp_600ms_ease-out]">
-          <p
+          {/* **An `h1`, not a styled paragraph.** This is the only thing on
+              the screen that names what the page is about, and it was a `<p>`
+              — so `/quick/draconids` shipped with no heading at any level:
+              nothing for a screen reader to navigate by and no document
+              outline at all. One beat is on screen at a time, so there is
+              exactly one `h1`, and it says what that beat says. */}
+          <h1
             data-testid="beat-line"
             className="font-heading text-3xl leading-tight tracking-tight text-[#f3efe4] sm:text-4xl"
           >
             {beat.line}
-          </p>
+          </h1>
           {beat.under ? (
             <p className="mt-3 text-base leading-relaxed text-[#e9e6da]/60">
               {beat.under}

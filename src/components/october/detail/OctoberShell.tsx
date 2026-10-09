@@ -54,53 +54,6 @@ export function OctoberShell({
 }
 
 /**
- * **What a decided person does next.**
- *
- * Ours on the left, theirs on the right, with a line between them saying so.
- * Passport is not trying to be the box office: the organiser owns booking,
- * terms and refunds, and a row that mixed "Save" in with "Get tickets" would
- * quietly imply otherwise.
- */
-export function OctoberActions({
-  save,
-  external,
-  note,
-}: {
-  readonly save?: ReactNode;
-  readonly external?: ReactNode;
-  /** Said once, where it is true — never invented for subjects with no booking. */
-  readonly note?: string;
-}) {
-  if (!save && !external) return null;
-  return (
-    <div
-      data-testid="october-actions"
-      className="mx-auto mt-14 max-w-5xl px-5 sm:px-8"
-    >
-      <div className="rounded-2xl border border-[#e9e6da]/10 bg-[#e9e6da]/[0.03] p-5 sm:p-6">
-        {save && (
-          <div className="flex flex-wrap items-center gap-3">{save}</div>
-        )}
-        {external && (
-          <>
-            <div
-              className={
-                save ? "mt-5 border-t border-[#e9e6da]/10 pt-5" : undefined
-              }
-            >
-              {note && <p className="mb-3 text-sm text-[#e9e6da]/45">{note}</p>}
-              <div className="flex flex-wrap items-center gap-3">
-                {external}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
  * Provenance, kept and kept quiet.
  *
  * A count a normal reader can skip and a sceptical one can open. Removing it

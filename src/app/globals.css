@@ -153,6 +153,43 @@
 }
 
 /* ---------------------------------------------------------------------------
+   PASSPORT — the account surface's own palette, named.
+
+   `/account` and the controls inside it were written as literal hex: `#ecdfc4`
+   cream, `#2c1f10` for headings, `#6b5637` for the quieter line, `#8a5a24` for
+   anything you press. That is not the application default (`:root`, Adventure
+   Basecamp) — it is a third palette that lived only inside those components,
+   which is why handing the page `data-theme="october"` would have done nothing
+   at all: the literals win.
+
+   So the literals became tokens and the palette became a theme. Every value
+   here is the hex that was already rendering, so Passport's account page looks
+   exactly as it did; what changed is that October can now set its own.
+--------------------------------------------------------------------------- */
+[data-theme="passport"] {
+  --background: #ecdfc4;
+  --foreground: #2c1f10;
+  --card: #f6eedc;
+  --card-foreground: #2c1f10;
+  --popover: #f6eedc;
+  --popover-foreground: #2c1f10;
+  --primary: #8a5a24;
+  --primary-foreground: #ffffff;
+  --secondary: #e0cfae;
+  --secondary-foreground: #3b2a17;
+  --muted: #e0cfae;
+  --muted-foreground: #6b5637;
+  --accent: #8a5a24;
+  --accent-foreground: #ffffff;
+  --destructive: oklch(0.55 0.18 27);
+  --border: oklch(0.52 0.08 60 / 25%);
+  --input: oklch(0.52 0.08 60 / 25%);
+  --ring: #8a5a24;
+  --radius: 0.75rem;
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
    October 2026 — the curated launch collection.
 
    A scoped theme, not a second application. It redefines the same tokens the

@@ -35,6 +35,8 @@ interface ExperienceDomain {
   readonly at: string;
   /** What a person calls it, for a link back to it. */
   readonly name: string;
+  /** The `data-theme` its pages render under. */
+  readonly theme: string;
 }
 
 const EXPERIENCES: readonly ExperienceDomain[] = [
@@ -43,6 +45,7 @@ const EXPERIENCES: readonly ExperienceDomain[] = [
     home: "/october/discover",
     at: "/october",
     name: "October",
+    theme: "october",
   },
 ];
 
@@ -70,6 +73,23 @@ function normalizeHost(host: string): string {
  * No component ever looks at a hostname.
  */
 export const EXPERIENCE_PATH_HEADER = "x-experience-path";
+
+/**
+ * **The header that carries "which experience this request belongs to".**
+ *
+ * The one above answers *is this page a domain's front door*. This answers the
+ * broader question the shared pages need: `/account`, `/auth`, `/auth/forgot`
+ * and `/auth/update-password` are one implementation serving two products, and
+ * they have to know which one they are inside before they render — a client
+ * component that reads `window.location.host` after mounting paints Passport
+ * first and corrects itself, which is a flash of the wrong product at exactly
+ * the moment somebody is deciding whether to trust it.
+ *
+ * The middleware is the only place that sees the host and the full URL on
+ * every request, so it decides once and states it. Set or deleted on every
+ * request, never read from the incoming one: an inbound value is a forgery.
+ */
+export const EXPERIENCE_HEADER = "x-experience";
 
 /**
  * **Where "back to where you were" means, on a domain that is an experience.**
@@ -127,3 +147,66 @@ export function experienceForPath(
     null
   );
 }
+
+/**
+ * **Which experience a shared page is being used inside.**
+ *
+ * `/account`, `/auth`, `/auth/forgot` and `/auth/update-password` are one
+ * implementation serving two products. Until now they only ever rendered as
+ * Passport: an October reader who tapped their own name landed on a cream page
+ * titled *Your account — Passport* whose copy offered to remember what they
+ * were "into" for Passport. The back link pointed home, and everything above
+ * it said they had left.
+ *
+ * Two signals answer it, and both are already in the request:
+ *
+ * - **the host**, which is decisive — `iamoctober.com` is October whatever
+ *   page is being served;
+ * - **where the page was told to return to**, which is how `elk-passport.
+ *   vercel.app/account?next=/october/discover` knows, since that host says
+ *   nothing. The destination was already carried for the back link; this reads
+ *   the same value rather than inventing a second channel.
+ *
+ * `null` for ordinary Passport, which must keep ordinary Passport's
+ * presentation exactly — that is why the answer is an experience or nothing,
+ * never a default that quietly themes Passport as something else.
+ */
+export function activeExperience(where: {
+  readonly host?: string | null;
+  /** The `?next=` this page was given, or the path it is on. */
+  readonly next?: string | null;
+}): ExperienceDomain | null {
+  const normalized = where.host ? normalizeHost(where.host) : undefined;
+  const byHost = normalized
+    ? EXPERIENCES.find((e) => e.host === normalized)
+    : undefined;
+  return byHost ?? experienceForPath(where.next) ?? null;
+}
+
+/**
+ * The experience a request was stamped with by the middleware, if any.
+ *
+ * Takes the header value rather than a `Headers` object so a Server Component
+ * passes `requestHeaders.get(EXPERIENCE_HEADER)` and a test passes a string.
+ */
+export function experienceFromHeader(
+  value: string | null | undefined,
+): ExperienceDomain | null {
+  if (!value) return null;
+  return EXPERIENCES.find((e) => e.host === value) ?? null;
+}
+
+/**
+ * The `data-theme` a shared page should carry.
+ *
+ * `passport` is named rather than left to `:root` on purpose: the account
+ * page's cream is its own palette, not the application default, and it was
+ * written as literal hex. Giving it a theme of its own is what let those
+ * literals become tokens without changing a single rendered colour on
+ * Passport.
+ */
+export function themeFor(experience: ExperienceDomain | null): string {
+  return experience?.theme ?? "passport";
+}
+
+export type { ExperienceDomain };

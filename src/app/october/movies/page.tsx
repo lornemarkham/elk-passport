@@ -4,7 +4,7 @@ import { reactionsFor } from "@/lib/movies/reactions";
 import { keptOnThisPage } from "@/lib/october/keptOnThisPage";
 import { Films } from "@/components/october/movies/Films";
 
-export const metadata: Metadata = { title: "Movies — Passport" };
+export const metadata: Metadata = { title: "Movies — October" };
 
 /**
  * The ordinary movies surface: the whole catalogue as edited shelves, with

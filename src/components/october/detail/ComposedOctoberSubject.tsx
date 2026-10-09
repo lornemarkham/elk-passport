@@ -183,28 +183,46 @@ export function ComposedOctoberSubject({
                       {section.title}
                     </h3>
                   )}
+                  {/* **One label, everything it introduces beneath it.** A
+                      publisher writing a programme repeats the heading beside
+                      each line; printing it back verbatim gave Grizzli eight
+                      headings for eight single lines. The grouping happens in
+                      `composedFactSections`, before the prose/rows split, so a
+                      run cannot be torn across both blocks under two copies of
+                      its own heading. A label used once is a group of one and
+                      renders exactly as it always did. */}
                   {section.prose.length > 0 && (
                     <div className="mt-4 flex max-w-3xl flex-col gap-6">
-                      {section.prose.map((fact) => (
-                        <div key={`${fact.label}|${fact.value}`}>
+                      {section.prose.map((group) => (
+                        <div key={`${group.label}|${group.values[0]}`}>
                           <p className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-                            {fact.label}
+                            {group.label}
                           </p>
-                          <p className="mt-2 leading-relaxed whitespace-pre-line">
-                            {fact.value}
-                          </p>
+                          {group.values.map((value) => (
+                            <p
+                              key={value}
+                              className="mt-2 leading-relaxed whitespace-pre-line"
+                            >
+                              {value}
+                            </p>
+                          ))}
                         </div>
                       ))}
                     </div>
                   )}
                   {section.details.length > 0 && (
                     <dl className="mt-5 grid gap-x-10 gap-y-4 sm:grid-cols-2">
-                      {section.details.map((fact) => (
-                        <div key={`${fact.label}|${fact.value}`}>
-                          <dt className="text-sm font-medium">{fact.label}</dt>
-                          <dd className="text-muted-foreground mt-0.5 text-sm leading-relaxed whitespace-pre-line">
-                            {fact.value}
-                          </dd>
+                      {section.details.map((group) => (
+                        <div key={`${group.label}|${group.values[0]}`}>
+                          <dt className="text-sm font-medium">{group.label}</dt>
+                          {group.values.map((value) => (
+                            <dd
+                              key={value}
+                              className="text-muted-foreground mt-0.5 text-sm leading-relaxed whitespace-pre-line"
+                            >
+                              {value}
+                            </dd>
+                          ))}
                         </div>
                       ))}
                     </dl>

@@ -50,7 +50,7 @@ import { scenarioFrom, simulatedEnvironment } from "@/lib/environment/scenario";
 import { localDay } from "@/domain/experience/eventTime";
 
 export const metadata: Metadata = {
-  title: "October — Passport",
+  title: "October",
 };
 
 /**

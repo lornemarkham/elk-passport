@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import {
+  EXPERIENCE_HEADER,
   EXPERIENCE_PATH_HEADER,
+  activeExperience,
   experienceRewriteFor,
 } from "@/lib/domains/experience-domains";
 
@@ -42,6 +44,21 @@ export async function middleware(request: NextRequest) {
   const headers = new Headers(request.headers);
   if (rewriteTo) headers.set(EXPERIENCE_PATH_HEADER, rewriteTo);
   else headers.delete(EXPERIENCE_PATH_HEADER);
+
+  // **And which experience the request belongs to at all**, which the shared
+  // account and auth pages need before their first paint. Decided from the
+  // host and, where the host is ordinary Passport, from where the page was
+  // told to return to — `elk-passport.vercel.app/auth?next=/october/discover`
+  // is somebody signing into October. Same forgery rule as above.
+  const experience = activeExperience({
+    host: request.headers.get("host"),
+    next:
+      request.nextUrl.searchParams.get("next") ??
+      rewriteTo ??
+      request.nextUrl.pathname,
+  });
+  if (experience) headers.set(EXPERIENCE_HEADER, experience.host);
+  else headers.delete(EXPERIENCE_HEADER);
 
   const response = rewriteTo
     ? NextResponse.rewrite(new URL(rewriteTo, request.url), {
