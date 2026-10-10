@@ -89,6 +89,7 @@ export function candidateToExperience(
     // Carried through untouched. Atlas owns geographic truth; the mapper's
     // only job here is not to lose it.
     ...(candidate.geography ? { geography: candidate.geography } : {}),
+    ...(candidate.knowledge ? { knowledge: candidate.knowledge } : {}),
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

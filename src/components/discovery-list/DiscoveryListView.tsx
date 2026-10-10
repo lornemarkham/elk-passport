@@ -43,6 +43,12 @@ import {
   type SavedListItem,
 } from "./DiscoveryListSidebar";
 import { DiscoveryOpening } from "./DiscoveryOpening";
+import { TodayPanel } from "./TodayPanel";
+import {
+  EMPTY_SITUATION,
+  type DayWeather,
+  type Situation,
+} from "@/domain/discovery/situation";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
 import {
@@ -98,6 +104,11 @@ interface DiscoveryListViewProps {
   now?: string;
   /** That instant written out, e.g. `Saturday, October 10`. */
   today?: string;
+  /**
+   * Today's real forecast for the area Discovery is mostly about, or nothing.
+   * Resolved on the server so nobody has to type "it is raining".
+   */
+  weather?: DayWeather & { area?: string };
 }
 
 /**
@@ -115,6 +126,7 @@ export function DiscoveryListView({
   displayName = null,
   now,
   today,
+  weather,
 }: DiscoveryListViewProps) {
   const signedIn = displayName !== null;
   const [kind, setKind] = useState<ExperienceKind | null>(null);
@@ -138,6 +150,9 @@ export function DiscoveryListView({
   const boardRequestRef = useRef(0);
 
   const [query, setQuery] = useState("");
+  // The day a person actually has. Situational and deliberately not persisted
+  // — see `situation.ts`. Nothing here becomes a profile.
+  const [situation, setSituation] = useState<Situation>(EMPTY_SITUATION);
   /**
    * What the person said they feel like, in their words rather than Atlas's.
    * `null` is the composed page; a key narrows the whole pool to that intent.
@@ -335,20 +350,31 @@ export function DiscoveryListView({
    * already here and composing it is cheap; what is *not* cheap, and is why
    * this exists at all, is rendering 2,248 rows, which is what this replaced.
    */
+  /**
+   * The pool the composed page and the situational panel both answer from —
+   * scoped, feed-filtered, and with saved things removed, exactly as the
+   * sections see it. One pool, so the panel cannot suggest something the page
+   * below would never show.
+   */
+  const composedPool = useMemo(
+    () =>
+      defaultFeed(scopeExperiences(experiences, scope)).filter(
+        (experience) => !savedIds.has(experience.id),
+      ),
+    [experiences, scope, savedIds],
+  );
+
   const composed = useMemo(() => {
     // **Saved things leave the feed**, exactly as they do from the flat list.
     // That is this page's established contract — the board is a saved item's
     // only home, which is why the board carries its detail link — and a
     // composed page is a different presentation of the same feed, not a
     // licence to quietly change what saving does.
-    const pool = defaultFeed(scopeExperiences(experiences, scope)).filter(
-      (experience) => !savedIds.has(experience.id),
-    );
-    return composeDiscovery(pool, {
+    return composeDiscovery(composedPool, {
       now: now ? new Date(now) : new Date(),
       ...(where ? { where } : {}),
     });
-  }, [experiences, scope, now, where, savedIds]);
+  }, [composedPool, now, where]);
 
   /** Which intents this pool can actually fill. A dead chip is worse than none. */
   const intents = useMemo(
@@ -625,6 +651,19 @@ export function DiscoveryListView({
           selected={intent}
           onSelect={setIntent}
         />
+
+        {/* Where a situation enters, rather than a search query. */}
+        {today && (
+          <div className="mt-6">
+            <TodayPanel
+              today={today}
+              {...(weather ? { weather } : {})}
+              experiences={composedPool}
+              situation={situation}
+              onSituation={setSituation}
+            />
+          </div>
+        )}
 
         <div
           aria-hidden

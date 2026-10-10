@@ -1,5 +1,5 @@
 import type { CandidateAvailability } from "@/lib/data/types";
-import type { CandidateGeography } from "@/lib/data/types";
+import type { CandidateGeography, CandidateKnowledge } from "@/lib/data/types";
 
 /**
  * Canonical Experience domain model (IMP-002).
@@ -182,6 +182,8 @@ export interface Experience {
    * computes it. See `DiscoveryCandidate.geography`.
    */
   geography?: CandidateGeography;
+  /** What Atlas knows you could do here — carried through untouched. */
+  knowledge?: CandidateKnowledge;
   pairsWith?: string[];
 
   isActive: boolean;

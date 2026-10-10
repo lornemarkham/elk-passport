@@ -480,6 +480,46 @@ export interface DiscoveryCandidate {
    * that Atlas disagrees with itself rather than picking a side.
    */
   geography?: CandidateGeography;
+  /**
+   * **What Atlas knows about this beyond a sentence** —
+   * `candidate-knowledge/1`. Held for 1,243 of 2,683 candidates.
+   *
+   * The field that lets a card answer *what could we actually do there*
+   * rather than only *what is it called*.
+   */
+  knowledge?: CandidateKnowledge;
+}
+
+/** Something a subject offers, and how Atlas came to say so. */
+export interface CandidateAffordance {
+  /** The activity, in the publisher's or Atlas's own words — `Playground`, `Swimming`. */
+  name: string;
+  /** `offers` is an asserted edge; `stated-activity` is a source's own words. */
+  basis: string;
+  id?: string;
+}
+
+/**
+ * **`candidate-knowledge/1`.**
+ *
+ * Measured on the live corpus 2026-10-11: affordances on 224 candidates,
+ * features on 70, conditions on 22, practical on 968.
+ */
+export interface CandidateKnowledge {
+  /** What you can do here. 224 candidates, overwhelmingly outdoor. */
+  affordances?: CandidateAffordance[];
+  /** What is here — `Playground`, `Washrooms`, `Picnic areas`. */
+  features?: string[];
+  /** Rules and caveats — `Pets on leash`. */
+  conditions?: string[];
+  /** Labelled facts a publisher stated — hours, admission, parking. */
+  practical?: { label: string; value: string; sourceRecordId?: string }[];
+  /**
+   * **Atlas's own verdict on whether the description is worth printing.**
+   * `false` on 255 candidates — the tautology problem, answered at the source
+   * instead of guessed at by a frontend detector.
+   */
+  descriptionAddsKnowledge?: boolean;
 }
 
 /** How a geographic claim was arrived at. Carried so Passport never has to guess. */
