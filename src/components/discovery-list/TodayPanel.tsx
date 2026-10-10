@@ -5,13 +5,20 @@ import type { Experience } from "@/domain/experience/types";
 import {
   answerFor,
   childEvidence,
-  shelterOf,
   type Company,
   type DayWeather,
   type PlaceContext,
+  type Point,
   type Situation,
   type Window,
 } from "@/domain/discovery/situation";
+import {
+  rainBecause,
+  rainLine,
+  splitByRain,
+} from "@/domain/discovery/environment";
+import { distanceLabel, distanceTo } from "@/domain/discovery/proximity";
+import { placeLabel } from "@/domain/discovery/compose";
 
 /**
  * **Where a person brings a situation instead of a search query.**
@@ -61,6 +68,7 @@ export function TodayPanel({
   situation,
   onSituation,
   place,
+  origin,
   ask,
 }: {
   /** Written out, e.g. `Saturday, October 11`. */
@@ -73,6 +81,8 @@ export function TodayPanel({
    */
   readonly weather?: DayWeather & { readonly area?: string };
   readonly place: PlaceContext;
+  /** Where the reader is, so a suggestion can say how far it is. */
+  readonly origin?: Point;
   /** `undefined` where the browser cannot do this, or has already been asked. */
   readonly ask?: () => void;
   /** The pool the answer is drawn from — already scoped and feed-filtered. */
@@ -190,7 +200,12 @@ export function TodayPanel({
       </div>
 
       {asked && (
-        <Answer answer={answer} situation={situation} weather={shown} />
+        <Answer
+          answer={answer}
+          situation={situation}
+          weather={shown}
+          {...(origin ? { origin } : {})}
+        />
       )}
     </section>
   );
@@ -310,10 +325,12 @@ function Answer({
   answer,
   situation,
   weather,
+  origin,
 }: {
   readonly answer: ReturnType<typeof answerFor>;
   readonly situation: Situation;
   readonly weather?: DayWeather;
+  readonly origin?: Point;
 }) {
   if (situation.company !== "child") {
     return (
@@ -328,12 +345,16 @@ function Answer({
     );
   }
 
-  const { matches, weatherAgainst } = answer;
-  const sheltered = matches.filter((e) => shelterOf(e) !== "outdoor");
-  const allOutdoor = matches.length > 0 && weatherAgainst === matches.length;
-  // Wet: lead with what the weather does not already argue against, and offer
-  // nothing at all when every option is one the rain rules out.
-  const shortlist = weather?.wet ? sheltered : matches;
+  const { matches } = answer;
+  // **Atlas's four answers, not Passport's two.** The previous version asked
+  // one question — is this plainly outdoor — of a word list that contained
+  // `picnic shelter`, so every park with a dry corner was reported as ruled
+  // out by the rain. These come from `candidate-environment/1`.
+  const { stands, against, uncertain, unknown } = splitByRain(matches);
+  const wet = Boolean(weather?.wet);
+  // Wet: lead with what Atlas says the rain does not stop. Dry: the whole
+  // list, because nothing about the weather is arguing with any of it.
+  const shortlist = wet ? stands : matches;
 
   return (
     <div
@@ -352,66 +373,116 @@ function Answer({
             say what a child could actually do there.
           </p>
 
-          {weather?.wet && (
+          {wet && (
             <p
               data-testid="today-weather-caveat"
               className="mt-2 text-sm text-[#2b2015]/70"
             >
-              {allOutdoor ? (
+              {stands.length > 0 ? (
                 <>
-                  Every one of them is outdoors, and rain is forecast.{" "}
                   <strong className="font-semibold">
-                    Passport cannot tell you which places near you are indoors
-                  </strong>{" "}
-                  — Atlas does not record that yet, so it is not going to guess
-                  and send you out in it.
+                    {stands.length} of them say the rain does not stop them
+                  </strong>
+                  {against.length > 0 && (
+                    <> · {against.length} are out in the open</>
+                  )}
+                  {uncertain.length > 0 && (
+                    <> · {uncertain.length} may not be running today</>
+                  )}
+                  {unknown.length > 0 && (
+                    <>
+                      {" "}
+                      · Atlas says nothing either way about the other{" "}
+                      {unknown.length}
+                    </>
+                  )}
+                  .
                 </>
               ) : (
                 <>
-                  {weatherAgainst} of them are outdoors and rain is forecast.
-                  Passport does not know whether the other {sheltered.length}{" "}
-                  are under cover.
+                  Rain is forecast, and{" "}
+                  <strong className="font-semibold">
+                    none of these say they can take it
+                  </strong>
+                  .{" "}
+                  {against.length > 0 && (
+                    <>{against.length} are out in the open, and </>
+                  )}
+                  Atlas says nothing either way about {unknown.length} — so
+                  Passport is not going to pick one and send you out in it.
                 </>
               )}
             </p>
           )}
 
           {/* **The list must agree with the caveat above it.**
-              The first version printed the caveat and then led with six
-              outdoor parks — swimming, picnic areas, a playground — on a
-              showery afternoon. Saying "these are all outdoors and it is
-              raining" and then recommending them anyway is worse than either
-              half alone. When the day is wet, the ones Atlas has not called
-              outdoor come first; when every one of them is outdoor, there is
-              nothing honest to put here at all. */}
+              An earlier version printed the caveat and then led with six
+              outdoor parks on a showery afternoon. When the day is wet, only
+              the ones Atlas says stand up to rain appear — and where there
+              are none, there is nothing honest to put here at all. */}
           {shortlist.length > 0 && (
             <>
-              {/* **Labelled for what it is.** On a wet day these are not
-                  recommendations — Atlas states no indoor/outdoor fact, so
-                  the honest claim is only that the rain does not already rule
-                  them out. A tennis court is obviously outside; Passport is
-                  not going to pretend it knows that, and is not going to
-                  pretend it does not matter either. */}
               <p className="mt-3 text-xs font-medium tracking-wide text-[#2b2015]/45 uppercase">
-                {weather?.wet
-                  ? "Not ruled out by the rain — Passport cannot tell which are under cover"
+                {wet
+                  ? "Where the rain does not stop you"
                   : "What she could do there"}
               </p>
               <ul className="mt-2 flex flex-wrap gap-2">
-                {shortlist.slice(0, 6).map((experience) => (
-                  <li
-                    key={experience.id}
-                    data-testid="today-suggestion"
-                    className="rounded-lg border border-[#8a5a24]/20 bg-white/40 px-3 py-2 text-xs"
-                  >
-                    <span className="font-medium text-[#2b2015]">
-                      {experience.title}
-                    </span>
-                    <span className="block text-[#2b2015]/55">
-                      {childEvidence(experience).join(" · ")}
-                    </span>
-                  </li>
-                ))}
+                {shortlist.slice(0, 6).map((experience) => {
+                  const says = rainLine(experience);
+                  const because = rainBecause(experience);
+                  // **Where it is, because the answer got specific.** The old
+                  // list was six generic parks and nobody read it as a
+                  // recommendation. This one says "go to Memorial Arena", and
+                  // Peace Arch Park — which genuinely has a picnic shelter —
+                  // is 400 km away on the Washington border. A distance where
+                  // both positions are stated, the town Atlas states
+                  // otherwise, and nothing at all when it knows neither.
+                  const where =
+                    distanceLabel(distanceTo(experience, origin)) ??
+                    placeLabel(experience);
+                  return (
+                    <li
+                      key={experience.id}
+                      data-testid="today-suggestion"
+                      className="max-w-full rounded-lg border border-[#8a5a24]/20 bg-white/40 px-3 py-2 text-xs"
+                    >
+                      <span className="font-medium text-[#2b2015]">
+                        {experience.title}
+                      </span>
+                      {where && (
+                        <span
+                          data-testid="today-where"
+                          className="block text-[#2b2015]/45"
+                        >
+                          {where}
+                        </span>
+                      )}
+                      <span className="block text-[#2b2015]/55">
+                        {childEvidence(experience).join(" · ")}
+                      </span>
+                      {/* Atlas's reading, and then the sentence it read it
+                          from. A derived reading says so rather than passing
+                          itself off as a promise. */}
+                      {wet && says && (
+                        <span
+                          data-testid="today-shelter"
+                          className="mt-1 block font-medium text-[#8a5a24]"
+                        >
+                          {says}
+                        </span>
+                      )}
+                      {wet && because && (
+                        <span
+                          data-testid="today-shelter-evidence"
+                          className="mt-0.5 block text-[#2b2015]/45 italic"
+                        >
+                          “{because}”
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </>
           )}

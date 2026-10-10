@@ -481,6 +481,19 @@ export interface DiscoveryCandidate {
    */
   geography?: CandidateGeography;
   /**
+   * **Whether the rain matters here** — `candidate-environment/1`.
+   *
+   * The field that replaces a Passport heuristic which read activity names
+   * and guessed. That heuristic held a set of "plainly outdoor" words
+   * containing, among others, `picnic shelter` — so it called a shelter
+   * exposed, and called the Allan Brooks Nature Centre outdoors because it
+   * offers birdwatching.
+   *
+   * Atlas states this from evidence and says which evidence. Passport reads
+   * it and computes nothing.
+   */
+  environment?: CandidateEnvironment;
+  /**
    * **What Atlas knows about this beyond a sentence** —
    * `candidate-knowledge/1`. Held for 1,243 of 2,683 candidates.
    *
@@ -524,6 +537,71 @@ export interface CandidateKnowledge {
 
 /** How a geographic claim was arrived at. Carried so Passport never has to guess. */
 export type GeographyBasis = "observed" | "derived";
+
+/**
+ * **What Atlas says the rain does to this** (`candidate-environment/1`).
+ *
+ * Seven answers, and the differences between them are the whole contract.
+ * Measured on the production corpus on 2026-10-10:
+ *
+ * ```
+ * unknown           2,561   Atlas has no evidence either way
+ * partly-sheltered     53   there is somewhere to get out of it
+ * exposed              33   it is outside and the rain reaches it
+ * sheltered            16   it is under cover
+ * weather-dependent    14   it may simply not run
+ * runs-in-rain          6   it happens anyway
+ * conflicting           0   the evidence disagrees — none today, contract holds it
+ * ```
+ *
+ * **`unknown` is 95% of the corpus and means nothing at all.** Not outdoor,
+ * not safe, not unsuitable. Any consumer that lets it drift toward one of
+ * those has reinvented the heuristic this replaced.
+ *
+ * `weather-dependent` is **not** a shelter claim: it says the thing may not
+ * happen, which is a different worry from getting wet, and collapsing it into
+ * either side loses the only useful part.
+ */
+export type RainReading =
+  | "sheltered"
+  | "partly-sheltered"
+  | "runs-in-rain"
+  | "weather-dependent"
+  | "exposed"
+  | "conflicting"
+  | "unknown";
+
+/** Where Atlas says this happens. Independent of what the rain does to it. */
+export type EnvironmentSetting = "indoor" | "outdoor" | "mixed" | "unknown";
+
+/**
+ * How Atlas came to the reading.
+ *
+ * `stated` is a source saying so in as many words — "weather permitting".
+ * `derived` is Atlas joining its own evidence, and is **not** certainty: a
+ * surface showing one must not present it as a promise. `none` accompanies
+ * `unknown`.
+ */
+export type EnvironmentBasis = "stated" | "derived" | "none";
+
+/** One piece of evidence behind a reading, in the source's own words. */
+export interface EnvironmentStatement {
+  /** Atlas's own summary of what this says — `indoor`, `covered`, `outdoor`. */
+  says: string;
+  /** The sentence it was read from. Shown to people; never rewritten. */
+  text: string;
+  basis: string;
+  /** Whether it is about the whole subject, one activity, or one part of it. */
+  scope?: string;
+  sourceRecordId?: string;
+}
+
+export interface CandidateEnvironment {
+  setting: EnvironmentSetting;
+  rain: { reading: RainReading; basis: EnvironmentBasis };
+  /** Held for 154 of 2,683. The working behind the reading. */
+  statements?: EnvironmentStatement[];
+}
 
 /**
  * **Atlas's four answers to "where is this?"** (`candidate-geography/2`).

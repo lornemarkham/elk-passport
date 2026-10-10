@@ -707,6 +707,7 @@ export function DiscoveryListView({
               today={today}
               {...((here ?? weather) ? { weather: here ?? weather } : {})}
               place={place}
+              {...(at ? { origin: at } : {})}
               {...(ask ? { ask } : {})}
               experiences={composedPool}
               situation={situation}

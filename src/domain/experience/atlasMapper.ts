@@ -90,6 +90,9 @@ export function candidateToExperience(
     // only job here is not to lose it.
     ...(candidate.geography ? { geography: candidate.geography } : {}),
     ...(candidate.knowledge ? { knowledge: candidate.knowledge } : {}),
+    // Likewise. Atlas owns whether the rain matters here; Passport used to
+    // guess it from activity names and was wrong about every picnic shelter.
+    ...(candidate.environment ? { environment: candidate.environment } : {}),
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

@@ -1,4 +1,5 @@
 import type { Experience } from "@/domain/experience/types";
+import { arguesAgainst } from "./environment";
 
 /**
  * **A situation, not a profile.**
@@ -130,52 +131,18 @@ export function doableEvidence(experience: Experience): readonly string[] {
 }
 
 /**
- * **Can this be done in the rain?** Almost always: nobody knows.
+ * **Retired: `Shelter` and `shelterOf`.**
  *
- * Atlas states no indoor/outdoor classification. What it *does* state is
- * affordances, and the ones it holds are overwhelmingly outdoor — hiking 53,
- * swimming 26, fishing 22, cycling 12, beaches, playgrounds. Measured on the
- * live corpus, **every one of the 76 candidates with child-plausible evidence
- * is outdoor**, and exactly 10 mention the word "indoor" anywhere, mostly as a
- * resort's pool.
+ * Passport used to decide whether the rain mattered by matching activity names
+ * against a set of words it considered plainly outdoor. The set contained
+ * `picnic shelter`, so every park with somewhere to get out of the rain was
+ * reported as ruled out by it — Coldstream Park, Kin Beach, Polson Park,
+ * Paddlewheel Park — and the Allan Brooks Nature Centre, which Atlas states is
+ * indoor, was called outdoors because it offers birdwatching.
  *
- * So this returns `outdoor` only where the evidence is unambiguously an
- * outdoor activity, and `unknown` for everything else — including every
- * museum, cinema and swimming pool in the corpus, because Atlas has not said.
- * **It never returns `indoor`.** There is no evidence that would justify it,
- * and a product that guessed would send somebody and their niece to a locked
- * door in a downpour.
+ * `candidate-environment/1` states it with evidence instead. See
+ * `discovery/environment.ts`; nothing here guesses at weather any more.
  */
-export type Shelter = "outdoor" | "unknown";
-
-const PLAINLY_OUTDOOR: ReadonlySet<string> = new Set([
-  "playground",
-  "beach",
-  "swimming",
-  "picnic areas",
-  "picnic shelter",
-  "hiking",
-  "walking",
-  "cycling",
-  "biking",
-  "mountain biking",
-  "snowshoeing",
-  "fishing",
-  "canoeing",
-  "kayaking",
-  "boat launch",
-  "campfires",
-  "dog park (off leash)",
-  "wildlife viewing",
-  "birdwatching",
-]);
-
-export function shelterOf(experience: Experience): Shelter {
-  const evidence = doableEvidence(experience);
-  return evidence.some((name) => PLAINLY_OUTDOOR.has(name.toLowerCase()))
-    ? "outdoor"
-    : "unknown";
-}
 
 /**
  * **What Passport can offer for this situation, and what it cannot.**
@@ -205,8 +172,11 @@ export function answerFor(
   }
 
   const matches = experiences.filter((e) => childEvidence(e).length > 0);
+  // Atlas's reading, not a guess from the activity's name. Only `exposed`
+  // counts: `weather-dependent` is a different worry and `unknown` — which is
+  // 63 of these 83 — is not evidence of anything.
   const weatherAgainst = options.wet
-    ? matches.filter((e) => shelterOf(e) === "outdoor").length
+    ? matches.filter((e) => arguesAgainst(e)).length
     : 0;
 
   return { matches, weatherAgainst, grounded: matches.length > 0 };
@@ -351,7 +321,7 @@ export function directionsFor(
         : key,
       places,
       ruledOutByRain: Boolean(
-        options.wet && places.every((p) => shelterOf(p) === "outdoor"),
+        options.wet && places.every((p) => arguesAgainst(p)),
       ),
     }))
     .sort((a, b) => b.places.length - a.places.length);

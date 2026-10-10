@@ -1,5 +1,9 @@
 import type { CandidateAvailability } from "@/lib/data/types";
-import type { CandidateGeography, CandidateKnowledge } from "@/lib/data/types";
+import type {
+  CandidateEnvironment,
+  CandidateGeography,
+  CandidateKnowledge,
+} from "@/lib/data/types";
 
 /**
  * Canonical Experience domain model (IMP-002).
@@ -184,6 +188,11 @@ export interface Experience {
   geography?: CandidateGeography;
   /** What Atlas knows you could do here — carried through untouched. */
   knowledge?: CandidateKnowledge;
+  /**
+   * **What Atlas says the rain does here** — `candidate-environment/1`,
+   * carried straight through. Passport reads it and never guesses it.
+   */
+  environment?: CandidateEnvironment;
   pairsWith?: string[];
 
   isActive: boolean;

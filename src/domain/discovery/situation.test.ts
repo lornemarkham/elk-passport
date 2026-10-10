@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Experience } from "@/domain/experience/types";
-import type { CandidateKnowledge } from "@/lib/data/types";
+import type { CandidateKnowledge, RainReading } from "@/lib/data/types";
 import {
   WET_CHANCE,
   answerFor,
@@ -9,7 +9,6 @@ import {
   doableEvidence,
   hasSituation,
   readWeather,
-  shelterOf,
 } from "./situation";
 
 /**
@@ -56,6 +55,13 @@ const withKnowledge = (
 const offers = (...names: string[]): CandidateKnowledge => ({
   affordances: names.map((name) => ({ name, basis: "offers" })),
 });
+
+/** Atlas's reading, which is the only thing that decides this now. */
+const inWeather = (reading: RainReading, over: Experience): Experience =>
+  ({
+    ...over,
+    environment: { setting: "unknown", rain: { reading, basis: "derived" } },
+  }) as Experience;
 
 describe("evidence a child could do something here", () => {
   it("reads an affordance Atlas asserts", () => {
@@ -109,25 +115,11 @@ describe("evidence a child could do something here", () => {
   });
 });
 
-describe("whether the rain rules it out", () => {
-  it("calls a plainly outdoor activity outdoor", () => {
-    expect(shelterOf(withKnowledge(offers("Swimming")))).toBe("outdoor");
-    expect(shelterOf(withKnowledge({ features: ["Beach"] }))).toBe("outdoor");
-  });
-
-  it("never claims anything is indoor", () => {
-    // Atlas states no indoor/outdoor fact. Guessing one sends somebody and
-    // their niece to a locked door in a downpour.
-    const museum = withKnowledge(undefined, { subtype: "museum" } as never);
-    const cinema = withKnowledge(offers("Watch a film"));
-    expect(shelterOf(museum)).toBe("unknown");
-    expect(shelterOf(cinema)).toBe("unknown");
-  });
-
-  it("answers unknown rather than outdoor when it has nothing to go on", () => {
-    expect(shelterOf(withKnowledge(undefined))).toBe("unknown");
-  });
-});
+/**
+ * Whether the rain rules something out is now Atlas's answer, not a guess
+ * from an activity's name — see `environment.test.ts`. The tests that used to
+ * live here pinned a heuristic that called a picnic shelter outdoor.
+ */
 
 describe("what Passport can answer for a situation", () => {
   const pool = [
@@ -147,10 +139,20 @@ describe("what Passport can answer for a situation", () => {
     ]);
   });
 
-  it("counts what the rain argues against", () => {
-    const answer = answerFor(pool, { company: "child" }, { wet: true });
-    // The playground and the lake; skating is unknown, not outdoor.
-    expect(answer.weatherAgainst).toBe(2);
+  it("counts only what Atlas says is out in the open", () => {
+    // `unknown` is 63 of the 83 child-doable subjects in the live corpus.
+    // Counting it against them would be the retired heuristic with extra
+    // steps.
+    const placed = [
+      inWeather("exposed", pool[0]!),
+      inWeather("exposed", pool[1]!),
+      inWeather("partly-sheltered", pool[2]!),
+      pool[3]!,
+      pool[4]!,
+    ];
+    expect(
+      answerFor(placed, { company: "child" }, { wet: true }).weatherAgainst,
+    ).toBe(2);
   });
 
   it("counts nothing against a dry day", () => {
@@ -271,10 +273,11 @@ describe("directions — the answer shape", () => {
     );
   });
 
-  it("marks a direction the rain has already ruled out", () => {
-    const wet = directionsFor(pool, { company: "child" }, { wet: true });
+  it("marks a direction Atlas says is out in the open", () => {
+    const placed = pool.map((p, i) => (i < 2 ? inWeather("exposed", p) : p));
+    const wet = directionsFor(placed, { company: "child" }, { wet: true });
     expect(wet.find((d) => d.doing === "Swimming")!.ruledOutByRain).toBe(true);
-    // Skating is not *claimed* dry — only not provably outdoor.
+    // Skating has no reading. Not claimed dry, and not ruled out either.
     expect(wet.find((d) => d.doing === "Skating")!.ruledOutByRain).toBe(false);
   });
 
