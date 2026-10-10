@@ -39,11 +39,24 @@ export default async function DiscoveryPage() {
   // Done here rather than in the mapper: the duplication is worth fixing at
   // the source one day, but that field is read across October and the detail
   // pages, and a Discovery performance pass is not where to find out.
+  //
+  // **And the geography evidence, for the same reason.** `candidate-geography/2`
+  // carries an `evidence` array per candidate — the records behind the claim.
+  // Passport reads `state`, `locality`, `area`, `localities` and `conflict`,
+  // and nothing in the product UI reads `evidence` at all. Serialising 2,683 of
+  // them added 563 KB to every page view, which is a regression this mission
+  // introduced and this undoes. The claim is kept whole; only its working is
+  // dropped, and it is still one request away on the subject's own page.
   const experiences = candidates
     .map(candidateToExperience)
     .map((e) =>
       e.description === e.shortDescription
         ? ({ ...e, description: undefined } as typeof e)
+        : e,
+    )
+    .map((e) =>
+      e.geography?.evidence
+        ? { ...e, geography: { ...e.geography, evidence: undefined } }
         : e,
     );
 
