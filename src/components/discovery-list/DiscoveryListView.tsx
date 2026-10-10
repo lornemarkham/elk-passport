@@ -49,7 +49,9 @@ import {
   type DayWeather,
   type Situation,
 } from "@/domain/discovery/situation";
-import { nearSection } from "@/domain/discovery/proximity";
+import { nearSection, nearYou } from "@/domain/discovery/proximity";
+import { invitationSection, invitations } from "@/domain/discovery/directions";
+import { InvitationStrip } from "./InvitationStrip";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
@@ -160,6 +162,9 @@ export function DiscoveryListView({
   // the forecast the panel states, and which possibilities the page can say
   // are within reach. Held for the visit, written nowhere — see `useHere`.
   const { place, weather: here, at, ask } = useHere();
+
+  /** Which verb the person tapped, if any. One at a time, nothing persisted. */
+  const [doing, setDoing] = useState<string | undefined>(undefined);
   /**
    * What the person said they feel like, in their words rather than Atlas's.
    * `null` is the composed page; a key narrows the whole pool to that intent.
@@ -380,6 +385,27 @@ export function DiscoveryListView({
    * at all and demoting them would be treating "Atlas has not placed this" as
    * "this is far away". It is not evidence of anything.
    */
+  /**
+   * **The verbs, drawn from whatever the page is honestly talking about.**
+   *
+   * Near them once they have shared where they are, and the whole feed until
+   * then. Built over everything, a person in Vancouver would be invited to go
+   * swimming in the Okanagan — the invitation has to inherit the geographic
+   * honesty rather than quietly route around it.
+   */
+  const invitePool = useMemo(
+    () => (at ? nearYou(composedPool, at) : composedPool),
+    [composedPool, at],
+  );
+  const offers = useMemo(() => invitations(invitePool), [invitePool]);
+
+  // Moving between towns changes which verbs exist. A selection that no longer
+  // has evidence behind it is dropped during render — React's own documented
+  // way of adjusting state from props, rather than an effect that would paint
+  // the stale answer first.
+  const chosen = offers.find((offer) => offer.doing === doing);
+  if (doing && !chosen) setDoing(undefined);
+
   const composed = useMemo(() => {
     // **Saved things leave the feed**, exactly as they do from the flat list.
     // That is this page's established contract — the board is a saved item's
@@ -391,8 +417,12 @@ export function DiscoveryListView({
       ...(where ? { where } : {}),
     });
     const near = nearSection(composedPool, at);
-    return near ? [near, ...sections] : sections;
-  }, [composedPool, now, where, at]);
+    const withNear = near ? [near, ...sections] : sections;
+    // What they just asked for leads, because they just asked for it.
+    return chosen
+      ? [invitationSection(chosen, Boolean(at)), ...withNear]
+      : withNear;
+  }, [composedPool, now, where, at, chosen]);
 
   /** Which intents this pool can actually fill. A dead chip is worse than none. */
   const intents = useMemo(
@@ -681,6 +711,21 @@ export function DiscoveryListView({
               experiences={composedPool}
               situation={situation}
               onSituation={setSituation}
+            />
+          </div>
+        )}
+
+        {/* The page's own headline question, answered in verbs before the
+            list of nouns underneath it gets a chance to. Only on the composed
+            page: somebody who has typed a search has already said what they
+            are looking for. */}
+        {!browsing && offers.length > 0 && (
+          <div className="mt-6">
+            <InvitationStrip
+              invitations={offers}
+              near={Boolean(at)}
+              {...(doing ? { selected: doing } : {})}
+              onSelect={setDoing}
             />
           </div>
         )}
