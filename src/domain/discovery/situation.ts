@@ -282,3 +282,77 @@ export function readWeather(
     source,
   };
 }
+
+/**
+ * **PROTOTYPE (local only, not deployed).**
+ *
+ * *"What should we do with our day?"* is a question about **verbs**. The
+ * current answer is a list of **nouns** — Stuart Park Ice Rink, Deer Park,
+ * Marshall Field — which is a list of records that happen to satisfy a query,
+ * and is the wrong abstraction however well it is ranked.
+ *
+ * Atlas now states the verbs: `candidate-knowledge/1` holds what you can
+ * actually do somewhere. Clustered over the child-doable subjects in the live
+ * feed they are genuinely distinct days, not synonyms:
+ *
+ * ```
+ * swimming 33 · playground 28 · picnic 13 · wildlife 11 · walking 10
+ * beach 9 · tennis 8 · basketball 7 · skating 7 · soccer 4
+ * ```
+ *
+ * *Go skating* and *find a playground* are two different afternoons. *Stuart
+ * Park Ice Rink* and *Memorial Arena* are two rows about one of them.
+ *
+ * So a direction is a verb plus the places that back it — **never a schedule.**
+ * Composing a timeline would need opening hours (stated for 6% of the corpus,
+ * and most of those are "Opened in September 1888 by Lord Stanley"), expected
+ * duration (1%) and travel feasibility (11% have coordinates). A morning /
+ * lunch / afternoon answer built on that is a fabrication, and the doctrine
+ * puts sequencing in SHAPE rather than DISCOVER anyway.
+ */
+export interface Direction {
+  /** The verb, in Atlas's own words — `Skating`, `Playground`, `Swimming`. */
+  readonly doing: string;
+  /** The subjects that state it. The evidence, not a ranking. */
+  readonly places: readonly Experience[];
+  /** Whether the weather already argues against every one of them. */
+  readonly ruledOutByRain: boolean;
+}
+
+/**
+ * The few distinct things a person could actually do, given their situation.
+ *
+ * Ordered by how much evidence stands behind each — not a score, a count of
+ * places that said so. A direction backed by one record is still offered,
+ * because one real option is an answer and an empty page is not.
+ */
+export function directionsFor(
+  experiences: readonly Experience[],
+  situation: Situation,
+  options: { readonly wet?: boolean } = {},
+): readonly Direction[] {
+  const { matches } = answerFor(experiences, situation, options);
+  if (matches.length === 0) return [];
+
+  const byDoing = new Map<string, Experience[]>();
+  for (const experience of matches) {
+    for (const doing of childEvidence(experience)) {
+      const key = doing.toLowerCase();
+      if (!byDoing.has(key)) byDoing.set(key, []);
+      byDoing.get(key)!.push(experience);
+    }
+  }
+
+  return [...byDoing.entries()]
+    .map(([key, places]) => ({
+      doing: places[0]!.knowledge
+        ? (childEvidence(places[0]!).find((d) => d.toLowerCase() === key) ??
+          key)
+        : key,
+      places,
+      ruledOutByRain: Boolean(
+        options.wet && places.every((p) => shelterOf(p) === "outdoor"),
+      ),
+    }))
+    .sort((a, b) => b.places.length - a.places.length);
+}

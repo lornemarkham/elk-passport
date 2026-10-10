@@ -5,6 +5,7 @@ import {
   WET_CHANCE,
   answerFor,
   childEvidence,
+  directionsFor,
   doableEvidence,
   hasSituation,
   readWeather,
@@ -218,5 +219,74 @@ describe("reading a real forecast", () => {
     // Not "dry". A product that reads silence as sunshine sends people out
     // in it.
     expect(readWeather([], "MSC")).toBeUndefined();
+  });
+});
+
+/**
+ * **The answer shape, decided by investigation and not yet shipped.**
+ *
+ * *"What should we do with our day?"* is a question about verbs. The shipped
+ * panel answers with nouns — Stuart Park Ice Rink, Deer Park, Marshall Field —
+ * which is a list of records that satisfy a query, and is the wrong
+ * abstraction however well it is ranked.
+ *
+ * Measured over the live feed, the verbs Atlas states cluster into genuinely
+ * distinct days rather than synonyms: swimming 33 · playground 28 · picnic 13
+ * · wildlife 11 · walking 10 · beach 9 · tennis 8 · basketball 7 · skating 7.
+ *
+ * These pin the shape so the next slice inherits a decision rather than
+ * re-deriving it. `directionsFor` is deliberately **not wired to any surface
+ * yet** — see the mission report: on a wet day it returns five greyed-out
+ * ideas, because every affordance Atlas holds is fair-weather outdoor.
+ */
+describe("directions — the answer shape", () => {
+  const pool = [
+    withKnowledge(offers("Swimming"), { title: "Otter Lake" }),
+    withKnowledge(offers("Swimming"), { title: "Kekuli Bay" }),
+    withKnowledge(offers("Playground"), { title: "Pine Park" }),
+    withKnowledge(offers("Skating"), { title: "Stuart Park Ice Rink" }),
+    withKnowledge(undefined, { title: "Something unclassified" }),
+  ];
+
+  it("answers in verbs rather than in records", () => {
+    const directions = directionsFor(pool, { company: "child" });
+    expect(directions.map((d) => d.doing)).toEqual([
+      "Swimming",
+      "Playground",
+      "Skating",
+    ]);
+  });
+
+  it("carries the places behind each, as evidence rather than a ranking", () => {
+    const [first] = directionsFor(pool, { company: "child" });
+    expect(first!.places.map((p) => p.title)).toEqual([
+      "Otter Lake",
+      "Kekuli Bay",
+    ]);
+  });
+
+  it("leads with the direction most places stand behind", () => {
+    expect(directionsFor(pool, { company: "child" })[0]!.doing).toBe(
+      "Swimming",
+    );
+  });
+
+  it("marks a direction the rain has already ruled out", () => {
+    const wet = directionsFor(pool, { company: "child" }, { wet: true });
+    expect(wet.find((d) => d.doing === "Swimming")!.ruledOutByRain).toBe(true);
+    // Skating is not *claimed* dry — only not provably outdoor.
+    expect(wet.find((d) => d.doing === "Skating")!.ruledOutByRain).toBe(false);
+  });
+
+  it("offers nothing for a situation Atlas has no evidence about", () => {
+    // Measured: "just me + an hour" and "with friends" both return zero over
+    // the live corpus. The shape generalises; the evidence does not.
+    expect(directionsFor(pool, { company: "alone" })).toEqual([]);
+    expect(directionsFor(pool, { company: "group" })).toEqual([]);
+  });
+
+  it("never invents a direction for a place Atlas says nothing about", () => {
+    const blank = [withKnowledge(undefined, { title: "A place" })];
+    expect(directionsFor(blank, { company: "child" })).toEqual([]);
   });
 });
