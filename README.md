@@ -2,7 +2,11 @@
 
 Let's make today unforgettable.
 
-See `/docs` for the engineering foundation (vision, experience, technical, architecture, build contract) and the numbered files at the repo root (`01-mission.md` onward) for the full Product Brain.
+## Start here
+
+**[`docs/PASSPORT-PRODUCT-DOCTRINE.md`](docs/PASSPORT-PRODUCT-DOCTRINE.md) is product authority** — why Passport exists, the Discover → React → Collect → Shape → Commit → Live → Adapt → Remember → Learn loop, what is deliberately not being built yet, and what is still an open question. Read it before changing product behaviour, and do not infer Passport's purpose from the current UI alone.
+
+`CLAUDE.md` carries the same instruction for agents. The rest of `docs/` is engineering and per-surface product detail; `archive/` (the old numbered "Product Brain", `01-mission.md` onward) and `docs/old-might-be-garbage/` are history rather than authority.
 
 ## Running it tonight
 
