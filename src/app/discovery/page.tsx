@@ -4,6 +4,7 @@ import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { DiscoveryListView } from "@/components/discovery-list/DiscoveryListView";
 import { activeScope } from "@/domain/discovery/activeScope";
 import { currentUser } from "@/lib/auth/currentUser";
+import { ZONE } from "@/domain/experience/eventTime";
 
 export const metadata: Metadata = {
   title: "Discovery — Passport",
@@ -27,13 +28,44 @@ export default async function DiscoveryPage() {
     // else. Passport gives before it asks.
     currentUser(),
   ]);
-  const experiences = candidates.map(candidateToExperience);
+  // **The same sentence, not shipped twice.** `candidateToExperience` sets
+  // `shortDescription` and `description` to the identical Atlas string, and
+  // this page serialises the whole pool to the browser so search can be
+  // instant — 313 KB of exact duplicate on every page view. Every consumer
+  // that reads `description` concatenates `shortDescription` beside it, so
+  // dropping the copy changes no behaviour and no search result.
+  //
+  // Done here rather than in the mapper: the duplication is worth fixing at
+  // the source one day, but that field is read across October and the detail
+  // pages, and a Discovery performance pass is not where to find out.
+  const experiences = candidates
+    .map(candidateToExperience)
+    .map((e) =>
+      e.description === e.shortDescription
+        ? ({ ...e, description: undefined } as typeof e)
+        : e,
+    );
+
+  // **The day, resolved once on the server.** Composition is time-aware — what
+  // is on today leads the page — and a client that reads its own clock during
+  // render hydrates into a mismatch with the markup it was sent. Both halves
+  // read this one instant, and `ZONE` keeps "today" meaning the day it is
+  // where the subjects are rather than where the reader happens to be.
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: ZONE,
+  }).format(now);
 
   return (
     <DiscoveryListView
       experiences={experiences}
       scope={scope}
       displayName={user?.displayName ?? null}
+      now={now.toISOString()}
+      today={today}
     />
   );
 }

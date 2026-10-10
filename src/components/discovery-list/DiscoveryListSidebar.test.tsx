@@ -145,7 +145,9 @@ describe("saved items the Place template cannot hold", () => {
     // SavedListItem at all — the board simply has nothing to show for it.
     const { sidebar } = renderSidebar([]);
     expect(sidebar.querySelector('a[href^="/places/"]')).toBeNull();
-    expect(within(sidebar).getByText(/0 experiences saved/)).toBeTruthy();
+    // An empty board no longer prints a filing cabinet and a count of zero at
+    // somebody who has not picked anything up yet; it says what it is for.
+    expect(sidebar.dataset.testid).toBe("board-empty");
   });
 });
 

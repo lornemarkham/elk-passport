@@ -71,6 +71,44 @@ export function DiscoveryListSidebar({
     );
   }
 
+  // **An empty board is a line, not a panel.**
+  //
+  // The sidebar is a 320px column that held a titled card, a switcher, a
+  // delete control and a count of zero before anybody had collected anything
+  // — a filing cabinet shown to somebody who has not yet picked a single
+  // thing up. Until there is something in it, it says what it is for and gets
+  // out of the way. Everything below returns the moment one thing is saved.
+  const empty = savedItems.length === 0;
+
+  if (empty) {
+    return (
+      <aside
+        aria-label="Board"
+        data-testid="board-empty"
+        className="self-start rounded-2xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 p-4"
+      >
+        <p className="font-heading text-base text-[#2b2015]/70">
+          {signedIn ? "Your board is empty" : "Keep what you find"}
+        </p>
+        <p className="mt-1 text-sm text-[#2b2015]/55">
+          {signedIn
+            ? "Save anything above and it collects here — the start of a day worth having."
+            : "Sign in and what you save stays here, on any device. Browsing needs no account."}
+        </p>
+        {signedIn && (
+          <div className="mt-3">
+            <BoardSwitcher
+              boards={boards}
+              activeBoardId={board?.id}
+              onSwitchBoard={onSwitchBoard}
+              onCreateBoard={onCreateBoard}
+            />
+          </div>
+        )}
+      </aside>
+    );
+  }
+
   return (
     <aside
       aria-label="Board"

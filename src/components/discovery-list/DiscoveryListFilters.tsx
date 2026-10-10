@@ -56,7 +56,7 @@ function ChipGroup({
               aria-pressed={isSelected}
               onClick={() => onToggle(option)}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs capitalize transition-colors",
+                "inline-flex min-h-11 items-center rounded-full border px-3.5 text-xs capitalize transition-colors",
                 isSelected
                   ? "border-[#8a5a24]/50 bg-[#8a5a24]/10 text-[#2b2015]"
                   : "border-[#8a5a24]/15 bg-transparent text-[#2b2015]/50 hover:border-[#8a5a24]/30 hover:text-[#2b2015]/70",
@@ -196,24 +196,28 @@ export function DiscoveryListFilters({
         </div>
       )}
 
-      {/* Says what is on screen, not how many rows Atlas holds. "186
-          experiences" was a database count presented as a product fact. */}
-      <p
-        className="mt-4 text-xs text-[#2b2015]/50"
-        data-testid="result-summary"
-      >
-        {resultCount === 0
-          ? "Nothing here yet"
-          : browsing
-            ? `${resultCount} ${resultCount === 1 ? "result" : "results"}`
-            : `${resultCount} to explore`}
-      </p>
+      {/* **Only while somebody is actually searching.**
+          "2248 to explore" was the page's answer to "what could I do?" — a row
+          count offered as a product fact, and the single clearest statement
+          that this was a database with a search box on it. Idle, the composed
+          page below says what is worth looking at; a number says nothing. A
+          result count while searching is genuinely useful, so that stays. */}
+      {browsing && (
+        <p
+          className="mt-4 text-xs text-[#2b2015]/50"
+          data-testid="result-summary"
+        >
+          {resultCount === 0
+            ? "Nothing here matches that"
+            : `${resultCount} ${resultCount === 1 ? "result" : "results"}`}
+        </p>
+      )}
     </div>
   );
 }
 
 function chipClass(active: boolean): string {
   return active
-    ? "rounded-full border border-[#8a5a24] bg-[#8a5a24] px-3 py-1 text-xs text-[#f7ecd3]"
-    : "rounded-full border border-[#8a5a24]/25 px-3 py-1 text-xs text-[#2b2015]/70 transition-colors hover:border-[#8a5a24]/50";
+    ? "inline-flex min-h-11 items-center rounded-full border border-[#8a5a24] bg-[#8a5a24] px-3.5 text-xs text-[#f7ecd3]"
+    : "inline-flex min-h-11 items-center rounded-full border border-[#8a5a24]/25 px-3.5 text-xs text-[#2b2015]/70 transition-colors hover:border-[#8a5a24]/50";
 }

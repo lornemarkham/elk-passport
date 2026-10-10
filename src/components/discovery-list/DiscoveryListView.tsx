@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { Leaf } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { MapPin } from "lucide-react";
 import { filterExperiences } from "@/domain/discovery/filterExperiences";
 import { rankByQuery } from "@/domain/discovery/searchRank";
 import {
@@ -36,7 +36,6 @@ import {
 import { AccountControl } from "@/components/auth/AccountControl";
 import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
 import { isOctoberKind } from "@/lib/october/types";
-import { octoberLanes } from "@/domain/discovery/octoberLanes";
 import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { DiscoveryListFilters } from "./DiscoveryListFilters";
 import {
@@ -49,8 +48,19 @@ import {
 } from "./DiscoveryModeSwitcher";
 import { InspirationFeed } from "./InspirationFeed";
 import { ExperienceListRow } from "./ExperienceListRow";
+import { DiscoveryOpening } from "./DiscoveryOpening";
+import { DiscoverySections } from "./DiscoverySections";
+import { composeDiscovery } from "@/domain/discovery/compose";
+import {
+  availableIntents,
+  intentOf,
+  type IntentKey,
+} from "@/domain/discovery/intents";
 import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
 import type { ExperienceKind } from "@/domain/experience/types";
+
+/** How many results a page of search or browse shows before offering more. */
+const RESULT_PAGE = 24;
 
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort();
@@ -74,6 +84,16 @@ interface DiscoveryListViewProps {
    * — the feed, the scope, search, kinds, Inspiration — is identical either way.
    */
   displayName?: string | null;
+  /**
+   * The instant the server rendered, as an ISO string.
+   *
+   * Composition is time-aware, and a client reading its own clock during
+   * render hydrates into a mismatch with the markup it was sent. One instant,
+   * resolved once, used by both halves.
+   */
+  now?: string;
+  /** That instant written out, e.g. `Saturday, October 10`. */
+  today?: string;
 }
 
 /**
@@ -89,6 +109,8 @@ export function DiscoveryListView({
   experiences,
   scope,
   displayName = null,
+  now,
+  today,
 }: DiscoveryListViewProps) {
   const signedIn = displayName !== null;
   const [kind, setKind] = useState<ExperienceKind | null>(null);
@@ -112,15 +134,32 @@ export function DiscoveryListView({
   const boardRequestRef = useRef(0);
 
   const [query, setQuery] = useState("");
+  // What the person said they feel like, in their words rather than Atlas's.
+  // `null` is the composed page; a key narrows the whole pool to that intent.
+  const [intent, setIntent] = useState<IntentKey | null>(null);
+  // How many search/browse results are on screen.
+  const [shown, setShown] = useState(RESULT_PAGE);
   // Which Things are already in this person's October. Loaded once for a
   // signed-in person; a visitor has none and is never asked.
   const [wantedIds, setWantedIds] = useState<ReadonlySet<string>>(new Set());
   // Which way the same catalogue is being browsed. List is the default because
   // a returning traveller usually arrives with something in mind.
-  const [mode, setMode] = useState<DiscoveryMode>("List");
+  const [mode, setMode] = useState<DiscoveryMode>("Discover");
   const [filters, setFilters] = useState<DiscoveryFilterState>(
     createEmptyFilterState(),
   );
+
+  // **Reset during render, not in an effect.** A new question starts at the
+  // top of a short page rather than halfway down a long one — and doing that
+  // in an effect renders the stale page first and corrects it a frame later,
+  // which is the pattern React documents as adjusting state when a prop
+  // changes, not as something to put in `useEffect`.
+  const question = JSON.stringify([query, kind, intent, filters]);
+  const [lastQuestion, setLastQuestion] = useState(question);
+  if (question !== lastQuestion) {
+    setLastQuestion(question);
+    setShown(RESULT_PAGE);
+  }
 
   // Same bootstrap contract as the immersive DiscoverySpace (resolve the
   // persisted active board, or Atlas's first, and load its real items) —
@@ -221,7 +260,14 @@ export function DiscoveryListView({
   // (see `defaultFeed`), and a typed query or an explicit kind searches the
   // *whole* corpus. So `Snowboarding` leaves the feed and is still findable,
   // which is the entire point of keeping the two questions apart.
-  const browsing = query.trim().length > 0 || kind !== null;
+  // **Browsing means the person asked for something specific.** Then the page
+  // owes them one ranked answer rather than a composed magazine, and the whole
+  // corpus is in scope — `Snowboarding` leaves the composed page and is still
+  // findable, which is the entire point of keeping the two questions apart.
+  const browsing = query.trim().length > 0 || kind !== null || intent !== null;
+  // Where Passport is looking, said once and used by the opening, the composed
+  // remainder section and nothing else.
+  const where = scopeLabel(scope);
 
   const visible = useMemo(() => {
     // The geographic scope is applied to the whole pool, before the feed policy
@@ -235,12 +281,43 @@ export function DiscoveryListView({
     // the pool keeps its order. Scope, feed, filters, kind and saved-item
     // exclusion are unchanged around it.
     return rankByQuery(
-      filterExperiences(pool, filters).filter((experience) =>
-        kind ? experience.kind === kind : true,
-      ),
+      filterExperiences(pool, filters)
+        .filter((experience) => (kind ? experience.kind === kind : true))
+        .filter((experience) =>
+          intent ? intentOf(experience) === intent : true,
+        ),
       query,
     ).filter((experience) => !savedIds.has(experience.id));
-  }, [experiences, filters, query, savedIds, browsing, kind, scope]);
+  }, [experiences, filters, query, savedIds, browsing, kind, intent, scope]);
+
+  /**
+   * **The composed page: what somebody sees before they ask for anything.**
+   *
+   * The same scoped, feed-filtered pool the list browses — framed rather than
+   * poured out. Built here rather than on the server because the pool is
+   * already here and composing it is cheap; what is *not* cheap, and is why
+   * this exists at all, is rendering 2,248 rows, which is what this replaced.
+   */
+  const composed = useMemo(() => {
+    // **Saved things leave the feed**, exactly as they do from the flat list.
+    // That is this page's established contract — the board is a saved item's
+    // only home, which is why the board carries its detail link — and a
+    // composed page is a different presentation of the same feed, not a
+    // licence to quietly change what saving does.
+    const pool = defaultFeed(scopeExperiences(experiences, scope)).filter(
+      (experience) => !savedIds.has(experience.id),
+    );
+    return composeDiscovery(pool, {
+      now: now ? new Date(now) : new Date(),
+      ...(where ? { where } : {}),
+    });
+  }, [experiences, scope, now, where, savedIds]);
+
+  /** Which intents this pool can actually fill. A dead chip is worse than none. */
+  const intents = useMemo(
+    () => availableIntents(defaultFeed(scopeExperiences(experiences, scope))),
+    [experiences, scope],
+  );
 
   /**
    * What the Inspiration feed browses.
@@ -256,27 +333,10 @@ export function DiscoveryListView({
     [experiences, scope],
   );
 
-  /**
-   * What the October entry browses.
-   *
-   * Everything Passport holds — deliberately *not* the region-scoped pool.
-   * Under that scope the October lanes are empty (Scares 0, October events
-   * 1), because Atlas has asserted membership for 314 of 2,314 entities. The
-   * corpus is Okanagan by construction; the scope is incomplete, not wrong.
-   * Composition is by subtype and date, never by prose, and each card still
-   * says where its Thing is when Atlas knows. The list below stays scoped
-   * exactly as before.
-   */
-  const octoberPool = useMemo(
-    () => octoberLanes(defaultFeed(experiences)),
-    [experiences],
-  );
-
   const kinds = useMemo(
     () => availableKinds(scopeExperiences(experiences, scope)),
     [experiences, scope],
   );
-  const where = scopeLabel(scope);
 
   // Recently saved, newest first, resolved against the already-loaded
   // catalogue rather than a second fetch — Atlas's board-items response
@@ -532,79 +592,51 @@ export function DiscoveryListView({
           "radial-gradient(circle at 12% 8%, rgba(181,101,29,0.10), transparent 45%), radial-gradient(circle at 88% 92%, rgba(120,72,26,0.08), transparent 50%)",
       }}
     >
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-14">
-        <header className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1" />
-            <AccountControl displayName={displayName} returnTo="/discovery" />
-          </div>
-          {/* Where these results come from. Not a control yet — there is one
-              scope and nothing to switch to — but a traveller should never have
-              to guess which area they are looking at, and it is the difference
-              between "the whole corpus" and "the Okanagan". */}
-          {where && (
-            <p
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#8a5a24]"
-              data-testid="active-scope"
-            >
-              <MapPin className="h-4 w-4" aria-hidden="true" />
-              {where}
-            </p>
-          )}
-          <h1 className="font-heading text-3xl font-semibold tracking-tight text-[#2b2015] sm:text-5xl">
-            Discovery
-          </h1>
-          <p className="max-w-xl text-[#2b2015]/60">
-            Search, filter, and save the experiences you want to build your next
-            adventure around.
-          </p>
-        </header>
+      {/* Tighter on a phone. Every pixel here sits between somebody and the
+          first thing they could actually do — which was at y=909 at 375px. */}
+      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-14">
+        <div className="mb-4 flex items-start justify-end gap-4 sm:mb-6">
+          <AccountControl displayName={displayName} returnTo="/discovery" />
+        </div>
+
+        <DiscoveryOpening
+          today={today ?? ""}
+          {...(where ? { where } : {})}
+          intents={intents}
+          selected={intent}
+          onSelect={setIntent}
+        />
 
         <div
           aria-hidden
-          className="my-8 border-t border-dashed border-[#8a5a24]/25"
+          className="my-5 border-t border-dashed border-[#8a5a24]/25 sm:my-8"
         />
 
-        <DiscoveryModeSwitcher mode={mode} onModeChange={setMode} />
+        {/* **Wraps rather than overflows.** Three 44px pills do not fit in
+            375px, and `justify-between` without wrapping pushed the October
+            door off the right edge of the phone — measured at scrollWidth 437
+            against a 375 viewport. A second row costs ~50px; a control nobody
+            can reach costs the control. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[#2b2015]/10 pb-2">
+          <DiscoveryModeSwitcher mode={mode} onModeChange={setMode} />
+          {/* **A door, not a tab.** October was a third peer beside List and
+              Inspiration, which rendered an Experience as a way of looking at
+              this page and quietly answered an architectural question that is
+              still open (doctrine §10). It has its own front door, its own
+              navigation and its own route tree; this is a link to it. */}
+          <Link
+            href="/october"
+            data-testid="october-door"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#8a5a24]/25 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:border-[#8a5a24]/55 hover:bg-[#8a5a24]/10"
+          >
+            <Leaf className="h-4 w-4" aria-hidden />I Am October
+            <span className="text-[#8a5a24]/50">→</span>
+          </Link>
+        </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="mt-5 grid grid-cols-1 gap-6 sm:mt-8 lg:grid-cols-[1fr_320px]">
           <div className="flex flex-col gap-6">
-            {mode === "October" ? (
-              <div className="flex flex-col gap-8">
-                <div className="px-1">
-                  <p className="text-sm font-medium text-[#8a5a24]">
-                    October 2026
-                  </p>
-                  <h2 className="font-heading mt-1 text-3xl text-[#2c1f10]">
-                    What kind of October do you want?
-                  </h2>
-                  <p className="mt-2 max-w-lg text-sm text-[#6b5637]">
-                    Everything Atlas knows about the valley, sorted into the
-                    parts October cares about. Dated things first; nothing
-                    already over.
-                  </p>
-                  {/* Staying in is an October too. */}
-                  <Link
-                    href="/october/movies/night"
-                    className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[#8a5a24]/30 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
-                  >
-                    Movie Night
-                    <span className="text-[#8a5a24]/50">
-                      — nobody&apos;s going anywhere tonight
-                    </span>
-                  </Link>
-                </div>
-                <InspirationFeed
-                  experiences={experiences}
-                  shelves={octoberPool}
-                  savedIds={savedIds}
-                  onSave={handleSave}
-                  wantedIds={wantedIds}
-                  onWant={handleWant}
-                  emptyLine="Atlas has nothing dated for October yet."
-                />
-              </div>
-            ) : mode === "Inspiration" ? (
+            {mode === "Inspiration" ? (
               // The same scoped pool the list browses, framed rather than
               // filtered. `scoped` and not `visible`: the feed is a browse, so
               // the search box and kind chips do not apply to it.
@@ -631,13 +663,28 @@ export function DiscoveryListView({
                   browsing={browsing}
                 />
 
-                {visible.length === 0 ? (
+                {/* **Composed when nobody has asked for anything; ranked when
+                    they have.** Those are different jobs. The composed page
+                    answers "what could I do?"; the flat list answers "where is
+                    the thing I already have in mind?", and ranking a magazine
+                    or composing a search result would do neither well. */}
+                {!browsing ? (
+                  <DiscoverySections
+                    sections={composed}
+                    savedIds={savedIds}
+                    savingId={savingId}
+                    onSave={handleSave}
+                    wantedIds={wantedIds}
+                    onWant={handleWant}
+                  />
+                ) : visible.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 px-4 py-10 text-center text-sm text-[#2b2015]/60">
-                    No experiences match your search.
+                    Nothing here matches that. Try fewer words, or clear what
+                    you have chosen.
                   </p>
                 ) : (
                   <ul className="flex flex-col gap-3">
-                    {visible.map((experience) => (
+                    {visible.slice(0, shown).map((experience) => (
                       <ExperienceListRow
                         key={experience.id}
                         experience={experience}
@@ -649,6 +696,20 @@ export function DiscoveryListView({
                       />
                     ))}
                   </ul>
+                )}
+
+                {/* **Results are paged too.** A kind chip over the whole corpus
+                    is 1,587 Organizations, and rendering all of them is the
+                    same 615-screen page wearing a filter. */}
+                {browsing && visible.length > shown && (
+                  <button
+                    type="button"
+                    data-testid="show-more-results"
+                    onClick={() => setShown((n) => n + RESULT_PAGE)}
+                    className="self-start rounded-full border border-[#8a5a24]/30 px-4 py-2.5 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+                  >
+                    Show more ({visible.length - shown} more)
+                  </button>
                 )}
               </>
             )}
