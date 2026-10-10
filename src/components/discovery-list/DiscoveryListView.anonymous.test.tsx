@@ -125,11 +125,14 @@ describe("Discovery for someone who has not signed in", () => {
     expect(listBoardItems).not.toHaveBeenCalled();
   });
 
-  it("offers a way in, and does not pretend to be signed in", () => {
+  it("does not load a visitor's boards, and does not pretend to be signed in", () => {
     render(<DiscoveryListView experiences={experiences} displayName={null} />);
 
-    expect(screen.getByTestId("sign-in-link")).toBeTruthy();
+    // The sign-in invitation moved to `PassportNav`, which is the bar every
+    // Passport surface carries — this view used to own a second copy of it.
+    // What stays this view's responsibility is not acting signed in.
     expect(screen.queryByTestId("account-control")).toBeNull();
+    expect(listBoards).not.toHaveBeenCalled();
   });
 
   it("invites a sign-in when saving, instead of failing quietly", async () => {
@@ -166,12 +169,12 @@ describe("wanting something while signed out", () => {
 });
 
 describe("Discovery for someone signed in", () => {
-  it("says who they are and loads their boards", async () => {
+  it("loads their boards", async () => {
     render(<DiscoveryListView experiences={experiences} displayName="Ana" />);
 
+    // Who they are is said once, by the nav. This view reads the name only to
+    // decide whether saving writes or invites.
     await waitFor(() => expect(listBoards).toHaveBeenCalled());
-    expect(screen.getByTestId("account-name").textContent).toBe("Ana");
-    expect(screen.queryByTestId("sign-in-link")).toBeNull();
   });
 });
 

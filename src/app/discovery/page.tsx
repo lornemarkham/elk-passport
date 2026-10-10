@@ -4,6 +4,7 @@ import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { DiscoveryListView } from "@/components/discovery-list/DiscoveryListView";
 import { activeScope } from "@/domain/discovery/activeScope";
 import { currentUser } from "@/lib/auth/currentUser";
+import { PassportNav } from "@/components/shell/PassportNav";
 import { ZONE } from "@/domain/experience/eventTime";
 
 export const metadata: Metadata = {
@@ -60,12 +61,15 @@ export default async function DiscoveryPage() {
   }).format(now);
 
   return (
-    <DiscoveryListView
-      experiences={experiences}
-      scope={scope}
-      displayName={user?.displayName ?? null}
-      now={now.toISOString()}
-      today={today}
-    />
+    <>
+      <PassportNav displayName={user?.displayName ?? null} />
+      <DiscoveryListView
+        experiences={experiences}
+        scope={scope}
+        displayName={user?.displayName ?? null}
+        now={now.toISOString()}
+        today={today}
+      />
+    </>
   );
 }

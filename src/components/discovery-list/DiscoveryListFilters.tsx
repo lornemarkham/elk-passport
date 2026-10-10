@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DiscoveryFilterState } from "@/domain/discovery/types";
 import { kindLabel } from "@/domain/discovery/defaultFeed";
@@ -164,36 +164,65 @@ export function DiscoveryListFilters({
           them again to populate a rail is what put a wrong pet policy on
           Ellison Park. */}
 
-      {/* Browse by what Atlas says a thing *is*. No second Passport taxonomy —
-          `kind` comes straight off the candidate. Choosing one also widens the
-          search to the whole corpus, so an explicit "Things to do" shows the
-          Activities the conservative default feed leaves out. */}
+      {/* **The ontology tax, now behind a door.**
+          Browse by what Atlas says a thing *is* — `kind` straight off the
+          candidate, no second Passport taxonomy. It is genuinely useful: an
+          explicit "Things to do" widens the search to the whole corpus and
+          surfaces the Activities the conservative default feed leaves out.
+
+          What it must not be is the *first* thing a person is offered. Two
+          chip rows — human intent, then Places / Food & business / Things to
+          do / Events / Experiences — stacked to about 160px on a phone before
+          a single possibility, and asked somebody to hold two different
+          vocabularies in their head to browse their own Saturday. The
+          doctrine is explicit that human intent beats ontology; it does not
+          say ontology is worthless.
+
+          So it is one press away, open when something in it is already
+          chosen, and it says how many kinds are behind it rather than
+          spending the row on them. */}
       {kinds.length > 1 && (
-        <div
-          className="mt-4 flex flex-wrap gap-2"
-          role="group"
-          aria-label="Browse by kind"
+        <details
+          className="group mt-4"
+          open={selectedKind !== null}
+          data-testid="kind-filter"
         >
-          <button
-            type="button"
-            onClick={() => onKindChange(null)}
-            aria-pressed={selectedKind === null}
-            className={chipClass(selectedKind === null)}
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-[#8a5a24] transition-colors hover:text-[#6b4419]">
+            <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+            {selectedKind ? kindLabel(selectedKind) : "Filter by type"}
+            <ChevronDown
+              className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
+              aria-hidden
+            />
+          </summary>
+          <div
+            className="mt-2 flex flex-wrap gap-2"
+            role="group"
+            aria-label="Browse by kind"
           >
-            For you
-          </button>
-          {kinds.map((kind) => (
             <button
-              key={kind}
               type="button"
-              onClick={() => onKindChange(selectedKind === kind ? null : kind)}
-              aria-pressed={selectedKind === kind}
-              className={chipClass(selectedKind === kind)}
+              onClick={() => onKindChange(null)}
+              aria-pressed={selectedKind === null}
+              className={chipClass(selectedKind === null)}
             >
-              {kindLabel(kind)}
+              Everything
             </button>
-          ))}
-        </div>
+            {kinds.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() =>
+                  onKindChange(selectedKind === kind ? null : kind)
+                }
+                aria-pressed={selectedKind === kind}
+                className={chipClass(selectedKind === kind)}
+              >
+                {kindLabel(kind)}
+              </button>
+            ))}
+          </div>
+        </details>
       )}
 
       {/* **Only while somebody is actually searching.**

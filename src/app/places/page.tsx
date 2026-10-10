@@ -1,3 +1,5 @@
+import { PassportNav } from "@/components/shell/PassportNav";
+import { currentUser } from "@/lib/auth/currentUser";
 import type { Metadata } from "next";
 import { listPlaces } from "@/lib/data/atlas-repo";
 import { PlacesDiscovery } from "@/components/places/PlacesDiscovery";
@@ -20,6 +22,11 @@ export const dynamic = "force-dynamic";
  * field shown is a field Atlas actually holds.
  */
 export default async function PlacesPage() {
-  const places = await listPlaces();
-  return <PlacesDiscovery places={places} />;
+  const [places, user] = await Promise.all([listPlaces(), currentUser()]);
+  return (
+    <>
+      <PassportNav displayName={user?.displayName ?? null} />
+      <PlacesDiscovery places={places} />
+    </>
+  );
 }

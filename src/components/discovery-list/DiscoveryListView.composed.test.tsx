@@ -23,10 +23,25 @@ import type { DiscoveryCandidate } from "@/lib/data/types";
  * changed on the way — saving still removes a card, and a visitor still gets
  * everything.
  */
+/**
+ * Intent lives in the URL now, so the mock has to behave like one: `replace`
+ * writes the query and `useSearchParams` reads it back. A router mock that
+ * swallows navigation would make every intent assertion below pass against a
+ * page that never changed.
+ */
+let search = new URLSearchParams();
+const rerenders: (() => void)[] = [];
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }),
+  useRouter: () => ({
+    refresh: () => {},
+    push: () => {},
+    replace: (url: string) => {
+      search = new URLSearchParams(url.startsWith("?") ? url.slice(1) : "");
+      for (const r of rerenders) r();
+    },
+  }),
   usePathname: () => "/discovery",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => search,
 }));
 
 vi.mock("@/lib/data/boards-repo", () => ({
@@ -112,8 +127,8 @@ const pool = [
 
 const NOW = "2026-10-10T18:00:00.000Z";
 
-const renderPage = (displayName: string | null = null) =>
-  render(
+const renderPage = (displayName: string | null = null) => {
+  const view = render(
     <DiscoveryListView
       experiences={pool}
       displayName={displayName}
@@ -121,8 +136,24 @@ const renderPage = (displayName: string | null = null) =>
       today="Saturday, October 10"
     />,
   );
+  rerenders.push(() =>
+    view.rerender(
+      <DiscoveryListView
+        experiences={pool}
+        displayName={displayName}
+        now={NOW}
+        today="Saturday, October 10"
+      />,
+    ),
+  );
+  return view;
+};
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  search = new URLSearchParams();
+  rerenders.length = 0;
+});
 
 describe("what the page says before anything is asked of it", () => {
   it("says what day it is", () => {
@@ -242,12 +273,16 @@ describe("what must not have changed", () => {
 });
 
 describe("controls that cannot work are not offered", () => {
-  it("offers only the two modes that exist", () => {
+  it("offers no mode switcher at all", () => {
     renderPage();
-    expect(screen.getByTestId("mode-discover")).toBeTruthy();
-    expect(screen.getByTestId("mode-inspiration")).toBeTruthy();
-    // Map and AI were greyed-out peers for months. AI as a tab also
-    // contradicts the doctrine outright: AI is not a tab.
+    // Map and AI were greyed-out peers for months; AI as a tab contradicts
+    // the doctrine outright. Inspiration went the same way — the doctrine
+    // fences it off from implementation, so advertising it as a tab promised
+    // a product that does not exist. And Passport's own bar already says
+    // "Discover", so a tab underneath saying the same word asked somebody to
+    // tell two identically-named things apart.
+    expect(screen.queryByTestId("mode-discover")).toBeNull();
+    expect(screen.queryByTestId("mode-inspiration")).toBeNull();
     expect(screen.queryByText("Map")).toBeNull();
     expect(screen.queryByText("AI")).toBeNull();
   });
@@ -293,7 +328,9 @@ describe("an intent refines the page rather than replacing the product", () => {
 
   it("leads with what has a picture when nothing was typed", () => {
     // Without a query there is nothing to rank by, so the pool arrived in
-    // Atlas's order and the weakest card led.
+    // Atlas's order and the weakest card led. Arriving with the intent already
+    // in the URL is also how the homepage's five doors land here.
+    search = new URLSearchParams("intent=eat");
     const withPicture = {
       ...pool[4]!,
       heroMedia: { type: "image" as const, src: "w.jpg" },
@@ -306,9 +343,30 @@ describe("an intent refines the page rather than replacing the product", () => {
         today="Saturday, October 10"
       />,
     );
-    fireEvent.click(screen.getByTestId("intent-eat"));
     const first = screen.getAllByTestId("possibility")[0]!;
     expect(first.dataset.hasImage).toBe("true");
+  });
+
+  it("is a place, not a mood — the intent lives in the URL", () => {
+    // So the back button leaves it, a link can arrive already in it, and the
+    // homepage's category tiles could become real doors instead of the dead
+    // `<div>`s they were.
+    // `eat` rather than `culture`: this pool holds a winery and no museum,
+    // and a chip the pool cannot fill is deliberately never offered.
+    search = new URLSearchParams("intent=eat");
+    renderPage();
+    expect(screen.getByTestId("intent-eat")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("ignores an intent it does not recognise rather than guessing", () => {
+    search = new URLSearchParams("intent=teleportation");
+    renderPage();
+    expect(screen.getAllByTestId("discovery-section").length).toBeGreaterThan(
+      1,
+    );
   });
 
   it("lets relevance win once something is typed", () => {
