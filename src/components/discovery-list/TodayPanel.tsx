@@ -69,6 +69,7 @@ export function TodayPanel({
   onSituation,
   place,
   origin,
+  withinLabel,
   ask,
 }: {
   /** Written out, e.g. `Saturday, October 11`. */
@@ -81,6 +82,18 @@ export function TodayPanel({
    */
   readonly weather?: DayWeather & { readonly area?: string };
   readonly place: PlaceContext;
+  /**
+   * The category chosen below, if any — so this panel can say it is **not**
+   * answering within it.
+   *
+   * Reported by a real person: the panel said "81 places say what a child
+   * could actually do there" directly above a catalogue reading "120 results"
+   * for *Farms & markets*, and nothing on the page said whether one was a
+   * subset of the other, or whether choosing a category had narrowed the
+   * panel. It had not. Two honest numbers about two different questions read
+   * as one broken number until the page says which is which.
+   */
+  readonly withinLabel?: string;
   /** Where the reader is, so a suggestion can say how far it is. */
   readonly origin?: Point;
   /** `undefined` where the browser cannot do this, or has already been asked. */
@@ -205,6 +218,7 @@ export function TodayPanel({
           situation={situation}
           weather={shown}
           {...(origin ? { origin } : {})}
+          {...(withinLabel ? { withinLabel } : {})}
         />
       )}
     </section>
@@ -326,11 +340,13 @@ function Answer({
   situation,
   weather,
   origin,
+  withinLabel,
 }: {
   readonly answer: ReturnType<typeof answerFor>;
   readonly situation: Situation;
   readonly weather?: DayWeather;
   readonly origin?: Point;
+  readonly withinLabel?: string;
 }) {
   if (situation.company !== "child") {
     return (
@@ -370,7 +386,15 @@ function Answer({
         <>
           <p className="text-sm text-[#2b2015]">
             <strong className="font-semibold">{matches.length}</strong> places
-            say what a child could actually do there.
+            say what a child could actually do there
+            {withinLabel ? (
+              <>
+                {" "}
+                — across everything Passport knows, not just{" "}
+                <span className="font-medium">{withinLabel}</span>
+              </>
+            ) : null}
+            .
           </p>
 
           {wet && (

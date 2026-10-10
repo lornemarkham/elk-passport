@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -44,11 +44,7 @@ import {
 } from "./DiscoveryListSidebar";
 import { DiscoveryOpening } from "./DiscoveryOpening";
 import { TodayPanel } from "./TodayPanel";
-import {
-  EMPTY_SITUATION,
-  type DayWeather,
-  type Situation,
-} from "@/domain/discovery/situation";
+import type { DayWeather, Situation } from "@/domain/discovery/situation";
 import { nearSection, nearYou } from "@/domain/discovery/proximity";
 import { invitationSection, invitations } from "@/domain/discovery/directions";
 import { InvitationStrip } from "./InvitationStrip";
@@ -67,9 +63,16 @@ import {
   intentOf,
   type IntentKey,
 } from "@/domain/discovery/intents";
-
-/** The intents a `?intent=` may name. Anything else is ignored, not guessed. */
-const INTENT_KEYS: readonly IntentKey[] = INTENTS.map((i) => i.key);
+import {
+  pendingParam,
+  readPending,
+  readSession,
+  sessionHref,
+  sessionQuery,
+  situationOf,
+  type DiscoverySession,
+  type PendingAction,
+} from "@/domain/discovery/session";
 import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
 import type { ExperienceKind } from "@/domain/experience/types";
 
@@ -133,7 +136,7 @@ export function DiscoveryListView({
   weather,
 }: DiscoveryListViewProps) {
   const signedIn = displayName !== null;
-  const [kind, setKind] = useState<ExperienceKind | null>(null);
+
   const [boards, setBoards] = useState<Board[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
   const [boardsLoaded, setBoardsLoaded] = useState(false);
@@ -153,18 +156,10 @@ export function DiscoveryListView({
   // request resolves is allowed to apply setBoard.
   const boardRequestRef = useRef(0);
 
-  const [query, setQuery] = useState("");
   // The day a person actually has. Situational and deliberately not persisted
   // — see `situation.ts`. Nothing here becomes a profile.
-  const [situation, setSituation] = useState<Situation>(EMPTY_SITUATION);
-
-  // **Where the reader is, owned here because two things now answer to it:**
-  // the forecast the panel states, and which possibilities the page can say
-  // are within reach. Held for the visit, written nowhere — see `useHere`.
   const { place, weather: here, at, ask } = useHere();
 
-  /** Which verb the person tapped, if any. One at a time, nothing persisted. */
-  const [doing, setDoing] = useState<string | undefined>(undefined);
   /**
    * What the person said they feel like, in their words rather than Atlas's.
    * `null` is the composed page; a key narrows the whole pool to that intent.
@@ -174,17 +169,52 @@ export function DiscoveryListView({
    * it, and the eight dead category tiles on Passport's own homepage became
    * five working front doors instead of being deleted.
    */
-  const router = useRouter();
-  const search = useSearchParams();
-  const asked = search.get("intent");
-  const intent = INTENT_KEYS.find((k) => k === asked) ?? null;
-  const setIntent = (next: IntentKey | null) => {
-    const params = new URLSearchParams(search.toString());
-    if (next) params.set("intent", next);
-    else params.delete("intent");
-    const query = params.toString();
-    router.replace(query ? `?${query}` : "/discovery", { scroll: false });
+  const params = useSearchParams();
+
+  /**
+   * **The whole exploration, held in the URL.**
+   *
+   * Read once on mount and mirrored back with `history.replaceState` rather
+   * than a router navigation: this page's server half reads Atlas, and a soft
+   * navigation per keystroke would re-run that. The URL is a record of where
+   * somebody is, not a request to fetch it again.
+   *
+   * Everything that used to be local state lives here — the category, what
+   * they typed, who is with them, how long they have, the verb they tapped —
+   * so a refresh, a trip to the board, and a round trip through sign-in all
+   * put them back where they were.
+   */
+  const [session, setSession] = useState<DiscoverySession>(() =>
+    readSession(new URLSearchParams(params.toString())),
+  );
+  const intent = session.intent ?? null;
+  const query = session.query ?? "";
+  const kind = session.kind ?? null;
+  const doing = session.doing;
+  const situation = situationOf(session);
+
+  const change = (next: DiscoverySession) => {
+    setSession(next);
+    const query = sessionQuery(next);
+    window.history.replaceState(
+      null,
+      "",
+      query ? `?${query}` : window.location.pathname,
+    );
   };
+  const setIntent = (next: IntentKey | null) =>
+    change({
+      ...session,
+      ...(next ? { intent: next } : { intent: undefined }),
+    });
+  const setQuery = (next: string) => change({ ...session, query: next });
+  const setKind = (next: ExperienceKind | null) =>
+    change({ ...session, ...(next ? { kind: next } : { kind: undefined }) });
+  const setSituation = (next: Situation) =>
+    change({ ...session, company: next.company, window: next.window });
+  const setDoing = (next: string | undefined) =>
+    change({ ...session, doing: next });
+
   // How many search/browse results are on screen.
   const [shown, setShown] = useState(RESULT_PAGE);
   // Which Things are already in this person's October. Loaded once for a
@@ -238,11 +268,24 @@ export function DiscoveryListView({
           (storedId && allBoards.find((b) => b.id === storedId)) ||
           allBoards[0];
         if (!resolved) return;
-        const items = await listBoardItems(resolved.id);
-        if (cancelled) return;
+        // **Which board this is, before what is on it.** These used to be
+        // one step, so a failed item fetch left `board` null — the sidebar
+        // showed no board, *Review board* vanished, and the next save created
+        // a second board called "My Places" beside the real one.
         setBoard(resolved);
         setStoredActiveBoardId(resolved.id);
-        setBoardItems(items);
+        try {
+          const items = await listBoardItems(resolved.id);
+          if (!cancelled) setBoardItems(items);
+        } catch (error) {
+          // The board is still theirs and still reachable. Only its contents
+          // are missing, and saying so beats pretending it is not there.
+          console.error(
+            `Failed to load items for board ${resolved.id}:`,
+            error,
+          );
+          toast.error("Couldn't load what is on your board.");
+        }
       } catch (error) {
         console.error("Failed to load boards from Atlas:", error);
         setBoardsLoaded(true);
@@ -274,6 +317,50 @@ export function DiscoveryListView({
     [signedIn, boardItems],
   );
   const boardsReady = signedIn ? boardsLoaded : true;
+
+  /**
+   * **The button they pressed before Passport interrupted them.**
+   *
+   * They tapped *Want to do* on Kangaroo Creek Farm, were asked to sign in,
+   * signed in — and nothing had happened, because the press was never carried
+   * anywhere. It rides in the URL now (`?do=want:<id>`) and is replayed here,
+   * exactly once, as soon as there is somebody to replay it for.
+   *
+   * Stripped from the URL before the call, not after: a replay that failed and
+   * left the parameter in place would fire again on the next render, and
+   * saving twice is the duplicate this is supposed to avoid. Both underlying
+   * calls are idempotent anyway — `wantToDo` is a PUT, and `saveExperienceToBoard`
+   * is guarded below — so the cost of the belt is nothing.
+   */
+  const replayed = useRef(false);
+  useEffect(() => {
+    if (replayed.current || !signedIn || !boardsReady) return;
+    const pending = readPending(new URLSearchParams(window.location.search));
+    if (!pending) return;
+    replayed.current = true;
+    const stay = sessionQuery(
+      readSession(new URLSearchParams(window.location.search)),
+    );
+    window.history.replaceState(
+      null,
+      "",
+      stay ? `?${stay}` : window.location.pathname,
+    );
+    const experience = experiences.find((e) => e.id === pending.id);
+    if (!experience) {
+      // The exploration came back but the thing did not — a candidate Atlas
+      // no longer serves. Said rather than silently dropped.
+      toast.error("That one is no longer available.");
+      return;
+    }
+    void (pending.act === "want"
+      ? handleWant(experience)
+      : handleSave(experience));
+    // `handleWant`/`handleSave` are hoisted declarations; listing them would
+    // re-run this on every render for no benefit, and `replayed` already makes
+    // it once-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, boardsReady, experiences]);
 
   const availableMoods = useMemo(
     () => uniqueSorted(experiences.flatMap((e) => e.moods)),
@@ -474,7 +561,8 @@ export function DiscoveryListView({
     // Same invitation as saving. A board is durable user state too, so it needs
     // somebody to belong to before it can exist.
     if (!signedIn) {
-      inviteSignIn("A board keeps what you find");
+      // No pending act: a board is a container, not a thing they chose.
+      signInHere("A board keeps what you find");
       return;
     }
 
@@ -577,13 +665,37 @@ export function DiscoveryListView({
    * mid-browse, and throwing them at a sign-in form loses the thing they were
    * looking at. `next` brings them back to it.
    */
-  function inviteSignIn(title: string, description?: string) {
+  /** The same invitation with nothing to replay afterwards. */
+  function signInHere(title: string, description?: string) {
+    const back = sessionHref(session);
     toast(title, {
       description,
       action: {
         label: "Sign in",
         onClick: () => {
-          window.location.href = `/auth?next=${encodeURIComponent("/discovery")}`;
+          window.location.href = `/auth?next=${encodeURIComponent(back)}`;
+        },
+      },
+    });
+  }
+
+  function inviteSignIn(
+    title: string,
+    description: string,
+    /** What they were trying to do, so it can happen on the far side. */
+    pending: PendingAction,
+  ) {
+    // **The whole exploration goes with them.** This used to be the literal
+    // string "/discovery", so signing in dropped the category, the search, the
+    // situation and the thing they had just pressed — they came back to an
+    // empty page and nothing had been kept.
+    const back = sessionHref(session, { do: pendingParam(pending) });
+    toast(title, {
+      description,
+      action: {
+        label: "Sign in",
+        onClick: () => {
+          window.location.href = `/auth?next=${encodeURIComponent(back)}`;
         },
       },
     });
@@ -599,6 +711,7 @@ export function DiscoveryListView({
       inviteSignIn(
         "Sign in to keep this",
         `${experience.title} will be waiting in your October.`,
+        { act: "want", id: experience.id },
       );
       return;
     }
@@ -637,6 +750,7 @@ export function DiscoveryListView({
       inviteSignIn(
         "Sign in to keep this",
         `${experience.title} will be waiting on your board.`,
+        { act: "save", id: experience.id },
       );
       return;
     }
@@ -656,7 +770,10 @@ export function DiscoveryListView({
       // boards had not loaded, which was both wrong and unfixable by waiting.
       // `SaveButton` on a detail page already creates a first board on first
       // save; this is the same behaviour, not a new one.
-      let target = board;
+      // Only when they genuinely have none. `board` can be null while the
+      // first load is still in flight, and creating one then is how a second
+      // "My Places" appears beside the real one.
+      let target = board ?? boards[0] ?? null;
       if (!target) {
         target = await createBoard("My Places");
         setBoards((prev) => [...prev, target!]);
@@ -708,6 +825,12 @@ export function DiscoveryListView({
               {...((here ?? weather) ? { weather: here ?? weather } : {})}
               place={place}
               {...(at ? { origin: at } : {})}
+              {...(intent
+                ? {
+                    withinLabel:
+                      INTENTS.find((i) => i.key === intent)?.label ?? intent,
+                  }
+                : {})}
               {...(ask ? { ask } : {})}
               experiences={composedPool}
               situation={situation}
@@ -775,6 +898,12 @@ export function DiscoveryListView({
                 availableSeasons={availableSeasons}
                 availableCompanions={availableCompanions}
                 resultCount={visible.length}
+                {...(intent
+                  ? {
+                      within:
+                        INTENTS.find((i) => i.key === intent)?.label ?? intent,
+                    }
+                  : {})}
                 kinds={kinds}
                 selectedKind={kind}
                 onKindChange={setKind}
@@ -813,7 +942,14 @@ export function DiscoveryListView({
                      what they felt like. Search did the same.
 
                      Expressing an intent should make the page *more* useful,
-                     not drop it into a different product. */
+                     not drop it into a different product.
+
+                     **And it must not make it less honest.** Reported by a
+                     real person: choosing *Farms & markets* dropped every
+                     distance from every card, because only the composed page
+                     was ever handed the reader's position. Same `origin`,
+                     same rule — a distance where both ends are stated, and
+                     nothing at all otherwise. */
                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {visible.slice(0, shown).map((experience) => (
                     <PossibilityCard
@@ -821,6 +957,7 @@ export function DiscoveryListView({
                       experience={experience}
                       {...(todayKey ? { today: todayKey } : {})}
                       {...(home ? { home } : {})}
+                      {...(at ? { origin: at } : {})}
                       saved={savedIds.has(experience.id)}
                       saving={savingId === experience.id}
                       wanted={wantedIds.has(experience.id)}
@@ -858,6 +995,7 @@ export function DiscoveryListView({
             onRenameBoard={handleRenameBoard}
             onRequestDeleteBoard={handleRequestDeleteBoard}
             onRemoveSaved={handleRemoveSaved}
+            backHref={sessionHref(session)}
           />
         </div>
       </div>

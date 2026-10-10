@@ -31,6 +31,14 @@ interface DiscoveryListSidebarProps {
   onRenameBoard: (name: string) => void | Promise<void>;
   onRequestDeleteBoard: () => void;
   onRemoveSaved: (experienceId: string) => void;
+  /**
+   * The exploration to come back to.
+   *
+   * Reviewing a board used to be a one-way trip: the board's *Continue
+   * discovering* went to a bare `/discovery`, so the category, the search and
+   * the situation somebody had built up were gone by the time they returned.
+   */
+  backHref?: string;
 }
 
 /** The same things the immersive Mood Board sidebar already surfaces —
@@ -59,6 +67,7 @@ export function DiscoveryListSidebar({
   onRenameBoard,
   onRequestDeleteBoard,
   onRemoveSaved,
+  backHref,
 }: DiscoveryListSidebarProps) {
   if (!boardsLoaded) {
     return (
@@ -235,7 +244,15 @@ export function DiscoveryListSidebar({
       {board && savedItems.length > 0 && (
         <Button
           nativeButton={false}
-          render={<Link href={`/boards/${board.id}`} />}
+          render={
+            <Link
+              href={
+                backHref
+                  ? `/boards/${board.id}?back=${encodeURIComponent(backHref)}`
+                  : `/boards/${board.id}`
+              }
+            />
+          }
         >
           Review board
         </Button>

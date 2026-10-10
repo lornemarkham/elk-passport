@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeNext } from "@/lib/auth/safeNext";
 import { ArrowLeft, Compass, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,14 @@ import type { Experience } from "@/domain/experience/types";
 
 type BoardPageProps = {
   params: Promise<{ id: string }>;
+  /**
+   * `?back=` is the exploration that sent them here.
+   *
+   * Without it *Continue discovering* dropped somebody onto an empty
+   * Discovery — a real person lost a category, a search and a situation this
+   * way, twice in one session.
+   */
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function StatePanel({
@@ -51,8 +60,15 @@ function ExperienceList({ experiences }: { experiences: Experience[] }) {
   );
 }
 
-export default async function BoardPage({ params }: BoardPageProps) {
+export default async function BoardPage({
+  params,
+  searchParams,
+}: BoardPageProps) {
   const { id } = await params;
+  // Same-site paths only; `safeNext` refuses anything a stranger could use to
+  // send somebody off the site.
+  const asked = (await searchParams)?.["back"];
+  const back = safeNext(typeof asked === "string" ? asked : null, "/discovery");
   const result = await loadBoardWithExperiences(id);
 
   return (
@@ -138,7 +154,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
                   <Button
                     size="lg"
                     nativeButton={false}
-                    render={<Link href="/discovery" />}
+                    render={<Link href={back} />}
                   >
                     Continue discovering
                   </Button>

@@ -176,3 +176,54 @@ describe("everything else the board already did", () => {
     expect(sidebar.querySelector('a[href^="/passport/"]')).toBeNull();
   });
 });
+
+/**
+ * **Reviewing a board used to be a one-way trip.**
+ *
+ * The board's *Continue discovering* went to a bare `/discovery`, so the
+ * category, the search and the situation somebody had built up were gone by
+ * the time they got back. A real person lost an exploration this way twice in
+ * one sitting.
+ */
+describe("the way back", () => {
+  it("carries the exploration to the board so the board can return it", () => {
+    render(
+      <DiscoveryListSidebar
+        boards={[board]}
+        board={board}
+        boardsLoaded
+        savedItems={[saved({ id: "a", name: "Kangaroo Creek Farm" })]}
+        onSwitchBoard={vi.fn()}
+        onCreateBoard={vi.fn()}
+        onRenameBoard={vi.fn()}
+        onRequestDeleteBoard={vi.fn()}
+        onRemoveSaved={vi.fn()}
+        backHref="/discovery?intent=local&q=farm&who=child"
+      />,
+    );
+    expect(screen.getByText("Review board").closest("a")).toHaveAttribute(
+      "href",
+      "/boards/board-1?back=%2Fdiscovery%3Fintent%3Dlocal%26q%3Dfarm%26who%3Dchild",
+    );
+  });
+
+  it("links plainly where there is no exploration to come back to", () => {
+    render(
+      <DiscoveryListSidebar
+        boards={[board]}
+        board={board}
+        boardsLoaded
+        savedItems={[saved({ id: "a", name: "Kangaroo Creek Farm" })]}
+        onSwitchBoard={vi.fn()}
+        onCreateBoard={vi.fn()}
+        onRenameBoard={vi.fn()}
+        onRequestDeleteBoard={vi.fn()}
+        onRemoveSaved={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Review board").closest("a")).toHaveAttribute(
+      "href",
+      "/boards/board-1",
+    );
+  });
+});

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, MapPin } from "lucide-react";
+import { Check, Leaf, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
@@ -240,13 +240,19 @@ export function PossibilityCard({
               Saved
             </span>
           ) : (
+            /* **The two actions go to two different places**, and saying so
+               only after the fact is what made them feel interchangeable: a
+               person pressed *Want to do*, opened *Review board*, and could
+               not find it — because it had gone to their October instead.
+               Both buttons now name their destination before the press. */
             <button
               type="button"
               onClick={onSave}
               disabled={saving}
+              title="Keep this on your board"
               className="inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-4 text-xs font-medium text-[#f7ecd3] transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Saving…" : "Save to board"}
             </button>
           )}
           {onWant &&
@@ -262,8 +268,10 @@ export function PossibilityCard({
                 type="button"
                 onClick={onWant}
                 data-testid="want-to-do"
-                className="inline-flex min-h-11 items-center rounded-full px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+                title="Keep this in My October"
+                className="inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
               >
+                <Leaf className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Want to do
               </button>
             ))}

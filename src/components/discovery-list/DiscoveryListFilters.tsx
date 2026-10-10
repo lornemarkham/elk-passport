@@ -16,6 +16,8 @@ interface DiscoveryListFiltersProps {
   availableSeasons: string[];
   availableCompanions: string[];
   resultCount: number;
+  /** The category the count is inside, where one is chosen. */
+  within?: string;
   kinds: ExperienceKind[];
   selectedKind: ExperienceKind | null;
   onKindChange: (kind: ExperienceKind | null) => void;
@@ -85,6 +87,7 @@ export function DiscoveryListFilters({
   availableSeasons,
   availableCompanions,
   resultCount,
+  within,
 }: DiscoveryListFiltersProps) {
   const hasChipCategories =
     availableMoods.length > 0 ||
@@ -236,9 +239,16 @@ export function DiscoveryListFilters({
           className="mt-4 text-xs text-[#2b2015]/50"
           data-testid="result-summary"
         >
+          {/* **A bare count does not say what it counted.** Reported: with
+              *Farms & markets* chosen, typing `farm` moved "120 results" to
+              "71 results" and nothing said whether the search had narrowed
+              the category or replaced it. It narrows — so the sentence now
+              says so, and says it in the same words as the chip above. */}
           {resultCount === 0
-            ? "Nothing here matches that"
-            : `${resultCount} ${resultCount === 1 ? "result" : "results"}`}
+            ? `Nothing${within ? ` in ${within}` : " here"} matches that`
+            : `${resultCount} ${resultCount === 1 ? "result" : "results"}${
+                within ? ` in ${within}` : ""
+              }${query.trim() ? ` for “${query.trim()}”` : ""}`}
         </p>
       )}
     </div>
