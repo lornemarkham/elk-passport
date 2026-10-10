@@ -111,7 +111,9 @@ function Section({
           onClick={() => setMore((n) => n + 1)}
           className="mt-4 inline-flex min-h-11 items-center rounded-full border border-[#8a5a24]/30 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
         >
-          More {section.title.toLowerCase()}
+          {/* Not `More {title}` — the remainder section is already called
+              "More to explore", which produced "More more to explore". */}
+          Show more
         </button>
       )}
     </section>
