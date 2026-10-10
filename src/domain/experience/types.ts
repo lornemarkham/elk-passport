@@ -1,4 +1,5 @@
 import type { CandidateAvailability } from "@/lib/data/types";
+import type { CandidateGeography } from "@/lib/data/types";
 
 /**
  * Canonical Experience domain model (IMP-002).
@@ -175,6 +176,12 @@ export interface Experience {
    * Absent means Atlas does not know. Never inferred from a publisher.
    */
   venue?: ExperienceVenue;
+  /**
+   * **Where Atlas says this is** — carried straight through from
+   * `candidate-geography/2`, unaltered. Passport reads it; Passport never
+   * computes it. See `DiscoveryCandidate.geography`.
+   */
+  geography?: CandidateGeography;
   pairsWith?: string[];
 
   isActive: boolean;

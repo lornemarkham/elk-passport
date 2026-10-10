@@ -86,6 +86,9 @@ export function candidateToExperience(
     // candidate with no location gets none, and a publisher's address is
     // never promoted into one.
     venue: candidate.location,
+    // Carried through untouched. Atlas owns geographic truth; the mapper's
+    // only job here is not to lose it.
+    ...(candidate.geography ? { geography: candidate.geography } : {}),
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

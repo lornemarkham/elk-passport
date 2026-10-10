@@ -464,6 +464,73 @@ export interface DiscoveryCandidate {
    * corpus. Passport must render nothing rather than fill it in.
    */
   location?: CandidateLocation;
+  /**
+   * **Where Atlas says this is, and how sure it is** — `candidate-geography/2`,
+   * announced on the response's `grounding.geography`.
+   *
+   * This is the field that closes Discovery's worst trust failure. Before it,
+   * `Canyon Frights` led *Happening today* with nothing to say it was at
+   * Capilano Suspension Bridge Park, 273 km away in North Vancouver, while
+   * Okanagan cards beside it said "· Kelowna" — so a bare card read as local
+   * by omission.
+   *
+   * **Passport never computes any of this.** Not from a name, not from a venue
+   * string, not by reverse-geocoding a coordinate. Where the state is
+   * `unknown` the card says nothing; where it is `conflicting` the card says
+   * that Atlas disagrees with itself rather than picking a side.
+   */
+  geography?: CandidateGeography;
+}
+
+/** How a geographic claim was arrived at. Carried so Passport never has to guess. */
+export type GeographyBasis = "observed" | "derived";
+
+/**
+ * **Atlas's four answers to "where is this?"** (`candidate-geography/2`).
+ *
+ * ```
+ * observed     the entity's own evidence states it
+ * derived      inherited one deterministic hop through a happens_at venue
+ * conflicting  the evidence disagrees, and Atlas refuses to pick a winner
+ * unknown      Atlas does not know — Passport must not fill it in
+ * ```
+ *
+ * Measured on the live corpus 2026-10-11: unknown 1,813 · observed 763 ·
+ * derived 104 · conflicting 3.
+ */
+export type GeographyState = "observed" | "derived" | "conflicting" | "unknown";
+
+/** A named area Atlas asserts, e.g. `Okanagan`, `Metro Vancouver`. */
+export interface CandidateArea {
+  id: string;
+  name: string;
+}
+
+/** The hop a `derived` claim travelled, so provenance survives into Passport. */
+export interface GeographyVia {
+  id: string;
+  kind: string;
+  name: string;
+  relation: string;
+}
+
+export interface CandidateGeography {
+  state: GeographyState;
+  /** The town. Absent for `unknown`, and for a `conflicting` claim Atlas will not resolve. */
+  locality?: string;
+  localityBasis?: GeographyBasis;
+  coordinates?: [number, number];
+  coordinatesBasis?: GeographyBasis;
+  /** The broader area — the one field that distinguishes Okanagan from Metro Vancouver. */
+  area?: CandidateArea;
+  /** Every locality the evidence named, where it named more than one. */
+  localities?: string[];
+  /** The venue a `derived` claim came through. */
+  via?: GeographyVia[];
+  /** Atlas's own words about what disagrees, for a `conflicting` claim. */
+  conflict?: string;
+  /** The records behind the claim. Read by nothing in the product UI. */
+  evidence?: unknown[];
 }
 
 /** Atlas's smallest truthful answer to "where?" (`candidateLocation.ts`). */

@@ -48,6 +48,7 @@ import { PossibilityCard } from "./PossibilityCard";
 import {
   composeDiscovery,
   dayOf,
+  dominantArea,
   pictureFirst,
 } from "@/domain/discovery/compose";
 import {
@@ -287,6 +288,9 @@ export function DiscoveryListView({
   // Where Passport is looking, said once and used by the opening, the composed
   // remainder section and nothing else.
   const where = scopeLabel(scope);
+  // Which area this page is mostly about, counted from what Atlas states.
+  // A card in a different one says so; see `dominantArea`.
+  const home = useMemo(() => dominantArea(experiences), [experiences]);
   // The calendar day, derived from the server's instant so a card can say
   // "Last day" instead of printing a stated interval nobody reads.
   const todayKey = useMemo(
@@ -681,6 +685,7 @@ export function DiscoveryListView({
                 <DiscoverySections
                   sections={composed}
                   {...(todayKey ? { today: todayKey } : {})}
+                  {...(home ? { home } : {})}
                   savedIds={savedIds}
                   savingId={savingId}
                   onSave={handleSave}
@@ -709,6 +714,7 @@ export function DiscoveryListView({
                       key={experience.id}
                       experience={experience}
                       {...(todayKey ? { today: todayKey } : {})}
+                      {...(home ? { home } : {})}
                       saved={savedIds.has(experience.id)}
                       saving={savingId === experience.id}
                       wanted={wantedIds.has(experience.id)}

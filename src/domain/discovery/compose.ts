@@ -399,13 +399,17 @@ export { INTENTS, intentOf, type IntentKey };
  * Lake Country without saying which is which is the geography complaint in the
  * brief, and most of it was this.
  *
- * **Nothing is derived.** No distance — only 11% of the corpus has coordinates,
- * so a kilometre figure would be invented for nine subjects in ten. No region
- * inference from a name. Where Atlas is silent this returns `undefined` and the
- * card says nothing, which is the honest answer and reads better than a guess.
+ * **Nothing is derived here.** Passport computes no geography at all — not
+ * from a name, not from a venue string, not by reverse-geocoding. Since
+ * `candidate-geography/2` the town comes from Atlas's own `geography`, which
+ * states how it knows and refuses to guess; `venue` and `context` remain as
+ * the venue's own name, which is a different fact from the town.
  */
 export function whereLine(experience: Experience): string | undefined {
-  const locality = experience.venue?.locality?.trim();
+  // Atlas's geography outranks the venue's locality: it is the same fact
+  // arrived at deliberately, it says whether it was observed or derived, and
+  // it is stated for 619 subjects against the venue field's 69.
+  const locality = placeLabel(experience) ?? experience.venue?.locality?.trim();
   const venue = experience.venue?.name?.trim();
   const context = experience.context?.name?.trim();
 
@@ -413,6 +417,69 @@ export function whereLine(experience: Experience): string | undefined {
   // "The Balsam School · Vernon" tells somebody more than either half.
   if (venue && locality && venue !== locality) return `${venue} · ${locality}`;
   return locality || venue || context || undefined;
+}
+
+/**
+ * **The town a card may name, or nothing.**
+ *
+ * The one place Passport interprets `candidate-geography/2`, so no component
+ * has to understand the four states:
+ *
+ * ```
+ * observed / derived   name the locality — both are facts Atlas stands behind,
+ *                      and the difference between them is provenance, not
+ *                      confidence, so the card does not print "derived"
+ * conflicting          name nothing. Atlas deliberately refused to choose a
+ *                      winner, and a card that picked one would be resolving
+ *                      a disagreement the knowledge engine would not.
+ * unknown              name nothing. Silence is the honest answer; the danger
+ *                      is a reader reading silence as "local", which is what
+ *                      `areaLabel` exists to stop.
+ * ```
+ */
+export function placeLabel(experience: Experience): string | undefined {
+  const geography = experience.geography;
+  if (!geography) return undefined;
+  if (geography.state !== "observed" && geography.state !== "derived") {
+    return undefined;
+  }
+  return geography.locality?.trim() || undefined;
+}
+
+/**
+ * **The area a card belongs to, when Atlas names one.**
+ *
+ * `Okanagan`, `Metro Vancouver`. This is the field that stops a distant
+ * possibility reading as a local one: before it, Canyon Frights led *Happening
+ * today* with no town, beside Okanagan cards that had one, so the bare card
+ * read as local **by omission**.
+ *
+ * Returned for `conflicting` too — deliberately. Atlas refuses to pick between
+ * two towns but can still say the evidence spans two areas, and a reader is
+ * better served by "somewhere in the Okanagan, we are not sure where" than by
+ * a blank. The caller decides how to say that; this only reports what is held.
+ */
+export function areaLabel(experience: Experience): string | undefined {
+  return experience.geography?.area?.name?.trim() || undefined;
+}
+
+/**
+ * **What Atlas will not resolve, said plainly.**
+ *
+ * `undefined` unless the state is `conflicting`. A card showing this is saying
+ * *we do not know where this is*, which is true, rather than quietly choosing
+ * the first of two towns.
+ */
+export function unresolvedPlace(experience: Experience): string | undefined {
+  const geography = experience.geography;
+  if (geography?.state !== "conflicting") return undefined;
+  const named = geography.localities?.filter(Boolean) ?? [];
+  // Where Atlas named the candidate towns, name them — "Vernon or North
+  // Vancouver" is more use than a shrug. Where it only recorded that the
+  // evidence disagrees (`conflict` is machine-written and not customer
+  // language), say that much, because on a page of labelled cards an
+  // unlabelled one reads as local.
+  return named.length > 1 ? named.join(" or ") : "Location not confirmed";
 }
 
 /**
@@ -473,3 +540,38 @@ const shortDay = (day: string): string =>
   SHORT_DAY.format(new Date(`${day}T12:00:00Z`));
 const weekday = (day: string): string =>
   WEEKDAY.format(new Date(`${day}T12:00:00Z`));
+
+/**
+ * **The area this page is mostly about, as Atlas names it.**
+ *
+ * Discovery has no reliable idea where the reader is: there is no location
+ * permission, and `activeScope()` returns nothing in production because the
+ * regions route it needs is admin-gated. So Passport cannot say "near you"
+ * and does not try.
+ *
+ * What it can say truthfully is which area the pool it is showing is mostly
+ * drawn from — counted from `geography.area`, which Atlas states, over the
+ * candidates in hand. On the live corpus that is Okanagan 813 against Metro
+ * Vancouver 33. A card in the other one is then marked as being in the other
+ * one, which is a fact about the card rather than a claim about the reader.
+ *
+ * `undefined` when nothing dominates, and then no card is marked — a page
+ * genuinely spread across two areas has no "elsewhere", and inventing one
+ * would be the heuristic this whole contract exists to avoid.
+ */
+export function dominantArea(
+  experiences: readonly Experience[],
+): string | undefined {
+  const counts = new Map<string, number>();
+  for (const experience of experiences) {
+    const area = experience.geography?.area?.name?.trim();
+    if (area) counts.set(area, (counts.get(area) ?? 0) + 1);
+  }
+  if (counts.size < 2) return [...counts.keys()][0];
+
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const [leader, runnerUp] = ranked;
+  // A clear majority, not a plurality: two areas of comparable size are two
+  // places this page is about, and neither is "elsewhere".
+  return leader![1] > runnerUp![1] * 2 ? leader![0] : undefined;
+}

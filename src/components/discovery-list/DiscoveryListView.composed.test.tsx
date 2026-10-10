@@ -399,3 +399,125 @@ describe("cards say how long you have, not what the database holds", () => {
     );
   });
 });
+
+/**
+ * **A distant possibility must not pass as a local one.**
+ *
+ * Canyon Frights led *Happening today* with no town at all, beside Okanagan
+ * cards that said "· Kelowna" — so the bare card read as local by omission,
+ * and it is 273 km away at Capilano Suspension Bridge Park.
+ */
+describe("geography on the card", () => {
+  const geo = (over: Record<string, unknown>) => over as never;
+
+  const placed = [
+    candidate({
+      id: "local",
+      kind: "Event",
+      name: "Apple Harvest Fest",
+      subtype: "festival",
+      startTime: "2026-10-10T00:00:00.000Z",
+      endTime: "2026-10-10T00:00:00.000Z",
+      timePrecision: "day",
+      geography: geo({
+        state: "observed",
+        locality: "Vernon",
+        localityBasis: "observed",
+        area: { id: "okanagan", name: "Okanagan" },
+      }),
+    }),
+    ...Array.from({ length: 6 }, (_, i) =>
+      candidate({
+        id: `okanagan-${i}`,
+        name: `An Okanagan park ${i}`,
+        subtype: "park",
+        geography: geo({
+          state: "observed",
+          locality: "Kelowna",
+          area: { id: "okanagan", name: "Okanagan" },
+        }),
+      }),
+    ),
+    candidate({
+      id: "far",
+      kind: "Event",
+      name: "Canyon Frights",
+      subtype: "seasonal event",
+      startTime: "2026-10-10T00:00:00.000Z",
+      endTime: "2026-10-10T00:00:00.000Z",
+      timePrecision: "day",
+      geography: geo({
+        state: "derived",
+        locality: "North Vancouver",
+        localityBasis: "derived",
+        area: { id: "metro-vancouver", name: "Metro Vancouver" },
+      }),
+    }),
+    candidate({
+      id: "nowhere",
+      kind: "Event",
+      name: "Don-O-Ray's Haunted Farm Adventure",
+      subtype: "seasonal event",
+      startTime: "2026-10-10T00:00:00.000Z",
+      endTime: "2026-10-10T00:00:00.000Z",
+      timePrecision: "day",
+      geography: geo({ state: "unknown" }),
+    }),
+  ].map(candidateToExperience);
+
+  const renderPlaced = () =>
+    render(
+      <DiscoveryListView
+        experiences={placed}
+        displayName={null}
+        now={NOW}
+        today="Saturday, October 10"
+      />,
+    );
+
+  const cardFor = (title: string) =>
+    screen
+      .getAllByTestId("possibility")
+      .find((c) => c.textContent?.includes(title))!;
+
+  it("marks the one that is somewhere else", () => {
+    renderPlaced();
+    expect(
+      within(cardFor("Canyon Frights")).getByTestId("possibility-area"),
+    ).toHaveTextContent("Metro Vancouver");
+  });
+
+  it("leaves the local ones unmarked rather than labelling everything", () => {
+    renderPlaced();
+    expect(
+      within(cardFor("Apple Harvest Fest")).queryByTestId("possibility-area"),
+    ).toBeNull();
+  });
+
+  it("names the town on both, so neither is bare", () => {
+    renderPlaced();
+    expect(cardFor("Canyon Frights")).toHaveTextContent("North Vancouver");
+    expect(cardFor("Apple Harvest Fest")).toHaveTextContent("Vernon");
+  });
+
+  it("says nothing about a place Atlas does not know", () => {
+    renderPlaced();
+    const card = cardFor("Don-O-Ray");
+    expect(within(card).queryByTestId("possibility-area")).toBeNull();
+    expect(card).not.toHaveTextContent(/Vernon|Vancouver|Kelowna/);
+  });
+
+  it("prints no implementation language anywhere on the page", () => {
+    renderPlaced();
+    const page = document.body.textContent ?? "";
+    for (const word of [
+      "derived",
+      "observed",
+      "candidate-geography",
+      "happens_at",
+      "localityBasis",
+    ]) {
+      expect(page).not.toContain(word);
+    }
+  });
+});

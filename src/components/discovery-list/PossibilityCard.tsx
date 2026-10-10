@@ -5,7 +5,12 @@ import { Check, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
-import { whenLine, whereLine } from "@/domain/discovery/compose";
+import {
+  areaLabel,
+  unresolvedPlace,
+  whenLine,
+  whereLine,
+} from "@/domain/discovery/compose";
 
 /**
  * **One possibility, sold rather than listed.**
@@ -41,6 +46,7 @@ import { whenLine, whereLine } from "@/domain/discovery/compose";
 export function PossibilityCard({
   experience,
   today,
+  home,
   saved,
   saving,
   onSave,
@@ -50,6 +56,11 @@ export function PossibilityCard({
   readonly experience: Experience;
   /** Today where the subjects are, `YYYY-MM-DD`. Makes the when-line relative. */
   readonly today?: string;
+  /**
+   * The area this page is mostly about, as Atlas names it — e.g. `Okanagan`.
+   * A card in a different one says so. Never computed here.
+   */
+  readonly home?: string;
   readonly saved: boolean;
   readonly saving: boolean;
   readonly onSave: () => void;
@@ -68,6 +79,21 @@ export function PossibilityCard({
         experience.timePrecision,
       );
   const where = whereLine(experience);
+  // **The area, when it is not the one this page is mostly about.**
+  //
+  // Canyon Frights led *Happening today* with no town at all, beside Okanagan
+  // cards that said "· Kelowna" — so the bare card read as local by omission,
+  // and it is 273 km away at Capilano Suspension Bridge Park. Naming the area
+  // is what stops that: `Metro Vancouver` on the card cannot be mistaken for
+  // down the road.
+  //
+  // `home` is passed in by the surface, which knows what the page is mostly
+  // about. Passport does not decide that here and does not compute distance:
+  // it has no reliable idea where the reader is, so it states where the thing
+  // is and lets them judge.
+  const area = areaLabel(experience);
+  const elsewhere = Boolean(area && home && area !== home);
+  const unresolved = unresolvedPlace(experience);
   const tag = experience.subtype ?? experience.activities[0];
   // `unknown` is Atlas saying it has not classified this yet. True, and not
   // worth printing at somebody.
@@ -106,6 +132,18 @@ export function PossibilityCard({
         {/* The one line that changes by kind: a dated thing says when, a
             timeless thing says where. Never both in this slot — that is the
             eyebrow, and an eyebrow with two jobs has none. */}
+        {/* Said first and said loudly, because "this is not where you are" is
+            the one fact that changes whether the rest of the card matters. */}
+        {elsewhere && (
+          <p
+            data-testid="possibility-area"
+            className="mb-1 inline-flex w-fit items-center gap-1 rounded-full bg-[#2b2015]/[0.07] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#2b2015]/70 uppercase"
+          >
+            <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+            {area}
+          </p>
+        )}
+
         {when ? (
           <p
             data-testid="possibility-when"
@@ -147,6 +185,19 @@ export function PossibilityCard({
           <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-[#2b2015]/50">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {where}
+          </p>
+        )}
+
+        {/* Atlas found two towns and refused to pick one. Saying so beats
+            silently showing the first, and beats saying nothing — which on a
+            page of labelled cards reads as "local". */}
+        {unresolved && (
+          <p
+            data-testid="possibility-unresolved"
+            className="mt-1.5 flex items-center gap-1 text-xs text-[#2b2015]/45"
+          >
+            <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+            {unresolved}
           </p>
         )}
 
