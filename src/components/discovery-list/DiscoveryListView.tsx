@@ -525,6 +525,18 @@ export function DiscoveryListView({
   // Recently saved, newest first, resolved against the already-loaded
   // catalogue rather than a second fetch — Atlas's board-items response
   // has no experience detail on it, and the full list is already here.
+  /**
+   * Saved ids the catalogue in memory cannot name.
+   *
+   * Counted rather than ignored: a sidebar that silently drops a row is the
+   * same defect as a board that does, one surface along.
+   */
+  const unshownSaves = useMemo(() => {
+    const known = new Set(experiences.map((e) => e.id));
+    return visibleBoardItems.filter((item) => !known.has(item.experienceId))
+      .length;
+  }, [visibleBoardItems, experiences]);
+
   const savedItems: SavedListItem[] = useMemo(() => {
     const experienceById = new Map(experiences.map((e) => [e.id, e]));
     return visibleBoardItems
@@ -715,11 +727,37 @@ export function DiscoveryListView({
       );
       return;
     }
+    // Still fetching. Creating a board now is how a second one appears.
+    if (!boardsReady) {
+      toast.error("Your boards haven't loaded yet. Please try again shortly.");
+      return;
+    }
+    if (savingId) return;
+    setSavingId(experience.id);
+    try {
+      // **Collected first, always.** October is a level of intention on a
+      // possibility, not somewhere a possibility goes instead of the board.
+      await collect(experience);
+    } catch (error) {
+      console.error(`Failed to collect "${experience.id}":`, error);
+      toast.error(
+        isSignedOut(error)
+          ? "Your session ended. Sign in again to keep this."
+          : "Couldn't keep that. Please try again.",
+      );
+      setSavingId(null);
+      return;
+    }
+    setSavingId(null);
+
     if (!isOctoberKind(experience.kind)) {
-      // My October cannot store this kind yet — `passport_october_things`
-      // constrains `entity_kind`, and Atlas now publishes `Experience`.
-      // Saying so beats a control that fails at the database.
-      toast.error("That can't be kept in your October yet.");
+      // On the board, and that is what the person asked for. My October
+      // cannot hold this kind — `passport_october_things` constrains
+      // `entity_kind` — so the stronger intention is the only part that
+      // cannot happen, and it is the only part reported.
+      toast.success(
+        "Saved to your board. My October can't hold this kind yet.",
+      );
       return;
     }
     try {
@@ -730,7 +768,9 @@ export function DiscoveryListView({
         startsAt: experience.startTime ?? null,
       });
       setWantedIds((prev) => new Set(prev).add(experience.id));
-      toast.success("Kept for your October.");
+      // Both halves said, because both happened. The silent version of this
+      // is what made a saved thing look like it had gone somewhere else.
+      toast.success("Saved to your board, and kept for your October.");
     } catch (error) {
       toast.error(
         isSignedOut(error)
@@ -742,6 +782,41 @@ export function DiscoveryListView({
 
   // Atlas-first, same pattern as DiscoverySpace's performSave: local
   // "saved" state only flips once Atlas confirms the write.
+  /**
+   * **Put it in the collection.** The one place anything joins a board.
+   *
+   * Used by *Save to board* and by *Want to do*, because a stronger intention
+   * must not be a quieter one: pressing *Want to do* used to write only to
+   * this person's October, so the thing they had just chosen never appeared in
+   * the collection Passport had been showing them. Collecting first means a
+   * change of intention can never make an item disappear.
+   *
+   * Already on the board is success, not a second row.
+   */
+  async function collect(experience: Experience): Promise<Board | null> {
+    // Only when they genuinely have none. `board` can be null while the first
+    // load is still in flight, and creating one then is how a second "My
+    // Places" appears beside the real one.
+    let target = board ?? boards[0] ?? null;
+    if (!target) {
+      // A person who just signed up has no board, and telling them to go and
+      // make one before they may keep the thing they are looking at is a dead
+      // end dressed as an instruction.
+      target = await createBoard("My Places");
+      setBoards((prev) => [...prev, target!]);
+      setBoard(target);
+      setStoredActiveBoardId(target.id);
+    }
+    if (savedIds.has(experience.id)) return target;
+    const item = await saveExperienceToBoard(target.id, experience.id);
+    setBoardItems((prev) =>
+      prev.some((existing) => existing.experienceId === item.experienceId)
+        ? prev
+        : [...prev, item],
+    );
+    return target;
+  }
+
   async function handleSave(experience: Experience) {
     // The one moment Passport asks for anything. Not a wall and not an
     // apology — the traveller found something they liked, and this says what
@@ -764,26 +839,8 @@ export function DiscoveryListView({
     if (savingId) return;
     setSavingId(experience.id);
     try {
-      // A person who just signed up has no board, and telling them to go and
-      // make one before they may keep the thing they are looking at is a
-      // dead end dressed as an instruction — the previous version said their
-      // boards had not loaded, which was both wrong and unfixable by waiting.
-      // `SaveButton` on a detail page already creates a first board on first
-      // save; this is the same behaviour, not a new one.
-      // Only when they genuinely have none. `board` can be null while the
-      // first load is still in flight, and creating one then is how a second
-      // "My Places" appears beside the real one.
-      let target = board ?? boards[0] ?? null;
-      if (!target) {
-        target = await createBoard("My Places");
-        setBoards((prev) => [...prev, target!]);
-        setBoard(target);
-        setStoredActiveBoardId(target.id);
-      }
-
-      const item = await saveExperienceToBoard(target.id, experience.id);
-      setBoardItems((prev) => [...prev, item]);
-      toast.success(`Saved to ${target.name}.`);
+      const target = await collect(experience);
+      if (target) toast.success(`Saved to ${target.name}.`);
     } catch (error) {
       console.error(`Failed to save "${experience.id}":`, error);
       // A session that expired mid-visit is not a broken save, and telling
@@ -990,6 +1047,7 @@ export function DiscoveryListView({
             boardsLoaded={boardsReady}
             signedIn={signedIn}
             savedItems={savedItems}
+            unshownSaves={unshownSaves}
             onSwitchBoard={handleSwitchBoard}
             onCreateBoard={handleCreateBoard}
             onRenameBoard={handleRenameBoard}

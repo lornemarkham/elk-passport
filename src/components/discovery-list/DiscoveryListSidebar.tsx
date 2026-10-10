@@ -39,6 +39,13 @@ interface DiscoveryListSidebarProps {
    * the situation somebody had built up were gone by the time they returned.
    */
   backHref?: string;
+  /**
+   * Saved items this list could not name.
+   *
+   * Shown as a line rather than dropped. "6 experiences saved" over a list of
+   * five is the shape of the bug this whole repair is about.
+   */
+  unshownSaves?: number;
 }
 
 /** The same things the immersive Mood Board sidebar already surfaces —
@@ -68,6 +75,7 @@ export function DiscoveryListSidebar({
   onRequestDeleteBoard,
   onRemoveSaved,
   backHref,
+  unshownSaves = 0,
 }: DiscoveryListSidebarProps) {
   if (!boardsLoaded) {
     return (
@@ -87,7 +95,7 @@ export function DiscoveryListSidebar({
   // — a filing cabinet shown to somebody who has not yet picked a single
   // thing up. Until there is something in it, it says what it is for and gets
   // out of the way. Everything below returns the moment one thing is saved.
-  const empty = savedItems.length === 0;
+  const empty = savedItems.length === 0 && unshownSaves === 0;
 
   if (empty) {
     return (
@@ -174,10 +182,29 @@ export function DiscoveryListSidebar({
         )}
 
         {board && (
-          <p className="mt-1 text-sm text-[#2b2015]/60">
-            {savedItems.length}{" "}
-            {savedItems.length === 1 ? "experience" : "experiences"} saved
-          </p>
+          <>
+            {/* **The count counts what is listed below it.** It used to count
+                only the rows this list could name, over a list of the same
+                rows — so it was always self-consistent and sometimes wrong
+                about the board. Anything it cannot name now gets its own
+                line rather than quietly lowering the number. */}
+            <p className="mt-1 text-sm text-[#2b2015]/60">
+              {savedItems.length + unshownSaves}{" "}
+              {savedItems.length + unshownSaves === 1
+                ? "experience"
+                : "experiences"}{" "}
+              saved
+            </p>
+            {unshownSaves > 0 && (
+              <p
+                data-testid="unshown-saves"
+                className="mt-0.5 text-xs text-[#2b2015]/45"
+              >
+                {unshownSaves} of them {unshownSaves === 1 ? "is" : "are"} on
+                your board but can&apos;t be shown here right now.
+              </p>
+            )}
+          </>
         )}
       </div>
 

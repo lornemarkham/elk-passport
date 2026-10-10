@@ -96,6 +96,9 @@ const EXPERIENCES = [
   candidate({ id: "kangaroo", name: "Kangaroo Creek Farm", subtype: "farm" }),
   candidate({ id: "gambell", name: "Gambell Farms", subtype: "farm" }),
   candidate({ id: "polson", name: "Polson Park", subtype: "park" }),
+  // An Event, which is the kind that vanished between the sidebar and the
+  // board in the reported screenshots.
+  candidate({ id: "canyon", kind: "Event", name: "Canyon Frights" }),
 ].map(candidateToExperience);
 
 function view(signedIn: boolean, at = "https://passport.test/discovery") {
@@ -287,6 +290,85 @@ describe("the board stays theirs", () => {
     expect(saveExperienceToBoard).toHaveBeenCalledWith(
       "board-1",
       expect.any(String),
+    );
+  });
+});
+
+/**
+ * **A stronger intention must not be a quieter one.**
+ *
+ * *Want to do* wrote only to this person's October, so the thing they had just
+ * chosen never joined the collection Passport had been showing them — and the
+ * board, which is where Passport said saved things live, never heard about it.
+ */
+describe("wanting to do something also collects it", () => {
+  it("puts it on the board before recording the intention", async () => {
+    view(true);
+    await waitFor(() => expect(listBoards).toHaveBeenCalled());
+    const card = screen
+      .getAllByTestId("possibility")
+      .find((c) => c.textContent?.includes("Canyon Frights"))!;
+    fireEvent.click(within(card).getByTestId("want-to-do"));
+
+    await waitFor(() => expect(wantToDo).toHaveBeenCalled());
+    expect(saveExperienceToBoard).toHaveBeenCalledWith("board-1", "canyon");
+  });
+
+  it("does not add a second row for something already collected", async () => {
+    listBoardItems.mockResolvedValue([
+      {
+        id: "item-canyon",
+        boardId: "board-1",
+        experienceId: "canyon",
+        addedAt: "2026-10-10T00:00:00.000Z",
+      },
+    ]);
+    view(true);
+    await waitFor(() => expect(listBoardItems).toHaveBeenCalled());
+    // Already saved, so its card is out of the feed — reach it through the
+    // sidebar's own copy of the board instead.
+    await waitFor(() =>
+      expect(screen.getByRole("complementary")).toHaveTextContent(
+        "Canyon Frights",
+      ),
+    );
+    expect(saveExperienceToBoard).not.toHaveBeenCalled();
+  });
+
+  it("keeps it collected even where October cannot hold the kind", async () => {
+    view(true);
+    await waitFor(() => expect(listBoards).toHaveBeenCalled());
+    const card = screen
+      .getAllByTestId("possibility")
+      .find((c) => c.textContent?.includes("Polson Park"))!;
+    fireEvent.click(within(card).getByTestId("want-to-do"));
+    await waitFor(() => expect(saveExperienceToBoard).toHaveBeenCalled());
+  });
+});
+
+describe("the sidebar counts what is on the board", () => {
+  it("says so rather than lowering the number it cannot name", async () => {
+    listBoardItems.mockResolvedValue([
+      {
+        id: "item-1",
+        boardId: "board-1",
+        experienceId: "polson",
+        addedAt: "2026-10-10T00:00:00.000Z",
+      },
+      {
+        id: "item-2",
+        boardId: "board-1",
+        experienceId: "not-in-this-catalogue",
+        addedAt: "2026-10-10T00:00:00.000Z",
+      },
+    ]);
+    view(true);
+    const sidebar = await screen.findByRole("complementary");
+    await waitFor(() =>
+      expect(sidebar).toHaveTextContent("2 experiences saved"),
+    );
+    expect(screen.getByTestId("unshown-saves")).toHaveTextContent(
+      "1 of them is on your board but can't be shown here right now",
     );
   });
 });

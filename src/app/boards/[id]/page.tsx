@@ -124,7 +124,12 @@ export default async function BoardPage({
             <div className="mb-8">
               <ShareBoard boardId={result.board.id} role={result.role} />
             </div>
-            {result.experiences.length === 0 ? (
+            {/* **"Nothing saved yet" was a lie told to somebody looking at
+                two saved items.** It is only true when the board is genuinely
+                empty — not when every row failed to resolve, which is what
+                happened to a board holding two Events. */}
+            {result.experiences.length === 0 &&
+            result.unresolved.length === 0 ? (
               <StatePanel
                 icon={Compass}
                 title="Nothing saved yet"
@@ -132,7 +137,17 @@ export default async function BoardPage({
               />
             ) : (
               <>
-                <ExperienceList experiences={result.experiences} />
+                {result.unresolved.length > 0 && (
+                  <StatePanel
+                    title={`${result.unresolved.length} saved ${
+                      result.unresolved.length === 1 ? "item" : "items"
+                    } can't be shown right now`}
+                    description="They are still on this board. Passport could not reach what Atlas knows about them — try again in a moment."
+                  />
+                )}
+                {result.experiences.length > 0 && (
+                  <ExperienceList experiences={result.experiences} />
+                )}
 
                 {/* This used to offer "Start Passport", pointing at
                  * `/passport/{boardId}` — a route that takes an **entity** id
