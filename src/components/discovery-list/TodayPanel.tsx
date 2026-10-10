@@ -12,7 +12,6 @@ import {
   type Situation,
   type Window,
 } from "@/domain/discovery/situation";
-import { useHere } from "@/lib/location/useHere";
 
 /**
  * **Where a person brings a situation instead of a search query.**
@@ -61,21 +60,27 @@ export function TodayPanel({
   experiences,
   situation,
   onSituation,
+  place,
+  ask,
 }: {
   /** Written out, e.g. `Saturday, October 11`. */
   readonly today: string;
-  /** The real forecast, or nothing when Passport could not get one. */
+  /**
+   * The forecast to state — the reader's own once they have shared where they
+   * are, the corpus's area until then. Resolved by the surface, which also
+   * owns `place`, because the page outside this panel now answers to the same
+   * position.
+   */
   readonly weather?: DayWeather & { readonly area?: string };
+  readonly place: PlaceContext;
+  /** `undefined` where the browser cannot do this, or has already been asked. */
+  readonly ask?: () => void;
   /** The pool the answer is drawn from — already scoped and feed-filtered. */
   readonly experiences: readonly Experience[];
   readonly situation: Situation;
   readonly onSituation: (next: Situation) => void;
 }) {
-  // **Situational, and only ever for this visit.** `here` holds a position
-  // nowhere — see `useHere`. Until somebody taps, `place` is `default` and the
-  // weather below is the corpus's area, said as the corpus's area.
-  const { place, weather: here, ask } = useHere();
-  const shown = here ?? weather;
+  const shown = weather;
   const answer = answerFor(experiences, situation, { wet: shown?.wet });
   const asked = Boolean(situation.company);
 
@@ -127,7 +132,7 @@ export function TodayPanel({
         className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#2b2015]/50"
       >
         <span>{placeNote(place, shown?.area)}</span>
-        {place.state === "default" && ask && (
+        {ask && (
           <button
             type="button"
             data-testid="use-my-location"
@@ -211,7 +216,10 @@ export function placeNote(
   const theArea = area ? `the ${area} area` : "this area";
   switch (place.state) {
     case "observed":
-      return place.km !== undefined
+      // The distance is only worth saying when there is one. Standing in
+      // Vernon, "about 0 km away" reads as a broken template rather than as
+      // the good news it is.
+      return place.km !== undefined && place.km >= 1
         ? `Nearest forecast to you — ${place.area}, about ${place.km} km away.`
         : `Nearest forecast to you — ${place.area}.`;
     case "asking":

@@ -214,7 +214,51 @@ is not trying. It is:
 
 ---
 
+## 7 · Coordinates — the 370 that state a town and nothing else
+
+**Measured 2026-10-10**, and new since Passport learned where its reader is.
+
+Passport can now lead Discovery with what is genuinely near somebody, because
+it knows their position and Atlas states coordinates. The limit is coverage:
+
+|                               | stated           |
+| ----------------------------- | ---------------- |
+| `geography.coordinates`       | **496 of 2,683** |
+| a locality but no coordinates | **370**          |
+| neither (`state: unknown`)    | **1,813**        |
+
+What that costs, measured at a 50 km radius:
+
+```
+a person in Vernon      357 placeable within reach
+a person in Kelowna     399
+a person in Vancouver    29   ← and 2,187 Passport cannot place at all
+```
+
+The 370 are the cheapest win by a distance. They already carry an Atlas-stated
+town — `Vernon` 244, `Kelowna` 152, `Lake Country` 50 — and Atlas separately
+states coordinates for other candidates in those same towns. Joining those two
+facts inside Atlas, with a basis, would roughly double what Discovery can place.
+
+**What Passport will not do:** keep a table of town positions, average Atlas's
+own coordinates to invent a locality centroid, or reverse-geocode. All three
+are Passport deriving geography, and the corpus is itself evidence against it —
+`Sparkling Pl Vernon` (2), `Centre Pl Vernon` (2), `SPALLUMCHEEN` (9) and
+`OTTAWA` (1) are address fragments and shouting that reached the locality
+field. A gazetteer built on those is a gazetteer that confidently misplaces
+things.
+
+**Also noticed:** one Place is titled `Publisher-stated location`, which is a
+provenance note that became an entity name.
+
+**Category: LOCATION**
+
+---
+
 ## How to use this
 
-Pick one. Locality is worth more than the other five together, because it is
-the only one currently making the product say something false.
+Pick one. **Locality (1) and coordinates (7) are the same join** — following
+the `happens_at` edge to the venue Atlas already resolved — and together they
+are worth more than everything else on this list. (1) stops the product saying
+something false; (7) is what lets it say something useful about where a person
+actually is.

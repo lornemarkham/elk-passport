@@ -11,6 +11,8 @@ import {
   whenLine,
   whereLine,
 } from "@/domain/discovery/compose";
+import { distanceLabel, distanceTo } from "@/domain/discovery/proximity";
+import type { Point } from "@/domain/discovery/situation";
 
 /**
  * **One possibility, sold rather than listed.**
@@ -47,6 +49,7 @@ export function PossibilityCard({
   experience,
   today,
   home,
+  origin,
   saved,
   saving,
   onSave,
@@ -61,6 +64,12 @@ export function PossibilityCard({
    * A card in a different one says so. Never computed here.
    */
   readonly home?: string;
+  /**
+   * Where the reader is, once they have said. Only ever used to compute a
+   * distance against coordinates Atlas states; a card Atlas has not placed
+   * says nothing rather than guessing.
+   */
+  readonly origin?: Point;
   readonly saved: boolean;
   readonly saving: boolean;
   readonly onSave: () => void;
@@ -92,7 +101,13 @@ export function PossibilityCard({
   // it has no reliable idea where the reader is, so it states where the thing
   // is and lets them judge.
   const area = areaLabel(experience);
-  const elsewhere = Boolean(area && home && area !== home);
+  const away = distanceLabel(distanceTo(experience, origin));
+  // **"Elsewhere" is measured from the corpus; a distance is measured from the
+  // person.** Shown together they contradict each other — a Vancouver venue
+  // carried "UNDER 1 KM AWAY" beside "METRO VANCOUVER" for somebody standing
+  // outside it, because the page is mostly about the Okanagan. Once Passport
+  // knows where the reader is, the badge about the corpus has nothing to add.
+  const elsewhere = Boolean(area && home && area !== home && !away);
   const unresolved = unresolvedPlace(experience);
   const tag = experience.subtype ?? experience.activities[0];
   // `unknown` is Atlas saying it has not classified this yet. True, and not
@@ -133,15 +148,32 @@ export function PossibilityCard({
             timeless thing says where. Never both in this slot — that is the
             eyebrow, and an eyebrow with two jobs has none. */}
         {/* Said first and said loudly, because "this is not where you are" is
-            the one fact that changes whether the rest of the card matters. */}
-        {elsewhere && (
-          <p
-            data-testid="possibility-area"
-            className="mb-1 inline-flex w-fit items-center gap-1 rounded-full bg-[#2b2015]/[0.07] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#2b2015]/70 uppercase"
-          >
-            <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-            {area}
-          </p>
+            the one fact that changes whether the rest of the card matters.
+            A distance appears **only** where Atlas states coordinates and the
+            reader has shared their own — two stated positions and arithmetic,
+            never an inference from a name, an area or a venue string. Most
+            cards will carry neither, and carry nothing. */}
+        {(away || elsewhere) && (
+          <div className="mb-1 flex flex-wrap items-center gap-1">
+            {away && (
+              <p
+                data-testid="possibility-distance"
+                className="inline-flex w-fit items-center gap-1 rounded-full bg-[#8a5a24]/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#8a5a24] uppercase"
+              >
+                <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+                {away}
+              </p>
+            )}
+            {elsewhere && (
+              <p
+                data-testid="possibility-area"
+                className="inline-flex w-fit items-center gap-1 rounded-full bg-[#2b2015]/[0.07] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#2b2015]/70 uppercase"
+              >
+                <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+                {area}
+              </p>
+            )}
+          </div>
         )}
 
         {when ? (

@@ -49,6 +49,8 @@ import {
   type DayWeather,
   type Situation,
 } from "@/domain/discovery/situation";
+import { nearSection } from "@/domain/discovery/proximity";
+import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
 import {
@@ -153,6 +155,11 @@ export function DiscoveryListView({
   // The day a person actually has. Situational and deliberately not persisted
   // — see `situation.ts`. Nothing here becomes a profile.
   const [situation, setSituation] = useState<Situation>(EMPTY_SITUATION);
+
+  // **Where the reader is, owned here because two things now answer to it:**
+  // the forecast the panel states, and which possibilities the page can say
+  // are within reach. Held for the visit, written nowhere — see `useHere`.
+  const { place, weather: here, at, ask } = useHere();
   /**
    * What the person said they feel like, in their words rather than Atlas's.
    * `null` is the composed page; a key narrows the whole pool to that intent.
@@ -364,17 +371,28 @@ export function DiscoveryListView({
     [experiences, scope, savedIds],
   );
 
+  /**
+   * **Composed first, then given a local lead — never filtered by location.**
+   *
+   * `nearSection` prepends one section of what Atlas has actually placed
+   * within reach, nearest first. Everything `composeDiscovery` built stays
+   * exactly where it was, because two candidates in three carry no coordinates
+   * at all and demoting them would be treating "Atlas has not placed this" as
+   * "this is far away". It is not evidence of anything.
+   */
   const composed = useMemo(() => {
     // **Saved things leave the feed**, exactly as they do from the flat list.
     // That is this page's established contract — the board is a saved item's
     // only home, which is why the board carries its detail link — and a
     // composed page is a different presentation of the same feed, not a
     // licence to quietly change what saving does.
-    return composeDiscovery(composedPool, {
+    const sections = composeDiscovery(composedPool, {
       now: now ? new Date(now) : new Date(),
       ...(where ? { where } : {}),
     });
-  }, [composedPool, now, where]);
+    const near = nearSection(composedPool, at);
+    return near ? [near, ...sections] : sections;
+  }, [composedPool, now, where, at]);
 
   /** Which intents this pool can actually fill. A dead chip is worse than none. */
   const intents = useMemo(
@@ -657,7 +675,9 @@ export function DiscoveryListView({
           <div className="mt-6">
             <TodayPanel
               today={today}
-              {...(weather ? { weather } : {})}
+              {...((here ?? weather) ? { weather: here ?? weather } : {})}
+              place={place}
+              {...(ask ? { ask } : {})}
               experiences={composedPool}
               situation={situation}
               onSituation={setSituation}
@@ -725,6 +745,7 @@ export function DiscoveryListView({
                   sections={composed}
                   {...(todayKey ? { today: todayKey } : {})}
                   {...(home ? { home } : {})}
+                  {...(at ? { origin: at } : {})}
                   savedIds={savedIds}
                   savingId={savingId}
                   onSave={handleSave}

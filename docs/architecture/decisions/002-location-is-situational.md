@@ -68,6 +68,11 @@ the person taps "Use my location"            TodayPanel
   → React state                                useHere        this visit only
 ```
 
+The blunted point is **kept in memory for the visit**, because the page also
+asks _which of these is near me_ — answered in the browser, by arithmetic
+against coordinates Atlas has already published (`proximity.ts`). No second
+request, no coordinate ever leaves again, and still nothing written down.
+
 **Not written anywhere.** No database column, no cookie, no `localStorage`, no
 session, no log line, no analytics call. A reload forgets it. Nothing in
 Passport other than the weather lookup ever sees it.
@@ -103,3 +108,12 @@ would stop being the official forecast, which is the thing worth having.
 - Still open: whether a signed-in person's `home_area` should seed the default
   instead of the corpus. It would be more useful and it is a different claim —
   where you live is not where you are — so it is not being resolved silently.
+- Still open: whether Discovery should ask for a town when the browser cannot
+  answer. It would place a declining reader, and it would also be the first
+  piece of configuration on a surface built to need none. Not decided here.
+- **Not done, deliberately:** placing the 370 candidates that state a town and
+  no coordinates. Passport could keep a table of town positions, or average the
+  coordinates Atlas states for other candidates in the same town. Both are
+  Passport deriving geography that is Atlas's to carry — and the corpus already
+  contains `Sparkling Pl Vernon` and `OTTAWA` as localities. Recorded as an
+  Atlas requirement instead.

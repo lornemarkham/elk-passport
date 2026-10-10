@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Experience } from "@/domain/experience/types";
 import type { DiscoverySection } from "@/domain/discovery/compose";
+import type { Point } from "@/domain/discovery/situation";
 import { PossibilityCard } from "./PossibilityCard";
 
 /**
@@ -21,6 +22,7 @@ export function DiscoverySections({
   sections,
   today,
   home,
+  origin,
   savedIds,
   savingId,
   onSave,
@@ -32,6 +34,8 @@ export function DiscoverySections({
   readonly today?: string;
   /** The area this page is mostly about, so a card elsewhere can say so. */
   readonly home?: string;
+  /** Where the reader is, once they have said, so a placed card can say how far. */
+  readonly origin?: Point;
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
@@ -46,6 +50,7 @@ export function DiscoverySections({
           section={section}
           {...(today ? { today } : {})}
           {...(home ? { home } : {})}
+          {...(origin ? { origin } : {})}
           savedIds={savedIds}
           savingId={savingId}
           onSave={onSave}
@@ -61,6 +66,7 @@ function Section({
   section,
   today,
   home,
+  origin,
   savedIds,
   savingId,
   onSave,
@@ -70,6 +76,7 @@ function Section({
   readonly section: DiscoverySection;
   readonly today?: string;
   readonly home?: string;
+  readonly origin?: Point;
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
@@ -105,6 +112,7 @@ function Section({
             experience={experience}
             {...(today ? { today } : {})}
             {...(home ? { home } : {})}
+            {...(origin ? { origin } : {})}
             saved={savedIds.has(experience.id)}
             saving={savingId === experience.id}
             onSave={() => onSave(experience)}
