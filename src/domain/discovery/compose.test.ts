@@ -8,6 +8,8 @@ import {
   onNow,
   onToday,
   pictureFirst,
+  whenLine,
+  withoutRepeats,
 } from "./compose";
 
 /**
@@ -20,12 +22,14 @@ import {
  * that cannot be filled is not promised.
  */
 
+let made = 0;
+
 const make = (over: Partial<Experience> = {}): Experience =>
   ({
     id: Math.random().toString(36).slice(2),
     kind: "Place",
     slug: "s",
-    title: "A thing",
+    title: `A thing ${(made += 1)}`,
     shortDescription: "",
     isActive: true,
     detailReady: true,
@@ -233,14 +237,27 @@ describe("composing the page", () => {
     expect(ids).toContain("eat");
     expect(ids).toContain("culture");
     expect(ids).toContain("local");
-    expect(ids).toContain("stay");
+  });
+
+  it("does not give somewhere to stay a section of its own", () => {
+    // 107 hotels with excellent photography held a prime section on a page
+    // whose question is "what could you do?". The chip still exists — "I need
+    // a bed" is a real thing to want — it just does not lead the page.
+    expect(composeDiscovery(pool, { now: NOW }).map((s) => s.id)).not.toContain(
+      "stay",
+    );
   });
 
   it("sweeps the unclaimed remainder up rather than hiding it", () => {
     const rest = composeDiscovery(pool, { now: NOW }).find(
       (s) => s.id === "rest",
     );
-    expect(rest!.items.map((e) => e.title)).toEqual(["Something unclassified"]);
+    // The hotel lands here rather than vanishing: a section nobody leads with
+    // is still a possibility somebody might want.
+    expect(rest!.items.map((e) => e.title).sort()).toEqual([
+      "A hotel",
+      "Something unclassified",
+    ]);
   });
 
   it("shows nothing twice", () => {
@@ -258,7 +275,9 @@ describe("composing the page", () => {
   });
 
   it("carries a few pages, shows one, and says how many it really holds", () => {
-    const many = Array.from({ length: 300 }, () => make({ subtype: "park" }));
+    const many = Array.from({ length: 300 }, (_, i) =>
+      make({ subtype: "park", title: `Park ${i}` }),
+    );
     const [outside] = composeDiscovery(many, { now: NOW, size: 8 });
     // One page on screen, three carried so "show more" is instant — and not
     // 300, which is how the page came to serialise 2,248 rows into its HTML.
@@ -269,7 +288,10 @@ describe("composing the page", () => {
 
   it("carries only what it has, when it has little", () => {
     const [outside] = composeDiscovery(
-      [make({ subtype: "park" }), make({ subtype: "trail" })],
+      [
+        make({ subtype: "park", title: "A park" }),
+        make({ subtype: "trail", title: "A trail" }),
+      ],
       { now: NOW, size: 8 },
     );
     expect(outside!.items).toHaveLength(2);
@@ -288,5 +310,101 @@ describe("composing the page", () => {
     const sections = composeDiscovery(pool, { now: NOW });
     expect(sections.find((s) => s.id === "today")!.shape).toBe("when");
     expect(sections.find((s) => s.id === "eat")!.shape).toBe("intent");
+  });
+});
+
+/**
+ * **"Thu, Oct 1, 2026 – Sun, Oct 25, 2026" is not how a person says it.**
+ *
+ * Measured on the deployed page: three cards in a row under the heading
+ * *Happening today* each spent 36 characters telling somebody standing on the
+ * 10th of October that these were on. What they want to know is how long they
+ * have left.
+ */
+describe("when, said the way a person would say it today", () => {
+  it("says a run ending today is its last day", () => {
+    expect(whenLine(dated("2026-10-01", TODAY), TODAY)).toBe("Last day");
+  });
+
+  it("says a one-day thing is today only", () => {
+    expect(whenLine(dated(TODAY, TODAY), TODAY)).toBe("Today only");
+  });
+
+  it("counts down a run that has weeks left", () => {
+    expect(whenLine(dated("2026-10-01", "2026-10-25"), TODAY)).toBe(
+      "On until Oct 25",
+    );
+  });
+
+  it("warns when tomorrow is the end", () => {
+    expect(whenLine(dated("2026-10-01", "2026-10-11"), TODAY)).toBe(
+      "Ends tomorrow",
+    );
+  });
+
+  it("names tomorrow, and the weekday for the week ahead", () => {
+    expect(whenLine(dated("2026-10-11"), TODAY)).toBe("Tomorrow");
+    expect(whenLine(dated("2026-10-14"), TODAY)).toBe("This Wednesday");
+  });
+
+  it("falls back to a plain date once a weekday stops being useful", () => {
+    expect(whenLine(dated("2026-11-20"), TODAY)).toBe("Nov 20");
+  });
+
+  it("invents no urgency — a long run says only what it is", () => {
+    const line = whenLine(dated("2026-01-01", "2027-01-01"), TODAY)!;
+    expect(line).toBe("On until Jan 1");
+    expect(line).not.toMatch(/last|hurry|ending|soon/i);
+  });
+
+  it("says nothing about something with no stated dates", () => {
+    expect(whenLine(make({ kind: "Place" }), TODAY)).toBeUndefined();
+  });
+});
+
+/**
+ * **Atlas holds at least twelve pairs of entities with the same name.**
+ *
+ * `Farms and markets` printed Gambell Farms twice, four cards apart, with two
+ * different descriptions. Presentation only — the duplication is an Atlas
+ * identity defect and is reported as one.
+ */
+describe("the same thing, shown once", () => {
+  it("keeps the first and drops the repeat", () => {
+    const kept = withoutRepeats([
+      make({ title: "Gambell Farms", subtype: "farm" }),
+      make({ title: "Gambell Farms", subtype: "farm market" }),
+      make({ title: "Paynter's", subtype: "orchard" }),
+    ]);
+    expect(kept.map((e) => e.title)).toEqual(["Gambell Farms", "Paynter's"]);
+  });
+
+  it("ignores case and stray spacing", () => {
+    expect(
+      withoutRepeats([
+        make({ title: "Big White" }),
+        make({ title: " big white " }),
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it("never collapses two genuinely different names", () => {
+    expect(
+      withoutRepeats([
+        make({ title: "Cleland Theatre" }),
+        make({ title: "Cleland Community Theatre" }),
+      ]),
+    ).toHaveLength(2);
+  });
+
+  it("composes a page that never repeats a title", () => {
+    const titles = composeDiscovery(
+      [
+        make({ title: "Gambell Farms", subtype: "farm" }),
+        make({ title: "Gambell Farms", subtype: "farm" }),
+      ],
+      { now: NOW },
+    ).flatMap((s) => s.items.map((e) => e.title));
+    expect(titles).toEqual(["Gambell Farms"]);
   });
 });

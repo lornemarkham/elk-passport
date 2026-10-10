@@ -274,3 +274,70 @@ describe("the board before anything is in it", () => {
     );
   });
 });
+
+/**
+ * **Saying what you feel like must not drop you into a database.**
+ *
+ * Measured on the deployed page: choosing *Get outside* replaced eight
+ * picture-led cards with twenty-four dense rows, led by "Pine Park · PARK · A
+ * park located at 1605 A 39A Ave featuring a playground" — the exact sludge
+ * the composed page exists to stop leading with, handed straight back the
+ * moment somebody expressed an intent. Search did the same thing.
+ */
+describe("an intent refines the page rather than replacing the product", () => {
+  it("still shows possibility cards, not a list", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("intent-eat"));
+    expect(screen.getAllByTestId("possibility").length).toBeGreaterThan(0);
+  });
+
+  it("leads with what has a picture when nothing was typed", () => {
+    // Without a query there is nothing to rank by, so the pool arrived in
+    // Atlas's order and the weakest card led.
+    const withPicture = {
+      ...pool[4]!,
+      heroMedia: { type: "image" as const, src: "w.jpg" },
+    };
+    render(
+      <DiscoveryListView
+        experiences={[pool[3]!, withPicture]}
+        displayName={null}
+        now={NOW}
+        today="Saturday, October 10"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("intent-eat"));
+    const first = screen.getAllByTestId("possibility")[0]!;
+    expect(first.dataset.hasImage).toBe("true");
+  });
+
+  it("lets relevance win once something is typed", () => {
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+      target: { value: "winery" },
+    });
+    expect(screen.getAllByTestId("possibility")[0]!).toHaveTextContent(
+      "A winery",
+    );
+  });
+
+  it("renders search results as the same cards", () => {
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+      target: { value: "Kalamoir" },
+    });
+    expect(screen.getAllByTestId("possibility").length).toBeGreaterThan(0);
+  });
+});
+
+describe("cards say how long you have, not what the database holds", () => {
+  it("counts down rather than printing a stated interval", () => {
+    renderPage();
+    const today = screen.getAllByTestId("discovery-section")[0]!;
+    // "Thu, Oct 1, 2026 – Sun, Oct 25, 2026" is not how a person says it.
+    expect(today).not.toHaveTextContent(/\d{4} – /);
+    expect(today).toHaveTextContent(
+      /Today only|Last day|On until|Ends tomorrow/,
+    );
+  });
+});

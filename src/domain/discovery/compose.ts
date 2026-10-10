@@ -218,6 +218,34 @@ export function pictureFirst(experiences: readonly Experience[]): Experience[] {
     .map((entry) => entry.experience);
 }
 
+/**
+ * **The same thing, held twice, shown once.**
+ *
+ * Atlas holds at least twelve pairs of entities with identical names and
+ * different ids — `Gambell Farms`, `Kangaroo Creek Farm`, `Priest Valley
+ * Arena`, `Big White Ski Resort`, `Kekuli Bay Provincial Park`. *Farms and
+ * markets* printed Gambell Farms twice, four cards apart, with two different
+ * descriptions. A page that repeats itself reads as broken whatever the
+ * reason.
+ *
+ * This is presentation only. Nothing is merged, nothing is written back, and
+ * both records stay searchable — the first one wins the card and the second is
+ * held out of the composed page. **The underlying duplication is an Atlas
+ * identity defect and is reported as one**; hiding it here stops it being the
+ * reader's problem while it is fixed, and is not a fix.
+ */
+export function withoutRepeats(
+  experiences: readonly Experience[],
+): Experience[] {
+  const seen = new Set<string>();
+  return experiences.filter((experience) => {
+    const key = experience.title.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const section = (
   id: string,
   title: string,
@@ -269,7 +297,9 @@ export function composeDiscovery(
   { now, size = SECTION_SIZE, where }: ComposeOptions,
 ): readonly DiscoverySection[] {
   const today = dayOf(now);
-  const live = experiences.filter((experience) => !isOver(experience, today));
+  const live = withoutRepeats(
+    experiences.filter((experience) => !isOver(experience, today)),
+  );
 
   const claimed = new Set<string>();
   const take = (chosen: readonly Experience[]): Experience[] => {
@@ -289,7 +319,14 @@ export function composeDiscovery(
       "Happening today",
       "Dated, running now, and over by tomorrow for some of it.",
       "when",
-      take(onToday(live, today)),
+      // **Picture first here too.** Ordered purely by start date, this
+      // section showed 0 of 8 cards with a photograph while *Somewhere to
+      // stay* showed 8 of 8 — the page gave its best visual real estate to
+      // hotels and its worst to a haunted trail and a meteor shower. Canyon
+      // Frights and the Great Pumpkin Launch both have pictures and both sat
+      // below the fold. Chronology is no help inside a section where
+      // everything is on today anyway.
+      pictureFirst(take(onToday(live, today))),
       size,
     ),
   );
@@ -317,6 +354,12 @@ export function composeDiscovery(
   );
 
   for (const intent of INTENTS) {
+    // **Somewhere to stay is asked for, never offered.** 107 hotels with
+    // excellent photography held a prime section on a page whose question is
+    // *what could you do?* — and nobody browsing a Saturday morning wants a
+    // Best Western. The chip stays, because "I need a bed" is a real thing to
+    // want; it just does not get to lead.
+    if (intent.key === "stay") continue;
     add(
       section(
         intent.key,
@@ -371,3 +414,62 @@ export function whereLine(experience: Experience): string | undefined {
   if (venue && locality && venue !== locality) return `${venue} · ${locality}`;
   return locality || venue || context || undefined;
 }
+
+/**
+ * **When, said the way a person would say it today.**
+ *
+ * `formatEventWhen` is right for a subject's own page, where the full stated
+ * interval is the fact. On a card, under a heading that already says
+ * *Happening today*, it reads as chrome:
+ *
+ * ```
+ * Thu, Oct 1, 2026 – Sun, Oct 25, 2026     U-Pick Pumpkins
+ * Fri, Oct 2, 2026 – Mon, Oct 12, 2026     Harvest Pumpkin Festival 2026
+ * Fri, Oct 2, 2026 – Mon, Oct 12, 2026     Scarecrows on the Street 2026
+ * ```
+ *
+ * Thirty-six characters, three times, to tell somebody standing on the 10th of
+ * October that these are on. What they actually want to know is how long they
+ * have left.
+ *
+ * Everything here is read off the stated interval and the day it is. No
+ * urgency is invented — *Last day* is said only where the interval genuinely
+ * ends today, and a run with weeks left says so plainly.
+ */
+export function whenLine(
+  experience: Experience,
+  today: string,
+): string | undefined {
+  const span = interval(experience);
+  if (!span) return undefined;
+
+  const { from, to } = span;
+  const dayAfter = plusDays(today, 1);
+
+  // Not started yet: the date is the point.
+  if (from > today) {
+    const label = shortDay(from);
+    if (from === dayAfter) return "Tomorrow";
+    return plusDays(today, 7) >= from ? `This ${weekday(from)}` : label;
+  }
+
+  // Running. How much is left is the only thing that changes today.
+  if (to === today) return from === today ? "Today only" : "Last day";
+  if (to === dayAfter) return "Ends tomorrow";
+  return from === today ? "Starts today" : `On until ${shortDay(to)}`;
+}
+
+const SHORT_DAY = new Intl.DateTimeFormat("en-CA", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const WEEKDAY = new Intl.DateTimeFormat("en-CA", {
+  weekday: "long",
+  timeZone: "UTC",
+});
+
+const shortDay = (day: string): string =>
+  SHORT_DAY.format(new Date(`${day}T12:00:00Z`));
+const weekday = (day: string): string =>
+  WEEKDAY.format(new Date(`${day}T12:00:00Z`));

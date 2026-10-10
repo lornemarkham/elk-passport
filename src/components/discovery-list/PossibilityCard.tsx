@@ -5,7 +5,7 @@ import { Check, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
-import { whereLine } from "@/domain/discovery/compose";
+import { whenLine, whereLine } from "@/domain/discovery/compose";
 
 /**
  * **One possibility, sold rather than listed.**
@@ -40,6 +40,7 @@ import { whereLine } from "@/domain/discovery/compose";
  */
 export function PossibilityCard({
   experience,
+  today,
   saved,
   saving,
   onSave,
@@ -47,6 +48,8 @@ export function PossibilityCard({
   onWant,
 }: {
   readonly experience: Experience;
+  /** Today where the subjects are, `YYYY-MM-DD`. Makes the when-line relative. */
+  readonly today?: string;
   readonly saved: boolean;
   readonly saving: boolean;
   readonly onSave: () => void;
@@ -54,11 +57,16 @@ export function PossibilityCard({
   readonly onWant?: () => void;
 }) {
   const destination = destinationFor(experience);
-  const when = formatEventWhen(
-    experience.startTime,
-    experience.endTime,
-    experience.timePrecision,
-  );
+  // Relative where the page knows what day it is — "Last day", "On until Oct
+  // 25" — and the full stated interval otherwise, which is what a subject's
+  // own page always shows.
+  const when = today
+    ? whenLine(experience, today)
+    : formatEventWhen(
+        experience.startTime,
+        experience.endTime,
+        experience.timePrecision,
+      );
   const where = whereLine(experience);
   const tag = experience.subtype ?? experience.activities[0];
   // `unknown` is Atlas saying it has not classified this yet. True, and not

@@ -19,6 +19,7 @@ import { PossibilityCard } from "./PossibilityCard";
  */
 export function DiscoverySections({
   sections,
+  today,
   savedIds,
   savingId,
   onSave,
@@ -26,6 +27,8 @@ export function DiscoverySections({
   onWant,
 }: {
   readonly sections: readonly DiscoverySection[];
+  /** Today where the subjects are, so a card can say "Last day". */
+  readonly today?: string;
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
@@ -38,6 +41,7 @@ export function DiscoverySections({
         <Section
           key={section.id}
           section={section}
+          {...(today ? { today } : {})}
           savedIds={savedIds}
           savingId={savingId}
           onSave={onSave}
@@ -51,6 +55,7 @@ export function DiscoverySections({
 
 function Section({
   section,
+  today,
   savedIds,
   savingId,
   onSave,
@@ -58,6 +63,7 @@ function Section({
   onWant,
 }: {
   readonly section: DiscoverySection;
+  readonly today?: string;
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
@@ -91,6 +97,7 @@ function Section({
           <PossibilityCard
             key={experience.id}
             experience={experience}
+            {...(today ? { today } : {})}
             saved={savedIds.has(experience.id)}
             saving={savingId === experience.id}
             onSave={() => onSave(experience)}

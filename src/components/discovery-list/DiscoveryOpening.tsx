@@ -73,8 +73,16 @@ export function DiscoveryOpening({
       <h1 className="font-heading mt-2 text-3xl font-semibold tracking-tight text-balance text-[#2b2015] sm:text-5xl">
         What could you do?
       </h1>
+      {/* **"really here" was a claim Passport cannot make.** The corpus holds
+          the Kitsilano Farmers Market, the Capilano Suspension Bridge and an
+          exhibition at UBC's Museum of Anthropology — four hours away — and
+          Atlas states no location for any of them (`location: null`,
+          `regionIds: []`), so nothing on this page can tell you. Implying
+          local-ness while being unable to check it is the one thing worse
+          than saying nothing. Reported to Atlas; until then the page claims
+          only what is true. */}
       <p className="mt-2 max-w-xl text-[#2b2015]/60">
-        Everything below is something Atlas knows is really here. What is on
+        Real places and real dates, from what Atlas can vouch for. What is on
         today comes first.
       </p>
 

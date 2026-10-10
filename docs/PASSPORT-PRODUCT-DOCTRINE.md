@@ -796,6 +796,22 @@ certainty. Do not invent an answer here to make the document feel finished.
 12. **How group / multi-person experiences work.** (§6, §14)
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
+15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**
+    Passport sees knowledge defects that Atlas cannot see from the inside: a
+    description that only restates its own title, two records for one farm, a
+    Vancouver suspension bridge with no location at all. The person looking at
+    the card is the one who knows. The idea is a way for Lorne, an admin, and
+    possibly a customer to flag an entity, say **why** it sucks, and have the
+    entity, its context and the stated reason preserved as evidence feeding a
+    bounded Atlas repair workflow — not a vote, not a rating, a reason.
+
+    Unresolved: who may flag; whether a customer's flag and an admin's are the
+    same object; how a reason becomes an Atlas mission without becoming a
+    500-item complaint queue; and **what it is called**. The working name is
+    deliberately recorded as _"this entity sucks"_ rather than softened to
+    _"Something wrong?"_ — the register is part of the product decision and
+    conventional UX politeness is not automatically the right answer here.
+    **Not scoped. Not approved. Recorded so it is not lost.**
 
 ---
 

@@ -47,10 +47,14 @@ import {
   type DiscoveryMode,
 } from "./DiscoveryModeSwitcher";
 import { InspirationFeed } from "./InspirationFeed";
-import { ExperienceListRow } from "./ExperienceListRow";
 import { DiscoveryOpening } from "./DiscoveryOpening";
 import { DiscoverySections } from "./DiscoverySections";
-import { composeDiscovery } from "@/domain/discovery/compose";
+import { PossibilityCard } from "./PossibilityCard";
+import {
+  composeDiscovery,
+  dayOf,
+  pictureFirst,
+} from "@/domain/discovery/compose";
 import {
   availableIntents,
   intentOf,
@@ -268,6 +272,12 @@ export function DiscoveryListView({
   // Where Passport is looking, said once and used by the opening, the composed
   // remainder section and nothing else.
   const where = scopeLabel(scope);
+  // The calendar day, derived from the server's instant so a card can say
+  // "Last day" instead of printing a stated interval nobody reads.
+  const todayKey = useMemo(
+    () => (now ? dayOf(new Date(now)) : undefined),
+    [now],
+  );
 
   const visible = useMemo(() => {
     // The geographic scope is applied to the whole pool, before the feed policy
@@ -280,14 +290,22 @@ export function DiscoveryListView({
     // query names ranks first, a description mention last, and with no query
     // the pool keeps its order. Scope, feed, filters, kind and saved-item
     // exclusion are unchanged around it.
-    return rankByQuery(
-      filterExperiences(pool, filters)
-        .filter((experience) => (kind ? experience.kind === kind : true))
-        .filter((experience) =>
-          intent ? intentOf(experience) === intent : true,
-        ),
-      query,
-    ).filter((experience) => !savedIds.has(experience.id));
+    const narrowed = filterExperiences(pool, filters)
+      .filter((experience) => (kind ? experience.kind === kind : true))
+      .filter((experience) => (intent ? intentOf(experience) === intent : true))
+      .filter((experience) => !savedIds.has(experience.id));
+
+    // **With a query, relevance decides. Without one, a picture does.**
+    //
+    // `rankByQuery` keeps the pool's order when there is nothing to rank by,
+    // which is Atlas's order — so choosing *Get outside* opened on "Pine Park
+    // — a park located at 1605 A 39A Ave featuring a playground", the exact
+    // card the composed page exists to stop leading with. An intent is a
+    // browse, and a browse should put its best face first, exactly as every
+    // composed section does.
+    return query.trim().length > 0
+      ? rankByQuery(narrowed, query)
+      : pictureFirst(narrowed);
   }, [experiences, filters, query, savedIds, browsing, kind, intent, scope]);
 
   /**
@@ -671,6 +689,7 @@ export function DiscoveryListView({
                 {!browsing ? (
                   <DiscoverySections
                     sections={composed}
+                    {...(todayKey ? { today: todayKey } : {})}
                     savedIds={savedIds}
                     savingId={savingId}
                     onSave={handleSave}
@@ -683,11 +702,22 @@ export function DiscoveryListView({
                     you have chosen.
                   </p>
                 ) : (
-                  <ul className="flex flex-col gap-3">
+                  /* **The same cards, whatever you asked.**
+                     Choosing *Get outside* used to replace eight picture-led
+                     cards with twenty-four dense rows led by "Pine Park — a
+                     park located at 1605 A 39A Ave featuring a playground" —
+                     the exact database sludge the composed page exists to
+                     replace, handed straight back the moment somebody said
+                     what they felt like. Search did the same.
+
+                     Expressing an intent should make the page *more* useful,
+                     not drop it into a different product. */
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {visible.slice(0, shown).map((experience) => (
-                      <ExperienceListRow
+                      <PossibilityCard
                         key={experience.id}
                         experience={experience}
+                        {...(todayKey ? { today: todayKey } : {})}
                         saved={savedIds.has(experience.id)}
                         saving={savingId === experience.id}
                         wanted={wantedIds.has(experience.id)}

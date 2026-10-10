@@ -39,9 +39,37 @@ export const NOT_A_DESTINATION_SUBTYPE: ReadonlySet<string> = new Set([
   "public washroom",
   "washroom facilities",
   "road",
-  // Administrative geography — scope and navigation, not a discovery.
+  // Administrative geography — scope and navigation, not a discovery. You
+  // cannot go and do a neighbourhood, and `More to explore` opened with
+  // Rutland ("once its own town that merged with the city of Kelowna") and
+  // the Okanagan Valley itself ("a region in British Columbia known for its
+  // natural beauty"). Both are real Atlas knowledge and neither is a thing to
+  // do on a Saturday.
   "region",
   "city",
+  "neighbourhood",
+  "neighborhood",
+  "valley",
+  "municipality",
+  "district",
+  "unincorporated area",
+  // Civic works in progress. Atlas holds these correctly and they are the
+  // clearest non-possibilities in the corpus: "Infrastructure improvements on
+  // Westlake Road", "A multi-use pathway from George Court to Pebble Beach",
+  // "Shannon Lake Road Roundabout and Multi-Use Pathway Project". Nobody is
+  // spending a Saturday at a road improvement.
+  "infrastructure project",
+  "road project",
+  "construction project",
+  // Street furniture and the ground between destinations. A sculpture you
+  // pass is not an afternoon; a pathway is how you get to one.
+  "sculpture",
+  "statue",
+  "mural",
+  "pathway",
+  "sidewalk",
+  "intersection",
+  "bridge",
   // Institutions — organisations that exist, but not as places to visit.
   "government",
   "government agency",
