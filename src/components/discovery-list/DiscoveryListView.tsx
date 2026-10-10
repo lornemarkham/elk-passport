@@ -45,7 +45,11 @@ import {
 import { DiscoveryOpening } from "./DiscoveryOpening";
 import { TodayPanel } from "./TodayPanel";
 import type { DayWeather, Situation } from "@/domain/discovery/situation";
-import { nearSection, nearYou } from "@/domain/discovery/proximity";
+import {
+  nearSection,
+  nearYou,
+  nearestFirst,
+} from "@/domain/discovery/proximity";
 import { invitationSection, invitations } from "@/domain/discovery/directions";
 import { InvitationStrip } from "./InvitationStrip";
 import { useHere } from "@/lib/location/useHere";
@@ -503,11 +507,29 @@ export function DiscoveryListView({
       now: now ? new Date(now) : new Date(),
       ...(where ? { where } : {}),
     });
+    // **Every section answers to where the person is**, once they have said.
+    // *Happening today* used to open with a concert in Vancouver beside a
+    // park in Vernon, in whatever order the corpus arrived in.
+    const placed = at
+      ? sections.map((section) => ({
+          ...section,
+          items: nearestFirst(section.items, at),
+        }))
+      : sections;
     const near = nearSection(composedPool, at);
-    const withNear = near ? [near, ...sections] : sections;
+    const withNear = near ? [near, ...placed] : placed;
     // What they just asked for leads, because they just asked for it.
     return chosen
-      ? [invitationSection(chosen, Boolean(at)), ...withNear]
+      ? [
+          {
+            ...invitationSection(chosen, Boolean(at)),
+            items: nearestFirst(
+              invitationSection(chosen, Boolean(at)).items,
+              at,
+            ),
+          },
+          ...withNear,
+        ]
       : withNear;
   }, [composedPool, now, where, at, chosen]);
 
@@ -981,8 +1003,6 @@ export function DiscoveryListView({
                   savedIds={savedIds}
                   savingId={savingId}
                   onSave={handleSave}
-                  wantedIds={wantedIds}
-                  onWant={handleWant}
                 />
               ) : visible.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 px-4 py-10 text-center text-sm text-[#2b2015]/60">
@@ -1017,8 +1037,6 @@ export function DiscoveryListView({
                       {...(at ? { origin: at } : {})}
                       saved={savedIds.has(experience.id)}
                       saving={savingId === experience.id}
-                      wanted={wantedIds.has(experience.id)}
-                      onWant={() => handleWant(experience)}
                       onSave={() => handleSave(experience)}
                     />
                   ))}

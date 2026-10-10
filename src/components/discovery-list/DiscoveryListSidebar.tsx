@@ -275,13 +275,19 @@ export function DiscoveryListSidebar({
             <Link
               href={
                 backHref
-                  ? `/boards/${board.id}?back=${encodeURIComponent(backHref)}`
-                  : `/boards/${board.id}`
+                  ? `/saved?back=${encodeURIComponent(backHref)}`
+                  : "/saved"
               }
             />
           }
         >
-          Review board
+          {/* **"Review board" asked somebody to know what a board was** before
+              they could look at four things they had just saved — and the
+              route behind it went Discovery → My Places → Back to Boards →
+              Your Boards → My Places → Continue discovering. `/saved` is the
+              same storage, one screen, and one way back. `/boards/:id` is
+              untouched for anybody who deliberately goes there to share. */}
+          Review saved
         </Button>
       )}
     </aside>

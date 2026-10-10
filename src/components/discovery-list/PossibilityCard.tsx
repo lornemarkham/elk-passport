@@ -249,10 +249,10 @@ export function PossibilityCard({
               type="button"
               onClick={onSave}
               disabled={saving}
-              title="Keep this on your board"
+              title="Keep this to look at later"
               className="inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-4 text-xs font-medium text-[#f7ecd3] transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Save to board"}
+              {saving ? "Saving…" : "Save"}
             </button>
           )}
           {onWant &&

@@ -3,6 +3,7 @@ import type { Experience } from "@/domain/experience/types";
 import type { CandidateGeography } from "@/lib/data/types";
 import {
   NEAR_KM,
+  nearestFirst,
   distanceLabel,
   distanceTo,
   nearSection,
@@ -308,5 +309,64 @@ describe("the section a shared location earns", () => {
     const section = nearSection(CORPUS, VERNON)!;
     expect(section.items.length).toBeLessThan(CORPUS.length);
     expect(section.items).not.toContain(DON_O_RAY);
+  });
+});
+
+/**
+ * **"Happening today" opened with a concert three hundred kilometres away.**
+ *
+ * Reported by somebody deciding what to do in Vernon: the section mixed
+ * Vernon activities, Kelowna activities and Metro Vancouver events in no
+ * particular order, and nothing on the page separated them.
+ */
+describe("ordering a section around the person", () => {
+  const SECTION = [
+    GRANVILLE,
+    DON_O_RAY,
+    KANGAROO_PLACED,
+    CANYON_FRIGHTS,
+    POLSON_PARK,
+    KANGAROO_UNPLACED,
+  ];
+
+  it("leads with what is actually near, nearest first", () => {
+    const ordered = nearestFirst(SECTION, VERNON).map((e) => e.title);
+    expect(ordered.slice(0, 2)).toEqual(["Polson Park", "Kangaroo Creek Farm"]);
+  });
+
+  it("puts what Atlas placed far away last", () => {
+    const ordered = nearestFirst(SECTION, VERNON).map((e) => e.title);
+    expect(ordered.slice(-2)).toEqual([
+      "Canyon Frights",
+      "Granville Island Public Market",
+    ]);
+  });
+
+  it("ranks what Atlas has not placed above what it placed far away", () => {
+    // The mistake this exists to avoid: two candidates in three carry no
+    // coordinates and are overwhelmingly local. Sorting them under a located
+    // Vancouver concert treats a missing coordinate as evidence of distance.
+    const ordered = nearestFirst(SECTION, VERNON).map((e) => e.title);
+    expect(ordered.indexOf("Don-O-Ray Haunted Farm")).toBeLessThan(
+      ordered.indexOf("Canyon Frights"),
+    );
+    expect(ordered.indexOf("Kangaroo Creek Farm (second record)")).toBeLessThan(
+      ordered.indexOf("Granville Island Public Market"),
+    );
+  });
+
+  it("gives a person in Vancouver a different order from the same section", () => {
+    expect(nearestFirst(SECTION, VANCOUVER)[0]!.title).toBe(
+      "Granville Island Public Market",
+    );
+  });
+
+  it("changes nothing at all before anybody has shared where they are", () => {
+    expect(nearestFirst(SECTION, undefined)).toEqual(SECTION);
+  });
+
+  it("keeps the section's own order where distance cannot separate", () => {
+    const unplaced = [DON_O_RAY, KANGAROO_UNPLACED];
+    expect(nearestFirst(unplaced, VERNON)).toEqual(unplaced);
   });
 });

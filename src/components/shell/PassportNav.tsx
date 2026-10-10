@@ -40,7 +40,20 @@ import { usePathname } from "next/navigation";
 const DESTINATIONS = [
   { href: "/discovery", label: "Discover" },
   { href: "/places", label: "Places" },
-  { href: "/boards", label: "Saved" },
+  // **Saved means what somebody saved, not the index of their boards.** This
+  // pointed at `/boards`, which is the administration screen the owner's
+  // route through Discovery → My Places → Back to Boards → Your Boards came
+  // out of. `/boards` is still there for anybody who goes looking for it.
+  {
+    href: "/saved",
+    label: "Saved",
+    /**
+     * A board **is** a saved collection, so somebody looking at one is in this
+     * section even though the link points elsewhere. Without this, opening a
+     * board unlit the only nav item that described where they were.
+     */
+    also: ["/boards"],
+  },
 ] as const;
 
 export function PassportNav({
@@ -50,8 +63,10 @@ export function PassportNav({
   readonly displayName?: string | null;
 }) {
   const pathname = usePathname() ?? "";
-  const here = (href: string) =>
+  const inside = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+  const here = (destination: { href: string; also?: readonly string[] }) =>
+    inside(destination.href) || (destination.also ?? []).some(inside);
   const from = encodeURIComponent(pathname || "/discovery");
 
   return (
@@ -71,7 +86,7 @@ export function PassportNav({
         </Link>
 
         {DESTINATIONS.map((d) => {
-          const current = here(d.href);
+          const current = here(d);
           return (
             <Link
               key={d.href}

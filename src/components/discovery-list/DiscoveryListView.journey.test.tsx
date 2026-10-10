@@ -174,7 +174,7 @@ describe("being interrupted by sign-in", () => {
     const card = screen
       .getAllByTestId("possibility")
       .find((c) => c.textContent?.includes("Kangaroo Creek Farm"))!;
-    fireEvent.click(within(card).getByTestId("want-to-do"));
+    fireEvent.click(within(card).getByText("Save"));
 
     await waitFor(() => expect(toastFn).toHaveBeenCalled());
     const [, options] = toastFn.mock.calls.at(-1)!;
@@ -203,7 +203,7 @@ describe("being interrupted by sign-in", () => {
     expect(next).toContain("how=half-day");
     // The colon stays percent-encoded inside the `next` value, which is what
     // makes it survive being a query parameter of a query parameter.
-    expect(next).toContain("do=want%3Akangaroo");
+    expect(next).toContain("do=save%3Akangaroo");
   });
 
   it("never writes on a visitor's behalf before they are known", () => {
@@ -211,8 +211,17 @@ describe("being interrupted by sign-in", () => {
     const card = screen
       .getAllByTestId("possibility")
       .find((c) => c.textContent?.includes("Kangaroo Creek Farm"))!;
-    fireEvent.click(within(card).getByTestId("want-to-do"));
-    expect(wantToDo).not.toHaveBeenCalled();
+    fireEvent.click(within(card).getByText("Save"));
+    expect(saveExperienceToBoard).not.toHaveBeenCalled();
+  });
+
+  it("offers one action while browsing, not a choice of intentions", () => {
+    // Asking somebody to grade their commitment before they have finished
+    // looking is what made this confusing. Deciding happens in Saved.
+    view(true);
+    const card = screen.getAllByTestId("possibility")[0]!;
+    expect(within(card).queryByTestId("want-to-do")).not.toBeInTheDocument();
+    expect(within(card).getByText("Save")).toBeInTheDocument();
   });
 });
 
@@ -284,7 +293,7 @@ describe("the board stays theirs", () => {
     const card = screen
       .getAllByTestId("possibility")
       .find((c) => c.textContent?.includes("Polson Park"))!;
-    fireEvent.click(within(card).getByText(/save to board/i));
+    fireEvent.click(within(card).getByText("Save"));
     await waitFor(() => expect(saveExperienceToBoard).toHaveBeenCalled());
     expect(createBoard).not.toHaveBeenCalled();
     expect(saveExperienceToBoard).toHaveBeenCalledWith(
@@ -301,17 +310,24 @@ describe("the board stays theirs", () => {
  * chosen never joined the collection Passport had been showing them — and the
  * board, which is where Passport said saved things live, never heard about it.
  */
-describe("wanting to do something also collects it", () => {
+/**
+ * **A stronger intention must not be a quieter one.**
+ *
+ * *Want to do* used to write only to this person's October, so the thing they
+ * had just chosen never joined the collection Passport had been showing them.
+ * The card no longer offers it — deciding happens in Saved — but an older
+ * `?do=want:` link still replays, and when it does it must collect first.
+ */
+describe("an older want-to-do link still collects", () => {
   it("puts it on the board before recording the intention", async () => {
-    view(true);
-    await waitFor(() => expect(listBoards).toHaveBeenCalled());
-    const card = screen
-      .getAllByTestId("possibility")
-      .find((c) => c.textContent?.includes("Canyon Frights"))!;
-    fireEvent.click(within(card).getByTestId("want-to-do"));
-
+    view(true, "https://passport.test/discovery?do=want%3Acanyon");
     await waitFor(() => expect(wantToDo).toHaveBeenCalled());
     expect(saveExperienceToBoard).toHaveBeenCalledWith("board-1", "canyon");
+  });
+
+  it("keeps it collected even where October cannot hold the kind", async () => {
+    view(true, "https://passport.test/discovery?do=want%3Apolson");
+    await waitFor(() => expect(saveExperienceToBoard).toHaveBeenCalled());
   });
 
   it("does not add a second row for something already collected", async () => {
@@ -323,26 +339,9 @@ describe("wanting to do something also collects it", () => {
         addedAt: "2026-10-10T00:00:00.000Z",
       },
     ]);
-    view(true);
-    await waitFor(() => expect(listBoardItems).toHaveBeenCalled());
-    // Already saved, so its card is out of the feed — reach it through the
-    // sidebar's own copy of the board instead.
-    await waitFor(() =>
-      expect(screen.getByRole("complementary")).toHaveTextContent(
-        "Canyon Frights",
-      ),
-    );
+    view(true, "https://passport.test/discovery?do=want%3Acanyon");
+    await waitFor(() => expect(wantToDo).toHaveBeenCalled());
     expect(saveExperienceToBoard).not.toHaveBeenCalled();
-  });
-
-  it("keeps it collected even where October cannot hold the kind", async () => {
-    view(true);
-    await waitFor(() => expect(listBoards).toHaveBeenCalled());
-    const card = screen
-      .getAllByTestId("possibility")
-      .find((c) => c.textContent?.includes("Polson Park"))!;
-    fireEvent.click(within(card).getByTestId("want-to-do"));
-    await waitFor(() => expect(saveExperienceToBoard).toHaveBeenCalled());
   });
 });
 

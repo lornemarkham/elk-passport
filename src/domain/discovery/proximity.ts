@@ -208,3 +208,57 @@ export function nearSection(
     shape: "intent",
   };
 }
+
+/**
+ * **Near first, then what Atlas has not placed, then what it has placed far away.**
+ *
+ * The complaint this answers, from somebody deciding what to do in Vernon:
+ * *Happening today* mixed Vernon activities, Kelowna activities and Metro
+ * Vancouver events three hundred kilometres away, in no particular order. A
+ * concert at BC Place is not an equally local answer to "what is on today".
+ *
+ * The ordering is three-way for the same reason `Placement` is:
+ *
+ * ```
+ * near       Atlas placed it within reach        → first, nearest first
+ * unplaced   Atlas placed it nowhere             → next, order untouched
+ * far        Atlas placed it, and it is far      → last, nearest first
+ * ```
+ *
+ * **`unplaced` ranks above `far`, never below it.** Two candidates in three
+ * carry no coordinates, and they are overwhelmingly local organisations Atlas
+ * has not got to yet. Sorting them under a located Vancouver concert would be
+ * treating a missing coordinate as evidence of distance — the mistake this
+ * whole module exists to avoid — and would make the page worse while looking
+ * more intelligent.
+ *
+ * Stable within each group, so a section composed for a reason keeps that
+ * reason's order among things the distance cannot separate.
+ */
+export function nearestFirst(
+  experiences: readonly Experience[],
+  origin: Point | undefined,
+  nearKm: number = NEAR_KM,
+): readonly Experience[] {
+  if (!origin) return experiences;
+  const rank = (experience: Experience): number => {
+    const km = distanceTo(experience, origin);
+    if (km === undefined) return 1;
+    return km <= nearKm ? 0 : 2;
+  };
+  return experiences
+    .map((experience, index) => ({
+      experience,
+      index,
+      group: rank(experience),
+      km: distanceTo(experience, origin) ?? 0,
+    }))
+    .sort(
+      (a, b) =>
+        a.group - b.group ||
+        // Within near and within far, closest first. Within unplaced there is
+        // nothing to compare, so the section's own order stands.
+        (a.group === 1 ? a.index - b.index : a.km - b.km || a.index - b.index),
+    )
+    .map((row) => row.experience);
+}

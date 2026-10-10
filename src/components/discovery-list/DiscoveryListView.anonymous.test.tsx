@@ -151,12 +151,16 @@ describe("Discovery for someone who has not signed in", () => {
   });
 });
 
-describe("wanting something while signed out", () => {
+describe("saving something while signed out", () => {
   it("invites a sign-in and writes nothing", async () => {
+    // Discovery offers one action now. Grading a commitment belongs in Saved,
+    // after somebody has finished looking — and there is nothing to grade
+    // until they have collected something.
     render(<DiscoveryListView experiences={experiences} displayName={null} />);
     await waitFor(() => expect(screen.getByText("Ellison Park")).toBeTruthy());
 
-    fireEvent.click(screen.getAllByTestId("want-to-do")[0]!);
+    expect(screen.queryByTestId("want-to-do")).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByText("Save")[0]!);
 
     expect(wantToDo).not.toHaveBeenCalled();
     expect(toastFn).toHaveBeenCalledWith(

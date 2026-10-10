@@ -170,8 +170,10 @@ describe("everything else the board already did", () => {
     // id and 404s on a board's. No board-level Passport exists; see
     // docs/product/discover.md.
     const { sidebar } = renderSidebar([saved(ELLISON)]);
-    const cta = within(sidebar).getByText("Review board").closest("a");
-    expect(cta).toHaveAttribute("href", "/boards/board-1");
+    // "Review board" asked somebody to know what a board was before they
+    // could look at four things they had just saved.
+    const cta = within(sidebar).getByText("Review saved").closest("a");
+    expect(cta).toHaveAttribute("href", "/saved");
     expect(within(sidebar).queryByText("Start Passport")).toBeNull();
     expect(sidebar.querySelector('a[href^="/passport/"]')).toBeNull();
   });
@@ -201,9 +203,9 @@ describe("the way back", () => {
         backHref="/discovery?intent=local&q=farm&who=child"
       />,
     );
-    expect(screen.getByText("Review board").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Review saved").closest("a")).toHaveAttribute(
       "href",
-      "/boards/board-1?back=%2Fdiscovery%3Fintent%3Dlocal%26q%3Dfarm%26who%3Dchild",
+      "/saved?back=%2Fdiscovery%3Fintent%3Dlocal%26q%3Dfarm%26who%3Dchild",
     );
   });
 
@@ -221,9 +223,9 @@ describe("the way back", () => {
         onRemoveSaved={vi.fn()}
       />,
     );
-    expect(screen.getByText("Review board").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Review saved").closest("a")).toHaveAttribute(
       "href",
-      "/boards/board-1",
+      "/saved",
     );
   });
 });

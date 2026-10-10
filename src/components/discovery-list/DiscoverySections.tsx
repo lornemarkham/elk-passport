@@ -26,8 +26,6 @@ export function DiscoverySections({
   savedIds,
   savingId,
   onSave,
-  wantedIds,
-  onWant,
 }: {
   readonly sections: readonly DiscoverySection[];
   /** Today where the subjects are, so a card can say "Last day". */
@@ -39,8 +37,6 @@ export function DiscoverySections({
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
-  readonly wantedIds?: ReadonlySet<string>;
-  readonly onWant?: (experience: Experience) => void;
 }) {
   return (
     <div className="flex flex-col gap-10">
@@ -54,8 +50,6 @@ export function DiscoverySections({
           savedIds={savedIds}
           savingId={savingId}
           onSave={onSave}
-          wantedIds={wantedIds}
-          onWant={onWant}
         />
       ))}
     </div>
@@ -70,8 +64,6 @@ function Section({
   savedIds,
   savingId,
   onSave,
-  wantedIds,
-  onWant,
 }: {
   readonly section: DiscoverySection;
   readonly today?: string;
@@ -80,8 +72,6 @@ function Section({
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
-  readonly wantedIds?: ReadonlySet<string>;
-  readonly onWant?: (experience: Experience) => void;
 }) {
   // How many extra pages of this section the person has asked for. Local to
   // the section, so opening one up leaves the others as they were.
@@ -116,8 +106,6 @@ function Section({
             saved={savedIds.has(experience.id)}
             saving={savingId === experience.id}
             onSave={() => onSave(experience)}
-            wanted={wantedIds?.has(experience.id)}
-            {...(onWant ? { onWant: () => onWant(experience) } : {})}
           />
         ))}
       </ul>
