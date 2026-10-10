@@ -6,10 +6,8 @@ import { activeScope } from "@/domain/discovery/activeScope";
 import { currentUser } from "@/lib/auth/currentUser";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { ZONE } from "@/domain/experience/eventTime";
-import { environmentFor } from "@/lib/environment/reading";
 import { OCTOBER_PLACES } from "@/domain/environment/places";
-import { hoursBetween } from "@/domain/environment/types";
-import { readWeather } from "@/domain/discovery/situation";
+import { weatherToday } from "@/lib/environment/today";
 
 export const metadata: Metadata = {
   title: "Discovery — Passport",
@@ -79,13 +77,13 @@ export default async function DiscoveryPage() {
 
   // **The weather, which the person should never have to type.**
   //
-  // Passport has held hourly Environment Canada readings with provenance since
-  // October, and generic Discovery never used them. One area — the one the
-  // corpus is mostly about — because a forecast per card is the mistake the
-  // batched port exists to prevent, and because Passport has no idea where the
-  // reader actually is (no geolocation, and `activeScope()` is admin-gated).
-  // So this is the weather *there*, said as the weather there.
-  const weather = await forecastForDiscovery(now);
+  // One area, because a forecast per card is the mistake the batched port
+  // exists to prevent — and **the corpus's area, not the reader's**. This page
+  // is rendered on a server that knows nothing about where the request came
+  // from, and nothing here guesses: no IP lookup, no stored home area, no
+  // header sniffing. The surface labels it as the default it is, and offers to
+  // replace it with the reader's own.
+  const weather = await forecastForDiscovery();
 
   return (
     <>
@@ -103,31 +101,21 @@ export default async function DiscoveryPage() {
 }
 
 /**
- * Today's reading for the area Discovery is mostly about.
+ * **The area the corpus is about, which is not where anybody is.**
  *
- * Deliberately one area and deliberately hard-failing to `undefined`: a page
- * that cannot get a forecast says nothing about the weather, which is the
- * honest answer and the one that cannot mislead.
+ * Vernon because Atlas holds 813 Okanagan candidates and 33 from anywhere
+ * else — a fact about the knowledge, carried here as the default context and
+ * nothing more. It used to be presented as simply *the* weather; it is now
+ * labelled "the Vernon area" and a reader can replace it in one tap
+ * (`useHere`), which is the only thing in Passport that knows where somebody
+ * actually is.
+ *
+ * Deliberately hard-failing to `undefined`: a page that cannot get a forecast
+ * says nothing about the weather, which is honest and cannot mislead.
  */
-async function forecastForDiscovery(now: Date) {
-  const area = OCTOBER_PLACES.find((p) => p.id === "vernon");
-  if (!area) return undefined;
-  try {
-    const environments = await environmentFor([area]);
-    const environment = environments.get(area.id);
-    if (!environment) return undefined;
-    // The rest of today, not the next 48 hours — somebody asking what to do
-    // this afternoon is not served by tomorrow morning's sky.
-    const endOfDay = new Date(now);
-    endOfDay.setHours(23, 59, 59, 999);
-    const hours = hoursBetween(
-      environment,
-      now.toISOString(),
-      endOfDay.toISOString(),
-    );
-    const reading = readWeather(hours, environment.provenance.source);
-    return reading ? { ...reading, area: area.name } : undefined;
-  } catch {
-    return undefined;
-  }
+const CORPUS_AREA = OCTOBER_PLACES.find((p) => p.id === "vernon");
+
+async function forecastForDiscovery() {
+  if (!CORPUS_AREA) return undefined;
+  return weatherToday(CORPUS_AREA, new Date(), CORPUS_AREA.name);
 }

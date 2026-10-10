@@ -1,6 +1,6 @@
 "use client";
 
-import { CloudRain, Sun, Users } from "lucide-react";
+import { CloudRain, LoaderCircle, MapPin, Sun, Users } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import {
   answerFor,
@@ -8,9 +8,11 @@ import {
   shelterOf,
   type Company,
   type DayWeather,
+  type PlaceContext,
   type Situation,
   type Window,
 } from "@/domain/discovery/situation";
+import { useHere } from "@/lib/location/useHere";
 
 /**
  * **Where a person brings a situation instead of a search query.**
@@ -43,6 +45,15 @@ import {
  *
  * That admission is the product working. A confident shortlist built on
  * nothing would be the fabricated intelligence the doctrine forbids.
+ *
+ * ## Whose weather it is
+ *
+ * It said "Vernon" because the corpus is about Vernon, which is a fact about
+ * Atlas and not about the reader. So the area is now labelled for what it is —
+ * *the Vernon area*, a default — and a person can replace it with their own by
+ * tapping once. Nothing is claimed about where they are until they do, and
+ * nothing is remembered after they leave. See `useHere` for the full path a
+ * position takes.
  */
 export function TodayPanel({
   today,
@@ -60,7 +71,12 @@ export function TodayPanel({
   readonly situation: Situation;
   readonly onSituation: (next: Situation) => void;
 }) {
-  const answer = answerFor(experiences, situation, { wet: weather?.wet });
+  // **Situational, and only ever for this visit.** `here` holds a position
+  // nowhere — see `useHere`. Until somebody taps, `place` is `default` and the
+  // weather below is the corpus's area, said as the corpus's area.
+  const { place, weather: here, ask } = useHere();
+  const shown = here ?? weather;
+  const answer = answerFor(experiences, situation, { wet: shown?.wet });
   const asked = Boolean(situation.company);
 
   return (
@@ -74,21 +90,62 @@ export function TodayPanel({
         className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide text-[#8a5a24] uppercase"
       >
         <span>{today}</span>
-        {weather && (
+        {shown && (
           <>
-            <span aria-hidden className="text-[#8a5a24]/40">
-              ·
-            </span>
+            <Dot />
             <span className="inline-flex items-center gap-1">
-              {weather.wet ? (
+              {shown.wet ? (
                 <CloudRain className="h-3.5 w-3.5" aria-hidden />
               ) : (
                 <Sun className="h-3.5 w-3.5" aria-hidden />
               )}
-              {weather.description ?? (weather.wet ? "Rain expected" : "Dry")}
-              {weather.area ? ` in ${weather.area}` : ""}
+              {shown.description ?? (shown.wet ? "Rain expected" : "Dry")}
             </span>
+            {shown.area && (
+              <>
+                <Dot />
+                {/* **"Vernon" and "the Vernon area" are different claims.**
+                    One says the forecast is for Vernon; the other says it is
+                    the area's default and not about the reader. The second is
+                    what the page can honestly say until somebody taps. */}
+                <span data-testid="today-area">
+                  {place.state === "observed"
+                    ? shown.area
+                    : `${shown.area} area`}
+                </span>
+              </>
+            )}
           </>
+        )}
+      </p>
+
+      {/* One line, and only where there is something true to say. No modal, no
+          up-front explanation of what geolocation is: the offer is the
+          explanation, and the sentence beside it is what is wrong without it. */}
+      <p
+        data-testid="today-place"
+        className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#2b2015]/50"
+      >
+        <span>{placeNote(place, shown?.area)}</span>
+        {place.state === "default" && ask && (
+          <button
+            type="button"
+            data-testid="use-my-location"
+            onClick={ask}
+            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[#8a5a24]/30 px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:border-[#8a5a24]/60 hover:text-[#2b2015]"
+          >
+            <MapPin className="h-3 w-3" aria-hidden />
+            Use my location
+          </button>
+        )}
+        {place.state === "asking" && (
+          <span
+            data-testid="location-asking"
+            className="inline-flex items-center gap-1 text-[#8a5a24]"
+          >
+            <LoaderCircle className="h-3 w-3 animate-spin" aria-hidden />
+            Finding your area…
+          </span>
         )}
       </p>
 
@@ -128,10 +185,54 @@ export function TodayPanel({
       </div>
 
       {asked && (
-        <Answer answer={answer} situation={situation} weather={weather} />
+        <Answer answer={answer} situation={situation} weather={shown} />
       )}
     </section>
   );
+}
+
+const Dot = () => (
+  <span aria-hidden className="text-[#8a5a24]/40">
+    ·
+  </span>
+);
+
+/**
+ * What the page can honestly say about whose weather this is.
+ *
+ * Every branch names the gap rather than papering over it. The silent version
+ * of this product showed a Vernon forecast to somebody in Kamloops and said
+ * nothing at all.
+ */
+export function placeNote(
+  place: PlaceContext,
+  area: string | undefined,
+): string {
+  const theArea = area ? `the ${area} area` : "this area";
+  switch (place.state) {
+    case "observed":
+      return place.km !== undefined
+        ? `Nearest forecast to you — ${place.area}, about ${place.km} km away.`
+        : `Nearest forecast to you — ${place.area}.`;
+    case "asking":
+      return "";
+    case "unavailable":
+      switch (place.lapse) {
+        case "denied":
+          return `Showing ${theArea}, since Passport can't see where you are.`;
+        case "no-forecast":
+          // They did share, and there is genuinely nothing to show them.
+          return `Environment Canada publishes no forecast near you — showing ${theArea} instead.`;
+        default:
+          // `failed`: a fix or a lookup that did not work, which is not worth
+          // explaining to somebody who only wanted to know about the rain.
+          return `Showing ${theArea}.`;
+      }
+    default:
+      return area
+        ? `Forecast for ${theArea} — not for wherever you are.`
+        : "Passport has no forecast for today.";
+  }
 }
 
 const COMPANY: readonly { value: Company; label: string }[] = [

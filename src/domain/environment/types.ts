@@ -86,7 +86,15 @@ export interface NightOutlook {
 }
 
 export interface Environment {
-  /** The area this describes. Never the device's location. */
+  /**
+   * The area this describes.
+   *
+   * Usually one of October's named towns. Since the location slice it may also
+   * be an ad-hoc point built from a reader's own blunted coordinates, which
+   * exists for one request and is stored nowhere — `lib/environment/today.ts`.
+   * Either way it is a point the caller chose, and `provenance.stationName` is
+   * the city the forecast is actually published for.
+   */
   readonly area: OctoberPlace;
   readonly hourly: readonly HourlyConditions[];
   /** Night summaries, which reach further out than `hourly` ever does. */

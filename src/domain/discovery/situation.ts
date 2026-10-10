@@ -356,3 +356,83 @@ export function directionsFor(
     }))
     .sort((a, b) => b.places.length - a.places.length);
 }
+
+/**
+ * **Where Passport is getting its environmental context, and how it knows.**
+ *
+ * Until now Discovery forecast for Vernon because *the corpus* is mostly about
+ * Vernon — which is a fact about Atlas, not about the person holding the
+ * phone. Everything downstream inherited it: the weather was not the reader's
+ * weather, and any feasibility reasoning built on top would have been reasoning
+ * about somebody else's valley.
+ *
+ * Four states, kept apart because collapsing them is how a product starts
+ * claiming to know where you are:
+ *
+ * ```
+ * default      the area the corpus is about. Honest, and not about the reader.
+ * asking       the browser prompt is open. Nothing is known yet.
+ * observed     they granted permission and a forecast came back for near them.
+ * unavailable  asked and got nowhere — declined, or no forecast published
+ *              near them. Back to the default, and not asked again.
+ * ```
+ *
+ * **`observed` is situational.** It is held for this visit and written nowhere:
+ * not a profile, not a cookie, not a column. Somebody who shares where they
+ * are this afternoon has not told Passport where they live — which is a
+ * different fact, already stored under `passport_profiles.home_area`, chosen
+ * deliberately in Account, and deliberately not read here.
+ */
+export type LocationState = "default" | "asking" | "observed" | "unavailable";
+
+/** Why the reader is seeing the default rather than their own area. */
+export type LocationLapse =
+  /** They said no, or the browser said no on their behalf. */
+  | "denied"
+  /** The fix or the lookup failed. */
+  | "failed"
+  /**
+   * They shared where they are and Environment Canada publishes no forecast
+   * near it. The honest shape of a Canada-only weather provider.
+   */
+  | "no-forecast";
+
+export interface PlaceContext {
+  readonly state: LocationState;
+  /**
+   * The city the forecast is actually published for — never the reader's own
+   * position, which Passport does not hold and would not print.
+   */
+  readonly area?: string;
+  /** How far that city is from them, in km, where the provider said. */
+  readonly km?: number;
+  readonly lapse?: LocationLapse;
+}
+
+export const DEFAULT_PLACE: PlaceContext = { state: "default" };
+
+/**
+ * **Coordinates, blunted before they ever leave the browser.**
+ *
+ * Two decimal places is about a kilometre. The forecast lookup searches 0.6°
+ * — some 65 km — for a city Environment Canada publishes, so a precise fix
+ * buys nothing and costs everything: Passport would be holding somebody's
+ * doorstep in order to answer a question about their valley.
+ *
+ * So the browser rounds, the server never receives a precise position, and
+ * there is nothing precise to leak, log or persist.
+ */
+export const LOCATION_PRECISION = 2;
+
+export interface Point {
+  readonly latitude: number;
+  readonly longitude: number;
+}
+
+export function blunt(latitude: number, longitude: number): Point {
+  const factor = 10 ** LOCATION_PRECISION;
+  return {
+    latitude: Math.round(latitude * factor) / factor,
+    longitude: Math.round(longitude * factor) / factor,
+  };
+}
