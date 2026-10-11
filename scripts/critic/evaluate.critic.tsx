@@ -21,6 +21,8 @@ import { townById } from "@/domain/discovery/towns";
 import { GoHaveADay } from "@/components/go/GoHaveADay";
 import GoPage from "@/app/go/page";
 import PrintPage from "@/app/go/print/page";
+import { resolvePrintDay } from "@/lib/go/printDay";
+import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
 import { COHORT, type Scenario } from "./cohort";
 import { DIMENSIONS, examine, score, type Ledger, type Oracle } from "./checks";
 import { compare, type Judged, type Run } from "./compare";
@@ -203,28 +205,34 @@ const unescape = (s: string) => s.replace(/&amp;/g, "&");
 
 /**
  * The print link `/go` builds, for a brief the page never rendered — the
- * revision probe needs it, and revisions are client state. **A replica of
- * `printQuery` in `GoHaveADay.tsx`**, checked against the real link on every
+ * revision probe needs it, and revisions are client state. Since integration
+ * (M178) `/go` writes it through the one day-query codec, so this is that
+ * codec rather than a replica — still checked against the real link on every
  * scenario before it is trusted (`harness.print-replica-drift`).
  */
-function printParams(brief: DayBrief, ids: readonly string[]) {
-  const p = new URLSearchParams();
-  p.set("stops", ids.join(","));
-  p.set("say", brief.said);
-  if (brief.hours !== undefined) p.set("hours", String(brief.hours));
-  if (brief.childAge !== undefined) p.set("age", String(brief.childAge));
-  if (brief.town) p.set("at", brief.town.id);
-  if (brief.on) p.set("on", brief.on);
-  return p;
+function printParams(brief: DayBrief, day: DayPlanned) {
+  return new URLSearchParams(writeDayQuery(dayQueryFor(brief, day)));
 }
 
+/**
+ * The paper, rendered by the real page, and the day it printed — read through
+ * the same resolver the page uses (`resolvePrintDay`), because the page now
+ * renders `PrintableAdventure` from a view model, not a `DayPlanned`.
+ */
 async function renderPrint(params: URLSearchParams) {
   atlas.asked.length = 0;
+  const query = Object.fromEntries(params.entries());
   const el = (await PrintPage({
-    searchParams: Promise.resolve(Object.fromEntries(params.entries())),
-  })) as ReactElement<{ day: DayPlanned }>;
+    searchParams: Promise.resolve(query),
+  })) as ReactElement;
   const html = renderToStaticMarkup(el);
-  return { day: el.props.day, html, asked: [...atlas.asked] };
+  const asked = [...atlas.asked];
+  const resolved = await resolvePrintDay(query);
+  return {
+    day: resolved.kind === "day" ? resolved.day : undefined,
+    html,
+    asked,
+  };
 }
 
 // ── The run ───────────────────────────────────────────────────────────────
@@ -316,10 +324,7 @@ describe.skipIf(!CORPUS)("GO HAVE A DAY critic", () => {
 
       // The revision probe: "Less driving", then print.
       let revised;
-      const replica = printParams(
-        brief,
-        day.stops.map((s) => s.experience.id),
-      );
+      const replica = printParams(brief, day);
       const sorted = (p: URLSearchParams) =>
         [...p.entries()]
           .sort()
@@ -335,7 +340,7 @@ describe.skipIf(!CORPUS)("GO HAVE A DAY critic", () => {
         const rd = buildDay({ pool: props.pool, brief: rb });
         const ids = rd.stops.map((s) => s.experience.id);
         const rp = ids.length
-          ? await renderPrint(printParams(rb, ids))
+          ? await renderPrint(printParams(rb, rd))
           : undefined;
         revised = {
           said,
