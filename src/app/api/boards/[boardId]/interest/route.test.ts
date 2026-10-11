@@ -13,6 +13,7 @@ const listBoardItemsFor = vi.fn();
 const readBoardInterest = vi.fn();
 const markInterest = vi.fn();
 const clearInterest = vi.fn();
+const readBoardPlans = vi.fn();
 
 vi.mock("@/lib/auth/requireUser", () => ({ requireUser: () => requireUser() }));
 vi.mock("@/lib/collaboration/boardAccess", () => ({
@@ -30,6 +31,10 @@ vi.mock("@/lib/data/boards-interest-server", async () => {
     clearInterest: (...a: unknown[]) => clearInterest(...a),
   };
 });
+
+vi.mock("@/lib/data/boards-plans-server", () => ({
+  readBoardPlans: (...a: unknown[]) => readBoardPlans(...a),
+}));
 
 const BOARD = "board-1";
 const ENV = "PASSPORT_BOARD_SYCLE_VANCOUVER_2026";
@@ -51,8 +56,10 @@ beforeEach(() => {
     readBoardInterest,
     markInterest,
     clearInterest,
+    readBoardPlans,
   ])
     f.mockReset();
+  readBoardPlans.mockResolvedValue({ rows: [], memberIds: new Set() });
   process.env[ENV] = BOARD;
   requireUser.mockResolvedValue({ user: me });
   accessToBoard.mockResolvedValue({ role: "viewer", ownerId: "owner" });
@@ -114,6 +121,27 @@ describe("PUT", () => {
     const res = await (
       await route()
     ).PUT(body({ itemId: "atlas-hike" }), context);
+    expect(res.status).toBe(200);
+  });
+
+  it('accepts "I\'m in" on a day shared to the board', async () => {
+    readBoardPlans.mockResolvedValue({
+      rows: [{ id: "p1", userId: "sam" }],
+      memberIds: new Set(),
+    });
+    const res = await (await route()).PUT(body({ itemId: "plan:p1" }), context);
+    expect(res.status).toBe(200);
+    expect(markInterest).toHaveBeenCalled();
+  });
+
+  it("refuses a shared day that is not on this board", async () => {
+    const res = await (await route()).PUT(body({ itemId: "plan:p1" }), context);
+    expect(res.status).toBe(404);
+  });
+
+  it("still lets the staff game be marked when shared days are not switched on", async () => {
+    readBoardPlans.mockRejectedValue(new Error("no table"));
+    const res = await (await route()).PUT(body({ itemId: HOCKEY }), context);
     expect(res.status).toBe(200);
   });
 

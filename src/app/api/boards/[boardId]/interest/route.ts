@@ -19,13 +19,16 @@ import {
   markInterest,
   readBoardInterest,
 } from "@/lib/data/boards-interest-server";
+import { planItemId } from "@/lib/data/boards-plans";
+import { readBoardPlans } from "@/lib/data/boards-plans-server";
 
 /**
  * **"I'm interested", on one board.**
  *
  * Any member may say it — a viewer included, because raising a hand is not
  * editing the board. Only things actually on this board can be marked: its
- * saved items, and the staff activities its gathering declares. Every answer
+ * saved items, the staff activities its gathering declares, and the days
+ * members have shared on it ("I'm in" on a shared day is this same mark). Every answer
  * is the board's whole picture as this person may see it, so the page never
  * has to stitch a partial update together.
  */
@@ -62,8 +65,14 @@ async function markable(
   // If Atlas cannot answer, declared activities can still be marked; saved
   // items wait until it can. Refusing everything would punish the hockey game
   // for an Atlas outage it has nothing to do with.
-  const items = await listBoardItemsFor(boardId, ownerId).catch(() => []);
+  const [items, plans] = await Promise.all([
+    listBoardItemsFor(boardId, ownerId).catch(() => []),
+    // Same reasoning: shared days not being switched on yet must not stop
+    // anybody raising a hand for the hockey game.
+    readBoardPlans(boardId).catch(() => ({ rows: [] })),
+  ]);
   for (const item of items) ids.add(item.experienceId);
+  for (const plan of plans.rows) ids.add(planItemId(plan.id));
   return ids;
 }
 

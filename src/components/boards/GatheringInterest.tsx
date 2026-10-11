@@ -27,8 +27,15 @@ export interface InterestPicture {
   readonly kindred: readonly Kindred[];
 }
 
+/**
+ * Who the other people on a board are, in a sentence. A conference board's
+ * members are colleagues; a board a friend shared with you holds people.
+ */
+export type Circle = "colleagues" | "people";
+
 interface InterestState {
   readonly picture: InterestPicture;
+  readonly circle: Circle;
   readonly showName: boolean;
   readonly busy: boolean;
   readonly yourName: string;
@@ -66,11 +73,13 @@ export function InterestProvider({
   boardId,
   initial,
   yourName,
+  circle = "colleagues",
   children,
 }: {
   readonly boardId: string;
   readonly initial: InterestPicture;
   readonly yourName: string;
+  readonly circle?: Circle;
   readonly children: ReactNode;
 }) {
   const [picture, setPicture] = useState(initial);
@@ -111,26 +120,41 @@ export function InterestProvider({
 
   return (
     <Context.Provider
-      value={{ picture, showName, busy, yourName, toggle, setShowName }}
+      value={{
+        picture,
+        circle,
+        showName,
+        busy,
+        yourName,
+        toggle,
+        setShowName,
+      }}
     >
       {children}
     </Context.Provider>
   );
 }
 
-function people(n: number): string {
+function people(n: number, circle: Circle): string {
+  if (circle === "people") return n === 1 ? "1 person" : `${n} people`;
   return n === 1 ? "1 colleague" : `${n} colleagues`;
 }
 
 /** "You, Sam and 2 others" — names only for people who chose to show them. */
-export function describeInterest(summary: InterestSummary): string {
+export function describeInterest(
+  summary: InterestSummary,
+  circle: Circle = "colleagues",
+  verb: "interested" | "in" = "interested",
+): string {
   if (summary.count === 0) return "Nobody yet — be the first.";
   const parts: string[] = [];
   if (summary.youAreIn) parts.push("you");
   parts.push(...summary.names);
   if (summary.unnamed > 0) {
     parts.push(
-      parts.length > 0 ? `${summary.unnamed} more` : people(summary.unnamed),
+      parts.length > 0
+        ? `${summary.unnamed} more`
+        : people(summary.unnamed, circle),
     );
   }
   const list =
@@ -138,17 +162,20 @@ export function describeInterest(summary: InterestSummary): string {
       ? parts[0]!
       : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
   const sentence = list.charAt(0).toUpperCase() + list.slice(1);
-  return `${sentence} ${summary.count === 1 && !summary.youAreIn ? "is" : "are"} interested.`;
+  return `${sentence} ${summary.count === 1 && !summary.youAreIn ? "is" : "are"} ${verb}.`;
 }
 
 export function InterestToggle({
   itemId,
   title,
+  verb = "interested",
 }: {
   readonly itemId: string;
   readonly title: string;
+  /** "in" for a shared day — the same mark, in the words a day calls for. */
+  readonly verb?: "interested" | "in";
 }) {
-  const { picture, busy, toggle } = useInterest();
+  const { picture, circle, busy, toggle } = useInterest();
   const summary = picture.summaries[itemId] ?? NO_INTEREST;
 
   return (
@@ -158,7 +185,11 @@ export function InterestToggle({
         onClick={() => toggle(itemId)}
         disabled={busy}
         aria-pressed={summary.youAreIn}
-        aria-label={`${summary.youAreIn ? "Not interested any more in" : "I'm interested in"} ${title}`}
+        aria-label={
+          verb === "in"
+            ? `${summary.youAreIn ? "I'm not in any more for" : "I'm in for"} ${title}`
+            : `${summary.youAreIn ? "Not interested any more in" : "I'm interested in"} ${title}`
+        }
         className={
           summary.youAreIn
             ? "bg-primary text-primary-foreground inline-flex items-center gap-2 self-start rounded-full px-4 py-2 text-sm font-medium disabled:opacity-60"
@@ -166,10 +197,16 @@ export function InterestToggle({
         }
       >
         <Hand className="h-4 w-4" />
-        {summary.youAreIn ? "You're interested" : "I'm interested"}
+        {verb === "in"
+          ? summary.youAreIn
+            ? "You're in"
+            : "I'm in"
+          : summary.youAreIn
+            ? "You're interested"
+            : "I'm interested"}
       </button>
       <p className="text-muted-foreground text-sm">
-        {describeInterest(summary)}
+        {describeInterest(summary, circle, verb)}
       </p>
     </div>
   );
@@ -204,7 +241,16 @@ export function KindredPanel({
   /** Item id → what to call it. */
   readonly titles: Readonly<Record<string, string>>;
 }) {
-  const { picture } = useInterest();
+  const { picture: raw } = useInterest();
+  // Only things this page can name. A shared day that has since been taken
+  // down leaves marks behind until the database clears them, and "also into
+  // plan:3f9c…" is not a sentence anybody should read.
+  const picture = {
+    ...raw,
+    kindred: raw.kindred
+      .map((k) => ({ ...k, shared: k.shared.filter((id) => id in titles) }))
+      .filter((k) => k.shared.length > 0),
+  };
   const youAreInAnything = Object.values(picture.summaries).some(
     (s) => s.youAreIn,
   );
@@ -236,7 +282,7 @@ export function KindredPanel({
               <span className="font-medium">{k.name}</span>
               <span className="text-muted-foreground">
                 {" "}
-                — also into {k.shared.map((id) => titles[id] ?? id).join(", ")}
+                — also into {k.shared.map((id) => titles[id]).join(", ")}
               </span>
             </li>
           ))}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Copy, Link2, UserMinus, Users } from "lucide-react";
 import type { BoardRole } from "@/lib/collaboration/boardAccess";
+import { LeaveBoard } from "./LeaveBoard";
 
 /**
  * **Sharing a board: one link, and a list of who is on it.**
@@ -233,11 +234,14 @@ export function ShareBoard({
           )}
         </div>
       ) : (
-        <p className="mt-3 text-sm text-[#6b5637]">
-          {role === "editor"
-            ? "You can add and remove places on this board."
-            : "You can see what's on this board."}
-        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-sm text-[#6b5637]">
+            {role === "editor"
+              ? "You can add and remove places on this board."
+              : "You can see what's on this board."}
+          </p>
+          <LeaveBoard boardId={boardId} />
+        </div>
       )}
     </section>
   );

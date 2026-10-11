@@ -9,17 +9,12 @@ import {
   gatheringBySlug,
   type Gathering,
 } from "@/lib/data/boards-gatherings";
-import {
-  kindredColleagues,
-  summariseInterest,
-} from "@/lib/data/boards-interest";
-import { readBoardInterest } from "@/lib/data/boards-interest-server";
+import { loadBoardTogether } from "@/lib/data/boards-together-server";
 import { PassportNav } from "@/components/shell/PassportNav";
 import {
   GatheringBoard,
   type GatheringViewer,
 } from "@/components/boards/GatheringBoard";
-import type { InterestPicture } from "@/components/boards/GatheringInterest";
 
 /**
  * **`/boards/conference/{slug}` — a gathering's activities board.**
@@ -42,22 +37,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function interestFor(
-  user: PassportUser,
-  boardId: string,
-): Promise<InterestPicture | null> {
-  try {
-    const { rows, memberIds } = await readBoardInterest(boardId);
-    return {
-      summaries: summariseInterest(rows, user.id, memberIds),
-      kindred: kindredColleagues(rows, user.id, memberIds),
-    };
-  } catch {
-    // Not "nobody is interested" — the board says it could not ask.
-    return null;
-  }
-}
-
 async function viewerOf(
   gathering: Gathering,
   user: PassportUser | null,
@@ -74,16 +53,21 @@ async function viewerOf(
       return { kind: "not-member" };
     case "error":
       return { kind: "board-error" };
-    case "ok":
+    case "ok": {
+      // Not "nobody is interested" when either is null — the board says it
+      // could not ask.
+      const together = await loadBoardTogether(user, boardId, board.role);
       return {
         kind: "member",
         boardId,
         role: board.role,
         yourName: user.displayName,
-        interest: await interestFor(user, boardId),
+        interest: together.interest,
+        plans: together.plans,
         adventures: board.experiences,
         unresolved: board.unresolved.length,
       };
+    }
   }
 }
 

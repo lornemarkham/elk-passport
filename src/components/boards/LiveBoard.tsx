@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Radio } from "lucide-react";
 import { useResourceEvents } from "@/lib/collaboration/useResourceEvents";
 import { CORE_EVENT_KINDS } from "@/lib/collaboration/eventKinds";
+import { PLAN_EVENT_KINDS } from "@/lib/data/boards-plans";
 
 /**
  * **Keeps an open board honest while somebody else is changing it.**
@@ -39,6 +40,12 @@ export function LiveBoard({ boardId }: { boardId: string }) {
         break;
       case CORE_EVENT_KINDS.memberJoined:
         setLastChange("Someone joined this board.");
+        break;
+      case PLAN_EVENT_KINDS.planShared:
+        setLastChange("Someone shared a day.");
+        break;
+      case PLAN_EVENT_KINDS.planWithdrawn:
+        setLastChange("A shared day was taken down.");
         break;
       default:
         setLastChange("This board changed.");

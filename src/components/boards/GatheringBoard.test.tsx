@@ -11,7 +11,11 @@ import { describeInterest } from "./GatheringInterest";
 import { gatheringBySlug } from "@/lib/data/boards-gatherings";
 import { NO_INTEREST } from "@/lib/data/boards-interest";
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace, refresh: vi.fn() }),
+}));
 
 const sycle = gatheringBySlug("sycle-vancouver-2026")!;
 const HOCKEY = sycle.featured.id;
@@ -24,6 +28,7 @@ const member = (
   role: "editor",
   yourName: "Lorne",
   interest: { summaries: {}, kindred: [] },
+  plans: [],
   adventures: [],
   unresolved: 0,
   ...over,
@@ -123,7 +128,9 @@ describe("the conference activities board", () => {
 
   it("keeps the name choice off until the person turns it on", () => {
     render(<GatheringBoard gathering={sycle} viewer={member()} />);
-    const box = screen.getByRole("checkbox") as HTMLInputElement;
+    const box = screen.getByRole("checkbox", {
+      name: /Show my name \(Lorne\)/,
+    }) as HTMLInputElement;
     expect(box.checked).toBe(false);
     expect(screen.getByText(/Show my name \(Lorne\)/)).toBeTruthy();
   });

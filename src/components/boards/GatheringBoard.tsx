@@ -9,6 +9,9 @@ import {
   type Gathering,
   type StaffActivity,
 } from "@/lib/data/boards-gatherings";
+import type { SharedPlan } from "@/lib/data/boards-plans";
+import { LeaveBoard } from "./LeaveBoard";
+import { SharedPlans } from "./SharedPlans";
 import {
   InterestProvider,
   InterestToggle,
@@ -22,7 +25,12 @@ import {
  *
  * The featured staff game, anything else organisers have confirmed, the
  * informal adventures colleagues have saved to the board, and doors into Go
- * Have A Day from the conference's own town.
+ * Have A Day from the conference's own town — and the days colleagues built
+ * there and shared back, which anyone can say they're in on.
+ *
+ * Every group feature here is the board's, not the conference's: shared days,
+ * "I'm in", interest and leaving work identically on any board. A conference
+ * adds its declared activities and nothing underneath.
  *
  * What a visitor sees and what a colleague sees are different on purpose.
  * The plan itself — an activity and the facts nobody has confirmed yet — names
@@ -43,6 +51,8 @@ export type GatheringViewer =
       readonly yourName: string;
       /** `null` when Passport could not read interest — not "nobody". */
       readonly interest: InterestPicture | null;
+      /** Days colleagues shared. `null` when Passport could not read them. */
+      readonly plans: readonly SharedPlan[] | null;
       readonly adventures: readonly Experience[];
       readonly unresolved: number;
     };
@@ -370,6 +380,9 @@ export function GatheringBoard({
     ...(viewer.kind === "member"
       ? viewer.adventures.map((e) => [e.id, e.title] as const)
       : []),
+    ...(viewer.kind === "member" && viewer.plans
+      ? viewer.plans.map((p) => [p.itemId, p.title] as const)
+      : []),
   ]);
 
   const body = (
@@ -412,11 +425,25 @@ export function GatheringBoard({
       <Adventures gathering={gathering} viewer={viewer} />
       <DayDoors gathering={gathering} />
 
+      {viewer.kind === "member" && (
+        <SharedPlans
+          boardId={viewer.boardId}
+          initial={viewer.plans}
+          canShare={viewer.role !== "viewer"}
+          withInterest={canMark(viewer)}
+          goHref={`/go?at=${encodeURIComponent(gathering.townId)}`}
+        />
+      )}
+
       <p className="text-muted-foreground flex items-center gap-2 text-xs">
         <Compass className="h-3.5 w-3.5" />
         Nothing on this page is a booking. Details marked awaiting confirmation
         will appear when an organiser confirms them.
       </p>
+
+      {viewer.kind === "member" && viewer.role !== "owner" && (
+        <LeaveBoard boardId={viewer.boardId} boardName={gathering.title} />
+      )}
     </div>
   );
 
