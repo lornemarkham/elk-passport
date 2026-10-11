@@ -47,7 +47,8 @@ export function dayLegs(day: DayPlanned): {
  *
  * The builder always lists drive times as unknown, because the builder has no
  * routes. Once Atlas has routed every leg that is no longer true and the line
- * goes; when it routed some, the line names the legs it did not.
+ * goes; when it routed some, the line names the legs it did not, and a leg
+ * routed with an access caution gets its own line: its gate is unchecked.
  */
 export function unknownsWithTravel(
   unknowns: readonly string[],
@@ -59,7 +60,15 @@ export function unknownsWithTravel(
     if (line !== DRIVE_TIMES_UNKNOWN) return [line];
     if (total.kind === "complete") return [];
     return [
-      `Travel time for ${total.missing.join("; ")} — no route estimate, only a straight line.`,
+      ...(total.missing.length > 0
+        ? [
+            `Travel time for ${total.missing.join("; ")} — no route estimate, only a straight line.`,
+          ]
+        : []),
+      ...total.cautioned.map(
+        (leg) =>
+          `The way in for ${leg} — the route may end inside the site rather than at its entrance.`,
+      ),
     ];
   });
 }

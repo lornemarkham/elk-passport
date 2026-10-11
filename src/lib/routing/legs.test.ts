@@ -114,6 +114,68 @@ describe("travelTotal", () => {
     expect(total).toMatchObject({ kind: "partial", minutes: 32 });
   });
 
+  it("does not count a route that may end inside a site, and says why", () => {
+    // Atlas's Vernon probe: Kalamalka Lake Park's point is inside the park,
+    // and OSRM reached it by tracks, 82 min for 12 km in a straight line.
+    const toTheMiddle: Journey = {
+      ...(routed(82, 33.3) as Journey & { kind: "routed" }),
+      accessCaution:
+        "the route averages 25 km/h over 33.3 km — the point may be inside the site, reached by minor tracks rather than its entrance",
+    };
+    const total = travelTotal(
+      day,
+      [routed(9, 4.5), toTheMiddle, routed(18, 19.6)],
+      "driving",
+    );
+    expect(total).toEqual({
+      kind: "partial",
+      mode: "driving",
+      minutes: 27,
+      routed: 2,
+      legs: 3,
+      missing: [],
+      cautioned: ["Davison Orchards → O'Keefe Ranch"],
+    });
+    const words = describeTravelTotal(total, 120);
+    expect(words?.headline).toBe("At least 27 min of driving");
+    expect(words?.caveat).toBe(
+      "2 legs of 3 counted; not counted, because the route may end inside the site rather than at its entrance: Davison Orchards → O'Keefe Ranch. With 2 h at the stops, that is at least 2 h 27 min in all.",
+    );
+  });
+
+  it("gives no figure when every routed leg is cautioned, and still names them", () => {
+    const cautioned = {
+      ...(routed(82, 33.3) as Journey & { kind: "routed" }),
+      accessCaution: "the point may be inside the site",
+    };
+    const legs = day.slice(0, 1);
+    const total = travelTotal(legs, [cautioned], "driving");
+    expect(total).toMatchObject({ kind: "partial", minutes: 0, routed: 0 });
+    const words = describeTravelTotal(total, 120);
+    expect(words?.headline).toBe("No driving total to give");
+    expect(words?.caveat).toBe(
+      "0 legs of 1 counted; not counted, because the route may end inside the site rather than at its entrance: Vernon → Davison Orchards.",
+    );
+  });
+
+  it("names a missing leg and a cautioned one separately", () => {
+    const total = travelTotal(
+      day,
+      [
+        routed(9, 4.5),
+        noRoute,
+        {
+          ...(routed(40, 30) as Journey & { kind: "routed" }),
+          accessCaution: "x",
+        },
+      ],
+      "driving",
+    );
+    expect(describeTravelTotal(total)?.caveat).toBe(
+      "1 leg of 3 counted; this one has no travel time: Davison Orchards → O'Keefe Ranch; not counted, because the route may end inside the site rather than at its entrance: O'Keefe Ranch → Vernon.",
+    );
+  });
+
   it("has no total at all when nothing was routed", () => {
     expect(
       travelTotal(day, [undefined, undefined, undefined], "driving"),
@@ -143,6 +205,7 @@ describe("describeTravelTotal", () => {
         routed: 1,
         legs: 2,
         missing: ["A → B"],
+        cautioned: [],
       },
       120,
     );

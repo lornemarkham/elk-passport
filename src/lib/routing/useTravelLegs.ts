@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { answerMemo } from "./answerMemo";
 import type { LegsAnswer } from "./atlasLegs";
 import type { Journey, TravelMode } from "./journey";
 import { isPlaced, type Leg } from "./legs";
@@ -21,7 +22,15 @@ import type { TravelStatus } from "./useTravelTimes";
  *
  * `retry()` asks the same question again after a failure. Nothing retries on
  * its own: a person looking at "could not get travel times" decides.
+ *
+ * An answer is kept for five minutes (`answerMemo`), so going back to a mode
+ * already asked about costs Atlas nothing.
  */
+const remembered = answerMemo<LegsAnswer>();
+
+/** For tests: forget every answer this tab has kept. */
+export const forgetTravelLegs = () => remembered.clear();
+
 export function useTravelLegs(
   legs: readonly Leg[],
   mode: TravelMode,
@@ -51,7 +60,7 @@ export function useTravelLegs(
   const [result, setResult] = useState<{ key: string; answer?: LegsAnswer }>();
 
   useEffect(() => {
-    if (!key || !question) return;
+    if (!key || !question || remembered.get(question)) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -62,6 +71,7 @@ export function useTravelLegs(
         });
         if (!response.ok) throw new Error(String(response.status));
         const answer = (await response.json()) as LegsAnswer;
+        remembered.set(question, answer);
         if (!cancelled) setResult({ key, answer });
       } catch {
         if (!cancelled) setResult({ key });
@@ -77,9 +87,12 @@ export function useTravelLegs(
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const none: (Journey | undefined)[] = legs.map(() => undefined);
 
-  if (!key) return { status: "idle", journeys: none, retry };
-  if (result?.key !== key) return { status: "loading", journeys: none, retry };
-  const answer = result.answer;
+  if (!key || !question) return { status: "idle", journeys: none, retry };
+  const kept = remembered.get(question);
+  if (!kept && result?.key !== key) {
+    return { status: "loading", journeys: none, retry };
+  }
+  const answer = kept ?? result?.answer;
   if (!answer) return { status: "failed", journeys: none, retry };
   if (answer.state === "not-served") {
     return { status: "not-served", journeys: none, retry };

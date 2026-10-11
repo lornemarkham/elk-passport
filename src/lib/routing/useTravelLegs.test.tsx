@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useTravelLegs } from "./useTravelLegs";
+import { forgetTravelLegs, useTravelLegs } from "./useTravelLegs";
 import { legsAnswerFrom } from "./atlasLegs";
 import { chainLegs } from "./legs";
 import { DAVISON, LEGS_DRIVING_MOCK, OKEEFE } from "./fixtures";
@@ -14,6 +14,7 @@ const READY = legsAnswerFrom(LEGS_DRIVING_MOCK, 3, "driving");
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  forgetTravelLegs();
 });
 
 describe("useTravelLegs", () => {
@@ -104,5 +105,36 @@ describe("useTravelLegs", () => {
     rerender({ legs: [...LEGS] });
     expect(result.current.status).toBe("ready");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not ask Atlas again on switching back to a mode it answered", async () => {
+    const fetchMock = vi.fn(async () => Response.json(READY));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result, rerender } = renderHook(
+      ({ mode }: { mode: "driving" | "walking" }) => useTravelLegs(LEGS, mode),
+      { initialProps: { mode: "driving" } },
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    rerender({ mode: "walking" });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    rerender({ mode: "driving" });
+    expect(result.current.status).toBe("ready");
+    expect(result.current.journeys[0]).toMatchObject({ kind: "routed" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps no failure: a later page asks again", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 503 }))
+      .mockResolvedValueOnce(Response.json(READY));
+    vi.stubGlobal("fetch", fetchMock);
+    const first = renderHook(() => useTravelLegs(LEGS, "driving"));
+    await waitFor(() => expect(first.result.current.status).toBe("failed"));
+    first.unmount();
+    const second = renderHook(() => useTravelLegs(LEGS, "driving"));
+    await waitFor(() => expect(second.result.current.status).toBe("ready"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

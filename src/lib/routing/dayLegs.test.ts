@@ -78,8 +78,25 @@ describe("unknownsWithTravel", () => {
         routed: 2,
         legs: 3,
         missing: ["a → b"],
+        cautioned: [],
       })[1],
     ).toMatch(/Travel time for a → b/);
+  });
+
+  it("says to check the way in for a leg routed to the middle of a site", () => {
+    const lines = unknownsWithTravel(unknowns, "ready", {
+      kind: "partial",
+      mode: "driving",
+      minutes: 9,
+      routed: 1,
+      legs: 2,
+      missing: [],
+      cautioned: ["Vernon → Kalamalka Lake Park"],
+    });
+    expect(lines).toEqual([
+      "Prices",
+      "The way in for Vernon → Kalamalka Lake Park — the route may end inside the site rather than at its entrance.",
+    ]);
   });
 
   it("keeps it while Atlas has not routed anything", () => {

@@ -6,6 +6,7 @@ import type { Experience } from "@/domain/experience/types";
 import { townById } from "@/domain/discovery/towns";
 import { legsAnswerFrom } from "@/lib/routing/atlasLegs";
 import { LEGS_DRIVING_MOCK } from "@/lib/routing/fixtures";
+import { forgetTravelLegs } from "@/lib/routing/useTravelLegs";
 import { DayItinerary } from "./DayItinerary";
 
 /**
@@ -39,6 +40,7 @@ const DAY = {
 } as unknown as DayPlanned;
 
 afterEach(() => {
+  forgetTravelLegs();
   vi.unstubAllGlobals();
 });
 

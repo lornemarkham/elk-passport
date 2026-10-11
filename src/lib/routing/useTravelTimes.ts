@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { answerMemo } from "./answerMemo";
 import type { Origin, TravelAnswer } from "./atlasTravel";
 import type { Journey, TravelMode } from "./journey";
 
@@ -25,7 +26,15 @@ export type TravelStatus =
  * something different to say: still asking, Atlas cannot do this yet, and
  * Atlas could not be reached are three different sentences, and none of them
  * is "no route".
+ *
+ * An answer is kept for five minutes (`answerMemo`), so going back to an
+ * origin and mode already asked about costs Atlas nothing.
  */
+const remembered = answerMemo<TravelAnswer>();
+
+/** For tests: forget every answer this tab has kept. */
+export const forgetTravelTimes = () => remembered.clear();
+
 export function useTravelTimes(
   origin: Origin | undefined,
   mode: TravelMode,
@@ -42,7 +51,7 @@ export function useTravelTimes(
   }>();
 
   useEffect(() => {
-    if (!key || !origin) return;
+    if (!key || !origin || remembered.get(key)) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -57,6 +66,7 @@ export function useTravelTimes(
         });
         if (!response.ok) throw new Error(String(response.status));
         const answer = (await response.json()) as TravelAnswer;
+        remembered.set(key, answer);
         if (!cancelled) setResult({ key, answer });
       } catch {
         if (!cancelled) setResult({ key });
@@ -71,8 +81,9 @@ export function useTravelTimes(
   }, [key]);
 
   if (!key) return { status: "idle" };
-  if (result?.key !== key) return { status: "loading" };
-  const answer = result.answer;
+  const kept = remembered.get(key);
+  if (!kept && result?.key !== key) return { status: "loading" };
+  const answer = kept ?? result?.answer;
   if (!answer) return { status: "failed" };
   if (answer.state === "not-served") return { status: "not-served" };
   return { status: "ready", journeys: answer.journeys };

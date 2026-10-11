@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { useTravelTimes } from "./useTravelTimes";
+import { forgetTravelTimes, useTravelTimes } from "./useTravelTimes";
 import { answerFrom } from "./atlasTravel";
 import { ATLAS_TODAY, DRIVING_FROM_VERNON, VERNON } from "./fixtures";
 
@@ -12,6 +12,7 @@ const serve = (response: () => Promise<Response>) => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  forgetTravelTimes();
 });
 
 describe("useTravelTimes", () => {
@@ -89,5 +90,23 @@ describe("useTravelTimes", () => {
     );
     await new Promise((r) => setTimeout(r, 10));
     expect(result.current.status).toBe("loading");
+  });
+
+  it("does not ask Atlas again on going back to a mode it answered", async () => {
+    const fetchMock = serve(async () =>
+      Response.json(answerFrom(DRIVING_FROM_VERNON.candidates, "driving")),
+    );
+    const { result, rerender } = renderHook(
+      ({ mode }: { mode: "driving" | "walking" }) =>
+        useTravelTimes(VERNON, mode),
+      { initialProps: { mode: "driving" } },
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    rerender({ mode: "walking" });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    rerender({ mode: "driving" });
+    expect(result.current.status).toBe("ready");
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

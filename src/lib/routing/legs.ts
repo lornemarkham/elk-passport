@@ -20,6 +20,17 @@ import type { Journey, TravelMode } from "./journey";
  * travel time does not get one invented from its kilometres; it gets a total
  * that says *at least*, and names the leg it is missing. Missing legs can
  * only add time, so "at least" is true whatever they turn out to be.
+ *
+ * ## Nor does it count a route to the wrong door
+ *
+ * Atlas holds a park, a beach or a trail as one point, often its middle, not
+ * its gate. A provider routing to that point can take the minor tracks
+ * inside: Kalamalka Lake Park came back as 82 minutes from Vernon, 12 km
+ * away. ADR 097 flags such a reading with `accessCaution` and says its
+ * minutes "should not decide anything unchecked", and a day's total is
+ * exactly what decides whether a day fits. So a cautioned leg is shown on
+ * its own line, with its caution, and left out of the sum, which says *at
+ * least* and names it. Discovery cards set the same readings aside.
  */
 
 export interface LegPoint {
@@ -106,14 +117,17 @@ export type TravelTotal =
       readonly legs: number;
     }
   | {
-      /** Some legs are routed. `minutes` is a floor: the rest can only add. */
+      /** Some legs are counted. `minutes` is a floor: the rest can only add. */
       readonly kind: "partial";
       readonly mode: TravelMode;
       readonly minutes: number;
+      /** Legs whose minutes are in `minutes`. */
       readonly routed: number;
       readonly legs: number;
       /** "Fintry Provincial Park → Vernon", for each leg with no time. */
       readonly missing: readonly string[];
+      /** Legs routed with an access caution: shown, not summed. */
+      readonly cautioned: readonly string[];
     }
   | { readonly kind: "none"; readonly legs: number };
 
@@ -133,17 +147,21 @@ export function travelTotal(
   let roadKm = 0;
   let routed = 0;
   const missing: string[] = [];
+  const cautioned: string[] = [];
   legs.forEach((leg, i) => {
     const answer = answers[i];
-    if (answer?.kind === "routed" && answer.mode === mode) {
+    const name = `${leg.from.name} → ${leg.to.name}`;
+    if (answer?.kind !== "routed" || answer.mode !== mode) {
+      missing.push(name);
+    } else if (answer.accessCaution) {
+      cautioned.push(name);
+    } else {
       minutes += answer.minutes;
       roadKm += answer.roadKm;
       routed += 1;
-    } else {
-      missing.push(`${leg.from.name} → ${leg.to.name}`);
     }
   });
-  if (legs.length === 0 || routed === 0) {
+  if (legs.length === 0 || (routed === 0 && cautioned.length === 0)) {
     return { kind: "none", legs: legs.length };
   }
   if (routed === legs.length) {
@@ -155,7 +173,15 @@ export function travelTotal(
       legs: legs.length,
     };
   }
-  return { kind: "partial", mode, minutes, routed, legs: legs.length, missing };
+  return {
+    kind: "partial",
+    mode,
+    minutes,
+    routed,
+    legs: legs.length,
+    missing,
+    cautioned,
+  };
 }
 
 const MODE_NOUN: Record<TravelMode, string> = {
@@ -198,10 +224,24 @@ export function describeTravelTotal(
       caveat: `Each leg's routed estimate, added up.${whole("about ")}`,
     };
   }
-  const without = total.legs - total.routed;
+  const reasons = [
+    ...(total.missing.length > 0
+      ? [
+          `${total.missing.length === 1 ? "this one has" : "these have"} no travel time: ${total.missing.join("; ")}`,
+        ]
+      : []),
+    ...(total.cautioned.length > 0
+      ? [
+          `not counted, because the route may end inside the site rather than at its entrance: ${total.cautioned.join("; ")}`,
+        ]
+      : []),
+  ];
   return {
-    headline: `At least ${durationLabel(total.minutes)} of ${noun}`,
-    caveat: `${capitalise(legs(total.routed))} of ${total.legs} routed; ${without === 1 ? "this one has" : "these have"} no travel time: ${total.missing.join("; ")}.${whole("at least ")}`,
+    headline:
+      total.routed === 0
+        ? `No ${noun} total to give`
+        : `At least ${durationLabel(total.minutes)} of ${noun}`,
+    caveat: `${capitalise(legs(total.routed))} of ${total.legs} ${total.cautioned.length > 0 ? "counted" : "routed"}; ${reasons.join("; ")}.${total.routed === 0 ? "" : whole("at least ")}`,
   };
 }
 
