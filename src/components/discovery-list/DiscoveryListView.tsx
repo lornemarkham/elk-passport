@@ -81,6 +81,7 @@ import {
   invitationSection,
   invitations,
 } from "@/domain/discovery/directions";
+import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
@@ -1392,6 +1393,7 @@ export function DiscoveryListView({
             date, a length of day and a real distance — and where a control
             cannot narrow anything it says so rather than pretending. */}
           <FeelLikeDoing
+            collapseOnPhone
             {...((chosenDayLine ?? today)
               ? { today: chosenDayLine ?? today! }
               : {})}
@@ -1427,6 +1429,21 @@ export function DiscoveryListView({
                 savedIds={savedIds}
                 savingId={savingId}
                 onSave={handleSave}
+                originPicker={
+                  <OriginPicker
+                    townId={session.at}
+                    onTown={setTown}
+                    {...(ask && !shared
+                      ? {
+                          onLocate: ask,
+                          locateLabel:
+                            place.state === "unavailable"
+                              ? "or try my location again"
+                              : "or share where you are",
+                        }
+                      : {})}
+                  />
+                }
               />
             }
             rows={[

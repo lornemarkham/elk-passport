@@ -42,6 +42,7 @@ export function AskDiscovery({
   savedIds,
   savingId,
   onSave,
+  originPicker,
 }: {
   /** The question on screen, where there is one. */
   readonly said?: string;
@@ -60,6 +61,8 @@ export function AskDiscovery({
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
+  /** Offered under the "from where?" gap, so the question and its answer meet. */
+  readonly originPicker?: React.ReactNode;
 }) {
   // **Keyed to the question, not copied in an effect.** A new `said` (a
   // tapped example, a back button) replaces the draft during render.
@@ -176,6 +179,7 @@ export function AskDiscovery({
                   className="text-[13px] font-semibold text-[#111]/75"
                 >
                   {gap.text}
+                  {gap.about === "origin" && originPicker}
                 </li>
               ))}
             </ul>

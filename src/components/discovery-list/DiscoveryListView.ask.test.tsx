@@ -180,6 +180,20 @@ describe("asking Discovery a question", () => {
     ]);
   });
 
+  it("keeps the rows behind one line on a phone, and says what is already chosen", async () => {
+    renderPage();
+    const refine = screen.getByTestId("ghad-refine");
+    expect(refine).toHaveAttribute("aria-expanded", "false");
+    expect(refine).toHaveTextContent("Narrow it down");
+    expect(document.getElementById("ghad-rows")).toHaveClass("hidden");
+    await ask("three hours");
+    // What the sentence set is what the line says — nothing needs opening.
+    expect(refine).toHaveTextContent("half a day");
+    fireEvent.click(refine);
+    expect(refine).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById("ghad-rows")).not.toHaveClass("hidden");
+  });
+
   it("sets the same rows a tap would, and says what it heard", async () => {
     renderPage();
     await act(async () => {
@@ -250,6 +264,33 @@ describe("asking Discovery a question", () => {
     expect(within(answer).queryByText("Polson Park")).toBeNull();
     expect(screen.getByTestId("ask-note")).toHaveTextContent(
       "can't time a drive",
+    );
+  });
+
+  it("asks 'from where?' with the answer to it right there, and measures once it has one", async () => {
+    renderPage();
+    await ask("What is worth driving an hour for?");
+    const gap = screen.getByTestId("ask-gap-origin");
+    // The question and its two honest answers are the same element.
+    expect(within(gap).getByTestId("ask-town")).toBeInTheDocument();
+    fireEvent.change(within(gap).getByTestId("ask-town"), {
+      target: { value: "vernon" },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId("ask-gap-origin")).toBeNull(),
+    );
+    expect(screen.getByTestId("ask-understood")).toHaveTextContent(
+      "an hour each way",
+    );
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("ask-answer")).getAllByTestId(
+          "possibility",
+        )[0],
+      ).toHaveTextContent("Sovereign Lake"),
+    );
+    expect(screen.getByTestId("ask-heading")).toHaveTextContent(
+      "Worth an hour of driving",
     );
   });
 
