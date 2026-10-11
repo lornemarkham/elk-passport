@@ -263,6 +263,75 @@ test.describe("into a day", () => {
     await shoot(page, info, "13-routing-not-served");
   });
 
+  for (const routing of ["present", "absent"] as const) {
+    test(`the whole day, routing ${routing}: Discovery, a clock, kept, printed, and handed to Go offline`, async ({
+      page,
+    }, info) => {
+      const n = routing === "present" ? 0 : 1;
+      const tag = `2${n}`;
+      await setAtlas({ legs: routing === "present" ? "ok" : "404" });
+      await intoGo(page, routing === "present" ? "vernon" : townFor(info, n));
+
+      // The day: a clock that rests on something, and travel said honestly.
+      await expect(page.getByTestId("go-day")).toBeVisible();
+      const stops = await page.getByTestId("go-stop").count();
+      expect(stops).toBeGreaterThan(0);
+      const travel = page.getByTestId("travel-summary");
+      await expect(travel).toBeVisible();
+      if (routing === "present") {
+        await expect(travel).not.toContainText(/could not get travel times/i);
+      } else {
+        await expect(travel).toContainText(/straight lines/i);
+        await expect(page.getByTestId("travel-retry")).toHaveCount(0);
+        expect(await page.getByTestId("go-travel").innerText()).not.toMatch(
+          /\b\d+\s*min(utes)?\s*(drive|driving)\b/i,
+        );
+      }
+      await shoot(page, info, `${tag}-1-the-day-routing-${routing}`);
+
+      // Keep it, reload, and it is still the day that was shaped.
+      const dayUrl = page.url();
+      await page.getByTestId("go-keep-day").click();
+      await expect(page.getByTestId("go-note")).toContainText("this device");
+      await page.reload();
+      await expect(page.getByTestId("go-stop")).toHaveCount(stops);
+      await page.goto("/go");
+      await expect(page.getByTestId("go-kept-day").first()).toBeVisible();
+      await shoot(page, info, `${tag}-2-kept-${routing}`);
+      await page.getByTestId("go-kept-open").first().click();
+      await expect(page.getByTestId("go-stop")).toHaveCount(stops);
+
+      // Print: the same stops on paper, nothing wider than the screen, and
+      // back from the paper is the day, not a blank form.
+      await page.getByTestId("go-print").click();
+      await expect(page).toHaveURL(/\/go\/print/);
+      await expect(page.getByTestId("guide-stop")).toHaveCount(stops);
+      const wide = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth,
+      );
+      expect(wide, "the paper scrolls sideways").toBe(false);
+      await shoot(page, info, `${tag}-3-paper-${routing}`);
+      await page.goBack();
+      await expect(page.getByTestId("go-stop")).toHaveCount(stops);
+
+      // The hand-off: Go offline carries this day, in this order, to the
+      // pocket screen the phone is put away on.
+      const names = await page.getByTestId("go-stop").allInnerTexts();
+      await page.getByTestId("go-offline").click();
+      await expect(page).toHaveURL(/\/detox/);
+      await shoot(page, info, `${tag}-4-offline-${routing}`);
+      await page.getByRole("link", { name: /phones away/i }).click();
+      const pocket = page.getByTestId("offline-pocket-stop");
+      await expect(pocket).toHaveCount(stops);
+      const pocketText = (await pocket.allInnerTexts()).join("\n");
+      expect(pocketText.length).toBeGreaterThan(0);
+      await shoot(page, info, `${tag}-5-phone-away-${routing}`);
+      expect(names).toHaveLength(stops);
+    });
+  }
+
   test("a card goes into a day on its own", async ({ page }, info) => {
     await page.goto("/discovery");
     await page.getByTestId("plan-a-day").first().click();
