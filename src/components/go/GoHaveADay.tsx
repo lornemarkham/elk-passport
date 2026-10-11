@@ -14,6 +14,7 @@ import { buildDay } from "@/domain/day/build";
 import { OFFLINE_MODES, modeById } from "./modes";
 import { townById } from "@/domain/discovery/towns";
 import { DayItinerary } from "./DayItinerary";
+import type { TravelMode } from "@/lib/routing/journey";
 
 /**
  * **"What kind of day do you want?"**
@@ -70,6 +71,7 @@ export function GoHaveADay({
   );
   const [dropped, setDropped] = useState<string[]>([]);
   const [asked, setAsked] = useState<string[]>([]);
+  const [by, setBy] = useState<TravelMode>("driving");
 
   const day = useMemo(
     () => (brief ? buildDay({ pool, brief, without: dropped }) : null),
@@ -178,7 +180,7 @@ export function GoHaveADay({
           data-testid="go-day"
           className="mt-12 border-t border-black/10 pt-8"
         >
-          <DayItinerary day={day} />
+          <DayItinerary day={day} by={by} onBy={setBy} />
 
           {day.stops.length > 0 && (
             <>
@@ -227,6 +229,7 @@ export function GoHaveADay({
                   href={`/go/print?${printQuery(
                     brief,
                     day.stops.map((s) => s.experience.id),
+                    by,
                   )}`}
                   data-testid="go-print"
                   style={{
@@ -275,7 +278,11 @@ const fallbackFrom = (
  * and the paper coming out, which is exactly the kind of small betrayal that
  * stops people trusting a thing they are about to drive somewhere with.
  */
-function printQuery(brief: DayBrief, ids: readonly string[]): string {
+function printQuery(
+  brief: DayBrief,
+  ids: readonly string[],
+  by: TravelMode,
+): string {
   const params = new URLSearchParams();
   params.set("stops", ids.join(","));
   params.set("say", brief.said);
@@ -283,5 +290,7 @@ function printQuery(brief: DayBrief, ids: readonly string[]): string {
   if (brief.childAge !== undefined) params.set("age", String(brief.childAge));
   if (brief.town) params.set("at", brief.town.id);
   if (brief.on) params.set("on", brief.on);
+  // The guide prints travel in the mode that was on screen.
+  if (by !== "driving") params.set("by", by);
   return params.toString();
 }

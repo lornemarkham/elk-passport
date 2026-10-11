@@ -1,7 +1,17 @@
+"use client";
+
+import { useMemo } from "react";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import type { DayPlanned } from "@/domain/day/build";
 import { destinationFor } from "@/domain/experience/destination";
+import type { TravelMode } from "@/lib/routing/journey";
+import { shownLeg, travelTotal } from "@/lib/routing/legs";
+import { dayLegs, unknownsWithTravel } from "@/lib/routing/dayLegs";
+import { useTravelLegs } from "@/lib/routing/useTravelLegs";
+import { LegLine } from "@/components/maps/LegLine";
+import { TravelSummary } from "@/components/maps/TravelSummary";
+import { TravelModeSwitch } from "@/components/maps/TravelModeSwitch";
 
 /**
  * **The day, on screen, before it is on paper.**
@@ -10,8 +20,26 @@ import { destinationFor } from "@/domain/experience/destination";
  * thing a person is deciding is whether *this whole shape* is worth leaving
  * the house for. Every stop links to its own entity page, so the evidence
  * behind any of it is one tap away and nothing here has to be taken on faith.
+ *
+ * **Travel between stops is Atlas's routed estimate, or a straight line that
+ * says so** (`lib/routing`). Each leg is answered on its own, the total adds
+ * only what was routed, and the provider is credited wherever a minute shows.
  */
-export function DayItinerary({ day }: { readonly day: DayPlanned }) {
+export function DayItinerary({
+  day,
+  by = "driving",
+  onBy,
+}: {
+  readonly day: DayPlanned;
+  readonly by?: TravelMode;
+  readonly onBy?: (mode: TravelMode) => void;
+}) {
+  const { legs, into, home } = useMemo(() => dayLegs(day), [day]);
+  const travel = useTravelLegs(legs, by);
+  const total = travelTotal(legs, travel.journeys, by);
+  const unknowns = unknownsWithTravel(day.unknowns, travel.status, total);
+  const planned = day.stops.reduce((sum, stop) => sum + stop.minutes, 0);
+
   if (day.stops.length === 0) {
     return (
       <p
@@ -32,9 +60,24 @@ export function DayItinerary({ day }: { readonly day: DayPlanned }) {
         {day.opening}
       </p>
 
+      {legs.length > 0 && (
+        <div className="mt-5">
+          {onBy && <TravelModeSwitch mode={by} onChange={onBy} />}
+          <TravelSummary
+            legs={legs}
+            answers={travel.journeys}
+            status={travel.status}
+            mode={by}
+            planned={planned}
+            onRetry={travel.retry}
+          />
+        </div>
+      )}
+
       <ol className="mt-8 flex flex-col">
         {day.stops.map((stop, index) => {
           const href = destinationFor(stop.experience);
+          const leg = into[index];
           const picture = stop.experience.heroMedia?.src;
           return (
             <li
@@ -80,13 +123,14 @@ export function DayItinerary({ day }: { readonly day: DayPlanned }) {
                       that, and "about an hour here" is their own hours
                       divided by their own stops. */}
                   <span>About {minutes(stop.minutes)} here</span>
-                  {stop.km !== undefined && (
+                  {leg !== undefined && (
                     <span className="inline-flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" aria-hidden />
-                      {stop.km < 1
-                        ? "under 1 km"
-                        : `${Math.round(stop.km)} km`}{" "}
-                      {index === 0 ? "from the start" : "from the last stop"}
+                      <LegLine
+                        leg={legs[leg]!}
+                        journey={shownLeg(legs[leg]!, travel.journeys[leg])}
+                        first={index === 0}
+                      />
                     </span>
                   )}
                   {stop.cost && <span>{stop.cost}</span>}
@@ -130,6 +174,19 @@ export function DayItinerary({ day }: { readonly day: DayPlanned }) {
         })}
       </ol>
 
+      {home !== undefined && (
+        <p
+          data-testid="go-home-leg"
+          className="flex items-center gap-1 border-t border-black/10 py-4 text-[13px] font-semibold text-black/50"
+        >
+          <MapPin className="h-3.5 w-3.5" aria-hidden />
+          <LegLine
+            leg={legs[home]!}
+            journey={shownLeg(legs[home]!, travel.journeys[home])}
+          />
+        </p>
+      )}
+
       {/* **What the day does not know, printed with the day.** A guide that
           omits this reads exactly like one that checked. */}
       <section
@@ -140,7 +197,7 @@ export function DayItinerary({ day }: { readonly day: DayPlanned }) {
           Worth checking before you go
         </h3>
         <ul className="mt-2 flex flex-col gap-1">
-          {day.unknowns.map((unknown) => (
+          {unknowns.map((unknown) => (
             <li
               key={unknown}
               className="max-w-[64ch] text-[14px] leading-relaxed text-black/55"

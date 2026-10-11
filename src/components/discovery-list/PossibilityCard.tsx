@@ -13,6 +13,7 @@ import {
   whereLine,
 } from "@/domain/discovery/compose";
 import { distanceText } from "@/domain/discovery/proximity";
+import { describeJourney, routedShort } from "@/lib/routing/journey";
 import { ageLine } from "@/domain/discovery/suitability";
 import { dayLine } from "@/domain/discovery/preference";
 import { recurrenceLine } from "@/domain/discovery/recurrence";
@@ -134,7 +135,10 @@ export function PossibilityCard({
   // it has no reliable idea where the reader is, so it states where the thing
   // is and lets them judge.
   const area = areaLabel(experience);
-  const away = distanceText(experience, origin);
+  // Atlas's routed time where it has one; otherwise the straight line. The
+  // pill is too small for a caveat, so the routed one carries it as a title.
+  const routed = origin ? routedShort(experience.travel) : undefined;
+  const away = routed ?? distanceText(experience, origin);
   // **"Elsewhere" is measured from the corpus; a distance is measured from the
   // person.** Shown together they contradict each other — a Vancouver venue
   // carried "UNDER 1 KM AWAY" beside "METRO VANCOUVER" for somebody standing
@@ -255,6 +259,12 @@ export function PossibilityCard({
             {away && (
               <p
                 data-testid="possibility-distance"
+                data-journey={routed ? "routed" : "straight-line"}
+                title={
+                  routed && experience.travel
+                    ? describeJourney(experience.travel).caveat
+                    : undefined
+                }
                 className="ghad-accent-text inline-flex w-fit items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
               >
                 <MapPin className="h-3 w-3 shrink-0" aria-hidden />

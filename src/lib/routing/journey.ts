@@ -126,6 +126,18 @@ const minutesLabel = (minutes: number): string => {
 };
 
 /**
+ * **A routed journey in a card's few words** — `61 min drive`.
+ *
+ * Only for a routed journey with no access caution: a flagged estimate needs
+ * its caveat beside it, and a pill has no room for one, so the surface shows
+ * the straight line instead. Everything else answers `undefined`.
+ */
+export function routedShort(journey: Journey | undefined): string | undefined {
+  if (journey?.kind !== "routed" || journey.accessCaution) return undefined;
+  return `${minutesLabel(journey.minutes)} ${MODE_WORD[journey.mode]}`;
+}
+
+/**
  * **The words for a journey**, as a headline and the caveat that must travel
  * with it. One function, so every surface says the same honest thing.
  *

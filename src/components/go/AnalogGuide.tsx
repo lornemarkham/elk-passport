@@ -4,6 +4,12 @@ import { Printer } from "lucide-react";
 import type { DayPlanned, DayStop } from "@/domain/day/build";
 import { Wordmark } from "@/components/ghad/Wordmark";
 import { ThemeProvider } from "@/components/ghad/theme";
+import type { Journey, TravelMode } from "@/lib/routing/journey";
+import type { TravelStatus } from "@/lib/routing/useTravelTimes";
+import { shownLeg, travelTotal, type Leg } from "@/lib/routing/legs";
+import { dayLegs, unknownsWithTravel } from "@/lib/routing/dayLegs";
+import { LegLine } from "@/components/maps/LegLine";
+import { TravelSummary } from "@/components/maps/TravelSummary";
 
 /**
  * **The analog adventure guide.**
@@ -18,7 +24,8 @@ import { ThemeProvider } from "@/components/ghad/theme";
  * the title          so it is YOUR day and not "Itinerary (1)"
  * the sentence       what you asked for, quoted back, so you can tell
  * each stop          name, town, address where published, what to do there
- * distances          straight-line km — the only honest measure available
+ * travel             Atlas's routed time per leg and in all, credited to
+ *                    its provider; a straight line, labelled, where none
  * what is published  hours and prices, where a place has actually said
  * what is not        printed, because paper cannot look it up later
  * a challenge        something to do that is not looking at a phone
@@ -36,7 +43,33 @@ import { ThemeProvider } from "@/components/ghad/theme";
  * address, a straight-line bearing-free distance, and **a map link to open
  * before leaving**, which is when a phone is still the right tool.
  */
-export function AnalogGuide({ day }: { readonly day: DayPlanned }) {
+export function AnalogGuide({
+  day,
+  travel,
+}: {
+  readonly day: DayPlanned;
+  /**
+   * What Atlas said about each leg when the page was rendered, aligned with
+   * `dayLegs(day).legs`. Asked once on the server: paper does not refresh.
+   */
+  readonly travel?: {
+    readonly mode: TravelMode;
+    readonly status: TravelStatus;
+    readonly journeys: readonly (Journey | undefined)[];
+  };
+}) {
+  const { legs, into, home } = dayLegs(day);
+  const mode = travel?.mode ?? "driving";
+  const status = travel?.status ?? "idle";
+  const journeys = travel?.journeys ?? legs.map(() => undefined);
+  const total = travelTotal(legs, journeys, mode);
+  const unknowns = unknownsWithTravel(day.unknowns, status, total);
+  const planned = day.stops.reduce((sum, stop) => sum + stop.minutes, 0);
+  const legAt = (i: number | undefined) =>
+    i === undefined
+      ? undefined
+      : { leg: legs[i]!, journey: shownLeg(legs[i]!, journeys[i]) };
+
   if (day.stops.length === 0) {
     return (
       <main className="min-h-screen bg-white px-6 py-16">
@@ -101,20 +134,41 @@ export function AnalogGuide({ day }: { readonly day: DayPlanned }) {
                 You said: {day.brief.said}
               </p>
             )}
+            <TravelSummary
+              legs={legs}
+              answers={journeys}
+              status={status}
+              mode={mode}
+              planned={planned}
+            />
           </header>
 
           <ol className="mt-10">
             {day.stops.map((stop, index) => (
-              <Stop key={stop.experience.id} stop={stop} index={index} />
+              <Stop
+                key={stop.experience.id}
+                stop={stop}
+                index={index}
+                arriving={legAt(into[index])}
+              />
             ))}
           </ol>
+
+          {home !== undefined && (
+            <p
+              data-testid="guide-home-leg"
+              className="border-t-2 border-black/80 py-4 text-[13px] font-semibold text-black/60"
+            >
+              <LegLine leg={legs[home]!} journey={legAt(home)!.journey} />
+            </p>
+          )}
 
           <section className="mt-10 break-inside-avoid border-t-2 border-black/80 pt-5">
             <h2 className="ghad-display text-[18px] font-extrabold tracking-[-0.02em] uppercase">
               Check before you go
             </h2>
             <ul className="mt-2 flex flex-col gap-1.5">
-              {day.unknowns.map((unknown) => (
+              {unknowns.map((unknown) => (
                 <li
                   key={unknown}
                   className="text-[14px] leading-relaxed text-black/70"
@@ -196,9 +250,11 @@ export function AnalogGuide({ day }: { readonly day: DayPlanned }) {
 function Stop({
   stop,
   index,
+  arriving,
 }: {
   readonly stop: DayStop;
   readonly index: number;
+  readonly arriving?: { readonly leg: Leg; readonly journey?: Journey };
 }) {
   const geography = stop.experience.geography;
   const where = geography?.locality ?? stop.experience.venue?.locality;
@@ -228,11 +284,14 @@ function Stop({
       <p className="mt-1.5 text-[13px] font-semibold text-black/60">
         {where && <>{where} · </>}About {Math.round(stop.minutes / 15) * 15}{" "}
         minutes here
-        {stop.km !== undefined && (
+        {arriving && (
           <>
             {" · "}
-            {stop.km < 1 ? "under 1 km" : `${Math.round(stop.km)} km`}{" "}
-            {index === 0 ? "from the start" : "from the last stop"}
+            <LegLine
+              leg={arriving.leg}
+              journey={arriving.journey}
+              first={index === 0}
+            />
           </>
         )}
       </p>

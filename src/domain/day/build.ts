@@ -32,7 +32,8 @@ import { distanceKm } from "@/lib/environment/geo";
  * ```
  * open          only from `schedule.onDate` / a stated recurrence
  * cost          only from a published practical fact that names a price
- * travel        straight-line km from Atlas; never minutes, there is no routing
+ * travel        straight-line km here; minutes only from Atlas's routes,
+ *               added on screen and on paper by `lib/routing/dayLegs`
  * time at stop  the PLAN's allocation of the person's own hours — never a
  *               claim about how long the place takes
  * ```
@@ -58,6 +59,14 @@ export interface DayStop {
   /** Something to do there that is not looking at a phone. */
   readonly challenge?: string;
 }
+
+/**
+ * What the builder says about travel, because the builder has no routes.
+ * Exported so the routing lane can retire it once Atlas has routed the day
+ * (`unknownsWithTravel`), rather than matching a copy of the sentence.
+ */
+export const DRIVE_TIMES_UNKNOWN =
+  "Drive times — distances are straight-line, not road routes.";
 
 export interface DayPlanned {
   readonly title: string;
@@ -475,7 +484,7 @@ export function buildDay({
     unknowns.push("Opening hours — most places here have not published them.");
   if (stops.some((s) => !s.cost))
     unknowns.push("Prices — only published where a place has said.");
-  unknowns.push("Drive times — distances are straight-line, not road routes.");
+  unknowns.push(DRIVE_TIMES_UNKNOWN);
 
   return {
     title: titleFor(stops, brief),

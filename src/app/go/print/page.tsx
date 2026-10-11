@@ -5,6 +5,15 @@ import { readBrief } from "@/domain/day/brief";
 import { buildDay } from "@/domain/day/build";
 import { AnalogGuide } from "@/components/go/AnalogGuide";
 import { townById } from "@/domain/discovery/towns";
+import {
+  isTravelMode,
+  type Journey,
+  type TravelMode,
+} from "@/lib/routing/journey";
+import { isPlaced } from "@/lib/routing/legs";
+import { dayLegs } from "@/lib/routing/dayLegs";
+import { travelLegsFromAtlas } from "@/lib/routing/atlasLegs.server";
+import type { TravelStatus } from "@/lib/routing/useTravelTimes";
 
 export const metadata: Metadata = {
   title: "Your adventure — Go have a day",
@@ -28,8 +37,8 @@ export const metadata: Metadata = {
  *
  * ## No live connection is assumed past this point
  *
- * Everything needed is on the paper: addresses, the towns, straight-line
- * distances, what is published about hours and prices, what is not, the rules
+ * Everything needed is on the paper: addresses, the towns, Atlas's routed
+ * travel time for each leg (or a straight line, labelled as one), what is published about hours and prices, what is not, the rules
  * worth knowing, and a map link for the drive **before** you leave. Nothing
  * on the guide requires a phone once it is printed, which is the entire idea.
  */
@@ -68,6 +77,47 @@ export default async function PrintPage({ searchParams }: Props) {
   // say why a stop is there and what its rules are, and running it over this
   // pool alone cannot change which places are on the paper.
   const day = buildDay({ pool: chosen, brief });
+  const by = one(query.by);
+  const mode = isTravelMode(by) ? by : "driving";
 
-  return <AnalogGuide day={day} />;
+  return <AnalogGuide day={day} travel={await printedTravel(day, mode)} />;
+}
+
+/** Long enough for a cached answer; short enough not to hold up the paper. */
+const PRINT_TRAVEL_TIMEOUT_MS = 5_000;
+
+/**
+ * **Travel for the paper, asked once.** The start is a town centre, never the
+ * reader's position — this page is rendered on the server, which does not
+ * have one. A failure prints straight lines, labelled, and says so.
+ */
+async function printedTravel(
+  day: ReturnType<typeof buildDay>,
+  mode: TravelMode,
+): Promise<{
+  mode: TravelMode;
+  status: TravelStatus;
+  journeys: (Journey | undefined)[];
+}> {
+  const { legs } = dayLegs(day);
+  const journeys: (Journey | undefined)[] = legs.map(() => undefined);
+  const placed = legs.flatMap((leg, i) => (isPlaced(leg) ? [{ leg, i }] : []));
+  if (placed.length === 0) return { mode, status: "idle", journeys };
+  try {
+    const answer = await travelLegsFromAtlas(
+      placed.map(({ leg }) => leg),
+      mode,
+      { timeoutMs: PRINT_TRAVEL_TIMEOUT_MS },
+    );
+    if (answer.state === "not-served") {
+      return { mode, status: "not-served", journeys };
+    }
+    placed.forEach(({ i }, k) => {
+      journeys[i] = answer.journeys[k];
+    });
+    return { mode, status: "ready", journeys };
+  } catch {
+    console.error("[atlas] travel legs unavailable for a printed guide");
+    return { mode, status: "failed", journeys };
+  }
 }

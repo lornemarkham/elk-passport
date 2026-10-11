@@ -69,6 +69,9 @@ export const DRIVING_FROM_VERNON = {
       },
     },
     {
+      // ⚠ NOT FROM THE PROBE. The probe *routed* the Monashee point (174 min,
+      // with an access caution). This `unavailable` reading is a constructed
+      // example of ADR 097's snap rule, kept so the shape is exercised.
       id: "monashee-backcountry",
       distance: { state: "measured", km: 65.4, basis: "coordinates" },
       travel: {
@@ -126,5 +129,67 @@ export const ATLAS_TODAY = {
       id: "fintry-provincial-park",
       distance: { state: "measured", km: 22, basis: "coordinates" },
     },
+  ],
+};
+
+/**
+ * **Legs from Vernon, as `/travel/legs` would answer them** — for the
+ * PROVISIONAL wire in `atlasLegs.ts`.
+ *
+ * The first leg is real: Vernon → Davison Orchards, 9 min, 4.5 km by road,
+ * from Atlas's probe. **Every place-to-place leg below is MOCK.** Atlas has
+ * never measured one, so these minutes were made up to exercise parsing and
+ * arithmetic, and the provider says so on every reading. Nothing outside a
+ * test imports them.
+ */
+const MOCK_PROVIDER = "MOCK-not-a-real-route";
+const MOCK_LIMITATIONS = [
+  "MOCK reading for tests: these minutes were not measured by anyone",
+];
+const mockLeg = (minutes: number, routeKm: number, straightKm: number) => ({
+  state: "estimated",
+  mode: "driving",
+  minutes,
+  routeKm,
+  straightKm,
+  provider: MOCK_PROVIDER,
+  calculatedAt: AT,
+  limitations: MOCK_LIMITATIONS,
+});
+
+/** Approximate points, for straight-line arithmetic in tests only. */
+export const DAVISON = {
+  id: "davison-orchards",
+  name: "Davison Orchards",
+  at: { latitude: 50.2853, longitude: -119.2958 },
+} as const;
+export const OKEEFE = {
+  id: "okeefe-ranch",
+  name: "O'Keefe Ranch",
+  at: { latitude: 50.3684, longitude: -119.2803 },
+} as const;
+export const VERNON_START = { name: "Vernon", at: VERNON } as const;
+
+/** Vernon → Davison (probe) → O'Keefe (MOCK) → Vernon (MOCK). */
+export const LEGS_DRIVING_MOCK = {
+  legs: [
+    estimated(9, 4.5, 2.2),
+    mockLeg(14, 11.8, 9.3),
+    mockLeg(18, 19.6, 10.9),
+  ],
+};
+
+/** The same day where the middle leg has no road (MOCK). */
+export const LEGS_ONE_UNROUTED_MOCK = {
+  legs: [
+    estimated(9, 4.5, 2.2),
+    {
+      state: "unavailable",
+      mode: "driving",
+      provider: MOCK_PROVIDER,
+      calculatedAt: AT,
+      because: "no route between them",
+    },
+    mockLeg(18, 19.6, 10.9),
   ],
 };
