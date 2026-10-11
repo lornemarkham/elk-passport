@@ -265,6 +265,17 @@ The rules for the run:
 | **INT-6** | Reconcile `lane/domain`'s `print.ts` and `adventureFromDay` with the integrated `DayPlanned` and print query | Tests fail where the codec no longer matches what `/go` writes                                                                                                                                                                                                                                           | INT-5. Overlaps M169's scope, so hand it to M169's successor rather than doing it twice |
 | **INT-7** | `feature/go-have-a-conference` `f8b13ee`                                                                     | File-disjoint from GHAD except for one pointer line in doctrine §15.12. Production stays closed until a durable store exists                                                                                                                                                                             | D-10, and conference D2/D3. Its own Oct 17 target (§5.9)                                |
 
+**Status, 2026-10-11 (Lodge mission 178, branch `integration/go-have-a-day`, not yet on `main`):**
+INT-0 done (`sycle-prototype` `6ae9ab2`). INT-1 to INT-5 merged in a different
+order (vision, domain, daybuilder, discovery, maps, analog, detox) with
+`lane/boards` and the conference **left out** (INT-7 and D-10 stay gated).
+INT-3's two `keep`s are one (meaning flagged for a person: see
+`docs/domain/integration-contracts.md` §10). INT-5's condition is met: the
+field guide carries rain plans, per-stop minutes, the move buffer and routed
+legs, so `/go/print` renders `PrintableAdventure`. INT-6 is done for every
+surface in use (one codec, one resolver); the Adventure codec is not
+reconciled. MAP-02 is done: Passport asks Atlas `GET /travel/legs`.
+
 INT-1 to INT-5 complete P2 for everything reported so far. **Nothing is
 deployed by any step.** Deployment is a separate human decision.
 

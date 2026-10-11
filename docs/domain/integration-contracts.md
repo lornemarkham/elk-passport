@@ -366,3 +366,29 @@ Not added, deliberately:
 - Doctrine §15 Q3 / Q14 (Want / Plan / Lived): whether a shared plan is a state of an Adventure.
 - Roadmap D-4 (the names Adventure / Moment), D-7 (the print surface), D-9 (where data lives), D-10 (board vs conference), D-11 (who owns `src/domain/`).
 - The meaning of `keep` (doctrine §2.5). It is a product sentence before it is a merge.
+
+---
+
+## 10. Integration result (mission 178, 2026-10-11)
+
+Branch `integration/go-have-a-day` (scratch clone `/tmp/ghad-int`, fetched
+into `~/passport/main`). Not on `main`. Measured, not intended.
+
+| Risk     | State on the branch                                                                                                                                                                                                                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1       | Fixed. `atlasLegs.ts` asks `GET /travel/legs?stops=&mode=[&lat&lng]` through §2.3's contract; Atlas M180 confirmed GET (a POST gets 405). The way home to a town centre is not askable and stays a labelled straight line.                                                                   |
+| R2       | Fixed. `transient` reads "could not answer just now; this may change"; `unrouted` and `beyond` have their own words.                                                                                                                                                                         |
+| R3       | Open. M180 added a 404 body `code: "unknown-stops"`; Passport does not read it yet.                                                                                                                                                                                                          |
+| R4       | Fixed. `printableFromDay` carries `rainPlan`, `fit`, `timeSet`, per-stop minutes (`evenSplit`), the move buffer and overrun, and routed legs with `accessCaution`.                                                                                                                           |
+| R5       | Fixed for Go Offline: one codec (`integration/dayQuery.ts`: `readDayQuery`, `writeDayQuery`, `dayQueryFor`, `keepDayQuery`) and one resolver (`lib/go/printDay.ts`). **Still open for boards**: `lane/boards`' `DAY_KEYS` keeps the six; boards was not merged.                              |
+| R6       | Resolved at integration, **flagged for a person**: one `keep`. Discovery's `?with=` ids seed the same `Shaping.keep` the Keep button sets; kept stops skip soft filters, obey stated age and not-on-day rules (and say so), `without` wins, capped at `MAX_STOPS`. Doctrine §2.5 not edited. |
+| R7       | Fixed (`defaultRadiusKm` exported).                                                                                                                                                                                                                                                          |
+| R8       | Open. Routed minutes show beside the 15-minute buffer, each labelled; the buffer still decides the budget.                                                                                                                                                                                   |
+| R9       | Fixed (prefix match on `DRIVE_TIMES_UNKNOWN`).                                                                                                                                                                                                                                               |
+| R10, R11 | Open.                                                                                                                                                                                                                                                                                        |
+| R12–R14  | Out of scope: boards and the conference were not merged.                                                                                                                                                                                                                                     |
+
+Also found by driving the journey in a browser and fixed on the branch:
+Back from `/go/print` lost all shaping (now kept per tab in
+`sessionStorage`), and `/go` fetched its forecast from a route that does not
+exist (`/api/environment` → `/api/environment/here`).
