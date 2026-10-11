@@ -66,11 +66,13 @@ export default async function PrintPage({ searchParams }: Props) {
       if (typeof value === "string") params.set(key, value);
     }
     return (
-      <AtlasRecovery
-        what="print this day"
-        retryHref={`/go/print?${params.toString()}`}
-        {...(resolved.query.say ? { said: resolved.query.say } : {})}
-      />
+      <main className="min-h-screen bg-white px-4 py-10">
+        <AtlasRecovery
+          what="print this day"
+          retryHref={`/go/print?${params.toString()}`}
+          {...(resolved.query.say ? { said: resolved.query.say } : {})}
+        />
+      </main>
     );
   }
   if (resolved.kind === "none") {

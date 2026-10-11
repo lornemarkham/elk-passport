@@ -2,6 +2,7 @@ import { townById, type DiscoveryTown } from "@/domain/discovery/towns";
 import {
   activitiesIn,
   ACTIVITY_LABELS,
+  namesActivity,
   ageIn,
   asksForFree,
   hoursIn,
@@ -58,8 +59,8 @@ export interface DayBrief {
    * **How long they are willing to travel, in minutes** — "drive two hours",
    * "within 30 minutes of Kelowna". Their words, kept so the screen can say
    * them back. `withinKm` is the planning circle drawn from it
-   * (`kmForMinutes`): an estimate, said as one, replaced by Atlas's routed
-   * minutes wherever Atlas has them.
+   * (`kmForMinutes`): an estimate, said as one. Nothing re-checks the stops
+   * against a routed time yet — Atlas's routed minutes only label each leg.
    */
   readonly withinMinutes?: number;
   /** "This afternoon", "tonight". Read from words; never from the clock. */
@@ -290,16 +291,21 @@ const cautionsIn = (text: string): string[] => {
 const avoidIn = (text: string): string[] => {
   const out: string[] = [];
   const pattern =
-    /\b(?:no|skip|skipping|without|avoid|not into|hate|nothing with)\s+(?:the\s+|any\s+|more\s+)?([a-z]+)/g;
+    /\b(?:no|skip|skipping|without|avoid|not into|hate|nothing with|not|anything but|(?:don'?t|do not|doesn'?t) (?:want|like)(?: to)?|can'?t (?:do|stand))\s+(?:the\s+|any\s+|more\s+|a\s+)?([a-zé]+)/g;
   for (const match of text.matchAll(pattern)) {
     const word = match[1] ?? "";
-    if ((AVOIDABLE as readonly string[]).includes(word)) out.push(word);
+    if (
+      (AVOIDABLE as readonly string[]).includes(word) ||
+      activitiesIn(word).length > 0
+    )
+      out.push(word);
   }
   return [...new Set(out)];
 };
 
 /** Whether a person's word for something refers to this activity label. */
 const sameThing = (said: string, label: string): boolean => {
+  if (namesActivity(said, label)) return true;
   const s = stem(said);
   return (
     s === stem(label) ||
@@ -661,7 +667,7 @@ export function heardIn(before: DayBrief, after: DayBrief): string[] {
   if (after.shelter !== before.shelter && after.shelter) {
     out.push(
       after.shelter === "indoor"
-        ? "Preferring places Atlas says are under cover."
+        ? "Leaving out places Atlas says are out in the open, and preferring those it says are under cover."
         : "Leaning outdoors.",
     );
   }

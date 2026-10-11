@@ -21,7 +21,7 @@ import {
 } from "@/domain/discovery/environment";
 import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { distanceKm } from "@/lib/environment/geo";
-import { offers, unmetIn, type Unmet } from "./intent";
+import { activitiesIn, offers, unmetIn, type Unmet } from "./intent";
 
 /**
  * **A day, built out of things that actually exist.**
@@ -718,6 +718,7 @@ function rank(
   const radiusKm =
     brief.withinKm ?? (origin ? defaultRadiusKm(brief.hours) : undefined);
   const avoided = (brief.avoid ?? []).map(stem);
+  const avoidedLabels = (brief.avoid ?? []).flatMap((a) => activitiesIn(a));
 
   const eligible = pool.filter((experience) => {
     if (excluded.has(experience.id)) return false;
@@ -739,6 +740,10 @@ function rank(
     if (avoided.length > 0) {
       const words = statedWords(experience);
       if (avoided.some((a) => words.some((w) => w.includes(a)))) return false;
+      // "no wineries", "no concerts": the word they typed may not be a
+      // substring of anything Atlas says, but it names an activity.
+      if (avoidedLabels.some((label) => offers(experience, label)))
+        return false;
     }
     if (brief.budget !== undefined) {
       const lowest = lowestStatedDollars(experience);
@@ -866,9 +871,16 @@ export function buildDay({
   // **Does anything offer what they asked for?** If not, the plan says so and
   // builds nothing around it — a different kind of day is not the one they
   // described. What they kept stays.
-  // A subject with no coordinates cannot be placed inside anybody's circle, so
-  // it cannot make "near here" true: it never satisfies a request by itself.
-  const placeable = origin ? ranked.filter((e) => point(e)) : ranked;
+  // A subject with no coordinates cannot be placed inside anybody's circle,
+  // so on its own it cannot make "near here" true — unless Atlas says it is
+  // in the very town the day starts from, which is a stated fact, not a guess.
+  const startsIn = brief.town?.name.replace(/,\s*BC$/i, "").toLowerCase();
+  const inStartTown = (e: Experience) =>
+    startsIn !== undefined &&
+    (e.geography?.locality ?? "").toLowerCase() === startsIn;
+  const placeable = origin
+    ? ranked.filter((e) => point(e) || inStartTown(e))
+    : ranked;
   const unmet = unmetIn(
     brief.interests,
     placeable,
@@ -879,6 +891,11 @@ export function buildDay({
           return here ? distanceKm(origin, here) : undefined;
         }
       : undefined,
+    (e) =>
+      !brief.town ||
+      !e.geography?.area?.name ||
+      e.geography.area.name === brief.town.area ||
+      inStartTown(e),
   );
 
   /**
@@ -912,7 +929,10 @@ export function buildDay({
 
   const kept = new Set(keptExperiences.map((e) => e.id));
   for (const experience of keptExperiences) take(experience);
-  const open = unmet.length === 0;
+  // **Only when nothing they asked for exists is there no day.** If some of
+  // it does, the day is built around that and the rest is said beside it.
+  const open =
+    unmet.length === 0 || unmet.length < new Set(brief.interests).size;
   // **Each thing they asked for gets a stop** before variety is considered:
   // the best-fitting place that states it, if none is already in the day.
   if (open) {
@@ -1097,7 +1117,10 @@ export function buildDay({
   for (const caution of brief.cautions ?? []) unknowns.push(caution);
   for (const note of keptAgainst(keptExperiences, brief)) unknowns.push(note);
   const unfit = brief.interests.filter(
-    (i) => open && !stops.some((s) => offers(s.experience, i)),
+    (i) =>
+      open &&
+      !unmet.some((u) => u.activity === i) &&
+      !stops.some((s) => offers(s.experience, i)),
   );
   if (unfit.length > 0)
     unknowns.push(
@@ -1335,18 +1358,19 @@ function openingFor(
   weather?: PlanWeather,
   unmet: readonly Unmet[] = [],
 ): string {
-  if (stops.length === 0 && unmet.length > 0) {
+  const saidUnmet = (u: readonly Unmet[]) => {
     const where =
       radiusKm !== undefined && brief.town
         ? ` within ${radiusKm} km of ${brief.town.name.replace(/,\s*BC$/, "")}`
         : "";
-    return unmet
+    return u
       .map(
         ({ activity, nearest, unplaced }) =>
           `Nothing Atlas holds says it offers ${activity}${where}.${nearest ? ` The nearest it can place is ${nearest.title}, ${nearest.km} km away.` : ""}${unplaced?.length ? ` Atlas lists ${unplaced.join(", ")} for it but has not placed ${unplaced.length === 1 ? "it" : "them"} on a map, so it cannot say whether ${unplaced.length === 1 ? "it is" : "they are"} near.` : ""}`,
       )
       .join(" ");
-  }
+  };
+  if (stops.length === 0 && unmet.length > 0) return saidUnmet(unmet);
   if (stops.length === 0 && brief.shelter === "indoor") {
     return "Nothing in range that Atlas says is indoors. Try a wider circle, or tell me what to do outdoors instead.";
   }
@@ -1381,5 +1405,9 @@ function openingFor(
     weather?.wet && brief.shelter !== "outdoor"
       ? " Rain is forecast, so open-air places sank and the rest carry a rain plan where one exists."
       : "";
-  return `${hours}${who}, ${count}${circle}, and a plan loose enough to abandon.${window}${rain}`;
+  const lead =
+    unmet.length > 0
+      ? `${saidUnmet(unmet)} Here is the rest of what you asked for. `
+      : "";
+  return `${lead}${hours}${who}, ${count}${circle}, and a plan loose enough to abandon.${window}${rain}`;
 }

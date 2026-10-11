@@ -371,4 +371,17 @@ describe("Go have a day", () => {
     expect(params.get("mins")).toMatch(/:\d+/);
     expect(JSON.parse(params.get("b")!).budget).toBe(40);
   });
+
+  it("does not wipe a working day when a revision asks for something nothing offers", () => {
+    mount("three hours near Vernon");
+    const before = stops();
+    fireEvent.change(screen.getByTestId("go-change"), {
+      target: { value: "add sharks" },
+    });
+    fireEvent.click(screen.getByTestId("go-change-submit"));
+    expect(stops()).toEqual(before);
+    expect(screen.getByTestId("go-reply").textContent).toMatch(
+      /Nothing Atlas holds says it offers sharks.*left your day/s,
+    );
+  });
 });

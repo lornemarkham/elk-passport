@@ -21,9 +21,13 @@ import { test, expect, devices, type Page } from "@playwright/test";
 const WITH_ATLAS = process.env.E2E_ATLAS === "1";
 const ATLAS_DOWN = process.env.E2E_ATLAS_DOWN === "1";
 
+// A phone's viewport, touch and user agent — not `defaultBrowserType`, which
+// cannot change inside a describe.
+const { defaultBrowserType: _browser, ...PIXEL } = devices["Pixel 7"];
+
 const forms = [
   { name: "desktop", use: { viewport: { width: 1280, height: 900 } } },
-  { name: "mobile", use: { ...devices["Pixel 7"] } },
+  { name: "mobile", use: PIXEL },
 ] as const;
 
 async function open(page: Page, path = "/go") {
@@ -151,9 +155,12 @@ for (const form of forms) {
 
       // A new age asks Atlas again — and the shaped day goes with it.
       await change("youngest is 6");
+      // Atlas's first read for a new age is slow (seconds), so wait for it.
       await expect(page).toHaveURL(/age=6/);
+      test.setTimeout(90_000);
       await expect(page.getByTestId("go-working-from")).toContainText(
         /6-year-old/,
+        { timeout: 45_000 },
       );
       await expect(stops(page).filter({ hasText: kept }).first()).toBeVisible();
 

@@ -45,7 +45,7 @@ const build = (
 ) => buildDay({ pool, brief, ...extra });
 
 describe("the eight sentences", () => {
-  it("“Scuba diving with sharks tonight” is a request nothing may replace", () => {
+  it("“Scuba diving with sharks tonight” says what Atlas cannot do, and substitutes nothing", () => {
     const brief = readBrief(
       "Scuba diving with sharks tonight",
       { town: town("kelowna") },
@@ -56,10 +56,30 @@ describe("the eight sentences", () => {
     );
     expect(brief.when).toBe("evening");
     const day = build(brief);
-    expect(day.unmet?.map((u) => u.activity)).toContain("sharks");
+    // Nothing Atlas holds mentions sharks: said first, in the opening.
+    expect(day.unmet?.map((u) => u.activity)).toEqual(["sharks"]);
+    expect(day.opening).toMatch(/^Nothing Atlas holds says it offers sharks/);
+    // What is left is what offers the other thing they asked for.
+    expect(day.stops.length).toBeGreaterThan(0);
+    for (const stop of day.stops.filter((s) => !s.kept))
+      expect(stop.experience.title).not.toMatch(/Queen Elizabeth|Otter Lake/);
+  });
+
+  it("a request nothing offers at all builds no day, and no other kind of day", () => {
+    const brief = readBrief(
+      "Shark diving tonight",
+      { town: town("kelowna") },
+      NOW,
+    );
+    const day = build(brief);
     expect(day.stops).toHaveLength(0);
     expect(day.opening).toMatch(/sharks/);
-    expect(day.opening).not.toMatch(/Otter Lake|Queen Elizabeth/);
+    // Elsewhere, even scuba is out of range: said with the nearest.
+    const far = build(
+      readBrief("Scuba diving", { town: town("vancouver") }, NOW),
+    );
+    expect(far.stops).toHaveLength(0);
+    expect(far.unmet?.[0]?.nearest?.km).toBeGreaterThan(100);
   });
 
   it("“I have two hours free” is two hours, and not a budget", () => {

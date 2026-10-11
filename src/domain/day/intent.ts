@@ -24,12 +24,12 @@ import type { Experience } from "@/domain/experience/types";
  * **The one place Passport turns travel minutes into a planning circle.**
  *
  * Passport has no road routes of its own (`build.ts`): Atlas routes a leg
- * only after the stops are chosen. A person who says "within 30 minutes"
- * has still said minutes, so the circle is drawn from them with this stated
- * conversion — about 48 km/h of *straight-line* distance, which is a normal
- * road speed after the road's own detours — and the screen says it is an
- * estimate. It is a planning radius, not a drive time, and Atlas's routed
- * minutes replace it wherever they exist.
+ * only after the stops are chosen, and the chosen stops are not re-checked
+ * against those minutes. A person who says "within 30 minutes" has still said
+ * minutes, so the circle is drawn from them with this stated conversion —
+ * about 48 km/h of *straight-line* distance — and the screen says both that
+ * it is an estimate and the speed it assumes. It is a planning radius, not a
+ * drive time.
  *
  * **A human decision, recorded rather than buried:** this is a constant
  * somebody may want to tune per region or retire once Atlas can answer
@@ -51,6 +51,8 @@ const NUMBER_WORDS: Readonly<Record<string, number>> = {
   eight: 8,
   nine: 9,
   ten: 10,
+  eleven: 11,
+  twelve: 12,
   fifteen: 15,
   twenty: 20,
   thirty: 30,
@@ -66,7 +68,7 @@ const WORD_ALTERNATIVES = Object.keys(NUMBER_WORDS)
   .join("|");
 
 /** A quantity as people say it: `2`, `1.5`, `two`, `an`, `half an`, `a couple of`. */
-const QTY = String.raw`(\d+(?:\.\d+)?|${WORD_ALTERNATIVES}|half an?|half|an?|a couple of|a couple|couple of)`;
+const QTY = String.raw`\b(\d+(?:\.\d+)?|${WORD_ALTERNATIVES}|half an?|half|an?|a couple of|a couple|couple of)`;
 const UNIT = String.raw`(hours?|hrs?|minutes?|mins?)\b`;
 
 const quantity = (spoken: string): number | undefined => {
@@ -124,7 +126,7 @@ export function travelIn(text: string): {
   // "drive two hours", "willing to travel up to an hour", "go as far as 90 minutes"
   add(
     new RegExp(
-      String.raw`\b(?:drive|driving|travel(?:l?ing)?|commut(?:e|ing)|go|going|ride|riding)\s+(?:for\s+|up to\s+|about\s+|around\s+|maybe\s+|as much as\s+|as far as\s+|at most\s+|no more than\s+|a max of\s+)?${QTY}\s*${UNIT}`,
+      String.raw`\b(?:drive|driving|travel(?:l?ing)?|commut(?:e|ing)|go|going|ride|riding)\s+(?:for\s+|up to\s+|about\s+|around\s+|maybe\s+|as much as\s+|as far as\s+|at most\s+|no more than\s+|a max of\s+|max(?:imum)?(?:\s+of)?\s+)?${QTY}\s*${UNIT}`,
       "g",
     ),
     1,
@@ -138,8 +140,7 @@ export function travelIn(text: string): {
     ),
   )) {
     const before = text.slice(Math.max(0, (m.index ?? 0) - 18), m.index);
-    if (/\b(?:home|back|done|finish(?:ed)?|finished|over)\b/.test(before))
-      continue;
+    if (/\b(?:home|back|done|finish(?:ed)?|over)\s*$/.test(before)) continue;
     const minutes = minutesOf(m[1] ?? "", m[2] ?? "");
     if (minutes === undefined || minutes <= 0 || m.index === undefined)
       continue;
@@ -154,15 +155,32 @@ export function travelIn(text: string): {
     1,
     2,
   );
-  // "a 45 minute drive", "an hour away", "two hours from Kelowna", "30 min drive"
+  // "a 45 minute drive", "an hour away", "two hours from Kelowna", "2 hours each
+  // way", "an hour out of Vernon", "2 hours max drive". A clock after "from"
+  // ("two hours from 9") is a window, not a place.
   add(
     new RegExp(
-      String.raw`\b${QTY}[-\s]*${UNIT}\s+(?:of driving|drive|driving|away|by car|trip|from (?:here|home|town|the city))`,
+      String.raw`${QTY}[-\s]*${UNIT}\s+(?:of driving|drive|driving|away|by car|each way|one way|each direction|max(?:imum)?(?:\s+drive)?|out of\s+[a-z]|from\s+(?!noon|midnight|\d|\d)[a-z])`,
       "g",
     ),
     1,
     2,
   );
+  // "drive an hour and a half", "travel two and a half hours"
+  for (const m of text.matchAll(
+    new RegExp(
+      String.raw`\b(?:drive|driving|travel(?:l?ing)?|go|going)\s+(?:up to\s+|about\s+|for\s+)?(?:(an? hour)\s+and a half|${QTY}\s+and a half\s+hours?)\b`,
+      "g",
+    ),
+  )) {
+    const n = m[1] ? 1 : (quantity(m[2] ?? "") ?? 0);
+    if (m.index !== undefined && n > 0)
+      spans.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        minutes: Math.round((n + 0.5) * 60),
+      });
+  }
   // "an hour and a half away"
   for (const m of text.matchAll(
     /\ban? hour and a half\s+(?:of driving|drive|away|by car)/g,
@@ -216,11 +234,20 @@ export const asksForFree = (text: string): boolean =>
 
 /** How long the day is, in hours, from `text` with any travel already removed. */
 export function hoursIn(text: string): number | undefined {
-  const andAHalf = text.match(
-    /\b(an?|one|two|three|four|five)\s+hours? and a half\b/,
-  );
-  if (andAHalf?.[1]) return (quantity(andAHalf[1]) ?? 0) + 0.5;
+  const q = (spoken: string | undefined) => quantity(spoken ?? "") ?? 0;
+  const andAHalf =
+    text.match(new RegExp(String.raw`${QTY}\s+hours?\s+and a half\b`)) ??
+    text.match(new RegExp(String.raw`${QTY}\s+and a half\s+hours?\b`));
+  if (andAHalf?.[1]) return q(andAHalf[1]) + 0.5;
   if (/\bhalf an hour\b|\bhalf hour\b/.test(text)) return 0.5;
+  const twoParts = text.match(
+    new RegExp(
+      String.raw`${QTY}\s*(?:hours?|hrs?)\s*(?:and\s+)?(?:(\d{1,2})\s*(?:minutes?|mins?)\b|(\d{2})\b(?!\s*(?:people|stops|km|miles|\$)))`,
+    ),
+  );
+  const extra = twoParts?.[2] ?? twoParts?.[3];
+  if (twoParts?.[1] && extra && Number(extra) < 60)
+    return q(twoParts[1]) + Number(extra) / 60;
   const hours = text.match(new RegExp(String.raw`${QTY}\s*(?:hours?|hrs?)\b`));
   if (hours?.[1]) {
     const n = quantity(hours[1]);
@@ -261,13 +288,21 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * **A town the person named.** The longest name wins, so "West Kelowna" is
  * not read as "Kelowna". Nothing is inferred from anything but the name.
  */
+/** Towns that are also ordinary words and names: they need "in", "near"… */
+const AMBIGUOUS_TOWNS = new Set(["oliver", "golden", "delta"]);
+const PLACE_CUE = String.raw`(?:in|near|from|around|at|to|out of|outside(?: of)?|by|of|instead of|do|try)\s+`;
+
 export function townIn(text: string): DiscoveryTown | undefined {
   const lower = text.toLowerCase();
   const named = DISCOVERY_TOWNS.map((t) => ({
     town: t,
     bare: t.name.replace(/,\s*BC$/i, "").toLowerCase(),
   }))
-    .filter(({ bare }) => new RegExp(`\\b${escape(bare)}\\b`).test(lower))
+    .filter(({ bare }) =>
+      new RegExp(
+        `${AMBIGUOUS_TOWNS.has(bare) ? `\\b${PLACE_CUE}` : ""}\\b${escape(bare)}\\b`,
+      ).test(lower),
+    )
     .sort((a, b) => b.bare.length - a.bare.length);
   return named[0]?.town;
 }
@@ -278,10 +313,28 @@ export function townIn(text: string): DiscoveryTown | undefined {
  * Kelowna museum").
  */
 export function townChangeIn(said: string): DiscoveryTown | undefined {
-  const text = said.toLowerCase();
+  const text = said
+    .toLowerCase()
+    .trim()
+    .replace(/[.!?]+$/, "");
   if (/\b(?:swap|replace|remove|drop|cut|delete|add)\b/.test(text))
     return undefined;
-  return townIn(text);
+  const town = townIn(text);
+  if (!town) return undefined;
+  const bare = escape(town.name.replace(/,\s*BC$/i, "").toLowerCase());
+  // Only a sentence that is *about* the start moves it: "not Kelowna" and
+  // "it's raining in Kelowna" name a town and change nothing.
+  if (
+    new RegExp(
+      String.raw`\b(?:not|no|skip|avoid|except|than|but not)\s+(?:\w+\s+)?${bare}\b`,
+    ).test(text)
+  )
+    return undefined;
+  if (text === bare) return town;
+  const cue = new RegExp(
+    String.raw`\binstead\b|\b(?:let'?s|lets)\s+(?:do|try|go|head|start|switch|move)\b|\bstart(?:ing)?\s+(?:in|from|at|out of)\b|\b(?:move|switch|change|shift)(?:\s+(?:it|us|the day))?\s+(?:over\s+)?to\b|\bhow about\b|\bwhat about\b|\bactually\b|\brather\b|\bmake it\b|\b(?:go|head|over) to\b|\bbased?\s+(?:in|out of)\b|\bfrom\s+${bare}\b`,
+  );
+  return cue.test(text) ? town : undefined;
 }
 
 /** The town nearest a point, if it is within `maxKm` — never beyond. */
@@ -342,13 +395,19 @@ export function ageIn(spoken: string): number | undefined {
     if (Number.isInteger(n) && n >= 0 && n <= 17) found.push(n);
   };
   for (const m of text.matchAll(
-    /\b(\d{1,2})[-\s]?(?:years?|yrs?)[-\s]?old\b|\b(\d{1,2})\s?yo\b|\baged?\s+(\d{1,2})\b/g,
+    /\b(\d{1,2})[-\s]?(?:years?|yrs?)[-\s]?olds?\b|\b(\d{1,2})\s?yo\b|\baged?\s+(\d{1,2})\b/g,
   ))
     push(m[1] ?? m[2] ?? m[3]);
   for (const m of text.matchAll(
-    /\b(?:youngest|baby|little one|smallest|kid|child|son|daughter|he|she|they)(?:\s+is|\s+are|'s|’s)\s+(\d{1,2})\b/g,
+    /\b(?:youngest|baby|little one|smallest|kid|child|son|daughter|he|she|they)(?:\s+is|\s+are|'s|’s)\s+(\d{1,2})\b(?!\s*(?:hours?|hrs?|minutes?|mins?|min\b|miles?|km|kilomet|months?|stops?|of us|people|%|:|\.\d))/g,
   ))
     push(m[1]);
+  for (const m of text.matchAll(
+    /\b(\d{1,2})\s+and\s+(\d{1,2})[-\s]?(?:years?|yrs?)[-\s]?olds?\b/g,
+  )) {
+    push(m[1]);
+    push(m[2]);
+  }
   for (const m of text.matchAll(
     /\b(?:kids|children|boys|girls|twins|grandkids)\s+are\s+((?:\d{1,2}(?:\s*(?:,|and|&)\s*)?)+)/g,
   )) {
@@ -374,7 +433,48 @@ interface Activity {
   readonly terms: readonly string[];
   /** Stated phrases that look like it and are not — "water skiing" is not skiing. */
   readonly notThese?: readonly string[];
+  /**
+   * An *activity* is credible only from what Atlas states a place lets you
+   * do (verbs and features) — never from a name or a category. "Snowshoe
+   * Sam's" is a restaurant and "Mario Kart Tournament" is not go-karting.
+   * Place types (a park, a winery) may also be read from the category.
+   */
+  readonly onlyStated?: boolean;
 }
+
+const ACTIVITY_ONLY: ReadonlySet<string> = new Set([
+  "scuba diving",
+  "skydiving",
+  "paragliding",
+  "jet boating",
+  "snorkelling",
+  "bungee jumping",
+  "zip-lining",
+  "rafting",
+  "surfing",
+  "sharks",
+  "whale watching",
+  "dolphins",
+  "snowboarding",
+  "tobogganing",
+  "dog sledding",
+  "snowshoeing",
+  "mini golf",
+  "axe throwing",
+  "escape room",
+  "go-karting",
+  "archery",
+  "paintball",
+  "horseback riding",
+  "sailing",
+  "yoga",
+  "karaoke",
+  "fishing",
+  "picnic",
+  "pumpkin",
+  "bouldering",
+  "water skiing",
+]);
 
 const activity = (
   label: string,
@@ -386,6 +486,7 @@ const activity = (
   say,
   terms,
   ...(notThese ? { notThese } : {}),
+  ...(ACTIVITY_ONLY.has(label) ? { onlyStated: true } : {}),
 });
 
 /**
@@ -422,10 +523,15 @@ const ACTIVITIES: readonly Activity[] = [
   activity("snowboarding", /\bsnowboard(?:ing|s)?\b/, ["snowboard"]),
   activity("tobogganing", /\btoboggan(?:ing)?\b|\bsledd?ing\b/, [
     "toboggan",
-    "sled",
+    "sledding",
     "tubing",
   ]),
   activity("dog sledding", /\bdog[\s-]?sled(?:d?ing)?\b/, ["dog sled"]),
+  activity(
+    "water skiing",
+    /\bwater[\s-]?ski(?:ing|s)?\b|\bwakeboard(?:ing)?\b/,
+    ["water ski", "waterski", "water skiing", "waterskiing", "wakeboard"],
+  ),
   activity(
     "skiing",
     /\bski(?:ing|s|er|ers)?\b|\bdownhill\b|\bski resort\b/,
@@ -438,8 +544,13 @@ const ACTIVITIES: readonly Activity[] = [
     "minigolf",
     "putt",
   ]),
-  activity("golf", /\bgolf(?:ing)?\b/, ["golf"]),
-  activity("bowling", /\bbowling\b/, ["bowl", "bowling"]),
+  activity(
+    "golf",
+    /\bgolf(?:ing)?\b/,
+    ["golf"],
+    ["disc golf", "pitch and putt", "mini golf", "minigolf"],
+  ),
+  activity("bowling", /\bbowling\b/, ["bowling"], ["lawn bowling"]),
   activity("axe throwing", /\baxe[\s-]?throwing\b/, ["axe"]),
   activity("escape room", /\bescape[\s-]?rooms?\b/, ["escape room", "escape"]),
   activity("go-karting", /\bgo[\s-]?kart(?:s|ing)?\b/, ["kart", "karting"]),
@@ -469,11 +580,11 @@ const ACTIVITIES: readonly Activity[] = [
   activity("spa", /\bspa\b|\bmassage\b/, ["spa", "massage"]),
   activity("yoga", /\byoga\b/, ["yoga"]),
   activity("casino", /\bcasino\b/, ["casino"]),
-  activity("cinema", /\bmovies?\b|\bcinema\b|\bfilm\b/, [
+  activity(
     "cinema",
-    "movie",
-    "film",
-  ]),
+    /\bmovie[\s-]?theat(?:re|er)s?\b|\bmovies?\b|\bcinema\b|\bfilm\b/,
+    ["cinema", "movie", "film"],
+  ),
   activity("theatre", /\btheat(?:re|er)s?\b|\bplay\b(?= tonight)/, [
     "theatre",
     "theater",
@@ -482,7 +593,11 @@ const ACTIVITIES: readonly Activity[] = [
     "concert",
     "live music",
   ]),
-  activity("comedy", /\bcomedy\b|\bstand[\s-]?up\b/, ["comedy"]),
+  activity(
+    "comedy",
+    /\bcomedy\b|\bstand[\s-]?up\s+(?:comedy|comic|show|night)\b/,
+    ["comedy"],
+  ),
   activity("karaoke", /\bkaraoke\b/, ["karaoke"]),
   activity("dancing", /\bdancing\b|\bnightclub\b|\bnightlife\b/, [
     "dance",
@@ -539,15 +654,17 @@ const ACTIVITIES: readonly Activity[] = [
     "cycling",
     "cycle",
   ]),
-  activity("fishing", /\bfish(?:ing)?\b/, ["fish", "fishing"]),
+  activity(
+    "fishing",
+    /\bfish(?:ing)?\b(?!\s+(?:and|&|n)\s+chips|\s+hatchery)/,
+    ["fish", "fishing"],
+  ),
   activity("skating", /\bskat(?:e|es|ing)\b/, ["skate", "skating", "rink"]),
-  activity("paddling", /\bpaddl(?:e|es|ing)\b/, [
-    "paddle",
+  activity(
     "paddling",
-    "paddleboard",
-    "kayak",
-    "canoe",
-  ]),
+    /\bpaddl(?:e|es|ing)\b|\bpaddle[\s-]?board(?:ing|s)?\b|\bsup\b/,
+    ["paddle", "paddling", "paddleboard", "kayak", "canoe"],
+  ),
   activity("kayaking", /\bkayak(?:s|ing)?\b/, ["kayak", "kayaking", "paddle"]),
   activity("canoeing", /\bcano(?:e|es|eing)\b/, [
     "canoe",
@@ -619,7 +736,7 @@ const ACTIVITIES: readonly Activity[] = [
     "lunch",
   ]),
   activity("restaurant", /\brestaurants?\b/, ["restaurant", "bistro", "grill"]),
-  activity("cafe", /\bcafes?\b|\bcafés?\b/, ["cafe", "coffee"]),
+  activity("cafe", /(?<![a-zé])caf[eé]s?(?![a-zé])/, ["cafe", "coffee"]),
   activity("brewery", /\bbreweries\b|\bbrewery\b|\bbeer\b/, [
     "brewery",
     "brewing",
@@ -641,9 +758,13 @@ const ACTIVITIES: readonly Activity[] = [
     "summit",
   ]),
   activity("waterfall", /\bwaterfalls?\b/, ["waterfall", "falls"]),
-  activity("lake", /\blakes?\b/, ["lake"]),
-  activity("science", /\bscience\b/, ["science", "discovery"]),
+  activity("lake", /\blakes?\b(?!\s+country)/, ["lake"]),
+  activity("science", /\bscience\b/, ["science"]),
 ];
+
+/** Whether a word somebody typed (any plural, any form) names this activity. */
+export const namesActivity = (word: string, label: string): boolean =>
+  activitiesIn(word).includes(label);
 
 /** The labels, for anything that needs to know what can be asked for. */
 export const ACTIVITY_LABELS: readonly string[] = ACTIVITIES.map(
@@ -688,22 +809,38 @@ const norm = (word: string): string =>
 const phrase = (text: string): string =>
   ` ${(text.toLowerCase().match(/[a-zé]+/g) ?? []).map(norm).join(" ")} `;
 
-const STATED = new WeakMap<Experience, string>();
+const STATED = new WeakMap<Experience, { all: string; does: string }>();
 
-/** Everything an Atlas subject states about itself, as one stemmed phrase. */
-function statedText(experience: Experience): string {
+/**
+ * What an Atlas subject states about itself, as stemmed phrases: `does` is
+ * only what it says you can do or find there; `all` adds its category and
+ * name. "Parking" is never "a park".
+ */
+function statedText(experience: Experience): { all: string; does: string } {
   const cached = STATED.get(experience);
   if (cached) return cached;
-  const text = phrase(
-    [
-      ...(experience.knowledge?.affordances ?? []).map((a) => a.name ?? ""),
-      ...(experience.knowledge?.features ?? []),
-      experience.subtype ?? "",
-      experience.title,
-    ].join(" . "),
+  const without = (t: string) => t.replace(/\bparking\b/gi, " ");
+  const does = phrase(
+    without(
+      [
+        ...(experience.knowledge?.affordances ?? []).map((a) => a.name ?? ""),
+        ...(experience.knowledge?.features ?? []),
+      ].join(" . "),
+    ),
   );
-  STATED.set(experience, text);
-  return text;
+  const all = phrase(
+    without(
+      [
+        ...(experience.knowledge?.affordances ?? []).map((a) => a.name ?? ""),
+        ...(experience.knowledge?.features ?? []),
+        experience.subtype ?? "",
+        experience.title,
+      ].join(" . "),
+    ),
+  );
+  const out = { all, does };
+  STATED.set(experience, out);
+  return out;
 }
 
 const termsFor = (label: string): readonly string[] =>
@@ -716,7 +853,8 @@ const termsFor = (label: string): readonly string[] =>
  */
 export function offers(experience: Experience, label: string): boolean {
   const entry = ACTIVITIES.find((a) => a.label === label);
-  let text = statedText(experience);
+  const stated = statedText(experience);
+  let text = entry?.onlyStated ? stated.does : stated.all;
   for (const not of entry?.notThese ?? [])
     text = text.split(phrase(not)).join(" ");
   return termsFor(label).some((term) => text.includes(phrase(term)));
@@ -744,6 +882,8 @@ export function unmetIn(
   eligible: readonly Experience[],
   everything: readonly Experience[],
   distance?: (e: Experience) => number | undefined,
+  /** Whether an unplaced subject is at least in the start's own area. */
+  sameArea?: (e: Experience) => boolean,
 ): Unmet[] {
   const out: Unmet[] = [];
   for (const label of activities) {
@@ -755,7 +895,8 @@ export function unmetIn(
         if (!offers(e, label)) continue;
         const km = distance(e);
         if (km === undefined) {
-          if (!unplaced.includes(e.title)) unplaced.push(e.title);
+          if (sameArea?.(e) !== false && !unplaced.includes(e.title))
+            unplaced.push(e.title);
           continue;
         }
         if (!nearest || km < nearest.km) nearest = { title: e.title, km };

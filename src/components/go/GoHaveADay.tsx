@@ -42,7 +42,7 @@ import {
 } from "@/domain/day/build";
 import { OFFLINE_MODES, modeById } from "./modes";
 import { TOWN_GROUPS, townById } from "@/domain/discovery/towns";
-import { nearestTown } from "@/domain/day/intent";
+import { ageIn, nearestTown } from "@/domain/day/intent";
 import { needsStart } from "@/domain/day/start";
 import { distanceKm } from "@/lib/environment/geo";
 import { useHere } from "@/lib/location/useHere";
@@ -211,7 +211,7 @@ export function GoHaveADay(props: GoProps) {
   }, [raw]);
   return (
     <ShapedDay
-      key={saved ? "saved" : "fresh"}
+      key={`${memoryKey}|${saved ? "saved" : "fresh"}`}
       {...props}
       memoryKey={memoryKey}
       saved={saved}
@@ -296,7 +296,9 @@ function ShapedDay({
     if (reveal === 0) return;
     // On a phone the answer starts well below the box that was just tapped:
     // without this, pressing Build looks like nothing happened (M200 #10).
-    document.getElementById("go-result")?.scrollIntoView?.({
+    const target = document.getElementById("go-result");
+    target?.focus?.({ preventScroll: true });
+    target?.scrollIntoView?.({
       block: "start",
       behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
         ? "auto"
@@ -347,7 +349,13 @@ function ShapedDay({
       : undefined);
 
   // Kept for this tab only, so Back from the paper returns to this day.
+  // **Only under the address this day was mounted at.** After a hand-off to a
+  // new address (a new age) this instance can render once with the new key
+  // before it is replaced; writing then would overwrite the day that was
+  // carried there with this one's stale state.
+  const [mountedAt] = useState(memoryKey);
   useEffect(() => {
+    if (memoryKey !== mountedAt) return;
     // The server-rendered, not-yet-hydrated instance must not overwrite what
     // the tab already kept before the saved day has been adopted (`saved`):
     // that race lost a kept day's order on every hard load.
@@ -360,7 +368,7 @@ function ShapedDay({
     } catch {
       // Private mode or full storage: Back rebuilds from the URL, as before.
     }
-  }, [memoryKey, saved, draft, brief, shaping, by]);
+  }, [memoryKey, mountedAt, saved, draft, brief, shaping, by]);
 
   // **No starting point, no day.** A day built with nowhere to start spans the
   // province, so until there is a town — said, carried in, or chosen — the page
@@ -456,7 +464,7 @@ function ShapedDay({
       window.sessionStorage.setItem(
         key,
         JSON.stringify({
-          draft: said,
+          draft: built,
           brief: next,
           shaping: nextShaping,
           by,
@@ -481,7 +489,17 @@ function ShapedDay({
 
   const start = (said: string) => {
     if (!said.trim()) return;
-    const next = readBrief(said, known, context());
+    let next = readBrief(said, known, context());
+    // The child from the last sentence is not a fact about this one: "just
+    // me, a quiet walk" is not a family day.
+    if (
+      known.childAge !== undefined &&
+      ageIn(said.toLowerCase()) === undefined &&
+      next.party !== undefined &&
+      next.party !== "family"
+    ) {
+      next = readBrief(said, { ...known, childAge: undefined }, context());
+    }
     // **A new sentence is not permission to throw the day away.** What was
     // kept stays kept; the rest is rebuilt from the new words, and the old
     // day can be taken back.
@@ -579,6 +597,23 @@ function ShapedDay({
     if (next.childAge !== brief.childAge && next.childAge !== childAge) {
       remember();
       if (carryToAge(next, { ...shaping, order: null }, said)) return;
+    }
+    // **A request nothing offers must not wipe a day that works.** If the
+    // revision would leave nothing at all, say so and leave the day alone.
+    if (day.stops.length > 0 && heard.length > 0) {
+      const trial = buildDay({
+        pool,
+        brief: next,
+        without: shaping.without,
+        keep: shaping.keep,
+        picked: keep,
+        minutes: shaping.minutes,
+        ...(weather ? { weather } : {}),
+      });
+      if (trial.stops.length === 0 && (trial.unmet?.length ?? 0) > 0) {
+        setReply([trial.opening, "I've left your day as it was."]);
+        return;
+      }
     }
     if (heard.length === 0) {
       setReply([
@@ -844,6 +879,8 @@ function ShapedDay({
       {atlas !== "unreachable" && day && brief && (
         <section
           id="go-result"
+          tabIndex={-1}
+          aria-label="Your day"
           data-testid="go-day"
           className="mt-10 border-t border-black/10 pt-8"
         >
@@ -1068,7 +1105,7 @@ function WorkingFrom({
     chips.push({ label: `planning without ${aside}`, assumed: true });
   if (brief.withinMinutes !== undefined)
     chips.push({
-      label: `Up to ${travelPhrase(brief.withinMinutes)} away — about ${brief.withinKm} km, an estimate`,
+      label: `Up to ${travelPhrase(brief.withinMinutes)} away — about ${brief.withinKm} km as the crow flies (assumes ~48 km/h), an estimate`,
       assumed: true,
     });
   else if (day?.radiusKm !== undefined && brief.town)
@@ -1116,7 +1153,11 @@ function Who({
       <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
         Who&apos;s coming?
       </p>
-      <div className="mt-2 flex flex-wrap gap-1.5" role="group">
+      <div
+        className="mt-2 flex flex-wrap gap-1.5"
+        role="group"
+        aria-label="Who is coming"
+      >
         {PARTIES.map((p) => (
           <button
             key={p.party}
@@ -1136,7 +1177,11 @@ function Who({
             How old is the youngest? Atlas will check where they&apos;re
             admitted.
           </p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <div
+            className="mt-1.5 flex flex-wrap gap-1.5"
+            role="group"
+            aria-label="Youngest's age"
+          >
             {[2, 4, 6, 8, 10, 12, 14].map((age) => (
               <button
                 key={age}
@@ -1178,11 +1223,16 @@ function StartPanel({
   return (
     <section
       id="go-result"
+      tabIndex={-1}
+      aria-labelledby="go-where-title"
       data-testid="go-where"
       className="mt-10 border-t border-black/10 pt-8"
     >
       <WorkingFrom brief={brief} />
-      <h2 className="ghad-display mt-6 text-[28px] leading-tight font-extrabold tracking-[-0.03em] text-[#111]">
+      <h2
+        id="go-where-title"
+        className="ghad-display mt-6 text-[28px] leading-tight font-extrabold tracking-[-0.03em] text-[#111]"
+      >
         Where does the adventure begin?
       </h2>
       <p className="mt-2 max-w-[58ch] text-[15px] leading-relaxed text-black/60">
@@ -1216,7 +1266,8 @@ function StartPanel({
           </p>
         )}
         <p className="text-[12px] text-black/45">
-          Your position never leaves this browser and is not stored.
+          Rounded to about 1 km, then sent only to ask Environment Canada for
+          the nearest forecast. Not stored.
         </p>
       </div>
       {TOWN_GROUPS.map((group) => (
@@ -1266,7 +1317,9 @@ function NotFound({
       className="mt-6 rounded-2xl bg-amber-50 p-5 text-amber-950 ring-1 ring-amber-900/20 ring-inset"
     >
       <h2 className="ghad-display text-[22px] leading-tight font-extrabold tracking-[-0.02em]">
-        {`Nothing for ${unmet.map((u) => u.activity).join(" or ")} — so there isn't a day to offer yet`}
+        {day.stops.length > 0
+          ? `Not in this day: ${unmet.map((u) => u.activity).join(", ")}`
+          : `Nothing for ${unmet.map((u) => u.activity).join(" or ")} — so there isn't a day to offer yet`}
       </h2>
       <p
         data-testid="go-not-found-says"
@@ -1275,9 +1328,11 @@ function NotFound({
         {day.opening}
       </p>
       <p className="mt-2 text-[14px] text-amber-950/70">
-        I haven&apos;t swapped in something else. You asked for{" "}
-        {unmet.map((u) => u.activity).join(" and ")}; that stays on the page
-        until you tell me otherwise.
+        {day.stops.length > 0
+          ? "The rest of what you asked for is below. "
+          : "I haven't swapped in something else. "}
+        You asked for {unmet.map((u) => u.activity).join(" and ")}; that stays
+        on the page until you tell me otherwise.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {unmet.map((u) => (

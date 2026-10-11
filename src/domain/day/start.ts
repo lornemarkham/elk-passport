@@ -11,3 +11,12 @@ import type { DayBrief } from "./brief";
  * the sentence, a position the person offered) and otherwise asks.
  */
 export const needsStart = (brief: DayBrief): boolean => !brief.town;
+
+/**
+ * **Open product decision (doctrine §15.5, "when to proactively ask for
+ * constraints"), proposed here and not resolved.** Asking *before* showing
+ * anything is in tension with §4 ("do not force *How much time do you
+ * have?* before showing anything"). It is applied to **building a day**
+ * only — Discovery is untouched — because a day without a start is a fiction
+ * (§7). See `docs/architecture/decisions/003-go-day-needs-a-start.md`.
+ */
