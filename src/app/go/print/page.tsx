@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { readBrief } from "@/domain/day/brief";
+import { uncarryBrief } from "@/domain/day/carry";
 import { buildDay } from "@/domain/day/build";
 import { AnalogGuide } from "@/components/go/AnalogGuide";
 import { townById } from "@/domain/discovery/towns";
@@ -56,18 +57,48 @@ export default async function PrintPage({ searchParams }: Props) {
     .filter((c): c is NonNullable<typeof c> => Boolean(c))
     .map(candidateToExperience);
 
+  // The time set by hand and the rain plans shown on screen, replayed rather
+  // than re-chosen — `stopId:minutes` and `stopId~alternativeId`.
+  const minutes = Object.fromEntries(
+    (one(query.mins) ?? "")
+      .split(",")
+      .map((pair) => pair.split(":"))
+      .filter(([id, m]) => id && ids.includes(id) && Number(m) > 0)
+      .map(([id, m]) => [id!, Number(m)]),
+  );
+  const rainPlans = Object.fromEntries(
+    (one(query.rain) ?? "")
+      .split(",")
+      .map((pair) => pair.split("~"))
+      .filter(([id, alt]) => id && alt && ids.includes(id) && byId.has(alt))
+      .map(([id, alt]) => [id!, alt!]),
+  );
+  const shelters = Object.values(rainPlans).map((alt) =>
+    candidateToExperience(byId.get(alt)!),
+  );
+
   const hours = Number(one(query.hours));
-  const brief = readBrief(one(query.say) ?? "", {
+  const read = readBrief(one(query.say) ?? "", {
     ...(Number.isFinite(hours) ? { hours } : {}),
     ...(childAge !== undefined ? { childAge } : {}),
     ...(townById(one(query.at)) ? { town: townById(one(query.at))! } : {}),
     ...(one(query.on) ? { on: one(query.on)! } : {}),
   });
+  // What a revision changed on screen, laid over the re-read sentence.
+  const brief = { ...read, ...uncarryBrief(one(query.b)) };
 
   // Re-run over exactly the chosen subjects: the builder is what knows how to
   // say why a stop is there and what its rules are, and running it over this
   // pool alone cannot change which places are on the paper.
-  const day = buildDay({ pool: chosen, brief });
+  const day = buildDay({
+    pool: [...chosen, ...shelters],
+    brief,
+    keep: ids,
+    order: ids,
+    count: Math.max(1, chosen.length),
+    minutes,
+    rainPlans,
+  });
 
   return <AnalogGuide day={day} />;
 }

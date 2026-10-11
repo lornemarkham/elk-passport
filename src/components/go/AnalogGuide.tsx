@@ -96,6 +96,18 @@ export function AnalogGuide({ day }: { readonly day: DayPlanned }) {
             <p className="mt-3 max-w-[54ch] text-[16px] leading-relaxed text-black/70">
               {day.opening}
             </p>
+            {day.budget && day.stops.length > 0 && (
+              <p
+                data-testid="guide-budget"
+                className="mt-2 max-w-[54ch] text-[14px] leading-relaxed text-black/60"
+              >
+                {Math.round((day.budget.totalMinutes / 60) * 4) / 4} hours:
+                about {day.budget.stopMinutes} minutes at the stops
+                {day.budget.moves > 0 &&
+                  `, ${day.budget.moveMinutes} kept back for getting between them`}
+                .
+              </p>
+            )}
             {day.brief.said && (
               <p className="mt-4 max-w-[54ch] border-l-2 border-black/20 pl-3 text-[14px] leading-relaxed text-black/50 italic">
                 You said: {day.brief.said}
@@ -239,6 +251,7 @@ function Stop({
 
       <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed text-black/75">
         {stop.because}
+        {stop.fit ? ` ${stop.fit}` : ""}
       </p>
 
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
@@ -248,8 +261,22 @@ function Stop({
         </dd>
         <dt className="font-semibold text-black/50">Open</dt>
         <dd className="text-black/75">
-          {stop.open ?? "Hours not published — worth a call first."}
+          {stop.open ??
+            (stop.hours
+              ? `Published hours: ${stop.hours}`
+              : "Hours not published — worth a call first.")}
         </dd>
+        {stop.rainPlan && (
+          <>
+            <dt className="font-semibold text-black/50">If it rains</dt>
+            <dd data-testid="guide-rain-plan" className="text-black/75">
+              {stop.rainPlan.experience.title}
+              {stop.rainPlan.km !== undefined &&
+                ` — ${stop.rainPlan.km < 1 ? "under 1 km" : `${Math.round(stop.rainPlan.km)} km`} from here`}
+              . {stop.rainPlan.because}
+            </dd>
+          </>
+        )}
         {mapHref && (
           <>
             <dt className="font-semibold text-black/50">Directions</dt>
