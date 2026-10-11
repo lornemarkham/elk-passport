@@ -24,7 +24,15 @@ export default defineConfig({
   reporter: "html",
   use: {
     baseURL: `http://localhost:${PORT}`,
-    trace: "on-first-retry",
+    // **Artifacts for the runs that failed, and nothing for the ones that
+    // passed.** `on-first-retry` produced no trace at all locally, where
+    // `retries` is 0 — so every local failure had to be reproduced by hand
+    // before it could be looked at. `retain-on-failure` keeps the trace, the
+    // video and the screenshot of the run that actually failed, and deletes
+    // them for passes, so the report stays small.
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

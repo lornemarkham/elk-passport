@@ -43,10 +43,13 @@ export function DiscoverySections({
 }) {
   return (
     <div className="flex flex-col gap-10">
-      {sections.map((section) => (
+      {sections.map((section, index) => (
         <Section
           key={section.id}
           section={section}
+          // Only the section that opens the page, and only its first cards —
+          // see `PossibilityCard`'s `priority`. Everything else stays lazy.
+          leading={index === 0}
           {...(today ? { today } : {})}
           {...(home ? { home } : {})}
           {...(origin ? { origin } : {})}
@@ -62,6 +65,7 @@ export function DiscoverySections({
 
 function Section({
   section,
+  leading = false,
   today,
   home,
   origin,
@@ -71,6 +75,8 @@ function Section({
   onSave,
 }: {
   readonly section: DiscoverySection;
+  /** Whether this is the section a reader lands on. Decides image priority. */
+  readonly leading?: boolean;
   readonly today?: string;
   readonly home?: string;
   readonly origin?: Point;
@@ -109,11 +115,13 @@ function Section({
           keeps a swipe inside the shelf rather than triggering the browser's
           back gesture. */}
       <ul className="-mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:gap-6 sm:px-6">
-        {shown.map((experience) => (
+        {shown.map((experience, index) => (
           <PossibilityCard
             className="w-[78vw] shrink-0 snap-start sm:w-[360px] lg:w-[400px]"
             key={experience.id}
             experience={experience}
+            // Three: what fits across a laptop before the shelf scrolls.
+            priority={leading && index < 3}
             {...(today ? { today } : {})}
             {...(home ? { home } : {})}
             {...(origin ? { origin } : {})}

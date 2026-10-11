@@ -53,6 +53,7 @@ export function PossibilityCard({
   origin,
   className = "",
   carry,
+  priority = false,
   saved,
   saving,
   onSave,
@@ -84,6 +85,20 @@ export function PossibilityCard({
    * planned a different day from the one in the person's head.
    */
   readonly carry?: string;
+  /**
+   * **Whether this card's photograph is worth fetching before the others.**
+   *
+   * Measured on a local production build at 1280px: the Largest Contentful
+   * Paint was a shelf photograph arriving **8.5 seconds** after navigation,
+   * while the server answered in 10ms. Twenty-one Atlas-hosted originals were
+   * being requested at once and every one of them was `loading="lazy"` —
+   * including the one in the first viewport, which is the classic way to
+   * deprioritise the exact image the measurement is about.
+   *
+   * Set by the surface for the handful of cards that open the page. Everything
+   * below the fold stays lazy, which is what lazy is for.
+   */
+  readonly priority?: boolean;
   readonly saved: boolean;
   readonly saving: boolean;
   readonly onSave: () => void;
@@ -158,7 +173,8 @@ export function PossibilityCard({
           <img
             src={picture}
             alt=""
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
         </div>
