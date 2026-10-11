@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
   Check,
+  Clock,
   Flag,
+  HelpCircle,
   Home,
   Minus,
   Pin,
@@ -19,6 +21,7 @@ import {
 import type { ReactNode } from "react";
 import type { Alternative, DayPlanned, DayStop } from "@/domain/day/build";
 import { clockLabel } from "@/domain/day/brief";
+import { timelineFor, type Timeline } from "@/domain/day/timeline";
 import { ageLine } from "@/domain/discovery/suitability";
 import { destinationFor } from "@/domain/experience/destination";
 import type { Journey, TravelMode } from "@/lib/routing/journey";
@@ -68,6 +71,14 @@ export interface StopControls {
   readonly onMove: (index: number, by: -1 | 1) => void;
   readonly onTime: (index: number, by: number) => void;
   readonly onRainPlan: (index: number) => void;
+  /** Put a set-aside stop back into the day, kept. */
+  readonly onRestore?: (id: string) => void;
+}
+
+/** A stop the person set aside: not today, still theirs. */
+export interface SetAside {
+  readonly id: string;
+  readonly title: string;
 }
 
 export function DayItinerary({
@@ -77,6 +88,8 @@ export function DayItinerary({
   alternatives = [],
   by = "driving",
   onBy,
+  setAside = [],
+  onTimeline,
 }: {
   readonly day: DayPlanned;
   readonly controls?: StopControls;
@@ -85,12 +98,24 @@ export function DayItinerary({
   readonly alternatives?: readonly Alternative[];
   readonly by?: TravelMode;
   readonly onBy?: (mode: TravelMode) => void;
+  /** Stops the person took out of this day. They stay visible, and theirs. */
+  readonly setAside?: readonly SetAside[];
+  /** Told whenever the day's clock changes, so the page can print or copy it. */
+  readonly onTimeline?: (timeline: Timeline | undefined) => void;
 }) {
   const { legs, into, home } = useMemo(() => dayLegs(day), [day]);
   const travel = useTravelLegs(legs, by);
   const total = travelTotal(legs, travel.journeys, by);
   const unknowns = unknownsWithTravel(day.unknowns, travel.status, total);
   const planned = day.stops.reduce((sum, stop) => sum + stop.minutes, 0);
+  // `useTravelLegs` hands back a fresh `journeys` array on every render, so
+  // the clock is keyed on what it *says*: otherwise reporting it to the page
+  // re-renders the page, which re-renders this, which reports it again.
+  const clock = timelineFor(day, travel.journeys, by);
+  const clockKey = JSON.stringify(clock ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const timeline = useMemo(() => clock, [clockKey]);
+  useEffect(() => onTimeline?.(timeline), [onTimeline, timeline]);
   const legAt = (i: number | undefined) =>
     i === undefined
       ? undefined
@@ -118,7 +143,24 @@ export function DayItinerary({
         {day.opening}
       </p>
 
+      {day.leftOut && day.leftOut.length > 0 && (
+        <div
+          data-testid="go-left-out"
+          role="status"
+          className="mt-4 rounded-xl bg-amber-50 p-3 text-[14px] leading-relaxed text-amber-950 ring-1 ring-amber-200"
+        >
+          <p className="font-semibold">Couldn&apos;t fit these in</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {day.leftOut.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {day.budget && <TimeBar day={day} />}
+      {timeline && <Verdict timeline={timeline} />}
+      {timeline && <Glance day={day} timeline={timeline} />}
       {day.money && <MoneyLine day={day} />}
 
       {legs.length > 0 && (
@@ -175,6 +217,15 @@ export function DayItinerary({
               Name a town and the day gets distances and a forecast.
             </span>
           )}
+          {day.brief.startAt === undefined && (
+            <span
+              data-testid="go-no-clock"
+              className="block text-[13px] text-black/45"
+            >
+              Say when you&apos;re leaving — “leave at 10” — and each stop gets
+              a time.
+            </span>
+          )}
         </RouteNode>
 
         {day.stops.map((stop, index) => (
@@ -192,6 +243,9 @@ export function DayItinerary({
               {...(controls ? { controls } : {})}
               open={swapping === index}
               alternatives={swapping === index ? alternatives : []}
+              {...(timeline?.stops[index]
+                ? { when: timeline.stops[index] }
+                : {})}
             />
           </li>
         ))}
@@ -217,6 +271,17 @@ export function DayItinerary({
                   · by {clockLabel(day.brief.homeBy)}
                 </span>
               )}
+              {timeline?.home && (
+                <span
+                  data-testid="go-home-clock"
+                  className="block text-[13px] text-black/55"
+                >
+                  Home about {clockLabel(timeline.home.arrive)}
+                  {timeline.home.basis === "allowance"
+                    ? " — roads not measured"
+                    : ""}
+                </span>
+              )}
             </RouteNode>
           </>
         )}
@@ -232,16 +297,54 @@ export function DayItinerary({
           Worth checking before you go
         </h3>
         <ul className="mt-2 flex flex-col gap-1">
-          {unknowns.map((unknown) => (
-            <li
-              key={unknown}
-              className="max-w-[64ch] text-[14px] leading-relaxed text-black/55"
-            >
-              {unknown}
-            </li>
-          ))}
+          {unknowns
+            .filter((unknown) => !day.leftOut?.includes(unknown))
+            .map((unknown) => (
+              <li
+                key={unknown}
+                className="max-w-[64ch] text-[14px] leading-relaxed text-black/55"
+              >
+                {unknown}
+              </li>
+            ))}
         </ul>
       </section>
+
+      {setAside.length > 0 && (
+        <section
+          data-testid="go-set-aside"
+          className="mt-6 rounded-2xl bg-black/[0.03] p-4"
+        >
+          <h3 className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+            Not today — still yours
+          </h3>
+          <p className="mt-1 text-[13px] text-black/55">
+            Taken out of this day, not out of what you want.
+          </p>
+          <ul className="mt-2 flex flex-col gap-2">
+            {setAside.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2"
+              >
+                <span className="text-[15px] font-semibold text-[#111]">
+                  {a.title}
+                </span>
+                {controls?.onRestore && (
+                  <button
+                    type="button"
+                    data-testid="go-put-back"
+                    onClick={() => controls.onRestore?.(a.id)}
+                    className="inline-flex min-h-11 items-center rounded-full px-4 text-[14px] font-semibold ring-1 ring-black/20 ring-inset hover:ring-black/50"
+                  >
+                    Put it back
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
@@ -373,7 +476,9 @@ function StopCard({
   controls,
   open,
   alternatives,
+  when,
 }: {
+  readonly when?: Timeline["stops"][number];
   readonly day: DayPlanned;
   readonly stop: DayStop;
   readonly index: number;
@@ -393,7 +498,8 @@ function StopCard({
   return (
     <article
       data-testid="go-stop"
-      className="relative ml-[44px] rounded-2xl bg-white p-4 ring-1 ring-black/10 sm:p-5"
+      id={`stop-${stop.experience.id}`}
+      className="relative ml-[44px] scroll-mt-20 rounded-2xl bg-white p-4 ring-1 ring-black/10 sm:p-5"
       style={
         stop.kept
           ? { boxShadow: "inset 3px 0 0 var(--ghad-accent)" }
@@ -412,7 +518,7 @@ function StopCard({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_1fr] sm:gap-5">
         {picture ? (
-          <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-black/[0.04] sm:w-[200px]">
+          <div className="aspect-[16/9] w-full overflow-hidden rounded-xl bg-black/[0.04] sm:aspect-[4/3] sm:w-[200px]">
             {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
             <img
               src={picture}
@@ -440,6 +546,21 @@ function StopCard({
             )}
           </h3>
 
+          {when && (
+            <p
+              data-testid="go-clock"
+              data-basis={when.basis}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-black/[0.05] px-3 py-1 text-[13px] font-semibold text-[#111]"
+            >
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              {when.basis === "allowance" ? "about " : ""}
+              {clockLabel(when.arrive)}
+              <span className="font-normal text-black/50">
+                · until about {clockLabel(when.leave)}
+              </span>
+            </p>
+          )}
+
           {/* ✦ Passport's own reasoning. */}
           <ul className="mt-2 flex flex-col gap-1">
             <Suggestion testId="go-because">{stop.because}</Suggestion>
@@ -457,6 +578,11 @@ function StopCard({
             {stop.cost && <Fact>{stop.cost}</Fact>}
             {stop.open && <Fact>{stop.open}</Fact>}
             {stop.hours && <Fact>Published hours: {stop.hours}</Fact>}
+            {stop.experience.schedule?.onDate?.reading === "conflicting" && (
+              <Doubt testId="go-unconfirmed">
+                Sources argue about whether this is open that day — call ahead.
+              </Doubt>
+            )}
             {age && <Fact>{age}</Fact>}
             {stop.rain === "stands" && (
               <Fact>Atlas: the rain doesn&apos;t stop this.</Fact>
@@ -628,7 +754,7 @@ function StopCard({
                         onClick={() =>
                           controls.onChoose(index, alt.experience.id)
                         }
-                        className="inline-flex min-h-10 items-center rounded-full px-4 text-[14px] font-semibold"
+                        className="inline-flex min-h-11 items-center rounded-full px-4 text-[14px] font-semibold"
                         style={{
                           backgroundColor: "var(--ghad-accent)",
                           color: "var(--ghad-accent-ink)",
@@ -654,6 +780,27 @@ function Fact({ children }: { readonly children: ReactNode }) {
       <Check
         className="mt-[3px] h-3.5 w-3.5 shrink-0 text-emerald-700"
         aria-label="Stated"
+      />
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function Doubt({
+  children,
+  testId,
+}: {
+  readonly children: ReactNode;
+  readonly testId?: string;
+}) {
+  return (
+    <li
+      data-testid={testId}
+      className="flex max-w-[62ch] items-start gap-2 text-[14px] leading-relaxed text-amber-900"
+    >
+      <HelpCircle
+        className="mt-[3px] h-3.5 w-3.5 shrink-0"
+        aria-label="Not confirmed"
       />
       <span>{children}</span>
     </li>
@@ -708,7 +855,7 @@ function Control({
       aria-label={iconOnly ? label : undefined}
       title={label}
       {...(pressed !== undefined ? { "aria-pressed": pressed } : {})}
-      className={`inline-flex min-h-9 items-center gap-1.5 rounded-full text-[13px] font-semibold ring-1 transition-colors ring-inset disabled:opacity-30 ${iconOnly ? "w-9 justify-center" : "px-3"} ${pressed ? "bg-[#111] text-white ring-[#111]" : "text-black/65 ring-black/15 hover:ring-black/45"}`}
+      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full text-[13px] font-semibold ring-1 transition-colors ring-inset disabled:opacity-30 sm:min-h-9 ${iconOnly ? "w-11 justify-center sm:w-9" : "px-3.5 sm:px-3"} ${pressed ? "bg-[#111] text-white ring-[#111]" : "text-black/65 ring-black/15 hover:ring-black/45"}`}
     >
       <span aria-hidden>{icon}</span>
       {!iconOnly && label}
@@ -777,6 +924,79 @@ function TimeBar({ day }: { readonly day: DayPlanned }) {
         )}
       </p>
     </div>
+  );
+}
+
+/**
+ * **Will you be home when you said?** In the person's words, with the doubt
+ * attached: on the plan's allowance for the roads (not measured ones) it can
+ * only say *tight* or *over*, never *fine*.
+ */
+function Verdict({ timeline }: { readonly timeline: Timeline }) {
+  if (!timeline.verdict || timeline.homeBy === undefined) return null;
+  const by = clockLabel(timeline.homeBy);
+  const slack = timeline.slack ?? 0;
+  const late = Math.abs(slack);
+  const text =
+    timeline.verdict === "over"
+      ? `On what is measured and planned, you're home about ${minutes(late)} after ${by}. Take time off a stop, or drop one.`
+      : timeline.verdict === "tight"
+        ? timeline.basis === "allowance"
+          ? `${slack < 5 ? `Home by ${by} only just works` : `Home by ${by} with about ${minutes(slack)} spare`}, on the plan's own allowance for the roads — nobody has measured them, so it could go either way.`
+          : `Home by ${by}, with only ${minutes(slack)} to spare.`
+        : `Home by ${by}, with ${minutes(slack)} to spare on Atlas's route times.`;
+  return (
+    <p
+      data-testid="go-verdict"
+      data-verdict={timeline.verdict}
+      className={`mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-[14px] leading-relaxed ${timeline.verdict === "over" ? "bg-amber-50 text-amber-950 ring-1 ring-amber-200" : "bg-black/[0.03] text-black/70"}`}
+    >
+      <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      <span>{text}</span>
+    </p>
+  );
+}
+
+/** **The day in one glance**: where you'd be, when. Each line jumps to its card. */
+function Glance({
+  day,
+  timeline,
+}: {
+  readonly day: DayPlanned;
+  readonly timeline: Timeline;
+}) {
+  return (
+    <ol
+      data-testid="go-glance"
+      aria-label="The day at a glance"
+      className="mt-3 flex flex-col gap-0.5 rounded-xl bg-black/[0.03] p-3 text-[14px]"
+    >
+      {day.stops.map((stop, i) => {
+        const t = timeline.stops[i]!;
+        return (
+          <li key={stop.experience.id}>
+            <a
+              href={`#stop-${stop.experience.id}`}
+              className="flex min-h-11 items-baseline gap-3 py-2"
+            >
+              <span className="w-[5.5rem] shrink-0 font-semibold text-[#111] tabular-nums">
+                {clockLabel(t.arrive)}
+                {t.basis === "allowance" ? "~" : ""}
+              </span>
+              <span className="min-w-0 truncate text-black/75">
+                {stop.experience.title}
+              </span>
+            </a>
+          </li>
+        );
+      })}
+      <li className="pt-1 text-[12px] text-black/45">
+        {timeline.basis === "allowance"
+          ? "~ means about: that move is the plan's own allowance, not a measured road, so it could be shorter or longer."
+          : "Times use Atlas's route estimates between stops."}
+        {timeline.fromNow && " Counting from now."}
+      </li>
+    </ol>
   );
 }
 
