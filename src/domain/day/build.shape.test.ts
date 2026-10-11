@@ -490,3 +490,70 @@ describe("choosing a different stop", () => {
     expect(alternativesFor({ pool: POOL, brief, day, index: 9 })).toEqual([]);
   });
 });
+
+/**
+ * **What Day Builder decides reaches paper** (integration, INT-5 / risk R4).
+ * The field guide is the print surface, so everything the screen shaped —
+ * the rain plan, each stop's own time, the move buffer, who it might suit —
+ * has to survive `printableFromDay`.
+ */
+describe("on paper", () => {
+  it("carries the rain plan the screen chose", async () => {
+    const { printableFromDay } = await import("@/lib/analog/printable");
+    const day = buildDay({
+      pool: POOL,
+      brief: readBrief("near Vernon"),
+      keep: ["lakeside-beach"],
+      count: 1,
+      rainPlans: { "lakeside-beach": "climbing-gym" },
+    });
+    const paper = printableFromDay(day);
+    expect(paper.stops[0]!.rainPlan?.title).toBe(
+      day.stops[0]!.rainPlan!.experience.title,
+    );
+    expect(paper.stops[0]!.rainPlan?.because).toBe(
+      day.stops[0]!.rainPlan!.because,
+    );
+  });
+
+  it("prints each stop's own minutes, and the buffer as a buffer", async () => {
+    const { printableFromDay } = await import("@/lib/analog/printable");
+    const first = buildDay({
+      pool: POOL,
+      brief: readBrief("four hours near Vernon"),
+    });
+    const id = first.stops[0]!.experience.id;
+    const day = buildDay({
+      pool: POOL,
+      brief: readBrief("four hours near Vernon"),
+      keep: [id],
+      minutes: { [id]: 120 },
+    });
+    const paper = printableFromDay(day);
+    expect(paper.stops.map((s) => s.minutes)).toEqual(
+      day.stops.map((s) => s.minutes),
+    );
+    expect(paper.stops.find((s) => s.id === id)).toMatchObject({
+      minutes: 120,
+      timeSet: true,
+    });
+    expect(paper.time.evenSplit).toBe(false);
+    expect(paper.time.buffer).toEqual({
+      perMove: MOVE_MINUTES,
+      moves: day.budget!.moves,
+      minutes: day.budget!.moveMinutes,
+    });
+  });
+
+  it("keeps who it might suit, as a suggestion", async () => {
+    const { printableFromDay } = await import("@/lib/analog/printable");
+    const day = buildDay({
+      pool: POOL,
+      brief: readBrief("four hours near Vernon, just the two of us"),
+    });
+    const paper = printableFromDay(day);
+    day.stops.forEach((stop, i) => {
+      expect(paper.stops[i]!.fit).toBe(stop.fit);
+    });
+  });
+});

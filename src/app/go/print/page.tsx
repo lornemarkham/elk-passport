@@ -4,15 +4,18 @@ import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { readBrief } from "@/domain/day/brief";
 import { uncarryBrief } from "@/domain/day/carry";
 import { buildDay } from "@/domain/day/build";
-import { AnalogGuide } from "@/components/go/AnalogGuide";
+import { PrintableAdventure } from "@/components/adventure/PrintableAdventure";
+import { printableFromDay } from "@/lib/analog/printable";
 import { townById } from "@/domain/discovery/towns";
 import {
   isTravelMode,
   type Journey,
   type TravelMode,
 } from "@/lib/routing/journey";
-import { isPlaced } from "@/lib/routing/legs";
-import { dayLegs } from "@/lib/routing/dayLegs";
+import { isPlaced, travelTotal } from "@/lib/routing/legs";
+import { dayLegs, unknownsWithTravel } from "@/lib/routing/dayLegs";
+import type { RouteOptions } from "@/lib/analog/route";
+import { printTravel } from "./travel";
 import { travelLegsFromAtlas } from "@/lib/routing/atlasLegs.server";
 import type { TravelStatus } from "@/lib/routing/useTravelTimes";
 
@@ -42,6 +45,12 @@ export const metadata: Metadata = {
  * travel time for each leg (or a straight line, labelled as one), what is published about hours and prices, what is not, the rules
  * worth knowing, and a map link for the drive **before** you leave. Nothing
  * on the guide requires a phone once it is printed, which is the entire idea.
+ *
+ * ## The layout
+ *
+ * `components/adventure/PrintableAdventure` takes the day and adds a
+ * checklist, time and money at a glance, side quests and room to write.
+ * `printableFromDay` is the adapter, and the layout depends on nothing else.
  */
 type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -59,7 +68,11 @@ export default async function PrintPage({ searchParams }: Props) {
       ? askedAge
       : undefined;
 
-  const candidates = await listDiscoveryCandidates(childAge);
+  // Nothing chosen means nothing to look up. A corpus read that can only be
+  // thrown away is 6–7 seconds of somebody's time, and with Atlas down it
+  // turns "build a day first" into an error page.
+  const candidates =
+    ids.length > 0 ? await listDiscoveryCandidates(childAge) : [];
   const byId = new Map(candidates.map((c) => [c.id, c]));
   const chosen = ids
     .map((id) => byId.get(id))
@@ -111,7 +124,15 @@ export default async function PrintPage({ searchParams }: Props) {
   const by = one(query.by);
   const mode = isTravelMode(by) ? by : "driving";
 
-  return <AnalogGuide day={day} travel={await printedTravel(day, mode)} />;
+  const travel = await printedTravel(day, mode);
+  return (
+    <PrintableAdventure
+      adventure={printableFromDay(
+        { ...day, unknowns: travel.unknowns },
+        travel.options,
+      )}
+    />
+  );
 }
 
 /** Long enough for a cached answer; short enough not to hold up the paper. */
@@ -125,30 +146,42 @@ const PRINT_TRAVEL_TIMEOUT_MS = 5_000;
 async function printedTravel(
   day: ReturnType<typeof buildDay>,
   mode: TravelMode,
-): Promise<{
-  mode: TravelMode;
-  status: TravelStatus;
-  journeys: (Journey | undefined)[];
-}> {
+): Promise<{ options: RouteOptions; unknowns: readonly string[] }> {
   const { legs } = dayLegs(day);
   const journeys: (Journey | undefined)[] = legs.map(() => undefined);
   const placed = legs.flatMap((leg, i) => (isPlaced(leg) ? [{ leg, i }] : []));
-  if (placed.length === 0) return { mode, status: "idle", journeys };
-  try {
-    const answer = await travelLegsFromAtlas(
-      placed.map(({ leg }) => leg),
-      mode,
-      { timeoutMs: PRINT_TRAVEL_TIMEOUT_MS },
-    );
-    if (answer.state === "not-served") {
-      return { mode, status: "not-served", journeys };
+  let status: TravelStatus = "idle";
+  if (placed.length > 0) {
+    try {
+      const answer = await travelLegsFromAtlas(
+        placed.map(({ leg }) => leg),
+        mode,
+        { timeoutMs: PRINT_TRAVEL_TIMEOUT_MS },
+      );
+      if (answer.state === "not-served") status = "not-served";
+      else {
+        placed.forEach(({ i }, k) => {
+          journeys[i] = answer.journeys[k] ?? undefined;
+        });
+        status = "ready";
+      }
+    } catch {
+      console.error("[atlas] travel legs unavailable for a printed guide");
+      status = "failed";
     }
-    placed.forEach(({ i }, k) => {
-      journeys[i] = answer.journeys[k];
-    });
-    return { mode, status: "ready", journeys };
-  } catch {
-    console.error("[atlas] travel legs unavailable for a printed guide");
-    return { mode, status: "failed", journeys };
   }
+  return {
+    options: printTravel(
+      legs,
+      journeys,
+      status,
+      mode,
+      day.stops.reduce((sum, stop) => sum + stop.minutes, 0),
+    ),
+    unknowns: unknownsWithTravel(
+      day.unknowns,
+      status,
+      travelTotal(legs, journeys, mode),
+    ),
+  };
 }
