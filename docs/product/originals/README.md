@@ -12,11 +12,12 @@ doctrine is a separate decision for a person. Where something here appears to
 conflict with the doctrine, the conflict is named in the file rather than
 settled.
 
-| File                                         | What it holds                                                                                                                                    |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`go-have-a-day.md`](go-have-a-day.md)       | GO HAVE A DAY / NOW GO HAVE ANOTHER and the ideas that make it up: Moments, Days, Another, conversation, the builder, Go Offline, paper, Boards. |
-| [`fishing-with-emi.md`](fishing-with-emi.md) | The flagship acceptance experience: what the outing was, what it proves, and the bar any version of Passport has to clear.                       |
-| [`idea-inventory.md`](idea-inventory.md)     | Every original idea, with where it lives, how far it got, and its priority. The priority column has a gap, and the file says why.                |
+| File                                                         | What it holds                                                                                                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`go-have-a-day.md`](go-have-a-day.md)                       | GO HAVE A DAY / NOW GO HAVE ANOTHER and the ideas that make it up: Moments, Days, Another, conversation, the builder, Go Offline, paper, Boards. |
+| [`fishing-with-emi.md`](fishing-with-emi.md)                 | The flagship acceptance experience: what the outing was, what it proves, and the bar any version of Passport has to clear.                       |
+| [`idea-inventory.md`](idea-inventory.md)                     | Every original idea, with where it lives, how far it got, and its priority. The priority column has a gap, and the file says why.                |
+| [`../GO-HAVE-A-DAY-ROADMAP.md`](../GO-HAVE-A-DAY-ROADMAP.md) | The roadmap built from these: every requirement by workspace, its status, what blocks it, and what can run in parallel.                          |
 
 The originals themselves (`Fishing_with_Emi_First_Adventure.pdf`,
 `001-fishing-with-emi-passport-adventure-page.md`) still have to be exported
