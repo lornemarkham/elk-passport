@@ -1,5 +1,9 @@
 import type { DayPlanned } from "./build";
-import type { Journey, TravelMode } from "@/lib/routing/journey";
+import {
+  isCautioned,
+  type Journey,
+  type TravelMode,
+} from "@/lib/routing/journey";
 import { shownLeg } from "@/lib/routing/legs";
 import { dayLegs } from "@/lib/routing/dayLegs";
 
@@ -68,12 +72,15 @@ export interface Timeline {
 
 const TIGHT_MINUTES = 15;
 
-/** A routed answer in the mode asked, with no access caution: the only kind that is counted. */
+/**
+ * A routed answer in the mode asked that routing itself would count: not an
+ * access caution and not a route to the middle of an area (`isCautioned`).
+ */
 const routedMinutes = (
   journey: Journey | undefined,
   mode: TravelMode,
 ): number | undefined =>
-  journey?.kind === "routed" && journey.mode === mode && !journey.accessCaution
+  journey?.kind === "routed" && journey.mode === mode && !isCautioned(journey)
     ? journey.minutes
     : undefined;
 

@@ -61,3 +61,29 @@ timing, saving and travel. Suggested order:
 - Signed-in saving, voice: not tested (no Supabase / key).
 - Default e2e suite: same 7 environmental failures as the documented baseline
   (core-loop:26, october:168/284/373/482/554/570).
+
+## Independent review (fresh agent, read-only, traced in code)
+
+Fixed here:
+
+- **The clock counted a route to the middle of a park as measured**
+  (`timeline.ts` rejected only `accessCaution`; routing also rejects
+  `areaPoint`). It now uses routing's own `isCautioned`. Test added; fails
+  without the fix.
+
+Not fixed — for a human or M202 to decide:
+
+- **A 429 or 401 reads as "Could not get travel times just now"** with an
+  immediate Try again (`useTravelLegs.ts:72`, `useTravelTimes.ts:68`). Honest
+  as straight lines, but it does not say "slow down" or "sign in", and the
+  retry spends another of the 20 a minute.
+- **A `not-served` answer is kept for 5 minutes** on the server and in the tab,
+  so an Atlas that gains `/travel/legs` (or had a bare 404 mid-deploy) looks
+  unchanged for that long, and there is no retry in that state.
+- **A partial answer marked `temporary` has no Try again** (status is `ready`).
+- **A reopened kept day is not re-validated** against the current pool, and its
+  `on=` date and `startAt` can be in the past.
+- **Anonymous requests with no `x-forwarded-for`/`x-real-ip` share one
+  rate-limit bucket** (`ip:unknown`); fine on Vercel, not self-hosted.
+- The kept day's brief (`b=`: party, child's age, avoid) sits in localStorage
+  with no expiry. No coordinates are stored.

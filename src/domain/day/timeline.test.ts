@@ -99,6 +99,22 @@ describe("timelineFor", () => {
     expect(t.slack!).toBeLessThan(0);
   });
 
+  it("does not count a route to the middle of a park as measured", () => {
+    const park = { ...routed(82), areaPoint: true } as Journey;
+    const t = timelineFor(
+      day({ startAt: 9 * 60, homeBy: 17 * 60 }),
+      [routed(10), park, routed(20)],
+      "driving",
+    )!;
+    const counted = timelineFor(
+      day({ startAt: 9 * 60, homeBy: 17 * 60 }),
+      [routed(10), undefined, routed(20)],
+      "driving",
+    )!;
+    expect(t.ends).toBe(counted.ends);
+    expect(t.verdict).not.toBe("ok");
+  });
+
   it("does not count a walk's minutes as a drive's", () => {
     const walk = { ...routed(500), mode: "walking" } as Journey;
     const t = timelineFor(day({ startAt: 600 }), [walk], "driving")!;
