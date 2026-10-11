@@ -186,6 +186,13 @@ describe("the two places a tile names", () => {
       expect(invitation.examples.length).toBeGreaterThan(0);
     }
   });
+
+  it("never names the same place twice on one tile", () => {
+    // A verb backed by a single place had that place in both the fresh list
+    // and the fallback, and read "Stanley Park · Stanley Park".
+    const [only] = invitations([offering("Stanley Park", "Cycling")]);
+    expect(only!.examples).toHaveLength(1);
+  });
 });
 
 describe("where an invitation leads", () => {

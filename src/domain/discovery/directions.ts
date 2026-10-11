@@ -129,10 +129,15 @@ export function invitations(
   const spoken = new Set<string>();
   return ranked.map(({ label, places }) => {
     const fresh = places.filter((place) => !spoken.has(place.id));
-    // Falls back to repeating rather than naming fewer: a tile with one
-    // example is still better than a tile with none, and a verb backed by a
-    // single place has nothing else to offer.
-    const examples = [...fresh, ...places].slice(0, EXAMPLES);
+    // Falls back to a name an earlier tile used rather than naming fewer: a
+    // tile with one example beats a tile with none. Deduplicated, because a
+    // verb backed by a single place had that place in both lists and named
+    // it twice — "Stanley Park · Stanley Park".
+    const examples = [
+      ...new Map(
+        [...fresh, ...places].map((place) => [place.id, place]),
+      ).values(),
+    ].slice(0, EXAMPLES);
     for (const place of examples) spoken.add(place.id);
     return { doing: label, places, examples };
   });

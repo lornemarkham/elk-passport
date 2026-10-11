@@ -254,8 +254,6 @@ export function readWeather(
 }
 
 /**
- * **PROTOTYPE (local only, not deployed).**
- *
  * *"What should we do with our day?"* is a question about **verbs**. The
  * current answer is a list of **nouns** — Stuart Park Ice Rink, Deer Park,
  * Marshall Field — which is a list of records that happen to satisfy a query,
@@ -315,16 +313,93 @@ export function directionsFor(
 
   return [...byDoing.entries()]
     .map(([key, places]) => ({
-      doing: places[0]!.knowledge
-        ? (childEvidence(places[0]!).find((d) => d.toLowerCase() === key) ??
-          key)
-        : key,
+      doing:
+        childEvidence(places[0]!).find((d) => d.toLowerCase() === key) ?? key,
       places,
       ruledOutByRain: Boolean(
         options.wet && places.every((p) => arguesAgainst(p)),
       ),
     }))
-    .sort((a, b) => b.places.length - a.places.length);
+    .sort(
+      (a, b) =>
+        // Something the rain has already ruled out is still offered — it may
+        // be the only thing a child can do here — but it is offered last.
+        Number(a.ruledOutByRain) - Number(b.ruledOutByRain) ||
+        b.places.length - a.places.length ||
+        a.doing.localeCompare(b.doing),
+    );
+}
+
+/**
+ * **How many distinct ideas a stated length of day asks for.**
+ *
+ * This is the one number on this page that is **Passport's judgement rather
+ * than Atlas's evidence**, and the surface says so.
+ *
+ * It cannot be anything else. Atlas states a duration for 17 candidates out of
+ * 2,683 — all of them hiking, in free text like *"60 - 90 minute
+ * round-trip"* — so Passport cannot know that a playground fills an hour or
+ * that a lake fills four. What it can say without inventing anything is that
+ * **eight hours with a five-year-old wants more than one idea**, and an hour
+ * wants exactly one.
+ *
+ * So the window controls *breadth*, never duration:
+ *
+ * ```
+ * an-hour     1    one thing, chosen well
+ * half-day    2
+ * all-day     4    a morning and an afternoon's worth of different ideas
+ * ```
+ *
+ * Nothing here claims how long any of them takes, in what order they happen,
+ * or that they fit together. That would be the fabricated itinerary the
+ * doctrine puts in SHAPE, not DISCOVER.
+ */
+export function directionsWanted(window: Window | undefined): number {
+  switch (window) {
+    case "an-hour":
+      return 1;
+    case "half-day":
+      return 2;
+    case "all-day":
+      return 4;
+    default:
+      // They have said who is with them and not how long. Three is enough to
+      // feel like a choice without implying a day's worth.
+      return 3;
+  }
+}
+
+/**
+ * **Four different ideas should be four different ideas.**
+ *
+ * Measured in Vernon with a five-year-old and the whole day, the first cut
+ * offered *Playground · Swimming · Beach · Basketball* — and **Swimming** and
+ * **Beach** named Kal Beach and Kin Beach as their first two places each.
+ * Two of the four ideas were the same lake. Atlas states both verbs and both
+ * are true; they just do not make a second afternoon.
+ *
+ * So a direction that adds no place an earlier one has not already named is
+ * passed over, and the next one takes its slot. Deliberately exact — *every*
+ * place already seen, not most of them — because a threshold would be
+ * Passport deciding how similar two things it did not define are.
+ *
+ * Nothing is lost: the places are all still in the feed below, and the verb
+ * that was skipped still has a direction of its own the moment the person
+ * asks for more of them.
+ */
+export function distinctDirections<
+  T extends { readonly places: readonly Experience[] },
+>(directions: readonly T[], wanted: number): readonly T[] {
+  const chosen: T[] = [];
+  const named = new Set<string>();
+  for (const direction of directions) {
+    if (chosen.length >= wanted) break;
+    if (direction.places.every((place) => named.has(place.id))) continue;
+    for (const place of direction.places) named.add(place.id);
+    chosen.push(direction);
+  }
+  return chosen;
 }
 
 /**

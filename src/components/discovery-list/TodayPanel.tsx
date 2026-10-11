@@ -4,7 +4,9 @@ import { CloudRain, LoaderCircle, MapPin, Sun, Users } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import {
   answerFor,
-  childEvidence,
+  directionsFor,
+  directionsWanted,
+  distinctDirections,
   type Company,
   type DayWeather,
   type PlaceContext,
@@ -16,8 +18,14 @@ import {
   rainBecause,
   rainLine,
   splitByRain,
+  standsUpToRain,
 } from "@/domain/discovery/environment";
-import { distanceLabel, distanceTo } from "@/domain/discovery/proximity";
+import {
+  distanceLabel,
+  distanceTo,
+  nearestFirst,
+  NEAR_KM,
+} from "@/domain/discovery/proximity";
 import { placeLabel } from "@/domain/discovery/compose";
 
 /**
@@ -272,6 +280,18 @@ export function placeNote(
   }
 }
 
+/**
+ * What the list of directions is called, which is the only place the stated
+ * length of day appears in words. It describes how many ideas are below it,
+ * never how the day is divided.
+ */
+const LEAD: Record<string, string> = {
+  "an-hour": "One thing you could do",
+  "half-day": "A couple of ideas for the afternoon",
+  "all-day": "A few different ideas for the day",
+  none: "Things you could do",
+};
+
 const COMPANY: readonly { value: Company; label: string }[] = [
   { value: "alone", label: "Just me" },
   { value: "child", label: "With a young child" },
@@ -368,9 +388,79 @@ function Answer({
   // out by the rain. These come from `candidate-environment/1`.
   const { stands, against, uncertain, unknown } = splitByRain(matches);
   const wet = Boolean(weather?.wet);
-  // Wet: lead with what Atlas says the rain does not stop. Dry: the whole
-  // list, because nothing about the weather is arguing with any of it.
-  const shortlist = wet ? stands : matches;
+
+  /**
+   * **Verbs, not nouns.** This answered *"what could we do today?"* with six
+   * place names in corpus order — *Coldstream Park, Kin Beach, Peace Arch
+   * Park* — which is a list of records, and does not tell somebody that
+   * finding a playground and going skating are two different afternoons.
+   *
+   * `directionsFor` groups the same evidence by what Atlas says you can **do**
+   * there, and each direction carries its own places as proof. How many are
+   * offered comes from the length of day they stated; which places are named
+   * under each comes from where they are.
+   */
+  const wanted = directionsWanted(situation.window);
+  const directions = directionsFor(matches, situation, { wet })
+    .map((direction) => ({
+      ...direction,
+      // **Shelter first on a wet day, then nearest.** A direction can hold
+      // both a park with a picnic shelter and one that is out in the open;
+      // showing them is more useful than hiding the second, but the one that
+      // can take the rain has to be the one named first.
+      places: wet
+        ? [
+            ...nearestFirst(direction.places.filter(standsUpToRain), origin),
+            ...nearestFirst(
+              direction.places.filter((p) => !standsUpToRain(p)),
+              origin,
+            ),
+          ]
+        : nearestFirst(direction.places, origin),
+      near: origin
+        ? direction.places.filter((p) => {
+            const km = distanceTo(p, origin);
+            return km !== undefined && km <= NEAR_KM;
+          }).length
+        : 0,
+    }))
+    // Once Passport knows where they are, a direction with four places within
+    // reach beats one with nine on the coast. Evidence still breaks the tie.
+    .sort(
+      (a, b) =>
+        Number(a.ruledOutByRain) - Number(b.ruledOutByRain) ||
+        (origin ? b.near - a.near : 0) ||
+        b.places.length - a.places.length,
+    );
+  // Four different ideas should be four different ideas: Swimming and Beach
+  // both opened with Kal Beach and Kin Beach before this.
+  const offered = distinctDirections(directions, wanted);
+
+  /**
+   * **Which three places each idea names, so two ideas do not look alike.**
+   *
+   * Measured in Vernon: *Swimming* and *Beach* both opened with Kal Beach and
+   * Kin Beach. The verbs are genuinely different — Kalavista Boat Launch is
+   * under Beach and not under Swimming — so neither should be dropped. What
+   * was wrong is that each named the same lake first.
+   *
+   * So a later idea names a place an earlier one has not, where it has one.
+   * A choice **among** places Atlas states for that verb, never a claim beyond
+   * them, and the count beside the verb is still the full evidence.
+   */
+  const spoken = new Set<string>();
+  const naming = offered.map((direction) => {
+    const fresh = direction.places.filter((place) => !spoken.has(place.id));
+    // Deduplicated: a direction with one place had `fresh` and `places`
+    // holding the same row, and named it twice.
+    const named = [
+      ...new Map(
+        [...fresh, ...direction.places].map((place) => [place.id, place]),
+      ).values(),
+    ].slice(0, 3);
+    for (const place of named) spoken.add(place.id);
+    return { direction, named };
+  });
 
   return (
     <div
@@ -439,75 +529,102 @@ function Answer({
             </p>
           )}
 
-          {/* **The list must agree with the caveat above it.**
-              An earlier version printed the caveat and then led with six
-              outdoor parks on a showery afternoon. When the day is wet, only
-              the ones Atlas says stand up to rain appear — and where there
-              are none, there is nothing honest to put here at all. */}
-          {shortlist.length > 0 && (
+          {offered.length > 0 && (
             <>
-              <p className="mt-3 text-xs font-medium tracking-wide text-[#2b2015]/45 uppercase">
-                {wet
-                  ? "Where the rain does not stop you"
-                  : "What she could do there"}
+              {/* **The one number here that is a judgement, said as one.**
+                  Atlas states a duration for 17 candidates out of 2,683, so
+                  Passport cannot know how long any of this takes. The length
+                  of day decides how many different ideas to offer, and
+                  nothing else. */}
+              <p className="mt-4 text-xs font-medium tracking-wide text-[#2b2015]/45 uppercase">
+                {LEAD[situation.window ?? "none"]}
               </p>
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {shortlist.slice(0, 6).map((experience) => {
-                  const says = rainLine(experience);
-                  const because = rainBecause(experience);
-                  // **Where it is, because the answer got specific.** The old
-                  // list was six generic parks and nobody read it as a
-                  // recommendation. This one says "go to Memorial Arena", and
-                  // Peace Arch Park — which genuinely has a picnic shelter —
-                  // is 400 km away on the Washington border. A distance where
-                  // both positions are stated, the town Atlas states
-                  // otherwise, and nothing at all when it knows neither.
-                  const where =
-                    distanceLabel(distanceTo(experience, origin)) ??
-                    placeLabel(experience);
+
+              <ul className="mt-2 flex flex-col gap-2">
+                {naming.map(({ direction, named }) => {
                   return (
                     <li
-                      key={experience.id}
-                      data-testid="today-suggestion"
-                      className="max-w-full rounded-lg border border-[#8a5a24]/20 bg-white/40 px-3 py-2 text-xs"
+                      key={direction.doing}
+                      data-testid="today-direction"
+                      data-doing={direction.doing}
+                      className="rounded-xl border border-[#8a5a24]/20 bg-white/40 px-3 py-2.5"
                     >
-                      <span className="font-medium text-[#2b2015]">
-                        {experience.title}
-                      </span>
-                      {where && (
-                        <span
-                          data-testid="today-where"
-                          className="block text-[#2b2015]/45"
-                        >
-                          {where}
+                      <p className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="font-heading text-base text-[#2b2015] first-letter:uppercase">
+                          {direction.doing}
                         </span>
-                      )}
-                      <span className="block text-[#2b2015]/55">
-                        {childEvidence(experience).join(" · ")}
-                      </span>
-                      {/* Atlas's reading, and then the sentence it read it
-                          from. A derived reading says so rather than passing
-                          itself off as a promise. */}
-                      {wet && says && (
-                        <span
-                          data-testid="today-shelter"
-                          className="mt-1 block font-medium text-[#8a5a24]"
-                        >
-                          {says}
+                        <span className="text-xs text-[#2b2015]/50 tabular-nums">
+                          {direction.places.length}{" "}
+                          {direction.places.length === 1 ? "place" : "places"}
+                          {origin && direction.near > 0
+                            ? ` · ${direction.near} within ${NEAR_KM} km`
+                            : ""}
                         </span>
-                      )}
-                      {wet && because && (
-                        <span
-                          data-testid="today-shelter-evidence"
-                          className="mt-0.5 block text-[#2b2015]/45 italic"
-                        >
-                          “{because}”
-                        </span>
-                      )}
+                        {direction.ruledOutByRain && (
+                          <span
+                            data-testid="today-direction-rained-out"
+                            className="text-xs font-medium text-[#8a5a24]"
+                          >
+                            every one of these is out in the open
+                          </span>
+                        )}
+                      </p>
+                      {/* The proof, nearest first. Atlas's names, Atlas's
+                          evidence — and a distance only where both positions
+                          are stated. */}
+                      <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                        {named.map((place) => {
+                          // Where it is: a distance where both positions are
+                          // stated, the town Atlas states otherwise, and
+                          // nothing at all when it knows neither.
+                          const where =
+                            distanceLabel(distanceTo(place, origin)) ??
+                            placeLabel(place);
+                          // And what the rain does to it, from
+                          // `candidate-environment/1` — carrying its own
+                          // provenance, so a derived reading says it was
+                          // derived rather than passing as a promise.
+                          const shelter = wet ? rainLine(place) : undefined;
+                          // The sentence Atlas read the shelter from, kept on
+                          // the element rather than printed under every one of
+                          // twelve places. Provenance preserved, not shouted.
+                          const because = wet ? rainBecause(place) : undefined;
+                          return (
+                            <li
+                              key={place.id}
+                              data-testid="today-direction-place"
+                              {...(because ? { title: because } : {})}
+                              className="text-xs text-[#2b2015]/55"
+                            >
+                              {place.title}
+                              {where ? (
+                                <span className="text-[#2b2015]/40">
+                                  {" "}
+                                  · {where}
+                                </span>
+                              ) : null}
+                              {shelter ? (
+                                <span
+                                  data-testid="today-shelter"
+                                  className="text-[#8a5a24]"
+                                >
+                                  {" "}
+                                  · {shelter}
+                                </span>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </li>
                   );
                 })}
               </ul>
+
+              <p className="mt-2 text-xs text-[#2b2015]/40">
+                Ideas, not a plan. Passport does not know how long any of these
+                take, or whether they are open.
+              </p>
             </>
           )}
         </>
