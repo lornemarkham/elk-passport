@@ -1,0 +1,160 @@
+{
+  "vernon-three-hours": {
+    "stops": [
+      "60037e26-f2e6-4b5b-957d-e22a77bd7f9f",
+      "575e8e59-93a6-44ae-970d-156e70035efd",
+      "1526821e-7eb8-44ce-9e68-e6d9b524440a"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 2,
+      "adventure": 1,
+      "practicality": 2,
+      "hellOfADay": 1
+    },
+    "notes": "Three stops inside 400 m of each other around the Vernon civic centre: a playground, an outdoor rink Atlas itself says is out of season, and an arena with no stated public session. It reads as a map of one city block, not an afternoon. Three free hours on Thanksgiving Sunday, with the Davison Orchards Thanksgiving weekend and U-Pick 2 km away (Atlas says both are on today), deserved better."
+  },
+  "vernon-family": {
+    "stops": [
+      "60037e26-f2e6-4b5b-957d-e22a77bd7f9f",
+      "9591cd4f-9a5f-45aa-9a07-d83c0f22cd79",
+      "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 3,
+      "adventure": 2,
+      "practicality": 1,
+      "hellOfADay": 2
+    },
+    "notes": "Two playgrounds 1 km apart, then the Allan Brooks Nature Centre. A family day, but an 'adventure' only in the sense that you leave the house. The children's ages (5 and 8) were said and not read, so Atlas was never asked who any of it suits. The strongest family options Atlas holds for today (U-Pick Pumpkins, Thanksgiving weekend at Davison Orchards, O'Keefe Ranch) never came up. Real-world check: the Allan Brooks Nature Centre is closed on Sundays (open Tuesday to Saturday). Atlas reads its date as unknown, so the family would have driven up the hill to a locked gate."
+  },
+  "vernon-unusual": {
+    "stops": [
+      "eacdba44-4971-4095-8456-8409b3fde854",
+      "1e045341-01f4-4640-871e-068455db290e",
+      "97ad4a91-625f-48ac-a461-fb4342ef451f"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 3,
+      "adventure": 3,
+      "practicality": 3,
+      "hellOfADay": 2
+    },
+    "notes": "The best Vernon day of the five. A science centre and an indoor climbing gym are real things to do. The '19th Avenue Tot Lot' is a neighbourhood playground, picked as 'unusual' because 'weirder' is read as 'fewer stated verbs', which rewards thin records rather than strange places. Nothing in it would make anyone say 'I never thought of that'."
+  },
+  "vernon-rainy": {
+    "stops": [
+      "9591cd4f-9a5f-45aa-9a07-d83c0f22cd79",
+      "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac",
+      "daf1b14f-2ad0-44f7-b85b-0f6833f139dc"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 2,
+      "adventure": 2,
+      "practicality": 1,
+      "hellOfADay": 1
+    },
+    "notes": "Asked for a rainy afternoon and given two parks, one of them a beach park (Paddlewheel). Both pass Atlas's 'partly sheltered' reading, so neither is an objective failure, but a playground and a beach in the rain are not an answer. Atlas holds 162 placed things it reads as indoor within 30 km of Vernon (the science centre, the climbing gym, Lincoln Lanes bowling, which Atlas says is open today). The builder looks only at the rain reading, which covers 154 subjects, and not at exposure, which covers 2,088. Real-world check: the Allan Brooks Nature Centre, the only indoor stop, is closed on Sundays."
+  },
+  "vernon-longer-drive": {
+    "stops": [
+      "60037e26-f2e6-4b5b-957d-e22a77bd7f9f",
+      "575e8e59-93a6-44ae-970d-156e70035efd"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 1,
+      "adventure": 1,
+      "practicality": 1,
+      "hellOfADay": 1
+    },
+    "notes": "The worst day in the cohort, and the clearest one. 'I'm happy to go an hour or two' was read as a one-hour day, so the drive became 400 m. Stop 2 is an outdoor rink Atlas says is not on today, with the challenge 'Pick somebody on the ice'. The paper says '1 hours'. Every step was locally reasonable and the result is the opposite of what was asked."
+  },
+  "vancouver-before-meeting": {
+    "stops": [
+      "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5",
+      "819bc3a5-1ecb-421c-9544-12207bb4b57b"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 1,
+      "adventure": 1,
+      "practicality": 1,
+      "hellOfADay": 1
+    },
+    "notes": "An hour 'at' the Queen Elizabeth Theatre with no show (challenge: 'Pick the one thing you would steal'), then 4 km south to Queen Elizabeth Park and its pitch and putt, finishing 4.5 km from the meeting it never heard about. Two hours downtown on a Sunday, with 'Every River Has a Mouth' 200 m from the start and the Maritime Museum 2 km away (Atlas says both are on today), became a day that would make someone late."
+  },
+  "vancouver-unusual-downtown": {
+    "stops": [
+      "580e8658-1e0a-468a-8932-921541f20556",
+      "f12498b9-b1d1-4aa0-8633-595f66f46b8e",
+      "b5228b59-3353-4354-a772-cff2fc09cd3c"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 3,
+      "adventure": 3,
+      "practicality": 3,
+      "hellOfADay": 3
+    },
+    "notes": "The best day in the cohort. Roedde House (a Victorian bookbinder's home) and the Sun Yat-Sen garden are genuinely unusual and close together. VanDusen is lovely, but it is 5 km from downtown and was asked for downtown. Prices are published for all three, which made the paper useful. 'Downtown' has nowhere to live in the brief, so the circle stayed at 30 km. Real-world check: all three are open Sunday afternoon (Roedde House only 1-4pm). Atlas's coordinates for the Sun Yat-Sen garden are about 400 m off."
+  },
+  "vancouver-rainy-adventure": {
+    "stops": [
+      "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+      "96f1607a-c06b-4feb-8c57-126f428ba470",
+      "98296e04-fa09-4eee-8aad-e61cdc6c5bc7"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 2,
+      "adventure": 3,
+      "practicality": 1,
+      "hellOfADay": 2
+    },
+    "notes": "Three parks across three municipalities: Vancouver to North Vancouver to Surrey and back is about 69 km straight-line, roughly two hours of driving in the rain, for a day with no stated length. Capilano River canyon in the rain is honestly an adventure, but the order is not a route (North Shore, then 28 km to Surrey). Every stop is outdoors with a 'partly sheltered' reading. Real-world check: the Capilano River Hatchery, the park's sheltered draw, has been closed to the public since Oct 1."
+  },
+  "vancouver-young-family": {
+    "stops": [
+      "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5",
+      "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+      "bfceb4ca-06cf-48ee-ad37-e2b02ba788d2"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 1,
+      "adventure": 2,
+      "practicality": 2,
+      "hellOfADay": 1
+    },
+    "notes": "It opens with an opera house with no performance, for a 3- and a 6-year-old. The two parks after it are fine for small children. The ages were said and not read. Identical, stop for stop, to the colleagues' evening, which says the question did not reach the answer."
+  },
+  "vancouver-colleagues-evening": {
+    "stops": [
+      "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5",
+      "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+      "bfceb4ca-06cf-48ee-ad37-e2b02ba788d2"
+    ],
+    "by": "M173 critic (agent), reviewing the rendered page and paper",
+    "on": "2026-10-11",
+    "scores": {
+      "relevance": 1,
+      "adventure": 1,
+      "practicality": 1,
+      "hellOfADay": 1
+    },
+    "notes": "An after-work evening with colleagues answered with two parks after dark and a theatre with nothing on: the young family's day, exactly. 'Evening' and 'colleagues' have no slot in the brief, and the pool has no time of day. Atlas holds 'The Sunday Service' (comedy, 7 p.m. tonight, 2.5 km) and restaurants and bars; none of them was reachable from this sentence."
+  }
+}

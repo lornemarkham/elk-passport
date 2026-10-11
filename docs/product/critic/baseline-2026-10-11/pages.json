@@ -1,0 +1,52 @@
+[
+  {
+    "id": "vernon-three-hours",
+    "go": "/go?say=I%27ve+got+three+free+hours+this+afternoon&at=vernon",
+    "print": "/go/print?stops=60037e26-f2e6-4b5b-957d-e22a77bd7f9f%2C575e8e59-93a6-44ae-970d-156e70035efd%2C1526821e-7eb8-44ce-9e68-e6d9b524440a&say=I%27ve+got+three+free+hours+this+afternoon&at=vernon&on=2026-10-11"
+  },
+  {
+    "id": "vernon-family",
+    "go": "/go?say=A+family+adventure+today+with+my+kids%2C+they%27re+5+and+8&at=vernon",
+    "print": "/go/print?stops=60037e26-f2e6-4b5b-957d-e22a77bd7f9f%2C9591cd4f-9a5f-45aa-9a07-d83c0f22cd79%2C35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac&say=A+family+adventure+today+with+my+kids%2C+they%27re+5+and+8&at=vernon&on=2026-10-11"
+  },
+  {
+    "id": "vernon-unusual",
+    "go": "/go?say=Show+me+something+unusual+around+Vernon&at=vernon",
+    "print": "/go/print?stops=eacdba44-4971-4095-8456-8409b3fde854%2C1e045341-01f4-4640-871e-068455db290e%2C97ad4a91-625f-48ac-a461-fb4342ef451f&say=Show+me+something+unusual+around+Vernon&at=vernon&on=2026-10-11"
+  },
+  {
+    "id": "vernon-rainy",
+    "go": "/go?say=It%27s+a+rainy+afternoon%2C+what+can+we+do%3F&at=vernon",
+    "print": "/go/print?stops=9591cd4f-9a5f-45aa-9a07-d83c0f22cd79%2C35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac%2Cdaf1b14f-2ad0-44f7-b85b-0f6833f139dc&say=It%27s+a+rainy+afternoon%2C+what+can+we+do%3F&at=vernon&on=2026-10-11"
+  },
+  {
+    "id": "vernon-longer-drive",
+    "go": "/go?say=Something+worth+a+longer+drive%2C+I%27m+happy+to+go+an+hour+or+two&at=vernon",
+    "print": "/go/print?stops=60037e26-f2e6-4b5b-957d-e22a77bd7f9f%2C575e8e59-93a6-44ae-970d-156e70035efd&say=Something+worth+a+longer+drive%2C+I%27m+happy+to+go+an+hour+or+two&hours=1&at=vernon&on=2026-10-11"
+  },
+  {
+    "id": "vancouver-before-meeting",
+    "go": "/go?say=I+have+two+hours+before+a+meeting+downtown&at=vancouver",
+    "print": "/go/print?stops=018b3cbd-c1ee-41e8-b920-a7e8d57c10f5%2C819bc3a5-1ecb-421c-9544-12207bb4b57b&say=I+have+two+hours+before+a+meeting+downtown&hours=2&at=vancouver&on=2026-10-11"
+  },
+  {
+    "id": "vancouver-unusual-downtown",
+    "go": "/go?say=Something+unusual+downtown&at=vancouver",
+    "print": "/go/print?stops=580e8658-1e0a-468a-8932-921541f20556%2Cf12498b9-b1d1-4aa0-8633-595f66f46b8e%2Cb5228b59-3353-4354-a772-cff2fc09cd3c&say=Something+unusual+downtown&at=vancouver&on=2026-10-11"
+  },
+  {
+    "id": "vancouver-rainy-adventure",
+    "go": "/go?say=Rainy-day+adventure+in+Vancouver&at=vancouver",
+    "print": "/go/print?stops=819bc3a5-1ecb-421c-9544-12207bb4b57b%2C96f1607a-c06b-4feb-8c57-126f428ba470%2C98296e04-fa09-4eee-8aad-e61cdc6c5bc7&say=Rainy-day+adventure+in+Vancouver&at=vancouver&on=2026-10-11"
+  },
+  {
+    "id": "vancouver-young-family",
+    "go": "/go?say=Family+day+with+young+children%2C+they%27re+3+and+6&at=vancouver",
+    "print": "/go/print?stops=018b3cbd-c1ee-41e8-b920-a7e8d57c10f5%2C819bc3a5-1ecb-421c-9544-12207bb4b57b%2Cbfceb4ca-06cf-48ee-ad37-e2b02ba788d2&say=Family+day+with+young+children%2C+they%27re+3+and+6&at=vancouver&on=2026-10-11"
+  },
+  {
+    "id": "vancouver-colleagues-evening",
+    "go": "/go?say=An+evening+out+with+colleagues+after+work&at=vancouver",
+    "print": "/go/print?stops=018b3cbd-c1ee-41e8-b920-a7e8d57c10f5%2C819bc3a5-1ecb-421c-9544-12207bb4b57b%2Cbfceb4ca-06cf-48ee-ad37-e2b02ba788d2&say=An+evening+out+with+colleagues+after+work&at=vancouver&on=2026-10-11"
+  }
+]

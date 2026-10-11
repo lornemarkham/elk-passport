@@ -304,14 +304,14 @@ When M172 lands, §15 Q15 needs updating (VIS-05).
 
 ### 5.1 `passport-vision`: docs only
 
-| ID     | Requirement                        | P   | Status                | Ready                           |
-| ------ | ---------------------------------- | --- | --------------------- | ------------------------------- |
-| VIS-01 | Keep this roadmap true             | P1  | This commit           | Ready (ongoing)                 |
-| VIS-02 | Decision memos for D-1 to D-15     | P1  | Absent                | **Ready**                       |
-| VIS-03 | GHAD acceptance script             | P3  | Partial (A1–A8 exist) | **Ready** (draft); D-5 to adopt |
-| VIS-04 | Doctrine updates as decisions land | P1  | Absent                | After each D-n                  |
-| VIS-05 | Recover the originals              | P5  | Absent                | External (Lorne)                |
-| VIS-06 | Record Raw Idea Vault GHAD lines   | P5  | Absent                | Ready                           |
+| ID     | Requirement                        | P   | Status                                      | Ready                            |
+| ------ | ---------------------------------- | --- | ------------------------------------------- | -------------------------------- |
+| VIS-01 | Keep this roadmap true             | P1  | This commit                                 | Ready (ongoing)                  |
+| VIS-02 | Decision memos for D-1 to D-15     | P1  | Absent                                      | **Ready**                        |
+| VIS-03 | GHAD acceptance script             | P3  | Partial (A1–A8 exist; critic harness, M173) | **Ready** (extend); D-5 to adopt |
+| VIS-04 | Doctrine updates as decisions land | P1  | Absent                                      | After each D-n                   |
+| VIS-05 | Recover the originals              | P5  | Absent                                      | External (Lorne)                 |
+| VIS-06 | Record Raw Idea Vault GHAD lines   | P5  | Absent                                      | Ready                            |
 
 **VIS-01 · Keep this roadmap true**
 
@@ -352,9 +352,16 @@ When M172 lands, §15 Q15 needs updating (VIS-05).
   - a wet-day forecast;
   - "two hours between sessions" from Vancouver;
   - a day with routed legs, once Atlas serves them.
-- **Status:** Partial. **Depends:** D-5 to adopt A1–A8 as pass/fail.
-  **P3.** **Ready:** draft now. Coordinate with M171's _"GO HAVE A DAY LIVE
-  TESTER"_ so the two do not drift into two lists.
+- **Status:** Partial. **Harness built:** `scripts/critic/run.sh` (M173,
+  `lane/vision`, [`critic/`](critic/README.md)), with a ten-sentence Vernon and
+  Vancouver cohort, screen, 390 px, print and PDF (Letter). It is baselined
+  on an Atlas snapshot, **not yet on live Atlas**
+  ([`BASELINE-2026-10-11.md`](critic/BASELINE-2026-10-11.md)). **Not yet in
+  the cohort:** the `016854a` sentence, Emi's sentence, the six doors, the
+  shellfish / home-by-9 revision, A4, JS off and routed legs. Add them as
+  scenarios; don't edit existing ones. **Depends:** D-5 to adopt A1–A8 as
+  pass/fail. **P3.** **Ready:** extend now. M171's _"GO HAVE A DAY LIVE
+  TESTER"_ should call this command rather than keep a second list.
 
 **VIS-04 · Doctrine updates as decisions land.** Each answered D-n becomes an
 edit to the doctrine (and an ADR where it is architectural), in the change
@@ -995,13 +1002,13 @@ Here is the state on 2026-10-11:
 
 These are file-disjoint from each other and from the running missions:
 
-| #   | Mission                                                                                                                                                                     | Workspace                    | Why it is safe                                                                                                  |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 1   | **D-14: commit `/sycle` to a branch** (a person, or `passport` with approval)                                                                                               | `passport`                   | Adds a branch and touches no tracked file. Every day it waits, one `git clean` could lose it                    |
-| 2   | **Integration wave 1 (INT-1)**, then **INT-2** (daybuilder)                                                                                                                 | `passport`                   | INT-1's merges are conflict-free. No mission is running on daybuilder, so INT-2 resolves against a still branch |
-| 3   | **VIS-02 decision memos** and the **VIS-03 acceptance script**                                                                                                              | `passport-vision`            | Docs only                                                                                                       |
-| 4   | **Measure what main already does against real Atlas**: the `016854a` sentence, Emi's sentence (is Hidden Lake a subject? does the planning circle reach it?), the six doors | the Mac checkout (has Atlas) | Read-only. It needs credentials no lane has. It gives P3 a baseline before integration changes anything         |
-| 5   | M167, M168, M169, M170, as already queued                                                                                                                                   | detox, boards, domain, maps  | Their briefs already confine them to their own folders. Feed M169 §2.2, and feed M170 M163's contract report    |
+| #   | Mission                                                                                                                                                                     | Workspace                    | Why it is safe                                                                                                                                                                   |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **D-14: commit `/sycle` to a branch** (a person, or `passport` with approval)                                                                                               | `passport`                   | Adds a branch and touches no tracked file. Every day it waits, one `git clean` could lose it                                                                                     |
+| 2   | **Integration wave 1 (INT-1)**, then **INT-2** (daybuilder)                                                                                                                 | `passport`                   | INT-1's merges are conflict-free. No mission is running on daybuilder, so INT-2 resolves against a still branch                                                                  |
+| 3   | **VIS-02 decision memos** and the **VIS-03 acceptance script**                                                                                                              | `passport-vision`            | Docs only                                                                                                                                                                        |
+| 4   | **Measure what main already does against real Atlas**: the `016854a` sentence, Emi's sentence (is Hidden Lake a subject? does the planning circle reach it?), the six doors | the Mac checkout (has Atlas) | Read-only. It needs credentials no lane has. It gives P3 a baseline before integration changes anything. Now one command: `CRITIC_LIVE=1 CRITIC_SCREENS=1 scripts/critic/run.sh` |
+| 5   | M167, M168, M169, M170, as already queued                                                                                                                                   | detox, boards, domain, maps  | Their briefs already confine them to their own folders. Feed M169 §2.2, and feed M170 M163's contract report                                                                     |
 
 ### Do not start yet
 
