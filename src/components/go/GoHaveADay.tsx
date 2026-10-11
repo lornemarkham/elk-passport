@@ -115,6 +115,7 @@ export function GoHaveADay({
   townId,
   on,
   simulatedWeather,
+  keep = NONE,
 }: {
   readonly pool: readonly Experience[];
   /** `YYYY-MM-DD` where the subjects are. */
@@ -126,18 +127,30 @@ export function GoHaveADay({
   readonly on?: string;
   /** Development only, labelled as simulated wherever it shows. */
   readonly simulatedWeather?: PlanWeather;
+  /**
+   * Ids picked in Discovery (`?with=`), built around rather than replaced.
+   * They start the day as kept — the same `keep` the stop's own Keep button
+   * sets — so un-keeping or removing one works exactly as on any other stop.
+   */
+  readonly keep?: readonly string[];
 }) {
-  const seed = initialSay ?? modeById(initialMode)?.says ?? "";
+  const seed =
+    initialSay ??
+    modeById(initialMode)?.says ??
+    (keep.length > 0 ? "Half a day" : "");
   const day0 = on ?? today;
   const context = (): BriefContext =>
     day0 === today ? { nowMinutes: minutesNow() } : {};
   const fallback = fallbackFrom(childAge, townId, day0);
+  // A new sentence starts the shaping over, but what was picked in Discovery
+  // stays picked: it came from somewhere else and the sentence didn't name it.
+  const fresh: Shaping = keep.length > 0 ? { ...FRESH, keep } : FRESH;
 
   const [draft, setDraft] = useState(seed);
   const [brief, setBrief] = useState<DayBrief | null>(
     seed ? readBrief(seed, fallback, context()) : null,
   );
-  const [shaping, setShaping] = useState<Shaping>(FRESH);
+  const [shaping, setShaping] = useState<Shaping>(fresh);
   const [swapping, setSwapping] = useState<number | undefined>();
   const [change, setChange] = useState("");
   const [reply, setReply] = useState<string[]>([]);
@@ -192,13 +205,14 @@ export function GoHaveADay({
             brief,
             without: shaping.without,
             keep: shaping.keep,
+            picked: keep,
             ...(shaping.order ? { order: shaping.order } : {}),
             minutes: shaping.minutes,
             ...(shaping.count !== null ? { count: shaping.count } : {}),
             ...(weather ? { weather } : {}),
           })
         : null,
-    [pool, brief, shaping, weather],
+    [pool, brief, shaping, weather, keep],
   );
 
   const alternatives = useMemo(
@@ -226,7 +240,7 @@ export function GoHaveADay({
 
   const start = (said: string) => {
     if (!said.trim()) return;
-    setShaping(FRESH);
+    setShaping(fresh);
     setSwapping(undefined);
     setReply([]);
     setBefore(null);
@@ -734,6 +748,8 @@ const minutesNow = (): number => {
   const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
   return hour * 60 + minute;
 };
+
+const NONE: readonly string[] = [];
 
 const fallbackFrom = (
   childAge: number | undefined,

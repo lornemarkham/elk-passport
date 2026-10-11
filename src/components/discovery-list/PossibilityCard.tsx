@@ -62,6 +62,9 @@ export function PossibilityCard({
   onSave,
   wanted = false,
   onWant,
+  because,
+  caveat,
+  dayHref,
 }: {
   readonly experience: Experience;
   /** Today where the subjects are, `YYYY-MM-DD`. Makes the when-line relative. */
@@ -107,6 +110,20 @@ export function PossibilityCard({
   readonly onSave: () => void;
   readonly wanted?: boolean;
   readonly onWant?: () => void;
+  /**
+   * **Why this card is in an answer**, where it is in one — facts from
+   * `answerAsk`, each one checkable. A line that repeats the distance or the
+   * date already on the card is dropped rather than said twice.
+   */
+  readonly because?: readonly string[];
+  /** The one thing an answer could not find out about it. */
+  readonly caveat?: string;
+  /**
+   * **Into *Go have a day*, with this one in it.** Not a save and not a
+   * reaction: a day is built around it on `/go`, and nothing is kept until
+   * somebody keeps it there.
+   */
+  readonly dayHref?: string;
 }) {
   const base = destinationFor(experience);
   const destination = base && carry ? `${base}?${carry}` : base;
@@ -166,6 +183,9 @@ export function PossibilityCard({
       ? undefined
       : (ageLine(experience, askedAge) ?? "No age guidance found");
   const day = dayLine(experience);
+  const reasons = (because ?? []).filter(
+    (reason) => reason !== when && !(away && reason.startsWith(away)),
+  );
 
   return (
     <li
@@ -326,6 +346,30 @@ export function PossibilityCard({
             </p>
           ))}
 
+        {reasons.length > 0 && (
+          <ul
+            data-testid="possibility-because"
+            className="mt-2 flex flex-col gap-0.5 text-[11.5px] leading-snug font-medium text-[#111]/75"
+          >
+            {reasons.map((reason) => (
+              <li key={reason} className="flex gap-1.5">
+                <span aria-hidden className="ghad-accent-text">
+                  ✓
+                </span>
+                <span className="first-letter:uppercase">{reason}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {caveat && (
+          <p
+            data-testid="possibility-caveat"
+            className="mt-1 text-[11px] leading-snug text-black/45"
+          >
+            {caveat}
+          </p>
+        )}
+
         {/* When it recurs, in Atlas's own weekday names. A long interval is
             not a season until Atlas says it is. */}
         {recurs && (
@@ -424,6 +468,16 @@ export function PossibilityCard({
                 Want to do
               </button>
             ))}
+          {dayHref && (
+            <Link
+              href={dayHref}
+              data-testid="plan-a-day"
+              title="Build a day around this on Go have a day"
+              className="ghad-accent-text inline-flex min-h-11 items-center rounded-full px-2.5 text-xs font-semibold underline-offset-4 transition-colors hover:underline"
+            >
+              Plan a day around this →
+            </Link>
+          )}
         </div>
       </div>
     </li>

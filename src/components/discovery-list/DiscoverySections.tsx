@@ -27,6 +27,7 @@ export function DiscoverySections({
   savedIds,
   savingId,
   onSave,
+  dayHrefFor,
 }: {
   readonly sections: readonly DiscoverySection[];
   /** Today where the subjects are, so a card can say "Last day". */
@@ -40,6 +41,8 @@ export function DiscoverySections({
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
+  /** The way into *Go have a day* with one card in it; see `PossibilityCard`. */
+  readonly dayHrefFor?: (experience: Experience) => string;
 }) {
   return (
     <div className="flex flex-col gap-10">
@@ -57,6 +60,7 @@ export function DiscoverySections({
           savedIds={savedIds}
           savingId={savingId}
           onSave={onSave}
+          {...(dayHrefFor ? { dayHrefFor } : {})}
         />
       ))}
     </div>
@@ -73,6 +77,7 @@ function Section({
   savedIds,
   savingId,
   onSave,
+  dayHrefFor,
 }: {
   readonly section: DiscoverySection;
   /** Whether this is the section a reader lands on. Decides image priority. */
@@ -84,6 +89,7 @@ function Section({
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
+  readonly dayHrefFor?: (experience: Experience) => string;
 }) {
   // How many extra pages of this section the person has asked for. Local to
   // the section, so opening one up leaves the others as they were.
@@ -129,6 +135,7 @@ function Section({
             saved={savedIds.has(experience.id)}
             saving={savingId === experience.id}
             onSave={() => onSave(experience)}
+            {...(dayHrefFor ? { dayHref: dayHrefFor(experience) } : {})}
           />
         ))}
       </ul>

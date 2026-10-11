@@ -191,7 +191,7 @@ export const LONG_MOVE_KM = 20;
  * can reach. It is stated on screen in kilometres, and anything the person
  * actually said overrules it.
  */
-const defaultRadiusKm = (hours: number | undefined): number => {
+export const defaultRadiusKm = (hours: number | undefined): number => {
   const h = hours ?? 4;
   if (h <= 2) return 15;
   if (h <= 4) return 30;
@@ -630,8 +630,24 @@ export interface BuildInput {
   readonly brief: DayBrief;
   /** Ids to keep out — a stop somebody asked to replace or removed. */
   readonly without?: readonly string[];
-  /** Ids the person kept or picked. In the day whatever else changes. */
+  /**
+   * **Ids the person chose**: kept on `/go`, or picked in Discovery
+   * (`/go?with=`). One meaning for both.
+   *
+   * Taken first and past every soft filter — the planning circle, interests,
+   * the weather, the budget — because the person picked it, so it is not this
+   * plan's to second-guess. The hard rules still apply: a stated rule against
+   * the child's age, or a stated schedule that leaves the day out, drops it,
+   * and the plan **says so** rather than quietly building a day without it.
+   * `without` wins over `keep`, so "swap the first one" works on a chosen stop
+   * too.
+   */
   readonly keep?: readonly string[];
+  /**
+   * Of `keep`, the ids picked in Discovery — only so the stop can say where
+   * it came from. Changes nothing else.
+   */
+  readonly picked?: readonly string[];
   /**
    * The order the person set. Ids in it come first, in this order; anything
    * new is routed nearest-first after them.
@@ -746,6 +762,45 @@ function route(
 const roundKm = (km: number) => Math.round(km * 10) / 10;
 
 /**
+ * **What the person chose, after the hard rules.** Stated rules only — an age
+ * the place says it doesn't admit, a schedule that leaves the day out — and
+ * each one that drops a chosen stop is said, never silent.
+ */
+function keptStops(
+  pool: readonly Experience[],
+  brief: DayBrief,
+  without: readonly string[],
+  keep: readonly string[],
+): { kept: Experience[]; keptOut: string[] } {
+  const excluded = new Set(without);
+  const kept: Experience[] = [];
+  const keptOut: string[] = [];
+  for (const id of keep) {
+    if (excluded.has(id)) continue;
+    const experience = pool.find((e) => e.id === id);
+    if (!experience) {
+      keptOut.push("One place you picked is no longer offered here.");
+      continue;
+    }
+    if (brief.childAge !== undefined && excludesAge(experience, brief.childAge))
+      keptOut.push(
+        `${experience.title} is left out — it states it doesn't admit a ${brief.childAge}-year-old.`,
+      );
+    else if (
+      brief.on &&
+      (ruledOutOn(experience, brief.on) ||
+        experience.schedule?.onDate?.reading === "not-on")
+    )
+      keptOut.push(
+        `${experience.title} is left out — what is published says it isn't on that day.`,
+      );
+    else if (!kept.includes(experience) && kept.length < MAX_STOPS)
+      kept.push(experience);
+  }
+  return { kept, keptOut };
+}
+
+/**
  * Build the day.
  */
 export function buildDay({
@@ -753,6 +808,7 @@ export function buildDay({
   brief,
   without = [],
   keep = [],
+  picked = [],
   order,
   minutes: setMinutes = {},
   count,
@@ -761,10 +817,20 @@ export function buildDay({
 }: BuildInput): DayPlanned {
   const { ranked, origin, radiusKm } = rank(pool, brief, without, weather);
   const byId = new Map(pool.map((e) => [e.id, e]));
+  const { kept: keptExperiences, keptOut } = keptStops(
+    pool,
+    brief,
+    without,
+    keep,
+  );
 
   const wanted = Math.min(
     MAX_STOPS,
-    Math.max(1, count ?? stopCount(brief.hours, brief.lessDriving)),
+    Math.max(
+      1,
+      count ?? stopCount(brief.hours, brief.lessDriving),
+      keptExperiences.length,
+    ),
   );
 
   /**
@@ -779,7 +845,8 @@ export function buildDay({
    * a new kind; then take the best of what is left. A day of three parks that
    * are genuinely different places beats a day of one.
    *
-   * What the person **kept** goes in first, whatever the filters now say: a
+   * What the person **kept** goes in first, whatever the soft filters now say
+   * (the hard rules are in `keptStops`): a
    * revision is an instruction to change the rest and leave that alone.
    */
   const chosen: Experience[] = [];
@@ -795,11 +862,8 @@ export function buildDay({
   const sameKindAtCap = (candidate: Experience, cap: number) =>
     (kindCount.get(candidate.subtype ?? candidate.kind) ?? 0) >= cap;
 
-  const kept = new Set(keep);
-  for (const id of keep) {
-    const experience = byId.get(id);
-    if (experience && !chosen.includes(experience)) take(experience);
-  }
+  const kept = new Set(keptExperiences.map((e) => e.id));
+  for (const experience of keptExperiences) take(experience);
   for (const candidate of ranked) {
     if (chosen.length >= wanted) break;
     if (chosen.includes(candidate)) continue;
@@ -922,7 +986,9 @@ export function buildDay({
       minutes:
         setMinutes[experience.id] ?? flexMinutes.get(experience.id) ?? share,
       ...(km !== undefined ? { km: roundKm(km) } : {}),
-      because: reasonFor(experience, brief, weather),
+      because: picked.includes(experience.id)
+        ? "You picked this in Discovery."
+        : reasonFor(experience, brief, weather),
       ...(cost ? { cost } : {}),
       ...(schedule && schedule.reading === "on"
         ? { open: `Published as open on ${schedule.date}.` }
@@ -966,7 +1032,7 @@ export function buildDay({
     unpublished: stops.filter((s) => !s.cost).length,
   };
 
-  const unknowns: string[] = [];
+  const unknowns: string[] = [...keptOut];
   for (const caution of brief.cautions ?? []) unknowns.push(caution);
   if (stops.some((s) => !s.open && !s.hours))
     unknowns.push("Opening hours — most places here have not published them.");

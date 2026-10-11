@@ -519,6 +519,13 @@ export interface DiscoveryCandidate {
    */
   distance?: CandidateDistance;
   /**
+   * **How long a visit usually takes** — `visitDuration`. Held for 1,076 of
+   * 2,928 candidates on 2026-10-11: 33 stated by a source, 1,043 derived by
+   * Atlas from what the thing is. A derived range is a typical visit, not a
+   * promise, and is said that way.
+   */
+  visitDuration?: CandidateVisitDuration;
+  /**
    * **A picture of where an event happens, never of the event** —
    * `candidate-media/1` (ADR 086). Present only where the candidate has no
    * lead image of its own and a venue it happens at does.
@@ -535,6 +542,16 @@ export interface DiscoveryCandidate {
  * `candidate-distance/1`. `basis: "town"` is a town centre, which can be
  * several kilometres from the door — say "in Vernon", not "0.4 km away".
  */
+/** How long a visit usually takes, as Atlas holds it. */
+export interface CandidateVisitDuration {
+  /** `explicit`: a source said so. `derived`: Atlas's typical for the kind. */
+  basis: "explicit" | "derived";
+  /** A typical range in minutes, where Atlas holds one. */
+  minutes?: readonly [number, number];
+  /** The source's own sentence, where one was stated. */
+  text?: string;
+}
+
 export type CandidateDistance =
   | {
       readonly state: "measured";
@@ -776,6 +793,21 @@ export interface EnvironmentStatement {
 export interface CandidateEnvironment {
   setting: EnvironmentSetting;
   rain: { reading: RainReading; basis: EnvironmentBasis };
+  /**
+   * **Whether a visit is spent indoors or out** — `candidate-environment/2`.
+   * Read for 2,088 of 2,928 on 2026-10-11, almost all `derived` from what the
+   * thing is; the rain reading above is held for far fewer, and wins.
+   */
+  exposure?: {
+    value:
+      | "indoor"
+      | "outdoor"
+      | "mixed"
+      | "sheltered-outdoor"
+      | "weather-dependent"
+      | "unknown";
+    basis: "explicit" | "derived" | "unknown";
+  };
   /** Held for 154 of 2,683. The working behind the reading. */
   statements?: EnvironmentStatement[];
 }
