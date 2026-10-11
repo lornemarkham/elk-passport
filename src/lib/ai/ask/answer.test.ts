@@ -237,6 +237,80 @@ describe("what is worth driving an hour for?", () => {
   });
 });
 
+describe("a drive somebody said they would make", () => {
+  const routed = (e: Experience, minutes: number): Experience => ({
+    ...e,
+    travel: {
+      kind: "routed",
+      mode: "driving",
+      minutes,
+      roadKm: minutes,
+      straightKm: minutes,
+      provider: "test",
+      calculatedAt: "2026-10-11T00:00:00.000Z",
+      limitations: [],
+    },
+  });
+  const verbs = ["Hiking", "Swimming"];
+  const far = subject("Far Lake", { km: 132, verbs });
+  const mid = subject("Mid Lake", { km: 55, verbs });
+  const near = subject("Near Lake", { km: 42, verbs });
+
+  it("reads the length, and leaves it unread when none was said", () => {
+    expect(ask("What is worth driving an hour for?").driveHours).toBe(1);
+    expect(ask("worth driving two hours").driveHours).toBe(2);
+    expect(ask("a half an hour drive").driveHours).toBe(0.5);
+    expect(ask("what is worth the drive?").driveHours).toBeUndefined();
+  });
+
+  it("drops what Atlas's own estimate puts over it, and says how many", () => {
+    const answer = answerAsk(
+      [routed(far, 95), routed(mid, 48), near],
+      ask("What is worth driving an hour for?"),
+      context,
+    );
+    expect(titles(answer)).toEqual(["Near Lake", "Mid Lake"]);
+    expect(answer.note).toMatch(/1 over an hour was left out/);
+  });
+
+  it("never drops a place for having no routed time — a missing estimate is not a long one", () => {
+    const answer = answerAsk(
+      [far, mid, near],
+      ask("What is worth driving an hour for?"),
+      context,
+    );
+    expect(titles(answer)).toContain("Far Lake");
+    expect(answer.note).toMatch(/straight line/);
+    expect(answer.note).toMatch(/Check the drive/);
+  });
+
+  it("puts the nearest first, once a length was said", () => {
+    const answer = answerAsk(
+      [far, mid, near],
+      ask("What is worth driving an hour for?"),
+      context,
+    );
+    expect(titles(answer)).toEqual(["Near Lake", "Mid Lake", "Far Lake"]);
+  });
+
+  it("says which wall an empty answer hit", () => {
+    const answer = answerAsk(
+      [routed(far, 95), routed(mid, 80)],
+      ask("What is worth driving an hour for?"),
+      context,
+    );
+    expect(answer.picks).toEqual([]);
+    expect(answer.note).toMatch(/past an hour from Vernon/);
+    const bare = answerAsk(
+      [subject("Corner Park", { km: 3 })],
+      ask("What is worth the drive?"),
+      context,
+    );
+    expect(bare.picks).toEqual([]);
+    expect(bare.note).toMatch(/40–200 km from Vernon/);
+  });
+});
+
 describe("timely things", () => {
   const event = (name: string, from: string, to: string, km = 4): Experience =>
     subject(name, {

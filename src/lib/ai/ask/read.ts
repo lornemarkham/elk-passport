@@ -58,6 +58,12 @@ export interface DiscoveryAsk {
   readonly near?: boolean;
   /** A distance they actually stated, in km. */
   readonly withinKm?: number;
+  /**
+   * **The length of drive they said they would make**, in hours — "worth
+   * driving an hour for". A statement, not a distance: Passport turns it into
+   * nothing but Atlas's own routed estimate, where there is one.
+   */
+  readonly driveHours?: number;
   /** A stated verb, matched against the verbs Atlas offers on this page. */
   readonly doing?: string;
   /** Asked to stay dry, or to get outside. */
@@ -137,6 +143,32 @@ const DRIVE = new RegExp(
   ].join("|"),
   "i",
 );
+
+const SPAN_WORDS: Readonly<Record<string, number>> = {
+  a: 1,
+  an: 1,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+};
+
+/**
+ * **How long a drive somebody said they would make**, in hours, from the text
+ * `DRIVE` matched. Absent for "worth the drive" and "a road trip", which name
+ * no length — Passport does not supply one.
+ */
+export function driveHoursIn(matched: string): number | undefined {
+  const span = new RegExp(`(${SPAN})`, "i").exec(matched)?.[1];
+  if (!span) return undefined;
+  const half = /^half\s+an?\s/i.test(span);
+  if (half) return 0.5;
+  const word = /^(an?|one|two|three|four)\b/i.exec(span)?.[1];
+  const hours = word ? SPAN_WORDS[word.toLowerCase()] : Number.parseFloat(span);
+  return hours !== undefined && Number.isFinite(hours) && hours > 0
+    ? hours
+    : undefined;
+}
 
 const KID =
   /\b(kids?|child|children|toddlers?|son|daughter|niece|nephew|grandkids?|grandchild(?:ren)?|little ones?)\b/;
@@ -264,10 +296,19 @@ export function windowFor(hours: number): Window {
   return "all-day";
 }
 
+/** "an hour", "2 hours", "half an hour" — as a person would say a drive. */
+export function driveSpan(hours: number): string {
+  if (hours === 0.5) return "half an hour";
+  if (hours === 1) return "an hour";
+  return `${hours} hours`;
+}
+
 export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   const text = said.toLowerCase().replace(/[’']/g, "'");
 
-  const drive = DRIVE.test(text);
+  const driveMatch = DRIVE.exec(text);
+  const drive = driveMatch !== null;
+  const driveHours = driveMatch ? driveHoursIn(driveMatch[0]) : undefined;
   // `readBrief` reads hours, a stated age, a town, a stated distance and
   // shelter — the parts both pages must read identically.
   const brief = readBrief(drive ? text.replace(DRIVE, " ") : text);
@@ -367,6 +408,7 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
     ...(shelter ? { shelter } : {}),
     ...(pair ? { pair: true as const } : {}),
     ...(lens ? { lens } : {}),
+    ...(drive && driveHours !== undefined ? { driveHours } : {}),
   };
 }
 
@@ -382,6 +424,8 @@ export function readBack(
   const out: string[] = [];
   if (ask.lens === "unusual") out.push("something unusual");
   if (ask.lens === "drive") out.push("worth the drive");
+  if (ask.driveHours !== undefined)
+    out.push(`${driveSpan(ask.driveHours)} each way`);
   if (ask.lens === "on") out.push("what's on");
   if (ask.doing) out.push(ask.doing.toLowerCase());
   if (ask.hours !== undefined)

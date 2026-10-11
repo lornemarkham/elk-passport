@@ -20,7 +20,7 @@ import { areaOf } from "@/domain/discovery/area";
 import { ZONE } from "@/domain/experience/eventTime";
 import type { SuitabilityStatement } from "@/lib/data/types";
 import { defaultRadiusKm } from "@/domain/day/build";
-import type { DiscoveryAsk } from "./read";
+import { driveSpan, type DiscoveryAsk } from "./read";
 
 /**
  * **An answer to a question, made only of things Atlas states.**
@@ -873,9 +873,18 @@ function circleFor(
   return defaultRadiusKm(ask.hours);
 }
 
+/**
+ * Atlas's routed driving minutes for a place; 0 where it has none, which never
+ * reads as over anything — a missing estimate is not a long one.
+ */
+function routedMinutes(e: Experience): number {
+  return e.travel?.kind === "routed" ? e.travel.minutes : 0;
+}
+
 function framing(
   ask: DiscoveryAsk,
   context: AnswerContext,
+  overSpan = 0,
 ): { heading: string; note: string } {
   // "Vernon, BC" is a picker label; a heading says "Vernon".
   const from = context.originLabel?.replace(/,\s*BC$/, "");
@@ -883,6 +892,11 @@ function framing(
   const area = context.home ? ` in ${context.home}` : "";
   switch (ask.lens) {
     case "drive":
+      if (context.origin && ask.driveHours !== undefined)
+        return {
+          heading: `Worth ${driveSpan(ask.driveHours)} of driving`,
+          note: `You said ${driveSpan(ask.driveHours)}. Passport can't time a drive itself: a card shows Atlas's drive estimate where Atlas has one${overSpan > 0 ? ` (${overSpan} over ${driveSpan(ask.driveHours)} ${overSpan === 1 ? "was" : "were"} left out)` : ""}, and every other distance is a straight line from ${from}, ${DRIVE_FROM_KM}+ km out, nearest first. Check the drive before you go.`,
+        };
       return context.origin
         ? {
             heading: "Worth the drive",
@@ -972,6 +986,22 @@ export function answerAsk(
       return km >= DRIVE_FROM_KM && km <= DRIVE_TO_KM;
     });
   }
+  // **A drive somebody said they would make is a limit, where Atlas can
+  // check it.** Passport has no speed of its own, so only Atlas's routed
+  // estimate can say a place is over it — and then it leaves. A place with no
+  // routed time stays and says so; it is never assumed to fit.
+  const spanMinutes =
+    ask.lens === "drive" && ask.driveHours !== undefined
+      ? ask.driveHours * 60
+      : undefined;
+  let overSpan = 0;
+  if (spanMinutes !== undefined) {
+    candidates = candidates.filter((e) => {
+      const over = routedMinutes(e) > spanMinutes;
+      if (over) overSpan += 1;
+      return !over;
+    });
+  }
   // **Somewhere, or not an answer** (see the top of this file). With an
   // origin, a pick needs a distance — or, for a question that is not about
   // being close, an area Atlas places it in that is this one.
@@ -1026,7 +1056,14 @@ export function answerAsk(
   // off as an answer to a question they do not answer.
   const missed =
     chosen.length > 0 && chosen.every(({ fits }) => fits === false);
-  const picks = chosen.map(({ experience, reasons }) => {
+  // **A stated length of drive puts the nearest first.** Relevance still
+  // decides *which* places are offered; once somebody has said how long they
+  // will drive, the order they meet them in is how far each is.
+  const ordered =
+    spanMinutes !== undefined
+      ? [...chosen].sort((a, b) => sortKm(a.experience) - sortKm(b.experience))
+      : chosen;
+  const picks = ordered.map(({ experience, reasons }) => {
     const caveat = caveatFor(experience, ask, context);
     return { experience, reasons, ...(caveat ? { caveat } : {}) };
   });
@@ -1046,10 +1083,19 @@ export function answerAsk(
   )
     gaps.push({
       about: "origin",
-      text: "From where? Pick a town or share your location above, and distances count.",
+      text: "From where? Pick a town or share your location, and distances count.",
     });
 
-  const { heading, note } = framing(ask, context);
+  const framed = framing(ask, context, overSpan);
+  const { heading } = framed;
+  // **An empty drive says which wall it hit**, so the next move is obvious:
+  // the span, or the band, or there being nowhere to measure from.
+  const note =
+    picks.length === 0 && ask.lens === "drive" && context.origin
+      ? overSpan > 0 && ask.driveHours !== undefined
+        ? `Atlas's drive estimates put everything it could offer past ${driveSpan(ask.driveHours)} from ${context.originLabel ?? "here"}. Try a longer drive, or a different starting town.`
+        : `Nothing Atlas can place and say something about sits ${DRIVE_FROM_KM}–${DRIVE_TO_KM} km from ${context.originLabel ?? "here"}. Try another starting town — or ask for something close.`
+      : framed.note;
   const said = missed
     ? `${note} Nothing Atlas holds here clearly answers that${ask.on ? ` for ${dayWord(ask.on, context.today)}` : ""}, so these are the nearest things to it.`
     : note;
