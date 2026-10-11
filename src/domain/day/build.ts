@@ -4,6 +4,7 @@ import {
   clockLabel,
   partyPhrase,
   stem,
+  travelPhrase,
   type DayBrief,
   type Party,
 } from "./brief";
@@ -20,6 +21,7 @@ import {
 } from "@/domain/discovery/environment";
 import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { distanceKm } from "@/lib/environment/geo";
+import { offers, unmetIn, type Unmet } from "./intent";
 
 /**
  * **A day, built out of things that actually exist.**
@@ -170,6 +172,14 @@ export interface DayPlanned {
    */
   readonly radiusKm?: number;
   readonly radiusAssumed?: boolean;
+  /**
+   * **What they asked for that nothing Atlas holds offers**, within the
+   * circle they asked for. When this is not empty the day contains only what
+   * the person kept: the plan will not stand a different kind of day in for
+   * the one they described. Said first on screen, with the nearest place that
+   * does offer it where one is known.
+   */
+  readonly unmet?: readonly Unmet[];
 }
 
 /** A forecast, with whose forecast it is. */
@@ -716,6 +726,10 @@ function rank(
     if (brief.on && ruledOutOn(experience, brief.on)) return false;
     if (brief.on && experience.schedule?.onDate?.reading === "not-on")
       return false;
+    // **"Keep us indoors" is a request, not a mood.** A place Atlas states is
+    // out in the open is left out; one that states nothing about shelter
+    // stays, and the plan says how many of its stops it can vouch for.
+    if (brief.shelter === "indoor" && arguesAgainst(experience)) return false;
     if (radiusKm !== undefined && origin) {
       const here = point(experience);
       // Unmeasured is not excluded — but it cannot lead a day either, so it
@@ -849,6 +863,24 @@ export function buildDay({
     ),
   );
 
+  // **Does anything offer what they asked for?** If not, the plan says so and
+  // builds nothing around it — a different kind of day is not the one they
+  // described. What they kept stays.
+  // A subject with no coordinates cannot be placed inside anybody's circle, so
+  // it cannot make "near here" true: it never satisfies a request by itself.
+  const placeable = origin ? ranked.filter((e) => point(e)) : ranked;
+  const unmet = unmetIn(
+    brief.interests,
+    placeable,
+    pool.filter((e) => !without.includes(e.id)),
+    origin
+      ? (e) => {
+          const here = point(e);
+          return here ? distanceKm(origin, here) : undefined;
+        }
+      : undefined,
+  );
+
   /**
    * **Variety is a preference, and it was built as a wall.**
    *
@@ -880,7 +912,20 @@ export function buildDay({
 
   const kept = new Set(keptExperiences.map((e) => e.id));
   for (const experience of keptExperiences) take(experience);
-  for (const candidate of ranked) {
+  const open = unmet.length === 0;
+  // **Each thing they asked for gets a stop** before variety is considered:
+  // the best-fitting place that states it, if none is already in the day.
+  if (open) {
+    for (const interest of brief.interests) {
+      if (chosen.length >= wanted) break;
+      if (chosen.some((c) => offers(c, interest))) continue;
+      const match = placeable.find(
+        (c) => !chosen.includes(c) && offers(c, interest),
+      );
+      if (match) take(match);
+    }
+  }
+  for (const candidate of open ? ranked : []) {
     if (chosen.length >= wanted) break;
     if (chosen.includes(candidate)) continue;
     const verbs = verbsOf(candidate);
@@ -888,13 +933,13 @@ export function buildDay({
       verbs.length === 0 || verbs.some((v) => !seenVerbs.has(v));
     if (freshVerb && !sameKindAtCap(candidate, 2)) take(candidate);
   }
-  for (const candidate of ranked) {
+  for (const candidate of open ? ranked : []) {
     if (chosen.length >= wanted) break;
     if (!chosen.includes(candidate) && !sameKindAtCap(candidate, 2)) {
       take(candidate);
     }
   }
-  for (const candidate of ranked) {
+  for (const candidate of open ? ranked : []) {
     if (chosen.length >= wanted) break;
     if (!chosen.includes(candidate)) take(candidate);
   }
@@ -1050,6 +1095,26 @@ export function buildDay({
 
   const unknowns: string[] = [...keptOut];
   for (const caution of brief.cautions ?? []) unknowns.push(caution);
+  for (const note of keptAgainst(keptExperiences, brief)) unknowns.push(note);
+  const unfit = brief.interests.filter(
+    (i) => open && !stops.some((s) => offers(s.experience, i)),
+  );
+  if (unfit.length > 0)
+    unknowns.push(
+      `Not in this day: ${unfit.join(", ")}. It asked for more than ${stops.length === 1 ? "one stop" : `${stops.length} stops`} holds — say “add a stop” to make room.`,
+    );
+  if (brief.withinMinutes !== undefined && brief.hours === undefined)
+    unknowns.push(
+      `You said you would travel up to ${travelPhrase(brief.withinMinutes)}, but not how long you have — this is a ${budget.totalMinutes / 60}-hour day (assumed). Say “all day” to make room for the drive.`,
+    );
+  if (brief.shelter === "indoor" && stops.length > 0) {
+    const covered = stops.filter((s) => standsUpToRain(s.experience)).length;
+    unknowns.push(
+      covered === stops.length
+        ? "Under cover — every stop here is one Atlas says stands up to rain."
+        : `Under cover — Atlas says ${covered} of ${stops.length} ${stops.length === 1 ? "stop is" : "stops are"} under cover; the rest state nothing either way, only that they are not out in the open.`,
+    );
+  }
   if (stops.some((s) => !s.open && !s.hours))
     unknowns.push("Opening hours — most places here have not published them.");
   if (stops.some((s) => !s.cost))
@@ -1068,7 +1133,7 @@ export function buildDay({
 
   return {
     title: titleFor(stops, brief),
-    opening: openingFor(stops, brief, radiusKm, weather),
+    opening: openingFor(stops, brief, radiusKm, weather, unmet),
     stops,
     unknowns,
     ...(keptOut.length > 0 ? { leftOut: keptOut } : {}),
@@ -1082,7 +1147,36 @@ export function buildDay({
     ...(radiusKm !== undefined
       ? { radiusKm, radiusAssumed: brief.withinKm === undefined }
       : {}),
+    ...(unmet.length > 0 ? { unmet } : {}),
   };
+}
+
+/**
+ * **A stop they kept that contradicts something they said since.** Kept
+ * stops survive every revision (§2.5), so this is a note, not a removal:
+ * "No museums" does not delete the museum they chose, it says it is still
+ * there.
+ */
+function keptAgainst(kept: readonly Experience[], brief: DayBrief): string[] {
+  const out: string[] = [];
+  const avoided = (brief.avoid ?? []).map(stem);
+  for (const e of kept) {
+    const hit =
+      avoided.length > 0
+        ? (brief.avoid ?? []).find((a, i) =>
+            statedWords(e).some((w) => w.includes(avoided[i]!)),
+          )
+        : undefined;
+    if (hit)
+      out.push(
+        `${e.title} stays even though you said no ${hit} — you kept it. Remove it if you meant it.`,
+      );
+    if (brief.shelter === "indoor" && arguesAgainst(e))
+      out.push(
+        `${e.title} stays even though it is out in the open — you kept it.`,
+      );
+  }
+  return out;
 }
 
 /**
@@ -1239,7 +1333,23 @@ function openingFor(
   brief: DayBrief,
   radiusKm?: number,
   weather?: PlanWeather,
+  unmet: readonly Unmet[] = [],
 ): string {
+  if (stops.length === 0 && unmet.length > 0) {
+    const where =
+      radiusKm !== undefined && brief.town
+        ? ` within ${radiusKm} km of ${brief.town.name.replace(/,\s*BC$/, "")}`
+        : "";
+    return unmet
+      .map(
+        ({ activity, nearest, unplaced }) =>
+          `Nothing Atlas holds says it offers ${activity}${where}.${nearest ? ` The nearest it can place is ${nearest.title}, ${nearest.km} km away.` : ""}${unplaced?.length ? ` Atlas lists ${unplaced.join(", ")} for it but has not placed ${unplaced.length === 1 ? "it" : "them"} on a map, so it cannot say whether ${unplaced.length === 1 ? "it is" : "they are"} near.` : ""}`,
+      )
+      .join(" ");
+  }
+  if (stops.length === 0 && brief.shelter === "indoor") {
+    return "Nothing in range that Atlas says is indoors. Try a wider circle, or tell me what to do outdoors instead.";
+  }
   if (stops.length === 0) {
     return "Nothing here matched that. Try fewer constraints, or a wider circle.";
   }

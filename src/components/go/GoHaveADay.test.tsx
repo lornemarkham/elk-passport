@@ -14,6 +14,11 @@ import { townById } from "@/domain/discovery/towns";
  */
 const VERNON = townById("vernon")!;
 
+const nav = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: nav.push, replace: vi.fn(), refresh: vi.fn() }),
+}));
+
 const place = (
   name: string,
   km: number,
@@ -215,8 +220,129 @@ describe("Go have a day", () => {
 
   it("asks a family how old, and sends the age to Atlas by reloading with it", () => {
     mount("the family, near Vernon");
-    const link = screen.getByTestId("go-age-6");
-    expect(link.getAttribute("href")).toContain("age=6");
+    fireEvent.click(screen.getByTestId("go-age-6"));
+    expect(nav.push).toHaveBeenCalledTimes(1);
+    expect(nav.push.mock.calls[0]![0]).toContain("age=6");
+  });
+
+  it("carries the kept stops to the new address when the age changes", () => {
+    mount("the family, near Vernon");
+    const first = stops()[0]!;
+    fireEvent.click(screen.getByTestId("go-keep-1"));
+    fireEvent.change(screen.getByTestId("go-change"), {
+      target: { value: "youngest is 6" },
+    });
+    fireEvent.click(screen.getByTestId("go-change-submit"));
+    const to = nav.push.mock.calls[0]![0] as string;
+    expect(to).toContain("age=6");
+    expect(to).toContain("at=vernon");
+    // The address the browser is about to open finds the shaped day waiting.
+    const saved = [...Array(window.sessionStorage.length).keys()]
+      .map((i) => window.sessionStorage.key(i)!)
+      .map((k) => window.sessionStorage.getItem(k)!)
+      .map(
+        (v) =>
+          JSON.parse(v) as {
+            brief: { childAge: number };
+            shaping: { keep: string[] };
+          },
+      )
+      .find((v) => v.brief?.childAge === 6);
+    expect(saved?.shaping.keep.length).toBe(1);
+    expect(first).toBeTruthy();
+  });
+
+  it("asks where the adventure begins instead of building a day from nowhere", () => {
+    mount("Taking my family out this afternoon");
+    expect(screen.getByTestId("go-where")).toBeTruthy();
+    expect(screen.queryAllByTestId("go-stop")).toHaveLength(0);
+    expect(screen.getByTestId("go-where").textContent).toMatch(
+      /Where does the adventure begin/,
+    );
+    // Said, not lost: the sentence's own words stay on the page.
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(
+      /family/i,
+    );
+    fireEvent.click(screen.getByTestId("go-start-vernon"));
+    expect(screen.queryByTestId("go-where")).toBeNull();
+    expect(screen.getAllByTestId("go-stop").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(
+      /From Vernon/,
+    );
+  });
+
+  it("says nothing matched and substitutes nothing, and keeps the request on screen", () => {
+    mount("Scuba diving with sharks tonight, near Vernon");
+    expect(screen.queryAllByTestId("go-stop")).toHaveLength(0);
+    const says = screen.getByTestId("go-not-found-says").textContent ?? "";
+    expect(says).toMatch(/Nothing Atlas holds says it offers sharks/);
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(/sharks/);
+    // The way forward is explicit, and is the person's to take.
+    // Scuba diving is also missing from this pool; each is set aside by hand.
+    fireEvent.click(screen.getByTestId("go-without-scuba-diving"));
+    expect(screen.getByTestId("go-not-found")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("go-without-sharks"));
+    expect(screen.queryByTestId("go-not-found")).toBeNull();
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(
+      /without sharks/,
+    );
+  });
+
+  it("reads “let's do Kelowna instead” as a change of start and keeps what was kept", () => {
+    mount("three hours near Vernon");
+    const first = stops()[0]!;
+    fireEvent.click(screen.getByTestId("go-keep-1"));
+    fireEvent.change(screen.getByTestId("go-change"), {
+      target: { value: "Let's do Kelowna instead" },
+    });
+    fireEvent.click(screen.getByTestId("go-change-submit"));
+    expect(screen.getByTestId("go-reply").textContent).toMatch(/Kelowna/);
+    expect(screen.getByTestId("go-reply").textContent).not.toMatch(
+      /didn't catch/,
+    );
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(
+      /From Kelowna/,
+    );
+    expect(stops()).toContain(first);
+  });
+
+  it("does not throw away a kept stop when the top box is retyped, and can take it back", () => {
+    mount("three hours near Vernon");
+    const first = stops()[0]!;
+    fireEvent.click(screen.getByTestId("go-keep-1"));
+    fireEvent.change(screen.getByTestId("go-say"), {
+      target: { value: "two hours near Vernon, no hiking" },
+    });
+    fireEvent.click(screen.getByTestId("go-build"));
+    expect(stops()).toContain(first);
+    expect(screen.getByTestId("go-reply").textContent).toMatch(/Still kept/);
+    fireEvent.click(screen.getByTestId("go-undo"));
+    expect(screen.getByTestId("go-say")).toHaveProperty(
+      "value",
+      "three hours near Vernon",
+    );
+  });
+
+  it("shows an honest recovery state, and no day, when Atlas did not answer", () => {
+    render(
+      <GoHaveADay
+        pool={[]}
+        today="2026-10-11"
+        on="2099-01-01"
+        initialSay="a day near Vernon"
+        atlas="unreachable"
+      />,
+    );
+    expect(screen.getByTestId("atlas-recovery").textContent).toMatch(
+      /couldn't reach Atlas/,
+    );
+    expect(screen.getByTestId("atlas-recovery-said").textContent).toBe(
+      "a day near Vernon",
+    );
+    expect(
+      screen.getByTestId("atlas-recovery-retry").getAttribute("href"),
+    ).toContain("say=a+day+near+Vernon");
+    expect(screen.queryByTestId("go-day")).toBeNull();
   });
 
   it("offers a rain plan for an exposed stop, and uses it on request", () => {

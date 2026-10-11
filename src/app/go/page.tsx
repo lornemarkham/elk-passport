@@ -3,6 +3,8 @@ import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { defaultFeed } from "@/domain/discovery/defaultFeed";
 import { GoHaveADay } from "@/components/go/GoHaveADay";
+import { readBrief } from "@/domain/day/brief";
+import type { DiscoveryCandidate } from "@/lib/data/types";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
@@ -71,8 +73,15 @@ const one = (v: string | string[] | undefined) =>
 export default async function GoPage({ searchParams }: Props) {
   const query = (await searchParams) ?? {};
   const asked = Number(one(query.age));
+  // An age in the URL wins; otherwise one typed in the sentence is asked of
+  // Atlas too, so "with a six-year-old" gets Atlas's verdict on admission
+  // rather than Passport's inference.
   const childAge =
-    Number.isInteger(asked) && asked >= 0 && asked <= 17 ? asked : undefined;
+    Number.isInteger(asked) && asked >= 0 && asked <= 17
+      ? asked
+      : one(query.age) === undefined && one(query.say)
+        ? readBrief(one(query.say)!).childAge
+        : undefined;
 
   const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -87,10 +96,25 @@ export default async function GoPage({ searchParams }: Props) {
   const on =
     askedDay && /^\d{4}-\d{2}-\d{2}$/.test(askedDay) ? askedDay : today;
 
-  const [candidates, user] = await Promise.all([
-    listDiscoveryCandidates(childAge, on),
+  // **Atlas being down is a state, not a crash.** M200 took Atlas away and got
+  // a 500 and "Something went badly wrong". The page now says what happened,
+  // keeps the sentence, and offers the one thing that helps.
+  let candidates: DiscoveryCandidate[] = [];
+  let atlas: "ok" | "unreachable" = "ok";
+  const [read, user] = await Promise.all([
+    listDiscoveryCandidates(childAge, on).then(
+      (rows) => ({ ok: true as const, rows }),
+      (error: unknown) => ({ ok: false as const, error }),
+    ),
     currentUser(),
   ]);
+  if (read.ok) candidates = read.rows;
+  else {
+    atlas = "unreachable";
+    console.error(
+      `[atlas] /go could not read the corpus: ${read.error instanceof Error ? read.error.message : "unknown error"}`,
+    );
+  }
 
   // The same feed policy Discovery applies — a typo'd parking lot is not a
   // stop on anybody's afternoon — and the same trimming, because this page
@@ -129,6 +153,7 @@ export default async function GoPage({ searchParams }: Props) {
           {...(childAge !== undefined ? { childAge } : {})}
           {...(one(query.at) ? { townId: one(query.at)! } : {})}
           on={on}
+          atlas={atlas}
           {...(simulated ? { simulatedWeather: simulated } : {})}
           {...(keep.length > 0 ? { keep } : {})}
         />

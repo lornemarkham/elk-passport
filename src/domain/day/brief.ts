@@ -1,8 +1,21 @@
+import { townById, type DiscoveryTown } from "@/domain/discovery/towns";
 import {
-  DISCOVERY_TOWNS,
-  townById,
-  type DiscoveryTown,
-} from "@/domain/discovery/towns";
+  activitiesIn,
+  ACTIVITY_LABELS,
+  ageIn,
+  asksForFree,
+  hoursIn,
+  kmForMinutes,
+  partOfDayIn,
+  PART_OF_DAY_START,
+  stem,
+  townChangeIn,
+  townIn,
+  travelIn,
+  type PartOfDay,
+} from "./intent";
+
+export { stem };
 
 /**
  * **What somebody said they wanted, turned into something a builder can use.**
@@ -41,6 +54,24 @@ export interface DayBrief {
   readonly on?: string;
   /** How far they are willing to go, in km. */
   readonly withinKm?: number;
+  /**
+   * **How long they are willing to travel, in minutes** — "drive two hours",
+   * "within 30 minutes of Kelowna". Their words, kept so the screen can say
+   * them back. `withinKm` is the planning circle drawn from it
+   * (`kmForMinutes`): an estimate, said as one, replaced by Atlas's routed
+   * minutes wherever Atlas has them.
+   */
+  readonly withinMinutes?: number;
+  /** "This afternoon", "tonight". Read from words; never from the clock. */
+  readonly when?: PartOfDay;
+  /** Set when `startAt` came from `when` rather than a time somebody typed. */
+  readonly startFromWhen?: boolean;
+  /**
+   * Things they asked for that they agreed to plan without — because
+   * nothing Atlas holds offers them. Said back on screen, never dropped
+   * quietly.
+   */
+  readonly setAside?: readonly string[];
   /** Verbs and nouns to prefer, in the person's own words. */
   readonly interests: readonly string[];
   /** Whether they asked to stay dry, get outside, or neither. */
@@ -115,73 +146,9 @@ const numberBefore = (text: string, unit: RegExp): number | undefined => {
   return word ? NUMBER_WORDS[word] : undefined;
 };
 
-/** Words a person uses for what they want to do, matched against Atlas's verbs. */
-const INTEREST_WORDS = [
-  "swimming",
-  "hiking",
-  "walking",
-  "cycling",
-  "biking",
-  "fishing",
-  "skating",
-  "skiing",
-  "snowshoeing",
-  "paddling",
-  "kayaking",
-  "canoeing",
-  "playground",
-  "picnic",
-  "birdwatching",
-  "wildlife",
-  "animals",
-  "farm",
-  "pumpkin",
-  "museum",
-  "art",
-  "music",
-  "coffee",
-  "food",
-  "beach",
-  "trail",
-  "park",
-  "climbing",
-  "books",
-  "history",
-  "lunch",
-  "restaurant",
-  "cafe",
-  "brewery",
-  "winery",
-  "wine",
-  "market",
-  "garden",
-  "viewpoint",
-  "waterfall",
-  "lake",
-  "golf",
-  "science",
-] as const;
-
-/**
- * **A word, cut back to the part a place's own words will share with it.**
- *
- * "hike", "hiking" and "Hiking trails" all have to meet at `hik`, or "no
- * hiking" leaves the trail in. Crude on purpose — it only ever compares a
- * person's word with Atlas's words, and never decides anything by itself.
- */
-export const stem = (word: string): string => {
-  let w = word.toLowerCase().trim();
-  if (w.length > 5 && w.endsWith("ing")) {
-    w = w.slice(0, -3);
-    if (/([b-df-hj-np-tv-z])\1$/.test(w)) w = w.slice(0, -1);
-  }
-  if (w.length > 3 && /[es]$/.test(w)) w = w.slice(0, -1);
-  return w;
-};
-
 /** Nouns a person says no to that are not in the interest list but are in Atlas. */
 const AVOIDABLE = [
-  ...INTEREST_WORDS,
+  ...ACTIVITY_LABELS,
   "hike",
   "swim",
   "walk",
@@ -331,19 +298,42 @@ const avoidIn = (text: string): string[] => {
   return [...new Set(out)];
 };
 
+/** Whether a person's word for something refers to this activity label. */
+const sameThing = (said: string, label: string): boolean => {
+  const s = stem(said);
+  return (
+    s === stem(label) ||
+    label
+      .toLowerCase()
+      .split(/[\s-]+/)
+      .some((part) => stem(part) === s)
+  );
+};
+
 /**
  * Read a sentence. Anything not said stays `undefined`.
  *
  * `fallback` carries what Discovery already knows — the town, the day, the
  * age — so somebody arriving from an exploration does not have to retype it,
  * and anything they *do* type wins.
+ *
+ * ## Four words that mean something other than what they look like
+ *
+ * Found by the M200 audit, each with a sentence that reproduces it:
+ * *two hours **free*** is time, not a $0 budget; *drive **two hours*** is how
+ * far they will go, not how long the day is; *within **30 minutes*** is
+ * minutes of travel, not kilometres; and *home by 5* is a deadline. The
+ * travel part is lifted out of the sentence first, so what is left can be
+ * read for the day's own length.
  */
 export function readBrief(
   said: string,
   fallback: Partial<DayBrief> = {},
   context: BriefContext = {},
 ): DayBrief {
-  const text = said.toLowerCase();
+  const lowered = said.toLowerCase();
+  const travel = travelIn(lowered);
+  const text = travel.rest;
 
   // **A window is hours too.** "Leave at 9, home by 3" is six hours, and a
   // stated number of hours still wins over the arithmetic. "Home by 5" with
@@ -351,18 +341,35 @@ export function readBrief(
   // clock is known — and says so, because it is an assumption.
   const homeBy = homeIn(text) ?? fallback.homeBy;
   const typedStart = startIn(text) ?? fallback.startAt;
+  const when = partOfDayIn(text) ?? fallback.when;
+  // **"This afternoon" is a start, said as one.** Only where no time was
+  // typed, never past the clock where the day is today, and shown as assumed.
+  const startFromWhen =
+    typedStart === undefined && homeBy === undefined && when !== undefined;
   const startsNow =
     typedStart === undefined &&
     homeBy !== undefined &&
     context.nowMinutes !== undefined;
-  const startAt = startsNow ? ceilQuarter(context.nowMinutes!) : typedStart;
+  const startAt = startsNow
+    ? ceilQuarter(context.nowMinutes!)
+    : startFromWhen
+      ? Math.max(
+          PART_OF_DAY_START[when!],
+          context.nowMinutes !== undefined
+            ? ceilQuarter(context.nowMinutes)
+            : 0,
+        )
+      : typedStart;
   const windowHours =
-    startAt !== undefined && homeBy !== undefined && homeBy > startAt
+    startAt !== undefined &&
+    homeBy !== undefined &&
+    homeBy > startAt &&
+    !startFromWhen
       ? Math.round(((homeBy - startAt) / 60) * 4) / 4
       : undefined;
 
   const hours =
-    numberBefore(text, /(?:hours?|hrs?\b)/) ??
+    hoursIn(text) ??
     (/\bhalf a day\b/.test(text)
       ? 4
       : /\ball day\b|\bwhole day\b|\bfull day\b/.test(text)
@@ -377,25 +384,18 @@ export function readBrief(
   const budget =
     (budgetMatch?.[1] ? Number(budgetMatch[1]) : undefined) ??
     numberBefore(text, /dollars?/) ??
-    (/\bfree\b|\bno money\b|\bcheap\b/.test(text) ? 0 : undefined) ??
+    (asksForFree(text) || /\bcheap\b/.test(text) ? 0 : undefined) ??
     fallback.budget;
 
   // **A number, or nothing.** "with a kid" is not an age, and guessing five
   // is exactly the invention every other surface in this product refuses.
-  const childAge =
-    numberBefore(text, /[-\s]?year[-\s]?old/) ??
-    numberBefore(text, /yo\b/) ??
-    fallback.childAge;
+  const childAge = ageIn(text) ?? fallback.childAge;
 
-  const town =
-    DISCOVERY_TOWNS.find((t) => {
-      const bare = t.name.replace(/,\s*BC$/i, "").toLowerCase();
-      return new RegExp(
-        `\\b${bare.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-      ).test(text);
-    }) ?? townById(fallback.town?.id);
+  const town = townIn(lowered) ?? townById(fallback.town?.id);
 
+  const withinMinutes = travel.minutes ?? fallback.withinMinutes;
   const withinKm =
+    (travel.minutes !== undefined ? kmForMinutes(travel.minutes) : undefined) ??
     numberBefore(text, /\s*km\b/) ??
     (/\bnearby\b|\bclose by\b|\bround the corner\b/.test(text)
       ? 15
@@ -403,8 +403,11 @@ export function readBrief(
     fallback.withinKm;
 
   const avoid = [...new Set([...avoidIn(text), ...(fallback.avoid ?? [])])];
-  const interests = interestsIn(text).filter(
-    (word) => !avoid.some((a) => stem(a) === stem(word)),
+  const setAside = fallback.setAside ?? [];
+  const interests = activitiesIn(text).filter(
+    (word) =>
+      !avoid.some((a) => sameThing(a, word)) &&
+      !setAside.some((a) => a === word),
   );
   const party =
     partyIn(text) ??
@@ -436,6 +439,10 @@ export function readBrief(
     ...(town ? { town } : {}),
     ...(fallback.on ? { on: fallback.on } : {}),
     ...(withinKm !== undefined ? { withinKm } : {}),
+    ...(withinMinutes !== undefined ? { withinMinutes } : {}),
+    ...(when ? { when } : {}),
+    ...(startFromWhen ? { startFromWhen: true } : {}),
+    ...(setAside.length > 0 ? { setAside } : {}),
     interests: interests.length > 0 ? interests : (fallback.interests ?? []),
     ...(shelter
       ? { shelter }
@@ -458,15 +465,6 @@ export function readBrief(
 }
 
 /**
- * **Interest words, as whole words.** A substring match read "start at 9" as
- * an interest in *art* and "parking" as a wish for a park.
- */
-const interestsIn = (text: string): string[] =>
-  INTEREST_WORDS.filter((word) =>
-    new RegExp(`\\b${word}(?:s|es)?\\b`).test(text),
-  );
-
-/**
  * **A revision, applied to a brief that already exists.**
  *
  * *"Make it cheaper. More outdoors. Less driving. Make it weirder."* Each one
@@ -479,8 +477,33 @@ export function reviseBrief(
   said: string,
   context: BriefContext = {},
 ): DayBrief {
-  const text = said.toLowerCase();
+  const lowered = said.toLowerCase();
+  // Travel willingness is lifted out first: "drive two hours" must not be
+  // read as a two-hour day, nor "free" in "two hours free" as a $0 budget.
+  const travel = travelIn(lowered);
+  const text = travel.rest;
   let next: DayBrief = { ...brief, said: `${brief.said} — ${said.trim()}` };
+
+  // **Where the day starts.** "Let's do Kelowna instead" moves the start; it
+  // does not touch what was kept, said, or set — and the town is only ever
+  // one the person named.
+  const town = townChangeIn(lowered);
+  if (town && town.id !== next.town?.id) next = { ...next, town };
+
+  if (travel.minutes !== undefined) {
+    next = {
+      ...next,
+      withinMinutes: travel.minutes,
+      withinKm: kmForMinutes(travel.minutes),
+    };
+  }
+
+  // **Who.** A new age replaces the old one — it is the youngest that
+  // matters — and makes the party a family unless they said otherwise.
+  const age = ageIn(text);
+  if (age !== undefined && age !== next.childAge) {
+    next = { ...next, childAge: age, party: next.party ?? "family" };
+  }
 
   if (/cheap|less money|budget|afford/.test(text)) {
     const now = next.budget ?? 60;
@@ -488,7 +511,7 @@ export function reviseBrief(
   }
   const money = text.match(/\$\s*(\d+(?:\.\d+)?)/)?.[1];
   if (money) next = { ...next, budget: Number(money) };
-  if (/\bfree\b|\bno money\b/.test(text)) next = { ...next, budget: 0 };
+  if (asksForFree(text)) next = { ...next, budget: 0 };
 
   if (/more outdoor|outside|fresh air/.test(text)) {
     next = { ...next, shelter: "outdoor" };
@@ -499,6 +522,7 @@ export function reviseBrief(
   if (/less driving|closer|nearer|not so far/.test(text)) {
     next = {
       ...next,
+      withinMinutes: undefined,
       lessDriving: true,
       ...(next.withinKm !== undefined
         ? { withinKm: Math.max(5, Math.round(next.withinKm / 2)) }
@@ -506,7 +530,11 @@ export function reviseBrief(
     };
   }
   if (/further|farther|wider|go further/.test(text)) {
-    next = { ...next, withinKm: Math.min(200, (next.withinKm ?? 30) * 2) };
+    next = {
+      ...next,
+      withinMinutes: undefined,
+      withinKm: Math.min(200, (next.withinKm ?? 30) * 2),
+    };
   }
   if (/weird|unusual|strange|odd|surprise/.test(text)) {
     next = { ...next, appetite: "odd" };
@@ -519,7 +547,7 @@ export function reviseBrief(
   }
 
   // **Time.** A new number of hours, a new window, or simply shorter/longer.
-  const hours = numberBefore(text, /(?:hours?|hrs?\b)/);
+  const hours = hoursIn(text);
   const homeBy = homeIn(text);
   const startAt = startIn(text);
   if (startAt !== undefined) next = { ...next, startAt, startsNow: undefined };
@@ -571,7 +599,7 @@ export function reviseBrief(
       ...next,
       avoid: [...new Set([...(next.avoid ?? []), ...avoid])],
       interests: next.interests.filter(
-        (i) => !avoid.some((a) => stem(a) === stem(i)),
+        (i) => !avoid.some((a) => sameThing(a, i)),
       ),
     };
   }
@@ -585,8 +613,8 @@ export function reviseBrief(
   }
 
   // Only this sentence's own "no" stops a word counting as a wish.
-  const more = interestsIn(text).filter(
-    (w) => !avoid.some((a) => stem(a) === stem(w)),
+  const more = activitiesIn(text).filter(
+    (w) => !avoid.some((a) => sameThing(a, w)),
   );
   if (more.length > 0) {
     next = { ...next, interests: [...new Set([...next.interests, ...more])] };
@@ -594,8 +622,10 @@ export function reviseBrief(
     next = {
       ...next,
       avoid: (next.avoid ?? []).filter(
-        (a) => !more.some((m) => stem(m) === stem(a)),
+        (a) => !more.some((m) => sameThing(a, m)),
       ),
+      // Asking again takes back an agreement to plan without it.
+      setAside: (next.setAside ?? []).filter((a) => !more.includes(a)),
     };
   }
   return next;
@@ -635,7 +665,25 @@ export function heardIn(before: DayBrief, after: DayBrief): string[] {
         : "Leaning outdoors.",
     );
   }
-  if (after.withinKm !== before.withinKm && after.withinKm !== undefined) {
+  if (after.town && after.town.id !== before.town?.id) {
+    out.push(
+      `Starting from ${after.town.name.replace(/,\s*BC$/, "")} now${before.town ? ` instead of ${before.town.name.replace(/,\s*BC$/, "")}` : ""}.`,
+    );
+  }
+  if (after.childAge !== before.childAge && after.childAge !== undefined) {
+    out.push(`Youngest is ${after.childAge}.`);
+  }
+  if (
+    after.withinMinutes !== before.withinMinutes &&
+    after.withinMinutes !== undefined
+  ) {
+    out.push(
+      `Within ${travelPhrase(after.withinMinutes)} of the start — about ${after.withinKm} km as the crow flies. That is an estimate, not a routed time.`,
+    );
+  } else if (
+    after.withinKm !== before.withinKm &&
+    after.withinKm !== undefined
+  ) {
     out.push(`Staying within ${after.withinKm} km.`);
   }
   if (after.appetite !== before.appetite && after.appetite) {
@@ -662,6 +710,16 @@ export function heardIn(before: DayBrief, after: DayBrief): string[] {
   for (const caution of cautions) out.push(caution);
   return out;
 }
+
+/** `30 minutes`, `an hour`, `2 hours` — a length of travel, in words. */
+export const travelPhrase = (minutes: number): string => {
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes === 60) return "an hour";
+  const hours = minutes / 60;
+  return Number.isInteger(hours)
+    ? `${hours} hours`
+    : `${hours.toFixed(1)} hours`;
+};
 
 export const partyPhrase = (party: Party): string =>
   ({

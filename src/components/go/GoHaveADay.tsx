@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Bookmark,
@@ -21,6 +28,7 @@ import {
   replacedStop,
   reviseBrief,
   stopCountChange,
+  travelPhrase,
   type BriefContext,
   type DayBrief,
   type Party,
@@ -33,7 +41,12 @@ import {
   type PlanWeather,
 } from "@/domain/day/build";
 import { OFFLINE_MODES, modeById } from "./modes";
-import { townById } from "@/domain/discovery/towns";
+import { TOWN_GROUPS, townById } from "@/domain/discovery/towns";
+import { nearestTown } from "@/domain/day/intent";
+import { needsStart } from "@/domain/day/start";
+import { distanceKm } from "@/lib/environment/geo";
+import { useHere } from "@/lib/location/useHere";
+import { AtlasRecovery } from "./AtlasRecovery";
 import { ZONE } from "@/domain/experience/eventTime";
 import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
 import { offlineHref } from "@/lib/detox/day";
@@ -103,6 +116,13 @@ const PARTIES: readonly {
   { party: "friends", label: "Friends", says: "with friends" },
 ];
 
+/** What it takes to take a change back. */
+interface Snapshot {
+  readonly draft: string;
+  readonly brief: DayBrief | null;
+  readonly shaping: Shaping;
+}
+
 interface Shaping {
   readonly without: readonly string[];
   readonly keep: readonly string[];
@@ -152,9 +172,27 @@ const firstRead = (key: string): string | null => {
  * address asked, and never sends it anywhere. The server renders the fresh
  * day; the saved one replaces it once the browser can read storage.
  */
+/** Where this tab keeps the shaped day for one `/go` address. */
+const memoryKeyFor = (a: {
+  readonly say?: string | undefined;
+  readonly mode?: string | undefined;
+  readonly age?: number | undefined;
+  readonly at?: string | undefined;
+  readonly on: string;
+  readonly keep: readonly string[];
+}) =>
+  `ghad.go:${[a.say, a.mode, a.age, a.at, a.on, a.keep.join(",")].join("|")}`;
+
 export function GoHaveADay(props: GoProps) {
   const { initialSay, initialMode, childAge, townId, on, today, keep } = props;
-  const memoryKey = `ghad.go:${[initialSay, initialMode, childAge, townId, on ?? today, (keep ?? []).join(",")].join("|")}`;
+  const memoryKey = memoryKeyFor({
+    say: initialSay,
+    mode: initialMode,
+    age: childAge,
+    at: townId,
+    on: on ?? today,
+    keep: keep ?? [],
+  });
   // Read once per visit: the day being shaped writes to the same key, and
   // re-reading it mid-visit would only remount what is already on screen.
   const raw = useSyncExternalStore(
@@ -192,10 +230,13 @@ function ShapedDay({
   townId,
   on,
   simulatedWeather,
+  atlas = "ok",
   keep = NONE,
   memoryKey,
   saved,
 }: {
+  /** `unreachable` when Atlas did not answer: say so, build nothing. */
+  readonly atlas?: "ok" | "unreachable";
   /** Where this tab keeps the shaped day (`sessionStorage`). */
   readonly memoryKey: string;
   /** The day this tab shaped last time it was at this address. */
@@ -230,6 +271,8 @@ function ShapedDay({
   const fresh: Shaping = keep.length > 0 ? { ...FRESH, keep } : FRESH;
 
   const [draft, setDraft] = useState(saved?.draft ?? seed);
+  /** The sentence the day on screen was built from (`draft` is the live box). */
+  const [built, setBuilt] = useState(saved?.draft ?? seed);
   const [brief, setBrief] = useState<DayBrief | null>(() =>
     saved ? saved.brief : seed ? readBrief(seed, fallback, context()) : null,
   );
@@ -243,6 +286,11 @@ function ShapedDay({
   const [noted, setNoted] = useState<{ text: string; query: string } | null>(
     null,
   );
+  /** The last thing they did, so it can be taken back. */
+  const [undo, setUndo] = useState<Snapshot | null>(null);
+  const router = useRouter();
+  const [asking, startAsking] = useTransition();
+  const here = useHere();
   const [fetched, setFetched] = useState<{
     key: string;
     weather: PlanWeather | null;
@@ -301,9 +349,13 @@ function ShapedDay({
     }
   }, [memoryKey, saved, draft, brief, shaping, by]);
 
+  // **No starting point, no day.** A day built with nowhere to start spans the
+  // province, so until there is a town — said, carried in, or chosen — the page
+  // asks (`StartPanel`). It never picks one.
+  const starting = brief ? needsStart(brief) : false;
   const day = useMemo(
     () =>
-      brief
+      brief && !starting
         ? buildDay({
             pool,
             brief,
@@ -316,7 +368,7 @@ function ShapedDay({
             ...(weather ? { weather } : {}),
           })
         : null,
-    [pool, brief, shaping, weather, keep],
+    [pool, brief, starting, shaping, weather, keep],
   );
 
   const alternatives = useMemo(
@@ -341,21 +393,132 @@ function ShapedDay({
    * the phone in the glovebox have to be the day somebody looked at.
    */
   const query = brief && day ? writeDayQuery(dayQueryFor(brief, day, by)) : "";
-  const remember = () => setBefore(ids);
+  /** Everything needed to put the day back exactly as it was. */
+  const snapshot = () => setUndo({ draft: built, brief, shaping });
+  const remember = () => {
+    snapshot();
+    setBefore(ids);
+  };
   /** A small edit speaks for itself; an old reply would only mislead. */
   const quiet = () => {
+    snapshot();
     setReply([]);
     setBefore(null);
+  };
+  const takeBack = () => {
+    if (!undo) return;
+    setDraft(undo.draft);
+    setBrief(undo.brief);
+    setShaping(undo.shaping);
+    setSwapping(undefined);
+    setBefore(null);
+    setReply(["Taken back."]);
+    setBuilt(undo.draft);
+    setUndo(null);
+  };
+
+  /**
+   * **A different child means a different Atlas answer**, because Atlas is
+   * what says where a six-year-old is admitted. So the page is read again for
+   * that age — and the shaped day goes with it: the new address finds it in
+   * this tab's storage, so nothing kept, set or ordered is lost on the way.
+   */
+  const carryToAge = (next: DayBrief, nextShaping: Shaping, said: string) => {
+    const age = next.childAge;
+    if (age === undefined) return false;
+    const params = new URLSearchParams();
+    params.set("say", next.said);
+    params.set("age", String(age));
+    if (next.town) params.set("at", next.town.id);
+    params.set("on", day0);
+    if (keep.length > 0) params.set("with", keep.join(","));
+    const key = memoryKeyFor({
+      say: next.said,
+      age,
+      at: next.town?.id,
+      on: day0,
+      keep,
+    });
+    try {
+      window.sessionStorage.setItem(
+        key,
+        JSON.stringify({
+          draft: said,
+          brief: next,
+          shaping: nextShaping,
+          by,
+        } satisfies Saved),
+      );
+    } catch {
+      return false;
+    }
+    setReply([
+      `Asking Atlas where a ${age}-year-old is admitted — your kept stops come with you.`,
+    ]);
+    startAsking(() => router.push(`/go?${params.toString()}`));
+    return true;
+  };
+
+  /** What this tab already knows about the start and the child. */
+  const known: Partial<DayBrief> = {
+    ...fallback,
+    ...(brief?.town ? { town: brief.town } : {}),
+    ...(brief?.childAge !== undefined ? { childAge: brief.childAge } : {}),
   };
 
   const start = (said: string) => {
     if (!said.trim()) return;
-    setShaping(fresh);
+    const next = readBrief(said, known, context());
+    // **A new sentence is not permission to throw the day away.** What was
+    // kept stays kept; the rest is rebuilt from the new words, and the old
+    // day can be taken back.
+    const kept = day
+      ? shaping.keep.filter((id) =>
+          day.stops.some((s) => s.experience.id === id),
+        )
+      : [];
+    const nextShaping: Shaping = {
+      ...fresh,
+      keep: [...new Set([...fresh.keep, ...kept])],
+    };
+    if (brief) snapshot();
     setSwapping(undefined);
-    setReply([]);
     setBefore(null);
-    setBrief(readBrief(said, fallback, context()));
+    const named = kept
+      .map((id) => pool.find((e) => e.id === id)?.title)
+      .filter(Boolean);
+    if (next.childAge !== undefined && next.childAge !== childAge) {
+      if (carryToAge(next, nextShaping, said)) return;
+    }
+    setShaping(nextShaping);
+    setReply(
+      named.length > 0
+        ? [`Rebuilt from your new sentence. Still kept: ${named.join(", ")}.`]
+        : [],
+    );
+    setBrief(next);
     setDraft(said);
+    setBuilt(said);
+  };
+
+  /** Starting somewhere: chosen by the person, never inferred. */
+  const startFrom = (townId: string) => {
+    const town = townById(townId);
+    if (!brief || !town) return;
+    setBrief({ ...brief, town });
+    setReply([]);
+  };
+
+  /** Plan without something nothing Atlas holds offers — only when asked to. */
+  const planWithout = (activity: string) => {
+    if (!brief) return;
+    snapshot();
+    setBrief({
+      ...brief,
+      interests: brief.interests.filter((i) => i !== activity),
+      setAside: [...(brief.setAside ?? []), activity],
+    });
+    setReply([`Planning without ${activity}.`]);
   };
 
   /** One sentence, routed to whichever part of the day it is about. */
@@ -398,6 +561,10 @@ function ShapedDay({
 
     const next = reviseBrief(brief, said, context());
     const heard = heardIn(brief, next);
+    if (next.childAge !== brief.childAge && next.childAge !== childAge) {
+      remember();
+      if (carryToAge(next, { ...shaping, order: null }, said)) return;
+    }
     if (heard.length === 0) {
       setReply([
         "I didn't catch a change in that. Try “home by 5”, “no hiking”, “cheaper”, “just the two of us”, or “swap the second”.",
@@ -411,7 +578,7 @@ function ShapedDay({
     // new set of stops.
     setShaping((s) => ({ ...s, order: null }));
     setSwapping(undefined);
-    setReply(heard);
+    setReply([...heard, ...keptNote(brief, next, shaping.keep, pool)]);
   };
 
   const controls: StopControls = {
@@ -545,6 +712,13 @@ function ShapedDay({
       setNoted({ query, text: "Couldn't copy it — print it instead." });
     }
   };
+  const unmetNow = day?.unmet ?? [];
+  const retryParams = new URLSearchParams();
+  if (draft.trim()) retryParams.set("say", draft.trim());
+  if (childAge !== undefined) retryParams.set("age", String(childAge));
+  if (townId) retryParams.set("at", townId);
+  if (on) retryParams.set("on", on);
+  if (keep.length > 0) retryParams.set("with", keep.join(","));
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-12 lg:px-10">
@@ -593,10 +767,34 @@ function ShapedDay({
         </button>
       </form>
 
+      {atlas === "unreachable" && (
+        <AtlasRecovery
+          said={draft.trim()}
+          retryHref={`/go?${retryParams.toString()}`}
+        />
+      )}
+
+      {brief && starting && atlas !== "unreachable" && (
+        <StartPanel
+          brief={brief}
+          near={
+            here.at
+              ? nearestTown(
+                  { latitude: here.at.latitude, longitude: here.at.longitude },
+                  distanceKm,
+                )
+              : undefined
+          }
+          located={Boolean(here.at)}
+          onAskLocation={here.ask}
+          onStart={startFrom}
+        />
+      )}
+
       {/* The six doors. Each is a sentence, read by the same parser — see
           `modes.ts`. Folded away once there is a day, because by then the
           day is the thing. */}
-      {!day && (
+      {!brief && atlas !== "unreachable" && (
         <div className="mt-8">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
             Or pick a shape of day
@@ -628,15 +826,22 @@ function ShapedDay({
         </div>
       )}
 
-      {day && brief && (
+      {atlas !== "unreachable" && day && brief && (
         <section
           data-testid="go-day"
           className="mt-10 border-t border-black/10 pt-8"
         >
           <WorkingFrom brief={brief} day={day} />
-          <Who brief={brief} onSay={talk} today={day0} />
+          <Who brief={brief} onSay={talk} />
           {weather && <Forecast weather={weather} />}
-          {day.stops.length > 0 && (
+          {unmetNow.length > 0 && (
+            <NotFound
+              day={day}
+              onSetAside={planWithout}
+              onWider={() => talk("go further")}
+            />
+          )}
+          {(day.stops.length > 0 || unmetNow.length > 0) && (
             <div
               className="mt-6 rounded-2xl bg-black/[0.03] p-4"
               data-testid="go-talk"
@@ -672,7 +877,18 @@ function ShapedDay({
                   className="mt-2 text-[14px] text-black/70"
                 >
                   {[...reply, ...(changed ? [changed] : [])].join(" ")}
+                  {asking && " …"}
                 </p>
+              )}
+              {undo && (
+                <button
+                  type="button"
+                  data-testid="go-undo"
+                  onClick={takeBack}
+                  className="mt-2 inline-flex min-h-10 items-center rounded-full px-4 text-[13px] font-semibold text-[#111] ring-1 ring-black/30 ring-inset hover:ring-black/60"
+                >
+                  Undo that
+                </button>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {REVISIONS.map((label) => (
@@ -699,7 +915,10 @@ function ShapedDay({
             </div>
           )}
 
-          <div className="mt-8">
+          <div
+            className="mt-8"
+            hidden={day.stops.length === 0 && unmetNow.length > 0}
+          >
             <DayItinerary
               day={day}
               by={by}
@@ -797,7 +1016,7 @@ function WorkingFrom({
   day,
 }: {
   readonly brief: DayBrief;
-  readonly day: DayPlanned;
+  readonly day?: DayPlanned;
 }) {
   const chips: { label: string; assumed?: boolean }[] = [];
   if (brief.hours !== undefined)
@@ -807,8 +1026,10 @@ function WorkingFrom({
     chips.push({
       label: brief.startsNow
         ? `Leaving now (${clockLabel(brief.startAt)})`
-        : `Leave ${clockLabel(brief.startAt)}`,
-      ...(brief.startsNow ? { assumed: true } : {}),
+        : brief.startFromWhen
+          ? `Leave ${clockLabel(brief.startAt)} — ${brief.when === "evening" ? "tonight" : `this ${brief.when}`}`
+          : `Leave ${clockLabel(brief.startAt)}`,
+      ...(brief.startsNow || brief.startFromWhen ? { assumed: true } : {}),
     });
   if (brief.homeBy !== undefined)
     chips.push({ label: `Home by ${clockLabel(brief.homeBy)}` });
@@ -827,7 +1048,14 @@ function WorkingFrom({
   if (brief.appetite) chips.push({ label: brief.appetite });
   for (const interest of brief.interests) chips.push({ label: interest });
   for (const no of brief.avoid ?? []) chips.push({ label: `no ${no}` });
-  if (day.radiusKm !== undefined && brief.town)
+  for (const aside of brief.setAside ?? [])
+    chips.push({ label: `planning without ${aside}`, assumed: true });
+  if (brief.withinMinutes !== undefined)
+    chips.push({
+      label: `Up to ${travelPhrase(brief.withinMinutes)} away — about ${brief.withinKm} km, an estimate`,
+      assumed: true,
+    });
+  else if (day?.radiusKm !== undefined && brief.town)
     chips.push({
       label: day.radiusAssumed
         ? `within ${day.radiusKm} km — the plan's circle`
@@ -862,21 +1090,11 @@ function WorkingFrom({
 function Who({
   brief,
   onSay,
-  today,
 }: {
   readonly brief: DayBrief;
   readonly onSay: (said: string) => void;
-  readonly today: string;
 }) {
   const askAge = brief.party === "family" && brief.childAge === undefined;
-  const ageHref = (age: number) => {
-    const params = new URLSearchParams();
-    params.set("say", brief.said);
-    params.set("age", String(age));
-    if (brief.town) params.set("at", brief.town.id);
-    params.set("on", brief.on ?? today);
-    return `/go?${params.toString()}`;
-  };
   return (
     <div className="mt-4" data-testid="go-who">
       <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
@@ -904,18 +1122,168 @@ function Who({
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {[2, 4, 6, 8, 10, 12, 14].map((age) => (
-              <Link
+              <button
                 key={age}
-                href={ageHref(age)}
+                type="button"
+                onClick={() => onSay(`youngest is ${age}`)}
                 data-testid={`go-age-${age}`}
                 className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full px-3 text-[13px] font-semibold text-black/65 ring-1 ring-black/15 ring-inset hover:ring-black/45"
               >
                 {age}
-              </Link>
+              </button>
             ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * **Where does the adventure begin?** Asked, because a day built from nowhere
+ * spans the province (M200: Vancouver, then 173 km, then 83 km more). Every
+ * answer is the person's: a town they tap, or — only if they ask — the town
+ * nearest a position the browser gives them. Nothing is guessed, and a
+ * position is never stored or sent.
+ */
+function StartPanel({
+  brief,
+  near,
+  located,
+  onAskLocation,
+  onStart,
+}: {
+  readonly brief: DayBrief;
+  readonly near: ReturnType<typeof nearestTown>;
+  readonly located: boolean;
+  readonly onAskLocation: (() => void) | undefined;
+  readonly onStart: (townId: string) => void;
+}) {
+  return (
+    <section
+      data-testid="go-where"
+      className="mt-10 border-t border-black/10 pt-8"
+    >
+      <WorkingFrom brief={brief} />
+      <h2 className="ghad-display mt-6 text-[28px] leading-tight font-extrabold tracking-[-0.03em] text-[#111]">
+        Where does the adventure begin?
+      </h2>
+      <p className="mt-2 max-w-[58ch] text-[15px] leading-relaxed text-black/60">
+        I&apos;ve kept what you said. A day needs somewhere to start from, or it
+        could span the whole province, and I won&apos;t pick that for you.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {onAskLocation && !located && (
+          <button
+            type="button"
+            data-testid="go-use-location"
+            onClick={onAskLocation}
+            className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
+          >
+            Use my location
+          </button>
+        )}
+        {located && near && (
+          <button
+            type="button"
+            data-testid="go-start-nearest"
+            onClick={() => onStart(near.town.id)}
+            className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
+          >
+            Start from {near.town.name.replace(/,\s*BC$/, "")} — nearest to you
+          </button>
+        )}
+        {located && !near && (
+          <p data-testid="go-start-far" className="text-[14px] text-black/60">
+            You&apos;re not near a town Passport covers yet — pick one below.
+          </p>
+        )}
+        <p className="text-[12px] text-black/45">
+          Your position never leaves this browser and is not stored.
+        </p>
+      </div>
+      {TOWN_GROUPS.map((group) => (
+        <div key={group.area} className="mt-5">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+            {group.area}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {group.towns.map((town) => (
+              <li key={town.id}>
+                <button
+                  type="button"
+                  data-testid={`go-start-${town.id}`}
+                  onClick={() => onStart(town.id)}
+                  className="inline-flex min-h-10 items-center rounded-full px-4 text-[14px] font-semibold text-black/70 ring-1 ring-black/15 ring-inset hover:ring-black/50"
+                >
+                  {town.name.replace(/,\s*BC$/, "")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/**
+ * **"We couldn't find that."** Said before anything else is offered, with
+ * what Atlas does know, and with the one honest way forward that keeps the
+ * request visible: plan without it, because the person said to.
+ */
+function NotFound({
+  day,
+  onSetAside,
+  onWider,
+}: {
+  readonly day: DayPlanned;
+  readonly onSetAside: (activity: string) => void;
+  readonly onWider: () => void;
+}) {
+  const unmet = day.unmet ?? [];
+  return (
+    <div
+      data-testid="go-not-found"
+      role="status"
+      className="mt-6 rounded-2xl bg-amber-50 p-5 text-amber-950 ring-1 ring-amber-900/20 ring-inset"
+    >
+      <h2 className="ghad-display text-[22px] leading-tight font-extrabold tracking-[-0.02em]">
+        Nothing for {unmet.map((u) => u.activity).join(" or ")} — so there
+        isn&apos;t a day to offer yet
+      </h2>
+      <p
+        data-testid="go-not-found-says"
+        className="mt-2 text-[15px] leading-relaxed"
+      >
+        {day.opening}
+      </p>
+      <p className="mt-2 text-[14px] text-amber-950/70">
+        I haven&apos;t swapped in something else. You asked for{" "}
+        {unmet.map((u) => u.activity).join(" and ")}; that stays on the page
+        until you tell me otherwise.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {unmet.map((u) => (
+          <button
+            key={u.activity}
+            type="button"
+            data-testid={`go-without-${u.activity.replace(/\W+/g, "-")}`}
+            onClick={() => onSetAside(u.activity)}
+            className="inline-flex min-h-10 items-center rounded-full bg-[#111] px-4 text-[13px] font-semibold text-white"
+          >
+            Plan the day without {u.activity}
+          </button>
+        ))}
+        <button
+          type="button"
+          data-testid="go-wider"
+          onClick={onWider}
+          className="inline-flex min-h-10 items-center rounded-full px-4 text-[13px] font-semibold text-[#111] ring-1 ring-black/30 ring-inset"
+        >
+          Look further out
+        </button>
+      </div>
     </div>
   );
 }
@@ -942,6 +1310,20 @@ function Forecast({ weather }: { readonly weather: PlanWeather }) {
       </span>
     </p>
   );
+}
+
+/** A change of town leaves what they kept alone — and says it did. */
+function keptNote(
+  before: DayBrief,
+  after: DayBrief,
+  keep: readonly string[],
+  pool: readonly Experience[],
+): string[] {
+  if (after.town?.id === before.town?.id) return [];
+  const names = keep
+    .map((id) => pool.find((e) => e.id === id)?.title)
+    .filter((t): t is string => Boolean(t));
+  return names.length > 0 ? [`Still kept: ${names.join(", ")}.`] : [];
 }
 
 /** What changed in the stops, in a sentence. */

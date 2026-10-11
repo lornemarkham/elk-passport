@@ -24,6 +24,8 @@ export type CarriedBrief = Pick<
   | "appetite"
   | "cautions"
   | "withinKm"
+  | "withinMinutes"
+  | "setAside"
   | "lessDriving"
 >;
 
@@ -41,6 +43,10 @@ export function carryBrief(brief: DayBrief): string {
     ...(brief.appetite ? { appetite: brief.appetite } : {}),
     ...(brief.cautions?.length ? { cautions: brief.cautions } : {}),
     ...(brief.withinKm !== undefined ? { withinKm: brief.withinKm } : {}),
+    ...(brief.withinMinutes !== undefined
+      ? { withinMinutes: brief.withinMinutes }
+      : {}),
+    ...(brief.setAside?.length ? { setAside: brief.setAside } : {}),
     ...(brief.lessDriving ? { lessDriving: true } : {}),
   };
   return JSON.stringify(carried);
@@ -73,6 +79,8 @@ export function uncarryBrief(raw: string | undefined): Partial<CarriedBrief> {
   const startAt = num(v.startAt, 24 * 60);
   const homeBy = num(v.homeBy, 24 * 60);
   const withinKm = num(v.withinKm, 1000);
+  const withinMinutes = num(v.withinMinutes, 24 * 60);
+  const setAside = words(v.setAside, 6);
   const interests = words(v.interests);
   const avoid = words(v.avoid);
   const cautions = words(v.cautions, 6);
@@ -95,6 +103,8 @@ export function uncarryBrief(raw: string | undefined): Partial<CarriedBrief> {
       : {}),
     ...(cautions ? { cautions } : {}),
     ...(withinKm !== undefined ? { withinKm } : {}),
+    ...(withinMinutes !== undefined ? { withinMinutes } : {}),
+    ...(setAside ? { setAside } : {}),
     ...(v.lessDriving === true ? { lessDriving: true } : {}),
   };
 }

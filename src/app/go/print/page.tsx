@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { readBrief } from "@/domain/day/brief";
 import { buildDay } from "@/domain/day/build";
 import { resolvePrintDay } from "@/lib/go/printDay";
+import { AtlasRecovery } from "@/components/go/AtlasRecovery";
 import { PrintableAdventure } from "@/components/adventure/PrintableAdventure";
 import { printableFromDay } from "@/lib/analog/printable";
 import {
@@ -58,8 +59,19 @@ type Props = {
 export default async function PrintPage({ searchParams }: Props) {
   const resolved = await resolvePrintDay((await searchParams) ?? {});
   if (resolved.kind === "unreachable") {
-    // As before: with Atlas down there is no honest paper to print.
-    throw new Error("Atlas is unreachable; the day cannot be printed");
+    // With Atlas down there is no honest paper to print — so say that, and
+    // keep the day's address so "Try again" returns to the same paper.
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries((await searchParams) ?? {})) {
+      if (typeof value === "string") params.set(key, value);
+    }
+    return (
+      <AtlasRecovery
+        what="print this day"
+        retryHref={`/go/print?${params.toString()}`}
+        {...(resolved.query.say ? { said: resolved.query.say } : {})}
+      />
+    );
   }
   if (resolved.kind === "none") {
     return (
