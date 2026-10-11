@@ -9,7 +9,7 @@ import { gallery } from "@/lib/design-lab/sample";
  */
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Design lab — three directions" };
+export const metadata: Metadata = { title: "Design lab — six directions" };
 
 /**
  * **Six directions, one corpus, no decision.**
