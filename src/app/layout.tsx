@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AdminNavEntry } from "@/components/admin/AdminNavEntry";
+import { Measurement } from "@/components/analytics/Measurement";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -56,6 +57,18 @@ export default function RootLayout({
         <QueryProvider>{children}</QueryProvider>
         <Toaster />
         <AdminNavEntry />
+        {/* First-party, cookieless, query strings stripped. See `Measurement`
+            for why it is this and not GTM, GA4 and session replay.
+
+            **Only on Vercel**, because only Vercel serves the scripts:
+            `/_vercel/insights/script.js` is injected by the platform, so a
+            local `next start` answered 404 twice on every page load and the
+            NFR suite's "nothing is quietly broken" assertion caught it. A tag
+            that cannot load is not worth shipping to a developer's machine,
+            and the alternative — teaching the test to ignore two 404s —
+            would have blunted the one assertion that notices broken
+            requests. */}
+        {process.env.VERCEL && <Measurement />}
       </body>
     </html>
   );
