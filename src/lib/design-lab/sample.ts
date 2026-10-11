@@ -3,6 +3,7 @@ import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { Experience } from "@/domain/experience/types";
 import { placeLabel, areaLabel, whereLine } from "@/domain/discovery/compose";
+import { recurrenceLine } from "@/domain/discovery/recurrence";
 
 /**
  * **Real Atlas content for the design sandbox, and nothing else.**
@@ -35,6 +36,14 @@ export interface Subject {
   /** Free-text key facts Atlas holds, label and value, unedited. */
   readonly facts: readonly { readonly label: string; readonly value: string }[];
   readonly startTime?: string;
+  /** `[longitude, latitude]` where Atlas states them. For real distances. */
+  readonly coordinates?: readonly [number, number];
+  /** Atlas's stated recurrence, in its own weekday names. */
+  readonly recurs?: string;
+  /** Atlas says its own sentence adds nothing. Shown small, or not at all. */
+  readonly weakBlurb?: boolean;
+  /** Atlas's verdict words for this subject's environment, where stated. */
+  readonly outdoor?: boolean;
 }
 
 function subjectOf(experience: Experience): Subject {
@@ -62,6 +71,16 @@ function subjectOf(experience: Experience): Subject {
       .map((fact) => ({ label: fact.label, value: fact.value }))
       .slice(0, 6),
     ...(experience.startTime ? { startTime: experience.startTime } : {}),
+    ...(experience.geography?.coordinates
+      ? { coordinates: experience.geography.coordinates }
+      : {}),
+    ...(recurrenceLine(experience)
+      ? { recurs: recurrenceLine(experience)! }
+      : {}),
+    ...(knowledge?.descriptionAddsKnowledge === false
+      ? { weakBlurb: true }
+      : {}),
+    ...(experience.environment?.setting === "outdoor" ? { outdoor: true } : {}),
   };
 }
 
@@ -152,4 +171,92 @@ export async function subject(id: string): Promise<Subject | undefined> {
   const candidates = await listDiscoveryCandidates().catch(() => []);
   const found = candidates.find((candidate) => candidate.id === id);
   return found ? subjectOf(candidateToExperience(found)) : undefined;
+}
+
+/**
+ * **Discovery themes, populated only where Atlas actually supports them.**
+ *
+ * The temptation in a horizontally-scrolling design is to invent five rails
+ * and fill them by repeating the same twelve photogenic parks. Each theme here
+ * has a stated basis, a theme with nothing behind it is simply absent, and a
+ * subject appears in **at most one** rail — so a row is never padded with
+ * something the row above already showed.
+ */
+export interface Theme {
+  readonly key: string;
+  readonly title: string;
+  /** What makes these belong together, in evidence terms. */
+  readonly basis: string;
+  readonly subjects: readonly Subject[];
+}
+
+export function themes(
+  featured: readonly Subject[],
+  now: Date,
+  /** Already shown elsewhere on the page — a hero, usually. Never repeated. */
+  taken: readonly string[] = [],
+): Theme[] {
+  const spoken = new Set<string>(taken);
+  const take = (
+    key: string,
+    title: string,
+    basis: string,
+    matches: (subject: Subject) => boolean,
+    least = 4,
+  ): Theme | undefined => {
+    const subjects = featured
+      .filter((subject) => !spoken.has(subject.id) && matches(subject))
+      // **Capped.** One broad theme matching 28 subjects would eat the page
+      // and leave the specific shelves below it empty.
+      .slice(0, 12);
+    if (subjects.length < least) return undefined;
+    for (const subject of subjects) spoken.add(subject.id);
+    return { key, title, basis, subjects };
+  };
+
+  const today = now.toISOString().slice(0, 10);
+  const fortnight = new Date(now.getTime() + 14 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+
+  return [
+    take(
+      "soon",
+      "Happening soon",
+      "Atlas states a start date inside the next fortnight",
+      (s) =>
+        Boolean(
+          s.startTime &&
+          s.startTime.slice(0, 10) >= today &&
+          s.startTime.slice(0, 10) <= fortnight,
+        ),
+      3,
+    ),
+    take(
+      "outdoors",
+      "Outdoor adventures",
+      "Atlas states the setting is outdoor",
+      (s) => Boolean(s.outdoor),
+      3,
+    ),
+    take(
+      "different",
+      "Something different",
+      "Atlas states a verb almost nothing else offers",
+      (s) => s.doing.length === 1 && Boolean(s.facts.length),
+      3,
+    ),
+    take(
+      "doing",
+      "Somewhere to do something",
+      "Atlas states at least two things you can do there",
+      (s) => s.doing.length >= 2,
+    ),
+    take(
+      "named",
+      "Worth the drive",
+      "Atlas states a town for these, and a photograph it vouches for",
+      (s) => Boolean(s.place && s.heroUrl),
+    ),
+  ].filter((theme): theme is Theme => Boolean(theme));
 }

@@ -9,10 +9,10 @@ import { gallery } from "@/lib/design-lab/sample";
  */
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Design lab — six directions" };
+export const metadata: Metadata = { title: "Design lab — nine directions" };
 
 /**
- * **Six directions, one corpus, no decision.**
+ * **Nine directions, one corpus, no decision.**
  *
  * Every prototype behind this page renders the **same real Atlas subjects** —
  * the same photograph of Kalamoir Park, the same sentence Atlas holds about
@@ -34,6 +34,47 @@ interface Direction {
   readonly ink: string;
   readonly bg: string;
 }
+
+/**
+ * Round three: pure white, big photography, big sans, horizontal movement.
+ * Built because none of the first six felt right — the common note was that
+ * the interface was doing work the places should be doing.
+ */
+const ROUND_THREE: readonly Direction[] = [
+  {
+    key: "open-canvas",
+    href: "/labs/design/v3/open-canvas",
+    name: "Open Canvas",
+    line: "White, and almost nothing on it but photographs. A near-full-width opener, then a tall pair, a wide one, a trio — size is the only rhythm.",
+    distinct:
+      "No container around the picture at all. On a phone the pairs and trios become swipeable shelves rather than stacking.",
+    swatches: ["#ffffff", "#000000", "#e5e5e5"],
+    ink: "#000000",
+    bg: "#ffffff",
+  },
+  {
+    key: "swipe",
+    href: "/labs/design/v3/swipe",
+    name: "Swipe & Discover",
+    line: "The whole page is shelves. Cards nearly fill the viewport with the next one peeking, and each row states what makes its contents belong together.",
+    distinct:
+      "No vertical list anywhere. Proportions change per shelf — 3:2, then 4:5, then square — so moving down changes shape as well as subject.",
+    swatches: ["#ffffff", "#000000", "#d4d4d4"],
+    ink: "#000000",
+    bg: "#ffffff",
+  },
+  {
+    key: "engine",
+    href: "/labs/design/v3/engine",
+    name: "The Discovery Engine",
+    line: "Finding is the hero. One enormous question, four plain answers, then photographs that each say why they are there.",
+    distinct:
+      "The only one where the interface does the work: no text box (Passport cannot honour free text) and no checkbox panel. Every result carries its reason.",
+    swatches: ["#ffffff", "#000000", "#1d4ed8"],
+    ink: "#000000",
+    bg: "#ffffff",
+  },
+];
 
 /** Round two, built from what round one taught us. Newest first. */
 const ROUND_TWO: readonly Direction[] = [
@@ -121,10 +162,10 @@ export default async function DesignLab() {
           Passport · design lab · exploration
         </p>
         <h1 className="font-heading mt-3 max-w-[20ch] text-[2.4rem] leading-[1] tracking-[-0.03em] text-balance sm:text-[3.6rem]">
-          Six directions for Discovery
+          Nine directions for Discovery
         </h1>
         <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-white/60">
-          All six render the same {total.toLocaleString("en-CA")} real subjects
+          All nine render the same {total.toLocaleString("en-CA")} real subjects
           from Atlas — the same photographs, the same sentences, the same verbs.
           Nothing is invented. These are explorations rather than decisions, and
           the production Discovery is unchanged at{" "}
@@ -134,6 +175,12 @@ export default async function DesignLab() {
           .
         </p>
 
+        <Round
+          title="Round three"
+          note="Pure white, big photography, big sans, horizontal movement. Built because none of the first six felt right: the interface was doing work the places should be doing."
+          directions={ROUND_THREE}
+          example={example}
+        />
         <Round
           title="Round two"
           note="Built from the round-one feedback: keep the big photographs and the sophistication, lose the heavy shadows and thick borders."
@@ -154,7 +201,7 @@ export default async function DesignLab() {
           <ul className="mt-3 flex max-w-[70ch] list-disc flex-col gap-2 pl-5 text-[14px] leading-relaxed text-white/60">
             <li>
               Check each at <strong className="text-white/85">375px</strong> and
-              at desktop width. All six are built mobile-first and the
+              at desktop width. All nine are built mobile-first and the
               differences between them change at width — Travel Journal&apos;s
               margin folds above the entry, Immersive Explorer&apos;s rails
               become thumb-width, Editorial Cinematic&apos;s spreads stack.

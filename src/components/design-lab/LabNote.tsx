@@ -21,7 +21,10 @@ export function LabNote({
     | "playful"
     | "editorial-cinematic"
     | "immersive explorer"
-    | "travel journal";
+    | "travel journal"
+    | "open canvas"
+    | "swipe & discover"
+    | "the discovery engine";
   readonly tone?: "light" | "dark";
 }) {
   const dark = tone === "dark";
@@ -41,7 +44,7 @@ export function LabNote({
         exploration, not the product
       </span>
       <Link href="/labs/design" className="underline underline-offset-2">
-        Compare all six
+        Compare all nine
       </Link>
     </div>
   );
