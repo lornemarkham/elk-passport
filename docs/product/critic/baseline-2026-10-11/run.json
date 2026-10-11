@@ -1,0 +1,1669 @@
+{
+  "schema": "ghad-critic/1",
+  "runId": "baseline-2026-10-11",
+  "startedAt": "2026-10-11T18:11:37.292Z",
+  "today": "2026-10-11",
+  "source": {
+    "kind": "atlas-snapshot",
+    "where": "/tmp/candidates.json",
+    "sha256": "64b90c171b81c7693c967e096980f3216a22a17a5d34702651a0e0ff11eeef0d",
+    "candidates": 2979,
+    "fetchedAt": "2026-10-11T17:41:31Z",
+    "onDate": "2026-10-11",
+    "childAge": 5
+  },
+  "code": {
+    "commit": "22f9bc3",
+    "branch": "lane/vision",
+    "dirty": false,
+    "fingerprint": "b903bbe802f33db8"
+  },
+  "cohortFingerprint": "c5494181abd641f3",
+  "pageAsked": {
+    "on": false,
+    "childAge": false
+  },
+  "scenarios": [
+    {
+      "id": "vernon-three-hours",
+      "town": "vernon",
+      "says": "I've got three free hours this afternoon",
+      "heard": {
+        "town": "vernon",
+        "on": "2026-10-11",
+        "circleKm": 30
+      },
+      "title": "Civic Memorial Park to Priest Valley Arena, out of Vernon",
+      "opening": "a day, 3 stops inside 30 km of Vernon, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "60037e26-f2e6-4b5b-957d-e22a77bd7f9f",
+          "title": "Civic Memorial Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 0.3,
+          "legKm": 0.3,
+          "minutes": 75,
+          "because": "What is on offer: playground, picnicking, picnic.",
+          "challenge": "Whoever goes down the slide last buys the next snack.",
+          "photo": true,
+          "verbs": ["Playground", "Picnicking", "Picnic", "Walking/hiking"],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "575e8e59-93a6-44ae-970d-156e70035efd",
+          "title": "Centennial Outdoor Rink",
+          "kind": "Place",
+          "subtype": "rink",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 0.4,
+          "legKm": 0.4,
+          "minutes": 75,
+          "because": "What is on offer: free public skating, parent and tot, shinny.",
+          "challenge": "Pick somebody on the ice and decide their entire life story.",
+          "photo": true,
+          "verbs": [
+            "Free public skating",
+            "Parent and tot",
+            "Shinny",
+            "School District #22 usage"
+          ],
+          "onDate": "not-on",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "unknown (unknown)",
+          "ledger": "not-open-on-date"
+        },
+        {
+          "id": "1526821e-7eb8-44ce-9e68-e6d9b524440a",
+          "title": "Priest Valley Arena",
+          "kind": "Place",
+          "subtype": "arena",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 0.4,
+          "legKm": 0.1,
+          "minutes": 75,
+          "because": "What is on offer: vernon figure skating, speed skating club, ringette.",
+          "challenge": "One lap without holding on. Nobody has to be good at it.",
+          "photo": true,
+          "verbs": [
+            "Vernon Figure Skating",
+            "Speed Skating Club",
+            "ringette",
+            "adult hockey",
+            "public skating",
+            "skating lessons"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "indoor (derived)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.hours",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Said 3 hours; read nothing.",
+          "scenario": "vernon-three-hours",
+          "key": "vernon-three-hours:reading.hours"
+        },
+        {
+          "check": "stop.not-on-date",
+          "dimension": "factual",
+          "basis": "stated",
+          "subject": "575e8e59-93a6-44ae-970d-156e70035efd",
+          "title": "Centennial Outdoor Rink",
+          "detail": "Atlas says it is not on 2026-10-11 (stated-season).",
+          "scenario": "vernon-three-hours",
+          "key": "vernon-three-hours:stop.not-on-date:575e8e59-93a6-44ae-970d-156e70035efd"
+        },
+        {
+          "check": "stop.real-world.not-open-on-date",
+          "dimension": "factual",
+          "basis": "ledger",
+          "subject": "575e8e59-93a6-44ae-970d-156e70035efd",
+          "title": "Centennial Outdoor Rink",
+          "detail": "not-open-on-date — Real, at the Recreation Complex. A seasonal outdoor refrigerated rink with no ice in October. Atlas already says not-on (stated-season). (checked 2026-10-11 by M173 web check (agent): https://www.vernon.ca/node/869673, https://www.vernon.ca/node/872233, https://vernon.ca/sites/default/files/docs/news/241128-Centennial-Outdoor-Rink-open-MR.pdf)",
+          "scenario": "vernon-three-hours",
+          "key": "vernon-three-hours:stop.real-world.not-open-on-date:575e8e59-93a6-44ae-970d-156e70035efd"
+        }
+      ],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 3,
+        "travelKm": 1.2,
+        "travel": {
+          "floor": 1,
+          "likely": 2
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 3,
+        "withHours": 0,
+        "withPrice": 0,
+        "dateKnown": 1,
+        "ageKnown": 0,
+        "ledgerVerified": 2,
+        "farthestKm": 0.4,
+        "onDayNearby": 18,
+        "onDayNearbyAtlas": 18,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Masiero Pizzeria Napoletana (0.5 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Diner On Six (0.8 km)",
+        "Kal Tire Place (1 km)"
+      ],
+      "coverage": {
+        "date": 0.3333333333333333,
+        "realWorld": 0.6666666666666666
+      },
+      "scores": {
+        "factual": 67,
+        "relevance": 50,
+        "variety": 89,
+        "practicality": 67,
+        "adventure": 100,
+        "trust": 100,
+        "overall": 79
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 2,
+          "adventure": 1,
+          "practicality": 2,
+          "hellOfADay": 1
+        },
+        "notes": "Three stops inside 400 m of each other around the Vernon civic centre: a playground, an outdoor rink Atlas itself says is out of season, and an arena with no stated public session. It reads as a map of one city block, not an afternoon. Three free hours on Thanksgiving Sunday, with the Davison Orchards Thanksgiving weekend and U-Pick 2 km away (Atlas says both are on today), deserved better."
+      }
+    },
+    {
+      "id": "vernon-family",
+      "town": "vernon",
+      "says": "A family adventure today with my kids, they're 5 and 8",
+      "heard": {
+        "town": "vernon",
+        "on": "2026-10-11",
+        "appetite": "adventurous",
+        "circleKm": 30
+      },
+      "title": "Civic Memorial Park to Allan Brooks Nature Centre, out of Vernon",
+      "opening": "a day, 3 stops inside 30 km of Vernon, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "60037e26-f2e6-4b5b-957d-e22a77bd7f9f",
+          "title": "Civic Memorial Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 0.3,
+          "legKm": 0.3,
+          "minutes": 75,
+          "because": "What is on offer: playground, picnicking, picnic.",
+          "challenge": "Whoever goes down the slide last buys the next snack.",
+          "photo": true,
+          "verbs": ["Playground", "Picnicking", "Picnic", "Walking/hiking"],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "9591cd4f-9a5f-45aa-9a07-d83c0f22cd79",
+          "title": "Polson Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 0.8,
+          "legKm": 1.1,
+          "minutes": 75,
+          "because": "What is on offer: football, playground, polson artisan market.",
+          "challenge": "Invent a new rule for the climbing frame. Everyone has to follow it.",
+          "photo": true,
+          "verbs": [
+            "Football",
+            "Playground",
+            "Polson Artisan Market",
+            "Walking/hiking",
+            "Skateboarding",
+            "Exploring Science Centre",
+            "Exploring Arts Centre",
+            "Tennis courts",
+            "Lawn bowling",
+            "Artisan market"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac",
+          "title": "Allan Brooks Nature Centre",
+          "kind": "Place",
+          "subtype": "nature centre",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 3.3,
+          "legKm": 2.6,
+          "minutes": 75,
+          "because": "What is on offer: birdwatching, enjoy the picnic area, explore nature trails.",
+          "challenge": "Count how many different birds you hear before anybody speaks.",
+          "photo": true,
+          "verbs": [
+            "Birdwatching",
+            "Enjoy the picnic area",
+            "Explore nature trails",
+            "Hop on the grassland trail",
+            "Interactive exhibits",
+            "Learn about local ecosystems",
+            "Play with interactive exhibits",
+            "Stroll through the indoor exhibits",
+            "Spot songbirds",
+            "Birding",
+            "Play with interactive exhibits in the Discovery Room"
+          ],
+          "onDate": "unknown",
+          "forAge": "described",
+          "rain": "sheltered",
+          "exposure": "indoor (explicit)",
+          "ledger": "not-open-on-date"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.child-age",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Children's ages were said; no age was read, so Atlas was never asked who this suits.",
+          "scenario": "vernon-family",
+          "key": "vernon-family:reading.child-age"
+        },
+        {
+          "check": "stop.real-world.not-open-on-date",
+          "dimension": "factual",
+          "basis": "ledger",
+          "subject": "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac",
+          "title": "Allan Brooks Nature Centre",
+          "detail": "not-open-on-date — Real, at 250 Allan Brooks Way. Closed on Sundays, with a season that ends in October. Atlas reads the date as unknown, so only the real-world check catches this. (checked 2026-10-11 by M173 web check (agent): https://abnc.ca/, https://abnc.ca/about/plan-your-visit/)",
+          "scenario": "vernon-family",
+          "key": "vernon-family:stop.real-world.not-open-on-date:35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac"
+        }
+      ],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 2,
+        "travelKm": 7.2,
+        "travel": {
+          "floor": 6,
+          "likely": 12
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 3,
+        "withHours": 0,
+        "withPrice": 0,
+        "dateKnown": 0,
+        "ageKnown": 1,
+        "ledgerVerified": 2,
+        "farthestKm": 3.3,
+        "onDayNearby": 18,
+        "onDayNearbyAtlas": 18,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Masiero Pizzeria Napoletana (0.5 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Diner On Six (0.8 km)",
+        "Kal Tire Place (1 km)"
+      ],
+      "coverage": {
+        "date": 0,
+        "realWorld": 0.6666666666666666
+      },
+      "scores": {
+        "factual": 67,
+        "relevance": 75,
+        "variety": 78,
+        "practicality": 67,
+        "adventure": 100,
+        "trust": 100,
+        "overall": 81
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 3,
+          "adventure": 2,
+          "practicality": 1,
+          "hellOfADay": 2
+        },
+        "notes": "Two playgrounds 1 km apart, then the Allan Brooks Nature Centre. A family day, but an 'adventure' only in the sense that you leave the house. The children's ages (5 and 8) were said and not read, so Atlas was never asked who any of it suits. The strongest family options Atlas holds for today (U-Pick Pumpkins, Thanksgiving weekend at Davison Orchards, O'Keefe Ranch) never came up. Real-world check: the Allan Brooks Nature Centre is closed on Sundays (open Tuesday to Saturday). Atlas reads its date as unknown, so the family would have driven up the hill to a locked gate."
+      }
+    },
+    {
+      "id": "vernon-unusual",
+      "town": "vernon",
+      "says": "Show me something unusual around Vernon",
+      "heard": {
+        "town": "vernon",
+        "on": "2026-10-11",
+        "appetite": "odd",
+        "circleKm": 30
+      },
+      "title": "Okanagan Science Centre to Rock Garden Climbing Centre, out of Vernon",
+      "opening": "a day, 3 stops inside 30 km of Vernon, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "eacdba44-4971-4095-8456-8409b3fde854",
+          "title": "Okanagan Science Centre",
+          "kind": "Place",
+          "subtype": "venue",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 0.7,
+          "legKm": 0.7,
+          "minutes": 75,
+          "because": "What is on offer: private events.",
+          "photo": true,
+          "verbs": ["Private Events"],
+          "onDate": "on",
+          "forAge": "priced",
+          "rain": "unknown",
+          "exposure": "unknown (unknown)",
+          "ledger": "exists"
+        },
+        {
+          "id": "1e045341-01f4-4640-871e-068455db290e",
+          "title": "19th Avenue Tot Lot",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 1.7,
+          "legKm": 1.1,
+          "minutes": 75,
+          "because": "What is on offer: playground.",
+          "challenge": "Invent a new rule for the climbing frame. Everyone has to follow it.",
+          "photo": true,
+          "verbs": ["Playground"],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "97ad4a91-625f-48ac-a461-fb4342ef451f",
+          "title": "Rock Garden Climbing Centre",
+          "kind": "Organization",
+          "subtype": "indoor climbing facility",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 1.8,
+          "legKm": 0.6,
+          "minutes": 75,
+          "because": "What is on offer: indoor climbing.",
+          "photo": true,
+          "verbs": ["indoor climbing"],
+          "onDate": "unknown",
+          "forAge": "described",
+          "rain": "sheltered",
+          "exposure": "indoor (explicit)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 3,
+        "travelKm": 4.2,
+        "travel": {
+          "floor": 4,
+          "likely": 7
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 1,
+        "withHours": 0,
+        "withPrice": 0,
+        "dateKnown": 1,
+        "ageKnown": 2,
+        "ledgerVerified": 3,
+        "farthestKm": 1.8,
+        "onDayNearby": 17,
+        "onDayNearbyAtlas": 17,
+        "onDayUsed": 1
+      },
+      "missed": [
+        "Masiero Pizzeria Napoletana (0.5 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Diner On Six (0.8 km)",
+        "Kal Tire Place (1 km)",
+        "Lincoln Lanes Bowling (1 km)"
+      ],
+      "coverage": {
+        "date": 0.3333333333333333,
+        "realWorld": 1
+      },
+      "scores": {
+        "factual": 100,
+        "relevance": 100,
+        "variety": 100,
+        "practicality": 67,
+        "adventure": 78,
+        "trust": 100,
+        "overall": 91
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 3,
+          "adventure": 3,
+          "practicality": 3,
+          "hellOfADay": 2
+        },
+        "notes": "The best Vernon day of the five. A science centre and an indoor climbing gym are real things to do. The '19th Avenue Tot Lot' is a neighbourhood playground, picked as 'unusual' because 'weirder' is read as 'fewer stated verbs', which rewards thin records rather than strange places. Nothing in it would make anyone say 'I never thought of that'."
+      }
+    },
+    {
+      "id": "vernon-rainy",
+      "town": "vernon",
+      "says": "It's a rainy afternoon, what can we do?",
+      "heard": {
+        "town": "vernon",
+        "on": "2026-10-11",
+        "shelter": "indoor",
+        "circleKm": 30
+      },
+      "title": "Polson Park to Paddlewheel Park, out of Vernon",
+      "opening": "a day, 3 stops inside 30 km of Vernon, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "9591cd4f-9a5f-45aa-9a07-d83c0f22cd79",
+          "title": "Polson Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 0.8,
+          "legKm": 0.8,
+          "minutes": 75,
+          "because": "Has somewhere to shelter, going by what we know",
+          "challenge": "Whoever goes down the slide last buys the next snack.",
+          "photo": true,
+          "verbs": [
+            "Football",
+            "Playground",
+            "Polson Artisan Market",
+            "Walking/hiking",
+            "Skateboarding",
+            "Exploring Science Centre",
+            "Exploring Arts Centre",
+            "Tennis courts",
+            "Lawn bowling",
+            "Artisan market"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac",
+          "title": "Allan Brooks Nature Centre",
+          "kind": "Place",
+          "subtype": "nature centre",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 3.3,
+          "legKm": 2.6,
+          "minutes": 75,
+          "because": "Under cover, going by what we know",
+          "challenge": "Whoever spots the first bird of prey picks the music home.",
+          "photo": true,
+          "verbs": [
+            "Birdwatching",
+            "Enjoy the picnic area",
+            "Explore nature trails",
+            "Hop on the grassland trail",
+            "Interactive exhibits",
+            "Learn about local ecosystems",
+            "Play with interactive exhibits",
+            "Stroll through the indoor exhibits",
+            "Spot songbirds",
+            "Birding",
+            "Play with interactive exhibits in the Discovery Room"
+          ],
+          "onDate": "unknown",
+          "forAge": "described",
+          "rain": "sheltered",
+          "exposure": "indoor (explicit)",
+          "ledger": "not-open-on-date"
+        },
+        {
+          "id": "daf1b14f-2ad0-44f7-b85b-0f6833f139dc",
+          "title": "Paddlewheel Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 7.3,
+          "legKm": 5.1,
+          "minutes": 75,
+          "because": "Has somewhere to shelter, going by what we know",
+          "cost": "$10.00 per day $60.00 per season*",
+          "challenge": "Put one hand in the water and say what it reminds you of.",
+          "photo": true,
+          "verbs": [
+            "Basketball",
+            "Beach",
+            "Boat launch",
+            "Children’s play-park",
+            "Outdoor fun",
+            "picnic",
+            "Playground",
+            "relaxation",
+            "Swimming",
+            "Tennis",
+            "Tennis courts",
+            "Volleyball",
+            "Volleyball – beach courts",
+            "Boating",
+            "Picnic shelter"
+          ],
+          "onDate": "unknown",
+          "forAge": "described",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (explicit)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "stop.real-world.not-open-on-date",
+          "dimension": "factual",
+          "basis": "ledger",
+          "subject": "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac",
+          "title": "Allan Brooks Nature Centre",
+          "detail": "not-open-on-date — Real, at 250 Allan Brooks Way. Closed on Sundays, with a season that ends in October. Atlas reads the date as unknown, so only the real-world check catches this. (checked 2026-10-11 by M173 web check (agent): https://abnc.ca/, https://abnc.ca/about/plan-your-visit/)",
+          "scenario": "vernon-rainy",
+          "key": "vernon-rainy:stop.real-world.not-open-on-date:35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac"
+        }
+      ],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 2,
+        "travelKm": 15.8,
+        "travel": {
+          "floor": 14,
+          "likely": 27
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 3,
+        "withHours": 0,
+        "withPrice": 1,
+        "dateKnown": 0,
+        "ageKnown": 2,
+        "ledgerVerified": 2,
+        "farthestKm": 7.3,
+        "onDayNearby": 18,
+        "onDayNearbyAtlas": 18,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Masiero Pizzeria Napoletana (0.5 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Diner On Six (0.8 km)",
+        "Kal Tire Place (1 km)"
+      ],
+      "coverage": {
+        "date": 0,
+        "realWorld": 0.6666666666666666
+      },
+      "scores": {
+        "factual": 67,
+        "relevance": 100,
+        "variety": 89,
+        "practicality": 78,
+        "adventure": 100,
+        "trust": 100,
+        "overall": 89
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 2,
+          "adventure": 2,
+          "practicality": 1,
+          "hellOfADay": 1
+        },
+        "notes": "Asked for a rainy afternoon and given two parks, one of them a beach park (Paddlewheel). Both pass Atlas's 'partly sheltered' reading, so neither is an objective failure, but a playground and a beach in the rain are not an answer. Atlas holds 162 placed things it reads as indoor within 30 km of Vernon (the science centre, the climbing gym, Lincoln Lanes bowling, which Atlas says is open today). The builder looks only at the rain reading, which covers 154 subjects, and not at exposure, which covers 2,088. Real-world check: the Allan Brooks Nature Centre, the only indoor stop, is closed on Sundays."
+      }
+    },
+    {
+      "id": "vernon-longer-drive",
+      "town": "vernon",
+      "says": "Something worth a longer drive, I'm happy to go an hour or two",
+      "heard": {
+        "hours": 1,
+        "town": "vernon",
+        "on": "2026-10-11",
+        "circleKm": 15
+      },
+      "title": "Civic Memorial Park to Centennial Outdoor Rink, out of Vernon",
+      "opening": "1 hours, 2 stops inside 15 km of Vernon, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "60037e26-f2e6-4b5b-957d-e22a77bd7f9f",
+          "title": "Civic Memorial Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 0.3,
+          "legKm": 0.3,
+          "minutes": 30,
+          "because": "What is on offer: playground, picnicking, picnic.",
+          "challenge": "Whoever goes down the slide last buys the next snack.",
+          "photo": true,
+          "verbs": ["Playground", "Picnicking", "Picnic", "Walking/hiking"],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "575e8e59-93a6-44ae-970d-156e70035efd",
+          "title": "Centennial Outdoor Rink",
+          "kind": "Place",
+          "subtype": "rink",
+          "locality": "Vernon",
+          "placed": true,
+          "kmFromOrigin": 0.4,
+          "legKm": 0.4,
+          "minutes": 30,
+          "because": "What is on offer: free public skating, parent and tot, shinny.",
+          "challenge": "Pick somebody on the ice and decide their entire life story.",
+          "photo": true,
+          "verbs": [
+            "Free public skating",
+            "Parent and tot",
+            "Shinny",
+            "School District #22 usage"
+          ],
+          "onDate": "not-on",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "unknown (unknown)",
+          "ledger": "not-open-on-date"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.reach",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Asked to go further; the day was drawn inside 15 km (wanted at least 60). Read as 1 hour(s).",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:reading.reach"
+        },
+        {
+          "check": "stop.not-on-date",
+          "dimension": "factual",
+          "basis": "stated",
+          "subject": "575e8e59-93a6-44ae-970d-156e70035efd",
+          "title": "Centennial Outdoor Rink",
+          "detail": "Atlas says it is not on 2026-10-11 (stated-season).",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:stop.not-on-date:575e8e59-93a6-44ae-970d-156e70035efd"
+        },
+        {
+          "check": "stop.real-world.not-open-on-date",
+          "dimension": "factual",
+          "basis": "ledger",
+          "subject": "575e8e59-93a6-44ae-970d-156e70035efd",
+          "title": "Centennial Outdoor Rink",
+          "detail": "not-open-on-date — Real, at the Recreation Complex. A seasonal outdoor refrigerated rink with no ice in October. Atlas already says not-on (stated-season). (checked 2026-10-11 by M173 web check (agent): https://www.vernon.ca/node/869673, https://www.vernon.ca/node/872233, https://vernon.ca/sites/default/files/docs/news/241128-Centennial-Outdoor-Rink-open-MR.pdf)",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:stop.real-world.not-open-on-date:575e8e59-93a6-44ae-970d-156e70035efd"
+        },
+        {
+          "check": "day.does-not-fit",
+          "dimension": "practicality",
+          "basis": "stated",
+          "detail": "2 stops in 1 h, with at least 1 min of driving (1.1 km straight-line, out and back) leaves 59 min — under 30 min a stop.",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:day.does-not-fit"
+        },
+        {
+          "check": "need.worth-the-drive",
+          "dimension": "relevance",
+          "basis": "stated",
+          "detail": "Asked for something worth a longer drive; the farthest placed stop is 0.4 km (wanted one beyond 40 km).",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:need.worth-the-drive"
+        },
+        {
+          "check": "screen.broken-text",
+          "dimension": "trust",
+          "basis": "page",
+          "detail": "\"1 hours\" rendered on the screen: …vic Memorial Park to Centennial Outdoor Rink, out of Vernon 1 hours, 2 stops inside 15 km of Vernon,…",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:screen.broken-text"
+        },
+        {
+          "check": "print.broken-text",
+          "dimension": "trust",
+          "basis": "page",
+          "detail": "\"1 hours\" rendered on the print: …vic Memorial Park to Centennial Outdoor Rink, out of Vernon 1 hours, 2 stops inside 15 km of Vernon,…",
+          "scenario": "vernon-longer-drive",
+          "key": "vernon-longer-drive:print.broken-text"
+        }
+      ],
+      "signals": {
+        "stops": 2,
+        "placed": 2,
+        "distinctKinds": 2,
+        "travelKm": 1.1,
+        "travel": {
+          "floor": 1,
+          "likely": 2
+        },
+        "hoursPlanned": 1,
+        "withPhoto": 2,
+        "withVerbs": 2,
+        "withChallenge": 2,
+        "withHours": 0,
+        "withPrice": 0,
+        "dateKnown": 1,
+        "ageKnown": 0,
+        "ledgerVerified": 1,
+        "farthestKm": 0.4,
+        "onDayNearby": 15,
+        "onDayNearbyAtlas": 15,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Masiero Pizzeria Napoletana (0.5 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Okanagan Science Centre (0.7 km)",
+        "Diner On Six (0.8 km)",
+        "Kal Tire Place (1 km)"
+      ],
+      "coverage": {
+        "date": 0.5,
+        "realWorld": 0.5
+      },
+      "scores": {
+        "factual": 50,
+        "relevance": 25,
+        "variety": 83,
+        "practicality": 33,
+        "adventure": 100,
+        "trust": 50,
+        "overall": 57
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 1,
+          "adventure": 1,
+          "practicality": 1,
+          "hellOfADay": 1
+        },
+        "notes": "The worst day in the cohort, and the clearest one. 'I'm happy to go an hour or two' was read as a one-hour day, so the drive became 400 m. Stop 2 is an outdoor rink Atlas says is not on today, with the challenge 'Pick somebody on the ice'. The paper says '1 hours'. Every step was locally reasonable and the result is the opposite of what was asked."
+      }
+    },
+    {
+      "id": "vancouver-before-meeting",
+      "town": "vancouver",
+      "says": "I have two hours before a meeting downtown",
+      "heard": {
+        "hours": 2,
+        "town": "vancouver",
+        "on": "2026-10-11",
+        "circleKm": 15
+      },
+      "title": "Queen Elizabeth Theatre to Queen Elizabeth Park, out of Vancouver",
+      "opening": "2 hours, 2 stops inside 15 km of Vancouver, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5",
+          "title": "Queen Elizabeth Theatre",
+          "kind": "Place",
+          "subtype": "theatre",
+          "locality": "Vancouver",
+          "placed": true,
+          "kmFromOrigin": 0.7,
+          "legKm": 0.7,
+          "minutes": 60,
+          "because": "What is on offer: opera, musical performances, broadway shows.",
+          "challenge": "Pick the one thing you would steal. Explain yourself.",
+          "photo": true,
+          "verbs": [
+            "opera",
+            "musical performances",
+            "Broadway shows",
+            "art gallery"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "indoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+          "title": "Queen Elizabeth Park",
+          "kind": "Place",
+          "subtype": "municipal park",
+          "placed": true,
+          "kmFromOrigin": 4.5,
+          "legKm": 4.3,
+          "minutes": 60,
+          "because": "What is on offer: pitch and putt golf course, little mountain disc golf course, tennis courts.",
+          "photo": true,
+          "verbs": [
+            "Pitch and putt golf course",
+            "Little Mountain disc golf course",
+            "Tennis courts",
+            "Lawn bowling club",
+            "Tai Chi",
+            "Jogging"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.reach",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Asked to stay close; the day was drawn inside 15 km (wanted at most 5).",
+          "scenario": "vancouver-before-meeting",
+          "key": "vancouver-before-meeting:reading.reach"
+        },
+        {
+          "check": "reading.unheld.downtown",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Said \"downtown\"; the brief has nowhere to hold it, so the day ignores it.",
+          "scenario": "vancouver-before-meeting",
+          "key": "vancouver-before-meeting:reading.unheld.downtown"
+        }
+      ],
+      "signals": {
+        "stops": 2,
+        "placed": 2,
+        "distinctKinds": 2,
+        "travelKm": 9.5,
+        "travel": {
+          "floor": 9,
+          "likely": 16
+        },
+        "hoursPlanned": 2,
+        "withPhoto": 2,
+        "withVerbs": 2,
+        "withChallenge": 1,
+        "withHours": 0,
+        "withPrice": 0,
+        "dateKnown": 0,
+        "ageKnown": 0,
+        "ledgerVerified": 2,
+        "farthestKm": 4.5,
+        "onDayNearby": 15,
+        "onDayNearbyAtlas": 15,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Every River Has a Mouth (0.2 km)",
+        "Dr. Sun Yat-Sen Classical Chinese Garden (1.2 km)",
+        "Vancouver Maritime Museum (2 km)",
+        "Ultimate 90s Night (2.5 km)",
+        "The Sunday Service (2.5 km)"
+      ],
+      "coverage": {
+        "date": 0,
+        "realWorld": 1
+      },
+      "scores": {
+        "factual": 100,
+        "relevance": 67,
+        "variety": 67,
+        "practicality": 67,
+        "adventure": 83,
+        "trust": 100,
+        "overall": 81
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 1,
+          "adventure": 1,
+          "practicality": 1,
+          "hellOfADay": 1
+        },
+        "notes": "An hour 'at' the Queen Elizabeth Theatre with no show (challenge: 'Pick the one thing you would steal'), then 4 km south to Queen Elizabeth Park and its pitch and putt, finishing 4.5 km from the meeting it never heard about. Two hours downtown on a Sunday, with 'Every River Has a Mouth' 200 m from the start and the Maritime Museum 2 km away (Atlas says both are on today), became a day that would make someone late."
+      }
+    },
+    {
+      "id": "vancouver-unusual-downtown",
+      "town": "vancouver",
+      "says": "Something unusual downtown",
+      "heard": {
+        "town": "vancouver",
+        "on": "2026-10-11",
+        "appetite": "odd",
+        "circleKm": 30
+      },
+      "title": "Roedde House to VanDusen Botanical Garden, out of Vancouver",
+      "opening": "a day, 3 stops inside 30 km of Vancouver, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "580e8658-1e0a-468a-8932-921541f20556",
+          "title": "Roedde House",
+          "kind": "Place",
+          "subtype": "Museum/Gallery",
+          "locality": "Vancouver",
+          "placed": true,
+          "kmFromOrigin": 1,
+          "legKm": 1,
+          "minutes": 75,
+          "because": "What is on offer: tour the museum.",
+          "cost": "$10.00",
+          "challenge": "Pick the one thing you would steal. Explain yourself.",
+          "photo": true,
+          "verbs": ["Tour the Museum"],
+          "onDate": "unknown",
+          "forAge": "priced",
+          "rain": "unknown",
+          "exposure": "indoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "f12498b9-b1d1-4aa0-8633-595f66f46b8e",
+          "title": "Dr. Sun Yat-Sen Classical Chinese Garden",
+          "kind": "Place",
+          "subtype": "museum",
+          "locality": "Vancouver",
+          "placed": true,
+          "kmFromOrigin": 1.2,
+          "legKm": 2.1,
+          "minutes": 75,
+          "because": "What is on offer: tea ceremony.",
+          "cost": "All Garden revenue goes toward the fulfillment of our mission to bring together cultures and communities through educational and public programs.",
+          "photo": true,
+          "verbs": ["Tea Ceremony"],
+          "onDate": "on",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "indoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "b5228b59-3353-4354-a772-cff2fc09cd3c",
+          "title": "VanDusen Botanical Garden",
+          "kind": "Place",
+          "subtype": "botanical garden",
+          "locality": "Vancouver",
+          "placed": true,
+          "kmFromOrigin": 5,
+          "legKm": 5.4,
+          "minutes": 75,
+          "because": "What is on offer: walking.",
+          "cost": "$11.19",
+          "challenge": "Collect one thing each. Compare at the car.",
+          "photo": true,
+          "verbs": ["Walking"],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.reach",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Asked to stay close; the day was drawn inside 30 km (wanted at most 5).",
+          "scenario": "vancouver-unusual-downtown",
+          "key": "vancouver-unusual-downtown:reading.reach"
+        },
+        {
+          "check": "reading.unheld.downtown",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Said \"downtown\"; the brief has nowhere to hold it, so the day ignores it.",
+          "scenario": "vancouver-unusual-downtown",
+          "key": "vancouver-unusual-downtown:reading.unheld.downtown"
+        }
+      ],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 3,
+        "travelKm": 13.4,
+        "travel": {
+          "floor": 12,
+          "likely": 22
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 2,
+        "withHours": 0,
+        "withPrice": 3,
+        "dateKnown": 1,
+        "ageKnown": 1,
+        "ledgerVerified": 3,
+        "farthestKm": 5,
+        "onDayNearby": 18,
+        "onDayNearbyAtlas": 18,
+        "onDayUsed": 1
+      },
+      "missed": [
+        "Every River Has a Mouth (0.2 km)",
+        "Vancouver Maritime Museum (2 km)",
+        "Ultimate 90s Night (2.5 km)",
+        "The Sunday Service (2.5 km)",
+        "Lonsdale Quay Market (4.2 km)"
+      ],
+      "coverage": {
+        "date": 0.3333333333333333,
+        "realWorld": 1
+      },
+      "scores": {
+        "factual": 100,
+        "relevance": 67,
+        "variety": 100,
+        "practicality": 100,
+        "adventure": 89,
+        "trust": 100,
+        "overall": 93
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 3,
+          "adventure": 3,
+          "practicality": 3,
+          "hellOfADay": 3
+        },
+        "notes": "The best day in the cohort. Roedde House (a Victorian bookbinder's home) and the Sun Yat-Sen garden are genuinely unusual and close together. VanDusen is lovely, but it is 5 km from downtown and was asked for downtown. Prices are published for all three, which made the paper useful. 'Downtown' has nowhere to live in the brief, so the circle stayed at 30 km. Real-world check: all three are open Sunday afternoon (Roedde House only 1-4pm). Atlas's coordinates for the Sun Yat-Sen garden are about 400 m off."
+      }
+    },
+    {
+      "id": "vancouver-rainy-adventure",
+      "town": "vancouver",
+      "says": "Rainy-day adventure in Vancouver",
+      "heard": {
+        "town": "vancouver",
+        "on": "2026-10-11",
+        "shelter": "indoor",
+        "appetite": "adventurous",
+        "circleKm": 30
+      },
+      "title": "Queen Elizabeth Park to Bear Creek Park, out of Vancouver",
+      "opening": "a day, 3 stops inside 30 km of Vancouver, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+          "title": "Queen Elizabeth Park",
+          "kind": "Place",
+          "subtype": "municipal park",
+          "placed": true,
+          "kmFromOrigin": 4.5,
+          "legKm": 4.5,
+          "minutes": 75,
+          "because": "Has somewhere to shelter, going by what we know",
+          "photo": true,
+          "verbs": [
+            "Pitch and putt golf course",
+            "Little Mountain disc golf course",
+            "Tennis courts",
+            "Lawn bowling club",
+            "Tai Chi",
+            "Jogging"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "96f1607a-c06b-4feb-8c57-126f428ba470",
+          "title": "Capilano River Regional Park",
+          "kind": "Place",
+          "subtype": "regional park",
+          "placed": true,
+          "kmFromOrigin": 7.3,
+          "legKm": 11.8,
+          "minutes": 75,
+          "because": "Has somewhere to shelter, going by what we know",
+          "challenge": "Walk fifty paces without talking, then say the first thing you noticed.",
+          "photo": false,
+          "verbs": ["Fishing", "Cycling", "Camping - Group"],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "98296e04-fa09-4eee-8aad-e61cdc6c5bc7",
+          "title": "Bear Creek Park",
+          "kind": "Place",
+          "subtype": "park",
+          "locality": "Surrey",
+          "placed": true,
+          "kmFromOrigin": 24.2,
+          "legKm": 28.6,
+          "minutes": 75,
+          "because": "Has somewhere to shelter, going by what we know",
+          "challenge": "Hang upside down and describe what you can see.",
+          "photo": true,
+          "verbs": [
+            "Nature trails",
+            "Picnic",
+            "Outdoor athletics",
+            "Walking trails"
+          ],
+          "onDate": "unknown",
+          "forAge": "described",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (explicit)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 3,
+        "travelKm": 69.2,
+        "travel": {
+          "floor": 62,
+          "likely": 116
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 2,
+        "withVerbs": 3,
+        "withChallenge": 2,
+        "withHours": 0,
+        "withPrice": 0,
+        "dateKnown": 0,
+        "ageKnown": 1,
+        "ledgerVerified": 3,
+        "farthestKm": 24.2,
+        "onDayNearby": 19,
+        "onDayNearbyAtlas": 19,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Every River Has a Mouth (0.2 km)",
+        "Dr. Sun Yat-Sen Classical Chinese Garden (1.2 km)",
+        "Vancouver Maritime Museum (2 km)",
+        "Ultimate 90s Night (2.5 km)",
+        "The Sunday Service (2.5 km)"
+      ],
+      "coverage": {
+        "date": 0,
+        "realWorld": 1
+      },
+      "scores": {
+        "factual": 100,
+        "relevance": 100,
+        "variety": 89,
+        "practicality": 67,
+        "adventure": 78,
+        "trust": 100,
+        "overall": 89
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 2,
+          "adventure": 3,
+          "practicality": 1,
+          "hellOfADay": 2
+        },
+        "notes": "Three parks across three municipalities: Vancouver to North Vancouver to Surrey and back is about 69 km straight-line, roughly two hours of driving in the rain, for a day with no stated length. Capilano River canyon in the rain is honestly an adventure, but the order is not a route (North Shore, then 28 km to Surrey). Every stop is outdoors with a 'partly sheltered' reading. Real-world check: the Capilano River Hatchery, the park's sheltered draw, has been closed to the public since Oct 1."
+      }
+    },
+    {
+      "id": "vancouver-young-family",
+      "town": "vancouver",
+      "says": "Family day with young children, they're 3 and 6",
+      "heard": {
+        "town": "vancouver",
+        "on": "2026-10-11",
+        "circleKm": 30
+      },
+      "title": "Queen Elizabeth Theatre to John Hendry Park, out of Vancouver",
+      "opening": "a day, 3 stops inside 30 km of Vancouver, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5",
+          "title": "Queen Elizabeth Theatre",
+          "kind": "Place",
+          "subtype": "theatre",
+          "locality": "Vancouver",
+          "placed": true,
+          "kmFromOrigin": 0.7,
+          "legKm": 0.7,
+          "minutes": 75,
+          "because": "What is on offer: opera, musical performances, broadway shows.",
+          "challenge": "Pick the one thing you would steal. Explain yourself.",
+          "photo": true,
+          "verbs": [
+            "opera",
+            "musical performances",
+            "Broadway shows",
+            "art gallery"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "indoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+          "title": "Queen Elizabeth Park",
+          "kind": "Place",
+          "subtype": "municipal park",
+          "placed": true,
+          "kmFromOrigin": 4.5,
+          "legKm": 4.3,
+          "minutes": 75,
+          "because": "What is on offer: pitch and putt golf course, little mountain disc golf course, tennis courts.",
+          "photo": true,
+          "verbs": [
+            "Pitch and putt golf course",
+            "Little Mountain disc golf course",
+            "Tennis courts",
+            "Lawn bowling club",
+            "Tai Chi",
+            "Jogging"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "bfceb4ca-06cf-48ee-ad37-e2b02ba788d2",
+          "title": "John Hendry Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 5.3,
+          "legKm": 4.1,
+          "minutes": 75,
+          "because": "What is on offer: outdoor performances, first nations pow-wow, biking trails.",
+          "cost": "The real cost of the ice rink is estimated at $15.9 million.",
+          "challenge": "Hang upside down and describe what you can see.",
+          "photo": true,
+          "verbs": [
+            "Outdoor performances",
+            "First Nations pow-wow",
+            "Biking trails",
+            "Walking & jogging trails"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.child-age",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Children's ages were said; no age was read, so Atlas was never asked who this suits.",
+          "scenario": "vancouver-young-family",
+          "key": "vancouver-young-family:reading.child-age"
+        }
+      ],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 3,
+        "travelKm": 14.5,
+        "travel": {
+          "floor": 13,
+          "likely": 24
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 2,
+        "withHours": 0,
+        "withPrice": 1,
+        "dateKnown": 0,
+        "ageKnown": 0,
+        "ledgerVerified": 3,
+        "farthestKm": 5.3,
+        "onDayNearby": 19,
+        "onDayNearbyAtlas": 19,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Every River Has a Mouth (0.2 km)",
+        "Dr. Sun Yat-Sen Classical Chinese Garden (1.2 km)",
+        "Vancouver Maritime Museum (2 km)",
+        "Ultimate 90s Night (2.5 km)",
+        "The Sunday Service (2.5 km)"
+      ],
+      "coverage": {
+        "date": 0,
+        "realWorld": 1
+      },
+      "scores": {
+        "factual": 100,
+        "relevance": 50,
+        "variety": 78,
+        "practicality": 78,
+        "adventure": 89,
+        "trust": 100,
+        "overall": 82
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 1,
+          "adventure": 2,
+          "practicality": 2,
+          "hellOfADay": 1
+        },
+        "notes": "It opens with an opera house with no performance, for a 3- and a 6-year-old. The two parks after it are fine for small children. The ages were said and not read. Identical, stop for stop, to the colleagues' evening, which says the question did not reach the answer."
+      }
+    },
+    {
+      "id": "vancouver-colleagues-evening",
+      "town": "vancouver",
+      "says": "An evening out with colleagues after work",
+      "heard": {
+        "town": "vancouver",
+        "on": "2026-10-11",
+        "circleKm": 30
+      },
+      "title": "Queen Elizabeth Theatre to John Hendry Park, out of Vancouver",
+      "opening": "a day, 3 stops inside 30 km of Vancouver, and a plan loose enough to abandon.",
+      "stops": [
+        {
+          "id": "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5",
+          "title": "Queen Elizabeth Theatre",
+          "kind": "Place",
+          "subtype": "theatre",
+          "locality": "Vancouver",
+          "placed": true,
+          "kmFromOrigin": 0.7,
+          "legKm": 0.7,
+          "minutes": 75,
+          "because": "What is on offer: opera, musical performances, broadway shows.",
+          "challenge": "Pick the one thing you would steal. Explain yourself.",
+          "photo": true,
+          "verbs": [
+            "opera",
+            "musical performances",
+            "Broadway shows",
+            "art gallery"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "indoor (derived)",
+          "ledger": "exists-with-caveat"
+        },
+        {
+          "id": "819bc3a5-1ecb-421c-9544-12207bb4b57b",
+          "title": "Queen Elizabeth Park",
+          "kind": "Place",
+          "subtype": "municipal park",
+          "placed": true,
+          "kmFromOrigin": 4.5,
+          "legKm": 4.3,
+          "minutes": 75,
+          "because": "What is on offer: pitch and putt golf course, little mountain disc golf course, tennis courts.",
+          "photo": true,
+          "verbs": [
+            "Pitch and putt golf course",
+            "Little Mountain disc golf course",
+            "Tennis courts",
+            "Lawn bowling club",
+            "Tai Chi",
+            "Jogging"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "partly-sheltered",
+          "exposure": "sheltered-outdoor (derived)",
+          "ledger": "exists"
+        },
+        {
+          "id": "bfceb4ca-06cf-48ee-ad37-e2b02ba788d2",
+          "title": "John Hendry Park",
+          "kind": "Place",
+          "subtype": "park",
+          "placed": true,
+          "kmFromOrigin": 5.3,
+          "legKm": 4.1,
+          "minutes": 75,
+          "because": "What is on offer: outdoor performances, first nations pow-wow, biking trails.",
+          "cost": "The real cost of the ice rink is estimated at $15.9 million.",
+          "challenge": "Hang upside down and describe what you can see.",
+          "photo": true,
+          "verbs": [
+            "Outdoor performances",
+            "First Nations pow-wow",
+            "Biking trails",
+            "Walking & jogging trails"
+          ],
+          "onDate": "unknown",
+          "forAge": "unknown",
+          "rain": "unknown",
+          "exposure": "outdoor (derived)",
+          "ledger": "exists-with-caveat"
+        }
+      ],
+      "unknowns": [
+        "Opening hours — most places here have not published them.",
+        "Prices — only published where a place has said.",
+        "Drive times — distances are straight-line, not road routes."
+      ],
+      "findings": [
+        {
+          "check": "reading.unheld.evening",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Said \"evening\"; the brief has nowhere to hold it, so the day ignores it.",
+          "scenario": "vancouver-colleagues-evening",
+          "key": "vancouver-colleagues-evening:reading.unheld.evening"
+        },
+        {
+          "check": "reading.unheld.colleagues",
+          "dimension": "relevance",
+          "basis": "page",
+          "detail": "Said \"colleagues (a group of adults)\"; the brief has nowhere to hold it, so the day ignores it.",
+          "scenario": "vancouver-colleagues-evening",
+          "key": "vancouver-colleagues-evening:reading.unheld.colleagues"
+        },
+        {
+          "key": "vancouver-colleagues-evening:cohort.same-day",
+          "scenario": "vancouver-colleagues-evening",
+          "check": "cohort.same-day",
+          "dimension": "variety",
+          "basis": "page",
+          "detail": "Exactly the same stops, in the same order, as \"Family day with young children, they're 3 and 6\" (vancouver-young-family)."
+        }
+      ],
+      "signals": {
+        "stops": 3,
+        "placed": 3,
+        "distinctKinds": 3,
+        "travelKm": 14.5,
+        "travel": {
+          "floor": 13,
+          "likely": 24
+        },
+        "hoursPlanned": 4,
+        "withPhoto": 3,
+        "withVerbs": 3,
+        "withChallenge": 2,
+        "withHours": 0,
+        "withPrice": 1,
+        "dateKnown": 0,
+        "ageKnown": 0,
+        "ledgerVerified": 3,
+        "farthestKm": 5.3,
+        "onDayNearby": 19,
+        "onDayNearbyAtlas": 19,
+        "onDayUsed": 0
+      },
+      "missed": [
+        "Every River Has a Mouth (0.2 km)",
+        "Dr. Sun Yat-Sen Classical Chinese Garden (1.2 km)",
+        "Vancouver Maritime Museum (2 km)",
+        "Ultimate 90s Night (2.5 km)",
+        "The Sunday Service (2.5 km)"
+      ],
+      "coverage": {
+        "date": 0,
+        "realWorld": 1
+      },
+      "scores": {
+        "factual": 100,
+        "relevance": 50,
+        "variety": 44,
+        "practicality": 78,
+        "adventure": 89,
+        "trust": 100,
+        "overall": 77
+      },
+      "judgement": {
+        "by": "M173 critic (agent), reviewing the rendered page and paper",
+        "on": "2026-10-11",
+        "current": true,
+        "scores": {
+          "relevance": 1,
+          "adventure": 1,
+          "practicality": 1,
+          "hellOfADay": 1
+        },
+        "notes": "An after-work evening with colleagues answered with two parks after dark and a theatre with nothing on: the young family's day, exactly. 'Evening' and 'colleagues' have no slot in the brief, and the pool has no time of day. Atlas holds 'The Sunday Service' (comedy, 7 p.m. tonight, 2.5 km) and restaurants and bars; none of them was reachable from this sentence."
+      }
+    }
+  ],
+  "totals": {
+    "factual": 85,
+    "relevance": 68,
+    "variety": 82,
+    "practicality": 70,
+    "adventure": 91,
+    "trust": 95,
+    "overall": 82,
+    "objectiveFindings": 21,
+    "distinctStops": {
+      "vernon": 9,
+      "vancouver": 8
+    }
+  }
+}
