@@ -149,6 +149,13 @@ export interface DayPlanned {
   readonly stops: readonly DayStop[];
   /** What the plan could not find out, named rather than left blank. */
   readonly unknowns: readonly string[];
+  /**
+   * **Places the person chose that the day could not keep, and why** — a
+   * place that states it is not on that day, or does not admit that age.
+   * Also in `unknowns` (the paper prints them); here so the screen can say it
+   * first rather than last.
+   */
+  readonly leftOut?: readonly string[];
   readonly brief: DayBrief;
   readonly closing: string;
   readonly budget?: DayBudget;
@@ -1064,6 +1071,7 @@ export function buildDay({
     opening: openingFor(stops, brief, radiusKm, weather),
     stops,
     unknowns,
+    ...(keptOut.length > 0 ? { leftOut: keptOut } : {}),
     brief,
     closing:
       "Put this in your pocket and your phone in the glovebox. Come back and tell us what actually happened.",

@@ -109,4 +109,72 @@ describe("DayItinerary — travel", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Walking" }));
     expect(onBy).toHaveBeenCalledWith("walking");
   });
+
+  it("puts a clock on every stop, and says 'about' while the roads are unmeasured", () => {
+    const timed = {
+      ...DAY,
+      brief: { ...DAY.brief, startAt: 600, homeBy: 960 },
+      budget: { perMove: 15 },
+    } as unknown as DayPlanned;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ state: "not-served" })),
+    );
+    render(<DayItinerary day={timed} by="driving" onBy={() => {}} />);
+    const clocks = screen.getAllByTestId("go-clock");
+    expect(clocks).toHaveLength(2);
+    expect(clocks[0]!.textContent).toMatch(/about 10:15 am/);
+    expect(screen.getByTestId("go-verdict").dataset.verdict).toBe("tight");
+  });
+
+  it("says first, and once, what it could not keep of what you chose", () => {
+    const left =
+      "Gallery Vertigo is left out — what is published says it isn't on that day.";
+    const day = {
+      ...DAY,
+      unknowns: [left, DRIVE_TIMES_UNKNOWN],
+      leftOut: [left],
+    } as unknown as DayPlanned;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ state: "not-served" })),
+    );
+    render(<DayItinerary day={day} by="driving" onBy={() => {}} />);
+    expect(screen.getByTestId("go-left-out").textContent).toContain(
+      "Gallery Vertigo",
+    );
+    expect(screen.getByTestId("go-unknowns").textContent).not.toContain(
+      "Gallery Vertigo",
+    );
+  });
+
+  it("keeps what was set aside in view, with a way back", () => {
+    const onRestore = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ state: "not-served" })),
+    );
+    render(
+      <DayItinerary
+        day={DAY}
+        by="driving"
+        controls={{
+          onKeep() {},
+          onSwap() {},
+          onChoose() {},
+          onRemove() {},
+          onMove() {},
+          onTime() {},
+          onRainPlan() {},
+          onRestore,
+        }}
+        setAside={[{ id: "x", title: "Heli-skiing" }]}
+      />,
+    );
+    expect(screen.getByTestId("go-set-aside").textContent).toContain(
+      "Heli-skiing",
+    );
+    fireEvent.click(screen.getByTestId("go-put-back"));
+    expect(onRestore).toHaveBeenCalledWith("x");
+  });
 });

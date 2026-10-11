@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowRight, CloudRain, Printer, Sun } from "lucide-react";
+import {
+  ArrowRight,
+  Bookmark,
+  CloudRain,
+  Copy,
+  Printer,
+  Sun,
+} from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import {
   clockLabel,
@@ -31,6 +38,10 @@ import { ZONE } from "@/domain/experience/eventTime";
 import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
 import { offlineHref } from "@/lib/detox/day";
 import { DayItinerary, type StopControls } from "./DayItinerary";
+import { KeptDays } from "./KeptDays";
+import type { Timeline } from "@/domain/day/timeline";
+import { dayAsText } from "@/lib/go/dayText";
+import { readKeptDays, withKept, writeKeptDays } from "@/lib/go/keptDays";
 import type { TravelMode } from "@/lib/routing/journey";
 
 /**
@@ -228,6 +239,10 @@ function ShapedDay({
   const [reply, setReply] = useState<string[]>([]);
   const [by, setBy] = useState<TravelMode>(saved?.by ?? "driving");
   const [before, setBefore] = useState<readonly string[] | null>(null);
+  const [timeline, setTimeline] = useState<Timeline | undefined>();
+  const [noted, setNoted] = useState<{ text: string; query: string } | null>(
+    null,
+  );
   const [fetched, setFetched] = useState<{
     key: string;
     weather: PlanWeather | null;
@@ -272,6 +287,10 @@ function ShapedDay({
 
   // Kept for this tab only, so Back from the paper returns to this day.
   useEffect(() => {
+    // The server-rendered, not-yet-hydrated instance must not overwrite what
+    // the tab already kept before the saved day has been adopted (`saved`):
+    // that race lost a kept day's order on every hard load.
+    if (!saved && parses(firstRead(memoryKey))) return;
     try {
       window.sessionStorage.setItem(
         memoryKey,
@@ -280,7 +299,7 @@ function ShapedDay({
     } catch {
       // Private mode or full storage: Back rebuilds from the URL, as before.
     }
-  }, [memoryKey, draft, brief, shaping, by]);
+  }, [memoryKey, saved, draft, brief, shaping, by]);
 
   const day = useMemo(
     () =>
@@ -457,6 +476,17 @@ function ShapedDay({
       }));
       quiet();
     },
+    onRestore: (id) => {
+      remember();
+      setShaping((s) => ({
+        ...s,
+        without: s.without.filter((w) => w !== id),
+        keep: s.keep.includes(id) ? s.keep : [...s.keep, id],
+        order: [...ids, id],
+        count: Math.min(MAX_STOPS, ids.length + 1),
+      }));
+      setSwapping(undefined);
+    },
     onRainPlan: (index) => {
       const plan = day?.stops[index]?.rainPlan;
       if (plan) controls.onChoose(index, plan.experience.id);
@@ -464,6 +494,57 @@ function ShapedDay({
   };
 
   const changed = day && before ? diff(before, day) : null;
+  // A note is about the day as it was when it was said; reshape and it is stale.
+  const note = noted && noted.query === query ? noted.text : "";
+  const isKept = note.startsWith("Kept");
+
+  const setAside = shaping.without.flatMap((id) => {
+    const e = pool.find((x) => x.id === id);
+    return e && !ids.includes(id) ? [{ id, title: e.title }] : [];
+  });
+
+  /** **Keep this day**, on this device: the address, the shaping, the print query. */
+  const keepDay = () => {
+    if (!day || !brief) return;
+    const ok = writeKeptDays(
+      withKept(readKeptDays(), {
+        id: query,
+        title: day.title,
+        stops: ids,
+        keptAt: new Date().toISOString(),
+        href: `${window.location.pathname}${window.location.search}`,
+        memoryKey,
+        shaped: JSON.stringify({ draft, brief, shaping, by } satisfies Saved),
+        query,
+      }),
+    );
+    setNoted({
+      query,
+      text: ok
+        ? "Kept on this device. It's under “Days you kept” next time you open Go have a day."
+        : "Couldn't keep it — this browser won't let the page store anything.",
+    });
+  };
+
+  /** **Take it with you as words**: a share sheet on a phone, the clipboard elsewhere. */
+  const takeAsText = async () => {
+    if (!day) return;
+    const text = dayAsText(day, timeline);
+    try {
+      if (typeof navigator.share === "function" && isTouchDevice()) {
+        await navigator.share({ title: day.title, text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setNoted({
+        query,
+        text: "Copied. Paste it into Notes and it works with no signal.",
+      });
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+      setNoted({ query, text: "Couldn't copy it — print it instead." });
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-12 lg:px-10">
@@ -626,24 +707,60 @@ function ShapedDay({
               controls={controls}
               {...(swapping !== undefined ? { swapping } : {})}
               alternatives={alternatives}
+              setAside={setAside}
+              onTimeline={setTimeline}
             />
           </div>
 
           {day.stops.length > 0 && (
             <>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href={`/go/print?${query}`}
-                  data-testid="go-print"
-                  style={{
-                    backgroundColor: "var(--ghad-accent)",
-                    color: "var(--ghad-accent-ink)",
-                  }}
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold"
+              <div
+                data-testid="go-actions"
+                className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-black/10 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
+              >
+                {note && (
+                  <p
+                    data-testid="go-note"
+                    role="status"
+                    className="mb-2 max-w-[60ch] text-[14px] text-black/70"
+                  >
+                    {note}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+                  <Link
+                    href={`/go/print?${query}`}
+                    data-testid="go-print"
+                    style={{
+                      backgroundColor: "var(--ghad-accent)",
+                      color: "var(--ghad-accent-ink)",
+                    }}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold"
+                  >
+                    <Printer className="h-4 w-4" aria-hidden />
+                    Print our adventure
+                  </Link>
+                  <button
+                    type="button"
+                    data-testid="go-keep-day"
+                    onClick={keepDay}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#111] px-6 text-[15px] font-semibold text-white"
+                  >
+                    <Bookmark className="h-4 w-4" aria-hidden />
+                    {isKept ? "Kept ✓" : "Keep this day"}
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  data-testid="go-copy"
+                  onClick={takeAsText}
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] ring-1 ring-black/20 ring-inset hover:ring-black/50"
                 >
-                  <Printer className="h-4 w-4" aria-hidden />
-                  Print our adventure
-                </Link>
+                  <Copy className="h-4 w-4" aria-hidden />
+                  Take it as text
+                </button>
                 {/* The end of planning: the same day, the same query, handed
                     to Go Offline — the exact stops in the exact order. */}
                 <Link
@@ -665,6 +782,7 @@ function ShapedDay({
           )}
         </section>
       )}
+      {!day && <KeptDays />}
     </div>
   );
 }
@@ -853,6 +971,22 @@ const minutesNow = (): number => {
 };
 
 const NONE: readonly string[] = [];
+
+/** Whether a stored value is a saved day this page could adopt. */
+const parses = (raw: string | null): boolean => {
+  if (!raw) return false;
+  try {
+    JSON.parse(raw);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** A phone or tablet: where a share sheet beats a clipboard. */
+const isTouchDevice = (): boolean =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(pointer: coarse)").matches === true;
 
 const fallbackFrom = (
   childAge: number | undefined,
