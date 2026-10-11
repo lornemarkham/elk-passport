@@ -115,10 +115,10 @@ describe("what can we do with three hours?", () => {
     expect(titles(answer)).not.toContain("Silver Star");
   });
 
-  it("never claims how long anything takes", () => {
-    const all = [answer.note, ...answer.picks.flatMap((p) => p.reasons)];
-    expect(all.join(" ")).not.toMatch(/\bminutes?\b|\bmins?\b/i);
-    expect(answer.note).toMatch(/publishes how long/);
+  it("claims no length of visit Atlas does not hold", () => {
+    const all = answer.picks.flatMap((p) => p.reasons);
+    expect(all.join(" ")).not.toMatch(/\bminutes?\b|\bmins?\b|usually/i);
+    expect(answer.note).toMatch(/Atlas's reading where it has one/);
   });
 
   it("asks from where, when there is nowhere to measure from", () => {
@@ -332,7 +332,7 @@ describe("the way into Go have a day", () => {
 
 describe("found by using it", () => {
   it("offers a dated thing on today even with no photograph and one short line", () => {
-    const festival = candidateToExperience({
+    let festival = candidateToExperience({
       id: "fest",
       kind: "Event",
       name: "Harvest Festival",
@@ -344,7 +344,16 @@ describe("found by using it", () => {
       startTime: "2026-10-09T00:00:00.000Z",
       endTime: "2026-10-11T00:00:00.000Z",
       timePrecision: "day",
+      geography: {
+        state: "observed",
+        coordinates: [-119.27, 50.28],
+        area: { id: "okanagan", name: "Okanagan" },
+      },
     });
+    festival = {
+      ...festival,
+      distance: { state: "measured", km: 2, basis: "coordinates" },
+    };
     const answer = answerAsk(
       [festival, subject("Plain Park", { km: 1, verbs: ["Walking"] })],
       ask("What can we do with three hours?"),
@@ -371,5 +380,299 @@ describe("found by using it", () => {
     expect(answer.picks[0]?.reasons[0]).toBe(
       "One of 2 places Atlas calls a museum in Okanagan",
     );
+  });
+});
+
+/**
+ * **Quality, measured on real questions from Vernon and Vancouver** — each
+ * case below is a defect found by running `corpus.eval.test.ts` against
+ * Atlas's candidates on 2026-10-11, reduced to the records that caused it.
+ */
+describe("somewhere, or not an answer", () => {
+  const nowhere = (name: string) =>
+    subject(name, {
+      km: null,
+      kind: "Event",
+      subtype: "Retail Event",
+      geography: { state: "unknown" },
+      startTime: "2026-10-11T00:00:00.000Z",
+      endTime: "2026-10-11T00:00:00.000Z",
+      timePrecision: "day",
+    });
+
+  it("never offers what Atlas cannot place to somebody asking from a town", () => {
+    // A Sun Peaks turkey sale led "three hours" from Vancouver.
+    const answer = answerAsk(
+      [
+        nowhere("Turkey Sale"),
+        subject("Close Park", { km: 2, verbs: ["Hiking"] }),
+      ],
+      ask("What can we do with three hours?"),
+      context,
+    );
+    expect(titles(answer)).toEqual(["Close Park"]);
+  });
+
+  it("lets one thing placed only in this area follow, never lead", () => {
+    const areaOnly = subject("Valley Museum", {
+      km: null,
+      geography: {
+        state: "observed",
+        area: { id: "okanagan", name: "Okanagan" },
+      },
+    });
+    const answer = answerAsk(
+      [
+        areaOnly,
+        subject("Valley Gallery", {
+          km: null,
+          geography: {
+            state: "observed",
+            area: { id: "okanagan", name: "Okanagan" },
+          },
+        }),
+        subject("Placed Park", { km: 4, verbs: ["Hiking"] }),
+      ],
+      ask("something to do"),
+      context,
+    );
+    expect(answer.picks[0]?.experience.title).toBe("Placed Park");
+    expect(answer.picks).toHaveLength(2);
+    expect(answer.picks[1]?.caveat).toMatch(/can't place/);
+  });
+});
+
+describe("how long, as Atlas holds it", () => {
+  it("leaves out what Atlas says outlasts the time there is, and says the rest", () => {
+    const answer = answerAsk(
+      [
+        subject("Ski Hill", {
+          km: 3,
+          visitDuration: { basis: "derived", minutes: [180, 420] },
+        }),
+        subject("Nature Centre", {
+          km: 3,
+          visitDuration: { basis: "derived", minutes: [30, 120] },
+        }),
+      ],
+      ask("I've got an hour"),
+      context,
+    );
+    expect(titles(answer)).toEqual(["Nature Centre"]);
+    expect(answer.picks[0]?.reasons[0]).toBe(
+      "Usually 30 min–2 h, going by what we know",
+    );
+  });
+
+  it("says a source's own words where it gave them", () => {
+    const answer = answerAsk(
+      [
+        subject("Lake Trail", {
+          km: 3,
+          visitDuration: {
+            basis: "explicit",
+            text: "Hike duration: 60 - 90 minute round-trip",
+          },
+        }),
+      ],
+      ask("three hours"),
+      context,
+    );
+    expect(answer.picks[0]?.reasons).toContain(
+      "Hike duration: 60 - 90 minute round-trip",
+    );
+  });
+});
+
+describe("the sky", () => {
+  const indoor = (name: string, km: number) =>
+    subject(name, {
+      km,
+      subtype: "museum",
+      environment: {
+        setting: "unknown",
+        rain: { reading: "unknown", basis: "none" },
+        exposure: { value: "indoor", basis: "derived" },
+      },
+    });
+  const party = subject("90s Night", {
+    km: 2,
+    kind: "Event",
+    subtype: "Party",
+    startTime: "2026-10-11T00:00:00.000Z",
+    endTime: "2026-10-11T00:00:00.000Z",
+    timePrecision: "day",
+  });
+
+  it("asked to stay dry, somewhere Atlas reads as indoors leads a party nobody can say is", () => {
+    const answer = answerAsk(
+      [party, indoor("Roedde House", 1)],
+      ask("It's raining, what can we do inside?"),
+      context,
+    );
+    expect(answer.picks[0]?.experience.title).toBe("Roedde House");
+    expect(answer.picks[0]?.reasons[0]).toBe("Indoors, going by what we know");
+  });
+
+  it("on a wet day, an outdoor reading goes down", () => {
+    const answer = answerAsk(
+      [
+        subject("Open Field", {
+          km: 1,
+          environment: {
+            setting: "unknown",
+            rain: { reading: "unknown", basis: "none" },
+            exposure: { value: "outdoor", basis: "derived" },
+          },
+        }),
+        indoor("Gallery", 4),
+      ],
+      ask("something to do"),
+      { ...context, wet: true },
+    );
+    expect(titles(answer)).toEqual(["Gallery", "Open Field"]);
+  });
+});
+
+describe("who it is with", () => {
+  const burlesque = subject("Burlesque Revue", {
+    km: 1,
+    kind: "Event",
+    subtype: "Burlesque Show",
+    startTime: "2026-10-12T02:30:00.000Z",
+    endTime: "2026-10-12T04:30:00.000Z",
+    timePrecision: "minute",
+    suitability: {
+      stated: "stated",
+      statements: [
+        {
+          about: "age",
+          says: "adults-only",
+          strength: "rule",
+          scope: "subject",
+          text: "Age restriction: 19+/No Minors",
+          basis: "key-fact",
+        },
+      ],
+    },
+  });
+  const playground = subject("Playground Park", {
+    km: 1,
+    verbs: ["Playground"],
+  });
+
+  it("for two, an adults-only show tonight leads, with its start time", () => {
+    const answer = answerAsk(
+      [playground, burlesque],
+      ask("Date night tonight"),
+      context,
+    );
+    expect(answer.picks[0]?.experience.title).toBe("Burlesque Revue");
+    expect(answer.picks[0]?.reasons.slice(0, 2)).toEqual([
+      "Adults only, as stated",
+      "Today only · 7:30 p.m.",
+    ]);
+    expect(answer.note).toMatch(/Atlas doesn't say what makes a good date/);
+  });
+
+  it("a stated adults-only rule is never somewhere to take a child", () => {
+    const answer = answerAsk(
+      [burlesque, playground],
+      ask("Where can I take my kid?"),
+      context,
+    );
+    expect(titles(answer)).toEqual(["Playground Park"]);
+  });
+
+  it("a child's answer does not lead with an event that says nothing about children", () => {
+    const answer = answerAsk(
+      [
+        subject("Canyon Haunt", {
+          km: 1,
+          kind: "Event",
+          subtype: "seasonal event",
+          startTime: "2026-10-11T00:00:00.000Z",
+          endTime: "2026-10-11T00:00:00.000Z",
+          timePrecision: "day",
+        }),
+        subject("Beach Park", { km: 4, verbs: ["Playground"] }),
+      ],
+      ask("Where can I take my 6 year old this afternoon?"),
+      context,
+    );
+    expect(answer.picks[0]?.experience.title).toBe("Beach Park");
+  });
+
+  it("on your own says it changes nothing, rather than pretending", () => {
+    const answer = answerAsk(
+      [playground],
+      ask("Something to do on my own"),
+      context,
+    );
+    expect(answer.heading).toBe("On your own — where I'd start");
+    expect(answer.note).toMatch(/Atlas doesn't say what suits one person/);
+  });
+
+  it("when nothing answers the question, the answer says so", () => {
+    const answer = answerAsk([playground], ask("Date night tonight"), context);
+    expect(answer.picks).toHaveLength(1);
+    expect(answer.note).toMatch(
+      /Nothing Atlas holds here clearly answers that/,
+    );
+  });
+});
+
+describe("unusual, counted honestly", () => {
+  it("counts a kind by its family, so a spelling cannot make Stanley Park rare", () => {
+    const answer = answerAsk(
+      [
+        subject("Stanley Park", { km: 2, subtype: "public park" }),
+        subject("Queen Elizabeth Park", { km: 5, subtype: "municipal park" }),
+        subject("Pinecone Park", { km: 6, subtype: "park" }),
+        subject("Planetarium", { km: 3, subtype: "planetarium" }),
+      ],
+      ask("Something unusual nearby"),
+      context,
+    );
+    const reasons = answer.picks.flatMap((p) => p.reasons).join(" ");
+    expect(reasons).not.toMatch(/only public park/);
+    expect(answer.picks[0]?.experience.title).toBe("Planetarium");
+  });
+
+  it("never calls an event rare for its publisher's filing, nor a listed non-doing", () => {
+    const answer = answerAsk(
+      [
+        subject("Turkey Sale", {
+          km: 2,
+          kind: "Event",
+          subtype: "Retail Event",
+          startTime: "2026-10-11T00:00:00.000Z",
+          endTime: "2026-10-11T00:00:00.000Z",
+          timePrecision: "day",
+        }),
+        subject("Athletics Park", { km: 2, verbs: ["community use"] }),
+      ],
+      ask("Something unusual nearby"),
+      context,
+    );
+    const reasons = answer.picks.flatMap((p) => p.reasons).join(" ");
+    expect(reasons).not.toMatch(/Retail Event|community use/);
+  });
+});
+
+describe("worth the drive, by what you can do there", () => {
+  it("does not count 'Conventions, Trade Shows, Meetings' as things to do", () => {
+    const answer = answerAsk(
+      [
+        subject("Convention Centre", {
+          km: 89,
+          verbs: ["Conventions", "Trade Shows", "Meetings", "Banquets"],
+        }),
+        subject("Canyon Trail", { km: 54, verbs: ["Hiking", "Cycling"] }),
+      ],
+      ask("What is worth driving an hour for?"),
+      context,
+    );
+    expect(answer.picks[0]?.experience.title).toBe("Canyon Trail");
   });
 });

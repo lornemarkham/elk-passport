@@ -62,6 +62,12 @@ export interface DiscoveryAsk {
   readonly doing?: string;
   /** Asked to stay dry, or to get outside. */
   readonly shelter?: "indoor" | "outdoor";
+  /**
+   * **Two of them** — a partner, a date. The rows have no answer for it
+   * (`Company` is alone, a child or a group), so it is carried here and
+   * changes only the answer, never a row.
+   */
+  readonly pair?: true;
   /** The way of looking the rows cannot express. */
   readonly lens?: AskLens;
 }
@@ -70,9 +76,13 @@ export interface DiscoveryAsk {
  * `unusual` — the rarer things here, by what Atlas holds.
  * `drive`   — further out, and with more to it.
  * `kids`    — somewhere a child can do something, by stated evidence.
+ * `on`      — what is on: dated things on the day, then what is open.
+ * `couple`  — the two of them: evenings and stated adults-only first.
+ * `group`   — friends: more to do, stated as suiting everyone.
  * `time`    — they said how long, and that is the question.
  */
-export type AskLens = "unusual" | "drive" | "kids" | "time";
+export type AskLens =
+  "unusual" | "drive" | "kids" | "on" | "couple" | "group" | "time";
 
 export interface ReadContext {
   /** Today where the subjects are, `YYYY-MM-DD`. Resolves "tomorrow", "Saturday". */
@@ -133,6 +143,18 @@ const KID =
 const GROUP = /\b(friends|group|crew|mates|the gang|buddies|colleagues)\b/;
 const ALONE = /\b(alone|by myself|on my own|solo|just me)\b/;
 
+/** A partner or a date. "Couple" alone, as in "a couple of hours", is not. */
+const PAIR =
+  /\b(date|date night|my (?:partner|wife|husband|girlfriend|boyfriend|spouse|fianc[ée]e?|other half)|the two of us|just us two|us two|romantic|anniversary|a couple\b(?! of))/;
+
+/** Asking what is on, rather than what is there. */
+const ON =
+  /\b(what'?s on|what is on|anything on|what'?s happening|happening|going on|events?)\b/;
+
+/** Stated fine weather — a wish to be outside it, as "it's raining" is to stay dry. */
+const FINE =
+  /\b(sunny|sunshine|nice (?:day|out|weather)|beautiful day|gorgeous day)\b/;
+
 const UNUSUAL =
   /\b(unusual|weird|strange|odd|offbeat|quirky|unexpected|hidden|secret|different|surprise me|never (?:been|heard))\b/;
 
@@ -149,6 +171,7 @@ const STOP = new Set([
   "that",
   "take",
   "have",
+  "hour",
   "hours",
   "afternoon",
   "morning",
@@ -205,6 +228,12 @@ const STOP = new Set([
   "close",
   "local",
   "quick",
+  "date",
+  "night",
+  "tonight",
+  "partner",
+  "happening",
+  "events",
 ]);
 
 /**
@@ -212,7 +241,8 @@ const STOP = new Set([
  *
  * Matched on stems both ways round — "hike" chooses *Hiking*, "swim"
  * chooses *Swimming* — on words of four letters or more, so "go" and "do"
- * choose nothing.
+ * choose nothing. Against the verb's **last word**, which is the doing:
+ * "date night" once chose *night skiing* because the verb began "night".
  */
 function verbIn(text: string, verbs: readonly string[]): string | undefined {
   const stem = (word: string) => word.replace(/(?:ing|es|e|s)$/, "");
@@ -220,7 +250,7 @@ function verbIn(text: string, verbs: readonly string[]): string | undefined {
     .filter((w) => !STOP.has(w))
     .map(stem);
   for (const verb of verbs) {
-    const v = stem(verb.toLowerCase());
+    const v = stem(verb.toLowerCase().trim().split(/\s+/).pop() ?? "");
     if (v.length < 3) continue;
     if (words.some((w) => v.startsWith(w) || w.startsWith(v))) return verb;
   }
@@ -294,15 +324,29 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
     ) || undefined;
 
   const unusual = UNUSUAL.test(text) || brief.appetite === "odd";
+  const pair = company !== "child" && PAIR.test(text);
+  const asksOn = ON.test(text);
+  // **The most specific question wins the lens**; everything else it said
+  // still applies — the hours still draw the circle, the day still filters.
   const lens: AskLens | undefined = drive
     ? "drive"
     : unusual
       ? "unusual"
       : company === "child"
         ? "kids"
-        : hours !== undefined
-          ? "time"
-          : undefined;
+        : pair
+          ? "couple"
+          : asksOn
+            ? "on"
+            : company === "group"
+              ? "group"
+              : hours !== undefined
+                ? "time"
+                : undefined;
+  // "What's on?" with no day is about today.
+  const day = on ?? (asksOn ? context.today : undefined);
+  const shelter =
+    brief.shelter ?? (FINE.test(text) ? ("outdoor" as const) : undefined);
 
   const doing = context.verbs ? verbIn(text, context.verbs) : undefined;
 
@@ -314,13 +358,14 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
     ...(brief.childAge !== undefined && brief.childAge <= 17
       ? { childAge: brief.childAge }
       : {}),
-    ...(on ? { on } : {}),
+    ...(day ? { on: day } : {}),
     ...(partOfDay ? { partOfDay } : {}),
     ...(brief.town ? { townId: brief.town.id } : {}),
     ...(near ? { near } : {}),
     ...(statedKm !== undefined ? { withinKm: statedKm } : {}),
     ...(doing ? { doing } : {}),
-    ...(brief.shelter ? { shelter: brief.shelter } : {}),
+    ...(shelter ? { shelter } : {}),
+    ...(pair ? { pair: true as const } : {}),
     ...(lens ? { lens } : {}),
   };
 }
@@ -337,6 +382,7 @@ export function readBack(
   const out: string[] = [];
   if (ask.lens === "unusual") out.push("something unusual");
   if (ask.lens === "drive") out.push("worth the drive");
+  if (ask.lens === "on") out.push("what's on");
   if (ask.doing) out.push(ask.doing.toLowerCase());
   if (ask.hours !== undefined)
     out.push(ask.hours === 1 ? "an hour" : `${ask.hours} hours`);
@@ -346,6 +392,7 @@ export function readBack(
         ? `with a ${ask.childAge}-year-old`
         : "with a kid",
     );
+  if (ask.pair) out.push("the two of you");
   if (ask.company === "group") out.push("with friends");
   if (ask.company === "alone") out.push("on your own");
   if (ask.on) {

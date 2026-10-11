@@ -40,7 +40,10 @@ const modelReading = z.object({
   near: z.boolean().optional(),
   doing: z.string().optional(),
   shelter: z.enum(["indoor", "outdoor"]).optional(),
-  lens: z.enum(["unusual", "drive", "kids", "time"]).optional(),
+  pair: z.boolean().optional(),
+  lens: z
+    .enum(["unusual", "drive", "kids", "on", "couple", "group", "time"])
+    .optional(),
 });
 
 export type ModelReading = z.infer<typeof modelReading>;
@@ -62,8 +65,10 @@ Fields:
 - near: true if they want somewhere close
 - doing: one activity, chosen ONLY from the provided list, copied exactly
 - shelter: "indoor" | "outdoor"
+- pair: true if it is the two of them — a partner, a date
 - lens: "unusual" (odd, hidden, surprising), "drive" (worth a trip / road trip), \
-"kids" (about a child), "time" (about how long they have)`;
+"kids" (about a child), "on" (what is on / happening / events), "couple" (a \
+partner or a date), "group" (friends), "time" (about how long they have)`;
 
 /**
  * Merge a validated model reading under the deterministic one. Pure, so the
@@ -113,6 +118,9 @@ export function fillGaps(
   }
   if (floor.shelter === undefined && model.shelter)
     filled.shelter = model.shelter;
+  // "For two" never sits beside a child: the age row would be lying.
+  if (floor.pair === undefined && model.pair && floor.company !== "child")
+    filled.pair = true;
   if (floor.lens === undefined && model.lens) filled.lens = model.lens;
 
   const merged = Object.fromEntries(

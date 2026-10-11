@@ -121,3 +121,14 @@ describe("asking a model, where one is configured", () => {
     expect(result.by).toBe("words");
   });
 });
+
+describe("the newer readings", () => {
+  it("fills 'for two' and the new lenses, but never 'for two' beside a child", () => {
+    const floor = readAsk("something for tonight", context);
+    expect(
+      fillGaps(floor, { pair: true, lens: "couple" }, context),
+    ).toMatchObject({ pair: true, lens: "couple" });
+    const child = readAsk("something with my kid", context);
+    expect(fillGaps(child, { pair: true }, context).pair).toBeUndefined();
+  });
+});

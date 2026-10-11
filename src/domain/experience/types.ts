@@ -4,6 +4,7 @@ import type {
   CandidateDistance,
   CandidateSchedule,
   CandidateSuitability,
+  CandidateVisitDuration,
 } from "@/lib/data/types";
 import type {
   CandidateEnvironment,
@@ -211,6 +212,8 @@ export interface Experience {
   contextualMedia?: CandidateContextualMedia;
   /** Whether stated hours or dates cover the chosen day — `candidate-schedule/1`. */
   schedule?: CandidateSchedule;
+  /** How long a visit usually takes — Atlas's `visitDuration`, untouched. */
+  visitDuration?: CandidateVisitDuration;
   /**
    * **Atlas's distance from the chosen origin** — `candidate-distance/1`.
    * Never set by the mapper: Discovery attaches it in the browser from the
