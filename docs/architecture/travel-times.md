@@ -1,8 +1,9 @@
 # Travel times — what Passport needs from Atlas
 
 **Status:** Passport's side is built and tested (lane `maps`, 2026-10-11).
-Atlas serves nothing yet, so every surface below shows straight lines, labelled
-as straight lines, until it does.
+Atlas serves `GET /travel/legs` (`travel-legs/1`) on its release branch
+`release/routing-rc` (`37f5aa4`), **not deployed**; until it is, production
+surfaces show straight lines, labelled as straight lines.
 
 **Authority on the Atlas side:** elk-atlas ADR 097, _A travel time is a
 routing provider's estimate, or nothing_ (proposed). Passport reads its
@@ -10,7 +11,50 @@ routing provider's estimate, or nothing_ (proposed). Passport reads its
 
 ---
 
-## ⚠ The `/travel/legs` contract does not exist yet
+## Current, 2026-10-11 evening: `travel-legs/1`, read from its fixture
+
+The sections below this one are history. Atlas's `release/routing-rc`
+(`37f5aa4`) publishes the contract as a machine-readable fixture,
+`docs/lanes/contracts/travel-legs-1.json`, copied into Passport at
+`src/lib/domains/travel/__fixtures__/travel-legs-1.json` and replayed through
+the readers in `src/lib/domains/travel/legs.test.ts`. What it settles:
+
+- **`GET /travel/legs?stops=<id>,…&mode=…[&lat&lng]`**, server-side bearer
+  token. Not POST (POST is 405). Passport's own `/api/travel/legs` is a POST
+  so that no point enters a URL; it asks Atlas by GET.
+- **404 is named.** `{ code: "unknown-stops", unknownStops: [ids] }` is a
+  stop that is not (or no longer) a Discovery candidate: Passport marks the
+  legs touching it _unknown_ ("Atlas no longer holds this stop…"), keeps every
+  other question's legs, and returns the ids as `unknownStops`. A 404 without
+  that code is a path Atlas does not serve → _not served_.
+- **`areaPoint: true`** on an estimate: the route ends at a point inside a
+  park, beach or trail, not its way in. Passport keeps the flag end to end
+  (`TravelTimeReading`, `Journey.areaPoint`), and a journey with it is
+  treated as cautioned whether or not `accessCaution` came too: no minutes on
+  a card, not in a day's total, not in `withinMinutes`, not a known minute in
+  feasibility, and its headline says "to a point inside it".
+  `total.areaPoints` is read and passed through.
+- **A top-level `failure`** (the provider did not answer) no longer fails the
+  day: legs Atlas did answer are kept, the `transient` ones read "could not
+  answer just now", and the answer is marked `temporary` so neither the tab
+  nor the server keeps it. A 503 that remains says `Retry-After: 60`
+  (back off ≥ 60 s).
+- **Quota: 50 openrouteservice requests a day for the whole key**, shared by
+  every caller, fail-closed. So Passport now bounds what reaches Atlas:
+  - both travel routes refuse a cross-site `Origin` / `Sec-Fetch-Site` (403);
+  - a per-client rate limit (`src/lib/server/rateLimit.ts`; legs 20/min and
+    120/h, Discovery travel 10/min and 60/h; Supabase user id when signed
+    in, else client IP), answering 429 with `Retry-After`. **Per server
+    instance, in memory**: Atlas's shared quota is the cross-instance
+    backstop. The printed guide is counted against the legs limit too;
+  - identical questions are answered from a five-minute, bounded server memo
+    (`askedOnce` in `answerMemo.ts`), sharing one request while in flight;
+    failures and `temporary` answers are never kept;
+  - a session is required only with `TRAVEL_REQUIRE_SESSION=1` (default off),
+    because `/go` and Discovery are used signed out. Whether to turn it on is
+    an owner decision.
+
+## ⚠ The `/travel/legs` contract does not exist yet (history)
 
 The mission brief referred to "Atlas's documented `/travel/legs` contract".
 On 2026-10-11, elk-atlas `main` (e5e9ed6, the only branch on GitHub) has **no
@@ -150,7 +194,9 @@ Authorization: Bearer <ATLAS_SERVICE_TOKEN>
    per mode **first** asked, and switching back is free. A failure is never
    kept, and nothing retries on its own. Discovery costs one candidate-feed
    request per origin and mode. Atlas's cache (`CachedTravelTimes`) remains
-   the real defence of the provider quota.
+   the real defence of the provider quota. **Superseded:** the quota is 50 a
+   day for the whole key (travel-legs/1), and Passport now also limits and
+   memoizes on the server — see _Current_ above.
 7. **`/discovery/candidates?travel=` should be cheap when unserved.** Today
    Atlas ignores the parameter and returns the full feed, so Discovery makes
    one extra full corpus read per origin and learns only "not served". This
@@ -161,14 +207,16 @@ Authorization: Bearer <ATLAS_SERVICE_TOKEN>
 
 ## What Passport does with an answer
 
-| Atlas says                                   | Passport shows                                                                                                                                                                            |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `estimated`                                  | "14 min drive · 12 km by road (estimated by _provider_)"; limitations once under the day's total; attribution wherever shown                                                              |
-| `estimated` + `accessCaution`                | the minutes with the caution on `/go`, **left out of the day's total** (which says _at least_ and names the leg); **straight line** on a Discovery card, which has no room for the caveat |
-| `unavailable`                                | "No driving route found", with Atlas's reason; the total becomes _at least_ and names the leg                                                                                             |
-| `unsupported`                                | "No walking times available"                                                                                                                                                              |
-| not served (404, or a feed without `travel`) | straight lines, each saying it is not a travel time, and a note that Atlas does not give travel times yet                                                                                 |
-| failure (5xx, 429, timeout, unreachable)     | straight lines, "could not get travel times just now", and a **Try again** button                                                                                                         |
+| Atlas says                                      | Passport shows                                                                                                                                                                            |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `estimated`                                     | "14 min drive · 12 km by road (estimated by _provider_)"; limitations once under the day's total; attribution wherever shown                                                              |
+| `estimated` + `accessCaution` or `areaPoint`    | the minutes with the caution on `/go`, **left out of the day's total** (which says _at least_ and names the leg); **straight line** on a Discovery card, which has no room for the caveat |
+| `unavailable`                                   | "No driving route found", with Atlas's reason; the total becomes _at least_ and names the leg                                                                                             |
+| `unsupported`                                   | "No walking times available"                                                                                                                                                              |
+| not served (404 without a code, or no `travel`) | straight lines, each saying it is not a travel time, and a note that Atlas does not give travel times yet                                                                                 |
+| failure (5xx, 429, timeout, unreachable)        | straight lines, "could not get travel times just now", and a **Try again** button                                                                                                         |
+| 404 `unknown-stops`                             | the legs touching that stop: "Travel time unknown — Atlas no longer holds this stop"; every other leg as answered                                                                         |
+| `failure` + `transient` legs                    | answered legs kept; the others "could not answer just now; this may change"; nothing kept                                                                                                 |
 
 A day's total is summed **only** over routed legs without an access caution.
 A route to the middle of a park (Kalamalka Lake Park: 82 min for 12 km in a
@@ -189,5 +237,5 @@ this day too long". Nothing in Passport converts kilometres to minutes.
   `ATLAS_SERVICE_TOKEN` at a **local** Atlas that has a provider configured
   and serves one of the wires above. No production Atlas is needed.
 - With no Atlas at all, `/api/travel/legs` answers `503` with
-  `Retry-After: 30`. `/go` itself cannot render, because its corpus read
+  `Retry-After: 60`. `/go` itself cannot render, because its corpus read
   needs Atlas (that predates this work).

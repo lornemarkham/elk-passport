@@ -2,9 +2,13 @@ import { isAtlasUnavailable } from "@/lib/data/atlasAuth";
 import { isTravelMode } from "@/lib/routing/journey";
 import type { PlacedLeg } from "@/lib/routing/legs";
 import { travelLegsFromAtlas } from "@/lib/routing/atlasLegs.server";
+import { guardTravel, legsLimiter } from "@/lib/routing/travelGuard.server";
 
 /** A day has at most five stops: six legs with the way home. Room to spare. */
 const MAX_LEGS = 12;
+
+/** travel-legs/1: after a provider failure, back off at least a minute. */
+const RETRY_AFTER_SECONDS = 60;
 
 /**
  * **How long each leg of a day takes, by road or on foot** — Atlas ADR 097,
@@ -16,11 +20,22 @@ const MAX_LEGS = 12;
  * ~1 km by `travelLegsQuery()` before it leaves, whatever the browser sent.
  *
  * ```
- * 200 { state: "ready", journeys }   one per leg, in order
- * 200 { state: "not-served" }        Atlas has no such endpoint yet
+ * 200 { state: "ready", journeys }   one per leg, in order; `unknownStops`
+ *                                    names stops Atlas no longer holds;
+ *                                    `temporary` when some legs could not be
+ *                                    answered just now (then never cached)
+ * 200 { state: "not-served" }        Atlas has no such endpoint
  * 400 { error: "legs" }              the question was not one
- * 503 { error: "unavailable" }       Atlas failed or did not answer; retry
+ * 401 { error: "sign-in" }           only with TRAVEL_REQUIRE_SESSION=1
+ * 403 { error: "cross-site" }        asked from another site's page
+ * 429 { error: "rate-limited" }      too many from this client; Retry-After
+ * 503 { error: "unavailable" }       Atlas failed or answered nothing; retry
+ *                                    after Retry-After (≥ 60 s)
  * ```
+ *
+ * Every caller can spend Atlas's shared provider quota, so the caller is
+ * checked (`guardTravel`) and an identical question is answered from this
+ * instance's memo (`travelLegsFromAtlas`) before Atlas is asked.
  */
 export async function POST(request: Request) {
   const body: unknown = await request.json().catch(() => null);
@@ -43,10 +58,18 @@ export async function POST(request: Request) {
     legs.push({ from, to });
   }
 
+  const refused = await guardTravel(request, legsLimiter);
+  if (refused) return refused;
+
   try {
     const answer = await travelLegsFromAtlas(legs, mode);
     return Response.json(answer, {
-      headers: { "Cache-Control": "private, max-age=300" },
+      headers: {
+        "Cache-Control":
+          answer.state === "ready" && answer.temporary
+            ? "no-store"
+            : "private, max-age=300",
+      },
     });
   } catch (error) {
     console.error(
@@ -54,7 +77,10 @@ export async function POST(request: Request) {
     );
     return Response.json(
       { error: "unavailable" },
-      { status: 503, headers: { "Retry-After": "30" } },
+      {
+        status: 503,
+        headers: { "Retry-After": String(RETRY_AFTER_SECONDS) },
+      },
     );
   }
 }

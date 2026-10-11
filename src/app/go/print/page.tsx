@@ -14,6 +14,8 @@ import { dayLegs, unknownsWithTravel } from "@/lib/routing/dayLegs";
 import type { RouteOptions } from "@/lib/analog/route";
 import { printTravel } from "./travel";
 import { travelLegsFromAtlas } from "@/lib/routing/atlasLegs.server";
+import { allowTravel, legsLimiter } from "@/lib/routing/travelGuard.server";
+import { headers } from "next/headers";
 import type { TravelStatus } from "@/lib/routing/useTravelTimes";
 
 export const metadata: Metadata = {
@@ -89,7 +91,9 @@ const PRINT_TRAVEL_TIMEOUT_MS = 5_000;
 /**
  * **Travel for the paper, asked once.** The start is a town centre, never the
  * reader's position — this page is rendered on the server, which does not
- * have one. A failure prints straight lines, labelled, and says so.
+ * have one. A failure prints straight lines, labelled, and says so — as
+ * does a reader over the travel rate limit (`travelGuard.server`), since this
+ * page asks Atlas on the server exactly as the travel route does.
  */
 async function printedTravel(
   day: ReturnType<typeof buildDay>,
@@ -99,7 +103,11 @@ async function printedTravel(
   const journeys: (Journey | undefined)[] = legs.map(() => undefined);
   const placed = legs.flatMap((leg, i) => (isPlaced(leg) ? [{ leg, i }] : []));
   let status: TravelStatus = "idle";
-  if (placed.length > 0) {
+  const allowed =
+    placed.length > 0 ? await allowTravel(await headers(), legsLimiter) : "ok";
+  if (placed.length > 0 && allowed !== "ok") {
+    status = "failed";
+  } else if (placed.length > 0) {
     try {
       const answer = await travelLegsFromAtlas(
         placed.map(({ leg }) => leg),
