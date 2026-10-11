@@ -7,6 +7,15 @@ import { ThemeProvider } from "@/components/ghad/theme";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { ZONE } from "@/domain/experience/eventTime";
+import {
+  scenarioFrom,
+  simulatedEnvironment,
+  SIMULATED_SOURCE,
+} from "@/lib/environment/scenario";
+import { OCTOBER_PLACES } from "@/domain/environment/places";
+import { hoursBetween } from "@/domain/environment/types";
+import { readWeather } from "@/domain/discovery/situation";
+import type { PlanWeather } from "@/domain/day/build";
 
 export const metadata: Metadata = {
   title: "Go have a day",
@@ -36,6 +45,21 @@ export const metadata: Metadata = {
  * `?age=N` reaches `listDiscoveryCandidates(childAge)` exactly as it does on
  * Discovery, so `suitability.forAge` is Atlas's verdict rather than
  * Passport's inference. Without one, nobody is asked about.
+ *
+ * ## And the day
+ *
+ * The first version read the corpus without `?on=`, so Atlas never answered
+ * `schedule.onDate` and the builder's "stated closed that day" rule — and its
+ * "published as open" line — could not fire for anybody. The day goes to
+ * Atlas now, today unless `?on=` says otherwise, exactly as Discovery sends it.
+ *
+ * ## The weather
+ *
+ * The forecast is fetched in the browser for whichever town the sentence
+ * names (`/api/environment`, Environment Canada, labelled with its city). In
+ * development only, `?sim=<scenario>` substitutes the same simulated
+ * conditions October and Discovery use, labelled *SIMULATED — not real
+ * weather* on screen. Neither is ever stored.
  */
 type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -50,8 +74,21 @@ export default async function GoPage({ searchParams }: Props) {
   const childAge =
     Number.isInteger(asked) && asked >= 0 && asked <= 17 ? asked : undefined;
 
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: ZONE,
+  })
+    .format(now)
+    .replace(/(\d+)\/(\d+)\/(\d+)/, "$1-$2-$3");
+  const askedDay = one(query.on);
+  const on =
+    askedDay && /^\d{4}-\d{2}-\d{2}$/.test(askedDay) ? askedDay : today;
+
   const [candidates, user] = await Promise.all([
-    listDiscoveryCandidates(childAge),
+    listDiscoveryCandidates(childAge, on),
     currentUser(),
   ]);
 
@@ -64,15 +101,7 @@ export default async function GoPage({ searchParams }: Props) {
       : e,
   );
 
-  const now = new Date();
-  const today = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: ZONE,
-  })
-    .format(now)
-    .replace(/(\d+)\/(\d+)\/(\d+)/, "$1-$2-$3");
+  const simulated = simulatedWeather(one(query.sim));
 
   return (
     <ThemeProvider>
@@ -85,9 +114,30 @@ export default async function GoPage({ searchParams }: Props) {
           {...(one(query.mode) ? { initialMode: one(query.mode)! } : {})}
           {...(childAge !== undefined ? { childAge } : {})}
           {...(one(query.at) ? { townId: one(query.at)! } : {})}
-          {...(one(query.on) ? { on: one(query.on)! } : {})}
+          on={on}
+          {...(simulated ? { simulatedWeather: simulated } : {})}
         />
       </main>
     </ThemeProvider>
   );
+}
+
+/**
+ * **Development-only weather**, from the same scenarios October uses. Inert
+ * in production (`scenarioFrom` refuses outside `development`), and labelled
+ * with `SIMULATED_SOURCE` everywhere it is shown.
+ */
+function simulatedWeather(sim: string | undefined): PlanWeather | undefined {
+  const scenario = scenarioFrom(sim);
+  if (!scenario) return undefined;
+  const area = OCTOBER_PLACES.find((p) => p.id === scenario.areaId);
+  if (!area) return undefined;
+  const environment = simulatedEnvironment(scenario, area);
+  const end = new Date(scenario.now);
+  end.setHours(23, 59, 59, 999);
+  const reading = readWeather(
+    hoursBetween(environment, scenario.now.toISOString(), end.toISOString()),
+    SIMULATED_SOURCE,
+  );
+  return reading ? { ...reading, area: area.name } : undefined;
 }
