@@ -19,8 +19,20 @@ const SHOTS = "docs/product/discovery-journeys";
 const setAtlas = (modes: Record<string, string>) =>
   fetch(`${ATLAS}/__mode`, { method: "POST", body: JSON.stringify(modes) });
 
-test.beforeEach(async () => {
+/**
+ * The travel routes allow 20 asks a minute per client (`travelGuard.server`),
+ * and this suite is one client asking for a dozen days in a minute. Each test
+ * is therefore its own client, by the header the platform would write: the
+ * limiter is not weakened, and nothing in the app knows it is under test.
+ */
+let nextClient = 0;
+
+test.beforeEach(async ({ context }) => {
   await setAtlas({ candidates: "ok", distance: "ok", legs: "ok" });
+  nextClient += 1;
+  await context.setExtraHTTPHeaders({
+    "x-forwarded-for": `10.200.${Math.floor(nextClient / 250)}.${nextClient % 250}`,
+  });
 });
 
 async function shoot(page: Page, info: TestInfo, name: string) {
@@ -183,13 +195,25 @@ test.describe("empty results", () => {
 });
 
 test.describe("into a day", () => {
-  const intoGo = async (page: Page) => {
+  /**
+   * Routing keeps an answer it was given for five minutes, on the server and
+   * in the tab (`answerMemo`), so a test that forces a routing failure must
+   * ask a question no earlier test asked. A different number of hours is not
+   * enough (the same stops come back); a different town is, and it must
+   * differ per project, since both projects share one server.
+   */
+  const townFor = (info: TestInfo, slot: number) =>
+    (info.project.name === "desktop"
+      ? ["kelowna", "lake-country"]
+      : ["armstrong", "coldstream"])[slot];
+
+  const intoGo = async (page: Page, town = "vernon") => {
     await page.goto("/discovery");
     await ask(page, "What can we do with three hours?");
     await page
       .getByTestId("ask-gap-origin")
       .getByTestId("ask-town")
-      .selectOption("vernon");
+      .selectOption(town);
     await expect(page.getByTestId("ask-make-a-day")).toBeVisible();
     await page.getByTestId("ask-make-a-day").click();
     await expect(page).toHaveURL(/\/go\?/);
@@ -214,7 +238,7 @@ test.describe("into a day", () => {
     page,
   }, info) => {
     await setAtlas({ legs: "500" });
-    await intoGo(page);
+    await intoGo(page, townFor(info, 0));
     const summary = page.getByTestId("travel-summary");
     await expect(summary).toContainText(/straight lines/i);
     await expect(summary).toContainText(/could not get travel times/i);
@@ -232,7 +256,7 @@ test.describe("into a day", () => {
     page,
   }, info) => {
     await setAtlas({ legs: "404" });
-    await intoGo(page);
+    await intoGo(page, townFor(info, 1));
     await expect(page.getByTestId("travel-summary")).toContainText(
       /straight lines/i,
     );
