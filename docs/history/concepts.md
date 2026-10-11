@@ -58,6 +58,7 @@ is a _later_ artifact than the original concept.
   (`content.ts` lists "Printable map" and "Offline map").
 - **Introduced:** `76dde5e` 2026-08-14 (bulk snapshot), both paths.
 - **Quotes:**
+
   > ANALOG PASSPORT — use technology to enable less technology
 
   (`idea-atlas/content.ts`)
@@ -73,6 +74,7 @@ is a _later_ artifact than the original concept.
 - **Introduced:** `76dde5e` 2026-08-14 (bulk snapshot) for the archive file;
   `2819edb` 2026-08-15 for the Emi page.
 - **Quotes:**
+
   > Life is measured in moments
 
   (`archive/03-treasure-chest.md`)
@@ -105,7 +107,7 @@ is a _later_ artifact than the original concept.
   "ONE HELL OF A DAY" round). The product implementation is
   `src/components/ghad/`, introduced a commit later.
 - **Introduced:** `b32b87d` 2026-10-10 (`ONE HELL OF A DAY — brand confidence on
-  top of the two ideas that worked`) for `brand.tsx`; `6950899` 2026-10-10
+top of the two ideas that worked`) for `brand.tsx`; `6950899` 2026-10-10
   (`GO HAVE A DAY, on the product people actually use`) for `src/components/ghad/`.
   Lodge missions 111–115 carried this work.
 - **Quote** (`src/components/ghad/Wordmark.tsx`):
@@ -121,11 +123,20 @@ is a _later_ artifact than the original concept.
   `src/app/about/experiment-06-analog-adventures/content.ts` (`76dde5e`), which
   says "the best Passport session ends with the phone being put away", and
   doctrine §6 "Less phone, more life".
+- Since `016854a` the product carries the intent under another name: the `/go`
+  eyebrow "Go offline" and `OFFLINE_MODES` in `src/components/go/modes.ts`,
+  which says "This is not a digital-wellness product". The tension between the
+  two names is recorded, not resolved, in
+  `docs/product/originals/go-have-a-day.md` §6.
 
 ---
 
 ## Still open
 
 - The two originals above, to be exported by Lorne into `docs/history/originals/`.
+- The concepts are written up as product ideas, recovered and proposed kept
+  apart, in `docs/product/originals/` (GO HAVE A DAY, Fishing With Emi as the
+  acceptance experience, and the idea inventory). No prioritised inventory was
+  found in this repository; Lorne to supply it.
 - Plan step 3 (a pointer from doctrine §17 to `docs/history/`) and step 4 (the
   two untracked Mac files named in §17) are not done here.
