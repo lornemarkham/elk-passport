@@ -290,6 +290,19 @@ function ShapedDay({
   const [undo, setUndo] = useState<Snapshot | null>(null);
   const router = useRouter();
   const [asking, startAsking] = useTransition();
+  /** Bumped when a sentence is built, so the answer is brought into view. */
+  const [reveal, setReveal] = useState(0);
+  useEffect(() => {
+    if (reveal === 0) return;
+    // On a phone the answer starts well below the box that was just tapped:
+    // without this, pressing Build looks like nothing happened (M200 #10).
+    document.getElementById("go-result")?.scrollIntoView?.({
+      block: "start",
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [reveal]);
   const here = useHere();
   const [fetched, setFetched] = useState<{
     key: string;
@@ -499,6 +512,7 @@ function ShapedDay({
     setBrief(next);
     setDraft(said);
     setBuilt(said);
+    setReveal((n) => n + 1);
   };
 
   /** Starting somewhere: chosen by the person, never inferred. */
@@ -507,6 +521,7 @@ function ShapedDay({
     if (!brief || !town) return;
     setBrief({ ...brief, town });
     setReply([]);
+    setReveal((n) => n + 1);
   };
 
   /** Plan without something nothing Atlas holds offers — only when asked to. */
@@ -828,6 +843,7 @@ function ShapedDay({
 
       {atlas !== "unreachable" && day && brief && (
         <section
+          id="go-result"
           data-testid="go-day"
           className="mt-10 border-t border-black/10 pt-8"
         >
@@ -1161,6 +1177,7 @@ function StartPanel({
 }) {
   return (
     <section
+      id="go-result"
       data-testid="go-where"
       className="mt-10 border-t border-black/10 pt-8"
     >
@@ -1249,8 +1266,7 @@ function NotFound({
       className="mt-6 rounded-2xl bg-amber-50 p-5 text-amber-950 ring-1 ring-amber-900/20 ring-inset"
     >
       <h2 className="ghad-display text-[22px] leading-tight font-extrabold tracking-[-0.02em]">
-        Nothing for {unmet.map((u) => u.activity).join(" or ")} — so there
-        isn&apos;t a day to offer yet
+        {`Nothing for ${unmet.map((u) => u.activity).join(" or ")} — so there isn't a day to offer yet`}
       </h2>
       <p
         data-testid="go-not-found-says"
