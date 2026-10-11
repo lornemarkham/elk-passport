@@ -9,10 +9,10 @@ import { gallery } from "@/lib/design-lab/sample";
  */
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Design lab — nine directions" };
+export const metadata: Metadata = { title: "Design lab — twelve directions" };
 
 /**
- * **Nine directions, one corpus, no decision.**
+ * **Twelve directions, one corpus, no decision.**
  *
  * Every prototype behind this page renders the **same real Atlas subjects** —
  * the same photograph of Kalamoir Park, the same sentence Atlas holds about
@@ -34,6 +34,47 @@ interface Direction {
   readonly ink: string;
   readonly bg: string;
 }
+
+/**
+ * Round four: the brand exploration — ONE HELL OF A DAY — combining round
+ * three's two strongest ideas with the confidence of an outdoor brand.
+ * Working consumer brand only; nothing in the repository is renamed.
+ */
+const ROUND_FOUR: readonly Direction[] = [
+  {
+    key: "adventure",
+    href: "/labs/design/v4/adventure",
+    name: "The Adventure Brand",
+    line: "Identity and photography. An enormous opener, GO HAVE A DAY at 112px, then Atlas's verbs as links before anything else — so the brand gets the first screen and then gets out of the way.",
+    distinct:
+      "The only one with written voice. Every statement is about the product, never about a place, because a line calling a lake breathtaking would be the one thing none of these may do.",
+    swatches: ["#ffffff", "#000000", "#FF3B00"],
+    ink: "#000000",
+    bg: "#ffffff",
+  },
+  {
+    key: "explorer",
+    href: "/labs/design/v4/explorer",
+    name: "The Everyday Explorer",
+    line: "Discovery as a tool. Four compact rows of pills — doing, who, when, how far — always visible, always optional, with galleries that answer immediately.",
+    distinct:
+      "No apply button and no drawer. On a phone the control rows scroll sideways rather than wrapping, so the photographs start above the fold.",
+    swatches: ["#ffffff", "#000000", "#FF3B00"],
+    ink: "#000000",
+    bg: "#ffffff",
+  },
+  {
+    key: "one-hell-of-a-day",
+    href: "/labs/design/v4/one-hell-of-a-day",
+    name: "One Hell of a Day",
+    line: "The product candidate. Brand confidence, discovery intelligence, photography-first exploration — and an interaction that is a sentence you edit rather than a panel you fill in.",
+    distinct:
+      "\"I'm looking for anything, going with anyone. I've got the whole day, and we'll go anywhere.\" Four taps at most, and it reads as a plan rather than a query.",
+    swatches: ["#ffffff", "#000000", "#FF3B00"],
+    ink: "#000000",
+    bg: "#ffffff",
+  },
+];
 
 /**
  * Round three: pure white, big photography, big sans, horizontal movement.
@@ -162,19 +203,25 @@ export default async function DesignLab() {
           Passport · design lab · exploration
         </p>
         <h1 className="font-heading mt-3 max-w-[20ch] text-[2.4rem] leading-[1] tracking-[-0.03em] text-balance sm:text-[3.6rem]">
-          Nine directions for Discovery
+          Twelve directions for Discovery
         </h1>
         <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-white/60">
-          All nine render the same {total.toLocaleString("en-CA")} real subjects
-          from Atlas — the same photographs, the same sentences, the same verbs.
-          Nothing is invented. These are explorations rather than decisions, and
-          the production Discovery is unchanged at{" "}
+          All twelve render the same {total.toLocaleString("en-CA")} real
+          subjects from Atlas — the same photographs, the same sentences, the
+          same verbs. Nothing is invented. These are explorations rather than
+          decisions, and the production Discovery is unchanged at{" "}
           <Link href="/discovery" className="underline underline-offset-4">
             /discovery
           </Link>
           .
         </p>
 
+        <Round
+          title="Round four — One Hell of a Day"
+          note="A working consumer brand explored against the two strongest ideas from round three. Nothing in the repository, the domain or production is renamed."
+          directions={ROUND_FOUR}
+          example={example}
+        />
         <Round
           title="Round three"
           note="Pure white, big photography, big sans, horizontal movement. Built because none of the first six felt right: the interface was doing work the places should be doing."
@@ -201,7 +248,7 @@ export default async function DesignLab() {
           <ul className="mt-3 flex max-w-[70ch] list-disc flex-col gap-2 pl-5 text-[14px] leading-relaxed text-white/60">
             <li>
               Check each at <strong className="text-white/85">375px</strong> and
-              at desktop width. All nine are built mobile-first and the
+              at desktop width. All twelve are built mobile-first and the
               differences between them change at width — Travel Journal&apos;s
               margin folds above the entry, Immersive Explorer&apos;s rails
               become thumb-width, Editorial Cinematic&apos;s spreads stack.

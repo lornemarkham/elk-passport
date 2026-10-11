@@ -44,6 +44,49 @@ export interface Subject {
   readonly weakBlurb?: boolean;
   /** Atlas's verdict words for this subject's environment, where stated. */
   readonly outdoor?: boolean;
+  /**
+   * **Who Atlas says this is for**, read straight from
+   * `candidate-suitability/1` statements — never inferred.
+   *
+   * No `childAge` is sent here, so there is no `forAge` verdict to read; these
+   * are the statements themselves. `adultsOnly` is a stated rule (19+, "no
+   * minors", an age band starting at 18 or above). `families` is a stated
+   * characterisation. A subject with neither is **unknown**, which is most of
+   * them, and nothing here treats that as either answer.
+   */
+  readonly audience?: {
+    readonly adultsOnly?: boolean;
+    readonly families?: boolean;
+    /** The sentence it was read from, so a surface can show its working. */
+    readonly says?: string;
+  };
+}
+
+/**
+ * Read who Atlas says a subject is for, from its own statements.
+ *
+ * Deliberately only the two unambiguous shapes — a stated adults-only rule,
+ * and a stated family characterisation. Anything subtler is a job for
+ * `suitability.forAge`, which needs an age Passport has not been given here.
+ */
+function audienceOf(experience: Experience): Subject["audience"] | undefined {
+  const statements = experience.suitability?.statements ?? [];
+  const adult = statements.find(
+    (said) =>
+      said.about === "age" &&
+      (said.says === "adults-only" || (said.ages?.min ?? 0) >= 18),
+  );
+  const family = statements.find(
+    (said) =>
+      said.about === "audience" &&
+      (said.says === "families" || said.says === "children"),
+  );
+  if (!adult && !family) return undefined;
+  return {
+    ...(adult ? { adultsOnly: true } : {}),
+    ...(family ? { families: true } : {}),
+    ...((adult ?? family)?.text ? { says: (adult ?? family)!.text } : {}),
+  };
 }
 
 function subjectOf(experience: Experience): Subject {
@@ -81,6 +124,7 @@ function subjectOf(experience: Experience): Subject {
       ? { weakBlurb: true }
       : {}),
     ...(experience.environment?.setting === "outdoor" ? { outdoor: true } : {}),
+    ...(audienceOf(experience) ? { audience: audienceOf(experience)! } : {}),
   };
 }
 
