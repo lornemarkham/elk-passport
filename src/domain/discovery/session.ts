@@ -1,7 +1,7 @@
 import type { ExperienceKind } from "@/domain/experience/types";
 import { INTENTS, type IntentKey } from "./intents";
 import type { Company, Situation, Window } from "./situation";
-import { placeById } from "@/domain/environment/places";
+import { townById } from "./towns";
 
 /**
  * **An exploration is a place, not a mood the page happens to be in.**
@@ -133,7 +133,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
   const doing = params.get("doing")?.trim();
   // A town Passport actually has a verified point for. An unknown id is
   // dropped rather than carried, so nothing downstream has to wonder.
-  const at = placeById(params.get("at")?.trim() ?? "")?.id;
+  const at = townById(params.get("at")?.trim())?.id;
   return {
     ...(oneOf(INTENT_KEYS, params.get("intent"))
       ? { intent: oneOf(INTENT_KEYS, params.get("intent"))! }

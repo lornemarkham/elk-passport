@@ -53,7 +53,7 @@ import {
   type Preferences,
 } from "@/domain/discovery/preference";
 import { useDistances } from "@/lib/location/useDistances";
-import { OCTOBER_PLACES, placeById } from "@/domain/environment/places";
+import { TOWN_GROUPS, homeArea, townById } from "@/domain/discovery/towns";
 
 /**
  * Why a distance pill is not pressable yet.
@@ -254,7 +254,7 @@ export function DiscoveryListView({
   const kind = session.kind ?? null;
   const doing = session.doing;
   /** The town they picked, where they picked one. Verified, or absent. */
-  const town = session.at ? placeById(session.at) : undefined;
+  const town = townById(session.at);
   const childAge = session.age;
   const on = session.on;
   const within = session.within;
@@ -581,9 +581,22 @@ export function DiscoveryListView({
     if (href !== "/discovery") query.set("back", href);
     return query.toString();
   }, [session]);
-  // Which area this page is mostly about, counted from what Atlas states.
-  // A card in a different one says so; see `dominantArea`.
-  const home = useMemo(() => dominantArea(experiences), [experiences]);
+  /**
+   * **Which area this page is about — the reader's, when they have said.**
+   *
+   * It was `dominantArea(experiences)` and nothing else: the area most of the
+   * corpus is in, which is a fact about Atlas rather than about the person
+   * reading. Measured on production, a reader in Vancouver was shown **"2,189
+   * ideas in Okanagan"** and had the thirty-four subjects actually near them
+   * suppressed as *elsewhere*, with no town in the picker closer than Osoyoos.
+   *
+   * A chosen town now decides it, and the corpus only answers when nobody
+   * has. See `towns.ts`.
+   */
+  const home = useMemo(
+    () => homeArea(session.at, dominantArea(experiences)),
+    [session.at, experiences],
+  );
   // The calendar day, derived from the server's instant so a card can say
   // "Last day" instead of printing a stated interval nobody reads.
   const todayKey = useMemo(
@@ -1405,11 +1418,18 @@ export function DiscoveryListView({
                       }
                       className="min-h-11 w-[9.5rem] min-w-0 rounded-full bg-white px-3 text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset focus:ring-black/45 sm:w-auto"
                     >
+                      {/* Grouped, because the two regions are four hours
+                          apart and a flat list of thirty-two reads as one
+                          place. See `towns.ts`. */}
                       <option value="">pick a town</option>
-                      {OCTOBER_PLACES.map((place) => (
-                        <option key={place.id} value={place.id}>
-                          {place.name}
-                        </option>
+                      {TOWN_GROUPS.map((group) => (
+                        <optgroup key={group.area} label={group.area}>
+                          {group.towns.map((place) => (
+                            <option key={place.id} value={place.id}>
+                              {place.name}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                     {ask && !shared && (
