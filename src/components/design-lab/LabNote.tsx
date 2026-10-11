@@ -4,8 +4,12 @@ import Link from "next/link";
  * **This is a prototype, and it says so on every screen.**
  *
  * A design exploration that looks like the product is one screenshot away from
- * being mistaken for the product. The bar names the direction, says it is not
- * live, and links back to the comparison.
+ * being mistaken for the product. The bar names the direction, says what it is,
+ * and links back to the comparison.
+ *
+ * It used to read *"not live"*, which stopped being true the moment these were
+ * deployed so they could be opened on a phone. Reachable and chosen are
+ * different things, and the bar now says the second one.
  */
 export function LabNote({
   direction,
@@ -28,7 +32,7 @@ export function LabNote({
     >
       <span className="uppercase">
         Design lab · <strong className="font-semibold">{direction}</strong> ·
-        not live
+        exploration, not the product
       </span>
       <Link href="/labs/design" className="underline underline-offset-2">
         Compare all three

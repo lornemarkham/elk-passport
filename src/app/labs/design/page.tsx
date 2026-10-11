@@ -20,8 +20,9 @@ export const metadata: Metadata = { title: "Design lab — three directions" };
  * anything: dressing three mockups in invented places would compare three
  * pieces of copywriting.
  *
- * None of these is production. Nothing here is deployed, and the real
- * `/discovery` is untouched.
+ * None of these is the product. They are reachable so they can be opened on a
+ * phone, which is not the same as being chosen — and the real `/discovery` is
+ * untouched either way.
  */
 const DIRECTIONS = [
   {
@@ -65,7 +66,7 @@ export default async function DesignLab() {
     <main className="min-h-screen bg-[#141414] px-5 py-12 text-white sm:px-10 sm:py-16">
       <div className="mx-auto max-w-[1100px]">
         <p className="text-[11px] tracking-[0.28em] text-white/45 uppercase">
-          Passport · design lab · not live
+          Passport · design lab · exploration
         </p>
         <h1 className="font-heading mt-3 max-w-[20ch] text-[2.4rem] leading-[1] tracking-[-0.03em] text-balance sm:text-[3.6rem]">
           Three directions for Discovery
@@ -73,8 +74,8 @@ export default async function DesignLab() {
         <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-white/60">
           All three render the same {total.toLocaleString("en-CA")} real
           subjects from Atlas — the same photographs, the same sentences, the
-          same verbs. Nothing is invented, and nothing here is deployed. The
-          production Discovery is unchanged at{" "}
+          same verbs. Nothing is invented. These are explorations rather than
+          decisions, and the production Discovery is unchanged at{" "}
           <Link href="/discovery" className="underline underline-offset-4">
             /discovery
           </Link>
