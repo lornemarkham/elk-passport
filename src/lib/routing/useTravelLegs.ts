@@ -71,7 +71,9 @@ export function useTravelLegs(
         });
         if (!response.ok) throw new Error(String(response.status));
         const answer = (await response.json()) as LegsAnswer;
-        remembered.set(question, answer);
+        // A day Atlas could only partly answer just now is shown, not kept.
+        if (answer.state !== "ready" || !answer.temporary)
+          remembered.set(question, answer);
         if (!cancelled) setResult({ key, answer });
       } catch {
         if (!cancelled) setResult({ key });

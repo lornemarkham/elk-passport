@@ -66,7 +66,8 @@ export function useTravelTimes(
         });
         if (!response.ok) throw new Error(String(response.status));
         const answer = (await response.json()) as TravelAnswer;
-        remembered.set(key, answer);
+        if (answer.state !== "ready" || !answer.temporary)
+          remembered.set(key, answer);
         if (!cancelled) setResult({ key, answer });
       } catch {
         if (!cancelled) setResult({ key });

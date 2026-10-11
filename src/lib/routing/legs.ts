@@ -1,5 +1,5 @@
 import { distanceKm } from "@/lib/environment/geo";
-import type { Journey, TravelMode } from "./journey";
+import { isCautioned, type Journey, type TravelMode } from "./journey";
 
 /**
  * **The journeys between the stops of a day, and what they add up to.**
@@ -26,7 +26,8 @@ import type { Journey, TravelMode } from "./journey";
  * Atlas holds a park, a beach or a trail as one point, often its middle, not
  * its gate. A provider routing to that point can take the minor tracks
  * inside: Kalamalka Lake Park came back as 82 minutes from Vernon, 12 km
- * away. ADR 097 flags such a reading with `accessCaution` and says its
+ * away. ADR 097 flags such a reading with `accessCaution` (travel-legs/1 adds
+ * `areaPoint` where the point is inside an area) and says its
  * minutes "should not decide anything unchecked", and a day's total is
  * exactly what decides whether a day fits. So a cautioned leg is shown on
  * its own line, with its caution, and left out of the sum, which says *at
@@ -153,7 +154,7 @@ export function travelTotal(
     const name = `${leg.from.name} → ${leg.to.name}`;
     if (answer?.kind !== "routed" || answer.mode !== mode) {
       missing.push(name);
-    } else if (answer.accessCaution) {
+    } else if (isCautioned(answer)) {
       cautioned.push(name);
     } else {
       minutes += answer.minutes;

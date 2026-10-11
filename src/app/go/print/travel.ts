@@ -1,6 +1,10 @@
 import type { RouteOptions, RoutedTravel } from "@/lib/analog/route";
 import { attributionFor } from "@/lib/routing/attribution";
-import type { Journey, TravelMode } from "@/lib/routing/journey";
+import {
+  cautionOf,
+  type Journey,
+  type TravelMode,
+} from "@/lib/routing/journey";
 import { describeTravelTotal, travelTotal, type Leg } from "@/lib/routing/legs";
 import type { TravelStatus } from "@/lib/routing/useTravelTimes";
 
@@ -23,15 +27,15 @@ export function printTravel(
     if (journey?.kind !== "routed") return;
     const key = leg.home ? "home" : leg.to.id;
     if (!key) return;
+    // An area point with no caution of its own still prints one.
+    const caution = cautionOf(journey);
     travel[key] = {
       kind: "routed",
       mode: journey.mode,
       minutes: journey.minutes,
       roadKm: journey.roadKm,
       provider: journey.provider,
-      ...(journey.accessCaution
-        ? { accessCaution: journey.accessCaution }
-        : {}),
+      ...(caution ? { accessCaution: caution } : {}),
     };
   });
   const words =

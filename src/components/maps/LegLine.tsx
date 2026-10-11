@@ -1,4 +1,8 @@
-import { describeJourney, type Journey } from "@/lib/routing/journey";
+import {
+  describeJourney,
+  isCautioned,
+  type Journey,
+} from "@/lib/routing/journey";
 import type { Leg } from "@/lib/routing/legs";
 
 /**
@@ -42,7 +46,7 @@ export function LegLine({
   const words = describeJourney(journey);
   const aside =
     journey.kind === "routed"
-      ? `estimated by ${journey.provider}${journey.accessCaution ? "; check the route, the point may be inside the site" : ""}`
+      ? `estimated by ${journey.provider}${isCautioned(journey) ? "; check the route, the point may be inside the site" : ""}`
       : journey.kind === "straight-line"
         ? "not a travel time"
         : words.caveat.replace(/\.$/, "");

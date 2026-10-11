@@ -1,0 +1,398 @@
+{
+  "contract": "travel-legs/1",
+  "about": "Machine-readable fixture for Atlas GET /travel/legs. Prose: docs/lanes/travel-legs-contract.md. Schema: travel-legs-1.schema.json. Every requestErrors and notFound case is reproduced exactly by src/api/travelLegsContract.test.ts; every example is replayed through routeLegs by the same test. No coordinate, walking time or drive time here is synthetic: the routed example is one live openrouteservice answer (2026-10-11 17:32 UTC); the failure example came from a local stub provider and says so.",
+  "request": {
+    "method": "GET",
+    "path": "/travel/legs",
+    "auth": {
+      "header": "Authorization",
+      "scheme": "Bearer",
+      "token": "ATLAS_SERVICE_TOKEN",
+      "serverSideOnly": true,
+      "unauthorized": {
+        "status": 401,
+        "body": {
+          "error": "Unauthorized."
+        }
+      },
+      "notConfigured": {
+        "status": 503,
+        "body": {
+          "error": "Atlas service authentication is not configured."
+        }
+      }
+    },
+    "otherMethods": {
+      "status": 405,
+      "body": {
+        "error": "Method not allowed."
+      },
+      "note": "POST is a 405: the route exists. Do not read 405 as endpoint-absent."
+    },
+    "query": {
+      "stops": {
+        "required": true,
+        "type": "comma-separated Atlas Discovery candidate ids, in visiting order",
+        "min": "2, or 1 with an origin",
+        "max": 10,
+        "repeatsAllowed": false,
+        "blankItemsDropped": true,
+        "coordinatesAccepted": false
+      },
+      "mode": {
+        "required": false,
+        "default": "driving",
+        "enum": [
+          "driving",
+          "walking",
+          "cycling",
+          "transit"
+        ],
+        "emptyIsError": true
+      },
+      "lat": {
+        "required": "with lng",
+        "range": [
+          -90,
+          90
+        ],
+        "roundedTo": 2
+      },
+      "lng": {
+        "required": "with lat",
+        "range": [
+          -180,
+          180
+        ],
+        "roundedTo": 2
+      }
+    },
+    "legsAsked": {
+      "withOrigin": "N (origin→stop1, then stop→stop)",
+      "withoutOrigin": "N−1",
+      "returnLeg": false
+    }
+  },
+  "requestErrors": [
+    {
+      "query": "stops=a,b&mode=flying",
+      "status": 400,
+      "body": {
+        "error": "mode must be driving, walking, cycling or transit."
+      }
+    },
+    {
+      "query": "stops=a,b&mode=",
+      "status": 400,
+      "body": {
+        "error": "mode must be driving, walking, cycling or transit."
+      }
+    },
+    {
+      "query": "stops=a&lat=50.27",
+      "status": 400,
+      "body": {
+        "error": "An origin needs both lat and lng."
+      }
+    },
+    {
+      "query": "stops=a&lat=abc&lng=-119.27",
+      "status": 400,
+      "body": {
+        "error": "lat and lng must be a position."
+      }
+    },
+    {
+      "query": "stops=a&lat=91&lng=0",
+      "status": 400,
+      "body": {
+        "error": "lat and lng must be a position."
+      }
+    },
+    {
+      "query": "stops=a,a",
+      "status": 400,
+      "body": {
+        "error": "stops must not repeat a stop."
+      }
+    },
+    {
+      "query": "stops=a",
+      "status": 400,
+      "body": {
+        "error": "stops needs two stops, or one stop and an origin (lat and lng)."
+      }
+    },
+    {
+      "query": "stops=",
+      "status": 400,
+      "body": {
+        "error": "stops needs two stops, or one stop and an origin (lat and lng)."
+      }
+    },
+    {
+      "query": "stops=a,b,c,d,e,f,g,h,i,j,k",
+      "status": 400,
+      "body": {
+        "error": "stops may name at most 10."
+      }
+    }
+  ],
+  "notFound": {
+    "feedIds": [
+      "99275934-505a-4513-8398-94f6303790ac"
+    ],
+    "query": "stops=99275934-505a-4513-8398-94f6303790ac,not-a-candidate",
+    "status": 404,
+    "body": {
+      "error": "Atlas holds no Discovery candidate not-a-candidate.",
+      "code": "unknown-stops",
+      "unknownStops": [
+        "not-a-candidate"
+      ]
+    },
+    "means": "A stop id is stale or wrong (merged, retired, never a candidate). The whole request fails. It is NOT an unavailable route, NOT an unrouted stop, and NOT an absent endpoint. Branch on code === 'unknown-stops'; a path that does not exist answers {\"error\":\"Not found\"} with no code."
+  },
+  "legStates": {
+    "estimated": {
+      "required": [
+        "state",
+        "mode",
+        "minutes",
+        "routeKm",
+        "straightKm",
+        "provider",
+        "calculatedAt",
+        "limitations"
+      ],
+      "optional": [
+        "accessCaution",
+        "areaPoint"
+      ],
+      "passport": "Show minutes and road km, the attribution (last limitations item), and accessCaution when present. If areaPoint is true the route goes to a point inside a park/beach/trail, not its entrance: never present the minutes as time to the way in."
+    },
+    "unavailable": {
+      "required": [
+        "state",
+        "mode",
+        "provider",
+        "calculatedAt",
+        "because"
+      ],
+      "optional": [],
+      "passport": "No route: the provider answered and could not route this leg. Show because and a labelled straight line."
+    },
+    "unavailableTransient": {
+      "required": [
+        "state",
+        "mode",
+        "provider",
+        "calculatedAt",
+        "because",
+        "transient"
+      ],
+      "transient": true,
+      "topLevel": "failure",
+      "passport": "Temporary: the provider did not answer. Says nothing about the route. Show 'couldn't check just now', back off ≥60 s, never hide or rank down the stop."
+    },
+    "unrouted": {
+      "required": [
+        "state",
+        "mode",
+        "because"
+      ],
+      "becausePrefix": "<stop id>: ",
+      "passport": "Atlas holds no point of its own for a stop (unknown, conflicting, or no coordinates). Not malformed, not retryable until data changes."
+    }
+  },
+  "distinguish": [
+    {
+      "what": "stop id not a Discovery candidate",
+      "wire": "HTTP 404, code 'unknown-stops', unknownStops[]",
+      "retry": false
+    },
+    {
+      "what": "stop has no point Atlas holds",
+      "wire": "200, leg travel.state 'unrouted'",
+      "retry": false
+    },
+    {
+      "what": "provider answered: no route",
+      "wire": "200, leg travel.state 'unavailable', no transient",
+      "retry": false
+    },
+    {
+      "what": "provider did not answer",
+      "wire": "200, leg travel.state 'unavailable', transient true, top-level failure",
+      "retry": "after ≥60 s"
+    },
+    {
+      "what": "no provider or mode not routed",
+      "wire": "200, state 'unsupported', legs []",
+      "retry": false
+    },
+    {
+      "what": "route to an area's interior point",
+      "wire": "200, leg estimated with areaPoint true and accessCaution starting with AREA_POINT_CAUTION; total.areaPoints when summed",
+      "retry": false
+    }
+  ],
+  "areaPointCaution": "Atlas holds no entrance, parking or trailhead for this area: its point is somewhere inside it (often a map centroid), so the route goes to wherever the road network reaches that point, not to where a visitor parks",
+  "quota": {
+    "provider": "openrouteservice",
+    "requestsPerDay": 50,
+    "requestsPerMinute": 40,
+    "source": "key's x-ratelimit-limit: 50, measured 2026-10-11; ORS_DEFAULT_PER_DAY = 50; .env.local ORS_REQUESTS_PER_DAY=50",
+    "perProcess": true,
+    "costPerCall": "at most 1 provider request; 0 when cached; unrouted legs cost nothing",
+    "atlasNever429": true
+  },
+  "examples": [
+    {
+      "name": "routed-live",
+      "provenance": "live openrouteservice, 2026-10-11 17:32 UTC, local API on Supabase corpus; Davison Orchards then Kekuli Bay Provincial Park from Vernon centre",
+      "query": "stops=99275934-505a-4513-8398-94f6303790ac,1d8a002c-a7ac-41d5-9a3e-73ab0849e702&mode=driving&lat=50.27&lng=-119.27",
+      "status": 200,
+      "body": {
+        "version": "travel-legs/1",
+        "mode": "driving",
+        "origin": {
+          "lat": 50.27,
+          "lng": -119.27
+        },
+        "state": "routed",
+        "provider": "openrouteservice",
+        "legs": [
+          {
+            "from": "origin",
+            "to": "99275934-505a-4513-8398-94f6303790ac",
+            "travel": {
+              "state": "estimated",
+              "mode": "driving",
+              "minutes": 11,
+              "routeKm": 4.5,
+              "straightKm": 2.2,
+              "provider": "openrouteservice",
+              "calculatedAt": "2026-10-11T17:32:31.947Z",
+              "limitations": [
+                "typical free-flow road speeds from OpenStreetMap: no live traffic",
+                "no time for parking, ferry sailings or waits, or road closures",
+                "© openrouteservice.org by HeiGIT | map data © OpenStreetMap contributors (ODbL)"
+              ]
+            }
+          },
+          {
+            "from": "99275934-505a-4513-8398-94f6303790ac",
+            "to": "1d8a002c-a7ac-41d5-9a3e-73ab0849e702",
+            "travel": {
+              "state": "estimated",
+              "mode": "driving",
+              "minutes": 24,
+              "routeKm": 15.5,
+              "straightKm": 10,
+              "provider": "openrouteservice",
+              "calculatedAt": "2026-10-11T17:32:31.947Z",
+              "limitations": [
+                "typical free-flow road speeds from OpenStreetMap: no live traffic",
+                "no time for parking, ferry sailings or waits, or road closures",
+                "© openrouteservice.org by HeiGIT | map data © OpenStreetMap contributors (ODbL)"
+              ]
+            }
+          }
+        ],
+        "total": {
+          "state": "estimated",
+          "minutes": 35,
+          "routeKm": 20,
+          "basis": "the sum of the legs’ estimates: no time at the stops, for parking, or for traffic"
+        }
+      }
+    },
+    {
+      "name": "transient-failure-stub",
+      "provenance": "local stub provider answering 429 (ORS_BASE_URL pointed at a stub), 2026-10-11",
+      "query": "stops=99275934-505a-4513-8398-94f6303790ac,1d8a002c-a7ac-41d5-9a3e-73ab0849e702&mode=driving&lat=50.27&lng=-119.27",
+      "status": 200,
+      "body": {
+        "version": "travel-legs/1",
+        "mode": "driving",
+        "origin": {
+          "lat": 50.27,
+          "lng": -119.27
+        },
+        "state": "routed",
+        "provider": "openrouteservice",
+        "legs": [
+          {
+            "from": "origin",
+            "to": "99275934-505a-4513-8398-94f6303790ac",
+            "travel": {
+              "state": "unavailable",
+              "mode": "driving",
+              "provider": "openrouteservice",
+              "calculatedAt": "2026-10-11T17:31:27.912Z",
+              "because": "the routing provider did not answer (openrouteservice answered 429: over its rate limit: 429 Rate limit exceeded (stub))",
+              "transient": true
+            }
+          },
+          {
+            "from": "99275934-505a-4513-8398-94f6303790ac",
+            "to": "1d8a002c-a7ac-41d5-9a3e-73ab0849e702",
+            "travel": {
+              "state": "unavailable",
+              "mode": "driving",
+              "provider": "openrouteservice",
+              "calculatedAt": "2026-10-11T17:31:27.912Z",
+              "because": "the routing provider did not answer (openrouteservice answered 429: over its rate limit: 429 Rate limit exceeded (stub))",
+              "transient": true
+            }
+          }
+        ],
+        "total": {
+          "state": "incomplete",
+          "because": "2 of 2 legs have no estimate"
+        },
+        "failure": "openrouteservice answered 429: over its rate limit: 429 Rate limit exceeded (stub)"
+      }
+    },
+    {
+      "name": "unsupported-no-provider",
+      "provenance": "local API with ORS_API_KEY blank, 2026-10-11; body recorded, stop ids in query are the ones the body does not name",
+      "query": "stops=99275934-505a-4513-8398-94f6303790ac&mode=walking&lat=50.27&lng=-119.27",
+      "status": 200,
+      "body": {
+        "version": "travel-legs/1",
+        "mode": "walking",
+        "origin": {
+          "lat": 50.27,
+          "lng": -119.27
+        },
+        "state": "unsupported",
+        "because": "Atlas has no routing provider configured, so it cannot say how long the trip takes; distance is straight-line only (ADR 097)",
+        "legs": []
+      }
+    },
+    {
+      "name": "unsupported-transit",
+      "provenance": "local API, provider configured, 2026-10-11; body recorded, stop ids in query are the ones the body does not name",
+      "query": "stops=99275934-505a-4513-8398-94f6303790ac,1d8a002c-a7ac-41d5-9a3e-73ab0849e702&mode=transit",
+      "status": 200,
+      "body": {
+        "version": "travel-legs/1",
+        "mode": "transit",
+        "state": "unsupported",
+        "because": "Atlas's routing provider does not route transit; distances are straight-line only (ADR 097)",
+        "legs": []
+      }
+    }
+  ],
+  "malformed": [
+    "non-JSON body",
+    "version is not travel-legs/1",
+    "legs is not an array",
+    "state routed and legs.length ≠ legs asked",
+    "from/to not in the order asked",
+    "travel fits no legState",
+    "travel.mode ≠ mode asked"
+  ]
+}

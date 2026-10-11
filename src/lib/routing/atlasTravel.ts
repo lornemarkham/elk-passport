@@ -48,6 +48,8 @@ export type TravelAnswer =
       readonly mode: TravelMode;
       /** By Atlas candidate id. Ids Atlas did not return are simply absent. */
       readonly journeys: Readonly<Record<string, Journey>>;
+      /** The provider did not answer for some places; not to be kept. */
+      readonly temporary?: true;
     }
   | {
       /** Atlas answered, and has no travel times to give. Not an error. */
@@ -99,15 +101,16 @@ export function answerFrom(
 ): TravelAnswer {
   const journeys: Record<string, Journey> = {};
   let carried = 0;
+  let temporary = false;
   for (const candidate of candidates) {
     const id = (candidate as { id?: unknown } | null)?.id;
     if (typeof id !== "string") continue;
     if (!("travel" in (candidate as object))) continue;
     carried += 1;
-    journeys[id] = journeyFromReading(
-      (candidate as { travel: unknown }).travel,
-      mode,
-    );
+    const travel = (candidate as { travel: unknown }).travel;
+    if ((travel as { transient?: unknown } | null)?.transient === true)
+      temporary = true;
+    journeys[id] = journeyFromReading(travel, mode);
   }
   if (candidates.length > 0 && carried === 0) {
     return {
@@ -116,7 +119,12 @@ export function answerFrom(
       because: "Atlas does not serve travel times yet",
     };
   }
-  return { state: "ready", mode, journeys };
+  return {
+    state: "ready",
+    mode,
+    journeys,
+    ...(temporary ? { temporary: true as const } : {}),
+  };
 }
 
 const isString = (v: unknown): v is string =>
@@ -186,6 +194,9 @@ export function journeyFromReading(
         ...(isString(r.accessCaution)
           ? { accessCaution: r.accessCaution }
           : {}),
+        // travel-legs/1: a point inside an area, not its way in. Kept as the
+        // flag it is, so nothing downstream has to read the caution's prose.
+        ...(r.areaPoint === true ? { areaPoint: true as const } : {}),
       };
     }
     case "unavailable":

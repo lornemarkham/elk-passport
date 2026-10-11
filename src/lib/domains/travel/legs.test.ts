@@ -162,13 +162,23 @@ describe("reading Atlas's answer", () => {
     expect(answer.state === "ready" && answer.total).toBeUndefined();
   });
 
-  it("reads a whole-answer provider failure as temporary, not as 'no route'", () => {
+  it("reads a whole-answer provider failure as temporary, keeping the legs", () => {
+    const answer = readTravelLegsAnswer(
+      200,
+      {
+        legs: [{ travel: estimated(11, 4.5) }, { travel: {} }],
+        failure: "openrouteservice answered 429",
+      },
+      q,
+    );
+    expect(answer).toMatchObject({ state: "ready", temporary: true });
+    expect(answer.state === "ready" && answer.legs.map((l) => l.ok)).toEqual([
+      true,
+      false,
+    ]);
+    // A failure that also broke the legs is still only a failure.
     expect(
-      readTravelLegsAnswer(
-        200,
-        { legs: [{ travel: {} }, { travel: {} }], failure: { status: 429 } },
-        q,
-      ).state,
+      readTravelLegsAnswer(200, { legs: [], failure: "429" }, q).state,
     ).toBe("temporarily-unavailable");
   });
 
@@ -185,12 +195,32 @@ describe("reading Atlas's answer", () => {
     });
   });
 
-  it("cannot tell a missing route from an unknown stop on 404, and says so", () => {
-    const answer = readTravelLegsAnswer(404, { error: "Not found" }, q);
-    expect(answer.state).toBe("not-found");
-    expect(answer.state !== "ready" && answer.because).toMatch(
-      /either .* or .* stops/,
+  it("reads a 404 with no code as a path Atlas does not serve", () => {
+    for (const body of [{ error: "Not found" }, null, { code: "other" }]) {
+      const answer = readTravelLegsAnswer(404, body, q);
+      expect(answer.state).toBe("not-found");
+      expect(answer.state !== "ready" && answer.because).toMatch(
+        /does not serve/,
+      );
+    }
+  });
+
+  it("reads a 404 naming unknown stops as about the day, and names them", () => {
+    const answer = readTravelLegsAnswer(
+      404,
+      { error: "x", code: "unknown-stops", unknownStops: ["kal-beach"] },
+      q,
     );
+    expect(answer).toMatchObject({
+      state: "unknown-stops",
+      unknownStops: ["kal-beach"],
+      because: expect.stringMatching(/no longer holds this stop.*kal-beach/),
+    });
+    expect(
+      withTravel(legsOf(day), answer).every(
+        (l) => l.travelMinutes.state === "unknown",
+      ),
+    ).toBe(true);
   });
 
   it("separates the token from the day", () => {

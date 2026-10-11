@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answerMemo } from "./answerMemo";
+import { answerMemo, askedOnce } from "./answerMemo";
 
 describe("answerMemo", () => {
   it("keeps an answer until it is older than its TTL", () => {
@@ -28,5 +28,56 @@ describe("answerMemo", () => {
     memo.set("a", 1);
     memo.clear();
     expect(memo.get("a")).toBeUndefined();
+  });
+});
+
+describe("askedOnce (the server's memo)", () => {
+  it("asks once for the same question, in flight or kept", async () => {
+    const asked = askedOnce<string>();
+    let calls = 0;
+    const ask = async () => {
+      calls += 1;
+      return "answer";
+    };
+    const [a, b] = await Promise.all([
+      asked.ask("q", ask),
+      asked.ask("q", ask),
+    ]);
+    expect([a, b]).toEqual(["answer", "answer"]);
+    expect(await asked.ask("q", ask)).toBe("answer");
+    expect(calls).toBe(1);
+    await asked.ask("other", ask);
+    expect(calls).toBe(2);
+  });
+
+  it("keeps no failure and nothing `keep` refuses", async () => {
+    const asked = askedOnce<{ temporary?: boolean }>({
+      keep: (a) => !a.temporary,
+    });
+    await expect(
+      asked.ask("q", async () => {
+        throw new Error("Atlas down");
+      }),
+    ).rejects.toThrow("Atlas down");
+    let calls = 0;
+    const temporary = async () => {
+      calls += 1;
+      return { temporary: true };
+    };
+    await asked.ask("q", temporary);
+    await asked.ask("q", temporary);
+    expect(calls).toBe(2);
+  });
+
+  it("forgets after its TTL", async () => {
+    let t = 0;
+    const asked = askedOnce<number>({ ttlMs: 1000, now: () => t });
+    let calls = 0;
+    const ask = async () => ++calls;
+    await asked.ask("q", ask);
+    t = 999;
+    expect(await asked.ask("q", ask)).toBe(1);
+    t = 1000;
+    expect(await asked.ask("q", ask)).toBe(2);
   });
 });

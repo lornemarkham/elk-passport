@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  cautionOf,
   describeJourney,
+  isCautioned,
+  routedShort,
   straightLineJourney,
   withinMinutes,
   type Journey,
@@ -124,5 +127,29 @@ describe("no answer is said as no answer", () => {
     expect(
       withinMinutes({ kind: "unknown", because: "x" }, 60),
     ).toBeUndefined();
+  });
+});
+
+describe("a route to a point inside an area (travel-legs/1 areaPoint)", () => {
+  const area: Journey = { ...fintryRouted, minutes: 82, areaPoint: true };
+
+  it("is cautioned with or without an accessCaution of its own", () => {
+    expect(isCautioned(fintryRouted)).toBe(false);
+    expect(isCautioned(area)).toBe(true);
+    expect(isCautioned({ ...fintryRouted, accessCaution: "slow" })).toBe(true);
+    expect(cautionOf(area)).toMatch(/not at the way in/);
+    expect(cautionOf({ ...area, accessCaution: "Atlas's own words" })).toBe(
+      "Atlas's own words",
+    );
+  });
+
+  it("never shows its minutes as a time to the way in", () => {
+    expect(routedShort(area)).toBeUndefined();
+    expect(withinMinutes(area, 120)).toBeUndefined();
+    const { headline, caveat } = describeJourney(area);
+    expect(headline).toBe(
+      "1 h 22 min drive to a point inside it · 50 km by road",
+    );
+    expect(caveat).toMatch(/not at the way in\.$/);
   });
 });

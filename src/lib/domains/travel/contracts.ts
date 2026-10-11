@@ -15,9 +15,15 @@ import { z } from "zod";
  *   (`202592b`, `889170e`). **Not deployed, not on GitHub, not in the
  *   reference clone.** It serves `GET /travel/legs` and adds the reading
  *   states `unrouted` and `beyond`, and `transient` on `unavailable`. Its
- *   shape here is taken from the M144, M145 and M147 mission reports, not from
- *   its source, which lives in a workspace this lane may not read. Fields the
- *   reports do not name are not relied on.
+ *   shape was first taken from the M144, M145 and M147 mission reports.
+ * - **Atlas `release/routing-rc` `37f5aa4`** — `travel-legs/1`, the route's
+ *   first machine-readable contract. **On Atlas's release branch, not
+ *   deployed.** Its fixture is copied beside this file
+ *   (`__fixtures__/travel-legs-1.json`) and its bodies are replayed through the
+ *   readers in `legs.test.ts`. It names the 404 for an unknown stop
+ *   (`code: "unknown-stops"`), flags a route to an area's interior point
+ *   (`areaPoint`), and says the provider quota is 50 requests a day for the
+ *   whole key, shared by every caller.
  *
  * Lane `maps` (`d62ba73`) built against a `POST /travel/legs` that Passport
  * proposed before M144 existed. That proposal is recorded in
@@ -65,6 +71,13 @@ export const travelTimeReadingSchema = z.discriminatedUnion("state", [
     calculatedAt,
     limitations: z.array(text),
     accessCaution: text.optional(),
+    /**
+     * travel-legs/1: Atlas holds no entrance, parking or trailhead for this
+     * park, beach or trail, so the route goes to a point inside it (often its
+     * map centroid). The minutes are not the time to the way in. Atlas sends
+     * `accessCaution` with it; this is the flag, so nothing has to read prose.
+     */
+    areaPoint: z.literal(true).optional(),
   }),
   z.object({
     state: z.literal("unavailable"),
@@ -100,6 +113,13 @@ export const travelTimeReadingSchema = z.discriminatedUnion("state", [
 ]);
 export type TravelTimeReading = z.infer<typeof travelTimeReadingSchema>;
 
+/**
+ * Passport's words for `areaPoint` when Atlas sends no `accessCaution` with
+ * it. travel-legs/1 always sends one; the flag alone must still say this.
+ */
+export const AREA_POINT_NOTE =
+  "Atlas holds no entrance, parking or trailhead for this place, so the route ends at a point inside it, not at the way in";
+
 // ---------------------------------------------------------------------------
 // GET /travel/legs — Atlas M144
 // ---------------------------------------------------------------------------
@@ -107,10 +127,12 @@ export type TravelTimeReading = z.infer<typeof travelTimeReadingSchema>;
 export const ATLAS_TRAVEL_LEGS = {
   method: "GET",
   path: "/travel/legs",
-  /** Built and merged in local Atlas; not deployed; not in the reference clone. */
-  status: "merged-locally-not-deployed",
-  atlasCommit: "32da743 (M144), merged by M145 202592b / 889170e",
-  source: "~/Drop/completed/read/lodge-report-145.md §6–7",
+  /** On Atlas's release branch; not deployed; not in the reference clone. */
+  status: "release-candidate-not-deployed",
+  atlasCommit:
+    "37f5aa4 (travel-legs/1) on release/routing-rc; first M144 32da743",
+  source:
+    "Atlas docs/lanes/contracts/travel-legs-1.json (copied as __fixtures__/travel-legs-1.json)",
   /** 2–10 stops, no repeats; or one stop and an origin. */
   minStops: 2,
   maxStops: 10,
@@ -190,12 +212,16 @@ export type LegReading =
  *
  * - `ready` — one reading per leg, in order. `total` is passed through only
  *   when Atlas says it is `estimated`: a total is never summed here.
+ *   `temporary` says Atlas's provider did not answer for some legs (a
+ *   top-level `failure`): those legs read `unavailable` + `transient`, and
+ *   every leg it did answer is kept. Back off at least 60 s (travel-legs/1).
  * - `unsupported` — the whole mode is not served (transit, today).
- * - `temporarily-unavailable` — Atlas or its provider failed; try later. The
- *   places are not to blame.
- * - `not-found` — **ambiguous by construction**. A deployed Atlas without
- *   M144 answers 404 for the route; an Atlas with M144 answers 404 for an
- *   unknown stop. Until Atlas tells them apart, so does nobody.
+ * - `temporarily-unavailable` — Atlas itself failed (429 / 5xx); try later.
+ *   The places are not to blame.
+ * - `unknown-stops` — 404 with `code: "unknown-stops"`: a stop id that is not
+ *   (or no longer) a Discovery candidate — merged, retired, or wrong. The
+ *   whole question failed; the ids are named. Not retryable.
+ * - `not-found` — a 404 **without** that code: Atlas does not serve the path.
  * - `refused` — 400: Passport asked a question Atlas does not take. A bug.
  * - `unauthorized` — 401 / 403: the service token, not the day.
  */
@@ -203,10 +229,22 @@ export type TravelLegsAnswer =
   | {
       readonly state: "ready";
       readonly legs: readonly LegReading[];
-      readonly total?: { readonly minutes?: number; readonly basis?: string };
+      readonly total?: {
+        readonly minutes?: number;
+        readonly basis?: string;
+        /** How many legs in Atlas's sum route to a point inside an area. */
+        readonly areaPoints?: number;
+      };
+      /** The provider did not answer for some legs; their answer may change. */
+      readonly temporary?: true;
     }
   | { readonly state: "unsupported"; readonly because: string }
   | { readonly state: "temporarily-unavailable"; readonly because: string }
+  | {
+      readonly state: "unknown-stops";
+      readonly unknownStops: readonly string[];
+      readonly because: string;
+    }
   | { readonly state: "not-found"; readonly because: string }
   | { readonly state: "refused"; readonly because: string }
   | { readonly state: "unauthorized"; readonly because: string };
@@ -220,9 +258,16 @@ const answerBodySchema = z.object({
       state: z.string(),
       minutes: z.number().int().min(0).optional(),
       basis: z.string().optional(),
+      areaPoints: z.number().int().min(1).optional(),
     })
     .loose()
     .optional(),
+});
+
+/** travel-legs/1's one 404 about the question rather than the path. */
+const unknownStopsBodySchema = z.object({
+  code: z.literal("unknown-stops"),
+  unknownStops: z.array(text).min(1),
 });
 
 /** How many legs a question has: one per stop after the origin, else one fewer. */
@@ -241,10 +286,22 @@ export function readTravelLegsAnswer(
     };
   }
   if (status === 404) {
+    // travel-legs/1 names the one 404 that is about the day: a stop id that
+    // is not (or is no longer) a Discovery candidate. A 404 without that code
+    // is a path Atlas does not serve.
+    const unknown = unknownStopsBodySchema.safeParse(body);
+    if (unknown.success) {
+      const ids = unknown.data.unknownStops;
+      return {
+        state: "unknown-stops",
+        unknownStops: ids,
+        because: `Atlas no longer holds ${ids.length === 1 ? "this stop" : "these stops"} as a place to go: ${ids.join(", ")}.`,
+      };
+    }
     return {
       state: "not-found",
       because:
-        "Atlas answered 404: either it does not serve /travel/legs, or it does not know one of these stops.",
+        "Atlas answered 404 without naming a stop: it does not serve /travel/legs.",
     };
   }
   if (status === 400) {
@@ -269,14 +326,16 @@ export function readTravelLegsAnswer(
       because: `Atlas does not route by ${q.mode}.`,
     };
   }
-  if (answer.failure !== undefined && answer.failure !== null) {
-    return {
-      state: "temporarily-unavailable",
-      because: "Atlas's routing provider failed; the answer may change.",
-    };
-  }
+  const failed = answer.failure !== undefined && answer.failure !== null;
   // A time on the wrong leg is worse than none.
   if (answer.legs.length !== legsAsked(q)) {
+    // A failure that also broke the legs is still only a failure.
+    if (failed) {
+      return {
+        state: "temporarily-unavailable",
+        because: "Atlas's routing provider failed; the answer may change.",
+      };
+    }
     throw new Error(
       `Atlas answered ${answer.legs.length} legs for a question with ${legsAsked(q)}`,
     );
@@ -305,7 +364,17 @@ export function readTravelLegsAnswer(
             ? { minutes: answer.total.minutes }
             : {}),
           ...(answer.total.basis ? { basis: answer.total.basis } : {}),
+          ...(answer.total.areaPoints !== undefined
+            ? { areaPoints: answer.total.areaPoints }
+            : {}),
         }
       : undefined;
-  return { state: "ready", legs, ...(total ? { total } : {}) };
+  // A provider failure keeps every leg Atlas did answer (an unrouted stop, a
+  // cached estimate); the ones it did not arrive `unavailable` + `transient`.
+  return {
+    state: "ready",
+    legs,
+    ...(total ? { total } : {}),
+    ...(failed ? { temporary: true as const } : {}),
+  };
 }
