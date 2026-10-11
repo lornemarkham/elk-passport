@@ -83,6 +83,8 @@ const mount = (say = "three hours near Vernon") =>
   );
 
 beforeEach(() => {
+  // Each test starts a fresh tab: no day shaped here before.
+  window.sessionStorage.clear();
   // No forecast in tests: the day is not today, so none is fetched.
   vi.stubGlobal(
     "fetch",
@@ -93,6 +95,33 @@ beforeEach(() => {
 });
 
 describe("Go have a day", () => {
+  it("comes back from the paper to the day that was shaped, not a fresh one", () => {
+    const first = mount();
+    fireEvent.click(screen.getByTestId("go-down-1"));
+    const shaped = stops();
+    const query = screen.getByTestId("go-offline").getAttribute("href");
+    first.unmount();
+    // Back from /go/print: the same address, mounted again.
+    mount();
+    expect(stops()).toEqual(shaped);
+    expect(screen.getByTestId("go-offline").getAttribute("href")).toBe(query);
+  });
+
+  it("asks the forecast route that exists", () => {
+    render(
+      <GoHaveADay
+        pool={POOL}
+        today="2026-10-11"
+        on="2026-10-11"
+        initialSay="three hours near Vernon"
+      />,
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/environment/here",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("builds a day from a sentence, and says what it is working from", () => {
     mount("leave at 10, home by 1, the two of us, near Vernon");
     expect(stops().length).toBeGreaterThan(0);

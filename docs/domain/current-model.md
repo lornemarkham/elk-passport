@@ -30,17 +30,17 @@ first holds domain types.
 
 All zod; the only zod domain schemas in the app.
 
-| Type                    | Where              | Shape                                                                              |
-| ----------------------- | ------------------ | ---------------------------------------------------------------------------------- |
-| `TodaysIntent`          | `schemas.ts:5-19`  | 10-value enum, commented "examples only"                                           |
-| `AdventureDna`          | `schemas.ts:38`    | `traits: string[]`, `notes?`                                                       |
-| `Constraints`           | `schemas.ts:44`    | `timeAvailable` (3 enums), `budget` (3 enums), `location: string`, `maxDistanceKm?` |
-| `PlanInput`             | `schemas.ts:52`    | `intent`, `constraints`, `dna`                                                     |
-| `AdventureBlock`        | `schemas.ts:59`    | free-text `time`, `title`, `description` — **no entity id**                        |
-| `Recommendation`        | `schemas.ts:66`    | `title`, `tagline`, `blocks` (2–6)                                                 |
-| `Moment`                | `schemas.ts:73`    | `id`, `adventureId`, `note?`, `photoDataUrl?`, `createdAt`                         |
-| `adventureStatusSchema` | `schemas.ts:82`    | `planned` \| `active` \| `completed`                                               |
-| `Adventure`             | `schemas.ts:84`    | the above + `status`, `currentBlockIndex`, `moments`                               |
+| Type                    | Where             | Shape                                                                               |
+| ----------------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| `TodaysIntent`          | `schemas.ts:5-19` | 10-value enum, commented "examples only"                                            |
+| `AdventureDna`          | `schemas.ts:38`   | `traits: string[]`, `notes?`                                                        |
+| `Constraints`           | `schemas.ts:44`   | `timeAvailable` (3 enums), `budget` (3 enums), `location: string`, `maxDistanceKm?` |
+| `PlanInput`             | `schemas.ts:52`   | `intent`, `constraints`, `dna`                                                      |
+| `AdventureBlock`        | `schemas.ts:59`   | free-text `time`, `title`, `description` — **no entity id**                         |
+| `Recommendation`        | `schemas.ts:66`   | `title`, `tagline`, `blocks` (2–6)                                                  |
+| `Moment`                | `schemas.ts:73`   | `id`, `adventureId`, `note?`, `photoDataUrl?`, `createdAt`                          |
+| `adventureStatusSchema` | `schemas.ts:82`   | `planned` \| `active` \| `completed`                                                |
+| `Adventure`             | `schemas.ts:84`   | the above + `status`, `currentBlockIndex`, `moments`                                |
 
 **Persistence:** browser localStorage only — `elk-passport:adventures` and
 `elk-passport:adventure-dna` (`src/lib/data/local-repo.ts:17-18`). No table.
@@ -67,12 +67,12 @@ Two independent models, both plain readonly TS interfaces, **neither persisted**
 
 ### 2a. Single-subject plan ("Let's do this")
 
-| Type        | Where                     | Shape                                                                                   |
-| ----------- | ------------------------- | --------------------------------------------------------------------------------------- |
-| `PlanFact`  | `src/domain/day/plan.ts:47` | `label`, `value?`, `because?`, `unknown?`, `against?` (known / ruled out / unknown)    |
-| `PlanLink`  | `plan.ts:59`              | `label`, `href`                                                                         |
-| `DayPlan`   | `plan.ts:64`              | `id` (= Experience id), `title`, `where?`, `on?` (YYYY-MM-DD), `doing`, `facts`, `restrictions`, `unknowns`, `links` |
-| `PlanInput` | `plan.ts:81`              | `on?`, `origin?: Point`, `childAge?`                                                    |
+| Type        | Where                       | Shape                                                                                                                |
+| ----------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `PlanFact`  | `src/domain/day/plan.ts:47` | `label`, `value?`, `because?`, `unknown?`, `against?` (known / ruled out / unknown)                                  |
+| `PlanLink`  | `plan.ts:59`                | `label`, `href`                                                                                                      |
+| `DayPlan`   | `plan.ts:64`                | `id` (= Experience id), `title`, `where?`, `on?` (YYYY-MM-DD), `doing`, `facts`, `restrictions`, `unknowns`, `links` |
+| `PlanInput` | `plan.ts:81`                | `on?`, `origin?: Point`, `childAge?`                                                                                 |
 
 Built by `dayPlan(experience, input)` (`plan.ts:258`), which says it is "not an
 itinerary engine" — no stops, no times. Rebuilt per request in
@@ -83,13 +83,13 @@ the query string. Rendered by `src/components/ghad/DayPlanView.tsx` (+
 
 ### 2b. Multi-stop day ("Go have a day")
 
-| Type          | Where                         | Shape                                                                                                  |
-| ------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `DayBrief`    | `src/domain/day/brief.ts:29`  | `said`, `hours?`, `budget?`, `childAge?`, `town?`, `on?`, `withinKm?`, `interests`, `shelter?`, `appetite?`, `lessDriving?` |
-| `DayStop`     | `src/domain/day/build.ts:44`  | `experience: Experience`, `minutes`, `km?`, `because`, `cost?`, `open?`, `notes`, `challenge?`          |
-| `DayPlanned`  | `build.ts:62`                 | `title`, `opening`, `stops`, `unknowns`, `brief`, `closing`                                             |
-| `BuildInput`  | `build.ts:319`                | `pool`, `brief`, `without?`                                                                             |
-| `OfflineMode` | `src/components/go/modes.ts:16` | `id`, `title`, `blurb`, `says`; six hard-coded in `OFFLINE_MODES` (:25), each a seed sentence for `readBrief` |
+| Type          | Where                           | Shape                                                                                                                       |
+| ------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `DayBrief`    | `src/domain/day/brief.ts:29`    | `said`, `hours?`, `budget?`, `childAge?`, `town?`, `on?`, `withinKm?`, `interests`, `shelter?`, `appetite?`, `lessDriving?` |
+| `DayStop`     | `src/domain/day/build.ts:44`    | `experience: Experience`, `minutes`, `km?`, `because`, `cost?`, `open?`, `notes`, `challenge?`                              |
+| `DayPlanned`  | `build.ts:62`                   | `title`, `opening`, `stops`, `unknowns`, `brief`, `closing`                                                                 |
+| `BuildInput`  | `build.ts:319`                  | `pool`, `brief`, `without?`                                                                                                 |
+| `OfflineMode` | `src/components/go/modes.ts:16` | `id`, `title`, `blurb`, `says`; six hard-coded in `OFFLINE_MODES` (:25), each a seed sentence for `readBrief`               |
 
 Functions: `readBrief` (`brief.ts:128`), `reviseBrief` (:221), `replacedStop`
 (:265), `buildDay` (`build.ts:333`).
@@ -110,19 +110,19 @@ digital-wellness product". There is no detox type to map.
 
 None of this uses zod.
 
-| Type               | Where                                       | Shape / meaning                                                              |
-| ------------------ | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Board`            | `src/lib/data/boards-repo.ts:22`            | `id`, `ownerId`, `name`, `createdAt`, `updatedAt`                            |
-| `BoardItem`        | `boards-repo.ts:30`                         | `id`, `boardId`, `experienceId`, `addedAt`                                   |
-| `LoadBoardResult`  | `src/lib/data/loadBoardWithExperiences.ts:12` | `ok {board, experiences, unresolved, role}` \| signed-out \| not-found \| error; `loadSaved.ts` adds `nothing-yet` |
-| `BoardRole`        | `src/lib/collaboration/boardAccess.ts:36`   | `owner` \| `editor` \| `viewer`                                              |
-| `BoardAccess`      | `boardAccess.ts:38`                         | `board`, `role`, `ownerId`                                                   |
-| `BoardInvite`      | `src/lib/collaboration/invites.ts:28`       | `token`, `role`, `createdAt`, `expiresAt`, `revokedAt`                       |
-| `PassportEvent`    | `src/lib/collaboration/eventKinds.ts:14`    | board activity; `CORE_EVENT_KINDS` (:31)                                     |
-| `OctoberKind`      | `src/lib/october/types.ts:10`               | Place, Organization, Activity, Event, Experience, Movie, Doing               |
-| `OctoberState`     | `types.ts:30`                               | `ahead` \| `lived`                                                           |
-| `OctoberThing`     | `types.ts:32`                               | `entityId`, `entityKind`, `name`, `startsAt`, `state`, `wantedAt`, `livedAt` |
-| `KeptOnThisPage`   | `src/lib/october/keptOnThisPage.ts:26`      | `signedIn`, `kept: Set<entityId>` (October rows only)                        |
+| Type              | Where                                         | Shape / meaning                                                                                                    |
+| ----------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `Board`           | `src/lib/data/boards-repo.ts:22`              | `id`, `ownerId`, `name`, `createdAt`, `updatedAt`                                                                  |
+| `BoardItem`       | `boards-repo.ts:30`                           | `id`, `boardId`, `experienceId`, `addedAt`                                                                         |
+| `LoadBoardResult` | `src/lib/data/loadBoardWithExperiences.ts:12` | `ok {board, experiences, unresolved, role}` \| signed-out \| not-found \| error; `loadSaved.ts` adds `nothing-yet` |
+| `BoardRole`       | `src/lib/collaboration/boardAccess.ts:36`     | `owner` \| `editor` \| `viewer`                                                                                    |
+| `BoardAccess`     | `boardAccess.ts:38`                           | `board`, `role`, `ownerId`                                                                                         |
+| `BoardInvite`     | `src/lib/collaboration/invites.ts:28`         | `token`, `role`, `createdAt`, `expiresAt`, `revokedAt`                                                             |
+| `PassportEvent`   | `src/lib/collaboration/eventKinds.ts:14`      | board activity; `CORE_EVENT_KINDS` (:31)                                                                           |
+| `OctoberKind`     | `src/lib/october/types.ts:10`                 | Place, Organization, Activity, Event, Experience, Movie, Doing                                                     |
+| `OctoberState`    | `types.ts:30`                                 | `ahead` \| `lived`                                                                                                 |
+| `OctoberThing`    | `types.ts:32`                                 | `entityId`, `entityKind`, `name`, `startsAt`, `state`, `wantedAt`, `livedAt`                                       |
+| `KeptOnThisPage`  | `src/lib/october/keptOnThisPage.ts:26`        | `signedIn`, `kept: Set<entityId>` (October rows only)                                                              |
 
 **Persistence:**
 
@@ -147,20 +147,20 @@ MyOctober, PlanDay, LivedOn, MovieNight via `src/lib/october/october-repo.ts`.
 
 ## 4. Place / Experience — `src/lib/data/types.ts`, `src/domain/experience/`
 
-| Type                       | Where                                         | Id / name / coordinates                                                                 |
-| -------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `Place`                    | `src/lib/data/types.ts:40`                    | `kind: "Place"`, `id`, `name`, `geometry?.coordinates` (GeoJSON, lon-first)             |
-| `PlaceDetail`              | `types.ts:253`                                | wraps `place: Place` + relationships, nearby, events, media, temporal, practical        |
-| `PlaceNearbyPlace` / `PlaceRelatedPlace` | `types.ts:99` / `:110`          | `id`, `name`, `placeType`, `distanceKm` (no coordinates)                                |
-| `DiscoveryCandidate`       | `types.ts:424`                                | `id`, 5-way `kind`, `name`, `coordinates?: [n,n]`, `location?`, `geography?`, `distance?` |
-| `CandidateDistance`        | `types.ts:538`                                | union: measured / bounded / conflicting / unknown                                       |
-| `CandidateGeography`       | `types.ts:812`                                | `coordinates?` + `coordinatesBasis`, `area`, `via`                                      |
-| `CandidateLocation`        | `types.ts:832`                                | `placeId?`, `name?`, `locality?`, `basis`                                               |
-| `ComposedSubject`          | `types.ts:926`                                | `id`, open `kind: string`, `coordinates?`                                               |
-| `Experience` (canonical)   | `src/domain/experience/types.ts:95`           | `id`, `kind`, `slug`, **`title`**, `location?` (`latitude`/`longitude`), `venue?`       |
-| `Experience` (labs)        | `src/components/labs/discovery-space/types.ts:8` | unrelated interface, same name; no location                                          |
-| `OctoberPlace` / `DiscoveryTown` | `src/domain/environment/places.ts:29` / `src/domain/discovery/towns.ts:35` | slug ids ("vernon"), flat `latitude`/`longitude`       |
-| `Point`                    | `src/domain/discovery/situation.ts:472`       | `latitude`, `longitude`; used by `useHere`, `useDistances`, `PlanInput.origin`          |
+| Type                                     | Where                                                                      | Id / name / coordinates                                                                   |
+| ---------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `Place`                                  | `src/lib/data/types.ts:40`                                                 | `kind: "Place"`, `id`, `name`, `geometry?.coordinates` (GeoJSON, lon-first)               |
+| `PlaceDetail`                            | `types.ts:253`                                                             | wraps `place: Place` + relationships, nearby, events, media, temporal, practical          |
+| `PlaceNearbyPlace` / `PlaceRelatedPlace` | `types.ts:99` / `:110`                                                     | `id`, `name`, `placeType`, `distanceKm` (no coordinates)                                  |
+| `DiscoveryCandidate`                     | `types.ts:424`                                                             | `id`, 5-way `kind`, `name`, `coordinates?: [n,n]`, `location?`, `geography?`, `distance?` |
+| `CandidateDistance`                      | `types.ts:538`                                                             | union: measured / bounded / conflicting / unknown                                         |
+| `CandidateGeography`                     | `types.ts:812`                                                             | `coordinates?` + `coordinatesBasis`, `area`, `via`                                        |
+| `CandidateLocation`                      | `types.ts:832`                                                             | `placeId?`, `name?`, `locality?`, `basis`                                                 |
+| `ComposedSubject`                        | `types.ts:926`                                                             | `id`, open `kind: string`, `coordinates?`                                                 |
+| `Experience` (canonical)                 | `src/domain/experience/types.ts:95`                                        | `id`, `kind`, `slug`, **`title`**, `location?` (`latitude`/`longitude`), `venue?`         |
+| `Experience` (labs)                      | `src/components/labs/discovery-space/types.ts:8`                           | unrelated interface, same name; no location                                               |
+| `OctoberPlace` / `DiscoveryTown`         | `src/domain/environment/places.ts:29` / `src/domain/discovery/towns.ts:35` | slug ids ("vernon"), flat `latitude`/`longitude`                                          |
+| `Point`                                  | `src/domain/discovery/situation.ts:472`                                    | `latitude`, `longitude`; used by `useHere`, `useDistances`, `PlanInput.origin`            |
 
 Mapping: `candidateToExperience` / `placeToExperience`
 (`src/domain/experience/atlasMapper.ts`); routing via `destinationFor`
@@ -256,7 +256,7 @@ Items touching §15 open questions need a human decision first and say so.
    `hours`, `age`, `at`, `on`) in `src/domain/day/`, shared by `printQuery` and
    `src/app/go/print/page.tsx`, so screen and paper cannot drift.
 5. **boards** — One item-reference type `{entityId, entityKind, source:
-   "atlas" | "movie" | "making"}` used by both `BoardItem` and `OctoberThing`,
+"atlas" | "movie" | "making"}` used by both `BoardItem` and `OctoberThing`,
    replacing string matching in `SavedReview`. Does not decide states.
 6. **boards** — Stop overloading `starts_at` for "planned for": a separate
    `planned_on` column (new migration). Blocked on §15 Q14 and on where

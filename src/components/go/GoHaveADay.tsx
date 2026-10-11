@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowRight, CloudRain, Printer, Sun } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
@@ -108,7 +108,71 @@ const FRESH: Shaping = {
   count: null,
 };
 
-export function GoHaveADay({
+/** What one tab remembers of a shaped day at one `/go` address. */
+interface Saved {
+  readonly draft: string;
+  readonly brief: DayBrief | null;
+  readonly shaping: Shaping;
+  readonly by: TravelMode;
+}
+
+const noSubscription = () => () => {};
+
+/** What each `/go` address had saved when this visit to it began. */
+const FIRST_READS = new Map<string, string | null>();
+const firstRead = (key: string): string | null => {
+  if (!FIRST_READS.has(key)) {
+    let value: string | null = null;
+    try {
+      value = window.sessionStorage.getItem(key);
+    } catch {
+      // Storage unavailable: nothing was saved.
+    }
+    FIRST_READS.set(key, value);
+  }
+  return FIRST_READS.get(key) ?? null;
+};
+
+/**
+ * **The shaped day survives Back.** Shaping lives in the page, so going to
+ * the paper and back used to rebuild the day from the URL and drop every keep,
+ * swap, time and order — and "Then go offline" handed over a day nobody
+ * shaped. This tab keeps it in `sessionStorage`, keyed by what this `/go`
+ * address asked, and never sends it anywhere. The server renders the fresh
+ * day; the saved one replaces it once the browser can read storage.
+ */
+export function GoHaveADay(props: GoProps) {
+  const { initialSay, initialMode, childAge, townId, on, today, keep } = props;
+  const memoryKey = `ghad.go:${[initialSay, initialMode, childAge, townId, on ?? today, (keep ?? []).join(",")].join("|")}`;
+  // Read once per visit: the day being shaped writes to the same key, and
+  // re-reading it mid-visit would only remount what is already on screen.
+  const raw = useSyncExternalStore(
+    noSubscription,
+    () => firstRead(memoryKey),
+    () => null,
+  );
+  useEffect(() => () => void FIRST_READS.delete(memoryKey), [memoryKey]);
+  const saved = useMemo(() => {
+    if (!raw) return undefined;
+    try {
+      return JSON.parse(raw) as Saved;
+    } catch {
+      return undefined;
+    }
+  }, [raw]);
+  return (
+    <ShapedDay
+      key={saved ? "saved" : "fresh"}
+      {...props}
+      memoryKey={memoryKey}
+      saved={saved}
+    />
+  );
+}
+
+type GoProps = Omit<Parameters<typeof ShapedDay>[0], "memoryKey" | "saved">;
+
+function ShapedDay({
   pool,
   today,
   initialSay,
@@ -118,7 +182,13 @@ export function GoHaveADay({
   on,
   simulatedWeather,
   keep = NONE,
+  memoryKey,
+  saved,
 }: {
+  /** Where this tab keeps the shaped day (`sessionStorage`). */
+  readonly memoryKey: string;
+  /** The day this tab shaped last time it was at this address. */
+  readonly saved?: Saved | undefined;
   readonly pool: readonly Experience[];
   /** `YYYY-MM-DD` where the subjects are. */
   readonly today: string;
@@ -148,15 +218,15 @@ export function GoHaveADay({
   // stays picked: it came from somewhere else and the sentence didn't name it.
   const fresh: Shaping = keep.length > 0 ? { ...FRESH, keep } : FRESH;
 
-  const [draft, setDraft] = useState(seed);
-  const [brief, setBrief] = useState<DayBrief | null>(
-    seed ? readBrief(seed, fallback, context()) : null,
+  const [draft, setDraft] = useState(saved?.draft ?? seed);
+  const [brief, setBrief] = useState<DayBrief | null>(() =>
+    saved ? saved.brief : seed ? readBrief(seed, fallback, context()) : null,
   );
-  const [shaping, setShaping] = useState<Shaping>(fresh);
+  const [shaping, setShaping] = useState<Shaping>(saved?.shaping ?? fresh);
   const [swapping, setSwapping] = useState<number | undefined>();
   const [change, setChange] = useState("");
   const [reply, setReply] = useState<string[]>([]);
-  const [by, setBy] = useState<TravelMode>("driving");
+  const [by, setBy] = useState<TravelMode>(saved?.by ?? "driving");
   const [before, setBefore] = useState<readonly string[] | null>(null);
   const [fetched, setFetched] = useState<{
     key: string;
@@ -173,7 +243,7 @@ export function GoHaveADay({
     if (simulatedWeather || !forecastKey || !town) return;
     if (fetched?.key === forecastKey) return;
     let live = true;
-    fetch("/api/environment", {
+    fetch("/api/environment/here", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -199,6 +269,18 @@ export function GoHaveADay({
     (fetched && fetched.key === forecastKey
       ? (fetched.weather ?? undefined)
       : undefined);
+
+  // Kept for this tab only, so Back from the paper returns to this day.
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        memoryKey,
+        JSON.stringify({ draft, brief, shaping, by } satisfies Saved),
+      );
+    } catch {
+      // Private mode or full storage: Back rebuilds from the URL, as before.
+    }
+  }, [memoryKey, draft, brief, shaping, by]);
 
   const day = useMemo(
     () =>
