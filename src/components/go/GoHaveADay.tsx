@@ -28,7 +28,8 @@ import {
 import { OFFLINE_MODES, modeById } from "./modes";
 import { townById } from "@/domain/discovery/towns";
 import { ZONE } from "@/domain/experience/eventTime";
-import { carryBrief } from "@/domain/day/carry";
+import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
+import { offlineHref } from "@/lib/detox/day";
 import { DayItinerary, type StopControls } from "./DayItinerary";
 import type { TravelMode } from "@/lib/routing/journey";
 
@@ -233,6 +234,12 @@ export function GoHaveADay({
   );
 
   const ids = day?.stops.map((s) => s.experience.id) ?? [];
+  /**
+   * **The day as one query** (`dayQueryFor`): the stops in the order shown,
+   * the minutes set by hand, the rain plans shown, the mode. A printed page and
+   * the phone in the glovebox have to be the day somebody looked at.
+   */
+  const query = brief && day ? writeDayQuery(dayQueryFor(brief, day, by)) : "";
   const remember = () => setBefore(ids);
   /** A small edit speaks for itself; an old reply would only mislead. */
   const quiet = () => {
@@ -544,7 +551,7 @@ export function GoHaveADay({
             <>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href={`/go/print?${printQuery(brief, day, by)}`}
+                  href={`/go/print?${query}`}
                   data-testid="go-print"
                   style={{
                     backgroundColor: "var(--ghad-accent)",
@@ -554,6 +561,16 @@ export function GoHaveADay({
                 >
                   <Printer className="h-4 w-4" aria-hidden />
                   Print our adventure
+                </Link>
+                {/* The end of planning: the same day, the same query, handed
+                    to Go Offline — the exact stops in the exact order. */}
+                <Link
+                  href={offlineHref(query)}
+                  data-testid="go-offline"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] ring-1 ring-black/20 ring-inset hover:ring-black/50"
+                >
+                  Then go offline
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
                 <Link
                   href="/discovery"
@@ -764,35 +781,3 @@ const fallbackFrom = (
   ...(townById(townId) ? { town: townById(townId)! } : {}),
   on,
 });
-
-/**
- * The guide's URL carries the **stop ids**, not the sentence.
- *
- * A printed page has to be the day somebody looked at. Re-running the builder
- * from the brief could hand them a different afternoon between pressing print
- * and the paper coming out, which is exactly the kind of small betrayal that
- * stops people trusting a thing they are about to drive somewhere with. The
- * time they set by hand and the rain plans they were shown travel with it for
- * the same reason.
- */
-function printQuery(brief: DayBrief, day: DayPlanned, by: TravelMode): string {
-  const params = new URLSearchParams();
-  params.set("stops", day.stops.map((s) => s.experience.id).join(","));
-  params.set("say", brief.said);
-  params.set("b", carryBrief(brief));
-  if (brief.hours !== undefined) params.set("hours", String(brief.hours));
-  if (brief.childAge !== undefined) params.set("age", String(brief.childAge));
-  if (brief.town) params.set("at", brief.town.id);
-  if (brief.on) params.set("on", brief.on);
-  const set = day.stops
-    .filter((s) => s.timeSet)
-    .map((s) => `${s.experience.id}:${s.minutes}`);
-  if (set.length > 0) params.set("mins", set.join(","));
-  const rain = day.stops
-    .filter((s) => s.rainPlan)
-    .map((s) => `${s.experience.id}~${s.rainPlan!.experience.id}`);
-  if (rain.length > 0) params.set("rain", rain.join(","));
-  // The guide prints travel in the mode that was on screen.
-  if (by !== "driving") params.set("by", by);
-  return params.toString();
-}

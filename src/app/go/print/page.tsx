@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
-import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { readBrief } from "@/domain/day/brief";
-import { uncarryBrief } from "@/domain/day/carry";
 import { buildDay } from "@/domain/day/build";
+import { resolvePrintDay } from "@/lib/go/printDay";
 import { PrintableAdventure } from "@/components/adventure/PrintableAdventure";
 import { printableFromDay } from "@/lib/analog/printable";
-import { townById } from "@/domain/discovery/towns";
 import {
   isTravelMode,
   type Journey,
@@ -56,72 +53,23 @@ type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const one = (v: string | string[] | undefined) =>
-  typeof v === "string" ? v : undefined;
-
 export default async function PrintPage({ searchParams }: Props) {
-  const query = (await searchParams) ?? {};
-  const ids = (one(query.stops) ?? "").split(",").filter(Boolean);
-  const askedAge = Number(one(query.age));
-  const childAge =
-    Number.isInteger(askedAge) && askedAge >= 0 && askedAge <= 17
-      ? askedAge
-      : undefined;
-
-  // Nothing chosen means nothing to look up. A corpus read that can only be
-  // thrown away is 6–7 seconds of somebody's time, and with Atlas down it
-  // turns "build a day first" into an error page.
-  const candidates =
-    ids.length > 0 ? await listDiscoveryCandidates(childAge) : [];
-  const byId = new Map(candidates.map((c) => [c.id, c]));
-  const chosen = ids
-    .map((id) => byId.get(id))
-    .filter((c): c is NonNullable<typeof c> => Boolean(c))
-    .map(candidateToExperience);
-
-  // The time set by hand and the rain plans shown on screen, replayed rather
-  // than re-chosen — `stopId:minutes` and `stopId~alternativeId`.
-  const minutes = Object.fromEntries(
-    (one(query.mins) ?? "")
-      .split(",")
-      .map((pair) => pair.split(":"))
-      .filter(([id, m]) => id && ids.includes(id) && Number(m) > 0)
-      .map(([id, m]) => [id!, Number(m)]),
-  );
-  const rainPlans = Object.fromEntries(
-    (one(query.rain) ?? "")
-      .split(",")
-      .map((pair) => pair.split("~"))
-      .filter(([id, alt]) => id && alt && ids.includes(id) && byId.has(alt))
-      .map(([id, alt]) => [id!, alt!]),
-  );
-  const shelters = Object.values(rainPlans).map((alt) =>
-    candidateToExperience(byId.get(alt)!),
-  );
-
-  const hours = Number(one(query.hours));
-  const read = readBrief(one(query.say) ?? "", {
-    ...(Number.isFinite(hours) ? { hours } : {}),
-    ...(childAge !== undefined ? { childAge } : {}),
-    ...(townById(one(query.at)) ? { town: townById(one(query.at))! } : {}),
-    ...(one(query.on) ? { on: one(query.on)! } : {}),
-  });
-  // What a revision changed on screen, laid over the re-read sentence.
-  const brief = { ...read, ...uncarryBrief(one(query.b)) };
-
-  // Re-run over exactly the chosen subjects: the builder is what knows how to
-  // say why a stop is there and what its rules are, and running it over this
-  // pool alone cannot change which places are on the paper.
-  const day = buildDay({
-    pool: [...chosen, ...shelters],
-    brief,
-    keep: ids,
-    order: ids,
-    count: Math.max(1, chosen.length),
-    minutes,
-    rainPlans,
-  });
-  const by = one(query.by);
+  const resolved = await resolvePrintDay((await searchParams) ?? {});
+  if (resolved.kind === "unreachable") {
+    // As before: with Atlas down there is no honest paper to print.
+    throw new Error("Atlas is unreachable; the day cannot be printed");
+  }
+  if (resolved.kind === "none") {
+    return (
+      <PrintableAdventure
+        adventure={printableFromDay(
+          buildDay({ pool: [], brief: readBrief(resolved.query.say) }),
+        )}
+      />
+    );
+  }
+  const { day, query } = resolved;
+  const by = query.by;
   const mode = isTravelMode(by) ? by : "driving";
 
   const travel = await printedTravel(day, mode);

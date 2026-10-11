@@ -1,3 +1,7 @@
+import {
+  DAY_QUERY_KEYS as REGISTERED_KEYS,
+  keepDayQuery,
+} from "@/lib/domains/integration/dayQuery";
 import { z } from "zod";
 import type { DayPlanned } from "@/domain/day/build";
 
@@ -87,24 +91,18 @@ export function planLine(day: OfflineDay): string {
 }
 
 /**
- * The keys `/go/print` reads. Go Offline accepts exactly the same query, so a
- * day reaches it by the identical path it reaches the paper — no second codec.
+ * The keys `/go/print` reads — the registry's, all of them. Go Offline accepts
+ * exactly the same query, so a day reaches it by the identical path it
+ * reaches the paper, with the minutes, rain plans and mode it was shaped with.
  */
-export const DAY_QUERY_KEYS = ["stops", "say", "hours", "age", "at", "on"];
+export const DAY_QUERY_KEYS = REGISTERED_KEYS;
 
 /**
- * **The hand-off from planning.** `/go` (or the guide) links here with the
- * same query it gives `/go/print`. Exported so the Day Builder integration can
- * add one link without knowing anything else about this route.
+ * **The hand-off from planning.** `/go` links here with the same query it
+ * gives `/go/print`.
  */
 export function offlineHref(printQuery: string): string {
-  const params = new URLSearchParams(printQuery);
-  const kept = new URLSearchParams();
-  for (const key of DAY_QUERY_KEYS) {
-    const value = params.get(key);
-    if (value) kept.set(key, value);
-  }
-  const query = kept.toString();
+  const query = keepDayQuery(printQuery);
   return query ? `/detox?${query}` : "/detox";
 }
 
@@ -115,10 +113,5 @@ export const RETURN_PATH = "/detox/back";
 export function dayQuery(
   query: Record<string, string | string[] | undefined>,
 ): string {
-  const kept = new URLSearchParams();
-  for (const key of DAY_QUERY_KEYS) {
-    const value = query[key];
-    if (typeof value === "string" && value) kept.set(key, value);
-  }
-  return kept.toString();
+  return keepDayQuery(query);
 }

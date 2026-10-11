@@ -3,7 +3,6 @@ import { GoOffline } from "@/components/detox/GoOffline";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
-import { dayQuery } from "@/lib/detox/day";
 import { resolveDay } from "@/lib/detox/resolve";
 
 export const metadata: Metadata = {
@@ -38,7 +37,7 @@ export default async function GoOfflinePage({ searchParams }: Props) {
   const query = (await searchParams) ?? {};
   const [user, resolved] = await Promise.all([
     currentUser(),
-    resolveDay(query, dayQuery(query)),
+    resolveDay(query),
   ]);
   return (
     <ThemeProvider>

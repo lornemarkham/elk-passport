@@ -100,6 +100,16 @@ describe("the hand-off from planning", () => {
     expect(offlineHref("")).toBe("/detox");
   });
 
+  it("keeps what the day was shaped with: minutes, rain plans, mode, brief", () => {
+    expect(
+      offlineHref(
+        "stops=a%2Cb&say=x&b=%7B%7D&mins=a%3A90&rain=b%7Ec&by=walking",
+      ),
+    ).toBe(
+      "/detox?stops=a%2Cb&say=x&b=%7B%7D&mins=a%3A90&rain=b%7Ec&by=walking",
+    );
+  });
+
   it("reduces a Next query to the same keys", () => {
     expect(
       dayQuery({ stops: "a,b", age: "5", on: ["x", "y"], other: "z" }),
