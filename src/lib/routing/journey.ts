@@ -1,4 +1,5 @@
 import type { CandidateDistance } from "@/lib/data/types";
+import { AREA_POINT_NOTE } from "@/lib/domains/travel/contracts";
 
 /**
  * **How far, measured how, and on whose word** — Passport's side of Atlas ADR
@@ -63,6 +64,12 @@ export type Journey =
       readonly limitations: readonly string[];
       /** The route crawls: the point may be inside the site, not its gate. */
       readonly accessCaution?: string;
+      /**
+       * travel-legs/1: the route ends at a point inside a park, beach or trail
+       * (often its centroid) because Atlas holds no way in. The minutes are
+       * not the time to the entrance.
+       */
+      readonly areaPoint?: true;
     }
   | {
       readonly kind: "no-route";
@@ -98,14 +105,37 @@ export function straightLineJourney(
 }
 
 /**
+ * **A routed time that must not decide anything unchecked** (ADR 097): one
+ * with an access caution, or one that routes to a point inside an area
+ * (`areaPoint`). Shown with its caveat; never in a pill, a total or a "within".
+ */
+export function isCautioned(journey: Journey | undefined): boolean {
+  return (
+    journey?.kind === "routed" &&
+    (journey.accessCaution !== undefined || journey.areaPoint === true)
+  );
+}
+
+/** The caution to print beside a cautioned journey, or nothing. */
+export function cautionOf(journey: Journey | undefined): string | undefined {
+  if (journey?.kind !== "routed") return undefined;
+  return (
+    journey.accessCaution ?? (journey.areaPoint ? AREA_POINT_NOTE : undefined)
+  );
+}
+
+/**
  * "Within N minutes": yes, no, or Passport cannot say. Only a routed journey
- * answers; a straight line answers `undefined`, however short it is.
+ * answers; a straight line answers `undefined`, however short it is, and so
+ * does a cautioned one — its minutes may be to the middle of a park.
  */
 export function withinMinutes(
   journey: Journey | undefined,
   minutes: number,
 ): boolean | undefined {
-  return journey?.kind === "routed" ? journey.minutes <= minutes : undefined;
+  return journey?.kind === "routed" && !isCautioned(journey)
+    ? journey.minutes <= minutes
+    : undefined;
 }
 
 const MODE_WORD: Record<TravelMode, string> = {
@@ -133,7 +163,7 @@ const minutesLabel = (minutes: number): string => {
  * the straight line instead. Everything else answers `undefined`.
  */
 export function routedShort(journey: Journey | undefined): string | undefined {
-  if (journey?.kind !== "routed" || journey.accessCaution) return undefined;
+  if (journey?.kind !== "routed" || isCautioned(journey)) return undefined;
   return `${minutesLabel(journey.minutes)} ${MODE_WORD[journey.mode]}`;
 }
 
@@ -158,15 +188,18 @@ export function describeJourney(journey: Journey): {
         caveat: "Not a travel time. Roads, lakes and hills are not counted.",
       };
     case "routed": {
-      const mode = MODE_WORD[journey.mode];
+      // An area's interior point is not its way in: the headline says where
+      // the minutes go, so they are never read as the time to the entrance.
+      const mode = `${MODE_WORD[journey.mode]}${journey.areaPoint ? " to a point inside it" : ""}`;
       const headline =
         journey.mode === "transit"
           ? `${minutesLabel(journey.minutes)} ${mode} · ${kmLabel(journey.roadKm)}`
           : `${minutesLabel(journey.minutes)} ${mode} · ${kmLabel(journey.roadKm)} by road`;
+      const caution = cautionOf(journey);
       const caveat = [
         `Estimated by ${journey.provider}`,
         ...journey.limitations,
-        ...(journey.accessCaution ? [journey.accessCaution] : []),
+        ...(caution ? [caution] : []),
       ].join("; ");
       return { headline, caveat: `${caveat}.` };
     }

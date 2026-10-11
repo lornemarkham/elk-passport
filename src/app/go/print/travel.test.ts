@@ -42,6 +42,17 @@ describe("printTravel — maps' answer, in the field guide's terms", () => {
     expect(options.travelTotal?.headline).toMatch(/^At least/);
   });
 
+  it("prints an area point's caution even when Atlas sent only the flag", () => {
+    const area = journeys.map((j, i) =>
+      i === 0 && j?.kind === "routed" ? { ...j, areaPoint: true as const } : j,
+    );
+    const options = printTravel(legs, area, "ready", "driving");
+    expect(options.travel?.["davison-orchards"]?.accessCaution).toMatch(
+      /not at the way in/,
+    );
+    expect(options.travelTotal?.headline).toMatch(/^At least/);
+  });
+
   it("prints no time, and says why, when Atlas did not answer", () => {
     for (const status of ["not-served", "failed"] as const) {
       const options = printTravel(

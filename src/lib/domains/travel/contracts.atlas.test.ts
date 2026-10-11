@@ -138,8 +138,8 @@ describe("Atlas's TravelTimeReading, as Atlas's code produces it", () => {
 
 describe("where the /travel/legs route stands", () => {
   /**
-   * A tripwire, not a judgement. The reference clone is GitHub `main`; M144's
-   * route is merged only in local Atlas. When GitHub `main` gains it, this
+   * A tripwire, not a judgement. The reference clone is GitHub `main`; the
+   * route is on Atlas's `release/routing-rc` only. When GitHub `main` gains it, this
    * fails, and `ATLAS_TRAVEL_LEGS` must be re-measured against the source —
    * the reports it was read from are no longer the best evidence.
    */
@@ -150,7 +150,7 @@ describe("where the /travel/legs route stands", () => {
       onGitHubMain,
       "Atlas GitHub main now serves /travel/legs: re-read src/api/travelLegs.ts and update src/lib/domains/travel/contracts.ts",
     ).toBe(false);
-    expect(ATLAS_TRAVEL_LEGS.status).toBe("merged-locally-not-deployed");
+    expect(ATLAS_TRAVEL_LEGS.status).toBe("release-candidate-not-deployed");
   });
 
   it("is reached only by an authenticated caller, who gets 404 for a path Atlas lacks", () => {

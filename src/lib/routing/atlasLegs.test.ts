@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   LEGS_PATH,
+  NOT_JUST_NOW_BECAUSE,
+  UNKNOWN_STOP_BECAUSE,
   legsAnswerFrom,
   legsQuestions,
   readLegs,
@@ -140,28 +142,141 @@ describe("readLegs — Atlas GET /travel/legs", () => {
     ).toEqual(["unsupported", "unsupported", undefined]);
   });
 
-  it("is not-served on a 404 (no route served, or an unknown stop)", async () => {
+  it("is not-served on a 404 that names no stop (Atlas lacks the route)", async () => {
+    for (const response of [
+      new Response("", { status: 404 }),
+      Response.json({ error: "Not found" }, { status: 404 }),
+    ]) {
+      const answer = await readLegs(answering(response), legs, "driving");
+      expect(answer).toMatchObject({ state: "not-served", mode: "driving" });
+    }
+  });
+
+  it("marks only the legs touching an unknown stop, and keeps other questions' legs", async () => {
+    // Two questions: start → Davison, then O'Keefe → Davison (not following on).
+    const twoQuestions = [legs[0]!, { from: OKEEFE, to: DAVISON } as PlacedLeg];
+    const get = vi.fn(async (pathAndQuery: string) =>
+      pathAndQuery.includes("okeefe-ranch")
+        ? Response.json(
+            {
+              error: "Atlas holds no Discovery candidate okeefe-ranch.",
+              code: "unknown-stops",
+              unknownStops: ["okeefe-ranch"],
+            },
+            { status: 404 },
+          )
+        : Response.json(atlasLegsBody([LEG])),
+    );
+    const answer = await readLegs(get, twoQuestions, "driving");
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(answer).toMatchObject({
+      state: "ready",
+      unknownStops: ["okeefe-ranch"],
+    });
+    if (answer.state !== "ready") return;
+    expect(answer.journeys[0]).toMatchObject({ kind: "routed", minutes: 9 });
+    expect(answer.journeys[1]).toEqual({
+      kind: "unknown",
+      because: UNKNOWN_STOP_BECAUSE,
+    });
+    expect(answer.temporary).toBeUndefined();
+  });
+
+  it("leaves a leg that touches no unknown stop as a straight line, unasked", async () => {
     const answer = await readLegs(
-      answering(new Response("", { status: 404 })),
+      answering(
+        Response.json(
+          { code: "unknown-stops", unknownStops: ["okeefe-ranch"] },
+          { status: 404 },
+        ),
+      ),
       legs,
       "driving",
     );
-    expect(answer).toMatchObject({ state: "not-served", mode: "driving" });
+    expect(answer.state === "ready" && answer.journeys).toEqual([
+      undefined,
+      { kind: "unknown", because: UNKNOWN_STOP_BECAUSE },
+      undefined,
+    ]);
   });
 
-  it("throws on a temporary failure, so the caller can say so and retry", async () => {
+  it("keeps the answered legs when the provider failed for others (top-level failure)", async () => {
+    const failed = {
+      state: "unavailable",
+      mode: "driving",
+      provider: "openrouteservice",
+      calculatedAt: LEG.calculatedAt,
+      because: "the routing provider did not answer",
+      transient: true,
+    };
+    const answer = await readLegs(
+      answering(
+        Response.json({
+          ...atlasLegsBody([LEG, failed]),
+          failure: "openrouteservice answered 429",
+        }),
+      ),
+      legs,
+      "driving",
+    );
+    expect(answer).toMatchObject({ state: "ready", temporary: true });
+    if (answer.state !== "ready") return;
+    expect(answer.journeys[0]).toMatchObject({ kind: "routed" });
+    expect(answer.journeys[1]).toMatchObject({
+      kind: "unknown",
+      because: expect.stringMatching(/could not answer just now/),
+    });
+    // Every leg answered, with a failure reported: still kept, still temporary.
+    expect(
+      await readLegs(
+        answering(Response.json({ ...ATLAS_LEGS_DRIVING_MOCK, failure: {} })),
+        legs,
+        "driving",
+      ),
+    ).toMatchObject({ state: "ready", temporary: true });
+  });
+
+  it("keeps one question's legs when Atlas fails another; throws only when nothing answered", async () => {
+    const twoQuestions = [legs[0]!, { from: OKEEFE, to: DAVISON } as PlacedLeg];
+    const answer = await readLegs(
+      vi.fn(async (pathAndQuery: string) =>
+        pathAndQuery.includes("okeefe-ranch")
+          ? new Response("", { status: 502 })
+          : Response.json(atlasLegsBody([LEG])),
+      ),
+      twoQuestions,
+      "driving",
+    );
+    expect(answer).toMatchObject({ state: "ready", temporary: true });
+    expect(answer.state === "ready" && answer.journeys[1]).toEqual({
+      kind: "unknown",
+      because: NOT_JUST_NOW_BECAUSE,
+    });
+
     for (const status of [429, 502]) {
       await expect(
         readLegs(answering(new Response("", { status })), legs, "driving"),
       ).rejects.toThrow(/temporarily-unavailable/);
     }
-    await expect(
-      readLegs(
-        answering(Response.json({ ...ATLAS_LEGS_DRIVING_MOCK, failure: {} })),
-        legs,
-        "driving",
-      ),
-    ).rejects.toThrow(/temporarily-unavailable/);
+  });
+
+  it("keeps areaPoint on the journey, so it is never a verified drive time", async () => {
+    const area = {
+      ...LEG,
+      areaPoint: true,
+      accessCaution:
+        "Atlas holds no entrance, parking or trailhead for this area",
+    };
+    const answer = await readLegs(
+      answering(Response.json(atlasLegsBody([LEG, area]))),
+      legs,
+      "driving",
+    );
+    expect(answer.state === "ready" && answer.journeys[1]).toMatchObject({
+      kind: "routed",
+      areaPoint: true,
+      accessCaution: expect.stringMatching(/no entrance/),
+    });
   });
 
   it("refuses an answer with the wrong number of legs", async () => {

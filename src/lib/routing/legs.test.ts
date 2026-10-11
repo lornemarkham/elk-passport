@@ -143,6 +143,23 @@ describe("travelTotal", () => {
     );
   });
 
+  it("does not count a route to an area's interior point, even with no caution sent", () => {
+    const areaPoint: Journey = {
+      ...(routed(82, 33.3) as Journey & { kind: "routed" }),
+      areaPoint: true,
+    };
+    const total = travelTotal(
+      day,
+      [routed(9, 4.5), areaPoint, routed(18, 19.6)],
+      "driving",
+    );
+    expect(total).toMatchObject({
+      kind: "partial",
+      minutes: 27,
+      cautioned: ["Davison Orchards → O'Keefe Ranch"],
+    });
+  });
+
   it("gives no figure when every routed leg is cautioned, and still names them", () => {
     const cautioned = {
       ...(routed(82, 33.3) as Journey & { kind: "routed" }),

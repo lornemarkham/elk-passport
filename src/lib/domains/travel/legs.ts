@@ -1,6 +1,7 @@
 import type { Adventure, Reading } from "../adventure/contracts";
 import { NO_ROUTING, type Leg } from "../adventure/feasibility";
 import {
+  AREA_POINT_NOTE,
   travelLegsQuestionProblems,
   type LegReading,
   type TravelLegsAnswer,
@@ -14,7 +15,7 @@ import {
  * ```
  * legsOf(adventure)                        the hops, straight-line, no minutes
  *   → adventureTravelQuestion(adventure)   Atlas ids in order + a rounded origin
- *   → Atlas GET /travel/legs               (M144; not deployed)
+ *   → Atlas GET /travel/legs               (travel-legs/1; not deployed)
  *   → readTravelLegsAnswer(status, body)   one checked reading per hop
  *   → withTravel(legs, answer)             Leg.travelMinutes filled where routed
  *   → assessFeasibility(adventure, legs)   unchanged: it trusts only minutes
@@ -54,7 +55,8 @@ export function adventureTravelQuestion(
  * `Reading` vocabulary.
  *
  * Only an `estimated` reading becomes `known`, sourced to the provider that
- * routed it. One carrying `accessCaution` does not: ADR 097 says those
+ * routed it. One carrying `accessCaution`, or travel-legs/1's `areaPoint` (a
+ * point inside a park, not its entrance), does not: ADR 097 says those
  * minutes "should not decide anything unchecked", and feasibility decides.
  * The other states keep apart what M147 found Passport conflating: a route
  * that does not exist, a provider that failed, and a place with no point.
@@ -67,10 +69,10 @@ export function travelMinutesReading(
   const reading = answer.reading;
   switch (reading.state) {
     case "estimated":
-      if (reading.accessCaution) {
+      if (reading.accessCaution || reading.areaPoint) {
         return {
           state: "unknown",
-          because: `Atlas's route may not reach the way in: ${reading.accessCaution}`,
+          because: `Atlas's route may not reach the way in: ${reading.accessCaution ?? AREA_POINT_NOTE}`,
         };
       }
       return {
