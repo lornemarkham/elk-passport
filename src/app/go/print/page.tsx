@@ -3,7 +3,8 @@ import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { readBrief } from "@/domain/day/brief";
 import { buildDay } from "@/domain/day/build";
-import { AnalogGuide } from "@/components/go/AnalogGuide";
+import { PrintableAdventure } from "@/components/adventure/PrintableAdventure";
+import { printableFromDay } from "@/lib/analog/printable";
 import { townById } from "@/domain/discovery/towns";
 
 export const metadata: Metadata = {
@@ -32,6 +33,12 @@ export const metadata: Metadata = {
  * distances, what is published about hours and prices, what is not, the rules
  * worth knowing, and a map link for the drive **before** you leave. Nothing
  * on the guide requires a phone once it is printed, which is the entire idea.
+ *
+ * ## The layout
+ *
+ * `components/adventure/PrintableAdventure` takes the day and adds a
+ * checklist, time and money at a glance, side quests and room to write.
+ * `printableFromDay` is the adapter, and the layout depends on nothing else.
  */
 type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -49,7 +56,11 @@ export default async function PrintPage({ searchParams }: Props) {
       ? askedAge
       : undefined;
 
-  const candidates = await listDiscoveryCandidates(childAge);
+  // Nothing chosen means nothing to look up. A corpus read that can only be
+  // thrown away is 6–7 seconds of somebody's time, and with Atlas down it
+  // turns "build a day first" into an error page.
+  const candidates =
+    ids.length > 0 ? await listDiscoveryCandidates(childAge) : [];
   const byId = new Map(candidates.map((c) => [c.id, c]));
   const chosen = ids
     .map((id) => byId.get(id))
@@ -69,5 +80,5 @@ export default async function PrintPage({ searchParams }: Props) {
   // pool alone cannot change which places are on the paper.
   const day = buildDay({ pool: chosen, brief });
 
-  return <AnalogGuide day={day} />;
+  return <PrintableAdventure adventure={printableFromDay(day)} />;
 }
