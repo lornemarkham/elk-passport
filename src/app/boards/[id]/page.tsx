@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { safeNext } from "@/lib/auth/safeNext";
-import { ArrowLeft, Compass, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Compass, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +11,7 @@ import {
 import { loadBoardWithExperiences } from "@/lib/data/loadBoardWithExperiences";
 import { LiveBoard } from "@/components/boards/LiveBoard";
 import { ShareBoard } from "@/components/boards/ShareBoard";
+import { gatheringForBoard } from "@/lib/data/boards-gatherings";
 import type { Experience } from "@/domain/experience/types";
 
 type BoardPageProps = {
@@ -70,6 +71,7 @@ export default async function BoardPage({
   const asked = (await searchParams)?.["back"];
   const back = safeNext(typeof asked === "string" ? asked : null, "/discovery");
   const result = await loadBoardWithExperiences(id);
+  const gathering = gatheringForBoard(id);
 
   return (
     <main className="bg-background min-h-screen">
@@ -119,6 +121,19 @@ export default async function BoardPage({
                 Shared with you
                 {result.role === "viewer" ? " to look at" : " to add to"}.
               </p>
+            )}
+
+            {/* A gathering's board is still a board — this page keeps working
+                for it — but the staff game and who's interested live on the
+                conference view. */}
+            {gathering && (
+              <Link
+                href={`/boards/conference/${gathering.slug}`}
+                className="bg-primary/5 hover:bg-primary/10 mb-6 flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium"
+              >
+                This is the {gathering.title} board — open the activities view
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             )}
 
             <div className="mb-8">
