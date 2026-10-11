@@ -81,6 +81,13 @@ export interface DiscoverySession {
    * way to widen it, and it widens search only — nothing else is reset.
    */
   readonly everywhere?: boolean;
+  /**
+   * **A question they asked in their own words** — "what can we do with three
+   * hours?". Kept as the sentence, not as what it was read into: those
+   * answers are already the fields above, and re-reading the sentence is how
+   * the answer comes back after a refresh or a round trip through sign-in.
+   */
+  readonly ask?: string;
 }
 
 const INTENT_KEYS: readonly IntentKey[] = INTENTS.map((i) => i.key);
@@ -134,6 +141,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
   // A town Passport actually has a verified point for. An unknown id is
   // dropped rather than carried, so nothing downstream has to wonder.
   const at = townById(params.get("at")?.trim())?.id;
+  const ask = params.get("ask")?.trim().slice(0, 300);
   return {
     ...(oneOf(INTENT_KEYS, params.get("intent"))
       ? { intent: oneOf(INTENT_KEYS, params.get("intent"))! }
@@ -154,6 +162,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
     ...(at ? { at } : {}),
     ...(doing ? { doing } : {}),
     ...(params.get("all") === "1" ? { everywhere: true } : {}),
+    ...(ask ? { ask } : {}),
   };
 }
 
@@ -172,6 +181,7 @@ export function sessionQuery(session: DiscoverySession): string {
   if (session.at) params.set("at", session.at);
   if (session.doing) params.set("doing", session.doing);
   if (session.everywhere) params.set("all", "1");
+  if (session.ask?.trim()) params.set("ask", session.ask.trim());
   return params.toString();
 }
 

@@ -197,3 +197,55 @@ board all along.
 ADR 094 §4). Atlas's migration `202610111200_entity_quality_reports.sql` is not
 applied, so the endpoint answers 503. Wire a server-side proxy and the button
 only once Atlas confirms it answers 202.
+
+## Asking Discovery a question — lane/discovery
+
+**Recorded 2026-10-11.** One sentence box under _What do you feel like
+doing?_, four tappable example questions, and an answer shelf. Code:
+`src/lib/ai/ask/` (read, apply, answer, model), `AskDiscovery.tsx`,
+`POST /api/discovery/ask`.
+
+**A sentence sets the rows; it does not replace them.** `readAsk` reads the
+same fields the five rows hold (how long, who, which day, which town, how far,
+which verb), reusing `/go`'s `readBrief` so both pages read one sentence one
+way. `applyAsk` changes only what the sentence says. Exceptions, each stated
+in code: a typed search / kind / intent is replaced; _worth the drive_ clears
+the radius; naming non-child company drops a child's age. "Nearby" becomes
+15 km only where there is an origin. The sentence lives in the URL as `?ask=`.
+
+| question shape      | lens      | what it does                                                                                 | what it refuses                                         |
+| ------------------- | --------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| "three hours"       | `time`    | 3–4 picks, close first, inside `/go`'s stated planning circle (30 km for ≤4 h), varied       | any duration claim; "fits in N minutes"                 |
+| "something unusual" | `unusual` | rarest subtype / affordance **in the home area**, counted over the area (saved included)     | a judgement of taste; rarity counted inside a radius    |
+| "take my kid"       | `kids`    | Atlas-listed child evidence (`childEvidence`) and the per-age verdict first; asks _how old?_ | an age from "kid"; "family" read as a child             |
+| "worth the drive"   | `drive`   | measured 40–200 km straight-line, ranked by **what is there** (verbs, contains, photo)       | minutes, routing, "an hour" as a distance or as the day |
+
+Every pick carries up to three **reasons**, each a fact (listed affordances,
+age verdict, stated interval, rain reading, rarity count, straight-line km),
+and at most one **caveat** (no published hours for the day asked, Atlas cannot
+place it, stated hours disagree). An answer also names its **gaps** — _how
+old?_, _from where?_ — instead of filling them.
+
+**Quality and repetition.** A pick must be `substantial` (dated, photo, verb,
+contained places, listed features, or a description Atlas has not flagged as
+restating the title). Picks are taken one at a time: same name, same spot
+(~200 m) or same attraction (`partOf` / `context`) is refused; same kind and
+shared verbs cost. Over and not-on-the-day events never appear; on-today and
+last-day events lead.
+
+**The model.** `model.ts` runs only with `OPENAI_API_KEY`, fills **gaps** in
+the deterministic reading (never overrules a stated number, town or day),
+validates every field against closed sets (Atlas's verbs, `towns.ts`), and has
+no field for a place. Any failure returns the deterministic reading. The
+browser applies the words immediately; a model reading, if one arrives, fills
+in afterwards and only for the question still on screen.
+
+**Into _Go have a day_.** Every card — composed page, search results and the
+answer — has _Plan a day around this →_; the answer has _Make a day of it →_
+with its first two picks. `/go?with=<ids>` builds the day **around** those ids
+(`buildDay`'s `keep`): taken first, allowed past the planning circle, still
+removed by a stated age rule or a stated not-on-that-day, and **said** in the
+guide's unknowns when removed. Never a coordinate in the URL.
+
+While an answer is on screen `TodayPanel` is not rendered — it would answer the
+same situation a second time — and the forecast still orders the answer.

@@ -53,6 +53,7 @@ export function GoHaveADay({
   childAge,
   townId,
   on,
+  keep = NONE,
 }: {
   readonly pool: readonly Experience[];
   /** `YYYY-MM-DD` where the subjects are. */
@@ -62,8 +63,13 @@ export function GoHaveADay({
   readonly childAge?: number;
   readonly townId?: string;
   readonly on?: string;
+  /** Ids chosen in Discovery, built around rather than replaced. */
+  readonly keep?: readonly string[];
 }) {
-  const seed = initialSay ?? modeById(initialMode)?.says ?? "";
+  const seed =
+    initialSay ??
+    modeById(initialMode)?.says ??
+    (keep.length > 0 ? "Half a day" : "");
   const [draft, setDraft] = useState(seed);
   const [brief, setBrief] = useState<DayBrief | null>(
     seed ? readBrief(seed, fallbackFrom(childAge, townId, on, today)) : null,
@@ -72,8 +78,8 @@ export function GoHaveADay({
   const [asked, setAsked] = useState<string[]>([]);
 
   const day = useMemo(
-    () => (brief ? buildDay({ pool, brief, without: dropped }) : null),
-    [pool, brief, dropped],
+    () => (brief ? buildDay({ pool, brief, without: dropped, keep }) : null),
+    [pool, brief, dropped, keep],
   );
 
   const start = (said: string) => {
@@ -252,6 +258,8 @@ export function GoHaveADay({
     </div>
   );
 }
+
+const NONE: readonly string[] = [];
 
 const ordinal = (n: number) =>
   ["first", "second", "third", "fourth", "fifth"][n - 1] ?? `${n}th`;

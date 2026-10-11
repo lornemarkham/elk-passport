@@ -85,7 +85,7 @@ export interface DayPlanned {
  * can reach. It is stated on screen in kilometres, and anything the person
  * actually said overrules it.
  */
-const defaultRadiusKm = (hours: number | undefined): number => {
+export const defaultRadiusKm = (hours: number | undefined): number => {
   const h = hours ?? 4;
   if (h <= 2) return 15;
   if (h <= 4) return 30;
@@ -321,6 +321,17 @@ export interface BuildInput {
   readonly brief: DayBrief;
   /** Ids to keep out — a stop somebody asked to replace. */
   readonly without?: readonly string[];
+  /**
+   * **Ids somebody already chose**, in Discovery, to build the day around.
+   *
+   * Taken first and past the planning circle — the person picked it, so it
+   * is not this plan's to second-guess on distance. The hard rules still
+   * apply: a stated rule against the child's age or a stated schedule that
+   * leaves the day out drops it, and the plan **says so** rather than
+   * quietly building a day without it. `without` wins over `keep`, so "swap
+   * the first one" works on a chosen stop too.
+   */
+  readonly keep?: readonly string[];
 }
 
 /**
@@ -334,8 +345,33 @@ export function buildDay({
   pool,
   brief,
   without = [],
+  keep = [],
 }: BuildInput): DayPlanned {
   const excluded = new Set(without);
+  const kept: Experience[] = [];
+  const keptOut: string[] = [];
+  for (const id of keep) {
+    if (excluded.has(id)) continue;
+    const experience = pool.find((e) => e.id === id);
+    if (!experience) {
+      keptOut.push("One place you picked is no longer offered here.");
+      continue;
+    }
+    if (brief.childAge !== undefined && excludesAge(experience, brief.childAge))
+      keptOut.push(
+        `${experience.title} is left out — it states it doesn't admit a ${brief.childAge}-year-old.`,
+      );
+    else if (
+      brief.on &&
+      (ruledOutOn(experience, brief.on) ||
+        experience.schedule?.onDate?.reading === "not-on")
+    )
+      keptOut.push(
+        `${experience.title} is left out — what is published says it isn't on that day.`,
+      );
+    else if (!kept.includes(experience)) kept.push(experience);
+  }
+  for (const experience of kept) excluded.add(experience.id);
   const origin = brief.town
     ? { latitude: brief.town.latitude, longitude: brief.town.longitude }
     : undefined;
@@ -368,7 +404,10 @@ export function buildDay({
     );
   });
 
-  const wanted = stopCount(brief.hours, brief.lessDriving);
+  const wanted = Math.min(
+    5,
+    Math.max(stopCount(brief.hours, brief.lessDriving), kept.length),
+  );
 
   /**
    * **Variety is a preference, and it was built as a wall.**
@@ -395,6 +434,10 @@ export function buildDay({
   const sameKindAtCap = (candidate: Experience, cap: number) =>
     (kindCount.get(candidate.subtype ?? candidate.kind) ?? 0) >= cap;
 
+  for (const candidate of kept) {
+    if (chosen.length >= wanted) break;
+    take(candidate);
+  }
   for (const candidate of ranked) {
     if (chosen.length >= wanted) break;
     const verbs = verbsOf(candidate);
@@ -460,7 +503,9 @@ export function buildDay({
       experience,
       minutes: minutesEach,
       ...(km !== undefined ? { km: Math.round(km * 10) / 10 } : {}),
-      because: reasonFor(experience, brief),
+      because: kept.includes(experience)
+        ? "You picked this in Discovery."
+        : reasonFor(experience, brief),
       ...(cost ? { cost } : {}),
       ...(schedule && schedule.reading === "on"
         ? { open: `Published as open on ${schedule.date}.` }
@@ -470,7 +515,7 @@ export function buildDay({
     };
   });
 
-  const unknowns: string[] = [];
+  const unknowns: string[] = [...keptOut];
   if (stops.some((s) => !s.open))
     unknowns.push("Opening hours — most places here have not published them.");
   if (stops.some((s) => !s.cost))

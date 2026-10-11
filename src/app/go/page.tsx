@@ -58,12 +58,26 @@ export default async function GoPage({ searchParams }: Props) {
   // The same feed policy Discovery applies — a typo'd parking lot is not a
   // stop on anybody's afternoon — and the same trimming, because this page
   // serialises its pool for the same reason Discovery does.
-  const pool = defaultFeed(candidates.map(candidateToExperience)).map((e) =>
+  // Plus anything chosen in Discovery that the feed policy leaves out — an
+  // Activity found by search is still somebody's choice.
+  const keep = (one(query.with) ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  const all = candidates.map(candidateToExperience);
+  const feed = defaultFeed(all);
+  const chosen = all.filter(
+    (e) => keep.includes(e.id) && !feed.some((f) => f.id === e.id),
+  );
+  const pool = [...feed, ...chosen].map((e) =>
     e.description === e.shortDescription
       ? ({ ...e, description: undefined } as typeof e)
       : e,
   );
 
+  // `keep` (above) is ids only; one Atlas no longer serves builds the day
+  // without it, and the day says so (`buildDay`'s `keep`).
   const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -86,6 +100,7 @@ export default async function GoPage({ searchParams }: Props) {
           {...(childAge !== undefined ? { childAge } : {})}
           {...(one(query.at) ? { townId: one(query.at)! } : {})}
           {...(one(query.on) ? { on: one(query.on)! } : {})}
+          {...(keep.length > 0 ? { keep } : {})}
         />
       </main>
     </ThemeProvider>

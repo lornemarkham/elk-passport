@@ -356,3 +356,67 @@ describe("a day of a given length stays inside a circle", () => {
     expect(day.opening).not.toMatch(/min|minute|drive/i);
   });
 });
+
+/**
+ * **A day built around what somebody chose in Discovery.**
+ *
+ * `keep` is the hand-off from a card's *Plan a day around this*. The person
+ * picked it, so it leads the day even past the planning circle — but a stated
+ * rule still wins, and a dropped choice is said out loud.
+ */
+describe("a day built around chosen places", () => {
+  it("puts the chosen place in the day, even outside the circle", () => {
+    const day = buildDay({
+      pool: POOL,
+      brief: brief("two hours near Vernon"),
+      keep: ["far-away-lake"],
+    });
+    const stop = day.stops.find((s) => s.experience.id === "far-away-lake");
+    expect(stop).toBeDefined();
+    expect(stop?.because).toBe("You picked this in Discovery.");
+  });
+
+  it("still obeys a stated age rule, and says why the choice is missing", () => {
+    const day = buildDay({
+      pool: POOL,
+      brief: brief("four hours with a five-year-old near Vernon"),
+      keep: ["adults-only-taproom"],
+    });
+    expect(day.stops.map((s) => s.experience.id)).not.toContain(
+      "adults-only-taproom",
+    );
+    expect(day.unknowns[0]).toContain("Adults Only Taproom is left out");
+  });
+
+  it("says so when a chosen id is not offered at all", () => {
+    const day = buildDay({
+      pool: POOL,
+      brief: brief("four hours near Vernon"),
+      keep: ["gone"],
+    });
+    expect(day.unknowns[0]).toMatch(/no longer offered/);
+    expect(day.stops.length).toBeGreaterThan(0);
+  });
+
+  it("lets 'swap it' win over the choice", () => {
+    const day = buildDay({
+      pool: POOL,
+      brief: brief("four hours near Vernon"),
+      keep: ["kal-beach"],
+      without: ["kal-beach"],
+    });
+    expect(day.stops.map((s) => s.experience.id)).not.toContain("kal-beach");
+  });
+
+  it("makes room for every choice, up to five", () => {
+    const day = buildDay({
+      pool: POOL,
+      brief: brief("an hour near Vernon"),
+      keep: ["polson-park", "kal-beach", "ellison-park"],
+    });
+    const ids = day.stops.map((s) => s.experience.id);
+    expect(ids).toEqual(
+      expect.arrayContaining(["polson-park", "kal-beach", "ellison-park"]),
+    );
+  });
+});

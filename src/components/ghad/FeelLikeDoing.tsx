@@ -28,6 +28,7 @@ export function FeelLikeDoing({
   rows,
   today,
   where,
+  lead,
   after,
 }: {
   /**
@@ -51,6 +52,8 @@ export function FeelLikeDoing({
     readonly note?: string;
     readonly after?: React.ReactNode;
   }[];
+  /** Between the two facts and the rows — where Discovery's question box sits. */
+  readonly lead?: React.ReactNode;
   readonly after?: React.ReactNode;
 }) {
   return (
@@ -90,6 +93,8 @@ export function FeelLikeDoing({
           )}
         </p>
       )}
+
+      {lead}
 
       <div className="mt-5 sm:mt-8">
         {rows.map((row) => (
