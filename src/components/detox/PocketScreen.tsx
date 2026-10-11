@@ -14,10 +14,16 @@ import { useOffline } from "@/lib/detox/store";
  *
  * There is no live timer. A ticking clock is a reason to look at a screen,
  * and the only person who should be counting is whoever owes the ice cream.
+ *
+ * The day kept at "Phones away" sits folded shut at the bottom — for if the
+ * paper blows away, not for reading on the drive. It is read from this
+ * browser, so it needs no signal once the page is open, and it has no links:
+ * a map link is a door back into the phone.
  */
 export function PocketScreen() {
   const { current } = useOffline();
   const pact = current?.pact;
+  const day = current?.day;
   const place = phonePlaceById(pact?.phone);
   const since = current?.leftAt
     ? new Intl.DateTimeFormat("en-CA", {
@@ -43,7 +49,7 @@ export function PocketScreen() {
         data-testid="offline-since"
         className="mt-6 text-[17px] leading-relaxed text-black/65"
       >
-        {since ? `Phones away since ${since}. ` : ""}
+        {since ? `Phones away since ${since.replace(/\.$/, "")}. ` : ""}
         {place
           ? `${place.label}. ${place.line}`
           : "Have a hell of a day. We'll be here after."}
@@ -78,6 +84,34 @@ export function PocketScreen() {
             Short on memory? Write them on the back of your printed guide.
           </p>
         </section>
+      )}
+
+      {day && (
+        <details
+          data-testid="offline-pocket-day"
+          className="mt-10 border-t border-black/10 pt-4"
+        >
+          <summary className="min-h-11 cursor-pointer text-[14px] font-semibold text-black/55">
+            If the paper blows away
+          </summary>
+          <ol className="mt-3 flex flex-col gap-1.5">
+            {day.stops.map((stop, index) => (
+              <li
+                key={stop.id}
+                data-testid="offline-pocket-stop"
+                className="flex gap-3 text-[16px] leading-relaxed text-black/75"
+              >
+                <span className="font-extrabold tabular-nums">{index + 1}</span>
+                <span>
+                  {stop.name}
+                  {stop.where && (
+                    <span className="text-black/45"> · {stop.where}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </details>
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-3 pt-14">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Printer, Shuffle } from "lucide-react";
-import { OFFLINE_MODES } from "@/components/go/modes";
+import type { OfflineDay } from "@/lib/detox/day";
 import {
   PHONE_PLACES,
   STAKES,
@@ -12,48 +12,69 @@ import {
   stakeSentence,
   type Pact,
 } from "@/lib/detox/pact";
-import { leave, newOuting, postcard, withPact } from "@/lib/detox/outing";
+import {
+  leave,
+  newOuting,
+  postcard,
+  withDay,
+  withPact,
+} from "@/lib/detox/outing";
 import { updateOffline, useOffline } from "@/lib/detox/store";
 import { PhoneAway } from "./PhoneAway";
 import { PostcardView } from "./PostcardView";
 
 /**
- * **Go Offline — the front door.**
+ * **Go Offline — the moment planning is finished.**
  *
- * Technology helps people find an adventure, then gets out of the way. This
- * page is the "gets out of the way" half made into something a person would
- * actually want to do: it explains the idea in three steps, hands planning
- * and printing to the routes that already do them, and adds the one thing
- * they don't have — a pact to make the phone-free part a game.
+ * GO HAVE A DAY goes *say it → build it → print it → go offline → come back*.
+ * This is the fourth step, not a second front door: it does not plan, offer
+ * its own doors into a planner, or print. A day arrives here with the same
+ * query `/go/print` reads, and the page says the one thing nothing else
+ * says — **that's the plan; there is nothing left to decide on a screen.**
+ *
+ * Then, in order:
+ *
+ * - **What stays on the phone.** The stops and their towns, kept locally
+ *   when the phones go away, for if the paper blows away. Not the guide.
+ * - **The pact, if anybody wants one.** Optional, and closed until somebody
+ *   opens it. Skipping it costs nothing and leaves nothing behind.
+ * - **"Phones away."** One button.
  *
  * ## What it reuses, and does not rebuild
  *
- * - **Planning** is `/go`. The doors are `OFFLINE_MODES` from
- *   `src/components/go/modes.ts`, linked as `/go?mode=…`, which `GoHaveADay`
- *   already reads as its opening sentence. No second parser, no second list.
- * - **Printing** is `/go/print` and `AnalogGuide`, reached from the day `/go`
- *   builds. Nothing here typesets paper.
+ * - **Planning** is `/go`. Arriving with no day gets one link there.
+ * - **Printing** is `/go/print`, linked with the day's own query.
  *
  * ## Tone
  *
- * No guilt, no lecture, no screen-time number. The phone is not the villain;
- * it just isn't invited today.
+ * No guilt, no lecture, no screen-time number, no notification. The phone is
+ * not the villain; it just isn't invited today.
  */
-export function GoOffline() {
+export function GoOffline({
+  day: arrived,
+  unreachable = false,
+}: {
+  /** The day handed over from planning, if one was. */
+  readonly day?: OfflineDay;
+  /** A day was handed over, but its details could not be read just now. */
+  readonly unreachable?: boolean;
+}) {
   const { current, past } = useOffline();
-  const pact: Pact = current?.pact ?? defaultPact();
+  const pact = current?.pact;
   const out = Boolean(current?.leftAt);
+  // A day handed over wins; otherwise the one already kept, if any.
+  const day = arrived ?? current?.day;
 
-  const setPact = (next: Pact) =>
+  const setPact = (next: Pact | undefined) =>
     updateOffline((state) => ({
       ...state,
-      current: state.current ? withPact(state.current, next) : newOuting(next),
+      current: withPact(state.current ?? newOuting(), next),
     }));
 
   const goNow = () =>
     updateOffline((state) => ({
       ...state,
-      current: leave(state.current ?? newOuting(pact), new Date()),
+      current: leave(withDay(state.current ?? newOuting(), day), new Date()),
     }));
 
   return (
@@ -78,7 +99,7 @@ export function GoOffline() {
         </Link>
       )}
 
-      {/* ── The hero ────────────────────────────────────────────────── */}
+      {/* ── Planning is finished ────────────────────────────────────── */}
       <section className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_280px]">
         <div>
           <p
@@ -87,119 +108,70 @@ export function GoOffline() {
           >
             Go offline
           </p>
-          <h1 className="ghad-display mt-2 text-[44px] leading-[0.9] font-extrabold tracking-[-0.05em] text-[#111] sm:text-[84px]">
-            Plan it.
-            <br />
-            Print it.
-            <br />
-            <span style={{ color: "var(--ghad-accent)" }}>Go.</span>
-          </h1>
-          <p className="mt-6 max-w-[54ch] text-[17px] leading-relaxed text-black/65">
-            We find you a day made of real places and put it on paper. Then the
-            phone goes in the glovebox and the rest is up to you, a full tank,
-            and whoever&apos;s in the passenger seat.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <a
-              href="#plan"
-              data-testid="offline-start"
-              style={{
-                backgroundColor: "var(--ghad-accent)",
-                color: "var(--ghad-accent-ink)",
-              }}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold"
-            >
-              Find us a day
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </a>
-            <a
-              href="#pact"
-              className="inline-flex min-h-12 items-center px-5 text-[15px] font-semibold text-black/55 hover:text-[#111]"
-            >
-              We&apos;ve already got a plan
-            </a>
-          </div>
+          {day || unreachable ? (
+            <>
+              <h1 className="ghad-display mt-2 text-[44px] leading-[0.9] font-extrabold tracking-[-0.05em] text-[#111] sm:text-[84px]">
+                That&apos;s
+                <br />
+                <span style={{ color: "var(--ghad-accent)" }}>the plan.</span>
+              </h1>
+              <p
+                data-testid="offline-done"
+                className="mt-6 max-w-[54ch] text-[17px] leading-relaxed text-black/65"
+              >
+                Planning&apos;s done. There&apos;s nothing left to decide on a
+                screen — the rest gets decided out there.
+              </p>
+              {day ? (
+                <PlanKept day={day} />
+              ) : (
+                <p
+                  data-testid="offline-unreachable"
+                  className="mt-6 max-w-[54ch] text-[15px] leading-relaxed text-black/55"
+                >
+                  We couldn&apos;t look the stops up just now, so there&apos;s
+                  no copy on this phone. The paper has all of it.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h1 className="ghad-display mt-2 text-[44px] leading-[0.9] font-extrabold tracking-[-0.05em] text-[#111] sm:text-[84px]">
+                Got a
+                <br />
+                <span style={{ color: "var(--ghad-accent)" }}>plan?</span>
+              </h1>
+              <p className="mt-6 max-w-[54ch] text-[17px] leading-relaxed text-black/65">
+                This is where planning stops. Build a day and print it first —
+                or bring one you made yourself, on paper or in your head.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link
+                  href="/go"
+                  data-testid="offline-plan-first"
+                  style={{
+                    backgroundColor: "var(--ghad-accent)",
+                    color: "var(--ghad-accent-ink)",
+                  }}
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold"
+                >
+                  Go have a day
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+                <a
+                  href="#go"
+                  className="inline-flex min-h-12 items-center px-5 text-[15px] font-semibold text-black/55 hover:text-[#111]"
+                >
+                  We&apos;ve already got one
+                </a>
+              </div>
+            </>
+          )}
         </div>
         <PhoneAway />
       </section>
 
-      {/* ── How it works ───────────────────────────────────────────── */}
-      <section
-        aria-labelledby="offline-how"
-        className="mt-16 border-t border-black/10 pt-8"
-      >
-        <h2 id="offline-how" className="sr-only">
-          How it works
-        </h2>
-        <ol className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-          {STEPS.map((step, index) => (
-            <li key={step.title}>
-              <span
-                className="ghad-display text-[28px] leading-none font-extrabold tabular-nums"
-                style={{ color: "var(--ghad-accent)" }}
-              >
-                {index + 1}
-              </span>
-              <h3 className="ghad-display mt-3 text-[22px] leading-[1.05] font-extrabold tracking-[-0.03em] text-[#111]">
-                {step.title}
-              </h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-black/60">
-                {step.body}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* ── 1. Plan it ─────────────────────────────────────────────── */}
-      <section
-        id="plan"
-        aria-labelledby="offline-plan"
-        className="mt-16 scroll-mt-20 border-t border-black/10 pt-8"
-      >
-        <SectionHead
-          id="offline-plan"
-          step="Plan it"
-          title="Pick a shape of day"
-          lede="Each one builds a real day out of real places. You can change it in your own words, then print it from there."
-        />
-        <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {OFFLINE_MODES.map((mode) => (
-            <li key={mode.id}>
-              <Link
-                href={`/go?mode=${encodeURIComponent(mode.id)}`}
-                data-testid={`offline-door-${mode.id}`}
-                className="group block h-full rounded-2xl p-4 ring-1 ring-black/12 transition-colors ring-inset hover:ring-black/40"
-              >
-                <span
-                  aria-hidden
-                  className="block h-[3px] w-7 transition-[width] group-hover:w-12"
-                  style={{ backgroundColor: "var(--ghad-accent)" }}
-                />
-                <span className="ghad-display mt-3 block text-[20px] leading-[1.05] font-extrabold tracking-[-0.03em] text-[#111]">
-                  {mode.title}
-                </span>
-                <span className="mt-1 block text-[14px] leading-relaxed text-black/55">
-                  {mode.blurb}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 flex flex-wrap items-center gap-x-2 text-[14px] text-black/55">
-          <Printer className="h-4 w-4" aria-hidden />
-          Or{" "}
-          <Link
-            href="/go"
-            className="font-semibold text-[#111] underline underline-offset-4"
-          >
-            say it in your own words
-          </Link>
-          . Print it, then come back here to make it interesting.
-        </p>
-      </section>
-
-      {/* ── 2. The pact ────────────────────────────────────────────── */}
+      {/* ── The pact, if anybody wants one ─────────────────────────── */}
       <section
         id="pact"
         aria-labelledby="offline-pact"
@@ -207,112 +179,140 @@ export function GoOffline() {
       >
         <SectionHead
           id="offline-pact"
-          step="Make it interesting"
-          title="The pact"
-          lede="Decide it together before anyone gets in the car. It's more fun with something on the line."
+          step="Optional"
+          title="Make it interesting?"
+          lede={
+            pact
+              ? "Decide it together before anyone gets in the car. It's more fun with something on the line."
+              : "Where the phones go, what the first one to crack owes, and three things to pull off out there. Skip it and nothing changes."
+          }
         />
 
-        <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-2">
-          <fieldset>
-            <legend className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
-              Where are the phones going?
-            </legend>
-            <div className="mt-3 flex flex-col gap-2">
-              {PHONE_PLACES.map((place) => (
-                <Choice
-                  key={place.id}
-                  name="offline-phone"
-                  testId={`offline-phone-${place.id}`}
-                  checked={pact.phone === place.id}
-                  onChange={() => setPact({ ...pact, phone: place.id })}
-                  label={place.label}
-                  line={place.line}
-                />
-              ))}
-            </div>
-          </fieldset>
+        {!pact ? (
+          <button
+            type="button"
+            data-testid="offline-make-pact"
+            onClick={() => setPact(defaultPact())}
+            className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] ring-1 ring-black/20 ring-inset hover:ring-black/50"
+          >
+            Make a pact
+          </button>
+        ) : (
+          <>
+            <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-2">
+              <fieldset>
+                <legend className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+                  Where are the phones going?
+                </legend>
+                <div className="mt-3 flex flex-col gap-2">
+                  {PHONE_PLACES.map((place) => (
+                    <Choice
+                      key={place.id}
+                      name="offline-phone"
+                      testId={`offline-phone-${place.id}`}
+                      checked={pact.phone === place.id}
+                      onChange={() => setPact({ ...pact, phone: place.id })}
+                      label={place.label}
+                      line={place.line}
+                    />
+                  ))}
+                </div>
+              </fieldset>
 
-          <fieldset>
-            <legend className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
-              Whoever reaches for a phone first…
-            </legend>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {STAKES.map((stake) => {
-                const on = pact.stake === stake.id;
-                return (
-                  <button
-                    key={stake.id}
-                    type="button"
-                    aria-pressed={on}
-                    data-testid={`offline-stake-${stake.id}`}
-                    onClick={() => setPact({ ...pact, stake: stake.id })}
-                    style={
-                      on
-                        ? {
-                            backgroundColor: "var(--ghad-accent)",
-                            color: "var(--ghad-accent-ink)",
-                          }
-                        : undefined
-                    }
-                    className={`inline-flex min-h-11 items-center rounded-full px-4 text-left text-[14px] font-semibold ${
-                      on
-                        ? ""
-                        : "text-black/70 ring-1 ring-black/15 ring-inset hover:ring-black/45"
-                    }`}
+              <fieldset>
+                <legend className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+                  Whoever reaches for a phone first…
+                </legend>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {STAKES.map((stake) => {
+                    const on = pact.stake === stake.id;
+                    return (
+                      <button
+                        key={stake.id}
+                        type="button"
+                        aria-pressed={on}
+                        data-testid={`offline-stake-${stake.id}`}
+                        onClick={() => setPact({ ...pact, stake: stake.id })}
+                        style={
+                          on
+                            ? {
+                                backgroundColor: "var(--ghad-accent)",
+                                color: "var(--ghad-accent-ink)",
+                              }
+                            : undefined
+                        }
+                        className={`inline-flex min-h-11 items-center rounded-full px-4 text-left text-[14px] font-semibold ${
+                          on
+                            ? ""
+                            : "text-black/70 ring-1 ring-black/15 ring-inset hover:ring-black/45"
+                        }`}
+                      >
+                        …{stake.owes}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            </div>
+
+            <div className="mt-10">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+                  Three things to pull off out there
+                </p>
+                <button
+                  type="button"
+                  data-testid="offline-redeal"
+                  onClick={() => setPact(redeal(pact))}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[14px] font-semibold text-black/70 ring-1 ring-black/15 ring-inset hover:ring-black/45"
+                >
+                  <Shuffle className="h-4 w-4" aria-hidden />
+                  Deal again
+                </button>
+              </div>
+              <ul
+                data-testid="offline-hand"
+                className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
+              >
+                {pact.challenges.map((id, index) => (
+                  <li
+                    key={id}
+                    data-testid="offline-card"
+                    className="flex min-h-36 flex-col justify-between rounded-2xl bg-[#111] p-5 text-white"
+                    style={{
+                      transform: `rotate(${TILT[index % TILT.length]}deg)`,
+                    }}
                   >
-                    …{stake.owes}
-                  </button>
-                );
-              })}
+                    <span className="ghad-display text-[19px] leading-[1.15] font-extrabold tracking-[-0.02em]">
+                      {challengeById(id)?.line}
+                    </span>
+                    <span
+                      className="mt-4 text-[11px] font-semibold tracking-[0.12em] uppercase"
+                      style={{ color: "var(--ghad-accent)" }}
+                    >
+                      Card {index + 1} of {pact.challenges.length}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </fieldset>
-        </div>
-
-        <div className="mt-10">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
-              Three things to pull off out there
-            </p>
             <button
               type="button"
-              data-testid="offline-redeal"
-              onClick={() => setPact(redeal(pact))}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[14px] font-semibold text-black/70 ring-1 ring-black/15 ring-inset hover:ring-black/45"
+              data-testid="offline-drop-pact"
+              onClick={() => setPact(undefined)}
+              className="mt-8 inline-flex min-h-11 items-center text-[14px] font-semibold text-black/50 underline underline-offset-4 hover:text-[#111]"
             >
-              <Shuffle className="h-4 w-4" aria-hidden />
-              Deal again
+              No pact after all
             </button>
-          </div>
-          <ul
-            data-testid="offline-hand"
-            className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
-          >
-            {pact.challenges.map((id, index) => (
-              <li
-                key={id}
-                data-testid="offline-card"
-                className="flex min-h-36 flex-col justify-between rounded-2xl bg-[#111] p-5 text-white"
-                style={{ transform: `rotate(${TILT[index % TILT.length]}deg)` }}
-              >
-                <span className="ghad-display text-[19px] leading-[1.15] font-extrabold tracking-[-0.02em]">
-                  {challengeById(id)?.line}
-                </span>
-                <span
-                  className="mt-4 text-[11px] font-semibold tracking-[0.12em] uppercase"
-                  style={{ color: "var(--ghad-accent)" }}
-                >
-                  Card {index + 1} of {pact.challenges.length}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          </>
+        )}
       </section>
 
-      {/* ── 3. Go ──────────────────────────────────────────────────── */}
+      {/* ── Go ───────────────────────────────────────────────────────── */}
       <section
+        id="go"
         aria-labelledby="offline-go"
-        className="mt-16 border-t-2 border-black/80 pt-8"
+        className="mt-16 scroll-mt-20 border-t-2 border-black/80 pt-8"
       >
         <h2
           id="offline-go"
@@ -324,8 +324,9 @@ export function GoOffline() {
           data-testid="offline-stake-sentence"
           className="mt-3 max-w-[56ch] text-[16px] leading-relaxed text-black/60"
         >
-          {stakeSentence(pact.stake)} Remember the three cards — reading them
-          once is the last thing the phone has to do today.
+          {pact
+            ? `${stakeSentence(pact.stake)} Remember the three cards — reading them once is the last thing the phone has to do today.`
+            : "Nothing to remember. That's what the paper is for."}
         </p>
         <Link
           href="/detox/out"
@@ -340,6 +341,10 @@ export function GoOffline() {
           Phones away
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Link>
+        <p className="mt-3 text-[13px] text-black/45">
+          No reminders, no check-ins. We won&apos;t buzz you; come back when
+          you&apos;re back.
+        </p>
       </section>
 
       {/* ── The fridge ─────────────────────────────────────────────── */}
@@ -372,20 +377,53 @@ export function GoOffline() {
   );
 }
 
-const STEPS = [
-  {
-    title: "Plan it",
-    body: "Say what kind of day you want, or pick a door. You get real places, and an honest note about anything we couldn't find out.",
-  },
-  {
-    title: "Print it",
-    body: "One sheet: the stops, a little challenge at each, and room to scribble. Fold it. It doesn't need charging.",
-  },
-  {
-    title: "Go",
-    body: "Make the pact, put the phones away, and have the day. Come back after and tell us how it went — if you feel like it.",
-  },
-] as const;
+/**
+ * The day that was printed, said back as a short list — and what this phone
+ * will keep of it. Names and towns only: everything else is on the paper.
+ */
+function PlanKept({ day }: { readonly day: OfflineDay }) {
+  return (
+    <div className="mt-7">
+      <ol data-testid="offline-plan" className="flex flex-col gap-1.5">
+        {day.stops.map((stop, index) => (
+          <li
+            key={stop.id}
+            data-testid="offline-plan-stop"
+            className="flex items-baseline gap-3 text-[17px] text-[#111]"
+          >
+            <span
+              className="ghad-display w-5 shrink-0 font-extrabold tabular-nums"
+              style={{ color: "var(--ghad-accent)" }}
+            >
+              {index + 1}
+            </span>
+            <span>
+              <span className="font-semibold">{stop.name}</span>
+              {stop.where && (
+                <span className="text-black/50"> · {stop.where}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p
+        data-testid="offline-kept-note"
+        className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-black/50"
+      >
+        When the phones go away we keep these names and towns on this phone, in
+        case the paper blows away. Nothing is sent anywhere.
+      </p>
+      <Link
+        href={`/go/print${day.print ? `?${day.print}` : ""}`}
+        data-testid="offline-print-again"
+        className="mt-3 inline-flex min-h-11 items-center gap-2 text-[14px] font-semibold text-[#111] underline underline-offset-4"
+      >
+        <Printer className="h-4 w-4" aria-hidden />
+        Haven&apos;t printed it yet?
+      </Link>
+    </div>
+  );
+}
 
 /** A dealt hand should look dealt. */
 const TILT = [-1.5, 1, -0.5] as const;

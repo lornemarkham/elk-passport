@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { challengeById, defaultPact, stakeSentence } from "@/lib/detox/pact";
+import { planLine } from "@/lib/detox/day";
+import { challengeById, stakeSentence } from "@/lib/detox/pact";
 import {
   awayFor,
   comeBack,
+  dealtIn,
   newOuting,
   postcard,
   type Outing,
@@ -23,8 +25,14 @@ import { PostcardView } from "./PostcardView";
  * browser only (see `src/lib/detox/outing.ts` for what it deliberately does
  * not record, and why).
  *
- * Three questions, all optional, none of them a rating. Then a postcard, and
- * a door back out.
+ * A few questions, all optional, none of them a rating — and the ones about
+ * the pact only if there was one. Then a postcard, and a door back into GO
+ * HAVE A DAY for the next one.
+ *
+ * It asks about the outing, never place by place: whether a stop was "done"
+ * or "loved" is lived state, and its vocabulary is open (doctrine §15 Q3,
+ * Q14). The plan is shown as context — what you set out to do — not as a
+ * checklist to tick.
  */
 export function WelcomeBack() {
   const { current } = useOffline();
@@ -32,10 +40,12 @@ export function WelcomeBack() {
   const [pulledOff, setPulledOff] = useState<string[]>([]);
   const [cracked, setCracked] = useState("");
   const [unplanned, setUnplanned] = useState("");
+  const [company, setCompany] = useState("");
 
   // Somebody can arrive here without having pressed "Phones away" — from the
   // printed guide, say. They still get a welcome and a postcard.
-  const outing = current ?? newOuting({ ...defaultPact(), challenges: [] });
+  const outing = current ?? newOuting();
+  const dealt = dealtIn(outing);
   const away = awayFor(outing, new Date());
 
   const finish = () => {
@@ -43,6 +53,7 @@ export function WelcomeBack() {
       pulledOff,
       cracked,
       unplanned,
+      company,
     });
     updateOffline((state) => ({
       current: undefined,
@@ -59,7 +70,8 @@ export function WelcomeBack() {
           {...(made.back ? { date: made.back.at } : {})}
         />
         <p className="mt-6 text-[14px] text-black/50">
-          Kept on this device, on the fridge at Go Offline. Nobody else sees it.
+          Kept on this device, on the fridge at Go Offline. Nobody else sees it,
+          and there&apos;s nothing to share it to.
         </p>
         <div className="mt-10 border-t-2 border-black/80 pt-6">
           <h2 className="ghad-display text-[34px] leading-[0.95] font-extrabold tracking-[-0.045em] text-[#111] sm:text-[56px]">
@@ -67,7 +79,7 @@ export function WelcomeBack() {
           </h2>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/detox"
+              href="/go"
               data-testid="offline-another"
               style={{
                 backgroundColor: "var(--ghad-accent)",
@@ -104,6 +116,15 @@ export function WelcomeBack() {
           : "Whatever's on your phone can wait another minute."}{" "}
         How did it go?
       </p>
+      {outing.day && (
+        <p
+          data-testid="offline-back-plan"
+          className="mt-3 max-w-[54ch] text-[15px] leading-relaxed text-black/50"
+        >
+          The plan was {planLine(outing.day)}. What actually happened is up to
+          you.
+        </p>
+      )}
 
       <form
         className="mt-10 flex flex-col gap-10"
@@ -112,13 +133,13 @@ export function WelcomeBack() {
           finish();
         }}
       >
-        {outing.pact.challenges.length > 0 && (
+        {dealt.length > 0 && (
           <fieldset>
             <legend className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
               Which ones did you pull off?
             </legend>
             <div className="mt-3 flex flex-col gap-2">
-              {outing.pact.challenges.map((id) => {
+              {dealt.map((id) => {
                 const on = pulledOff.includes(id);
                 return (
                   <label
@@ -156,21 +177,35 @@ export function WelcomeBack() {
           </fieldset>
         )}
 
-        <label className="block">
-          <span className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
-            Who cracked first?
-          </span>
-          {outing.pact.challenges.length > 0 && (
+        {outing.pact && (
+          <label className="block">
+            <span className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+              Who cracked first?
+            </span>
             <span className="mt-1 block text-[14px] text-black/50">
               {stakeSentence(outing.pact.stake)} Leave it blank if nobody did.
             </span>
-          )}
+            <input
+              data-testid="offline-cracked"
+              value={cracked}
+              maxLength={60}
+              onChange={(event) => setCracked(event.target.value)}
+              placeholder="Nobody. Obviously."
+              className="mt-3 min-h-12 w-full rounded-full bg-white px-5 text-[16px] text-[#111] ring-1 ring-black/15 ring-inset placeholder:text-black/35 focus:ring-2 focus:ring-black/50 focus:outline-none"
+            />
+          </label>
+        )}
+
+        <label className="block">
+          <span className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
+            Who was there?
+          </span>
           <input
-            data-testid="offline-cracked"
-            value={cracked}
-            maxLength={60}
-            onChange={(event) => setCracked(event.target.value)}
-            placeholder="Nobody. Obviously."
+            data-testid="offline-company"
+            value={company}
+            maxLength={120}
+            onChange={(event) => setCompany(event.target.value)}
+            placeholder="Me, Sam and a very muddy dog."
             className="mt-3 min-h-12 w-full rounded-full bg-white px-5 text-[16px] text-[#111] ring-1 ring-black/15 ring-inset placeholder:text-black/35 focus:ring-2 focus:ring-black/50 focus:outline-none"
           />
         </label>

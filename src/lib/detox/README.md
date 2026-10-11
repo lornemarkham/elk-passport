@@ -4,73 +4,108 @@
 `/detox` routes do, what they deliberately do not do, and where they are
 waiting on other work.
 
+Go Offline is a step **inside** GO HAVE A DAY, not a separate product:
+
+```
+SAY IT ─► BUILD IT ─► SHAPE IT ─► PRINT IT ─► GO OFFLINE ─► COME BACK ─► NOW GO HAVE ANOTHER
+  /go       /go         /go       /go/print    /detox        /detox/back     /go
+                                               /detox/out
+```
+
 ## The journey
 
 ```
-/detox        the idea in three steps, the doors into /go, the pact, "Phones away"
-  → /go?mode=…      plan it   (existing — GoHaveADay, readBrief, buildDay)
-  → /go/print       print it  (existing — AnalogGuide)
-/detox/out    the last screen: the pact once, what time the phones went, one button
-/detox/back   welcome back: which cards, who cracked, the thing nobody planned → a postcard
-  → /detox          now go have another
+/detox?stops=…&say=…   "That's the plan."  Planning is finished: the stops said
+                       back, what this phone will keep, the optional pact,
+                       "Phones away". Same query as /go/print.
+/detox                 no day handed over: "Got a plan?" → one link to /go, or
+                       go anyway with a plan made on paper or in your head
+/detox/out             the last screen: the pact once (if any), when the phones
+                       went, the day folded shut under "If the paper blows away",
+                       one button
+/detox/back            welcome back: who was there, the cards (if a pact), who
+                       cracked (if a pact), the thing nobody planned → a postcard
+  → /go                "Now go have another"
 ```
 
 ## What is new, and what is reused
 
-| Piece                                | Where                        | New?                                   |
-| ------------------------------------ | ---------------------------- | -------------------------------------- |
-| Shapes of day                        | `components/go/modes.ts`     | Reused — linked as `/go?mode=<id>`     |
-| Planning, revising                   | `/go`, `domain/day/`         | Reused, untouched                      |
-| The printed guide                    | `/go/print`, `AnalogGuide`   | Reused, untouched                      |
-| Per-stop challenges                  | `challengeFor` in `build.ts` | Reused, on the paper                   |
-| The pact (phone, stake, three cards) | `lib/detox/pact.ts`          | New — place-free cards only            |
-| The outing record                    | `lib/detox/outing.ts`        | New — pact, `leftAt`, return; no stops |
-| Postcards, "the fridge"              | `lib/detox/store.ts`         | New — `localStorage` only, last six    |
+| Piece                                | Where                        | New?                                                    |
+| ------------------------------------ | ---------------------------- | ------------------------------------------------------- |
+| Planning, revising                   | `/go`, `domain/day/`         | Reused, untouched                                       |
+| The printed guide                    | `/go/print`, `AnalogGuide`   | Reused, untouched — linked, never re-typeset            |
+| Per-stop challenges                  | `challengeFor` in `build.ts` | Reused, on the paper                                    |
+| The day kept on the phone            | `lib/detox/day.ts`           | New — names, Atlas's town, minutes; nothing else        |
+| Resolving the day from the query     | `lib/detox/resolve.ts`       | New — a deliberate copy of `/go/print`'s resolution     |
+| The pact (phone, stake, three cards) | `lib/detox/pact.ts`          | Optional — dealt only when somebody asks                |
+| The outing record                    | `lib/detox/outing.ts`        | Day snapshot, pact?, `leftAt`, return (+ who was there) |
+| Postcards, "the fridge"              | `lib/detox/store.ts`         | `localStorage` only, last six                           |
 
 The pact's cards never name or describe a place. The per-stop challenges in
 `build.ts` are the ones allowed to, and only from features Atlas states.
 
-## Deliberately absent
+## Why the kept day is not the guide
 
-- **No adventure data model.** The outing holds no stops. The day is
-  `DayPlanned`; the saved form of it is the Adventure contract on
-  `lane/domain` (`src/lib/domains/adventure/`, not yet on this branch).
-- **No print implementation.** Nothing here typesets paper.
-- **No screen-time numbers, streaks or scores.** "Phones away for 4 hours" is
-  said once, on the return, as a fact about the day. Past 24 hours it says
-  nothing — somebody who forgot to press "We're back" was not offline for
-  three days.
-- **No per-place lived state.** The return is about the outing (cards, who
-  cracked, what wasn't planned). WANTED / PLANNED / DID / LOVED is doctrine
-  §15 Q3 / Q14 and stays open.
-- **Nothing is sent anywhere.** How a return flows into a person's own
-  Passport, or Atlas, is §15 Q11.
+The paper has the reasons, hours, costs, rules and challenges. The phone keeps
+**which places, in what order, in which town** — what you need if the paper
+blows away — plus the query that prints the paper again. It is snapshotted at
+"Phones away", so it reads from this browser with no signal once the page is
+open, and the pocket screen shows it folded shut and with **no links**: a map
+link is a door back into the phone.
 
-## Integration points (other lanes)
+It is **not** a service worker. A cold reload with no signal still needs the
+network. Making `/detox/out` load offline is a shell/build decision (it would
+touch `next.config`, `public/` and the layout) — see integration point 6.
 
-1. **Print lane — closing line.** `AnalogGuide`'s closing line says _"Come back
-   and tell us what actually happened"_ and points nowhere. `/detox/back` can
-   receive it: a printed URL or QR to `/detox/back` would close the loop.
-2. **Print lane — the pact on paper.** The guide could print the pact (stake
-   and three cards) if `/go/print` accepted e.g. `?pact=<phone>.<stake>.<ids>`.
-   The ids are stable in `pact.ts`. Until then the pocket screen says "write
-   them on the back of your printed guide".
-3. **`/go` → `/detox`.** After printing, `GoHaveADay` / `AnalogGuide` could
-   offer "Make it interesting →" to `/detox#pact`. Today the person returns by
-   the back button; the pact is already saved, so order doesn't matter.
-4. **Domain lane — the Adventure.** When an `Adventure` can be saved, an
-   outing could carry its id (`adventureId?`) so the return can ask about the
-   stops by name. That is the moment §15 Q14 has to be answered first.
-5. **Shell — navigation.** `/detox` is not in `PassportNav`. Whether Go
-   Offline is a nav destination is the shell owner's call.
+## Deliberately absent (DTX-05, pinned by `guardrails.test.ts`)
+
+- **No notifications, vibration, push, share sheet or ticking timer.** The
+  guardrail test fails if the code under `detox/` uses any of them.
+- **No screen-time numbers, streaks, points or badges.** "Phones away for 4
+  hours" is said once, on the return, as a fact about the day. Past 24 hours
+  it says nothing.
+- **No forced pact.** Skipping it leaves no pact in storage, no stake on the
+  pocket screen and no "who cracked" question on the way back.
+- **No per-place lived state.** The return shows "the plan was …" as context
+  and never asks which stops were done or loved (§15 Q3 / Q14).
+- **Nothing is sent anywhere.** How a return flows into a person's Passport,
+  or Atlas, is §15 Q11.
+- **No adventure data model.** The kept day is a snapshot, not the Adventure
+  contract on `lane/domain`.
+
+## Integration notes (for other lanes)
+
+1. **Day Builder — the hand-off (DTX-03).** After printing, `/go` should offer
+   _"Planning's done → Go offline"_ linking to `offlineHref(printQuery(brief,
+ids))` from `lib/detox/day.ts`. One import, one link; `printQuery` already
+   exists in `GoHaveADay.tsx`. Kept out of this lane on purpose: `/go` is
+   under active Day Builder integration.
+2. **Day Builder — `carry.ts` keys.** `lane/daybuilder` adds order, minutes and
+   rain plans to the print query. `DAY_QUERY_KEYS` in `day.ts` passes only the
+   six keys on main; add the new ones there when daybuilder merges, or the
+   kept day may differ from the paper in order.
+3. **One resolver.** `lib/detox/resolve.ts` copies `/go/print`'s
+   query → `DayPlanned` resolution. When daybuilder, analog and maps settle
+   `/go/print`, extract that into one function both pages call.
+4. **Print lane — the paper leads back (ANA-05).** `RETURN_PATH` in `day.ts`
+   is `/detox/back`; the guide's closing line can print it.
+5. **Print lane — the pact on paper (ANA-06).** Pact ids are stable in
+   `pact.ts`. Until then the pocket screen says "write them on the back of your
+   printed guide".
+6. **Shell — truly offline.** A service worker (or a static export of
+   `/detox/out`) would let the pocket screen open with no signal. Not built.
+7. **Domain lane — the Adventure (DTX-04).** When an `Adventure` can be saved,
+   the outing could carry its id beside (or instead of) the snapshot. §15 Q14
+   must be answered before the return asks about stops by name.
+8. **Shell — navigation.** `/detox` is not in `PassportNav` and doesn't need to
+   be: it is reached from the end of planning.
 
 ## Conflicts named, not resolved
 
-- **"Detox" vs "not a digital-wellness product."** The lane and route are
-  named `detox`; `modes.ts` says _"This is not a digital-wellness product."_
-  Every word a person reads says **Go offline**; the URL is the one place the
-  lane name leaks. Renaming the route (e.g. to `/offline`) is a one-line move
-  for whoever decides the name.
-- **`/go`'s eyebrow already says "Go offline".** There are now two surfaces
-  under that label: `/go` (the planner) and `/detox` (the experience around
-  it). Whether they merge is open.
+- **"Detox" vs "not a digital-wellness product" (D-3).** The route is named
+  `detox`; every word a person reads says **Go offline**. Renaming the route
+  is a one-line move for whoever decides the name. `offlineHref` and
+  `RETURN_PATH` are the only places other lanes should reference it.
+- **`/go`'s eyebrow already says "Go offline".** `/go` is the planner, `/detox`
+  the step after it. `/detox` no longer duplicates `/go`'s six doors, so the two
+  no longer compete as front doors — but the shared label is still D-3's call.

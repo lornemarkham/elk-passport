@@ -7,8 +7,10 @@ import {
   newOuting,
   parseOuting,
   postcard,
+  withDay,
   withPact,
 } from "./outing";
+import type { OfflineDay } from "./day";
 
 /**
  * **An outing is the pact, the moment the phones went, and what came back.**
@@ -25,24 +27,52 @@ const [a, b, c] = pact.challenges;
 
 describe("leave", () => {
   it("records when the phones went away, once", () => {
-    const out = leave(newOuting(pact), T0);
+    const out = leave(newOuting({ pact }), T0);
     expect(out.leftAt).toBe(T0.toISOString());
     expect(leave(out, after(30)).leftAt).toBe(T0.toISOString());
   });
 });
 
+const DAY: OfflineDay = {
+  said: "four hours",
+  stops: [{ id: "a", name: "Kalamalka Lake", where: "Vernon", minutes: 90 }],
+  print: "stops=a",
+};
+
+describe("withDay", () => {
+  it("keeps the day until the phones go, then holds on to that one", () => {
+    const planned = withDay(newOuting(), DAY);
+    expect(planned.day).toEqual(DAY);
+    const other = { ...DAY, stops: [{ ...DAY.stops[0]!, name: "Elsewhere" }] };
+    expect(withDay(planned, other).day).toEqual(other);
+    const out = leave(planned, T0);
+    expect(withDay(out, other).day).toEqual(DAY);
+    expect(withDay(out, undefined)).toBe(out);
+  });
+
+  it("survives a round trip through storage", () => {
+    const out = leave(newOuting({ day: DAY }), T0);
+    expect(parseOuting(JSON.parse(JSON.stringify(out)))).toEqual(out);
+  });
+});
+
 describe("withPact", () => {
+  it("removes the pact when there is none", () => {
+    const out = withPact(newOuting({ pact }), undefined);
+    expect(out).not.toHaveProperty("pact");
+  });
+
   it("replaces the pact and leaves the rest alone", () => {
-    const out = leave(newOuting(pact), T0);
+    const out = leave(newOuting({ pact }), T0);
     const changed = withPact(out, { ...pact, stake: "song" });
-    expect(changed.pact.stake).toBe("song");
+    expect(changed.pact?.stake).toBe("song");
     expect(changed.leftAt).toBe(out.leftAt);
   });
 });
 
 describe("comeBack", () => {
   it("keeps only challenges that were dealt, once each", () => {
-    const back = comeBack(leave(newOuting(pact), T0), after(90), {
+    const back = comeBack(leave(newOuting({ pact }), T0), after(90), {
       pulledOff: [a!, a!, "not-in-the-pact"],
       cracked: "  Sam ",
       unplanned: " a dog called Biscuit ",
@@ -53,20 +83,20 @@ describe("comeBack", () => {
   });
 
   it("caps a long story instead of refusing it", () => {
-    const back = comeBack(newOuting(pact), T0, {
+    const back = comeBack(newOuting({ pact }), T0, {
       pulledOff: [],
       cracked: "x".repeat(200),
       unplanned: "y".repeat(1000),
     }).back!;
     expect(back.cracked).toHaveLength(60);
     expect(back.unplanned).toHaveLength(280);
-    expect(parseOuting(comeBack(newOuting(pact), T0, back))).toBeDefined();
+    expect(parseOuting(comeBack(newOuting({ pact }), T0, back))).toBeDefined();
   });
 });
 
 describe("parseOuting", () => {
   it("round-trips through JSON", () => {
-    const out = comeBack(leave(newOuting(pact), T0), after(60), {
+    const out = comeBack(leave(newOuting({ pact }), T0), after(60), {
       pulledOff: [b!],
       cracked: "",
       unplanned: "pie",
@@ -83,10 +113,10 @@ describe("parseOuting", () => {
 });
 
 describe("awayFor", () => {
-  const out = leave(newOuting(pact), T0);
+  const out = leave(newOuting({ pact }), T0);
 
   it("says nothing before anybody left", () => {
-    expect(awayFor(newOuting(pact), T0)).toBeUndefined();
+    expect(awayFor(newOuting({ pact }), T0)).toBeUndefined();
   });
 
   it("says it the way a person would", () => {
@@ -113,7 +143,7 @@ describe("awayFor", () => {
 
 describe("postcard", () => {
   const report = (pulledOff: string[], cracked = "", unplanned = "") =>
-    comeBack(leave(newOuting(pact), T0), after(240), {
+    comeBack(leave(newOuting({ pact }), T0), after(240), {
       pulledOff,
       cracked,
       unplanned,
@@ -153,14 +183,16 @@ describe("postcard", () => {
     );
   });
 
-  it("works for somebody who never made a pact", () => {
-    const bare = comeBack(newOuting({ ...pact, challenges: [] }), T0, {
-      pulledOff: [],
+  it("works for somebody who never made a pact, and counts nothing", () => {
+    const bare = comeBack(newOuting(), T0, {
+      pulledOff: [a!],
       cracked: "",
       unplanned: "",
     });
-    expect(postcard(bare, T0).headline).toBe(
-      "You went. That was the whole idea.",
-    );
+    expect(bare.back?.pulledOff).toEqual([]);
+    const card = postcard(bare, T0);
+    expect(card.headline).toBe("You went. That was the whole idea.");
+    // No pact, so nobody "didn't crack": there was nothing to crack.
+    expect(card.lines.join(" ")).not.toMatch(/cracked/);
   });
 });

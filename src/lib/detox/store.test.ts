@@ -20,7 +20,7 @@ beforeEach(() => {
 
 describe("offline store", () => {
   it("writes through to storage and reads it back after a reload", () => {
-    const current = leave(newOuting(defaultPact()), new Date());
+    const current = leave(newOuting({ pact: defaultPact() }), new Date());
     writeOffline({ current, past: [] });
     forgetOffline();
     let seen: unknown;
@@ -32,7 +32,7 @@ describe("offline store", () => {
   });
 
   it("keeps only the newest postcards", () => {
-    const one = newOuting(defaultPact());
+    const one = newOuting({ pact: defaultPact() });
     writeOffline({ past: Array.from({ length: KEPT + 4 }, () => one) });
     expect(stored().past).toHaveLength(KEPT);
   });
@@ -44,7 +44,7 @@ describe("offline store", () => {
     expect(seen).toEqual({ past: [] });
 
     forgetOffline();
-    const good = newOuting(defaultPact());
+    const good = newOuting({ pact: defaultPact() });
     window.localStorage.setItem(
       KEY,
       JSON.stringify({ current: { version: 9 }, past: [good, 42, null] }),
