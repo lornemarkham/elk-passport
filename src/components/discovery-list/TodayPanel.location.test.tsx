@@ -35,6 +35,7 @@ function panel(place: PlaceContext, weather: typeof VERNON | null = VERNON) {
       experiences={[] as readonly Experience[]}
       situation={EMPTY_SITUATION}
       onSituation={() => {}}
+      onChildAge={() => {}}
     />,
   );
 }

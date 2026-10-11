@@ -1,6 +1,7 @@
 import type { Experience } from "@/domain/experience/types";
 import { statedDay } from "@/domain/experience/eventTime";
 import { INTENTS, intentOf, type IntentKey } from "./intents";
+import { ruledOutOn } from "./recurrence";
 
 /**
  * **What Discovery actually shows, as sections rather than as a stream.**
@@ -139,7 +140,11 @@ export function onToday(
         span &&
         span.from <= today &&
         today <= span.to &&
-        spanDays(span.from, span.to) <= TODAY_RUN_MAX_DAYS,
+        spanDays(span.from, span.to) <= TODAY_RUN_MAX_DAYS &&
+        // **A run is not a recurrence.** Osoyoos Farmers' Market holds a
+        // 161-day interval and runs on Saturdays; reading only the interval
+        // put it under "Happening today" six days in seven.
+        !ruledOutOn(experience, today),
       );
     })
     .sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? ""));

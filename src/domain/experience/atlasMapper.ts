@@ -93,6 +93,12 @@ export function candidateToExperience(
     // Likewise. Atlas owns whether the rain matters here; Passport used to
     // guess it from activity names and was wrong about every picnic shelter.
     ...(candidate.environment ? { environment: candidate.environment } : {}),
+    // Atlas owns who this suits, including its verdict for the age it was
+    // asked about. Passport reads it; `CHILD_DOABLE` used to guess it.
+    ...(candidate.suitability ? { suitability: candidate.suitability } : {}),
+    // A run and a recurrence are different answers; Atlas now distinguishes
+    // them and the composed page has to stop reading only the interval.
+    ...(candidate.occurrence ? { occurrence: candidate.occurrence } : {}),
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

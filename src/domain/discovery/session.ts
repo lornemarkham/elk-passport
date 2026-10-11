@@ -33,6 +33,14 @@ export interface DiscoverySession {
   readonly kind?: ExperienceKind;
   readonly company?: Company;
   readonly window?: Window;
+  /**
+   * **A child's age in years, only where somebody actually said one.**
+   *
+   * Atlas answers `?childAge=N` with its own verdict per subject. Passport
+   * never fills this in: "with a young child" is not five, and defaulting it
+   * would invent the single fact the whole contract exists to carry.
+   */
+  readonly age?: number;
   /** The invitation they tapped — an Atlas affordance name. */
   readonly doing?: string;
 }
@@ -63,6 +71,16 @@ const oneOf = <T extends string>(
  */
 export function readSession(params: URLSearchParams): DiscoverySession {
   const query = params.get("q")?.trim();
+  // 0–17, whole years — the range Atlas accepts. Anything else is somebody
+  // editing the address bar, and is dropped rather than clamped.
+  const askedAge = Number(params.get("age"));
+  const age =
+    params.get("age") !== null &&
+    Number.isInteger(askedAge) &&
+    askedAge >= 0 &&
+    askedAge <= 17
+      ? askedAge
+      : undefined;
   const doing = params.get("doing")?.trim();
   return {
     ...(oneOf(INTENT_KEYS, params.get("intent"))
@@ -78,6 +96,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
     ...(oneOf(WINDOW, params.get("how"))
       ? { window: oneOf(WINDOW, params.get("how"))! }
       : {}),
+    ...(age !== undefined ? { age } : {}),
     ...(doing ? { doing } : {}),
   };
 }
@@ -90,6 +109,7 @@ export function sessionQuery(session: DiscoverySession): string {
   if (session.kind) params.set("kind", session.kind);
   if (session.company) params.set("who", session.company);
   if (session.window) params.set("how", session.window);
+  if (session.age !== undefined) params.set("age", String(session.age));
   if (session.doing) params.set("doing", session.doing);
   return params.toString();
 }

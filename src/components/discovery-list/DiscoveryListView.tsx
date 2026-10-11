@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -173,6 +173,7 @@ export function DiscoveryListView({
    * it, and the eight dead category tiles on Passport's own homepage became
    * five working front doors instead of being deleted.
    */
+  const router = useRouter();
   const params = useSearchParams();
 
   /**
@@ -195,6 +196,7 @@ export function DiscoveryListView({
   const query = session.query ?? "";
   const kind = session.kind ?? null;
   const doing = session.doing;
+  const childAge = session.age;
   const situation = situationOf(session);
 
   const change = (next: DiscoverySession) => {
@@ -218,6 +220,22 @@ export function DiscoveryListView({
     change({ ...session, company: next.company, window: next.window });
   const setDoing = (next: string | undefined) =>
     change({ ...session, doing: next });
+
+  /**
+   * **The one choice that goes back to the server.**
+   *
+   * Everything else on this page is mirrored with `history.replaceState`,
+   * because a soft navigation per keystroke would re-run an Atlas read. An age
+   * is different: Atlas has to be asked `childAge=N` to answer with a verdict,
+   * so this is a real navigation and the exploration survives it because the
+   * exploration is already in the URL.
+   */
+  const setChildAge = (next: number | undefined) => {
+    const session_ = { ...session, age: next };
+    setSession(session_);
+    const query = sessionQuery(session_);
+    router.replace(query ? `?${query}` : "/discovery", { scroll: false });
+  };
 
   // How many search/browse results are on screen.
   const [shown, setShown] = useState(RESULT_PAGE);
@@ -903,6 +921,8 @@ export function DiscoveryListView({
               today={today}
               {...((here ?? weather) ? { weather: here ?? weather } : {})}
               place={place}
+              {...(childAge !== undefined ? { childAge } : {})}
+              onChildAge={setChildAge}
               {...(at ? { origin: at } : {})}
               {...(intent
                 ? {

@@ -264,12 +264,45 @@ async function readSubjectDetail(
  * it was — `/places` and the place detail pages still use it, and this changes
  * only what Discover consumes.
  */
-export async function listDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
-  return cached("discovery/candidates", readDiscoveryCandidates);
+export async function listDiscoveryCandidates(
+  /**
+   * **A child's age in years, where somebody has actually said one.**
+   *
+   * Atlas answers `?childAge=N` by adding `suitability.forAge` to every
+   * candidate — its own verdict, with the statements behind it. Passport does
+   * not compute that and must not: the whole point is that Atlas states
+   * whether a five-year-old is admitted, and Passport repeats it.
+   *
+   * Cached per age, because a corpus read is 6–7 seconds and the answer for a
+   * five-year-old is a different corpus from the answer for anybody else.
+   * Omitted entirely when nobody has said an age — **not defaulted to five**,
+   * which would be Passport inventing the one fact this exists to carry.
+   */
+  childAge?: number,
+): Promise<DiscoveryCandidate[]> {
+  const asked =
+    typeof childAge === "number" &&
+    Number.isInteger(childAge) &&
+    childAge >= 0 &&
+    childAge <= 17
+      ? childAge
+      : undefined;
+  return cached(
+    asked === undefined
+      ? "discovery/candidates"
+      : `discovery/candidates?childAge=${asked}`,
+    () => readDiscoveryCandidates(asked),
+  );
 }
 
-async function readDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
-  const response = await atlasFetch("/discovery/candidates");
+async function readDiscoveryCandidates(
+  childAge?: number,
+): Promise<DiscoveryCandidate[]> {
+  const response = await atlasFetch(
+    childAge === undefined
+      ? "/discovery/candidates"
+      : `/discovery/candidates?childAge=${childAge}`,
+  );
   if (!response.ok) {
     // A refusal is not an absence. Every October surface used to `.catch()`
     // this into `[]`, so a wrong service token rendered as "nothing is on".

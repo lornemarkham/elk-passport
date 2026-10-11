@@ -112,6 +112,7 @@ function panel(
       experiences={experiences}
       situation={{ company: "child", ...(window ? { window } : {}) }}
       onSituation={() => {}}
+      onChildAge={() => {}}
     />,
   );
 }

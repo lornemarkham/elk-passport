@@ -19,11 +19,24 @@ export const metadata: Metadata = {
 // immersive implementation this route used to render is untouched and
 // still fully live at /labs/discovery-space; it's the future
 // "Inspiration" mode, not deleted or refactored away.
-export default async function DiscoveryPage() {
+export default async function DiscoveryPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // **The one thing on this page that changes what Atlas is asked.**
+  //
+  // `?age=N` means somebody said how old the child with them is, so Atlas is
+  // asked `childAge=N` and answers with `suitability.forAge` — its verdict,
+  // with the statements behind it. Absent means nobody said, and Passport
+  // does not guess: there is no default age.
+  const asked = Number((await searchParams)?.["age"]);
+  const childAge =
+    Number.isInteger(asked) && asked >= 0 && asked <= 17 ? asked : undefined;
   // Every kind Atlas holds, not just Places — `The BullWheel` is an
   // Organization and was invisible here until now.
   const [candidates, scope, user] = await Promise.all([
-    listDiscoveryCandidates(),
+    listDiscoveryCandidates(childAge),
     // The one call site that decides where Passport is looking.
     activeScope(),
     // Resolved here, not in the view: Discovery is fully usable signed out, so

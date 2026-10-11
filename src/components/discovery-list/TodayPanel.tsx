@@ -21,6 +21,13 @@ import {
   standsUpToRain,
 } from "@/domain/discovery/environment";
 import {
+  ageBecause,
+  ageLine,
+  excludesAge,
+  needsAdult,
+  splitByAge,
+} from "@/domain/discovery/suitability";
+import {
   distanceLabel,
   distanceTo,
   nearestFirst,
@@ -78,6 +85,8 @@ export function TodayPanel({
   place,
   origin,
   withinLabel,
+  childAge,
+  onChildAge,
   ask,
 }: {
   /** Written out, e.g. `Saturday, October 11`. */
@@ -102,6 +111,9 @@ export function TodayPanel({
    * as one broken number until the page says which is which.
    */
   readonly withinLabel?: string;
+  /** The child's age, where somebody said one. Never defaulted. */
+  readonly childAge?: number;
+  readonly onChildAge: (age: number | undefined) => void;
   /** Where the reader is, so a suggestion can say how far it is. */
   readonly origin?: Point;
   /** `undefined` where the browser cannot do this, or has already been asked. */
@@ -205,6 +217,47 @@ export function TodayPanel({
             })
           }
         />
+        {/* **Asked, never assumed.** Atlas can say whether a seven-year-old
+            is admitted somewhere — but only if it is told seven. "With a young
+            child" is not an age, and defaulting it to five would invent the
+            one fact this is for. Declining is a real answer. */}
+        {situation.company === "child" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex min-w-[4.5rem] items-center gap-1.5 text-xs font-medium text-[#2b2015]/45">
+              How old
+            </span>
+            {AGES.map((age) => {
+              const on = childAge === age;
+              return (
+                <button
+                  key={age}
+                  type="button"
+                  data-testid={`child-age-${age}`}
+                  aria-pressed={on}
+                  onClick={() => onChildAge(on ? undefined : age)}
+                  className={
+                    on
+                      ? "inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-3.5 text-sm font-medium text-[#f7ecd3]"
+                      : "inline-flex min-h-11 items-center rounded-full border border-[#8a5a24]/25 px-3.5 text-sm font-medium text-[#2b2015]/75 transition-colors hover:border-[#8a5a24]/55"
+                  }
+                >
+                  {age}
+                </button>
+              );
+            })}
+            {childAge !== undefined && (
+              <button
+                type="button"
+                data-testid="child-age-clear"
+                onClick={() => onChildAge(undefined)}
+                className="inline-flex min-h-11 items-center px-2 text-xs font-medium text-[#2b2015]/45 hover:text-[#2b2015]/70"
+              >
+                Rather not say
+              </button>
+            )}
+          </div>
+        )}
+
         {asked && (
           <Choice
             label="How long"
@@ -227,6 +280,7 @@ export function TodayPanel({
           weather={shown}
           {...(origin ? { origin } : {})}
           {...(withinLabel ? { withinLabel } : {})}
+          {...(childAge !== undefined ? { childAge } : {})}
         />
       )}
     </section>
@@ -291,6 +345,12 @@ const LEAD: Record<string, string> = {
   "all-day": "A few different ideas for the day",
   none: "Things you could do",
 };
+
+/**
+ * The ages offered. Atlas accepts 0–17; these are the ones somebody is likely
+ * to tap, and any whole year in range works if it arrives in the URL.
+ */
+const AGES = [2, 4, 6, 8, 10, 13] as const;
 
 const COMPANY: readonly { value: Company; label: string }[] = [
   { value: "alone", label: "Just me" },
@@ -361,12 +421,14 @@ function Answer({
   weather,
   origin,
   withinLabel,
+  childAge,
 }: {
   readonly answer: ReturnType<typeof answerFor>;
   readonly situation: Situation;
   readonly weather?: DayWeather;
   readonly origin?: Point;
   readonly withinLabel?: string;
+  readonly childAge?: number;
 }) {
   if (situation.company !== "child") {
     return (
@@ -381,7 +443,25 @@ function Answer({
     );
   }
 
-  const { matches } = answer;
+  const { matches: doable } = answer;
+
+  /**
+   * **Atlas's verdict, once somebody has said an age.**
+   *
+   * `CHILD_DOABLE` — Passport's list of fourteen affordance words — answered
+   * *what could a child do here*. It never answered *is this child admitted*,
+   * and it could not: a 19+ venue with a playground passed it.
+   *
+   * `candidate-suitability/1` answers the second question when asked, so an
+   * age removes what Atlas says is shut to them and promotes what Atlas says
+   * is open. With no age, nothing here changes — because nothing is known.
+   */
+  const byAge = splitByAge(doable, childAge);
+  const matches =
+    childAge === undefined
+      ? doable
+      : doable.filter((e) => !excludesAge(e, childAge));
+  const shutOut = childAge === undefined ? [] : byAge.excluded;
   // **Atlas's four answers, not Passport's two.** The previous version asked
   // one question — is this plainly outdoor — of a word list that contained
   // `picnic shelter`, so every park with a dry corner was reported as ruled
@@ -487,6 +567,31 @@ function Answer({
             .
           </p>
 
+          {/* **What Atlas says about this particular child**, kept apart from
+              what it says about the activity. A stated rule and a turn of
+              phrase are different claims and are counted separately. */}
+          {childAge !== undefined && (
+            <p
+              data-testid="today-age"
+              className="mt-2 text-sm text-[#2b2015]/70"
+            >
+              For a {childAge}-year-old, Atlas states a rule admitting{" "}
+              <strong className="font-semibold">{byAge.welcome.length}</strong>{" "}
+              of them
+              {byAge.described.length > 0 && (
+                <> · {byAge.described.length} are described for families</>
+              )}
+              {shutOut.length > 0 && (
+                <> · {shutOut.length} are shut to them and are not offered</>
+              )}
+              {byAge.unclear.length > 0 && (
+                <> · {byAge.unclear.length} it cannot settle</>
+              )}
+              . It says nothing either way about{" "}
+              {byAge.unknown.length + byAge.priced.length}.
+            </p>
+          )}
+
           {wet && (
             <p
               data-testid="today-weather-caveat"
@@ -585,10 +690,14 @@ function Answer({
                           // provenance, so a derived reading says it was
                           // derived rather than passing as a promise.
                           const shelter = wet ? rainLine(place) : undefined;
+                          const admits = ageLine(place, childAge);
+                          const adult = needsAdult(place, childAge);
                           // The sentence Atlas read the shelter from, kept on
                           // the element rather than printed under every one of
                           // twelve places. Provenance preserved, not shouted.
-                          const because = wet ? rainBecause(place) : undefined;
+                          const because =
+                            (wet ? rainBecause(place) : undefined) ??
+                            ageBecause(place, childAge);
                           return (
                             <li
                               key={place.id}
@@ -610,6 +719,24 @@ function Answer({
                                 >
                                   {" "}
                                   · {shelter}
+                                </span>
+                              ) : null}
+                              {admits ? (
+                                <span
+                                  data-testid="today-admits"
+                                  className="text-[#2b6b45]"
+                                >
+                                  {" "}
+                                  · {admits}
+                                </span>
+                              ) : null}
+                              {adult ? (
+                                <span
+                                  data-testid="today-supervision"
+                                  className="text-[#8a5a24]"
+                                >
+                                  {" "}
+                                  · an adult must come too
                                 </span>
                               ) : null}
                             </li>

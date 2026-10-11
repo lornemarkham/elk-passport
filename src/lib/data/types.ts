@@ -481,6 +481,17 @@ export interface DiscoveryCandidate {
    */
   geography?: CandidateGeography;
   /**
+   * **Who this is for, and who it is not** — `candidate-suitability/1`.
+   *
+   * Replaces the last place Passport was guessing about people. `CHILD_DOABLE`
+   * is a hardcoded list of affordance words Passport treats as child-friendly
+   * — the same shape as the `PLAINLY_OUTDOOR` list that called a picnic
+   * shelter outdoor — and Atlas now states this from evidence instead.
+   */
+  suitability?: CandidateSuitability;
+  /** **When this actually happens** — `candidate-occurrence/2`. */
+  occurrence?: CandidateOccurrence;
+  /**
    * **Whether the rain matters here** — `candidate-environment/1`.
    *
    * The field that replaces a Passport heuristic which read activity names
@@ -533,10 +544,115 @@ export interface CandidateKnowledge {
    * instead of guessed at by a frontend detector.
    */
   descriptionAddsKnowledge?: boolean;
+  /**
+   * **Why the description is weak, where Atlas can say.** 29 candidates.
+   *
+   * `narrates-mention` — the sentence is about something that merely mentions
+   * this subject in passing. `dated-occasion` — it describes one occasion
+   * rather than the thing. `seasonal`. A surface must not lead with these.
+   */
+  descriptionCaveat?: string;
+}
+
+/**
+ * **When a dated thing actually happens** (`candidate-occurrence/2`).
+ *
+ * The upgrade that matters: a run and a recurrence are no longer the same
+ * answer. **Osoyoos Farmers' Market 2026 Season** holds a 161-day interval and
+ * `weekdays: ["saturday"]` — so it is open 23 days, not 161, and a page that
+ * read only the interval called it "happening today" six days in seven.
+ *
+ * Measured on production: 365 candidates carry an occurrence; **16 carry a
+ * `weekdays` or `days` pattern** (7 weekdays only, 7 days only, 2 both).
+ */
+export interface CandidateOccurrence {
+  /**
+   * `occurrence` · `run` · `recurring-in-run` · `separate-occurrences` ·
+   * `unexplained-span`.
+   */
+  reading: string;
+  /** Whether Atlas believes the interval may be acted on as stated. */
+  actionable: boolean;
+  /** Atlas's own sentence explaining the reading. */
+  because?: string;
+  /** Lowercase weekday names the thing recurs on, inside its run. */
+  weekdays?: string[];
+  /** The exact `YYYY-MM-DD` days it runs, where a schedule listed them. */
+  days?: string[];
 }
 
 /** How a geographic claim was arrived at. Carried so Passport never has to guess. */
 export type GeographyBasis = "observed" | "derived";
+
+/**
+ * **What Atlas says about who something suits** (`candidate-suitability/1`).
+ *
+ * Measured on production on 2026-10-10: **443 statements across 266 of 2,680
+ * candidates**, about `audience` 158 · `age` 108 · `access` 59 · `effort` 51 ·
+ * `price-band` 45 · `supervision` 20 · `requirement` 2.
+ *
+ * These are **statements, not verdicts**. A verdict only exists when somebody
+ * asks about a particular person — see `forAge`.
+ */
+export interface SuitabilityStatement {
+  /** What it is about: `age`, `audience`, `supervision`, `effort`, `access`… */
+  about: string;
+  /** Atlas's summary — `admits`, `all-ages`, `adults-only`, `accompanied`. */
+  says: string;
+  /**
+   * How firmly it is said. `rule` is a condition of entry; `advisory` is a
+   * recommendation; `characterisation` is a description that implies it. A
+   * surface must not render the third as the first.
+   */
+  strength: string;
+  /** Whether it covers the whole subject, one part, or one programme. */
+  scope?: string;
+  /** The part or programme, where the scope is narrower than the subject. */
+  of?: string;
+  /** The age band it names, where it names one. */
+  ages?: { min?: number; max?: number };
+  /** The sentence it was read from. Shown to people; never rewritten. */
+  text: string;
+  basis: string;
+  sourceRecordId?: string;
+  voice?: string;
+  seenAt?: string;
+}
+
+/**
+ * **Atlas's verdict for one person's age**, present only when Passport asked.
+ *
+ * Measured for `childAge=5` across 2,680 candidates:
+ *
+ * ```
+ * unknown            2,494   Atlas has no evidence either way
+ * characterised        137   described in a way that implies it
+ * excluded              16   a stated rule shuts this age out
+ * priced                11   a price band names this age
+ * stated                10   a rule admits this age outright
+ * stated-other-ages      7   a rule names ages, and not this one
+ * part-stated            3   one part of it states an age
+ * advised-against        1
+ * conflicting            1   the evidence disagrees with itself
+ * ```
+ *
+ * **`because` indexes into `statements`**, so a surface can show the sentence
+ * the verdict came from rather than asking anybody to trust a label.
+ */
+export interface SuitabilityForAge {
+  age: number;
+  reading: string;
+  /** Indices into `CandidateSuitability.statements`. */
+  because: number[];
+}
+
+export interface CandidateSuitability {
+  /** `stated` where Atlas holds any statement at all, `unknown` otherwise. */
+  stated: string;
+  statements?: SuitabilityStatement[];
+  /** Present only when the request carried a `childAge`. */
+  forAge?: SuitabilityForAge;
+}
 
 /**
  * **What Atlas says the rain does to this** (`candidate-environment/1`).

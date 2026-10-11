@@ -1,8 +1,12 @@
-import type { CandidateAvailability } from "@/lib/data/types";
+import type {
+  CandidateAvailability,
+  CandidateSuitability,
+} from "@/lib/data/types";
 import type {
   CandidateEnvironment,
   CandidateGeography,
   CandidateKnowledge,
+  CandidateOccurrence,
 } from "@/lib/data/types";
 
 /**
@@ -193,6 +197,13 @@ export interface Experience {
    * carried straight through. Passport reads it and never guesses it.
    */
   environment?: CandidateEnvironment;
+  /**
+   * **Who Atlas says this suits** — `candidate-suitability/1`, carried
+   * straight through, including the per-age verdict when one was requested.
+   */
+  suitability?: CandidateSuitability;
+  /** **When this actually happens** — `candidate-occurrence/2`, untouched. */
+  occurrence?: CandidateOccurrence;
   pairsWith?: string[];
 
   isActive: boolean;

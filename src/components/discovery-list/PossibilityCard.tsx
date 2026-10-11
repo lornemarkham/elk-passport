@@ -12,6 +12,7 @@ import {
   whereLine,
 } from "@/domain/discovery/compose";
 import { distanceLabel, distanceTo } from "@/domain/discovery/proximity";
+import { recurrenceLine } from "@/domain/discovery/recurrence";
 import type { Point } from "@/domain/discovery/situation";
 
 /**
@@ -109,6 +110,7 @@ export function PossibilityCard({
   // knows where the reader is, the badge about the corpus has nothing to add.
   const elsewhere = Boolean(area && home && area !== home && !away);
   const unresolved = unresolvedPlace(experience);
+  const recurs = recurrenceLine(experience);
   const tag = experience.subtype ?? experience.activities[0];
   // `unknown` is Atlas saying it has not classified this yet. True, and not
   // worth printing at somebody.
@@ -205,9 +207,39 @@ export function PossibilityCard({
           {experience.title}
         </h3>
 
-        {experience.shortDescription && (
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#2b2015]/60">
-            {experience.shortDescription}
+        {/* **Atlas now says when its own sentence is not worth printing.**
+            `descriptionAddsKnowledge: false` on 255 candidates, with a
+            `descriptionCaveat` on 29 saying why — `narrates-mention` is a
+            sentence about something that merely mentions this place in
+            passing, `dated-occasion` describes one evening rather than the
+            venue. Passport built a detector for this once and deleted it for
+            catching 12 of 2,681; the source answers it properly now.
+
+            Not hidden — demoted. The line is still the only thing some cards
+            have, so it drops to the smallest, quietest type rather than
+            leaving a hole. */}
+        {experience.shortDescription &&
+          (experience.knowledge?.descriptionAddsKnowledge === false ? (
+            <p
+              data-testid="possibility-weak-description"
+              className="mt-1.5 line-clamp-1 text-[11px] leading-relaxed text-[#2b2015]/40"
+            >
+              {experience.shortDescription}
+            </p>
+          ) : (
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#2b2015]/60">
+              {experience.shortDescription}
+            </p>
+          ))}
+
+        {/* When it recurs, in Atlas's own weekday names. A long interval is
+            not a season until Atlas says it is. */}
+        {recurs && (
+          <p
+            data-testid="possibility-recurs"
+            className="mt-1.5 text-[11px] font-medium text-[#8a5a24]"
+          >
+            {recurs}
           </p>
         )}
 
