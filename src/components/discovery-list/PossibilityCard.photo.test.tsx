@@ -41,11 +41,13 @@ const card = (over: Partial<DiscoveryCandidate>, props = {}) => {
 describe("a card with no photograph", () => {
   it("fills the slot with what the thing is, at display size", () => {
     card({});
-    const panel = screen.getByTestId("possibility-untitled");
+    const panel = screen.getByTestId("possibility-text-lead");
     expect(panel).toHaveTextContent("cafe");
-    // The proportions of the shelf are unchanged — this is the same slot a
-    // photograph would have occupied, not a collapsed card.
-    expect(panel.className).toContain("aspect-[4/3]");
+    // The name leads, large — the panel is a third of a photograph's height
+    // rather than an empty 4:3 frame (Mission 084: replace enormous empty
+    // image areas with a text-first treatment).
+    expect(panel).toHaveTextContent("The Boarding House Cafe");
+    expect(panel.className).not.toContain("aspect-[4/3]");
   });
 
   it("never says 'No photograph' at anybody", () => {
@@ -63,7 +65,7 @@ describe("a card with no photograph", () => {
 
   it("falls back to the kind where Atlas states no subtype", () => {
     card({ subtype: undefined });
-    expect(screen.getByTestId("possibility-untitled")).toHaveTextContent(
+    expect(screen.getByTestId("possibility-text-lead")).toHaveTextContent(
       "Place",
     );
   });
@@ -84,10 +86,10 @@ describe("a photograph that does not arrive", () => {
    */
   it("becomes the text-first card rather than a torn icon", () => {
     card({ heroUrl: "https://example.com/gone.jpg" });
-    expect(screen.queryByTestId("possibility-untitled")).toBeNull();
+    expect(screen.queryByTestId("possibility-text-lead")).toBeNull();
 
     fireEvent.error(screen.getByRole("presentation", { hidden: true }));
-    expect(screen.getByTestId("possibility-untitled")).toBeTruthy();
+    expect(screen.getByTestId("possibility-text-lead")).toBeTruthy();
     expect(document.querySelector("img")).toBeNull();
   });
 });

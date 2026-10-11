@@ -202,9 +202,9 @@ export function ageLine(
       return `Not for a ${age}-year-old`;
     case "other-ages":
       // Said as what it is: a statement about other ages, not a closed door.
-      return `Atlas states other ages for this — not a rule against ${age}`;
+      return `Stated for other ages — not a rule against ${age}`;
     case "unclear":
-      return `Atlas's evidence disagrees about ${age}-year-olds`;
+      return `Sources disagree about ${age}-year-olds`;
     default:
       return undefined;
   }

@@ -30,13 +30,22 @@ export default async function DiscoveryPage({
   // asked `childAge=N` and answers with `suitability.forAge` — its verdict,
   // with the statements behind it. Absent means nobody said, and Passport
   // does not guess: there is no default age.
-  const asked = Number((await searchParams)?.["age"]);
+  const query = await searchParams;
+  const asked = Number(query?.["age"]);
   const childAge =
     Number.isInteger(asked) && asked >= 0 && asked <= 17 ? asked : undefined;
+  // **And the day they picked**, for the same reason: Atlas answers `on=` with
+  // whether stated hours, a stated season or a held interval cover that day.
+  // "Closed Mondays" and "closed for the season" are Atlas's to say.
+  const askedOn = query?.["on"];
+  const on =
+    typeof askedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(askedOn)
+      ? askedOn
+      : undefined;
   // Every kind Atlas holds, not just Places — `The BullWheel` is an
   // Organization and was invisible here until now.
   const [candidates, scope, user] = await Promise.all([
-    listDiscoveryCandidates(childAge),
+    listDiscoveryCandidates(childAge, on),
     // The one call site that decides where Passport is looking.
     activeScope(),
     // Resolved here, not in the view: Discovery is fully usable signed out, so

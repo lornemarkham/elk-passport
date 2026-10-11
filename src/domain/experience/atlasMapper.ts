@@ -99,6 +99,16 @@ export function candidateToExperience(
     // A run and a recurrence are different answers; Atlas now distinguishes
     // them and the composed page has to stop reading only the interval.
     ...(candidate.occurrence ? { occurrence: candidate.occurrence } : {}),
+    // A venue's picture, labelled as the venue's wherever it is shown.
+    ...(candidate.contextualMedia
+      ? {
+          contextualMedia: {
+            ...candidate.contextualMedia,
+            heroUrl: unescapeUrl(candidate.contextualMedia.heroUrl),
+          },
+        }
+      : {}),
+    ...(candidate.schedule ? { schedule: candidate.schedule } : {}),
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

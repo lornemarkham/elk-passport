@@ -164,3 +164,36 @@ things "the Passport" is would be inventing the product rather than reporting it
 an itinerary across saved entities, a cover page linking to each entity's own
 Passport, or whether "Start Passport" was simply the wrong label for reviewing a
 board all along.
+
+## Answers, distance and search — Atlas Mission 084 / ADR 094
+
+**Recorded 2026-10-11.** What each answer on Discovery does, and how firmly.
+
+| answer          | hard (removes)                                                                | soft (reorders)                                 | unknown                                  |
+| --------------- | ----------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- |
+| Activity        | — (leads the page with that verb's places)                                    | —                                               | —                                        |
+| Who's coming    | —                                                                             | decides whose evidence the suggestions read     | —                                        |
+| Child age       | a stated rule against that age (`forAge` `excluded`)                          | stated welcome, family description, child price | "No age guidance found" — never excluded |
+| Date            | Atlas `schedule.onDate` `not-on` (hours, season, held interval); `ruledOutOn` | stated hours covering the day                   | stays; "check before you go"             |
+| Available time  | —                                                                             | how many suggestions are offered (1 / 2 / 4)    | durations are almost never stated        |
+| Town / location | origin for Atlas's distance reading                                           | nearest first                                   | —                                        |
+| Radius          | Atlas `distance.within`; unplaced, area-only and conflicting are never "near" | —                                               | "Explore beyond N km" shelf, opt-in      |
+| Weather (wet)   | —                                                                             | sheltered up, Atlas-read "out in the open" down | untouched                                |
+
+- **Distance is Atlas's.** `POST /api/discovery/distance` carries the origin in
+  a body (never a URL), rounded to ~1 km, to `GET /discovery/candidates?lat&lng&withinKm&unplaced=drop&beyond=flag`.
+  Kilometres are straight-line; a town-centre measurement reads "In Vernon".
+  No drive times anywhere.
+- **Search follows the answers** — same radius, day and age — and says so
+  above the box. "Search everywhere" widens search only (`?all=1`) and resets
+  nothing.
+- **Suggestions are doors.** Each suggested verb chooses that activity for the
+  page; each named place links to its page carrying the day, age and way back.
+- **Pictures.** A failed image falls back to the text-first card; an event with
+  no picture of its own may show its venue's (`contextualMedia`), labelled
+  "Venue photo · {venue}". Atlas's media decisions are never overridden.
+
+**Follow-up, not built:** "Something wrong with this page?" (`POST /quality-reports`,
+ADR 094 §4). Atlas's migration `202610111200_entity_quality_reports.sql` is not
+applied, so the endpoint answers 503. Wire a server-side proxy and the button
+only once Atlas confirms it answers 202.

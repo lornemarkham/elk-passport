@@ -77,14 +77,72 @@ export function distanceTo(
   experience: Experience,
   origin: Point | undefined,
 ): number | undefined {
+  if (!origin) return undefined;
+  // **Atlas's reading wins wherever Discovery has one** (ADR 094). It knows a
+  // town centre when there are no coordinates, and it says `unknown` rather
+  // than letting a stale point stand in. Only a measurement is a number.
+  const reading = experience.distance;
+  if (reading) return reading.state === "measured" ? reading.km : undefined;
   const coordinates = experience.geography?.coordinates;
-  if (!origin || !coordinates) return undefined;
+  if (!coordinates) return undefined;
   const [longitude, latitude] = coordinates;
   if (typeof latitude !== "number" || typeof longitude !== "number") {
     return undefined;
   }
   return distanceKm(origin, { latitude, longitude });
 }
+
+/**
+ * **What a card says about how far, in Atlas's terms.**
+ *
+ * Straight-line kilometres, always marked approximate, never a drive time.
+ * A distance measured to a **town centre** says the town rather than a
+ * number that pretends to be door-to-door; a subject Atlas only knows the
+ * area of says "at least".
+ */
+export function distanceText(
+  experience: Experience,
+  origin: Point | undefined,
+): string | undefined {
+  if (!origin) return undefined;
+  const reading = experience.distance;
+  if (!reading) return distanceLabel(distanceTo(experience, origin));
+  switch (reading.state) {
+    case "measured":
+      if (reading.basis === "town" && reading.town) {
+        return reading.km < 3
+          ? `In ${reading.town}`
+          : `${reading.town} · ≈ ${Math.round(reading.km)} km`;
+      }
+      return distanceLabel(reading.km);
+    case "bounded":
+      return `${Math.round(reading.atLeastKm)}+ km · ${reading.area}`;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Whether Atlas measured this inside the radius it was asked about. Unknown,
+ * conflicting and area-only subjects are never "within".
+ */
+export const measuredWithin = (experience: Experience): boolean =>
+  experience.distance?.state === "measured" &&
+  experience.distance.within === true;
+
+/** Whether Atlas placed this, and placed it outside the radius. */
+export const placedBeyond = (experience: Experience): boolean =>
+  (experience.distance?.state === "measured" ||
+    experience.distance?.state === "bounded") &&
+  experience.distance.within === false;
+
+/** Atlas's kilometres for sorting, with area-only subjects at their bound. */
+export const sortKm = (experience: Experience): number => {
+  const reading = experience.distance;
+  if (reading?.state === "measured") return reading.km;
+  if (reading?.state === "bounded") return reading.atLeastKm;
+  return Number.POSITIVE_INFINITY;
+};
 
 export function placementOf(
   experience: Experience,
@@ -168,7 +226,7 @@ export function distanceLabel(km: number | undefined): string | undefined {
   // blunted to about a kilometre before it arrived, so sub-kilometre
   // distinctions are rounding noise and the honest claim is the bound.
   if (km < 1) return "Under 1 km away";
-  return `${Math.round(km)} km away`;
+  return `≈ ${Math.round(km)} km away`;
 }
 
 /**
@@ -194,11 +252,7 @@ export function nearSection(
   return {
     id: "near-you",
     title: "Near you",
-    note:
-      // Consumer copy. The unplaced count is still computed and still shown,
-      // but in its own section with its own heading rather than as a
-      // parenthetical about what the knowledge base does not hold.
-      `Within ${nearKm} km of where you are, nearest first.`,
+    note: `Within ${nearKm} km in a straight line, nearest first.`,
     items: items.slice(0, SECTION_SIZE * SECTION_PAGES),
     size: SECTION_SIZE,
     total: items.length,

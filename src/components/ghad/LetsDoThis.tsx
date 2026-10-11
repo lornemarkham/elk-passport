@@ -39,8 +39,8 @@ export function LetsDoThis({
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <p className="text-[13px] text-black/50">
             {on
-              ? "Decided? Here is what Atlas knows about going on that day — and what it does not."
-              : "Decided? Here is what Atlas knows about going — and what it does not."}
+              ? "Decided? Here is what we know about going on that day — and what we don't."
+              : "Decided? Here is what we know about going — and what we don't."}
           </p>
           <Link
             href={href}

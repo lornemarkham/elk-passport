@@ -184,7 +184,7 @@ describe("a distance Passport is entitled to state", () => {
   it("rounds hard, because the evidence underneath is already rounded", () => {
     // The person's own position is blunted to ~1 km before it is sent, and a
     // haversine is not a road. "12.4 km away" would be past what is known.
-    expect(distanceLabel(12.4)).toBe("12 km away");
+    expect(distanceLabel(12.4)).toBe("≈ 12 km away");
     // Downtown put five cards in a row inside a kilometre; the position they
     // are measured from is itself only accurate to about one.
     expect(distanceLabel(0.3)).toBe("Under 1 km away");

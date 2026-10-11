@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ZONE } from "@/domain/experience/eventTime";
 import { Leaf } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { filterExperiences } from "@/domain/discovery/filterExperiences";
 import { rankByQuery } from "@/domain/discovery/searchRank";
@@ -46,12 +46,13 @@ import {
 import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { excludesAge, ageEvidence } from "@/domain/discovery/suitability";
-import { arguesAgainst } from "@/domain/discovery/environment";
+import { countElsewhere, elsewhere, otherAreas } from "@/domain/discovery/area";
 import {
-  countElsewhere,
-  otherAreas,
-  withoutElsewhere,
-} from "@/domain/discovery/area";
+  byPreference,
+  statedNotOn,
+  type Preferences,
+} from "@/domain/discovery/preference";
+import { useDistances } from "@/lib/location/useDistances";
 import { OCTOBER_PLACES, placeById } from "@/domain/environment/places";
 
 /**
@@ -66,17 +67,22 @@ import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { TodayPanel } from "./TodayPanel";
 import type { DayWeather, Situation } from "@/domain/discovery/situation";
 import {
-  distanceTo,
+  measuredWithin,
   nearSection,
   nearYou,
   nearestFirst,
+  placedBeyond,
+  sortKm,
 } from "@/domain/discovery/proximity";
-import { invitationSection, invitations } from "@/domain/discovery/directions";
+import {
+  MAX_INVITATIONS,
+  invitationSection,
+  invitations,
+} from "@/domain/discovery/directions";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
 import {
-  SECTION_SIZE,
   composeDiscovery,
   dayOf,
   dominantArea,
@@ -124,6 +130,12 @@ function nextDays(now: Date): { value: string; label: string }[] {
   }
   return out;
 }
+
+/**
+ * What a subject Atlas could not place reads as, once Discovery holds a
+ * distance reading — so it can never be sorted or filtered as near.
+ */
+const UNPLACED = { state: "unknown" } as const;
 
 /** How many results a page of search or browse shows before offering more. */
 const RESULT_PAGE = 24;
@@ -271,26 +283,31 @@ export function DiscoveryListView({
     change({ ...session, doing: next });
 
   /**
-   * **The one choice that goes back to the server.**
+   * **The two choices that go back to the server.**
    *
    * Everything else on this page is mirrored with `history.replaceState`,
    * because a soft navigation per keystroke would re-run an Atlas read. An age
-   * is different: Atlas has to be asked `childAge=N` to answer with a verdict,
-   * so this is a real navigation and the exploration survives it because the
-   * exploration is already in the URL.
+   * and a day are different: Atlas has to be asked `childAge=N` to answer with
+   * a verdict, and `on=YYYY-MM-DD` to say whether stated hours, a season or a
+   * held interval cover that day. So these are real navigations, and the
+   * exploration survives them because the exploration is already in the URL.
    */
-  const setOn = (next: string | undefined) => change({ ...session, on: next });
+  const navigate = (next: DiscoverySession) => {
+    setSession(next);
+    const query = sessionQuery(next);
+    router.replace(query ? `?${query}` : "/discovery", { scroll: false });
+  };
+  const setOn = (next: string | undefined) =>
+    navigate({ ...session, on: next });
+  const setEverywhere = (next: boolean) =>
+    change({ ...session, everywhere: next || undefined });
   const setWithin = (next: number | undefined) =>
     change({ ...session, within: next });
   const setTown = (next: string | undefined) =>
     change({ ...session, at: next });
 
-  const setChildAge = (next: number | undefined) => {
-    const session_ = { ...session, age: next };
-    setSession(session_);
-    const query = sessionQuery(session_);
-    router.replace(query ? `?${query}` : "/discovery", { scroll: false });
-  };
+  const setChildAge = (next: number | undefined) =>
+    navigate({ ...session, age: next });
 
   // How many search/browse results are on screen.
   const [shown, setShown] = useState(RESULT_PAGE);
@@ -510,6 +527,35 @@ export function DiscoveryListView({
   );
   /** Which of the two the number on screen is measured from. Said out loud. */
   const originLabel = shared ? "where you are" : town?.name;
+
+  /**
+   * **Atlas measures; Passport asks** (ADR 094).
+   *
+   * Once there is an origin, Atlas is asked how far everything it can place
+   * is from it — straight-line kilometres, a town centre where that is all it
+   * has, and `unknown` for the rest. With a radius, that reading *is* the
+   * geographic filter: inside it, measured, or not on the page. The old
+   * client-side `km <= within` kept every subject it could not measure, which
+   * is how an unlocated tour and a UBC exhibition stayed "near" Vernon.
+   *
+   * Without a radius the reading still labels and orders, measured against
+   * 60 km so "near you" means the same thing it always did.
+   */
+  const radius = at && within !== undefined ? within : undefined;
+  const { reading, status: measuring } = useDistances(at, radius ?? 60);
+  const placedExperiences = useMemo(
+    () =>
+      reading
+        ? experiences.map((experience) => ({
+            ...experience,
+            distance: reading.distances[experience.id] ?? UNPLACED,
+          }))
+        : experiences,
+    [experiences, reading],
+  );
+  /** A radius is in force: it is set, and Atlas has not failed to measure it. */
+  const radiusActive = radius !== undefined && measuring !== "failed";
+  const radiusReady = radiusActive && measuring === "ready";
   /**
    * **What the exploration carries with it into a card's destination.**
    *
@@ -578,13 +624,103 @@ export function DiscoveryListView({
   const cardDay = chosenDayLine ? undefined : todayKey;
 
   /**
-   * **The composed page: what somebody sees before they ask for anything.**
-   *
-   * The same scoped, feed-filtered pool the list browses — framed rather than
-   * poured out. Built here rather than on the server because the pool is
-   * already here and composing it is cheap; what is *not* cheap, and is why
-   * this exists at all, is rendering 2,248 rows, which is what this replaced.
+   * **"Further afield", one tap and never on by default.** Without a radius
+   * it brings back the areas the page holds back (Metro Vancouver from
+   * Vernon); with one, it adds a clearly labelled shelf of what Atlas
+   * measured beyond it.
    */
+  const [further, setFurther] = useState(false);
+
+  /** The sky, where it is a forecast for the day on screen. */
+  const wet = !chosenDayLine && Boolean((here ?? weather)?.wet);
+  const preferences: Preferences = useMemo(
+    () => ({
+      ...(childAge !== undefined ? { age: childAge } : {}),
+      wet,
+      day: Boolean(on),
+    }),
+    [childAge, wet, on],
+  );
+
+  /**
+   * **The hard answers — the only ones that remove anything.**
+   *
+   * A stated rule against this age; stated hours, a stated season or a held
+   * interval that leave the chosen day out. Silence removes nothing: 90% of
+   * the corpus has no age evidence and 80% no stated hours.
+   */
+  const answersQuestions = useCallback(
+    (experience: Experience): boolean => {
+      if (childAge !== undefined && excludesAge(experience, childAge))
+        return false;
+      if (on && (ruledOutOn(experience, on) || statedNotOn(experience)))
+        return false;
+      return true;
+    },
+    [childAge, on],
+  );
+
+  /**
+   * **Where the page is looking.** With a radius, Atlas's measured `within`,
+   * and nothing it could not place. Without one, everything except the areas
+   * a local page holds back (see `area.ts`).
+   */
+  const inPlace = useCallback(
+    (experience: Experience): boolean => {
+      if (radiusActive) return radiusReady && measuredWithin(experience);
+      return further || !elsewhere(experience, home);
+    },
+    [radiusActive, radiusReady, further, home],
+  );
+
+  const inContext = useCallback(
+    (experience: Experience) =>
+      answersQuestions(experience) && inPlace(experience),
+    [answersQuestions, inPlace],
+  );
+
+  /**
+   * **Search and browse, inside the answers by default.**
+   *
+   * Search used to read the whole province whatever the five rows said, so
+   * "farm" after choosing Vernon, 15 km and a five-year-old returned farms in
+   * Abbotsford. It now searches what the page is about — the same distance,
+   * day and age — and says so, with one explicit way to search everywhere.
+   * Browsing still widens past the default feed (Activities, every kind),
+   * because that is what an explicit search is for.
+   */
+  const everywhereResults = useMemo(() => {
+    const scoped = scopeExperiences(placedExperiences, scope);
+    const pool = browsing ? scoped : defaultFeed(scoped);
+    const narrowed = filterExperiences(pool, filters)
+      .filter((experience) => (kind ? experience.kind === kind : true))
+      .filter((experience) => (intent ? intentOf(experience) === intent : true))
+      .filter((experience) => !savedIds.has(experience.id));
+
+    // **With a query, relevance decides. Without one, a picture does** — and
+    // then the soft answers: a stated welcome for this age, stated hours on
+    // the chosen day, shelter on a wet one.
+    return query.trim().length > 0
+      ? rankByQuery(narrowed, query)
+      : byPreference(pictureFirst(narrowed), preferences);
+  }, [
+    placedExperiences,
+    filters,
+    query,
+    savedIds,
+    browsing,
+    kind,
+    intent,
+    scope,
+    preferences,
+  ]);
+  const contextResults = useMemo(
+    () => everywhereResults.filter(inContext),
+    [everywhereResults, inContext],
+  );
+  const everywhere = Boolean(session.everywhere);
+  const visible = everywhere ? everywhereResults : contextResults;
+
   /**
    * The pool the composed page and the situational panel both answer from —
    * scoped, feed-filtered, and with saved things removed, exactly as the
@@ -593,39 +729,12 @@ export function DiscoveryListView({
    */
   const composedPool = useMemo(
     () =>
-      defaultFeed(scopeExperiences(experiences, scope)).filter(
+      defaultFeed(scopeExperiences(placedExperiences, scope)).filter(
         (experience) => !savedIds.has(experience.id),
       ),
-    [experiences, scope, savedIds],
+    [placedExperiences, scope, savedIds],
   );
 
-  /**
-   * **An ordinary local page does not open in Vancouver.**
-   *
-   * Reported: browsing around Vernon, *Happening today* led with Canyon
-   * Frights at the Capilano Suspension Bridge — 273 km away — beside
-   * Ultimate 90s Night at the Fox Cabaret and two exhibitions at UBC.
-   *
-   * The cause was not a bad ranking. `activeScope()` reads `listRegions()`,
-   * which needs an admin token **Passport's production environment does not
-   * have**, so it caught the failure, returned no scope, and Discovery has
-   * been serving the entire province-wide corpus with no geographic narrowing
-   * at all. Supplying the token would not have fixed it either: Atlas asserts
-   * region membership for 316 of 2,683 candidates and `matchesScope` fails
-   * closed, so a working region scope would have removed 88% of the page —
-   * most of Vernon included. See `domain/discovery/area.ts` for the numbers.
-   *
-   * What Atlas does state, for 862 candidates, is an **area**. Thirty-four of
-   * them say Metro Vancouver. Those are the ones held back here, and only
-   * those: the 1,818 Atlas has not placed all stay, because treating silence
-   * as distance is the same error as reading `unknown` as `unsuitable`.
-   *
-   * **Nothing is unreachable.** Search, `?intent=` and the control below all
-   * still reach every one of them — `visible` is deliberately built from the
-   * unnarrowed pool. This decides what leads an ordinary page, which is a
-   * different question from what exists.
-   */
-  const [further, setFurther] = useState(false);
   const elsewhereCount = useMemo(
     () => countElsewhere(composedPool, home),
     [composedPool, home],
@@ -634,264 +743,124 @@ export function DiscoveryListView({
     () => otherAreas(composedPool, home),
     [composedPool, home],
   );
-  const local = useMemo(
-    () => (further ? composedPool : withoutElsewhere(composedPool, home)),
-    [composedPool, home, further],
+
+  /**
+   * **The answers above, said in a line**, so search can say what it is
+   * searching: "within 30 km of Vernon · on Monday · for a 5-year-old".
+   */
+  const contextLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (radiusActive) parts.push(`within ${radius} km of ${originLabel}`);
+    else if (!further && home && elsewhereCount > 0) parts.push(`in ${home}`);
+    if (on) parts.push(on === todayKey ? "on today" : `on ${chosenDayLine}`);
+    if (childAge !== undefined) parts.push(`for a ${childAge}-year-old`);
+    return parts.length ? parts.join(" · ") : undefined;
+  }, [
+    radiusActive,
+    radius,
+    originLabel,
+    further,
+    home,
+    elsewhereCount,
+    on,
+    todayKey,
+    chosenDayLine,
+    childAge,
+  ]);
+
+  /** What the five rows leave on the composed page. */
+  const answering = useMemo(
+    () => composedPool.filter(inContext),
+    [composedPool, inContext],
   );
 
   /**
-   * **What the five controls actually do.**
-   *
-   * Each narrowing is a direct read of something Atlas states, and each one
-   * only ever narrows what Atlas has *placed*, *dated* or *spoken about*.
-   * Silence never removes anything: 68% of the corpus has no coordinates and
-   * 93% has no age evidence, and treating either as a reason to drop a
-   * subject is the oldest mistake in this product.
+   * **Beyond the radius: measured, answered, and further than they said.**
+   * Shown only when asked for, as its own labelled shelf, nearest first —
+   * never mixed into the sections above.
    */
-  const answering = useMemo(() => {
-    let pool = local;
+  const beyond = useMemo(
+    () =>
+      radiusReady
+        ? composedPool
+            .filter((e) => placedBeyond(e) && answersQuestions(e))
+            .sort((a, b) => sortKm(a) - sortKm(b))
+        : [],
+    [radiusReady, composedPool, answersQuestions],
+  );
 
-    // An age Atlas was asked about. Only a stated rule removes anything —
-    // `stated-other-ages` does not, which is the bug this release fixes.
-    if (childAge !== undefined) {
-      pool = pool.filter((experience) => !excludesAge(experience, childAge));
-    }
-
-    // A chosen day. A stated recurrence can rule a day out; nothing else can.
-    if (on) {
-      pool = pool.filter((experience) => !ruledOutOn(experience, on));
-    }
-
-    // **A distance keeps only what can actually be measured.**
-    //
-    // This used to keep the unmeasurable too — "unplaced is not far away",
-    // which is true and was the wrong conclusion to draw from it. Atlas has
-    // published no location for roughly 1,800 of 2,680 subjects, so every
-    // tier kept all of them and "within 15 km" returned 1,799 possibilities
-    // of which 146 were actually known to be within 15 km. The control was
-    // honest about its arithmetic and dishonest about its answer.
-    //
-    // They are not dropped: `unlocated` below carries them into their own
-    // section, named for what they are. What changes is that nothing
-    // unmeasured is presented as near.
-    if (within !== undefined && at) {
-      pool = pool.filter((experience) => {
-        const km = distanceTo(experience, at);
-        return km !== undefined && km <= within;
-      });
-    }
-
-    return pool;
-  }, [local, childAge, on, within, at]);
-
-  /**
-   * **What a distance cannot speak for.**
-   *
-   * Everything the other answers kept and the distance could not measure —
-   * no coordinates published, so no claim either way. Shown in its own
-   * section, below the ones that are genuinely near, and only while a
-   * distance is actually chosen.
-   */
-  const unlocated = useMemo(() => {
-    if (within === undefined || !at) return [];
-    let pool = local;
-    if (childAge !== undefined) {
-      pool = pool.filter((experience) => !excludesAge(experience, childAge));
-    }
-    if (on) pool = pool.filter((experience) => !ruledOutOn(experience, on));
-    return pictureFirst(
-      pool.filter((experience) => distanceTo(experience, at) === undefined),
-    );
-  }, [local, childAge, on, within, at]);
-
-  /**
-   * **Search looks inside the answers, unless it is asked not to.**
-   *
-   * What it did before: searched the whole scoped corpus and ignored every
-   * answer given above it. Somebody who had said *a five-year-old, tomorrow,
-   * Vernon, within 30 km* and then typed `animals` got results from the whole
-   * province, on any date, with no regard for the child — and nothing on the
-   * page said their answers had been dropped.
-   *
-   * The two questions are different and both are real:
-   *
-   * ```
-   * the questionnaire   "help me discover something"
-   * search              "I am looking for something specific"
-   * ```
-   *
-   * So search now runs inside the set the answers produced, and `?all=1`
-   * lets it run over everything — offered as a visible link beside the
-   * result count whenever the answers are actually holding something back.
-   * Nothing is discarded silently in either direction.
-   */
-  const everywhere = params.get("all") === "1";
-
-  const visible = useMemo(() => {
-    // The geographic scope is applied to the whole pool, before the feed policy
-    // and before search, so browse and search obey one scope rather than three.
-    // An entity Atlas has placed in no region is excluded by a region scope
-    // rather than adopted by it — see `geographicScope`.
-    const scoped = scopeExperiences(experiences, scope);
-    const answered = !everywhere && answering.length > 0;
-    const pool = answered
-      ? // The questionnaire's own set, plus what a distance could not measure
-        // — searching for a named place should not fail because nobody has
-        // published its coordinates.
-        [...answering, ...unlocated]
-      : browsing
-        ? scoped
-        : defaultFeed(scoped);
-    // Matching and ordering are one decision (`rankByQuery`, M10): what the
-    // query names ranks first, a description mention last, and with no query
-    // the pool keeps its order. Scope, feed, filters, kind and saved-item
-    // exclusion are unchanged around it.
-    const narrowed = filterExperiences(pool, filters)
-      .filter((experience) => (kind ? experience.kind === kind : true))
-      .filter((experience) => (intent ? intentOf(experience) === intent : true))
-      .filter((experience) => !savedIds.has(experience.id));
-
-    // **With a query, relevance decides. Without one, a picture does.**
-    //
-    // `rankByQuery` keeps the pool's order when there is nothing to rank by,
-    // which is Atlas's order — so choosing *Get outside* opened on "Pine Park
-    // — a park located at 1605 A 39A Ave featuring a playground", the exact
-    // card the composed page exists to stop leading with. An intent is a
-    // browse, and a browse should put its best face first, exactly as every
-    // composed section does.
-    return query.trim().length > 0
-      ? rankByQuery(narrowed, query)
-      : pictureFirst(narrowed);
-  }, [
-    experiences,
-    filters,
-    query,
-    savedIds,
-    browsing,
-    kind,
-    intent,
-    scope,
-    answering,
-    unlocated,
-    everywhere,
-  ]);
-
-  /**
-   * **Composed first, then given a local lead — never filtered by location.**
-   *
-   * `nearSection` prepends one section of what Atlas has actually placed
-   * within reach, nearest first. Everything `composeDiscovery` built stays
-   * exactly where it was, because two candidates in three carry no coordinates
-   * at all and demoting them would be treating "Atlas has not placed this" as
-   * "this is far away". It is not evidence of anything.
-   */
   /**
    * **The verbs, drawn from whatever the page is honestly talking about.**
    *
-   * Near them once they have shared where they are, and the whole feed until
-   * then. Built over everything, a person in Vancouver would be invited to go
-   * swimming in the Okanagan — the invitation has to inherit the geographic
-   * honesty rather than quietly route around it.
+   * Inside the radius when there is one; near them once there is an origin;
+   * the whole feed until then.
    */
   const invitePool = useMemo(
-    () => (at ? nearYou(answering, at) : answering),
-    [answering, at],
+    () => (radiusActive ? answering : at ? nearYou(answering, at) : answering),
+    [answering, at, radiusActive],
   );
-  const offers = useMemo(() => invitations(invitePool), [invitePool]);
+  const allOffers = useMemo(
+    () => invitations(invitePool, Number.POSITIVE_INFINITY),
+    [invitePool],
+  );
+  // A suggestion below can choose a verb outside the top four, so the lookup
+  // is over every verb and the row shows the top four plus the chosen one.
+  const chosen = allOffers.find(
+    (offer) => offer.doing.toLowerCase() === doing?.toLowerCase(),
+  );
+  const offers = useMemo(() => {
+    const top = allOffers.slice(0, MAX_INVITATIONS);
+    return chosen && !top.includes(chosen) ? [...top, chosen] : top;
+  }, [allOffers, chosen]);
 
   // Moving between towns changes which verbs exist. A selection that no longer
-  // has evidence behind it is dropped during render — React's own documented
-  // way of adjusting state from props, rather than an effect that would paint
-  // the stale answer first.
-  const chosen = offers.find((offer) => offer.doing === doing);
-  if (doing && !chosen) setDoing(undefined);
+  // has evidence behind it is dropped during render — but not while a
+  // distance is still being measured, when the pool is empty for a moment
+  // rather than for a reason.
+  if (doing && !chosen && measuring !== "measuring") setDoing(undefined);
 
   const composed = useMemo(() => {
-    // **Saved things leave the feed**, exactly as they do from the flat list.
-    // That is this page's established contract — the board is a saved item's
-    // only home, which is why the board carries its detail link — and a
-    // composed page is a different presentation of the same feed, not a
-    // licence to quietly change what saving does.
-    const sections = composeDiscovery(answering, {
+    if (radiusActive && !radiusReady) return [];
+    // The pool arrives in preference order so each section's slice keeps the
+    // subjects with evidence for this day, age and sky, then each section is
+    // ordered again after nearest-first so a pictured beach in the rain
+    // cannot lead.
+    const sections = composeDiscovery(byPreference(answering, preferences), {
       now: now ? new Date(now) : new Date(),
       ...(where ? { where } : {}),
       // The page composes around the day somebody picked, so a heading never
       // names a day other than the one the cards under it are about.
       ...(on ? { on } : {}),
     });
-    // **Every section answers to where the person is**, once they have said.
-    // *Happening today* used to open with a concert in Vancouver beside a
-    // park in Vernon, in whatever order the corpus arrived in.
-    const placed = at
-      ? sections.map((section) => ({
-          ...section,
-          items: nearestFirst(section.items, at),
-        }))
-      : sections;
-
-    /**
-     * **Rain demotes what is stated to be out in the open. It excludes
-     * nothing.**
-     *
-     * Atlas classifies 122 subjects for weather, with seven readings; only
-     * `exposed` argues against a wet day, and `arguesAgainst` is the one that
-     * reads it. A swimming pool Atlas calls `sheltered` keeps its place, an
-     * unclassified playground keeps its place, and a lakeshore Atlas states
-     * is `exposed` moves down its own section rather than off the page —
-     * because the forecast is for the area and the reader may be looking at
-     * next Sunday.
-     *
-     * Deliberately a stable partition and not a score: no October rule, no
-     * season table, no indoor/outdoor guess where Atlas has not classified.
-     */
-    // The reader's own forecast once they have shared where they are, the
-    // corpus area's until then — and only while they are looking at today,
-    // because a forecast is a claim about the next few hours.
-    const sky = chosenDayLine ? undefined : (here ?? weather);
-    const dry = sky?.wet !== true;
-    const weathered = dry
-      ? placed
-      : placed.map((section) => ({
-          ...section,
-          items: [
-            ...section.items.filter((e) => !arguesAgainst(e)),
-            ...section.items.filter((e) => arguesAgainst(e)),
-          ],
-        }));
-    const near = nearSection(answering, at);
-    const withNear = near ? [near, ...weathered] : weathered;
-    // **What a distance could not measure, named rather than mixed in.**
-    // Last, because it is the weaker answer, and present only while a
-    // distance is chosen — otherwise there is nothing to contrast it with.
-    const withUnlocated =
-      unlocated.length > 0
+    const order = (items: readonly Experience[]) =>
+      byPreference(nearestFirst(items, at), preferences);
+    const placed = sections.map((section) => ({
+      ...section,
+      items: order(section.items),
+    }));
+    // Inside a radius every card is already near; a "Near you" shelf would
+    // repeat the page.
+    const near = radiusActive ? undefined : nearSection(answering, at);
+    const withNear = near ? [near, ...placed] : placed;
+    const withBeyond =
+      further && radius !== undefined && beyond.length > 0
         ? [
             ...withNear,
             {
-              id: "unlocated",
-              title: "Haven't published where they are",
-              note: `${unlocated.length} more ${unlocated.length === 1 ? "idea" : "ideas"} we could not measure. They may well be close — nobody has said.`,
-              items: unlocated,
-              size: SECTION_SIZE,
-              total: unlocated.length,
+              id: "beyond",
+              title: `Beyond ${radius} km`,
+              note: `Further than ${radius} km from ${originLabel}, measured in a straight line — nearest first. Here because you asked to look further.`,
+              items: beyond.slice(0, 24),
+              size: 8,
+              total: beyond.length,
               shape: "rest" as const,
             },
           ]
         : withNear;
-
     // What they just asked for leads, because they just asked for it.
-    return chosen
-      ? [
-          {
-            ...invitationSection(chosen, Boolean(at)),
-            items: nearestFirst(
-              invitationSection(chosen, Boolean(at)).items,
-              at,
-            ),
-          },
-          ...withUnlocated,
-        ]
-      : withUnlocated;
+    if (!chosen) return withBeyond;
+    const lead = invitationSection(chosen, Boolean(at));
+    return [{ ...lead, items: order(lead.items) }, ...withBeyond];
   }, [
     answering,
     now,
@@ -899,10 +868,13 @@ export function DiscoveryListView({
     at,
     chosen,
     on,
-    unlocated,
-    here,
-    weather,
-    chosenDayLine,
+    preferences,
+    radiusActive,
+    radiusReady,
+    radius,
+    further,
+    beyond,
+    originLabel,
   ]);
 
   const kinds = useMemo(
@@ -1285,7 +1257,10 @@ export function DiscoveryListView({
                 // rule is that a control either works or admits it cannot.
                 ...(offers.length === 0
                   ? {
-                      note: "Nothing here has said what you can do there yet. Widen the day or the distance and the ideas come back.",
+                      note:
+                        radiusActive && !radiusReady
+                          ? `Measuring from ${originLabel}…`
+                          : "Nothing that fits your choices says what you can do there yet. Try another day or a bigger distance.",
                     }
                   : {}),
               },
@@ -1338,8 +1313,8 @@ export function DiscoveryListView({
                       ),
                       note:
                         childAge === undefined
-                          ? "Tell us how old and we can check age rules. Without it we cannot say."
-                          : undefined,
+                          ? "Pick an age and places with a stated age rule are checked against it. Without one, nothing is ruled out."
+                          : `Places that state they don't admit a ${childAge}-year-old are left out, and places that welcome one come first. Most places say nothing about age — they stay, marked "no age guidance".`,
                     }
                   : {}),
               },
@@ -1349,7 +1324,9 @@ export function DiscoveryListView({
                 value: on,
                 onChange: setOn,
                 choices: nextDays(now ? new Date(now) : new Date()),
-                note: "Dated events move with the day you pick. Places that have not published hours stay on the list — check with them before you go.",
+                note: on
+                  ? "Events not on that day, and places whose stated hours or season leave it out, are left out. Places with no stated hours stay — check before you go."
+                  : "Pick a day and anything stated as not on that day drops out.",
               },
               {
                 key: "time",
@@ -1365,7 +1342,7 @@ export function DiscoveryListView({
                   { value: "half-day", label: "half a day" },
                   { value: "all-day", label: "the whole day" },
                 ],
-                note: "This decides how many different ideas to offer. We do not know how long any of them takes.",
+                note: "We rarely know how long things take, so this sets how many ideas we suggest below — never how long any of them lasts.",
               },
               {
                 key: "distance",
@@ -1451,47 +1428,42 @@ export function DiscoveryListView({
                   </>
                 ),
                 note: at
-                  ? `Measured in a straight line from ${originLabel} — not a drive time. Places with no published location are kept, in their own group below.`
+                  ? radius === undefined
+                    ? `Distances from ${originLabel}, in a straight line — not driving time. Pick a distance to keep it close.`
+                    : measuring === "measuring"
+                      ? `Measuring from ${originLabel}…`
+                      : measuring === "failed"
+                        ? "Couldn't measure distances just now, so nothing is being left out by distance. Try again in a moment."
+                        : `${answering.length} within ${radius} km of ${originLabel}, in a straight line — not driving time. Places we can't locate aren't shown as nearby.`
                   : place.state === "unavailable"
                     ? place.lapse === "denied"
-                      ? "Your browser would not share your location. Pick a town instead — it works just as well."
-                      : "We could not get a position from your browser. Pick a town instead, or try again."
-                    : "Tell us where you are starting from and we can show you what is close.",
+                      ? "Your browser would not share your location. Pick a town instead — it works just as well, and the distance is measured the same way."
+                      : "Passport could not get a position from your browser. Pick a town instead, or try again."
+                    : "A distance needs somewhere to measure from. Share your location, or pick the town you are setting out from.",
               },
             ]}
             after={
-              /* **You changed an answer, and here is what changed.**
-                 The questions sit at the top and the results a screen and a
-                 half below, so a working filter looked like a broken one: no
-                 count, no acknowledgement, nothing moved. This is the
-                 smallest thing that closes that loop — one line, updating in
-                 place, plus a link to the ideas themselves.
-
-                 It counts what is genuinely measured separately from what is
-                 not, because "24 nearby ideas" over a set that is mostly
-                 unplaced is the claim this whole pass exists to stop
-                 making. */
+              /* **You changed an answer, and here is what changed** (from
+                 ca80efc). The questions sit at the top and the results a
+                 screen and a half below, so a working filter looked like a
+                 broken one. One line, updating in place, with a link down. */
               <p
                 data-testid="answer-summary"
                 className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px] text-black/60"
               >
-                <span className="font-semibold text-[#111] tabular-nums">
-                  {answering.length}
-                  {answering.length === 1 ? " idea" : " ideas"}
-                </span>
-                {within !== undefined && at && (
-                  <span>
-                    within {within} km of {originLabel}
-                  </span>
-                )}
-                {unlocated.length > 0 && (
-                  <span>
-                    · {unlocated.length} more that haven&apos;t published where
-                    they are
-                  </span>
+                {radiusActive && !radiusReady ? (
+                  <span>Measuring from {originLabel}…</span>
+                ) : (
+                  <>
+                    <span className="font-semibold text-[#111] tabular-nums">
+                      {answering.length}
+                      {answering.length === 1 ? " idea" : " ideas"}
+                    </span>
+                    {contextLabel && <span>{contextLabel}</span>}
+                  </>
                 )}
                 <a
-                  href="#ideas"
+                  href="#discovery-results"
                   data-testid="see-ideas"
                   style={{ color: "var(--ghad-accent)" }}
                   className="font-semibold underline underline-offset-4"
@@ -1512,11 +1484,6 @@ export function DiscoveryListView({
                 // This panel answers; it no longer asks the same three things
                 // again twenty pixels lower. See `TodayPanel`.
                 asking={false}
-                // The ideas are the same verbs the first row offers, so
-                // tapping one does what choosing it there does. See
-                // `TodayPanel.onChoose`.
-                onChoose={(next) => setDoing(next === doing ? undefined : next)}
-                {...(doing ? { chosen: doing } : {})}
                 {...((here ?? weather) ? { weather: here ?? weather } : {})}
                 place={place}
                 {...(childAge !== undefined ? { childAge } : {})}
@@ -1532,6 +1499,14 @@ export function DiscoveryListView({
                 experiences={answering}
                 situation={situation}
                 onSituation={setSituation}
+                {...(doing ? { doing } : {})}
+                onDoing={(next) => {
+                  setDoing(next);
+                  document
+                    .getElementById("discovery-results")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                carry={carry}
               />
             </div>
           )}
@@ -1579,7 +1554,10 @@ export function DiscoveryListView({
             {/* `min-w-0`: a grid item sizes to its content by default, so the
                 shelves' `overflow-x-auto` never engaged and the **document**
                 scrolled sideways by 2,440px at 1440 instead. */}
-            <div id="ideas" className="flex min-w-0 scroll-mt-4 flex-col gap-6">
+            <div
+              id="discovery-results"
+              className="flex min-w-0 scroll-mt-4 flex-col gap-6"
+            >
               <>
                 <DiscoveryListFilters
                   query={query}
@@ -1591,11 +1569,6 @@ export function DiscoveryListView({
                   availableSeasons={availableSeasons}
                   availableCompanions={availableCompanions}
                   resultCount={visible.length}
-                  {...(!everywhere &&
-                  answering.length > 0 &&
-                  answering.length + unlocated.length < composedPool.length
-                    ? { broadenHref: sessionHref(session, { all: "1" }) }
-                    : {})}
                   {...(intent
                     ? {
                         within:
@@ -1607,6 +1580,12 @@ export function DiscoveryListView({
                   selectedKind={kind}
                   onKindChange={setKind}
                   browsing={browsing}
+                  {...(contextLabel ? { context: contextLabel } : {})}
+                  everywhere={everywhere}
+                  onEverywhere={setEverywhere}
+                  outsideCount={
+                    everywhereResults.length - contextResults.length
+                  }
                 />
 
                 {/* **Composed when nobody has asked for anything; ranked when
@@ -1620,21 +1599,34 @@ export function DiscoveryListView({
                     and never on by default — "I am in Vernon" and "show me
                     Vancouver" are different requests and this is the second
                     one being asked for out loud. */}
-                {!browsing && elsewhereCount > 0 && (
-                  <button
-                    type="button"
-                    data-testid="further-afield"
-                    aria-pressed={further}
-                    onClick={() => setFurther(!further)}
-                    style={
-                      further ? { color: "var(--ghad-accent)" } : undefined
-                    }
-                    className="-mt-2 self-start text-[13px] font-semibold text-black/45 underline underline-offset-4 transition-colors hover:text-black/80"
-                  >
-                    {further
-                      ? `Showing ${elsewhereAreas.join(" and ")} too — back to ${home} only`
-                      : `${elsewhereCount} more in ${elsewhereAreas.join(" and ")} — show them too`}
-                  </button>
+                {!browsing &&
+                  (radiusActive
+                    ? radiusReady && beyond.length > 0
+                    : elsewhereCount > 0) && (
+                    <button
+                      type="button"
+                      data-testid="further-afield"
+                      aria-pressed={further}
+                      onClick={() => setFurther(!further)}
+                      style={
+                        further ? { color: "var(--ghad-accent)" } : undefined
+                      }
+                      className="-mt-2 self-start text-[13px] font-semibold text-black/45 underline underline-offset-4 transition-colors hover:text-black/80"
+                    >
+                      {radiusActive
+                        ? further
+                          ? `Showing ${beyond.length} beyond ${radius} km, at the bottom — hide them`
+                          : `Explore beyond ${radius} km — ${beyond.length} more, marked as further`
+                        : further
+                          ? `Showing ${elsewhereAreas.join(" and ")} too — back to ${home} only`
+                          : `${elsewhereCount} more in ${elsewhereAreas.join(" and ")} — show them too`}
+                    </button>
+                  )}
+
+                {!browsing && radiusActive && !radiusReady && (
+                  <p data-testid="measuring" className="text-sm text-black/50">
+                    Measuring from {originLabel}…
+                  </p>
                 )}
 
                 {!browsing ? (
@@ -1649,10 +1641,24 @@ export function DiscoveryListView({
                     onSave={handleSave}
                   />
                 ) : visible.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-black/25 bg-white px-4 py-10 text-center text-sm text-black/60">
-                    Nothing here matches that. Try fewer words, or clear what
-                    you have chosen.
-                  </p>
+                  <div className="rounded-xl border border-dashed border-black/25 bg-white px-4 py-10 text-center text-sm text-black/60">
+                    {!everywhere && everywhereResults.length > 0 ? (
+                      <>
+                        Nothing {contextLabel ?? "that fits your choices"}{" "}
+                        matches that.{" "}
+                        <button
+                          type="button"
+                          data-testid="search-everywhere-empty"
+                          onClick={() => setEverywhere(true)}
+                          className="ghad-accent-text font-semibold underline underline-offset-4"
+                        >
+                          Search everywhere — {everywhereResults.length} found
+                        </button>
+                      </>
+                    ) : (
+                      "Nothing matches that. Try fewer words, or clear what you have chosen."
+                    )}
+                  </div>
                 ) : (
                   /* **The same cards, whatever you asked.**
                      Choosing *Get outside* used to replace eight picture-led

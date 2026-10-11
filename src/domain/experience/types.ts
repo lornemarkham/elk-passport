@@ -1,5 +1,8 @@
 import type {
   CandidateAvailability,
+  CandidateContextualMedia,
+  CandidateDistance,
+  CandidateSchedule,
   CandidateSuitability,
 } from "@/lib/data/types";
 import type {
@@ -204,6 +207,16 @@ export interface Experience {
   suitability?: CandidateSuitability;
   /** **When this actually happens** — `candidate-occurrence/2`, untouched. */
   occurrence?: CandidateOccurrence;
+  /** A venue's picture for an event with none of its own — `candidate-media/1`. Never this subject's own. */
+  contextualMedia?: CandidateContextualMedia;
+  /** Whether stated hours or dates cover the chosen day — `candidate-schedule/1`. */
+  schedule?: CandidateSchedule;
+  /**
+   * **Atlas's distance from the chosen origin** — `candidate-distance/1`.
+   * Never set by the mapper: Discovery attaches it in the browser from the
+   * reading it asked for, so it always belongs to the current origin.
+   */
+  distance?: CandidateDistance;
   pairsWith?: string[];
 
   isActive: boolean;

@@ -206,14 +206,12 @@ describe("where an invitation leads", () => {
   });
 
   it("says near you only where the pool genuinely is", () => {
-    expect(invitationSection(hiking, true).note).toContain(
-      "within reach of where you are",
-    );
+    expect(invitationSection(hiking, true).note).toContain("within reach");
     expect(invitationSection(hiking, false).note).not.toContain("near");
   });
 
-  it("names Atlas as the one making the claim", () => {
-    expect(invitationSection(hiking, true).note).toContain("Atlas states it");
+  it("speaks to a traveller, not about the knowledge graph", () => {
+    expect(invitationSection(hiking, true).note).not.toContain("Atlas");
   });
 
   it("promises nothing Atlas did not say", () => {

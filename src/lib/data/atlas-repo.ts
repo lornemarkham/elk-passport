@@ -153,9 +153,12 @@ function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
 export function forgetAtlasReads(): void {
   fresh.clear();
   inflight.clear();
+  distanceCache.clear();
+  distanceInflight.clear();
 }
 
 import type {
+  CandidateDistance,
   DiscoveryCandidate,
   Place,
   PlaceDetail,
@@ -279,6 +282,14 @@ export async function listDiscoveryCandidates(
    * which would be Passport inventing the one fact this exists to carry.
    */
   childAge?: number,
+  /**
+   * **The day somebody picked**, `YYYY-MM-DD`. Atlas answers `?on=` with
+   * `schedule.onDate` per candidate — whether stated hours, a stated season or
+   * a held interval cover that day — so "closed Mondays" and "closed for the
+   * season" come from Atlas rather than from a Passport guess. Omitted when
+   * no day was chosen.
+   */
+  on?: string,
 ): Promise<DiscoveryCandidate[]> {
   const asked =
     typeof childAge === "number" &&
@@ -287,21 +298,22 @@ export async function listDiscoveryCandidates(
     childAge <= 17
       ? childAge
       : undefined;
+  const day = on && /^\d{4}-\d{2}-\d{2}$/.test(on) ? on : undefined;
+  const params = new URLSearchParams();
+  if (asked !== undefined) params.set("childAge", String(asked));
+  if (day) params.set("on", day);
+  const query = params.toString();
   return cached(
-    asked === undefined
-      ? "discovery/candidates"
-      : `discovery/candidates?childAge=${asked}`,
-    () => readDiscoveryCandidates(asked),
+    query ? `discovery/candidates?${query}` : "discovery/candidates",
+    () => readDiscoveryCandidates(query),
   );
 }
 
 async function readDiscoveryCandidates(
-  childAge?: number,
+  query: string,
 ): Promise<DiscoveryCandidate[]> {
   const response = await atlasFetch(
-    childAge === undefined
-      ? "/discovery/candidates"
-      : `/discovery/candidates?childAge=${childAge}`,
+    query ? `/discovery/candidates?${query}` : "/discovery/candidates",
   );
   if (!response.ok) {
     // A refusal is not an absence. Every October surface used to `.catch()`
@@ -315,6 +327,73 @@ async function readDiscoveryCandidates(
   const body = (await response.json()) as { candidates: DiscoveryCandidate[] };
   return body.candidates;
 }
+
+/** Atlas's distance reading for every candidate it could place, by id. */
+export interface DiscoveryDistances {
+  readonly withinKm: number;
+  readonly distances: Readonly<Record<string, CandidateDistance>>;
+}
+
+/**
+ * **How far everything Atlas could place is from one origin** — ADR 094.
+ *
+ * `unplaced=drop` because a subject Atlas cannot place must never read as
+ * nearby; `beyond=flag` so the far ones still arrive, marked `within: false`,
+ * for the clearly labelled "beyond" shelf. Only the id and the reading are
+ * kept: the corpus itself is already in the page.
+ *
+ * The origin is rounded to two decimals (~1 km) before it is sent — the same
+ * precision `blunt()` applies in the browser and Atlas applies on receipt — so
+ * nothing finer than a town block ever leaves Passport, and the cache key is
+ * the same for everybody in that block.
+ */
+export async function listDiscoveryDistances(
+  latitude: number,
+  longitude: number,
+  withinKm: number,
+): Promise<DiscoveryDistances> {
+  const lat = Math.round(latitude * 100) / 100;
+  const lng = Math.round(longitude * 100) / 100;
+  const km = Math.round(withinKm);
+  const query = `lat=${lat}&lng=${lng}&withinKm=${km}&unplaced=drop&beyond=flag`;
+  const hit = distanceCache.get(query);
+  if (hit && Date.now() - hit.at < FRESH_MS) return hit.value;
+  const running = distanceInflight.get(query);
+  if (running) return running;
+  const started = (async () => {
+    const response = await atlasFetch(`/discovery/candidates?${query}`);
+    if (!response.ok) {
+      const failure = describeAtlasFailure(response.status);
+      if (failure) throw failure;
+      throw new Error(`Atlas distance request failed: ${response.status}`);
+    }
+    const body = (await response.json()) as {
+      candidates: Pick<DiscoveryCandidate, "id" | "distance">[];
+    };
+    const distances: Record<string, CandidateDistance> = {};
+    for (const candidate of body.candidates) {
+      if (candidate.distance) distances[candidate.id] = candidate.distance;
+    }
+    const value: DiscoveryDistances = { withinKm: km, distances };
+    distanceCache.delete(query);
+    distanceCache.set(query, { at: Date.now(), value });
+    // Bounded, unlike the corpus cache: every origin is its own key, and a
+    // busy afternoon must not grow this without limit.
+    while (distanceCache.size > DISTANCE_CACHE_SIZE) {
+      distanceCache.delete(distanceCache.keys().next().value!);
+    }
+    return value;
+  })().finally(() => distanceInflight.delete(query));
+  distanceInflight.set(query, started);
+  return started;
+}
+
+const DISTANCE_CACHE_SIZE = 48;
+const distanceCache = new Map<
+  string,
+  { at: number; value: DiscoveryDistances }
+>();
+const distanceInflight = new Map<string, Promise<DiscoveryDistances>>();
 
 /**
  * **Discovery candidates, or the reason there are none.**

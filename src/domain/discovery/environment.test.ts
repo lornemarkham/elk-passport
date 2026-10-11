@@ -272,7 +272,7 @@ describe("what a person is told", () => {
     // Atlas joined its own evidence rather than being told outright, and a
     // surface that printed it as a promise would be inventing certainty.
     expect(rainLine(COLDSTREAM_PARK)).toBe(
-      "Has somewhere to shelter, going by what Atlas holds",
+      "Has somewhere to shelter, going by what we know",
     );
   });
 

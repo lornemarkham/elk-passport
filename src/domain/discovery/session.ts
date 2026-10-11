@@ -75,6 +75,12 @@ export interface DiscoverySession {
   readonly at?: string;
   /** The invitation they tapped — an Atlas affordance name. */
   readonly doing?: string;
+  /**
+   * **Search everywhere, not just within the answers above.** Search follows
+   * the chosen distance, day and age by default; this is the one explicit
+   * way to widen it, and it widens search only — nothing else is reset.
+   */
+  readonly everywhere?: boolean;
 }
 
 const INTENT_KEYS: readonly IntentKey[] = INTENTS.map((i) => i.key);
@@ -147,6 +153,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
     ...(within !== undefined ? { within } : {}),
     ...(at ? { at } : {}),
     ...(doing ? { doing } : {}),
+    ...(params.get("all") === "1" ? { everywhere: true } : {}),
   };
 }
 
@@ -164,6 +171,7 @@ export function sessionQuery(session: DiscoverySession): string {
     params.set("within", String(session.within));
   if (session.at) params.set("at", session.at);
   if (session.doing) params.set("doing", session.doing);
+  if (session.everywhere) params.set("all", "1");
   return params.toString();
 }
 

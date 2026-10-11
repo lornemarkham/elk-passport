@@ -338,7 +338,7 @@ export function composeDiscovery(
         ? `Happening that ${chosen.charAt(0).toUpperCase()}${chosen.slice(1)}`
         : "Happening today",
       chosen
-        ? "Dated by Atlas, and running on the day you picked."
+        ? "Dated, and running on the day you picked."
         : "Dated, running now, and over by tomorrow for some of it.",
       "when",
       // **Picture first here too.** Ordered purely by start date, this

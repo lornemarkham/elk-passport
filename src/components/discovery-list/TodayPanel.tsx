@@ -28,12 +28,16 @@ import {
   splitByAge,
 } from "@/domain/discovery/suitability";
 import {
-  distanceLabel,
+  distanceText,
   distanceTo,
   nearestFirst,
   NEAR_KM,
 } from "@/domain/discovery/proximity";
 import { placeLabel } from "@/domain/discovery/compose";
+import { invitations } from "@/domain/discovery/directions";
+import { arguesAgainst } from "@/domain/discovery/environment";
+import { destinationFor } from "@/domain/experience/destination";
+import Link from "next/link";
 
 /**
  * **Where a person brings a situation instead of a search query.**
@@ -84,15 +88,22 @@ export function TodayPanel({
   onSituation,
   asking = true,
   forecastApplies = true,
-  onChoose,
-  chosen,
   place,
   origin,
   withinLabel,
   childAge,
   onChildAge,
   ask,
+  doing,
+  onDoing,
+  carry,
 }: {
+  /** The verb chosen in the first row, so the matching suggestion shows as chosen. */
+  readonly doing?: string;
+  /** Choosing a suggestion chooses that verb for the whole page. */
+  readonly onDoing?: (doing: string) => void;
+  /** What the exploration carries into a place's page. */
+  readonly carry?: string;
   /** Written out, e.g. `Saturday, October 11`. */
   readonly today: string;
   /**
@@ -140,19 +151,6 @@ export function TodayPanel({
    */
   readonly asking?: boolean;
   /**
-   * **What happens when somebody taps one of the ideas.**
-   *
-   * The ideas used to be `<li>`s — four tiles reading *Swimming · 33 places*
-   * that looked exactly like controls and did nothing at all. They are the
-   * same verbs the first questionnaire row offers, counted from the same
-   * evidence, so tapping one now does what choosing it there does: the page
-   * leads with that verb and keeps everything else. No new concept, no second
-   * questionnaire, and no dead end.
-   */
-  readonly onChoose?: (doing: string) => void;
-  /** The verb currently chosen, so the tile it came from reads as pressed. */
-  readonly chosen?: string;
-  /**
    * **Whether `today` is actually today.**
    *
    * Once somebody picks a day, this panel still held a forecast — and a
@@ -165,7 +163,9 @@ export function TodayPanel({
 }) {
   const shown = forecastApplies ? weather : undefined;
   const answer = answerFor(experiences, situation, { wet: shown?.wet });
-  const asked = Boolean(situation.company);
+  // Either answer is enough to suggest something: who is coming decides
+  // whose evidence counts, and how long decides how many ideas.
+  const asked = Boolean(situation.company || situation.window);
 
   return (
     <section
@@ -324,9 +324,11 @@ export function TodayPanel({
       {asked && (
         <Answer
           answer={answer}
+          experiences={experiences}
+          {...(doing ? { doing } : {})}
+          {...(onDoing ? { onDoing } : {})}
+          {...(carry ? { carry } : {})}
           situation={situation}
-          {...(onChoose ? { onChoose } : {})}
-          {...(chosen ? { chosen } : {})}
           weather={shown}
           {...(origin ? { origin } : {})}
           {...(withinLabel ? { withinLabel } : {})}
@@ -467,39 +469,33 @@ function Choice<T extends string>({
  */
 function Answer({
   answer,
+  experiences,
+  doing,
+  onDoing,
+  carry,
   situation,
   weather,
   origin,
   withinLabel,
   childAge,
-  onChoose,
-  chosen,
 }: {
   readonly answer: ReturnType<typeof answerFor>;
+  readonly experiences: readonly Experience[];
+  readonly doing?: string;
+  readonly onDoing?: (doing: string) => void;
+  readonly carry?: string;
   readonly situation: Situation;
-  readonly onChoose?: (doing: string) => void;
-  readonly chosen?: string;
   readonly weather?: DayWeather;
   readonly origin?: Point;
   readonly withinLabel?: string;
   readonly childAge?: number;
 }) {
-  if (situation.company !== "child") {
-    return (
-      <p
-        data-testid="today-answer"
-        className="mt-5 border-t border-black/15 pt-4 text-sm text-black/60"
-      >
-        {/* Consumer copy. The evidence behind it is unchanged and still in
-            `answerFor`; what was here named the knowledge base and counted its
-            records at somebody trying to plan a Saturday. */}
-        Tell us who is coming and we can be more use. Everything below is what
-        is on today.
-      </p>
-    );
-  }
-
-  const { matches: doable } = answer;
+  const child = situation.company === "child";
+  // Without a child, the evidence is simply what places say you can do there;
+  // who it suits is almost never stated, so nothing is filtered for "friends".
+  const doable = child
+    ? answer.matches
+    : experiences.filter((e) => (e.knowledge?.affordances?.length ?? 0) > 0);
 
   /**
    * **Atlas's verdict, once somebody has said an age.**
@@ -537,7 +533,16 @@ function Answer({
    * under each comes from where they are.
    */
   const wanted = directionsWanted(situation.window);
-  const directions = directionsFor(matches, situation, { wet })
+  const found = child
+    ? directionsFor(matches, situation, { wet })
+    : invitations(matches, Number.POSITIVE_INFINITY).map((offer) => ({
+        doing: offer.doing,
+        places: offer.places,
+        ruledOutByRain: Boolean(
+          wet && offer.places.every((p) => arguesAgainst(p)),
+        ),
+      }));
+  const directions = found
     .map((direction) => ({
       ...direction,
       // **Shelter first on a wet day, then nearest.** A direction can hold
@@ -605,14 +610,17 @@ function Answer({
     >
       {matches.length === 0 ? (
         <p className="text-sm text-black/60">
-          Atlas does not yet know what any of these places offer a young child.
-          Nothing below is filtered for her — it is the ordinary list.
+          {child
+            ? "We don't yet know what any of these places offer a young child, so nothing below is filtered for them — it's the ordinary list."
+            : "None of these places say what you can do there yet, so there's nothing to suggest — everything below is the ordinary list."}
         </p>
       ) : (
         <>
           <p className="text-sm text-[#111]">
             <strong className="font-semibold">{matches.length}</strong> places
-            say what a child could actually do there
+            {child
+              ? " say what a child could actually do there"
+              : " here say what you can do there"}
             {withinLabel ? (
               <>
                 {" "}
@@ -628,13 +636,7 @@ function Answer({
               phrase are different claims and are counted separately. */}
           {childAge !== undefined && (
             <p data-testid="today-age" className="mt-2 text-sm text-black/70">
-              {/* **The same four facts, said to a person.** This read "Atlas
-                  states a rule admitting 0 of them · 9 are described for
-                  families · it says nothing either way about 71" — four
-                  database counts and the name of the knowledge base. What
-                  actually matters to somebody with a five-year-old is which
-                  places say they are welcome, and that most places say
-                  nothing at all. Both survive; the counting does not. */}
+              {/* The same facts, said to a person (wording from ca80efc). */}
               {byAge.welcome.length > 0 ? (
                 <>
                   <strong className="font-semibold">
@@ -660,8 +662,8 @@ function Answer({
               {shutOut.length > 0 && (
                 <>
                   , and {shutOut.length} {shutOut.length === 1 ? "is" : "are"}{" "}
-                  adults-only so {shutOut.length === 1 ? "it is" : "they are"}{" "}
-                  not shown
+                  closed to that age so{" "}
+                  {shutOut.length === 1 ? "it is" : "they are"} not shown
                 </>
               )}
               . Worth a quick check before you set out.
@@ -687,7 +689,7 @@ function Answer({
                   {unknown.length > 0 && (
                     <>
                       {" "}
-                      · Atlas says nothing either way about the other{" "}
+                      · nothing is known either way about the other{" "}
                       {unknown.length}
                     </>
                   )}
@@ -703,8 +705,8 @@ function Answer({
                   {against.length > 0 && (
                     <>{against.length} are out in the open, and </>
                   )}
-                  Atlas says nothing either way about {unknown.length} — so
-                  Passport is not going to pick one and send you out in it.
+                  nothing is known either way about {unknown.length} — so
+                  we&apos;re not going to pick one and send you out in it.
                 </>
               )}
             </p>
@@ -713,16 +715,16 @@ function Answer({
           {offered.length > 0 && (
             <>
               {/* **The one number here that is a judgement, said as one.**
-                  Almost nothing in the corpus states how long it takes, so the
-                  length of day decides how many different ideas to offer and
-                  nothing else. The copy below says "ideas", never "hours". */}
+                  Atlas states a duration for 17 candidates out of 2,683, so
+                  Passport cannot know how long any of this takes. The length
+                  of day decides how many different ideas to offer, and
+                  nothing else. */}
               <p className="mt-4 text-xs font-medium tracking-wide text-black/45 uppercase">
                 {LEAD[situation.window ?? "none"]}
               </p>
 
               <ul className="mt-2 flex flex-col gap-2">
                 {naming.map(({ direction, named }) => {
-                  const on = chosen === direction.doing;
                   return (
                     <li
                       key={direction.doing}
@@ -731,22 +733,18 @@ function Answer({
                       className="rounded-xl border border-black/20 bg-white px-3 py-2.5"
                     >
                       <p className="flex flex-wrap items-baseline gap-x-2">
-                        {/* **A tile that looks like a control now is one.**
-                            Tapping it chooses the verb, exactly as the first
-                            questionnaire row does — the age, the day, the
-                            town and the distance all stay where they are. */}
-                        {onChoose ? (
+                        {onDoing ? (
                           <button
                             type="button"
                             data-testid="today-direction-choose"
-                            aria-pressed={on}
-                            onClick={() => onChoose(direction.doing)}
-                            style={
-                              on ? { color: "var(--ghad-accent)" } : undefined
+                            aria-pressed={
+                              doing?.toLowerCase() ===
+                              direction.doing.toLowerCase()
                             }
-                            className="text-base font-semibold text-[#111] underline decoration-black/25 underline-offset-4 first-letter:uppercase hover:decoration-black/70"
+                            onClick={() => onDoing(direction.doing)}
+                            className="ghad-accent-text text-base font-semibold underline decoration-black/20 underline-offset-4 first-letter:uppercase hover:decoration-current"
                           >
-                            {direction.doing}
+                            {direction.doing} →
                           </button>
                         ) : (
                           <span className="text-base text-[#111] first-letter:uppercase">
@@ -778,8 +776,7 @@ function Answer({
                           // stated, the town Atlas states otherwise, and
                           // nothing at all when it knows neither.
                           const where =
-                            distanceLabel(distanceTo(place, origin)) ??
-                            placeLabel(place);
+                            distanceText(place, origin) ?? placeLabel(place);
                           // And what the rain does to it, from
                           // `candidate-environment/1` — carrying its own
                           // provenance, so a derived reading says it was
@@ -800,7 +797,19 @@ function Answer({
                               {...(because ? { title: because } : {})}
                               className="text-xs text-black/55"
                             >
-                              {place.title}
+                              {(() => {
+                                const base = destinationFor(place);
+                                return base ? (
+                                  <Link
+                                    href={carry ? `${base}?${carry}` : base}
+                                    className="underline decoration-black/20 underline-offset-2 hover:text-[#111] hover:decoration-current"
+                                  >
+                                    {place.title}
+                                  </Link>
+                                ) : (
+                                  place.title
+                                );
+                              })()}
                               {where ? (
                                 <span className="text-black/40">
                                   {" "}
@@ -844,8 +853,8 @@ function Answer({
               </ul>
 
               <p className="mt-2 text-xs text-black/40">
-                Ideas, not a plan. Passport does not know how long any of these
-                take, or whether they are open.
+                Ideas, not a plan. We don&apos;t know how long any of these
+                take, or whether they&apos;re open — check before you go.
               </p>
             </>
           )}

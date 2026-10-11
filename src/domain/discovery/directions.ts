@@ -160,8 +160,8 @@ export function invitationSection(
     id: `doing-${invitation.doing.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
     title: invitation.doing,
     note: `${count} ${count === 1 ? "place says" : "places say"} you can, ${
-      near ? "within reach of where you are" : "somewhere Passport knows about"
-    }. Atlas states it; Passport is repeating it.`,
+      near ? "within reach" : "around here"
+    }.`,
     items: invitation.places.slice(0, SECTION_SIZE * SECTION_PAGES),
     size: SECTION_SIZE,
     total: count,

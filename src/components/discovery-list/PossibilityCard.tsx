@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
 import { Check, Leaf, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
@@ -12,7 +12,9 @@ import {
   whenLine,
   whereLine,
 } from "@/domain/discovery/compose";
-import { distanceLabel, distanceTo } from "@/domain/discovery/proximity";
+import { distanceText } from "@/domain/discovery/proximity";
+import { ageLine } from "@/domain/discovery/suitability";
+import { dayLine } from "@/domain/discovery/preference";
 import { recurrenceLine } from "@/domain/discovery/recurrence";
 import type { Point } from "@/domain/discovery/situation";
 
@@ -132,7 +134,7 @@ export function PossibilityCard({
   // it has no reliable idea where the reader is, so it states where the thing
   // is and lets them judge.
   const area = areaLabel(experience);
-  const away = distanceLabel(distanceTo(experience, origin));
+  const away = distanceText(experience, origin);
   // **"Elsewhere" is measured from the corpus; a distance is measured from the
   // person.** Shown together they contradict each other — a Vancouver venue
   // carried "UNDER 1 KM AWAY" beside "METRO VANCOUVER" for somebody standing
@@ -145,22 +147,30 @@ export function PossibilityCard({
   // `unknown` is Atlas saying it has not classified this yet. True, and not
   // worth printing at somebody.
   const showTag = tag && tag.toLowerCase() !== "unknown";
-  /**
-   * **A photograph that does not arrive is the same as not having one.**
-   *
-   * Atlas's images are served from dozens of publishers' own hosts, and one
-   * of them being down, moved or hotlink-protected is an ordinary Tuesday —
-   * measured on the live page, one card in fifty rendered the browser's
-   * broken-image glyph. The card falls back to the same text-first treatment
-   * a subject with no photograph gets, so the shelf never shows a torn icon.
-   */
-  const [failed, setFailed] = useState(false);
-  const picture = failed ? undefined : experience.heroMedia?.src;
+  // **A picture that fails to load is no picture**, not a grey box. The
+  // venue's picture is tried next, then the text-first treatment.
+  const [broken, setBroken] = useState<ReadonlySet<string>>(new Set());
+  const own = experience.heroMedia?.src;
+  const venue = experience.contextualMedia;
+  const picture = own && !broken.has(own) ? own : undefined;
+  const venuePicture =
+    !picture && venue?.heroUrl && !broken.has(venue.heroUrl)
+      ? venue
+      : undefined;
+  const fail = (src: string) => setBroken((prev) => new Set(prev).add(src));
+  // Atlas's verdict for the age it was asked about — the card says what was
+  // stated, and says plainly when nothing was.
+  const askedAge = experience.suitability?.forAge?.age;
+  const age =
+    askedAge === undefined
+      ? undefined
+      : (ageLine(experience, askedAge) ?? "No age guidance found");
+  const day = dayLine(experience);
 
   return (
     <li
       data-testid="possibility"
-      data-has-image={picture ? "true" : "false"}
+      data-has-image={picture ? "true" : venuePicture ? "venue" : "false"}
       // **White, no border, no shadow, no card.** The photograph is the
       // object; the text sits under it on the page's own ground.
       className={`group relative flex h-full flex-col bg-white ${className}`}
@@ -173,35 +183,26 @@ export function PossibilityCard({
         />
       )}
 
-      {/* **A card with no photograph is a different card, not a broken one.**
-          Atlas publishes a lead image for 536 of 2,680 subjects, so this is
-          not an edge case — it is a fifth of what anybody sees, and it was an
-          empty 4:3 rectangle with the words "No photograph" in the corner.
-          Four of those in a row read as a page that had failed to load.
-
-          So the slot keeps its proportions, and the type fills it: the
-          subject's own name, large, on a tinted field with a rule in the
-          reader's accent. Nothing is invented, nothing is borrowed from
-          another place, and the shelf's rhythm is unchanged. */}
-      {!picture && (
+      {/* **No photograph is a treatment, not a hole.** A grey 4:3 box saying
+          "No photograph" repeated down a shelf read as a broken page. Without
+          a picture the card leads with its words instead — what kind of thing
+          it is and its name, set large on a quiet tint — at a third of the
+          height, so a shelf of mixed cards still reads as one row. */}
+      {!picture && !venuePicture && (
         <div
-          data-testid="possibility-untitled"
-          className="relative flex aspect-[4/3] w-full flex-col justify-end overflow-hidden bg-[#111]/[0.04] p-4"
+          data-testid="possibility-text-lead"
+          className="flex min-h-[7.5rem] w-full flex-col justify-end rounded-xl p-4"
+          style={{
+            backgroundColor: "color-mix(in srgb, var(--ghad-accent) 9%, white)",
+          }}
         >
-          <span
-            aria-hidden
-            className="absolute top-4 left-4 block h-[3px] w-8"
-            style={{ backgroundColor: "var(--ghad-accent)" }}
-          />
-          {/* **The kind of thing it is, not its name.** The name is the `h3`
-              six pixels below; printing it twice made the card read as a
-              stutter and put the same string in the accessibility tree twice.
-              What Atlas states instead — `park`, `seasonal event`, `farmers
-              market` — is real, is not repeated anywhere else on a card
-              without a photograph, and gives the slot something to be. */}
-          <span className="ghad-display line-clamp-3 text-[26px] leading-[1.02] font-extrabold tracking-[-0.03em] text-balance text-[#111]/35 uppercase sm:text-[30px]">
+          {/* What Atlas says it is, or at least what kind of thing. */}
+          <p className="ghad-accent-text text-[10px] font-semibold tracking-[0.12em] uppercase">
             {showTag ? tag : experience.kind}
-          </span>
+          </p>
+          <h3 className="ghad-display mt-1 line-clamp-3 text-[24px] leading-[1.02] font-extrabold tracking-[-0.035em] text-balance text-[#111]">
+            {experience.title}
+          </h3>
         </div>
       )}
       {picture && (
@@ -212,9 +213,30 @@ export function PossibilityCard({
             alt=""
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
-            onError={() => setFailed(true)}
+            onError={() => fail(picture)}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
+        </div>
+      )}
+      {/* **The venue's photograph, said to be the venue's.** An event with no
+          picture of itself may show where it happens (ADR 086) — labelled on
+          the image, so nobody mistakes the building for the event. */}
+      {venuePicture && (
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
+          <img
+            src={venuePicture.heroUrl}
+            alt={`${venuePicture.via.name}, where this happens`}
+            loading={priority ? "eager" : "lazy"}
+            onError={() => fail(venuePicture.heroUrl)}
+            className="h-full w-full object-cover"
+          />
+          <p
+            data-testid="possibility-venue-photo"
+            className="absolute bottom-2 left-2 max-w-[90%] truncate rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white uppercase"
+          >
+            Venue photo · {venuePicture.via.name}
+          </p>
         </div>
       )}
 
@@ -266,21 +288,18 @@ export function PossibilityCard({
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {where}
           </p>
-        ) : showTag && picture ? (
-          // Without a photograph the kind is already set large in the slot
-          // above, so printing it again here is the stutter that was.
+        ) : showTag && (picture || venuePicture) ? (
           <p className="truncate text-[10px] font-medium tracking-wide text-black/70 uppercase">
             {tag}
           </p>
         ) : null}
 
-        <h3
-          className={`ghad-display mt-1 leading-[1.1] font-extrabold tracking-[-0.03em] text-balance text-[#111] ${
-            picture ? "text-[18px]" : "text-[20px]"
-          }`}
-        >
-          {experience.title}
-        </h3>
+        {/* Without a picture the heading is in the text lead above. */}
+        {(picture || venuePicture) && (
+          <h3 className="ghad-display mt-1 text-[18px] leading-[1.1] font-extrabold tracking-[-0.03em] text-balance text-[#111]">
+            {experience.title}
+          </h3>
+        )}
 
         {/* **Atlas now says when its own sentence is not worth printing.**
             `descriptionAddsKnowledge: false` on 255 candidates, with a
@@ -315,6 +334,29 @@ export function PossibilityCard({
             className="ghad-accent-text mt-1.5 text-[11px] font-medium"
           >
             {recurs}
+          </p>
+        )}
+
+        {/* What the answers above found, in the source's terms: a stated age
+            rule or none, and whether stated hours cover the chosen day. */}
+        {age && (
+          <p
+            data-testid="possibility-age"
+            className={`mt-1.5 text-[11px] font-medium ${
+              age === "No age guidance found"
+                ? "text-black/40"
+                : "text-[#2b6b45]"
+            }`}
+          >
+            {age}
+          </p>
+        )}
+        {day && (
+          <p
+            data-testid="possibility-day"
+            className="mt-1 text-[11px] font-medium text-black/55"
+          >
+            {day}
           </p>
         )}
 

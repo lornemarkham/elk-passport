@@ -18,21 +18,18 @@ interface DiscoveryListFiltersProps {
   resultCount: number;
   /** The category the count is inside, where one is chosen. */
   within?: string;
-  /**
-   * **The way out of the answers, offered rather than taken.**
-   *
-   * Search now runs inside the set the questionnaire produced, so a search
-   * that finds nothing might be finding nothing *here*. This is the link that
-   * says so and widens it — present only while the answers are actually
-   * holding something back, so an unfiltered page never offers to unfilter
-   * itself.
-   */
-  broadenHref?: string;
   kinds: ExperienceKind[];
   selectedKind: ExperienceKind | null;
   onKindChange: (kind: ExperienceKind | null) => void;
   /** True when a query or an explicit kind is active — the view is then searching the whole corpus. */
   browsing: boolean;
+  /** The answers above in a line — what search is searching within. */
+  context?: string;
+  /** Whether search has been widened past those answers. */
+  everywhere?: boolean;
+  onEverywhere?: (next: boolean) => void;
+  /** How many matches the answers above are leaving out. */
+  outsideCount?: number;
 }
 
 function toggleValue(values: string[], value: string): string[] {
@@ -98,7 +95,10 @@ export function DiscoveryListFilters({
   availableCompanions,
   resultCount,
   within,
-  broadenHref,
+  context,
+  everywhere = false,
+  onEverywhere,
+  outsideCount = 0,
 }: DiscoveryListFiltersProps) {
   const hasChipCategories =
     availableMoods.length > 0 ||
@@ -116,11 +116,53 @@ export function DiscoveryListFilters({
             type="text"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search experiences…"
+            placeholder="Search places, events and things to do…"
             className="w-full bg-transparent text-sm text-[#111] placeholder:text-black/35 focus:outline-none"
           />
         </div>
       </label>
+
+      {/* **What search searches, said before anybody types.** It follows
+          the answers above — distance, day, age — and never resets them.
+          Widening is one explicit tap, and so is coming back. */}
+      <p
+        data-testid="search-scope"
+        className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/50"
+      >
+        {everywhere ? (
+          <>
+            <span>Searching everything, ignoring your answers above.</span>
+            {onEverywhere && context && (
+              <button
+                type="button"
+                data-testid="search-in-context"
+                onClick={() => onEverywhere(false)}
+                className="ghad-accent-text font-semibold underline underline-offset-4"
+              >
+                Search {context} instead
+              </button>
+            )}
+          </>
+        ) : context ? (
+          <>
+            <span>Searching {context}.</span>
+            {onEverywhere && (
+              <button
+                type="button"
+                data-testid="search-everywhere"
+                onClick={() => onEverywhere(true)}
+                className="ghad-accent-text font-semibold underline underline-offset-4"
+              >
+                {browsing && outsideCount > 0
+                  ? `Search everywhere — ${outsideCount} more`
+                  : "Search everywhere"}
+              </button>
+            )}
+          </>
+        ) : (
+          <span>Searches names and descriptions of everything here.</span>
+        )}
+      </p>
 
       {hasChipCategories && (
         <div className="mt-4 flex flex-col gap-3">
@@ -257,19 +299,6 @@ export function DiscoveryListFilters({
             : `${resultCount} ${resultCount === 1 ? "result" : "results"}${
                 within ? ` in ${within}` : ""
               }${query.trim() ? ` for “${query.trim()}”` : ""}`}
-          {broadenHref && (
-            <>
-              {" · "}
-              <a
-                href={broadenHref}
-                data-testid="search-everywhere"
-                style={{ color: "var(--ghad-accent)" }}
-                className="font-semibold underline underline-offset-4"
-              >
-                search everywhere instead
-              </a>
-            </>
-          )}
         </p>
       )}
     </div>

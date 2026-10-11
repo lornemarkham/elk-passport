@@ -241,12 +241,11 @@ describe("the controls, and what they are allowed to claim", () => {
     // printed chips anyway.
     renderPage();
     expect(verbs("activity")).toEqual([]);
-    // Said to a person, not counted at them — see Part 9 of the quality pass.
     expect(
       screen.getAllByTestId("ghad-note").map((n) => n.textContent),
     ).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("Nothing here has said what you can do"),
+        expect.stringContaining("says what you can do there yet"),
       ]),
     );
   });

@@ -512,6 +512,67 @@ export interface DiscoveryCandidate {
    * rather than only *what is it called*.
    */
   knowledge?: CandidateKnowledge;
+  /**
+   * **How far this is from the place the feed was asked from** —
+   * `candidate-distance/1` (ADR 094). Present only when Passport sends
+   * `lat`/`lng`. Straight-line kilometres, never a drive time.
+   */
+  distance?: CandidateDistance;
+  /**
+   * **A picture of where an event happens, never of the event** —
+   * `candidate-media/1` (ADR 086). Present only where the candidate has no
+   * lead image of its own and a venue it happens at does.
+   */
+  contextualMedia?: CandidateContextualMedia;
+  /**
+   * **Whether stated hours, seasons or dates cover the day asked about** —
+   * `candidate-schedule/1`. `onDate` is present only when Passport sends `on`.
+   */
+  schedule?: CandidateSchedule;
+}
+
+/**
+ * `candidate-distance/1`. `basis: "town"` is a town centre, which can be
+ * several kilometres from the door — say "in Vernon", not "0.4 km away".
+ */
+export type CandidateDistance =
+  | {
+      readonly state: "measured";
+      readonly km: number;
+      readonly basis: "coordinates" | "town";
+      readonly coordinatesBasis?: "observed" | "derived";
+      readonly town?: string;
+      readonly within?: boolean;
+    }
+  | {
+      readonly state: "bounded";
+      readonly atLeastKm: number;
+      readonly area: string;
+      readonly within?: false;
+    }
+  | { readonly state: "conflicting"; readonly because: string }
+  | { readonly state: "unknown"; readonly because?: string };
+
+export interface CandidateContextualMedia {
+  readonly heroUrl: string;
+  readonly via: {
+    readonly id: string;
+    readonly kind: string;
+    readonly name: string;
+    readonly relation?: string;
+  };
+}
+
+export type ScheduleReading = "on" | "not-on" | "conflicting" | "unknown";
+
+export interface CandidateSchedule {
+  readonly stated: "stated" | "unknown";
+  readonly onDate?: {
+    readonly date: string;
+    readonly reading: ScheduleReading;
+    readonly basis: string;
+    readonly note?: string;
+  };
 }
 
 /** Something a subject offers, and how Atlas came to say so. */

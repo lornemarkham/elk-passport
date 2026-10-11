@@ -153,7 +153,7 @@ export function rainLine(experience: Experience): string | undefined {
   const said = SAYS[reading];
   if (!said) return undefined;
   // Atlas worked it out rather than being told. Said as a reading, not a fact.
-  return basis === "derived" ? `${said}, going by what Atlas holds` : said;
+  return basis === "derived" ? `${said}, going by what we know` : said;
 }
 
 const SAYS: Partial<Record<RainReading, string>> = {

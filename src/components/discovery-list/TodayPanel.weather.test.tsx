@@ -167,7 +167,7 @@ describe("a rainy afternoon", () => {
   it("says a derived reading is a reading, not a promise", () => {
     panel(POOL, true, "all-day");
     expect(screen.getAllByTestId("today-shelter")[0]).toHaveTextContent(
-      "going by what Atlas holds",
+      "going by what we know",
     );
   });
 
@@ -186,7 +186,7 @@ describe("when nothing says it can take the rain", () => {
     const said = screen.getByTestId("today-weather-caveat").textContent!;
     expect(said).toContain("none of these say they can take it");
     expect(said).toContain("1 are out in the open");
-    expect(said).toContain("says nothing either way about 1");
+    expect(said).toContain("nothing is known either way about 1");
   });
 });
 
@@ -264,7 +264,7 @@ describe("how long they have", () => {
   it("never claims how long any of it takes", () => {
     panel(MANY, false, "all-day");
     const said = screen.getByTestId("today-answer").textContent!.toLowerCase();
-    expect(said).toContain("does not know how long any of these take");
+    expect(said).toContain("don't know how long any of these take");
     for (const invented of ["minutes", "hours each", "itinerary", "schedule"]) {
       expect(said).not.toContain(invented);
     }
