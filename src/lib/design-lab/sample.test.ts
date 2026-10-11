@@ -16,7 +16,7 @@ vi.mock("@/lib/data/atlas-repo", () => ({
   listDiscoveryCandidates: () => listDiscoveryCandidates(),
 }));
 
-const { gallery, subject } = await import("./sample");
+const { byDoing, gallery, subject } = await import("./sample");
 
 const candidate = (over: Partial<DiscoveryCandidate>): DiscoveryCandidate =>
   ({
@@ -143,5 +143,62 @@ describe("one subject, for the detail prototypes", () => {
 
   it("is nothing for an id Atlas does not serve", async () => {
     expect(await subject("not-a-thing")).toBeUndefined();
+  });
+});
+
+/**
+ * **Grouping by what Atlas says you can do.**
+ *
+ * Round two's directions let somebody explore by activity — a rail per verb, a
+ * table of contents, chapter rules. The label is the affordance string in
+ * Atlas's own spelling, because merging `Hiking` with `walking/hiking` would
+ * be the taxonomy the doctrine refuses.
+ */
+describe("grouping by activity", () => {
+  const offering = (id: string, ...doing: string[]) =>
+    ({ id, title: id, kind: "Place", doing, facts: [] }) as never;
+
+  it("keeps Atlas's own wording and spelling", () => {
+    const groups = byDoing(
+      [offering("a", "mountain biking"), offering("b", "mountain biking")],
+      1,
+    );
+    expect(groups[0]!.label).toBe("mountain biking");
+  });
+
+  it("treats one spelling as one activity", () => {
+    const groups = byDoing(
+      [offering("a", "Playground"), offering("b", "playground")],
+      1,
+    );
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.subjects).toHaveLength(2);
+  });
+
+  it("leads with the activity most places stand behind", () => {
+    const groups = byDoing(
+      [
+        offering("a", "Hiking", "Swimming"),
+        offering("b", "Hiking"),
+        offering("c", "Hiking"),
+        offering("d", "Swimming"),
+      ],
+      1,
+    );
+    expect(groups.map((g) => g.label)).toEqual(["Hiking", "Swimming"]);
+  });
+
+  it("leaves out an activity too thin to fill a rail", () => {
+    // A horizontal rail holding one tile is not a rail.
+    const groups = byDoing(
+      [offering("a", "Hiking", "Abseiling"), offering("b", "Hiking")],
+      2,
+    );
+    expect(groups.map((g) => g.label)).toEqual(["Hiking"]);
+  });
+
+  it("offers nothing where Atlas states no verbs", () => {
+    expect(byDoing([offering("a")], 1)).toEqual([]);
+    expect(byDoing([], 1)).toEqual([]);
   });
 });

@@ -89,7 +89,11 @@ const substance = (subject: Subject): number =>
   Math.min(subject.facts.length, 2) +
   (subject.place ? 1 : 0);
 
-export async function gallery(): Promise<Gallery> {
+/**
+ * @param depth how many photographed subjects to carry. Round one's layouts
+ * show a dozen; round two's horizontal rails need enough to fill several.
+ */
+export async function gallery(depth = 12): Promise<Gallery> {
   const candidates = await listDiscoveryCandidates().catch(() => []);
   const subjects = candidates.map(candidateToExperience).map(subjectOf);
 
@@ -106,10 +110,41 @@ export async function gallery(): Promise<Gallery> {
     .sort((a, b) => substance(b) - substance(a));
 
   return {
-    featured: ranked.filter((s) => s.heroUrl).slice(0, 12),
-    rest: ranked.filter((s) => !s.heroUrl).slice(0, 12),
+    featured: ranked.filter((s) => s.heroUrl).slice(0, depth),
+    rest: ranked.filter((s) => !s.heroUrl).slice(0, depth),
     total: candidates.length,
   };
+}
+
+/**
+ * **Subjects grouped by what Atlas says you can do there.**
+ *
+ * The label is the affordance string in Atlas's own spelling — no taxonomy, no
+ * merging of `Hiking` with `walking/hiking`. Used by the round-two directions
+ * that let somebody explore by activity rather than by scrolling.
+ */
+export function byDoing(
+  subjects: readonly Subject[],
+  least = 2,
+): readonly {
+  readonly label: string;
+  readonly subjects: readonly Subject[];
+}[] {
+  const groups = new Map<string, { label: string; subjects: Subject[] }>();
+  for (const subject of subjects) {
+    for (const doing of subject.doing) {
+      const key = doing.toLowerCase();
+      const row = groups.get(key);
+      if (row) row.subjects.push(subject);
+      else groups.set(key, { label: doing, subjects: [subject] });
+    }
+  }
+  return [...groups.values()]
+    .filter((group) => group.subjects.length >= least)
+    .sort(
+      (a, b) =>
+        b.subjects.length - a.subjects.length || a.label.localeCompare(b.label),
+    );
 }
 
 /** One subject by id, for the detail prototypes. */

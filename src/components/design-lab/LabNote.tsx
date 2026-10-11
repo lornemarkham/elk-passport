@@ -15,7 +15,13 @@ export function LabNote({
   direction,
   tone = "light",
 }: {
-  readonly direction: "editorial" | "cinematic" | "playful";
+  readonly direction:
+    | "editorial"
+    | "cinematic"
+    | "playful"
+    | "editorial-cinematic"
+    | "immersive explorer"
+    | "travel journal";
   readonly tone?: "light" | "dark";
 }) {
   const dark = tone === "dark";
@@ -35,7 +41,7 @@ export function LabNote({
         exploration, not the product
       </span>
       <Link href="/labs/design" className="underline underline-offset-2">
-        Compare all three
+        Compare all six
       </Link>
     </div>
   );
