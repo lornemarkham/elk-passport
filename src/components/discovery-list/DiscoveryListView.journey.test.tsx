@@ -122,6 +122,18 @@ function view(signedIn: boolean, at = "https://passport.test/discovery") {
 
 const here = () => window.location.search;
 
+/**
+ * One of the five controls, by the row it is in and the value it sets.
+ *
+ * The situation used to be asked twice — once in the panel's own
+ * `situation-*` buttons and once above it — and only one set survived. These
+ * are the surviving ones; see `FeelLikeDoing`.
+ */
+const control = (row: string, value: string) =>
+  screen
+    .getAllByTestId("ghad-choice")
+    .find((b) => b.dataset.row === row && b.textContent?.includes(value))!;
+
 beforeEach(() => {
   listBoards.mockClear();
   listBoardItems.mockClear();
@@ -136,9 +148,9 @@ beforeEach(() => {
 describe("the exploration is written down as it happens", () => {
   it("keeps a category, a search, a situation and a verb in the URL", async () => {
     view(false);
-    fireEvent.click(screen.getByTestId("situation-child"));
+    fireEvent.click(control("company", "a young child"));
     await waitFor(() => expect(here()).toContain("who=child"));
-    fireEvent.click(screen.getByTestId("situation-half-day"));
+    fireEvent.click(control("time", "half a day"));
     fireEvent.change(screen.getByPlaceholderText(/search/i), {
       target: { value: "farm" },
     });
@@ -154,11 +166,11 @@ describe("the exploration is written down as it happens", () => {
       "https://passport.test/discovery?q=farm&who=child&how=half-day",
     );
     expect(screen.getByPlaceholderText(/search/i)).toHaveValue("farm");
-    expect(screen.getByTestId("situation-child")).toHaveAttribute(
+    expect(control("company", "a young child")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByTestId("situation-half-day")).toHaveAttribute(
+    expect(control("time", "half a day")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -239,7 +251,7 @@ describe("coming back signed in", () => {
     view(true, RETURNED);
     await waitFor(() => expect(wantToDo).toHaveBeenCalled());
     expect(screen.getByPlaceholderText(/search/i)).toHaveValue("farm");
-    expect(screen.getByTestId("situation-child")).toHaveAttribute(
+    expect(control("company", "a young child")).toHaveAttribute(
       "aria-pressed",
       "true",
     );

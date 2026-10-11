@@ -1,7 +1,7 @@
 import type { Experience } from "@/domain/experience/types";
 import { statedDay } from "@/domain/experience/eventTime";
 import { INTENTS, intentOf, type IntentKey } from "./intents";
-import { ruledOutOn } from "./recurrence";
+import { ruledOutOn, weekdayOf } from "./recurrence";
 
 /**
  * **What Discovery actually shows, as sections rather than as a stream.**
@@ -278,6 +278,15 @@ export interface ComposeOptions {
   readonly size?: number;
   /** Where Passport is looking, for the remainder section's wording only. */
   readonly where?: string;
+  /**
+   * **The day somebody picked, `YYYY-MM-DD`** — the page composes around it
+   * instead of around now.
+   *
+   * Without this, choosing *tomorrow* narrowed the pool and left the headings
+   * talking about today: a section called *Happening today* sat above cards
+   * for a different day, which is worse than not offering the control at all.
+   */
+  readonly on?: string;
 }
 
 /**
@@ -299,9 +308,13 @@ export interface ComposeOptions {
  */
 export function composeDiscovery(
   experiences: readonly Experience[],
-  { now, size = SECTION_SIZE, where }: ComposeOptions,
+  { now, size = SECTION_SIZE, where, on }: ComposeOptions,
 ): readonly DiscoverySection[] {
-  const today = dayOf(now);
+  const today = on ?? dayOf(now);
+  // Said in the person's own terms where they chose a day, and left alone
+  // where they did not — a heading must never name a day other than the one
+  // the cards under it are about.
+  const chosen = on && on !== dayOf(now) ? weekdayOf(on) : undefined;
   const live = withoutRepeats(
     experiences.filter((experience) => !isOver(experience, today)),
   );
@@ -321,8 +334,12 @@ export function composeDiscovery(
   add(
     section(
       "today",
-      "Happening today",
-      "Dated, running now, and over by tomorrow for some of it.",
+      chosen
+        ? `Happening that ${chosen.charAt(0).toUpperCase()}${chosen.slice(1)}`
+        : "Happening today",
+      chosen
+        ? "Dated by Atlas, and running on the day you picked."
+        : "Dated, running now, and over by tomorrow for some of it.",
       "when",
       // **Picture first here too.** Ordered purely by start date, this
       // section showed 0 of 8 cards with a photograph while *Somewhere to
@@ -340,7 +357,9 @@ export function composeDiscovery(
     section(
       "on-now",
       "On for a while",
-      "Running now and for longer than a month — go whenever suits.",
+      chosen
+        ? "Running on that day and for longer than a month either side — go whenever suits."
+        : "Running now and for longer than a month — go whenever suits.",
       "when",
       pictureFirst(take(onNow(live, today))),
       size,

@@ -65,8 +65,8 @@ export function DiscoveryModeSwitcher({
             data-testid={`mode-${option.label.toLowerCase()}`}
             className={
               selected
-                ? "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#2b2015] px-4 text-sm font-medium text-[#f7ecd3]"
-                : "inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-[#2b2015]/60 transition-colors hover:bg-[#2b2015]/8 hover:text-[#2b2015]"
+                ? "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#111] px-4 text-sm font-medium text-white"
+                : "inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-black/60 transition-colors hover:bg-[#111]/8 hover:text-[#111]"
             }
           >
             <Icon className="h-3.5 w-3.5" />

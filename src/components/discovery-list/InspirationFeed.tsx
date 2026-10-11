@@ -60,7 +60,7 @@ export function InspirationFeed({
 
   if (shelves.length === 0) {
     return (
-      <div className="rounded-xl border border-[#8a5a24]/20 bg-white/50 p-10 text-center">
+      <div className="rounded-xl border border-black/20 bg-white p-10 text-center">
         <p className="font-medium text-[#3b2a17]">Nothing to show yet</p>
         <p className="mt-1 text-sm text-[#6b5637]">{emptyLine}</p>
       </div>
@@ -81,7 +81,7 @@ export function InspirationFeed({
             <p className="mt-0.5 text-sm text-[#6b5637]">
               {shelf.blurb}
               {"lastYear" in shelf && shelf.lastYear && (
-                <span className="ml-2 rounded-full border border-[#8a5a24]/30 px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#8a5a24] uppercase">
+                <span className="ghad-accent-text ml-2 rounded-full border border-black/30 px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
                   2025
                 </span>
               )}
@@ -136,7 +136,7 @@ function InspirationCard({
 
   return (
     <li
-      className="relative flex w-64 shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-[#8a5a24]/20 bg-white shadow-sm transition-shadow hover:shadow-md"
+      className="relative flex w-64 shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-black/20 bg-white shadow-sm transition-shadow hover:shadow-md"
       data-navigates={destination ? "true" : "false"}
     >
       {/* The whole card is the link, as an overlay — a <button> inside an
@@ -162,7 +162,7 @@ function InspirationCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center px-4 text-center">
-            <span className="font-serif text-lg leading-tight text-[#8a5a24]">
+            <span className="ghad-accent-text font-serif text-lg leading-tight">
               {experience.title}
             </span>
           </div>
@@ -174,7 +174,7 @@ function InspirationCard({
           aria-label={
             saved ? `${experience.title} saved` : `Save ${experience.title}`
           }
-          className="absolute top-2 right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#3b2a17] shadow-sm transition-colors hover:bg-white"
+          className="absolute top-2 right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#3b2a17] shadow-sm transition-colors hover:bg-white"
         >
           {saved ? (
             <Check className="h-4 w-4" aria-hidden />
@@ -191,10 +191,10 @@ function InspirationCard({
           </h3>
         </div>
 
-        {when && <p className="text-xs font-medium text-[#8a5a24]">{when}</p>}
+        {when && <p className="ghad-accent-text text-xs font-medium">{when}</p>}
 
         {experience.subtype && !when && (
-          <p className="text-[11px] tracking-wide text-[#8a5a24] uppercase">
+          <p className="ghad-accent-text text-[11px] tracking-wide uppercase">
             {experience.subtype}
           </p>
         )}
@@ -217,7 +217,7 @@ function InspirationCard({
         {onWant &&
           (wanted ? (
             <span
-              className="relative z-20 mt-auto pt-1 text-xs font-medium text-[#8a5a24]"
+              className="ghad-accent-text relative z-20 mt-auto pt-1 text-xs font-medium"
               data-testid="wanted"
             >
               In my October
@@ -226,7 +226,7 @@ function InspirationCard({
             <button
               type="button"
               onClick={onWant}
-              className="relative z-20 mt-auto -ml-1.5 flex min-h-9 items-center self-start rounded-full px-2 text-xs font-medium text-[#8a5a24] hover:bg-[#8a5a24]/10"
+              className="ghad-accent-text relative z-20 mt-auto -ml-1.5 flex min-h-9 items-center self-start rounded-full px-2 text-xs font-medium hover:bg-black/10"
               data-testid="want-to-do"
             >
               Want to do

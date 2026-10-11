@@ -23,6 +23,7 @@ export function DiscoverySections({
   today,
   home,
   origin,
+  carry,
   savedIds,
   savingId,
   onSave,
@@ -34,6 +35,8 @@ export function DiscoverySections({
   readonly home?: string;
   /** Where the reader is, once they have said, so a placed card can say how far. */
   readonly origin?: Point;
+  /** What the exploration carries into a card's destination; see `PossibilityCard`. */
+  readonly carry?: string;
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
@@ -47,6 +50,7 @@ export function DiscoverySections({
           {...(today ? { today } : {})}
           {...(home ? { home } : {})}
           {...(origin ? { origin } : {})}
+          {...(carry ? { carry } : {})}
           savedIds={savedIds}
           savingId={savingId}
           onSave={onSave}
@@ -61,6 +65,7 @@ function Section({
   today,
   home,
   origin,
+  carry,
   savedIds,
   savingId,
   onSave,
@@ -69,6 +74,7 @@ function Section({
   readonly today?: string;
   readonly home?: string;
   readonly origin?: Point;
+  readonly carry?: string;
   readonly savedIds: ReadonlySet<string>;
   readonly savingId: string | null;
   readonly onSave: (experience: Experience) => void;
@@ -82,27 +88,36 @@ function Section({
   return (
     <section data-testid="discovery-section" data-section={section.id}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-heading text-xl text-[#2b2015] sm:text-2xl">
+        <h2 className="ghad-display text-[24px] leading-[0.98] font-extrabold tracking-[-0.04em] text-[#111] uppercase sm:text-[40px]">
           {section.title}
         </h2>
         {/* The count is said once, quietly, and only because "216 of these"
             is genuinely useful when deciding whether to open a section. It is
             never the headline — "2248 to explore" was. */}
-        <p className="text-xs text-[#2b2015]/45 tabular-nums">
+        <p className="text-xs text-black/40 tabular-nums">
           {section.total}{" "}
           {section.total === 1 ? "possibility" : "possibilities"}
         </p>
       </div>
-      <p className="mt-0.5 text-sm text-[#2b2015]/55">{section.note}</p>
+      <p className="mt-1 max-w-[76ch] text-[13px] text-black/45">
+        {section.note}
+      </p>
 
-      <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* **A shelf, not a grid.** Cards nearly fill a phone with the next one
+          visibly peeking, snap points so a thumb lands square, and the same
+          row scrolls with a trackpad on a desktop. `overscroll-x-contain`
+          keeps a swipe inside the shelf rather than triggering the browser's
+          back gesture. */}
+      <ul className="-mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:gap-6 sm:px-6">
         {shown.map((experience) => (
           <PossibilityCard
+            className="w-[78vw] shrink-0 snap-start sm:w-[360px] lg:w-[400px]"
             key={experience.id}
             experience={experience}
             {...(today ? { today } : {})}
             {...(home ? { home } : {})}
             {...(origin ? { origin } : {})}
+            {...(carry ? { carry } : {})}
             saved={savedIds.has(experience.id)}
             saving={savingId === experience.id}
             onSave={() => onSave(experience)}
@@ -119,7 +134,8 @@ function Section({
           type="button"
           data-testid="show-more"
           onClick={() => setMore((n) => n + 1)}
-          className="mt-4 inline-flex min-h-11 items-center rounded-full border border-[#8a5a24]/30 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+          style={{ color: "var(--ghad-accent)" }}
+          className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4"
         >
           {/* Not `More {title}` — the remainder section is already called
               "More to explore", which produced "More more to explore". */}

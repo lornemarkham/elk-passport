@@ -82,6 +82,8 @@ export function TodayPanel({
   experiences,
   situation,
   onSituation,
+  asking = true,
+  forecastApplies = true,
   place,
   origin,
   withinLabel,
@@ -122,20 +124,43 @@ export function TodayPanel({
   readonly experiences: readonly Experience[];
   readonly situation: Situation;
   readonly onSituation: (next: Situation) => void;
+  /**
+   * **Whether this panel asks the questions, or only answers them.**
+   *
+   * It asked *Who's with you today? / How old / How long* directly beneath the
+   * five rows of **"What do you feel like doing?"**, which ask the same three
+   * things. Two sets of controls for one question is the filter dashboard the
+   * brief rules out, and the second set silently disagreed with the first on
+   * which ages were offered.
+   *
+   * So Discovery passes `false` and this becomes what it always was underneath
+   * — the answer. Any surface that has no other way to ask leaves it alone.
+   */
+  readonly asking?: boolean;
+  /**
+   * **Whether `today` is actually today.**
+   *
+   * Once somebody picks a day, this panel still held a forecast — and a
+   * forecast is a claim about the next few hours. Printing today's sky under
+   * a heading naming next Sunday is the kind of quiet lie this product keeps
+   * finding in itself. So a chosen day drops the sky and says why, rather
+   * than reusing it.
+   */
+  readonly forecastApplies?: boolean;
 }) {
-  const shown = weather;
+  const shown = forecastApplies ? weather : undefined;
   const answer = answerFor(experiences, situation, { wet: shown?.wet });
   const asked = Boolean(situation.company);
 
   return (
     <section
       data-testid="today-panel"
-      className="rounded-2xl border border-[#8a5a24]/20 bg-[#f7ecd3]/50 p-5"
+      className="border-t border-black/10 pt-5"
     >
       {/* What Passport already knows, said once and never asked for. */}
       <p
         data-testid="today-known"
-        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide text-[#8a5a24] uppercase"
+        className="ghad-accent-text flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide uppercase"
       >
         <span>{today}</span>
         {shown && (
@@ -172,15 +197,19 @@ export function TodayPanel({
           explanation, and the sentence beside it is what is wrong without it. */}
       <p
         data-testid="today-place"
-        className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#2b2015]/50"
+        className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/50"
       >
-        <span>{placeNote(place, shown?.area)}</span>
+        <span>
+          {forecastApplies
+            ? placeNote(place, shown?.area)
+            : "Environment Canada publishes a forecast for the next few days only, so Passport has no sky to report for that day."}
+        </span>
         {ask && (
           <button
             type="button"
             data-testid="use-my-location"
             onClick={ask}
-            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[#8a5a24]/30 px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:border-[#8a5a24]/60 hover:text-[#2b2015]"
+            className="ghad-accent-text inline-flex min-h-8 items-center gap-1 rounded-full border border-black/30 px-2.5 text-xs font-medium transition-colors hover:border-black/60 hover:text-[#111]"
           >
             <MapPin className="h-3 w-3" aria-hidden />
             Use my location
@@ -189,7 +218,7 @@ export function TodayPanel({
         {place.state === "asking" && (
           <span
             data-testid="location-asking"
-            className="inline-flex items-center gap-1 text-[#8a5a24]"
+            className="ghad-accent-text inline-flex items-center gap-1"
           >
             <LoaderCircle className="h-3 w-3 animate-spin" aria-hidden />
             Finding your area…
@@ -197,81 +226,85 @@ export function TodayPanel({
         )}
       </p>
 
-      <h2 className="font-heading mt-2 text-xl text-[#2b2015] sm:text-2xl">
-        Who&apos;s with you today?
-      </h2>
-      <p className="mt-1 text-sm text-[#2b2015]/55">
-        Two taps. Passport already knows the date and the sky.
-      </p>
+      {asking && (
+        <>
+          <h2 className="mt-2 text-xl text-[#111] sm:text-2xl">
+            Who&apos;s with you today?
+          </h2>
+          <p className="mt-1 text-sm text-black/55">
+            Two taps. Passport already knows the date and the sky.
+          </p>
 
-      <div className="mt-4 flex flex-col gap-3">
-        <Choice
-          label="Who"
-          icon={Users}
-          options={COMPANY}
-          selected={situation.company}
-          onPick={(value) =>
-            onSituation({
-              ...situation,
-              company: value === situation.company ? undefined : value,
-            })
-          }
-        />
-        {/* **Asked, never assumed.** Atlas can say whether a seven-year-old
+          <div className="mt-4 flex flex-col gap-3">
+            <Choice
+              label="Who"
+              icon={Users}
+              options={COMPANY}
+              selected={situation.company}
+              onPick={(value) =>
+                onSituation({
+                  ...situation,
+                  company: value === situation.company ? undefined : value,
+                })
+              }
+            />
+            {/* **Asked, never assumed.** Atlas can say whether a seven-year-old
             is admitted somewhere — but only if it is told seven. "With a young
             child" is not an age, and defaulting it to five would invent the
             one fact this is for. Declining is a real answer. */}
-        {situation.company === "child" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex min-w-[4.5rem] items-center gap-1.5 text-xs font-medium text-[#2b2015]/45">
-              How old
-            </span>
-            {AGES.map((age) => {
-              const on = childAge === age;
-              return (
-                <button
-                  key={age}
-                  type="button"
-                  data-testid={`child-age-${age}`}
-                  aria-pressed={on}
-                  onClick={() => onChildAge(on ? undefined : age)}
-                  className={
-                    on
-                      ? "inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-3.5 text-sm font-medium text-[#f7ecd3]"
-                      : "inline-flex min-h-11 items-center rounded-full border border-[#8a5a24]/25 px-3.5 text-sm font-medium text-[#2b2015]/75 transition-colors hover:border-[#8a5a24]/55"
-                  }
-                >
-                  {age}
-                </button>
-              );
-            })}
-            {childAge !== undefined && (
-              <button
-                type="button"
-                data-testid="child-age-clear"
-                onClick={() => onChildAge(undefined)}
-                className="inline-flex min-h-11 items-center px-2 text-xs font-medium text-[#2b2015]/45 hover:text-[#2b2015]/70"
-              >
-                Rather not say
-              </button>
+            {situation.company === "child" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex min-w-[4.5rem] items-center gap-1.5 text-xs font-medium text-black/45">
+                  How old
+                </span>
+                {AGES.map((age) => {
+                  const on = childAge === age;
+                  return (
+                    <button
+                      key={age}
+                      type="button"
+                      data-testid={`child-age-${age}`}
+                      aria-pressed={on}
+                      onClick={() => onChildAge(on ? undefined : age)}
+                      className={
+                        on
+                          ? "inline-flex min-h-11 items-center rounded-full bg-[#111] px-3.5 text-sm font-medium text-white"
+                          : "inline-flex min-h-11 items-center rounded-full border border-black/25 px-3.5 text-sm font-medium text-black/75 transition-colors hover:border-black/55"
+                      }
+                    >
+                      {age}
+                    </button>
+                  );
+                })}
+                {childAge !== undefined && (
+                  <button
+                    type="button"
+                    data-testid="child-age-clear"
+                    onClick={() => onChildAge(undefined)}
+                    className="inline-flex min-h-11 items-center px-2 text-xs font-medium text-black/45 hover:text-black/80"
+                  >
+                    Rather not say
+                  </button>
+                )}
+              </div>
+            )}
+
+            {asked && (
+              <Choice
+                label="How long"
+                options={WINDOW}
+                selected={situation.window}
+                onPick={(value) =>
+                  onSituation({
+                    ...situation,
+                    window: value === situation.window ? undefined : value,
+                  })
+                }
+              />
             )}
           </div>
-        )}
-
-        {asked && (
-          <Choice
-            label="How long"
-            options={WINDOW}
-            selected={situation.window}
-            onPick={(value) =>
-              onSituation({
-                ...situation,
-                window: value === situation.window ? undefined : value,
-              })
-            }
-          />
-        )}
-      </div>
+        </>
+      )}
 
       {asked && (
         <Answer
@@ -288,7 +321,7 @@ export function TodayPanel({
 }
 
 const Dot = () => (
-  <span aria-hidden className="text-[#8a5a24]/40">
+  <span aria-hidden className="text-black/25">
     ·
   </span>
 );
@@ -379,7 +412,7 @@ function Choice<T extends string>({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex min-w-[4.5rem] items-center gap-1.5 text-xs font-medium text-[#2b2015]/45">
+      <span className="inline-flex min-w-[4.5rem] items-center gap-1.5 text-xs font-medium text-black/45">
         {Icon && <Icon className="h-3.5 w-3.5" aria-hidden />}
         {label}
       </span>
@@ -394,8 +427,8 @@ function Choice<T extends string>({
             onClick={() => onPick(option.value)}
             className={
               on
-                ? "inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-4 text-sm font-medium text-[#f7ecd3]"
-                : "inline-flex min-h-11 items-center rounded-full border border-[#8a5a24]/25 px-4 text-sm font-medium text-[#2b2015]/75 transition-colors hover:border-[#8a5a24]/55 hover:text-[#2b2015]"
+                ? "inline-flex min-h-11 items-center rounded-full bg-[#111] px-4 text-sm font-medium text-white"
+                : "inline-flex min-h-11 items-center rounded-full border border-black/25 px-4 text-sm font-medium text-black/75 transition-colors hover:border-black/55 hover:text-[#111]"
             }
           >
             {option.label}
@@ -434,7 +467,7 @@ function Answer({
     return (
       <p
         data-testid="today-answer"
-        className="mt-5 border-t border-[#8a5a24]/15 pt-4 text-sm text-[#2b2015]/60"
+        className="mt-5 border-t border-black/15 pt-4 text-sm text-black/60"
       >
         Passport cannot narrow this down yet — Atlas states what a place offers,
         and almost nothing about who it suits. Everything below is the full list
@@ -545,16 +578,16 @@ function Answer({
   return (
     <div
       data-testid="today-answer"
-      className="mt-5 border-t border-[#8a5a24]/15 pt-4"
+      className="mt-5 border-t border-black/15 pt-4"
     >
       {matches.length === 0 ? (
-        <p className="text-sm text-[#2b2015]/60">
+        <p className="text-sm text-black/60">
           Atlas does not yet know what any of these places offer a young child.
           Nothing below is filtered for her — it is the ordinary list.
         </p>
       ) : (
         <>
-          <p className="text-sm text-[#2b2015]">
+          <p className="text-sm text-[#111]">
             <strong className="font-semibold">{matches.length}</strong> places
             say what a child could actually do there
             {withinLabel ? (
@@ -571,10 +604,7 @@ function Answer({
               what it says about the activity. A stated rule and a turn of
               phrase are different claims and are counted separately. */}
           {childAge !== undefined && (
-            <p
-              data-testid="today-age"
-              className="mt-2 text-sm text-[#2b2015]/70"
-            >
+            <p data-testid="today-age" className="mt-2 text-sm text-black/70">
               For a {childAge}-year-old, Atlas states a rule admitting{" "}
               <strong className="font-semibold">{byAge.welcome.length}</strong>{" "}
               of them
@@ -595,7 +625,7 @@ function Answer({
           {wet && (
             <p
               data-testid="today-weather-caveat"
-              className="mt-2 text-sm text-[#2b2015]/70"
+              className="mt-2 text-sm text-black/70"
             >
               {stands.length > 0 ? (
                 <>
@@ -641,7 +671,7 @@ function Answer({
                   Passport cannot know how long any of this takes. The length
                   of day decides how many different ideas to offer, and
                   nothing else. */}
-              <p className="mt-4 text-xs font-medium tracking-wide text-[#2b2015]/45 uppercase">
+              <p className="mt-4 text-xs font-medium tracking-wide text-black/45 uppercase">
                 {LEAD[situation.window ?? "none"]}
               </p>
 
@@ -652,13 +682,13 @@ function Answer({
                       key={direction.doing}
                       data-testid="today-direction"
                       data-doing={direction.doing}
-                      className="rounded-xl border border-[#8a5a24]/20 bg-white/40 px-3 py-2.5"
+                      className="rounded-xl border border-black/20 bg-white px-3 py-2.5"
                     >
                       <p className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="font-heading text-base text-[#2b2015] first-letter:uppercase">
+                        <span className="text-base text-[#111] first-letter:uppercase">
                           {direction.doing}
                         </span>
-                        <span className="text-xs text-[#2b2015]/50 tabular-nums">
+                        <span className="text-xs text-black/50 tabular-nums">
                           {direction.places.length}{" "}
                           {direction.places.length === 1 ? "place" : "places"}
                           {origin && direction.near > 0
@@ -668,7 +698,7 @@ function Answer({
                         {direction.ruledOutByRain && (
                           <span
                             data-testid="today-direction-rained-out"
-                            className="text-xs font-medium text-[#8a5a24]"
+                            className="ghad-accent-text text-xs font-medium"
                           >
                             every one of these is out in the open
                           </span>
@@ -703,11 +733,11 @@ function Answer({
                               key={place.id}
                               data-testid="today-direction-place"
                               {...(because ? { title: because } : {})}
-                              className="text-xs text-[#2b2015]/55"
+                              className="text-xs text-black/55"
                             >
                               {place.title}
                               {where ? (
-                                <span className="text-[#2b2015]/40">
+                                <span className="text-black/40">
                                   {" "}
                                   · {where}
                                 </span>
@@ -715,7 +745,7 @@ function Answer({
                               {shelter ? (
                                 <span
                                   data-testid="today-shelter"
-                                  className="text-[#8a5a24]"
+                                  className="ghad-accent-text"
                                 >
                                   {" "}
                                   · {shelter}
@@ -733,7 +763,7 @@ function Answer({
                               {adult ? (
                                 <span
                                   data-testid="today-supervision"
-                                  className="text-[#8a5a24]"
+                                  className="ghad-accent-text"
                                 >
                                   {" "}
                                   · an adult must come too
@@ -748,7 +778,7 @@ function Answer({
                 })}
               </ul>
 
-              <p className="mt-2 text-xs text-[#2b2015]/40">
+              <p className="mt-2 text-xs text-black/40">
                 Ideas, not a plan. Passport does not know how long any of these
                 take, or whether they are open.
               </p>

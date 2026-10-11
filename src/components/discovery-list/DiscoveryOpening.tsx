@@ -51,12 +51,12 @@ export function DiscoveryOpening({
     <header>
       <p
         data-testid="discovery-context"
-        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide text-[#8a5a24] uppercase"
+        className="ghad-accent-text flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide uppercase"
       >
         <span className="tabular-nums">{today}</span>
         {where && (
           <>
-            <span aria-hidden className="text-[#8a5a24]/40">
+            <span aria-hidden className="text-black/40">
               ·
             </span>
             <span
@@ -70,7 +70,7 @@ export function DiscoveryOpening({
         )}
       </p>
 
-      <h1 className="font-heading mt-2 text-3xl font-semibold tracking-tight text-balance text-[#2b2015] sm:text-5xl">
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-balance text-[#111] sm:text-5xl">
         What could you do?
       </h1>
       {/* **"really here" was a claim Passport cannot make.** The corpus holds
@@ -81,7 +81,7 @@ export function DiscoveryOpening({
           local-ness while being unable to check it is the one thing worse
           than saying nothing. Reported to Atlas; until then the page claims
           only what is true. */}
-      <p className="mt-2 max-w-xl text-[#2b2015]/60">
+      <p className="mt-2 max-w-xl text-black/60">
         Real places and real dates, from what Atlas can vouch for. What is on
         today comes first.
       </p>
@@ -115,13 +115,13 @@ export function DiscoveryOpening({
                 onClick={() => onSelect(on ? null : intent.key)}
                 className={
                   on
-                    ? "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[#2b2015] px-4 text-sm font-medium whitespace-nowrap text-[#f7ecd3]"
-                    : "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#8a5a24]/25 px-4 text-sm font-medium whitespace-nowrap text-[#2b2015]/75 transition-colors hover:border-[#8a5a24]/55 hover:text-[#2b2015]"
+                    ? "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[#111] px-4 text-sm font-medium whitespace-nowrap text-white"
+                    : "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-black/25 px-4 text-sm font-medium whitespace-nowrap text-black/75 transition-colors hover:border-black/55 hover:text-[#111]"
                 }
               >
                 {intent.label}
                 <span
-                  className={`text-xs tabular-nums ${on ? "text-[#f7ecd3]/55" : "text-[#2b2015]/35"}`}
+                  className={`text-xs tabular-nums ${on ? "text-white/55" : "text-black/35"}`}
                 >
                   {count}
                 </span>

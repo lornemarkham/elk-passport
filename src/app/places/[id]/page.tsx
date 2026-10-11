@@ -5,9 +5,17 @@ import type { Place } from "@/lib/data/types";
 import { PlaceHero } from "@/components/place-detail/PlaceHero";
 import { PlaceFireBanNotice } from "@/components/place-detail/PlaceFireBanNotice";
 import { PLACE_SECTIONS } from "@/components/place-detail/sections";
+import { LetsDoThis } from "@/components/ghad/LetsDoThis";
+import { safeNext } from "@/lib/auth/safeNext";
 
 type PlacePageProps = {
   params: Promise<{ id: string }>;
+  /**
+   * Carried through from Discovery: the day somebody picked, the age they
+   * named, and the exploration to go back to. Each one optional, and none
+   * defaulted — see `LetsDoThis`.
+   */
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({
@@ -46,8 +54,25 @@ export async function generateMetadata({
  * `PlaceSectionProps.relatedPlaceDetails`'s own comment for why this
  * doesn't touch Atlas) — a real, honest tradeoff, not a silent one.
  */
-export default async function PlacePage({ params }: PlacePageProps) {
+export default async function PlacePage({
+  params,
+  searchParams,
+}: PlacePageProps) {
   const { id } = await params;
+  const query = (await searchParams) ?? {};
+  const one = (value: string | string[] | undefined) =>
+    typeof value === "string" ? value : undefined;
+  const on = /^\d{4}-\d{2}-\d{2}$/.test(one(query.on) ?? "")
+    ? one(query.on)
+    : undefined;
+  const askedAge = Number(one(query.childAge));
+  const childAge =
+    Number.isInteger(askedAge) && askedAge >= 0 && askedAge <= 17
+      ? askedAge
+      : undefined;
+  const back = one(query.back)
+    ? safeNext(one(query.back)!, "/discovery")
+    : undefined;
   const detail = await getPlaceDetail(id);
 
   if (!detail) {
@@ -121,14 +146,24 @@ export default async function PlacePage({ params }: PlacePageProps) {
   };
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-12">
-      <PlaceHero {...sectionProps} />
-      <PlaceFireBanNotice {...sectionProps} />
-      <div className="flex flex-col">
-        {PLACE_SECTIONS.map(({ key, Component }) => (
-          <Component key={key} {...sectionProps} />
-        ))}
-      </div>
-    </main>
+    <>
+      {/* Additive: the Place template keeps its own composition entirely, and
+          the step a decided person needs sits above it. */}
+      <LetsDoThis
+        id={id}
+        {...(on ? { on } : {})}
+        {...(childAge === undefined ? {} : { childAge })}
+        {...(back ? { back } : {})}
+      />
+      <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-12">
+        <PlaceHero {...sectionProps} />
+        <PlaceFireBanNotice {...sectionProps} />
+        <div className="flex flex-col">
+          {PLACE_SECTIONS.map(({ key, Component }) => (
+            <Component key={key} {...sectionProps} />
+          ))}
+        </div>
+      </main>
+    </>
   );
 }

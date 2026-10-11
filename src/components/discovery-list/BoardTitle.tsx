@@ -76,7 +76,7 @@ export function BoardTitle({ name, onRename }: BoardTitleProps) {
           }
         }}
         aria-label="Board name"
-        className="font-heading w-full rounded-md border border-[#8a5a24]/30 bg-white/70 px-2 py-1 text-xl text-[#2b2015] outline-none focus:border-[#8a5a24]/50"
+        className="w-full rounded-md border border-black/30 bg-white px-2 py-1 text-xl text-[#111] outline-none focus:border-black/50"
       />
     );
   }
@@ -91,8 +91,8 @@ export function BoardTitle({ name, onRename }: BoardTitleProps) {
       {/* `draft`, not `name`: once a rename commits, `draft` already holds
        * the new value optimistically, while `name` only catches up once
        * Atlas confirms. */}
-      <span className="font-heading text-xl text-[#2b2015]">{draft}</span>
-      <Pencil className="h-3 w-3 shrink-0 text-[#2b2015]/0 transition-colors group-hover:text-[#2b2015]/35" />
+      <span className="text-xl text-[#111]">{draft}</span>
+      <Pencil className="h-3 w-3 shrink-0 text-black/0 transition-colors group-hover:text-black/35" />
     </button>
   );
 }

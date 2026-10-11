@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { Experience } from "@/domain/experience/types";
 import type { CandidateOccurrence } from "@/lib/data/types";
 import {
@@ -123,5 +124,87 @@ describe("what a card may say about when it recurs", () => {
     expect(recurrenceLine(NO_CONTRACT)).toBeUndefined();
     expect(hasPattern(PLAIN)).toBe(false);
     expect(hasPattern(MARKET)).toBe(true);
+  });
+});
+
+/**
+ * **A day somebody picked, against a run Atlas stated.**
+ *
+ * Dogfooded on production: with *tomorrow* chosen, `Craft Supply Swap` — a
+ * one-day event on 2026-10-10 — stayed on the page, because nothing read the
+ * interval. The ends of a run are stated facts; the days between them are not
+ * a schedule, and nothing here claims they are.
+ */
+describe("a stated run, and the days outside it", () => {
+  const dated = (start: string, end?: string) =>
+    candidateToExperience({
+      id: "e",
+      kind: "Event",
+      name: "Craft Supply Swap",
+      description: "A swap.",
+      mediaCount: 0,
+      containsCount: 0,
+      regionIds: [],
+      startTime: `${start}T00:00:00.000Z`,
+      endTime: `${end ?? start}T00:00:00.000Z`,
+      timePrecision: "day",
+    });
+
+  it("rules out the day after a one-day event", () => {
+    expect(ruledOutOn(dated("2026-10-10"), "2026-10-11")).toBe(true);
+  });
+
+  it("rules out the day before it", () => {
+    expect(ruledOutOn(dated("2026-10-10"), "2026-10-09")).toBe(true);
+  });
+
+  it("keeps the day itself", () => {
+    expect(ruledOutOn(dated("2026-10-10"), "2026-10-10")).toBe(false);
+  });
+
+  it("keeps a day inside a run", () => {
+    expect(ruledOutOn(dated("2026-10-01", "2026-10-31"), "2026-10-11")).toBe(
+      false,
+    );
+  });
+
+  it("rules nothing out for an undated subject", () => {
+    expect(
+      ruledOutOn(
+        candidateToExperience({
+          id: "p",
+          kind: "Place",
+          name: "Kalamoir Park",
+          description: "A park.",
+          mediaCount: 0,
+          containsCount: 0,
+          regionIds: [],
+        }),
+        "2026-10-11",
+      ),
+    ).toBe(false);
+  });
+
+  it("still lets a weekday pattern rule a day out inside its own run", () => {
+    const market = candidateToExperience({
+      id: "m",
+      kind: "Event",
+      name: "Osoyoos Farmers' Market",
+      description: "A market.",
+      mediaCount: 0,
+      containsCount: 0,
+      regionIds: [],
+      startTime: "2026-05-01T00:00:00.000Z",
+      endTime: "2026-10-31T00:00:00.000Z",
+      timePrecision: "day",
+      occurrence: {
+        reading: "recurring-in-run",
+        actionable: true,
+        weekdays: ["saturday"],
+      },
+    });
+    // 2026-10-11 is a Sunday; 2026-10-10 is the Saturday.
+    expect(ruledOutOn(market, "2026-10-11")).toBe(true);
+    expect(ruledOutOn(market, "2026-10-10")).toBe(false);
   });
 });

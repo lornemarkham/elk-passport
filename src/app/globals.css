@@ -142,6 +142,32 @@
   }
 }
 
+/**
+ * The accent, as a class, for the places a Tailwind arbitrary value cannot
+ * reach a CSS variable — a colour that has to follow the person's chosen
+ * theme rather than being written into the markup.
+ */
+.ghad-accent-text {
+  color: var(--ghad-accent);
+}
+
+/**
+ * **GO HAVE A DAY's display face.**
+ *
+ * Scoped to the consumer-facing surfaces rather than applied globally: the
+ * base layer above puts Fraunces on every `h1`–`h4` in Passport, and the brief
+ * for this product is explicit — bold modern sans, no fashion-magazine serif
+ * headlines. This is the one override, and anything that does not carry the
+ * class is untouched.
+ */
+.ghad-display {
+  font-family:
+    var(--font-ghad), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  /* Archivo carries a width axis. A little past normal reads as signage; past
+     about 115% it starts to look stretched rather than drawn. */
+  font-stretch: 112%;
+}
+
 /* Subtle topo-line texture for basecamp surfaces — restrained, not a rustic gimmick. */
 .bg-topo {
   background-image: radial-gradient(

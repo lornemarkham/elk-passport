@@ -1,4 +1,5 @@
 import type { Experience } from "@/domain/experience/types";
+import { statedDay } from "@/domain/experience/eventTime";
 
 /**
  * **A run is not a recurrence, and "happening today" has to know the
@@ -52,6 +53,20 @@ export function weekdayOf(day: string): string | undefined {
  * never rules anything out.
  */
 export function ruledOutOn(experience: Experience, day: string): boolean {
+  // **A stated run rules out the days outside it.**
+  //
+  // Dogfooded against production: picking *tomorrow* left `Craft Supply Swap`
+  // — "Today only", 2026-10-10 — on the page, because the only thing Atlas
+  // says about it is its own interval and nothing read that. An interval is
+  // not a recurrence, but the days either side of it are not inside it, and
+  // that is a stated fact rather than an inference.
+  //
+  // Only the ends: nothing here claims the thing is open on every day
+  // *between* them. That claim is the seasonal lie `dayPlan` exists to avoid,
+  // and ruling a day out is the opposite direction of travel.
+  const outsideRun = ruledOutByRun(experience, day);
+  if (outsideRun) return true;
+
   const occurrence = experience.occurrence;
   if (!occurrence) return false;
 
@@ -69,6 +84,21 @@ export function ruledOutOn(experience: Experience, day: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Whether the day falls outside a stated start–end interval.
+ *
+ * `false` wherever either end is missing or unparseable: an undated thing is
+ * never ruled out by a date, which is most of the corpus.
+ */
+function ruledOutByRun(experience: Experience, day: string): boolean {
+  const from = statedDay(experience.startTime, experience.timePrecision);
+  if (!from) return false;
+  const to = statedDay(experience.endTime, experience.timePrecision) || from;
+  // String comparison is exact on `YYYY-MM-DD` and involves no timezone at
+  // all, which is the whole reason these are carried as stated days.
+  return day < from || day > to;
 }
 
 /** Whether Atlas states a pattern at all, so a surface can say what it knows. */

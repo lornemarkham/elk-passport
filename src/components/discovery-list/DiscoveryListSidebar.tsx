@@ -81,9 +81,9 @@ export function DiscoveryListSidebar({
     return (
       <aside
         aria-label="Board"
-        className="rounded-2xl border border-[#8a5a24]/20 bg-[#f7ecd3]/40 p-5"
+        className="rounded-2xl border border-black/20 bg-white p-5"
       >
-        <p className="text-sm text-[#2b2015]/50">Loading your board…</p>
+        <p className="text-sm text-black/50">Loading your board…</p>
       </aside>
     );
   }
@@ -102,12 +102,12 @@ export function DiscoveryListSidebar({
       <aside
         aria-label="Board"
         data-testid="board-empty"
-        className="self-start rounded-2xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 p-4"
+        className="self-start rounded-2xl border border-dashed border-black/25 bg-white p-4"
       >
-        <p className="font-heading text-base text-[#2b2015]/70">
+        <p className="text-base text-black/70">
           {signedIn ? "Your board is empty" : "Keep what you find"}
         </p>
-        <p className="mt-1 text-sm text-[#2b2015]/55">
+        <p className="mt-1 text-sm text-black/55">
           {signedIn
             ? "Save anything above and it collects here — the start of a day worth having."
             : "Sign in and what you save stays here, on any device. Browsing needs no account."}
@@ -129,11 +129,11 @@ export function DiscoveryListSidebar({
   return (
     <aside
       aria-label="Board"
-      className="flex flex-col gap-4 rounded-2xl border border-[#8a5a24]/20 bg-[#f7ecd3]/40 p-5"
+      className="flex flex-col gap-4 rounded-2xl border border-black/20 bg-white p-5"
     >
       <div>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-medium tracking-[0.14em] text-[#8a5a24] uppercase">
+          <p className="ghad-accent-text text-[11px] font-medium tracking-[0.14em] uppercase">
             Your Board
           </p>
           {/* The full `boards` array, unfiltered — `boards[]` is the one
@@ -160,21 +160,19 @@ export function DiscoveryListSidebar({
               type="button"
               onClick={onRequestDeleteBoard}
               aria-label="Delete board"
-              className="shrink-0 rounded-full p-1 text-[#2b2015]/30 transition-colors hover:bg-red-600/10 hover:text-red-700"
+              className="shrink-0 rounded-full p-1 text-black/30 transition-colors hover:bg-red-600/10 hover:text-red-700"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : signedIn ? (
-          <p className="font-heading mt-1 text-xl text-[#2b2015]/40">
+          <p className="mt-1 text-xl text-black/40">
             No board yet — create one above
           </p>
         ) : (
           <div className="mt-1">
-            <p className="font-heading text-xl text-[#2b2015]/60">
-              Keep what you find
-            </p>
-            <p className="mt-1 text-sm text-[#2b2015]/55">
+            <p className="text-xl text-black/60">Keep what you find</p>
+            <p className="mt-1 text-sm text-black/55">
               Sign in and the places you save stay here, on any device. Browsing
               needs no account.
             </p>
@@ -188,7 +186,7 @@ export function DiscoveryListSidebar({
                 rows — so it was always self-consistent and sometimes wrong
                 about the board. Anything it cannot name now gets its own
                 line rather than quietly lowering the number. */}
-            <p className="mt-1 text-sm text-[#2b2015]/60">
+            <p className="mt-1 text-sm text-black/60">
               {savedItems.length + unshownSaves}{" "}
               {savedItems.length + unshownSaves === 1
                 ? "experience"
@@ -198,7 +196,7 @@ export function DiscoveryListSidebar({
             {unshownSaves > 0 && (
               <p
                 data-testid="unshown-saves"
-                className="mt-0.5 text-xs text-[#2b2015]/45"
+                className="mt-0.5 text-xs text-black/45"
               >
                 {unshownSaves} of them {unshownSaves === 1 ? "is" : "are"} on
                 your board but can&apos;t be shown here right now.
@@ -209,7 +207,7 @@ export function DiscoveryListSidebar({
       </div>
 
       {savedItems.length > 0 && (
-        <ul className="flex max-h-96 flex-col gap-1.5 overflow-y-auto border-t border-[#8a5a24]/15 pt-3">
+        <ul className="flex max-h-96 flex-col gap-1.5 overflow-y-auto border-t border-black/15 pt-3">
           {savedItems.map(({ experience }) => {
             // The same `destinationFor` the cards use — not a second routing
             // rule. Saving an experience removes its card from the list, and
@@ -219,7 +217,7 @@ export function DiscoveryListSidebar({
             // stays plain text, exactly as its card would.
             const destination = destinationFor(experience);
             const label = (
-              <p className="min-w-0 flex-1 truncate text-xs text-[#2b2015]/75">
+              <p className="min-w-0 flex-1 truncate text-xs text-black/75">
                 {experience.title}
               </p>
             );
@@ -245,7 +243,7 @@ export function DiscoveryListSidebar({
                   type="button"
                   onClick={() => onRemoveSaved(experience.id)}
                   aria-label={`Remove ${experience.title} from board`}
-                  className="shrink-0 rounded-full p-0.5 text-[#2b2015]/0 transition-colors group-hover:text-[#2b2015]/35 group-hover:hover:text-red-700"
+                  className="shrink-0 rounded-full p-0.5 text-black/0 transition-colors group-hover:text-black/35 group-hover:hover:text-red-700"
                 >
                   <X className="h-3 w-3" />
                 </button>

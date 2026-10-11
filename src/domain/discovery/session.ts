@@ -41,6 +41,21 @@ export interface DiscoverySession {
    * would invent the single fact the whole contract exists to carry.
    */
   readonly age?: number;
+  /**
+   * **The day they are asking about**, `YYYY-MM-DD`.
+   *
+   * "Sunday" is a question Atlas can answer — it states start dates and, for
+   * sixteen subjects, the weekdays a thing recurs on. Absent means any day.
+   */
+  readonly on?: string;
+  /**
+   * **How far they will go**, in kilometres.
+   *
+   * Only ever narrows what Atlas has placed. Inert until somebody shares
+   * where they are, because a distance needs two positions and Passport
+   * refuses to invent the second.
+   */
+  readonly within?: number;
   /** The invitation they tapped — an Atlas affordance name. */
   readonly doing?: string;
 }
@@ -73,6 +88,17 @@ export function readSession(params: URLSearchParams): DiscoverySession {
   const query = params.get("q")?.trim();
   // 0–17, whole years — the range Atlas accepts. Anything else is somebody
   // editing the address bar, and is dropped rather than clamped.
+  // `YYYY-MM-DD` only. A half-parsed date is worse than no date.
+  const askedOn = params.get("on") ?? "";
+  const on = /^\d{4}-\d{2}-\d{2}$/.test(askedOn) ? askedOn : undefined;
+  const askedWithin = Number(params.get("within"));
+  const within =
+    params.get("within") !== null &&
+    Number.isFinite(askedWithin) &&
+    askedWithin > 0 &&
+    askedWithin <= 500
+      ? askedWithin
+      : undefined;
   const askedAge = Number(params.get("age"));
   const age =
     params.get("age") !== null &&
@@ -97,6 +123,8 @@ export function readSession(params: URLSearchParams): DiscoverySession {
       ? { window: oneOf(WINDOW, params.get("how"))! }
       : {}),
     ...(age !== undefined ? { age } : {}),
+    ...(on ? { on } : {}),
+    ...(within !== undefined ? { within } : {}),
     ...(doing ? { doing } : {}),
   };
 }
@@ -110,6 +138,9 @@ export function sessionQuery(session: DiscoverySession): string {
   if (session.company) params.set("who", session.company);
   if (session.window) params.set("how", session.window);
   if (session.age !== undefined) params.set("age", String(session.age));
+  if (session.on) params.set("on", session.on);
+  if (session.within !== undefined)
+    params.set("within", String(session.within));
   if (session.doing) params.set("doing", session.doing);
   return params.toString();
 }

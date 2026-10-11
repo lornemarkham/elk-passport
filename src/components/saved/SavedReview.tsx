@@ -132,7 +132,7 @@ export function SavedReview({
 
   return (
     <div data-testid="saved-review">
-      <p className="mt-1 text-sm text-[#2b2015]/60">
+      <p className="mt-1 text-sm text-black/60">
         {total} {total === 1 ? "possibility" : "possibilities"} in {boardName}
         {readOnly ? " · shared with you to look at" : ""}
       </p>
@@ -141,7 +141,7 @@ export function SavedReview({
       {unresolved.length > 0 && (
         <p
           data-testid="saved-unresolved"
-          className="mt-4 rounded-xl border border-dashed border-[#8a5a24]/30 bg-[#f7ecd3]/40 px-4 py-3 text-sm text-[#2b2015]/60"
+          className="mt-4 rounded-xl border border-dashed border-black/30 bg-white px-4 py-3 text-sm text-black/60"
         >
           {unresolved.length} saved {unresolved.length === 1 ? "item" : "items"}{" "}
           {unresolved.length === 1 ? "is" : "are"} still here but can&apos;t be
@@ -151,17 +151,15 @@ export function SavedReview({
       )}
 
       {showing.length === 0 && unresolved.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-[#8a5a24]/30 bg-[#f7ecd3]/40 px-5 py-12 text-center">
-          <p className="font-heading text-lg text-[#2b2015]">
-            Nothing saved yet
-          </p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-[#2b2015]/60">
+        <div className="mt-6 rounded-2xl border border-dashed border-black/30 bg-white px-5 py-12 text-center">
+          <p className="text-lg text-[#111]">Nothing saved yet</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-black/60">
             Save anything that looks interesting while you browse, and it will
             be here to look at together.
           </p>
           <Link
             href={back}
-            className="mt-5 inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-5 text-sm font-medium text-[#f7ecd3]"
+            className="mt-5 inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-sm font-medium text-white"
           >
             Back to discovering
           </Link>
@@ -182,7 +180,7 @@ export function SavedReview({
                   {wanted.has(experience.id) ? (
                     <span
                       data-testid="saved-wanted"
-                      className="inline-flex min-h-9 items-center rounded-full bg-[#8a5a24]/12 px-3 text-xs font-medium text-[#8a5a24]"
+                      className="ghad-accent-text inline-flex min-h-9 items-center rounded-full bg-black/12 px-3 text-xs font-medium"
                     >
                       In My October
                     </span>
@@ -192,7 +190,7 @@ export function SavedReview({
                       data-testid="saved-want"
                       disabled={busy === experience.id}
                       onClick={() => void want(experience)}
-                      className="inline-flex min-h-9 items-center rounded-full border border-[#8a5a24]/30 px-3 text-xs font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10 disabled:opacity-50"
+                      className="ghad-accent-text inline-flex min-h-9 items-center rounded-full border border-black/30 px-3 text-xs font-medium transition-colors hover:bg-black/10 disabled:opacity-50"
                     >
                       Want to do
                     </button>
@@ -203,7 +201,7 @@ export function SavedReview({
                     disabled={busy === experience.id}
                     onClick={() => void remove(experience)}
                     aria-label={`Remove ${experience.title}`}
-                    className="inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-xs font-medium text-[#2b2015]/45 transition-colors hover:bg-[#2b2015]/[0.06] hover:text-[#2b2015]/70 disabled:opacity-50"
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-xs font-medium text-black/45 transition-colors hover:bg-[#111]/[0.06] hover:text-black/70 disabled:opacity-50"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     Remove
@@ -218,11 +216,11 @@ export function SavedReview({
       {/* Sharing is real and kept — just not above the things somebody came
           here to look at. One link, at the end, for the person who wants it. */}
       {!readOnly && (
-        <div className="mt-10 border-t border-[#8a5a24]/15 pt-6">
+        <div className="mt-10 border-t border-black/15 pt-6">
           <Link
             href={`/boards/${boardId}`}
             data-testid="share-this"
-            className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[#8a5a24] hover:text-[#2b2015]"
+            className="ghad-accent-text inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:text-[#111]"
           >
             <Share2 className="h-4 w-4" aria-hidden />
             Share this collection, or manage it as a board

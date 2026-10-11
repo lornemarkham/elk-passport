@@ -45,7 +45,7 @@ export function InvitationStrip({
 
   return (
     <section data-testid="invitations" aria-label="Things you could do">
-      <p className="text-xs font-medium tracking-wide text-[#8a5a24] uppercase">
+      <p className="ghad-accent-text text-xs font-medium tracking-wide uppercase">
         {near ? "Things you could do near you" : "Things you could do"}
       </p>
       <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
@@ -63,19 +63,19 @@ export function InvitationStrip({
                 className={
                   "flex h-full w-full flex-col gap-1 rounded-2xl border px-3 py-3 text-left transition-colors " +
                   (on
-                    ? "border-[#2b2015] bg-[#2b2015] text-[#f7ecd3]"
-                    : "border-[#8a5a24]/25 bg-[#f7ecd3]/50 hover:border-[#8a5a24]/55")
+                    ? "border-[#111] bg-[#111] text-white"
+                    : "border-black/25 bg-white hover:border-black/55")
                 }
               >
                 {/* Atlas's own word, capitalised and otherwise untouched.
                     `mountain biking` stays mountain biking. */}
-                <span className="font-heading text-base leading-tight first-letter:uppercase sm:text-lg">
+                <span className="text-base leading-tight first-letter:uppercase sm:text-lg">
                   {invitation.doing}
                 </span>
                 <span
                   className={
                     "text-[11px] tabular-nums " +
-                    (on ? "text-[#f7ecd3]/70" : "text-[#2b2015]/50")
+                    (on ? "text-white/70" : "text-black/50")
                   }
                 >
                   {count} {count === 1 ? "place" : "places"}
@@ -87,7 +87,7 @@ export function InvitationStrip({
                 <span
                   className={
                     "line-clamp-2 text-[11px] leading-snug " +
-                    (on ? "text-[#f7ecd3]/60" : "text-[#2b2015]/45")
+                    (on ? "text-white/60" : "text-black/45")
                   }
                 >
                   {invitation.examples.map((place) => place.title).join(" · ")}

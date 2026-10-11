@@ -27,15 +27,15 @@ export function DeleteBoardDialog({
 }: DeleteBoardDialogProps) {
   return (
     <Dialog open={boardName !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border border-[#8a5a24]/20 bg-[#fbf5e6] text-[#2b2015]">
+      <DialogContent className="max-w-sm border border-black/20 bg-white text-[#111]">
         {boardName && (
           <>
             <DialogHeader>
-              <DialogTitle className="font-heading text-lg text-[#2b2015]">
+              <DialogTitle className="text-lg text-[#111]">
                 Delete &ldquo;{boardName}&rdquo;?
               </DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-[#2b2015]/60">
+            <p className="text-sm text-black/60">
               This removes the board and everything saved to it. This can&apos;t
               be undone.
             </p>
@@ -44,7 +44,7 @@ export function DeleteBoardDialog({
                 type="button"
                 disabled={isDeleting}
                 onClick={() => onOpenChange(false)}
-                className="rounded-lg border border-[#8a5a24]/20 bg-white/50 px-3 py-2.5 text-sm text-[#2b2015]/70 transition-colors hover:border-[#8a5a24]/40 hover:bg-white/70 hover:text-[#2b2015] disabled:pointer-events-none disabled:opacity-50"
+                className="rounded-lg border border-black/20 bg-white px-3 py-2.5 text-sm text-black/70 transition-colors hover:border-black/40 hover:bg-white hover:text-[#111] disabled:pointer-events-none disabled:opacity-50"
               >
                 Cancel
               </button>

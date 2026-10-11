@@ -81,17 +81,15 @@ export function BoardSwitcher({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label="Switch board"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#8a5a24]/20 text-[#2b2015]/50 transition-colors hover:border-[#8a5a24]/40 hover:text-[#2b2015]"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-black/20 text-black/50 transition-colors hover:border-black/40 hover:text-[#111]"
       >
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-10 mt-2 w-56 overflow-hidden rounded-xl border border-[#8a5a24]/20 bg-[#fbf5e6] p-1.5 shadow-lg">
+        <div className="absolute right-0 z-10 mt-2 w-56 overflow-hidden rounded-xl border border-black/20 bg-white p-1.5 shadow-lg">
           {boards.length === 0 ? (
-            <p className="px-2.5 py-2 text-xs text-[#2b2015]/40">
-              No boards yet.
-            </p>
+            <p className="px-2.5 py-2 text-xs text-black/40">No boards yet.</p>
           ) : (
             boards.map((board) => (
               <button
@@ -104,8 +102,8 @@ export function BoardSwitcher({
                 className={cn(
                   "flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
                   board.id === activeBoardId
-                    ? "bg-[#8a5a24]/10 text-[#2b2015]"
-                    : "text-[#2b2015]/60 hover:bg-[#8a5a24]/5 hover:text-[#2b2015]",
+                    ? "bg-black/10 text-[#111]"
+                    : "text-black/60 hover:bg-black/5 hover:text-[#111]",
                 )}
               >
                 {board.name}
@@ -113,7 +111,7 @@ export function BoardSwitcher({
             ))
           )}
 
-          <div className="mt-1 border-t border-[#8a5a24]/15 pt-1">
+          <div className="mt-1 border-t border-black/15 pt-1">
             {isCreating ? (
               <input
                 autoFocus
@@ -127,13 +125,13 @@ export function BoardSwitcher({
                 }}
                 placeholder="Board name"
                 aria-label="New board name"
-                className="w-full rounded-lg border border-[#8a5a24]/25 bg-white/70 px-2.5 py-1.5 text-xs text-[#2b2015] outline-none focus:border-[#8a5a24]/50"
+                className="w-full rounded-lg border border-black/25 bg-white px-2.5 py-1.5 text-xs text-[#111] outline-none focus:border-black/50"
               />
             ) : (
               <button
                 type="button"
                 onClick={openCreate}
-                className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-[#2b2015]/60 transition-colors hover:bg-[#8a5a24]/5 hover:text-[#2b2015]"
+                className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-black/60 transition-colors hover:bg-black/5 hover:text-[#111]"
               >
                 + New board
               </button>

@@ -166,8 +166,12 @@ describe("what the page says before anything is asked of it", () => {
   it("asks the question the page exists to answer", () => {
     renderPage();
     // Not "Discovery", and not a sentence about searching and filtering.
+    // GO HAVE A DAY asks it in the second person and in a person's own words.
     expect(
-      screen.getByRole("heading", { level: 1, name: /what could you do/i }),
+      screen.getByRole("heading", {
+        level: 1,
+        name: /what do you feel like doing/i,
+      }),
     ).toBeTruthy();
   });
 
@@ -178,36 +182,118 @@ describe("what the page says before anything is asked of it", () => {
   });
 });
 
-describe("intents, in a person's words", () => {
-  it("offers what the pool can actually fill", () => {
-    renderPage();
-    const keys = screen
-      .getAllByRole("button", { pressed: false })
-      .map((b) => b.getAttribute("data-intent"))
-      .filter(Boolean);
-    expect(keys).toContain("outside");
-    expect(keys).toContain("eat");
-    // Nothing in this pool is a museum or a hotel, so neither is offered.
-    expect(keys).not.toContain("culture");
-    expect(keys).not.toContain("stay");
-  });
+/**
+ * **"What do you feel like doing?" replaced a row of Atlas's filing cabinet.**
+ *
+ * The chips used to be `outside / eat / culture / stay` — Passport's own
+ * five-word taxonomy, which is nearer to a person than `Organization 1,584`
+ * and still not a thing anybody says. What is offered now is the verb **Atlas
+ * itself states** for the places on the page, counted, and nothing else.
+ *
+ * These pin the rule the whole row exists for: a control either narrows real
+ * evidence or admits out loud that it cannot. There is no third state where
+ * something looks like a filter and does nothing.
+ */
+describe("the controls, and what they are allowed to claim", () => {
+  const verbs = (row: string) =>
+    screen
+      .getAllByTestId("ghad-choice")
+      .filter((b) => b.dataset.row === row)
+      .map((b) => b.textContent?.replace(/\d+$/, "").trim());
 
-  it("narrows the whole page to one intent, across kind", () => {
-    renderPage();
-    fireEvent.click(screen.getByTestId("intent-eat"));
-    // A winery is an Organization; a park is a Place. Intent cuts across both.
-    expect(screen.getByText("A winery")).toBeTruthy();
-    expect(screen.queryByText("Kalamoir Park")).toBeNull();
-  });
-
-  it("lets the intent back off again", () => {
-    renderPage();
-    fireEvent.click(screen.getByTestId("intent-eat"));
-    fireEvent.click(screen.getByTestId("intent-eat"));
-    // The composed page is back — several sections, not one filtered list.
-    expect(screen.getAllByTestId("discovery-section").length).toBeGreaterThan(
-      1,
+  it("offers the verbs Atlas states, and no others", () => {
+    render(
+      <DiscoveryListView
+        experiences={[
+          candidate({
+            id: "lake",
+            name: "Otter Lake Park",
+            knowledge: {
+              affordances: [
+                { name: "swimming", basis: "stated-activity" },
+                { name: "fishing", basis: "stated-activity" },
+              ],
+            },
+          }),
+          candidate({
+            id: "rail",
+            name: "Okanagan Rail Trail",
+            knowledge: {
+              affordances: [{ name: "cycling", basis: "stated-activity" }],
+            },
+          }),
+        ].map(candidateToExperience)}
+        displayName={null}
+        now={NOW}
+        today="Saturday, October 10"
+      />,
     );
+    expect(verbs("activity")).toEqual(
+      expect.arrayContaining(["swimming", "fishing", "cycling"]),
+    );
+    // Nothing on this page states skiing, so skiing is never on offer.
+    expect(verbs("activity")).not.toContain("skiing");
+  });
+
+  it("says so rather than offering a control that cannot narrow anything", () => {
+    // This pool is a concert, a talk, a festival, a park and a winery, and
+    // Atlas states an affordance for none of them. The old page would have
+    // printed chips anyway.
+    renderPage();
+    expect(verbs("activity")).toEqual([]);
+    expect(
+      screen.getAllByTestId("ghad-note").map((n) => n.textContent),
+    ).toEqual(expect.arrayContaining([expect.stringContaining("224")]));
+  });
+
+  it("never offers a distance it has nowhere to measure from", () => {
+    // Nobody has shared where they are, so every distance pill is disabled
+    // and says why — rather than silently returning everything.
+    renderPage();
+    const far = screen
+      .getAllByTestId("ghad-choice")
+      .filter((b) => b.dataset.row === "distance");
+    expect(far.length).toBeGreaterThan(0);
+    for (const pill of far) {
+      expect(pill).toBeDisabled();
+      expect(pill.title).toContain("Share where you are");
+    }
+  });
+
+  it("leads with the verb somebody picked, and keeps the rest of the page", () => {
+    render(
+      <DiscoveryListView
+        experiences={[
+          candidate({
+            id: "lake",
+            name: "Otter Lake Park",
+            knowledge: {
+              affordances: [{ name: "swimming", basis: "stated-activity" }],
+            },
+          }),
+          candidate({
+            id: "rail",
+            name: "Okanagan Rail Trail",
+            knowledge: {
+              affordances: [{ name: "cycling", basis: "stated-activity" }],
+            },
+          }),
+        ].map(candidateToExperience)}
+        displayName={null}
+        now={NOW}
+        today="Saturday, October 10"
+      />,
+    );
+    const swimming = screen
+      .getAllByTestId("ghad-choice")
+      .find((b) => b.textContent?.startsWith("swimming"))!;
+    fireEvent.click(swimming);
+    const headings = screen
+      .getAllByTestId("discovery-section")
+      .map((s) => s.querySelector("h2")?.textContent ?? "");
+    expect(headings[0]).toMatch(/swimming/i);
+    // Refines, never replaces: the composed page is still underneath it.
+    expect(headings.length).toBeGreaterThan(1);
   });
 });
 
@@ -321,8 +407,8 @@ describe("the board before anything is in it", () => {
  */
 describe("an intent refines the page rather than replacing the product", () => {
   it("still shows possibility cards, not a list", () => {
+    search = new URLSearchParams("intent=eat");
     renderPage();
-    fireEvent.click(screen.getByTestId("intent-eat"));
     expect(screen.getAllByTestId("possibility").length).toBeGreaterThan(0);
   });
 
@@ -347,17 +433,24 @@ describe("an intent refines the page rather than replacing the product", () => {
     expect(first.dataset.hasImage).toBe("true");
   });
 
-  it("is a place, not a mood — the intent lives in the URL", () => {
-    // So the back button leaves it, a link can arrive already in it, and the
-    // homepage's category tiles could become real doors instead of the dead
-    // `<div>`s they were.
-    // `eat` rather than `culture`: this pool holds a winery and no museum,
-    // and a chip the pool cannot fill is deliberately never offered.
+  it("narrows the whole page to one intent, across kind", () => {
+    // A winery is an Organization; a park is a Place. Intent cuts across both.
     search = new URLSearchParams("intent=eat");
     renderPage();
-    expect(screen.getByTestId("intent-eat")).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    expect(screen.getByText("A winery")).toBeTruthy();
+    expect(screen.queryByText("Kalamoir Park")).toBeNull();
+  });
+
+  it("is a place, not a mood — the intent lives in the URL", () => {
+    // So the back button leaves it, a link can arrive already in it, and the
+    // homepage's category tiles are real doors rather than the dead `<div>`s
+    // they were. There is no longer a chip on Discovery that sets this — the
+    // URL is the whole mechanism, which is exactly why it has to keep working.
+    search = new URLSearchParams("intent=eat");
+    renderPage();
+    // Said in the intent's own words, so the page is not quietly narrowed.
+    expect(screen.getByTestId("result-summary")).toHaveTextContent(
+      "in Eat & drink",
     );
   });
 

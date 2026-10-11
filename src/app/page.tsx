@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
@@ -35,17 +34,13 @@ export default async function HomePage() {
   return (
     <>
       <PassportNav displayName={user?.displayName ?? null} />
-      <main className="bg-background min-h-screen">
+      <main className="min-h-screen bg-white">
         <div className="mx-auto flex max-w-5xl flex-col items-center px-6 py-16 text-center sm:py-24">
-          <div className="text-primary mb-4 flex items-center justify-center gap-2">
-            <Compass className="h-5 w-5" aria-hidden />
-            <span className="text-sm font-semibold tracking-wide">
-              ELK Passport
-            </span>
-          </div>
-
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            Discover the Okanagan.
+          {/* **The product's name, which is not the repository's.** The bar
+              above already carries the wordmark, so this says what the thing
+              is rather than repeating it — see `Wordmark`. */}
+          <h1 className="ghad-display text-[40px] leading-[0.95] font-extrabold tracking-[-0.045em] text-balance text-[#111] sm:text-[72px]">
+            Go have a day in the Okanagan.
           </h1>
 
           <p className="text-muted-foreground mx-auto mt-5 max-w-xl text-lg text-balance">

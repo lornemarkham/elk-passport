@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemePicker, ThemeProvider } from "@/components/ghad/theme";
+import { Wordmark } from "@/components/ghad/Wordmark";
 
 /**
- * **Passport's own bar. There wasn't one.**
+ * **The bar, in the product's own identity.**
  *
- * Walked the deployed product before writing this:
+ * Walked the deployed product before this existed:
  *
  * ```
  * /            no header, no nav, two links, no sign-in
@@ -17,15 +19,21 @@ import { usePathname } from "next/navigation";
  * /october     a real bar, on every October screen
  * ```
  *
- * October had a shell and Passport did not, which is why Passport read as a
- * good Discovery page sitting inside unfinished chrome: you could arrive at
- * your own boards and have no way back to anything, and nothing on any screen
- * told you what the product was or where you were in it.
+ * It is still that bar — plain type that says where you are and stays in one
+ * place — now wearing the consumer identity: white ground, near-black type,
+ * and the accent on exactly one thing, which is where you are.
  *
- * This is the same shape as `OctoberNav` and deliberately so — a bar a person
- * can trust is plain type that says where you are and stays in one place. It
- * is not a new product area: every destination here is a finished route that
- * already existed and was simply unreachable.
+ * ## Why the wordmark changed and the repository did not
+ *
+ * This bar said **Passport**, which is the name of the software. GO HAVE A DAY
+ * is the name of the product, so it is what a person reads. Nothing else is
+ * renamed; see `Wordmark`.
+ *
+ * ## Why the theme picker lives here
+ *
+ * It is one choice that applies to every screen, so it belongs on the one
+ * component every screen already has — rather than on Discovery, where it
+ * would have looked like a property of Discovery.
  *
  * ## What is deliberately not on it
  *
@@ -70,62 +78,66 @@ export function PassportNav({
   const from = encodeURIComponent(pathname || "/discovery");
 
   return (
-    <header className="border-b border-[#8a5a24]/15">
-      <nav
-        aria-label="Passport"
-        className="mx-auto flex max-w-6xl items-center gap-1 px-4 sm:px-6"
-      >
-        {/* The wordmark is the way home, which is the one navigation
-            convention it is safe to assume everybody already knows. */}
-        <Link
-          href="/"
-          data-testid="passport-home"
-          className="font-heading mr-2 inline-flex min-h-12 shrink-0 items-center text-sm font-semibold tracking-tight text-[#2b2015]"
+    <ThemeProvider>
+      <header className="border-b border-black/10 bg-white">
+        <nav
+          aria-label="Go Have A Day"
+          className="mx-auto flex max-w-6xl items-center gap-1 px-4 sm:px-6"
         >
-          Passport
-        </Link>
+          {/* The wordmark is the way home, which is the one navigation
+              convention it is safe to assume everybody already knows. */}
+          <span className="mr-4 inline-flex min-h-12 shrink-0 items-center">
+            <Wordmark href="/" lines={1} />
+          </span>
 
-        {DESTINATIONS.map((d) => {
-          const current = here(d);
-          return (
+          {DESTINATIONS.map((d) => {
+            const current = here(d);
+            return (
+              <Link
+                key={d.href}
+                href={d.href}
+                aria-current={current ? "page" : undefined}
+                data-testid={`passport-nav-${d.label.toLowerCase()}`}
+                style={
+                  current ? { borderColor: "var(--ghad-accent)" } : undefined
+                }
+                className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-2.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+                  current
+                    ? "text-[#111]"
+                    : "border-transparent text-black/45 hover:text-black/80"
+                }`}
+              >
+                {d.label}
+              </Link>
+            );
+          })}
+
+          <span className="flex-1" />
+
+          <ThemePicker className="mr-1 shrink-0 sm:mr-2" />
+
+          {/* Carries where you are, so auth and the account page can bring you
+              back — the same fix October's bar already had. */}
+          {displayName ? (
             <Link
-              key={d.href}
-              href={d.href}
-              aria-current={current ? "page" : undefined}
-              data-testid={`passport-nav-${d.label.toLowerCase()}`}
-              className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-2.5 text-sm whitespace-nowrap transition-colors sm:px-3 ${
-                current
-                  ? "border-[#8a5a24] text-[#2b2015]"
-                  : "border-transparent text-[#2b2015]/55 hover:text-[#2b2015]/85"
-              }`}
+              href={`/account?next=${from}`}
+              data-testid="passport-account"
+              className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] text-black/45 transition-colors hover:text-black/80 sm:px-3"
             >
-              {d.label}
+              {displayName}
             </Link>
-          );
-        })}
-
-        <span className="flex-1" />
-
-        {/* Carries where you are, so auth and the account page can bring you
-            back — the same fix October's bar already had. */}
-        {displayName ? (
-          <Link
-            href={`/account?next=${from}`}
-            data-testid="passport-account"
-            className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-sm text-[#2b2015]/55 transition-colors hover:text-[#2b2015]/85 sm:px-3"
-          >
-            {displayName}
-          </Link>
-        ) : (
-          <Link
-            href={`/auth?next=${from}`}
-            data-testid="passport-sign-in"
-            className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-sm font-medium text-[#8a5a24] transition-colors hover:text-[#6b4419] sm:px-3"
-          >
-            Sign in
-          </Link>
-        )}
-      </nav>
-    </header>
+          ) : (
+            <Link
+              href={`/auth?next=${from}`}
+              data-testid="passport-sign-in"
+              style={{ color: "var(--ghad-accent)" }}
+              className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] font-semibold sm:px-3"
+            >
+              Sign in
+            </Link>
+          )}
+        </nav>
+      </header>
+    </ThemeProvider>
   );
 }

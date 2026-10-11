@@ -68,8 +68,8 @@ export function ExperienceListRow({
 
   return (
     <li
-      className={`relative flex items-center gap-4 rounded-xl border border-[#8a5a24]/15 bg-[#f7ecd3] p-4 ${
-        destination ? "transition-colors hover:border-[#8a5a24]/45" : ""
+      className={`relative flex items-center gap-4 rounded-xl border border-black/15 bg-white p-4 ${
+        destination ? "transition-colors hover:border-black/45" : ""
       }`}
       data-navigates={destination ? "true" : "false"}
     >
@@ -84,7 +84,7 @@ export function ExperienceListRow({
         />
       )}
 
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#2b2015]/[0.06]">
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#111]/[0.06]">
         {experience.heroMedia?.src ? (
           // eslint-disable-next-line @next/next/no-img-element -- external Atlas-hosted images, not part of the Next image pipeline
           <img
@@ -93,17 +93,17 @@ export function ExperienceListRow({
             className="h-full w-full object-cover"
           />
         ) : (
-          <MapPin className="h-6 w-6 text-[#8a5a24]/40" />
+          <MapPin className="h-6 w-6 text-black/40" />
         )}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-semibold text-[#2b2015]">
+          <p className="truncate text-sm font-semibold text-[#111]">
             {experience.title}
           </p>
           {showTag && (
-            <span className="shrink-0 rounded-full bg-[#2b2015]/[0.06] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#8a5a24] uppercase">
+            <span className="ghad-accent-text shrink-0 rounded-full bg-[#111]/[0.06] px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
               {tag}
             </span>
           )}
@@ -113,16 +113,16 @@ export function ExperienceListRow({
             what explains the destination: BullWheel opens Big White's page
             because BullWheel is at Big White. */}
         {when && (
-          <p className="mt-0.5 truncate text-xs font-medium text-[#8a5a24]">
+          <p className="ghad-accent-text mt-0.5 truncate text-xs font-medium">
             {when}
           </p>
         )}
         {experience.context && (
-          <p className="mt-0.5 truncate text-xs font-medium text-[#8a5a24]">
+          <p className="ghad-accent-text mt-0.5 truncate text-xs font-medium">
             at {experience.context.name}
           </p>
         )}
-        <p className="mt-0.5 line-clamp-2 text-xs text-[#2b2015]/60">
+        <p className="mt-0.5 line-clamp-2 text-xs text-black/60">
           {experience.shortDescription}
         </p>
       </div>
@@ -132,7 +132,7 @@ export function ExperienceListRow({
           Activities have no page yet, and a missing page is not a missing
           thing. What it must never do is look clickable and do nothing. */}
       {destination && (
-        <ChevronRight className="h-4 w-4 shrink-0 text-[#8a5a24]/40" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-black/40" />
       )}
 
       <div className="relative z-10 flex shrink-0 items-center gap-2">
@@ -140,7 +140,7 @@ export function ExperienceListRow({
         {onWant &&
           (wanted ? (
             <span
-              className="text-xs font-medium text-[#8a5a24]"
+              className="ghad-accent-text text-xs font-medium"
               data-testid="wanted"
             >
               In my October
@@ -149,14 +149,14 @@ export function ExperienceListRow({
             <button
               type="button"
               onClick={onWant}
-              className="min-h-9 rounded-full px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+              className="ghad-accent-text min-h-9 rounded-full px-2.5 text-xs font-medium transition-colors hover:bg-black/10"
               data-testid="want-to-do"
             >
               Want to do
             </button>
           ))}
         {saved ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 py-1.5 text-xs font-medium text-[#8a5a24]">
+          <span className="ghad-accent-text inline-flex items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 py-1.5 text-xs font-medium">
             <Check className="h-3.5 w-3.5" />
             Saved
           </span>
@@ -165,7 +165,7 @@ export function ExperienceListRow({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="rounded-full border border-[#2b2015]/10 bg-[#2b2015] px-4 py-1.5 text-xs font-medium text-[#f7ecd3] transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-black/10 bg-[#111] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}
           </button>

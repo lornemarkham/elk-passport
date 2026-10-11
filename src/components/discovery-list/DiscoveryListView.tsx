@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ZONE } from "@/domain/experience/eventTime";
 import { Leaf } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -42,16 +43,19 @@ import {
   DiscoveryListSidebar,
   type SavedListItem,
 } from "./DiscoveryListSidebar";
-import { DiscoveryOpening } from "./DiscoveryOpening";
+import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
+import { ThemeProvider } from "@/components/ghad/theme";
+import { excludesAge, ageEvidence } from "@/domain/discovery/suitability";
+import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { TodayPanel } from "./TodayPanel";
 import type { DayWeather, Situation } from "@/domain/discovery/situation";
 import {
+  distanceTo,
   nearSection,
   nearYou,
   nearestFirst,
 } from "@/domain/discovery/proximity";
 import { invitationSection, invitations } from "@/domain/discovery/directions";
-import { InvitationStrip } from "./InvitationStrip";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
@@ -61,12 +65,7 @@ import {
   dominantArea,
   pictureFirst,
 } from "@/domain/discovery/compose";
-import {
-  INTENTS,
-  availableIntents,
-  intentOf,
-  type IntentKey,
-} from "@/domain/discovery/intents";
+import { INTENTS, intentOf, type IntentKey } from "@/domain/discovery/intents";
 import {
   pendingParam,
   readPending,
@@ -79,6 +78,35 @@ import {
 } from "@/domain/discovery/session";
 import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
 import type { ExperienceKind } from "@/domain/experience/types";
+
+/**
+ * **The next few days, named the way a person would.**
+ *
+ * Built from the server's instant so the client never reads its own clock, and
+ * in the Okanagan's own zone — a date read at UTC midnight is the previous
+ * evening there, which is how Sunday gets offered as Saturday.
+ */
+function nextDays(now: Date): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  for (let ahead = 0; ahead < 7; ahead += 1) {
+    const at = new Date(now.getTime() + ahead * 86_400_000);
+    const value = new Intl.DateTimeFormat("en-CA", {
+      timeZone: ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(at);
+    const weekday = new Intl.DateTimeFormat("en-CA", {
+      timeZone: ZONE,
+      weekday: "long",
+    }).format(at);
+    out.push({
+      value,
+      label: ahead === 0 ? "today" : ahead === 1 ? "tomorrow" : weekday,
+    });
+  }
+  return out;
+}
 
 /** How many results a page of search or browse shows before offering more. */
 const RESULT_PAGE = 24;
@@ -197,6 +225,8 @@ export function DiscoveryListView({
   const kind = session.kind ?? null;
   const doing = session.doing;
   const childAge = session.age;
+  const on = session.on;
+  const within = session.within;
   const situation = situationOf(session);
 
   const change = (next: DiscoverySession) => {
@@ -230,6 +260,10 @@ export function DiscoveryListView({
    * so this is a real navigation and the exploration survives it because the
    * exploration is already in the URL.
    */
+  const setOn = (next: string | undefined) => change({ ...session, on: next });
+  const setWithin = (next: number | undefined) =>
+    change({ ...session, within: next });
+
   const setChildAge = (next: number | undefined) => {
     const session_ = { ...session, age: next };
     setSession(session_);
@@ -424,6 +458,31 @@ export function DiscoveryListView({
   // Where Passport is looking, said once and used by the opening, the composed
   // remainder section and nothing else.
   const where = scopeLabel(scope);
+  /**
+   * **What the exploration carries with it into a card's destination.**
+   *
+   * The day somebody picked, the age they named, and the way back here. An
+   * entity page forwards all three to `/day/{id}`, so "Let's do this" plans
+   * the Sunday that was actually chosen rather than today in general — and the
+   * back link returns the exploration instead of a bare `/discovery`.
+   *
+   * Deliberately **not** the reader's position: a coordinate never goes in a
+   * URL (ADR 002). The plan asks again, in the browser, or says it cannot
+   * measure.
+   */
+  const carry = useMemo(() => {
+    const query = new URLSearchParams();
+    if (session.on) query.set("on", session.on);
+    if (session.age !== undefined) query.set("childAge", String(session.age));
+    // `sessionHref` is the same encoding the board's way back already uses,
+    // so one exploration has one URL however you leave it. A bare page has
+    // nothing to come back to, so it adds nothing: `?back=/discovery` is
+    // noise on every link on the page and tells the reader's browser history
+    // something it already knows.
+    const href = sessionHref(session);
+    if (href !== "/discovery") query.set("back", href);
+    return query.toString();
+  }, [session]);
   // Which area this page is mostly about, counted from what Atlas states.
   // A card in a different one says so; see `dominantArea`.
   const home = useMemo(() => dominantArea(experiences), [experiences]);
@@ -433,6 +492,38 @@ export function DiscoveryListView({
     () => (now ? dayOf(new Date(now)) : undefined),
     [now],
   );
+
+  /**
+   * **The chosen day, written out — and `undefined` when today was chosen.**
+   *
+   * Everything that said *today* has to say the chosen day instead, or the
+   * page describes one day in its headings and a different one in its cards.
+   * `undefined` is the signal that nothing needs to change.
+   */
+  const chosenDayLine = useMemo(() => {
+    if (!on || on === todayKey) return undefined;
+    const at = new Date(`${on}T12:00:00Z`);
+    return Number.isNaN(at.getTime())
+      ? undefined
+      : new Intl.DateTimeFormat("en-CA", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        }).format(at);
+  }, [on, todayKey]);
+
+  /**
+   * **What a card may say about when it is on.**
+   *
+   * A card given `today` speaks relatively — "Tomorrow", "Ends tomorrow",
+   * "Last day". Relative to *today*, which is the wrong anchor the moment
+   * somebody picks another day: the page said "Tomorrow" on a card under a
+   * heading about Sunday. Rather than teach the card a second anchor and a
+   * second vocabulary, a chosen day drops the relative line and the card
+   * prints the stated interval — which is true from any day.
+   */
+  const cardDay = chosenDayLine ? undefined : todayKey;
 
   const visible = useMemo(() => {
     // The geographic scope is applied to the whole pool, before the feed policy
@@ -486,6 +577,41 @@ export function DiscoveryListView({
   );
 
   /**
+   * **What the five controls actually do.**
+   *
+   * Each narrowing is a direct read of something Atlas states, and each one
+   * only ever narrows what Atlas has *placed*, *dated* or *spoken about*.
+   * Silence never removes anything: 68% of the corpus has no coordinates and
+   * 93% has no age evidence, and treating either as a reason to drop a
+   * subject is the oldest mistake in this product.
+   */
+  const answering = useMemo(() => {
+    let pool = composedPool;
+
+    // An age Atlas was asked about. Only a stated rule removes anything —
+    // `stated-other-ages` does not, which is the bug this release fixes.
+    if (childAge !== undefined) {
+      pool = pool.filter((experience) => !excludesAge(experience, childAge));
+    }
+
+    // A chosen day. A stated recurrence can rule a day out; nothing else can.
+    if (on) {
+      pool = pool.filter((experience) => !ruledOutOn(experience, on));
+    }
+
+    // A distance, against the subjects Atlas has placed.
+    if (within !== undefined && at) {
+      pool = pool.filter((experience) => {
+        const km = distanceTo(experience, at);
+        // Unplaced is not far away.
+        return km === undefined || km <= within;
+      });
+    }
+
+    return pool;
+  }, [composedPool, childAge, on, within, at]);
+
+  /**
    * **Composed first, then given a local lead — never filtered by location.**
    *
    * `nearSection` prepends one section of what Atlas has actually placed
@@ -503,8 +629,8 @@ export function DiscoveryListView({
    * honesty rather than quietly route around it.
    */
   const invitePool = useMemo(
-    () => (at ? nearYou(composedPool, at) : composedPool),
-    [composedPool, at],
+    () => (at ? nearYou(answering, at) : answering),
+    [answering, at],
   );
   const offers = useMemo(() => invitations(invitePool), [invitePool]);
 
@@ -521,9 +647,12 @@ export function DiscoveryListView({
     // only home, which is why the board carries its detail link — and a
     // composed page is a different presentation of the same feed, not a
     // licence to quietly change what saving does.
-    const sections = composeDiscovery(composedPool, {
+    const sections = composeDiscovery(answering, {
       now: now ? new Date(now) : new Date(),
       ...(where ? { where } : {}),
+      // The page composes around the day somebody picked, so a heading never
+      // names a day other than the one the cards under it are about.
+      ...(on ? { on } : {}),
     });
     // **Every section answers to where the person is**, once they have said.
     // *Happening today* used to open with a concert in Vancouver beside a
@@ -534,7 +663,7 @@ export function DiscoveryListView({
           items: nearestFirst(section.items, at),
         }))
       : sections;
-    const near = nearSection(composedPool, at);
+    const near = nearSection(answering, at);
     const withNear = near ? [near, ...placed] : placed;
     // What they just asked for leads, because they just asked for it.
     return chosen
@@ -549,13 +678,7 @@ export function DiscoveryListView({
           ...withNear,
         ]
       : withNear;
-  }, [composedPool, now, where, at, chosen]);
-
-  /** Which intents this pool can actually fill. A dead chip is worse than none. */
-  const intents = useMemo(
-    () => availableIntents(defaultFeed(scopeExperiences(experiences, scope))),
-    [experiences, scope],
-  );
+  }, [answering, now, where, at, chosen, on]);
 
   const kinds = useMemo(
     () => availableKinds(scopeExperiences(experiences, scope)),
@@ -896,69 +1019,218 @@ export function DiscoveryListView({
   }
 
   return (
-    <main
-      className="min-h-screen bg-[#ecdfc4]"
-      style={{
-        backgroundImage:
-          "radial-gradient(circle at 12% 8%, rgba(181,101,29,0.10), transparent 45%), radial-gradient(circle at 88% 92%, rgba(120,72,26,0.08), transparent 50%)",
-      }}
-    >
-      {/* Tighter on a phone. Every pixel here sits between somebody and the
+    <ThemeProvider>
+      {/* **White, and the photographs are the colour.** The cream ground and
+          its two radial washes are gone; the accent appears only on what is
+          live or chosen. */}
+      <main className="min-h-screen bg-white">
+        {/* Tighter on a phone. Every pixel here sits between somebody and the
           first thing they could actually do — which was at y=909 at 375px. */}
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-14">
-        <DiscoveryOpening
-          today={today ?? ""}
-          {...(where ? { where } : {})}
-          intents={intents}
-          selected={intent}
-          onSelect={setIntent}
-        />
+        {/* **Near full width, not a column.** `max-w-6xl` put a 1,152px
+            column in the middle of a 1920px screen with 384px of white either
+            side, which is the dimension a photograph most needs and the one
+            that was being given away. The cap exists so a line of body text
+            never runs the whole width of a 32" display. */}
+        <div className="mx-auto max-w-[1760px] px-4 py-5 sm:px-6 sm:py-10 lg:px-10">
+          {/* **Five questions, and every one of them does something.**
+            The hero and the row of ontology chips are gone: a chip saying
+            "Organization 1,584" is Atlas's filing cabinet, not a thing anybody
+            feels like doing. These are Atlas's own verbs, a real age, a real
+            date, a length of day and a real distance — and where a control
+            cannot narrow anything it says so rather than pretending. */}
+          <FeelLikeDoing
+            {...((chosenDayLine ?? today)
+              ? { today: chosenDayLine ?? today! }
+              : {})}
+            {...(where ? { where } : {})}
+            rows={[
+              {
+                key: "activity",
+                label: "What do you feel like doing?",
+                value: doing,
+                onChange: setDoing,
+                choices: offers.map((offer) => ({
+                  value: offer.doing,
+                  label: offer.doing,
+                  count: offer.places.length,
+                })),
+                // **A row with nothing in it says why.** Atlas states
+                // affordances for 224 subjects out of 2,680, so a narrow
+                // enough page genuinely has no verb to offer — and the brief's
+                // rule is that a control either works or admits it cannot.
+                ...(offers.length === 0
+                  ? {
+                      note: "Atlas states what you can do at 224 subjects out of 2,680, and none of them are on this page yet. Widen the day or the distance and the verbs come back.",
+                    }
+                  : {}),
+              },
+              {
+                key: "company",
+                label: "Who's coming?",
+                value: situation.company,
+                onChange: (next) =>
+                  setSituation({
+                    ...situation,
+                    company: next as typeof situation.company,
+                  }),
+                choices: [
+                  { value: "alone", label: "just me" },
+                  { value: "child", label: "a young child" },
+                  { value: "group", label: "friends" },
+                ],
+                ...(situation.company === "child"
+                  ? {
+                      after: (
+                        <>
+                          {[2, 4, 5, 6, 8, 10, 13].map((age) => (
+                            <button
+                              key={age}
+                              type="button"
+                              data-testid={`child-age-${age}`}
+                              aria-pressed={childAge === age}
+                              onClick={() =>
+                                setChildAge(childAge === age ? undefined : age)
+                              }
+                              style={
+                                childAge === age
+                                  ? {
+                                      backgroundColor: "var(--ghad-accent)",
+                                      color: "var(--ghad-accent-ink)",
+                                    }
+                                  : undefined
+                              }
+                              className={
+                                "inline-flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-[14px] font-semibold " +
+                                (childAge === age
+                                  ? ""
+                                  : "text-black/55 ring-1 ring-black/15 ring-inset hover:ring-black/45")
+                              }
+                            >
+                              age {age}
+                            </button>
+                          ))}
+                        </>
+                      ),
+                      note:
+                        childAge === undefined
+                          ? "Tell Passport how old and it asks Atlas about that age specifically. Without one it has no verdict to repeat — there is no default."
+                          : undefined,
+                    }
+                  : {}),
+              },
+              {
+                key: "when",
+                label: "When do you want to go?",
+                value: on,
+                onChange: setOn,
+                choices: nextDays(now ? new Date(now) : new Date()),
+                note: "Atlas states start dates, and for a handful of things the weekdays they recur on. Anything it has not dated stays, because silence is not a closure.",
+              },
+              {
+                key: "time",
+                label: "How much time do you have?",
+                value: situation.window,
+                onChange: (next) =>
+                  setSituation({
+                    ...situation,
+                    window: next as typeof situation.window,
+                  }),
+                choices: [
+                  { value: "an-hour", label: "an hour" },
+                  { value: "half-day", label: "half a day" },
+                  { value: "all-day", label: "the whole day" },
+                ],
+                note: "Atlas states a duration for 17 subjects out of 2,680, so this decides how many ideas to offer — never how long any of them takes.",
+              },
+              {
+                key: "distance",
+                label: "How far will you go?",
+                value: within === undefined ? undefined : String(within),
+                onChange: (next) =>
+                  setWithin(next === undefined ? undefined : Number(next)),
+                choices: [
+                  {
+                    value: "15",
+                    label: "15 min",
+                    ...(at ? {} : { blocked: "Share where you are first" }),
+                  },
+                  {
+                    value: "30",
+                    label: "30 min",
+                    ...(at ? {} : { blocked: "Share where you are first" }),
+                  },
+                  {
+                    value: "60",
+                    label: "an hour's drive",
+                    ...(at ? {} : { blocked: "Share where you are first" }),
+                  },
+                ],
+                ...(at
+                  ? {
+                      note: "Measured straight-line from where you are, against the 496 subjects Atlas has placed. Somewhere it has not placed is never ruled out.",
+                    }
+                  : ask
+                    ? {
+                        after: (
+                          <button
+                            type="button"
+                            data-testid="ghad-locate"
+                            onClick={ask}
+                            style={{ color: "var(--ghad-accent)" }}
+                            className="inline-flex min-h-11 shrink-0 items-center px-3 text-[14px] font-semibold whitespace-nowrap underline underline-offset-4"
+                          >
+                            share where you are
+                          </button>
+                        ),
+                      }
+                    : {}),
+              },
+            ]}
+          />
 
-        {/* Where a situation enters, rather than a search query. */}
-        {today && (
-          <div className="mt-6">
-            <TodayPanel
-              today={today}
-              {...((here ?? weather) ? { weather: here ?? weather } : {})}
-              place={place}
-              {...(childAge !== undefined ? { childAge } : {})}
-              onChildAge={setChildAge}
-              {...(at ? { origin: at } : {})}
-              {...(intent
-                ? {
-                    withinLabel:
-                      INTENTS.find((i) => i.key === intent)?.label ?? intent,
-                  }
-                : {})}
-              {...(ask ? { ask } : {})}
-              experiences={composedPool}
-              situation={situation}
-              onSituation={setSituation}
-            />
-          </div>
-        )}
+          {/* Where a situation enters, rather than a search query. */}
+          {today && (
+            <div className="mt-6">
+              <TodayPanel
+                today={chosenDayLine ?? today}
+                forecastApplies={!chosenDayLine}
+                // The five rows above ask who is coming, how old and how long.
+                // This panel answers; it no longer asks the same three things
+                // again twenty pixels lower. See `TodayPanel`.
+                asking={false}
+                {...((here ?? weather) ? { weather: here ?? weather } : {})}
+                place={place}
+                {...(childAge !== undefined ? { childAge } : {})}
+                onChildAge={setChildAge}
+                {...(at ? { origin: at } : {})}
+                {...(intent
+                  ? {
+                      withinLabel:
+                        INTENTS.find((i) => i.key === intent)?.label ?? intent,
+                    }
+                  : {})}
+                {...(ask ? { ask } : {})}
+                experiences={answering}
+                situation={situation}
+                onSituation={setSituation}
+              />
+            </div>
+          )}
 
-        {/* The page's own headline question, answered in verbs before the
-            list of nouns underneath it gets a chance to. Only on the composed
-            page: somebody who has typed a search has already said what they
-            are looking for. */}
-        {!browsing && offers.length > 0 && (
-          <div className="mt-6">
-            <InvitationStrip
-              invitations={offers}
-              near={Boolean(at)}
-              {...(doing ? { selected: doing } : {})}
-              onSelect={setDoing}
-            />
-          </div>
-        )}
+          {/* **`InvitationStrip` used to sit here and does not any more.**
+            It printed the same verbs, with the same counts, that the first of
+            the five rows above now prints — *Hiking 63 · Swimming 33* twice on
+            one screen, forty pixels apart, one of them labelled "Things you
+            could do" and the other "What do you feel like doing?". Two
+            controls for one question is the filter dashboard this brief rules
+            out. The component is untouched and still used by the labs. */}
 
-        <div
-          aria-hidden
-          className="my-5 border-t border-dashed border-[#8a5a24]/25 sm:my-8"
-        />
+          <div
+            aria-hidden
+            className="my-5 border-t border-dashed border-black/25 sm:my-8"
+          />
 
-        {/* **The mode switcher is gone, and with it a duplicate label.**
+          {/* **The mode switcher is gone, and with it a duplicate label.**
             Passport now has a real bar, and its second item says *Discover* —
             so a tab underneath it also saying *Discover* asked somebody to
             work out which of the two identically-named things they were in.
@@ -973,64 +1245,69 @@ export function DiscoveryListView({
 
             October keeps its door. It is a link out to an Experience with its
             own route tree, not a way of looking at this page. */}
-        <div className="flex items-center justify-end border-b border-[#2b2015]/10 pb-2">
-          <Link
-            href="/october"
-            data-testid="october-door"
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#8a5a24]/25 px-4 text-sm font-medium text-[#8a5a24] transition-colors hover:border-[#8a5a24]/55 hover:bg-[#8a5a24]/10"
-          >
-            <Leaf className="h-4 w-4" aria-hidden />I Am October
-            <span className="text-[#8a5a24]/50">→</span>
-          </Link>
-        </div>
+          <div className="flex items-center justify-end border-b border-black/10 pb-2">
+            <Link
+              href="/october"
+              data-testid="october-door"
+              className="ghad-accent-text inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-black/25 px-4 text-sm font-medium transition-colors hover:border-black/55 hover:bg-black/10"
+            >
+              <Leaf className="h-4 w-4" aria-hidden />I Am October
+              <span className="text-black/50">→</span>
+            </Link>
+          </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-6 sm:mt-8 lg:grid-cols-[1fr_320px]">
-          <div className="flex flex-col gap-6">
-            <>
-              <DiscoveryListFilters
-                query={query}
-                onQueryChange={setQuery}
-                filters={filters}
-                onFiltersChange={setFilters}
-                availableMoods={availableMoods}
-                availableActivities={availableActivities}
-                availableSeasons={availableSeasons}
-                availableCompanions={availableCompanions}
-                resultCount={visible.length}
-                {...(intent
-                  ? {
-                      within:
-                        INTENTS.find((i) => i.key === intent)?.label ?? intent,
-                    }
-                  : {})}
-                kinds={kinds}
-                selectedKind={kind}
-                onKindChange={setKind}
-                browsing={browsing}
-              />
+          <div className="mt-5 grid grid-cols-1 gap-6 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+            {/* `min-w-0`: a grid item sizes to its content by default, so the
+                shelves' `overflow-x-auto` never engaged and the **document**
+                scrolled sideways by 2,440px at 1440 instead. */}
+            <div className="flex min-w-0 flex-col gap-6">
+              <>
+                <DiscoveryListFilters
+                  query={query}
+                  onQueryChange={setQuery}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  availableMoods={availableMoods}
+                  availableActivities={availableActivities}
+                  availableSeasons={availableSeasons}
+                  availableCompanions={availableCompanions}
+                  resultCount={visible.length}
+                  {...(intent
+                    ? {
+                        within:
+                          INTENTS.find((i) => i.key === intent)?.label ??
+                          intent,
+                      }
+                    : {})}
+                  kinds={kinds}
+                  selectedKind={kind}
+                  onKindChange={setKind}
+                  browsing={browsing}
+                />
 
-              {/* **Composed when nobody has asked for anything; ranked when
+                {/* **Composed when nobody has asked for anything; ranked when
                     they have.** Those are different jobs. The composed page
                     answers "what could I do?"; the flat list answers "where is
                     the thing I already have in mind?", and ranking a magazine
                     or composing a search result would do neither well. */}
-              {!browsing ? (
-                <DiscoverySections
-                  sections={composed}
-                  {...(todayKey ? { today: todayKey } : {})}
-                  {...(home ? { home } : {})}
-                  {...(at ? { origin: at } : {})}
-                  savedIds={savedIds}
-                  savingId={savingId}
-                  onSave={handleSave}
-                />
-              ) : visible.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-[#8a5a24]/25 bg-[#f7ecd3]/30 px-4 py-10 text-center text-sm text-[#2b2015]/60">
-                  Nothing here matches that. Try fewer words, or clear what you
-                  have chosen.
-                </p>
-              ) : (
-                /* **The same cards, whatever you asked.**
+                {!browsing ? (
+                  <DiscoverySections
+                    sections={composed}
+                    {...(cardDay ? { today: cardDay } : {})}
+                    {...(home ? { home } : {})}
+                    {...(at ? { origin: at } : {})}
+                    carry={carry}
+                    savedIds={savedIds}
+                    savingId={savingId}
+                    onSave={handleSave}
+                  />
+                ) : visible.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-black/25 bg-white px-4 py-10 text-center text-sm text-black/60">
+                    Nothing here matches that. Try fewer words, or clear what
+                    you have chosen.
+                  </p>
+                ) : (
+                  /* **The same cards, whatever you asked.**
                      Choosing *Get outside* used to replace eight picture-led
                      cards with twenty-four dense rows led by "Pine Park — a
                      park located at 1605 A 39A Ave featuring a playground" —
@@ -1047,61 +1324,65 @@ export function DiscoveryListView({
                      was ever handed the reader's position. Same `origin`,
                      same rule — a distance where both ends are stated, and
                      nothing at all otherwise. */
-                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {visible.slice(0, shown).map((experience) => (
-                    <PossibilityCard
-                      key={experience.id}
-                      experience={experience}
-                      {...(todayKey ? { today: todayKey } : {})}
-                      {...(home ? { home } : {})}
-                      {...(at ? { origin: at } : {})}
-                      saved={savedIds.has(experience.id)}
-                      saving={savingId === experience.id}
-                      onSave={() => handleSave(experience)}
-                    />
-                  ))}
-                </ul>
-              )}
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {visible.slice(0, shown).map((experience) => (
+                      <PossibilityCard
+                        key={experience.id}
+                        experience={experience}
+                        {...(cardDay ? { today: cardDay } : {})}
+                        {...(home ? { home } : {})}
+                        {...(at ? { origin: at } : {})}
+                        carry={carry}
+                        saved={savedIds.has(experience.id)}
+                        saving={savingId === experience.id}
+                        onSave={() => handleSave(experience)}
+                      />
+                    ))}
+                  </ul>
+                )}
 
-              {/* **Results are paged too.** A kind chip over the whole corpus
+                {/* **Results are paged too.** A kind chip over the whole corpus
                     is 1,587 Organizations, and rendering all of them is the
                     same 615-screen page wearing a filter. */}
-              {browsing && visible.length > shown && (
-                <button
-                  type="button"
-                  data-testid="show-more-results"
-                  onClick={() => setShown((n) => n + RESULT_PAGE)}
-                  className="self-start rounded-full border border-[#8a5a24]/30 px-4 py-2.5 text-sm font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
-                >
-                  Show more ({visible.length - shown} more)
-                </button>
-              )}
-            </>
+                {browsing && visible.length > shown && (
+                  <button
+                    type="button"
+                    data-testid="show-more-results"
+                    onClick={() => setShown((n) => n + RESULT_PAGE)}
+                    className="ghad-accent-text self-start rounded-full border border-black/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/10"
+                  >
+                    Show more ({visible.length - shown} more)
+                  </button>
+                )}
+              </>
+            </div>
+
+            <DiscoveryListSidebar
+              boards={visibleBoards}
+              board={visibleBoard}
+              boardsLoaded={boardsReady}
+              signedIn={signedIn}
+              savedItems={savedItems}
+              unshownSaves={unshownSaves}
+              onSwitchBoard={handleSwitchBoard}
+              onCreateBoard={handleCreateBoard}
+              onRenameBoard={handleRenameBoard}
+              onRequestDeleteBoard={handleRequestDeleteBoard}
+              onRemoveSaved={handleRemoveSaved}
+              backHref={sessionHref(session)}
+            />
           </div>
-
-          <DiscoveryListSidebar
-            boards={visibleBoards}
-            board={visibleBoard}
-            boardsLoaded={boardsReady}
-            signedIn={signedIn}
-            savedItems={savedItems}
-            unshownSaves={unshownSaves}
-            onSwitchBoard={handleSwitchBoard}
-            onCreateBoard={handleCreateBoard}
-            onRenameBoard={handleRenameBoard}
-            onRequestDeleteBoard={handleRequestDeleteBoard}
-            onRemoveSaved={handleRemoveSaved}
-            backHref={sessionHref(session)}
-          />
         </div>
-      </div>
 
-      <DeleteBoardDialog
-        boardName={confirmingDeleteBoard ? (visibleBoard?.name ?? null) : null}
-        isDeleting={isDeletingBoard}
-        onOpenChange={(open) => !open && setConfirmingDeleteBoard(false)}
-        onConfirm={handleConfirmDeleteBoard}
-      />
-    </main>
+        <DeleteBoardDialog
+          boardName={
+            confirmingDeleteBoard ? (visibleBoard?.name ?? null) : null
+          }
+          isDeleting={isDeletingBoard}
+          onOpenChange={(open) => !open && setConfirmingDeleteBoard(false)}
+          onConfirm={handleConfirmDeleteBoard}
+        />
+      </main>
+    </ThemeProvider>
   );
 }

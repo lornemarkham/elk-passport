@@ -134,6 +134,45 @@ const ADVISED_AGAINST = subject("Field of Screams", {
   forAge: { age: 5, reading: "advised-against", because: [0] },
 });
 
+/**
+ * **Winfield Arena: the venue where an 18+ shinny is played.**
+ *
+ * Atlas answers `stated-other-ages` — it names ages, and not this one. The
+ * arena is not closed to a five-year-old; one activity held there is for
+ * adults. Passport mapped this to `excluded` and removed real, open venues
+ * from a parent's answer.
+ */
+const OTHER_AGES = subject("Winfield Arena", {
+  stated: "stated",
+  statements: [
+    {
+      about: "age",
+      says: "admits",
+      strength: "characterisation",
+      ages: { min: 18 },
+      text: "The location where the Adult Shinny (18+) hockey games are held.",
+      basis: "description",
+    },
+  ],
+  forAge: { age: 5, reading: "stated-other-ages", because: [0] },
+});
+
+/** Another World VR: "Perfect for families with kids ages 6 and up." */
+const SIX_AND_UP = subject("Another World VR", {
+  stated: "stated",
+  statements: [
+    {
+      about: "age",
+      says: "admits",
+      strength: "characterisation",
+      ages: { min: 6 },
+      text: "Age suitability: Perfect for families with kids ages 6 and up.",
+      basis: "key-fact",
+    },
+  ],
+  forAge: { age: 5, reading: "stated-other-ages", because: [0] },
+});
+
 /** 93% of the corpus for a five-year-old. */
 const SILENT = subject("Deer Park", {
   stated: "unknown",
@@ -202,7 +241,47 @@ describe("what a person is told", () => {
   });
 });
 
-describe("the six buckets", () => {
+/**
+ * **A stated age range is not a closed door.**
+ *
+ * The regression this pins: `stated-other-ages` was mapped to `excluded`, so
+ * a hockey arena that happens to host an 18+ shinny, and a VR place
+ * characterised for six-year-olds, were both struck off a five-year-old's
+ * answer as though a rule forbade them.
+ */
+describe("ages named for something else", () => {
+  it("is not exclusion", () => {
+    expect(excludesAge(OTHER_AGES, 5)).toBe(false);
+    expect(excludesAge(SIX_AND_UP, 5)).toBe(false);
+  });
+
+  it("is not a welcome either", () => {
+    expect(ageEvidence(OTHER_AGES, 5).verdict).toBe("other-ages");
+    expect(ageEvidence(SIX_AND_UP, 5).verdict).toBe("other-ages");
+  });
+
+  it("is still a thing Atlas has spoken about", () => {
+    expect(speaksToAge(OTHER_AGES, 5)).toBe(true);
+  });
+
+  it("says what it is rather than claiming a rule", () => {
+    const said = ageLine(SIX_AND_UP, 5)!;
+    expect(said).toContain("other ages");
+    expect(said).not.toContain("Not for");
+  });
+
+  it("keeps a stated rule excluded, which is the other half", () => {
+    // `excluded` is what Atlas marks `strength: rule`. That has not changed.
+    expect(excludesAge(SIXTEEN_PLUS, 5)).toBe(true);
+    expect(excludesAge(ADVISED_AGAINST, 5)).toBe(true);
+  });
+
+  it("carries the sentence, so a parent can judge for themselves", () => {
+    expect(ageBecause(OTHER_AGES, 5)).toContain("Adult Shinny (18+)");
+  });
+});
+
+describe("the buckets", () => {
   const POOL = [
     JUMP2IT,
     DESCRIBED,
@@ -211,6 +290,7 @@ describe("the six buckets", () => {
     SUPERVISED,
     SILENT,
     NO_CONTRACT,
+    OTHER_AGES,
   ];
 
   it("sorts each subject into exactly one", () => {
@@ -225,6 +305,8 @@ describe("the six buckets", () => {
       "Gerni's Farmhouse",
       "Field of Screams",
     ]);
+    // Winfield Arena is neither welcome nor excluded.
+    expect(split.otherAges.map((e) => e.title)).toEqual(["Winfield Arena"]);
     expect(split.unknown).toHaveLength(3);
   });
 
@@ -235,6 +317,7 @@ describe("the six buckets", () => {
       s.described.length +
       s.priced.length +
       s.excluded.length +
+      s.otherAges.length +
       s.unclear.length +
       s.unknown.length;
     expect(total).toBe(POOL.length);

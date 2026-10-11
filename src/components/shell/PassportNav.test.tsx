@@ -57,7 +57,9 @@ describe("where you are", () => {
 describe("getting out", () => {
   it("always offers a way home", () => {
     at("/boards");
-    expect(screen.getByTestId("passport-home")).toHaveAttribute("href", "/");
+    // The wordmark is the way home. It reads GO HAVE A DAY now — the name of
+    // the product rather than the name of the software; see `Wordmark`.
+    expect(screen.getByTestId("ghad-wordmark")).toHaveAttribute("href", "/");
   });
 
   it("carries where you were into sign-in", () => {
@@ -90,7 +92,7 @@ describe("what it refuses to promise", () => {
       .getAllByRole("link")
       .map((a) => a.textContent?.trim());
     expect(labels).toEqual([
-      "Passport",
+      "Go have a day",
       "Discover",
       "Places",
       "Saved",

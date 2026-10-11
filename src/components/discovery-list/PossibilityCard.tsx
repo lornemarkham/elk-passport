@@ -51,6 +51,8 @@ export function PossibilityCard({
   today,
   home,
   origin,
+  className = "",
+  carry,
   saved,
   saving,
   onSave,
@@ -71,13 +73,25 @@ export function PossibilityCard({
    * says nothing rather than guessing.
    */
   readonly origin?: Point;
+  /** Layout from the surface — a shelf sets its own card width. */
+  readonly className?: string;
+  /**
+   * **What the exploration carries with it**, as a query string — the day
+   * somebody picked, the age they named, the way back.
+   *
+   * Without it, opening a card threw away the Sunday and the five-year-old on
+   * the way to the page where they matter most, and "Let's do this" then
+   * planned a different day from the one in the person's head.
+   */
+  readonly carry?: string;
   readonly saved: boolean;
   readonly saving: boolean;
   readonly onSave: () => void;
   readonly wanted?: boolean;
   readonly onWant?: () => void;
 }) {
-  const destination = destinationFor(experience);
+  const base = destinationFor(experience);
+  const destination = base && carry ? `${base}?${carry}` : base;
   // Relative where the page knows what day it is — "Last day", "On until Oct
   // 25" — and the full stated interval otherwise, which is what a subject's
   // own page always shows.
@@ -121,9 +135,9 @@ export function PossibilityCard({
     <li
       data-testid="possibility"
       data-has-image={picture ? "true" : "false"}
-      className={`relative flex flex-col overflow-hidden rounded-xl border border-[#8a5a24]/15 bg-[#f7ecd3] ${
-        destination ? "transition-colors hover:border-[#8a5a24]/45" : ""
-      }`}
+      // **White, no border, no shadow, no card.** The photograph is the
+      // object; the text sits under it on the page's own ground.
+      className={`group relative flex h-full flex-col bg-white ${className}`}
     >
       {destination && (
         <Link
@@ -133,19 +147,24 @@ export function PossibilityCard({
         />
       )}
 
+      {!picture && (
+        <div className="flex aspect-[4/3] w-full items-end border-t border-black/15 p-3">
+          <span className="text-[12px] text-black/35">No photograph</span>
+        </div>
+      )}
       {picture && (
-        <div className="aspect-[16/10] w-full overflow-hidden bg-[#2b2015]/[0.06]">
+        <div className="aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
           {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
           <img
             src={picture}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
         </div>
       )}
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col pt-3">
         {/* The one line that changes by kind: a dated thing says when, a
             timeless thing says where. Never both in this slot — that is the
             eyebrow, and an eyebrow with two jobs has none. */}
@@ -160,7 +179,7 @@ export function PossibilityCard({
             {away && (
               <p
                 data-testid="possibility-distance"
-                className="inline-flex w-fit items-center gap-1 rounded-full bg-[#8a5a24]/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#8a5a24] uppercase"
+                className="ghad-accent-text inline-flex w-fit items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
               >
                 <MapPin className="h-3 w-3 shrink-0" aria-hidden />
                 {away}
@@ -169,7 +188,7 @@ export function PossibilityCard({
             {elsewhere && (
               <p
                 data-testid="possibility-area"
-                className="inline-flex w-fit items-center gap-1 rounded-full bg-[#2b2015]/[0.07] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#2b2015]/70 uppercase"
+                className="inline-flex w-fit items-center gap-1 rounded-full bg-[#111]/[0.07] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-black/70 uppercase"
               >
                 <MapPin className="h-3 w-3 shrink-0" aria-hidden />
                 {area}
@@ -181,27 +200,27 @@ export function PossibilityCard({
         {when ? (
           <p
             data-testid="possibility-when"
-            className="truncate text-xs font-semibold tracking-wide text-[#8a5a24]"
+            className="ghad-accent-text truncate text-xs font-semibold tracking-wide"
           >
             {when}
           </p>
         ) : where ? (
           <p
             data-testid="possibility-where"
-            className="flex items-center gap-1 truncate text-xs font-medium text-[#8a5a24]"
+            className="ghad-accent-text flex items-center gap-1 truncate text-xs font-medium"
           >
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {where}
           </p>
         ) : showTag ? (
-          <p className="truncate text-[10px] font-medium tracking-wide text-[#8a5a24]/70 uppercase">
+          <p className="truncate text-[10px] font-medium tracking-wide text-black/70 uppercase">
             {tag}
           </p>
         ) : null}
 
         <h3
-          className={`font-heading mt-1 leading-tight text-[#2b2015] ${
-            picture ? "text-base" : "text-lg"
+          className={`ghad-display mt-1 leading-[1.1] font-extrabold tracking-[-0.03em] text-balance text-[#111] ${
+            picture ? "text-[18px]" : "text-[20px]"
           }`}
         >
           {experience.title}
@@ -222,12 +241,12 @@ export function PossibilityCard({
           (experience.knowledge?.descriptionAddsKnowledge === false ? (
             <p
               data-testid="possibility-weak-description"
-              className="mt-1.5 line-clamp-1 text-[11px] leading-relaxed text-[#2b2015]/40"
+              className="mt-1.5 line-clamp-1 text-[11px] leading-relaxed text-black/40"
             >
               {experience.shortDescription}
             </p>
           ) : (
-            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#2b2015]/60">
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-black/60">
               {experience.shortDescription}
             </p>
           ))}
@@ -237,7 +256,7 @@ export function PossibilityCard({
         {recurs && (
           <p
             data-testid="possibility-recurs"
-            className="mt-1.5 text-[11px] font-medium text-[#8a5a24]"
+            className="ghad-accent-text mt-1.5 text-[11px] font-medium"
           >
             {recurs}
           </p>
@@ -246,7 +265,7 @@ export function PossibilityCard({
         {/* Said second where the eyebrow was already spent on the date. A
             dated event still has to say where it is. */}
         {when && where && (
-          <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-[#2b2015]/50">
+          <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-black/50">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {where}
           </p>
@@ -258,7 +277,7 @@ export function PossibilityCard({
         {unresolved && (
           <p
             data-testid="possibility-unresolved"
-            className="mt-1.5 flex items-center gap-1 text-xs text-[#2b2015]/45"
+            className="mt-1.5 flex items-center gap-1 text-xs text-black/45"
           >
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {unresolved}
@@ -267,7 +286,7 @@ export function PossibilityCard({
 
         <div className="relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-4">
           {saved ? (
-            <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 text-xs font-medium text-[#8a5a24]">
+            <span className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 text-xs font-medium">
               <Check className="h-3.5 w-3.5" aria-hidden />
               Saved
             </span>
@@ -282,7 +301,7 @@ export function PossibilityCard({
               onClick={onSave}
               disabled={saving}
               title="Keep this to look at later"
-              className="inline-flex min-h-11 items-center rounded-full bg-[#2b2015] px-4 text-xs font-medium text-[#f7ecd3] transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-4 text-xs font-medium text-white transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -290,7 +309,7 @@ export function PossibilityCard({
           {onWant &&
             (wanted ? (
               <span
-                className="text-xs font-medium text-[#8a5a24]"
+                className="ghad-accent-text text-xs font-medium"
                 data-testid="wanted"
               >
                 In my October
@@ -301,7 +320,7 @@ export function PossibilityCard({
                 onClick={onWant}
                 data-testid="want-to-do"
                 title="Keep this in My October"
-                className="inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-[#8a5a24] transition-colors hover:bg-[#8a5a24]/10"
+                className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors hover:bg-black/10"
               >
                 <Leaf className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Want to do

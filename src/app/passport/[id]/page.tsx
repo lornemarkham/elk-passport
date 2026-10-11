@@ -15,12 +15,14 @@ import { loadWorkspaceBundle } from "@/lib/knowledge/workspaceData";
 import { getSubjectDetail } from "@/lib/data/atlas-repo";
 import { subjectPageView } from "@/lib/passport/subjectPage";
 import { ComposedSubjectPage } from "@/components/passport/ComposedSubject";
+import { LetsDoThis } from "@/components/ghad/LetsDoThis";
 import { ComposedOctoberSubject } from "@/components/october/detail/ComposedOctoberSubject";
 import { CuratedSubjectPage } from "@/components/passport/CuratedSubject";
 import { curationFor } from "@/lib/passport/curation/october2026";
 import { isOctoberSubject } from "@/domain/passport/octoberContext";
 import type { SubjectPageView } from "@/lib/passport/subjectPage";
 import { currentUser } from "@/lib/auth/currentUser";
+import { safeNext } from "@/lib/auth/safeNext";
 import {
   OctoberProvenance,
   OctoberShell,
@@ -146,6 +148,20 @@ export default async function PassportPage({ params, searchParams }: Props) {
   const query = await searchParams;
   const on = typeof query.on === "string" ? query.on : undefined;
   const curator = query.curator === "1";
+  // Carried through from Discovery so the plan is about the day and the person
+  // somebody actually chose. Never defaulted — an absent age means Atlas was
+  // not asked about anybody, which is a different answer from "a child".
+  const askedAge = Number(
+    typeof query.childAge === "string" ? query.childAge : NaN,
+  );
+  const childAge =
+    Number.isInteger(askedAge) && askedAge >= 0 && askedAge <= 17
+      ? askedAge
+      : undefined;
+  const back =
+    typeof query.back === "string"
+      ? safeNext(query.back, "/discovery")
+      : undefined;
 
   // A subject Atlas composes is rendered from the composed read alone.
   //
@@ -232,7 +248,20 @@ export default async function PassportPage({ params, searchParams }: Props) {
           ) : curation ? (
             <CuratedSubjectPage view={view} curation={curation} />
           ) : (
-            <ComposedSubjectPage view={view} />
+            <>
+              {/* **The step this page did not have.** An entity page answered
+                  "what is this?" and stopped; `/day/{id}` is the answer to
+                  "right, when and how far". October keeps its own foot
+                  actions, and a curated page keeps its composition — this
+                  band is additive and only on the composed arrangement. */}
+              <LetsDoThis
+                id={id}
+                {...(on ? { on } : {})}
+                {...(childAge === undefined ? {} : { childAge })}
+                {...(back ? { back } : {})}
+              />
+              <ComposedSubjectPage view={view} />
+            </>
           )}
         </main>
       );

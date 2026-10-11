@@ -25,7 +25,8 @@ import type { SuitabilityForAge, SuitabilityStatement } from "@/lib/data/types";
  * welcome      stated 10 · part-stated 3      a rule admits this age
  * described    characterised 137              described in a way that implies it
  * priced       priced 11                      a price band names this age
- * excluded     excluded 16 · advised-against 1 · stated-other-ages 7
+ * excluded     excluded 16 · advised-against 1
+ * other-ages   stated-other-ages 7           named for other ages, not barred
  * unclear      conflicting 1                  the evidence disagrees
  * unknown      2,494                          Atlas has no evidence either way
  * ```
@@ -39,7 +40,34 @@ import type { SuitabilityForAge, SuitabilityStatement } from "@/lib/data/types";
  * **`unknown` is 93% and means nothing at all.** Not suitable, not unsuitable.
  */
 export type AgeVerdict =
-  "welcome" | "described" | "priced" | "excluded" | "unclear" | "unknown";
+  | "welcome"
+  | "described"
+  | "priced"
+  /** A stated **rule** shuts this age out. */
+  | "excluded"
+  /**
+   * **Atlas names ages, and not this one — without shutting this one out.**
+   *
+   * This was mapped to `excluded`, and that was wrong. Measured on production
+   * for a five-year-old, `stated-other-ages` is:
+   *
+   * ```
+   * Winfield Arena      "the location where Adult Shinny (18+) games are held"
+   * Another World VR    "Perfect for families with kids ages 6 and up"
+   * Baby Story Time     "a free drop-in programme for babies under 2"
+   * ```
+   *
+   * The arena is not closed to a five-year-old; one activity held there is
+   * 18+. The VR place is characterised for six and up, not barred below it.
+   * Treating any of those as a rule removed real, open venues from a parent's
+   * answer — and Atlas reserves `excluded` for `strength: rule` ("ALL GUESTS
+   * MUST BE 16+", "19+/No Minors"), which these are not.
+   *
+   * So it is its own answer: still offered, and labelled for what it is.
+   */
+  | "other-ages"
+  | "unclear"
+  | "unknown";
 
 const VERDICTS: Readonly<Record<string, AgeVerdict>> = {
   stated: "welcome",
@@ -48,7 +76,10 @@ const VERDICTS: Readonly<Record<string, AgeVerdict>> = {
   priced: "priced",
   excluded: "excluded",
   "advised-against": "excluded",
-  "stated-other-ages": "excluded",
+  // **Not `excluded`.** See `AgeVerdict`: Atlas reserves `excluded` for a
+  // stated rule, and this is a statement about other ages that does not bar
+  // this one.
+  "stated-other-ages": "other-ages",
   conflicting: "unclear",
 };
 
@@ -120,6 +151,8 @@ export interface AgeSplit {
   readonly priced: readonly Experience[];
   /** A rule shuts this age out, or advises against. */
   readonly excluded: readonly Experience[];
+  /** Atlas names ages, and not this one — without barring it. */
+  readonly otherAges: readonly Experience[];
   /** Atlas's evidence disagrees with itself and it will not pick. */
   readonly unclear: readonly Experience[];
   /** No evidence either way. 93% of the corpus for a five-year-old. */
@@ -135,13 +168,14 @@ export function splitByAge(
     described: [],
     priced: [],
     excluded: [],
+    "other-ages": [],
     unclear: [],
     unknown: [],
   };
   for (const experience of experiences) {
     out[ageEvidence(experience, askedAge).verdict].push(experience);
   }
-  return out;
+  return { ...out, otherAges: out["other-ages"] };
 }
 
 /**
@@ -166,6 +200,9 @@ export function ageLine(
       return `Has a price for a ${age}-year-old`;
     case "excluded":
       return `Not for a ${age}-year-old`;
+    case "other-ages":
+      // Said as what it is: a statement about other ages, not a closed door.
+      return `Atlas states other ages for this — not a rule against ${age}`;
     case "unclear":
       return `Atlas's evidence disagrees about ${age}-year-olds`;
     default:
