@@ -793,7 +793,10 @@ certainty. Do not invent an answer here to make the document feel finished.
 10. **How live mode should interrupt — or stay silent.** (§2.7, §6)
 11. **How feedback influences personal versus shared knowledge**, and what may
     flow back to Atlas. (§2.10)
-12. **How group / multi-person experiences work.** (§6, §14)
+12. **How group / multi-person experiences work.** (§6, §14) First concrete
+    case: GO HAVE A CONFERENCE (2026-10-11,
+    `docs/products/go-have-a-conference/VISION.md`), a pilot that should
+    _inform_ this question, not answer it.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**
