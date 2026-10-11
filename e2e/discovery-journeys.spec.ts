@@ -290,7 +290,6 @@ test.describe("into a day", () => {
       await shoot(page, info, `${tag}-1-the-day-routing-${routing}`);
 
       // Keep it, reload, and it is still the day that was shaped.
-      const dayUrl = page.url();
       await page.getByTestId("go-keep-day").click();
       await expect(page.getByTestId("go-note")).toContainText("this device");
       await page.reload();
