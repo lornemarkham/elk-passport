@@ -190,15 +190,15 @@ export function nearSection(
 ): DiscoverySection | undefined {
   const items = nearYou(experiences, origin, nearKm);
   if (items.length === 0) return undefined;
-  const { unplaced } = placementCounts(experiences, origin, nearKm);
 
   return {
     id: "near-you",
     title: "Near you",
     note:
-      `Within ${nearKm} km of where you are, from coordinates Atlas states. ` +
-      `Passport does not know where ${unplaced.toLocaleString("en-CA")} of the ` +
-      `others are — they are still below, unsorted rather than ruled out.`,
+      // Consumer copy. The unplaced count is still computed and still shown,
+      // but in its own section with its own heading rather than as a
+      // parenthetical about what the knowledge base does not hold.
+      `Within ${nearKm} km of where you are, nearest first.`,
     items: items.slice(0, SECTION_SIZE * SECTION_PAGES),
     size: SECTION_SIZE,
     total: items.length,

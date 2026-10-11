@@ -46,6 +46,7 @@ import {
 import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { excludesAge, ageEvidence } from "@/domain/discovery/suitability";
+import { arguesAgainst } from "@/domain/discovery/environment";
 import {
   countElsewhere,
   otherAreas,
@@ -75,6 +76,7 @@ import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
 import {
+  SECTION_SIZE,
   composeDiscovery,
   dayOf,
   dominantArea,
@@ -575,35 +577,6 @@ export function DiscoveryListView({
    */
   const cardDay = chosenDayLine ? undefined : todayKey;
 
-  const visible = useMemo(() => {
-    // The geographic scope is applied to the whole pool, before the feed policy
-    // and before search, so browse and search obey one scope rather than three.
-    // An entity Atlas has placed in no region is excluded by a region scope
-    // rather than adopted by it — see `geographicScope`.
-    const scoped = scopeExperiences(experiences, scope);
-    const pool = browsing ? scoped : defaultFeed(scoped);
-    // Matching and ordering are one decision (`rankByQuery`, M10): what the
-    // query names ranks first, a description mention last, and with no query
-    // the pool keeps its order. Scope, feed, filters, kind and saved-item
-    // exclusion are unchanged around it.
-    const narrowed = filterExperiences(pool, filters)
-      .filter((experience) => (kind ? experience.kind === kind : true))
-      .filter((experience) => (intent ? intentOf(experience) === intent : true))
-      .filter((experience) => !savedIds.has(experience.id));
-
-    // **With a query, relevance decides. Without one, a picture does.**
-    //
-    // `rankByQuery` keeps the pool's order when there is nothing to rank by,
-    // which is Atlas's order — so choosing *Get outside* opened on "Pine Park
-    // — a park located at 1605 A 39A Ave featuring a playground", the exact
-    // card the composed page exists to stop leading with. An intent is a
-    // browse, and a browse should put its best face first, exactly as every
-    // composed section does.
-    return query.trim().length > 0
-      ? rankByQuery(narrowed, query)
-      : pictureFirst(narrowed);
-  }, [experiences, filters, query, savedIds, browsing, kind, intent, scope]);
-
   /**
    * **The composed page: what somebody sees before they ask for anything.**
    *
@@ -689,17 +662,119 @@ export function DiscoveryListView({
       pool = pool.filter((experience) => !ruledOutOn(experience, on));
     }
 
-    // A distance, against the subjects Atlas has placed.
+    // **A distance keeps only what can actually be measured.**
+    //
+    // This used to keep the unmeasurable too — "unplaced is not far away",
+    // which is true and was the wrong conclusion to draw from it. Atlas has
+    // published no location for roughly 1,800 of 2,680 subjects, so every
+    // tier kept all of them and "within 15 km" returned 1,799 possibilities
+    // of which 146 were actually known to be within 15 km. The control was
+    // honest about its arithmetic and dishonest about its answer.
+    //
+    // They are not dropped: `unlocated` below carries them into their own
+    // section, named for what they are. What changes is that nothing
+    // unmeasured is presented as near.
     if (within !== undefined && at) {
       pool = pool.filter((experience) => {
         const km = distanceTo(experience, at);
-        // Unplaced is not far away.
-        return km === undefined || km <= within;
+        return km !== undefined && km <= within;
       });
     }
 
     return pool;
   }, [local, childAge, on, within, at]);
+
+  /**
+   * **What a distance cannot speak for.**
+   *
+   * Everything the other answers kept and the distance could not measure —
+   * no coordinates published, so no claim either way. Shown in its own
+   * section, below the ones that are genuinely near, and only while a
+   * distance is actually chosen.
+   */
+  const unlocated = useMemo(() => {
+    if (within === undefined || !at) return [];
+    let pool = local;
+    if (childAge !== undefined) {
+      pool = pool.filter((experience) => !excludesAge(experience, childAge));
+    }
+    if (on) pool = pool.filter((experience) => !ruledOutOn(experience, on));
+    return pictureFirst(
+      pool.filter((experience) => distanceTo(experience, at) === undefined),
+    );
+  }, [local, childAge, on, within, at]);
+
+  /**
+   * **Search looks inside the answers, unless it is asked not to.**
+   *
+   * What it did before: searched the whole scoped corpus and ignored every
+   * answer given above it. Somebody who had said *a five-year-old, tomorrow,
+   * Vernon, within 30 km* and then typed `animals` got results from the whole
+   * province, on any date, with no regard for the child — and nothing on the
+   * page said their answers had been dropped.
+   *
+   * The two questions are different and both are real:
+   *
+   * ```
+   * the questionnaire   "help me discover something"
+   * search              "I am looking for something specific"
+   * ```
+   *
+   * So search now runs inside the set the answers produced, and `?all=1`
+   * lets it run over everything — offered as a visible link beside the
+   * result count whenever the answers are actually holding something back.
+   * Nothing is discarded silently in either direction.
+   */
+  const everywhere = params.get("all") === "1";
+
+  const visible = useMemo(() => {
+    // The geographic scope is applied to the whole pool, before the feed policy
+    // and before search, so browse and search obey one scope rather than three.
+    // An entity Atlas has placed in no region is excluded by a region scope
+    // rather than adopted by it — see `geographicScope`.
+    const scoped = scopeExperiences(experiences, scope);
+    const answered = !everywhere && answering.length > 0;
+    const pool = answered
+      ? // The questionnaire's own set, plus what a distance could not measure
+        // — searching for a named place should not fail because nobody has
+        // published its coordinates.
+        [...answering, ...unlocated]
+      : browsing
+        ? scoped
+        : defaultFeed(scoped);
+    // Matching and ordering are one decision (`rankByQuery`, M10): what the
+    // query names ranks first, a description mention last, and with no query
+    // the pool keeps its order. Scope, feed, filters, kind and saved-item
+    // exclusion are unchanged around it.
+    const narrowed = filterExperiences(pool, filters)
+      .filter((experience) => (kind ? experience.kind === kind : true))
+      .filter((experience) => (intent ? intentOf(experience) === intent : true))
+      .filter((experience) => !savedIds.has(experience.id));
+
+    // **With a query, relevance decides. Without one, a picture does.**
+    //
+    // `rankByQuery` keeps the pool's order when there is nothing to rank by,
+    // which is Atlas's order — so choosing *Get outside* opened on "Pine Park
+    // — a park located at 1605 A 39A Ave featuring a playground", the exact
+    // card the composed page exists to stop leading with. An intent is a
+    // browse, and a browse should put its best face first, exactly as every
+    // composed section does.
+    return query.trim().length > 0
+      ? rankByQuery(narrowed, query)
+      : pictureFirst(narrowed);
+  }, [
+    experiences,
+    filters,
+    query,
+    savedIds,
+    browsing,
+    kind,
+    intent,
+    scope,
+    answering,
+    unlocated,
+    everywhere,
+  ]);
 
   /**
    * **Composed first, then given a local lead — never filtered by location.**
@@ -753,8 +828,57 @@ export function DiscoveryListView({
           items: nearestFirst(section.items, at),
         }))
       : sections;
+
+    /**
+     * **Rain demotes what is stated to be out in the open. It excludes
+     * nothing.**
+     *
+     * Atlas classifies 122 subjects for weather, with seven readings; only
+     * `exposed` argues against a wet day, and `arguesAgainst` is the one that
+     * reads it. A swimming pool Atlas calls `sheltered` keeps its place, an
+     * unclassified playground keeps its place, and a lakeshore Atlas states
+     * is `exposed` moves down its own section rather than off the page —
+     * because the forecast is for the area and the reader may be looking at
+     * next Sunday.
+     *
+     * Deliberately a stable partition and not a score: no October rule, no
+     * season table, no indoor/outdoor guess where Atlas has not classified.
+     */
+    // The reader's own forecast once they have shared where they are, the
+    // corpus area's until then — and only while they are looking at today,
+    // because a forecast is a claim about the next few hours.
+    const sky = chosenDayLine ? undefined : (here ?? weather);
+    const dry = sky?.wet !== true;
+    const weathered = dry
+      ? placed
+      : placed.map((section) => ({
+          ...section,
+          items: [
+            ...section.items.filter((e) => !arguesAgainst(e)),
+            ...section.items.filter((e) => arguesAgainst(e)),
+          ],
+        }));
     const near = nearSection(answering, at);
-    const withNear = near ? [near, ...placed] : placed;
+    const withNear = near ? [near, ...weathered] : weathered;
+    // **What a distance could not measure, named rather than mixed in.**
+    // Last, because it is the weaker answer, and present only while a
+    // distance is chosen — otherwise there is nothing to contrast it with.
+    const withUnlocated =
+      unlocated.length > 0
+        ? [
+            ...withNear,
+            {
+              id: "unlocated",
+              title: "Haven't published where they are",
+              note: `${unlocated.length} more ${unlocated.length === 1 ? "idea" : "ideas"} we could not measure. They may well be close — nobody has said.`,
+              items: unlocated,
+              size: SECTION_SIZE,
+              total: unlocated.length,
+              shape: "rest" as const,
+            },
+          ]
+        : withNear;
+
     // What they just asked for leads, because they just asked for it.
     return chosen
       ? [
@@ -765,10 +889,21 @@ export function DiscoveryListView({
               at,
             ),
           },
-          ...withNear,
+          ...withUnlocated,
         ]
-      : withNear;
-  }, [answering, now, where, at, chosen, on]);
+      : withUnlocated;
+  }, [
+    answering,
+    now,
+    where,
+    at,
+    chosen,
+    on,
+    unlocated,
+    here,
+    weather,
+    chosenDayLine,
+  ]);
 
   const kinds = useMemo(
     () => availableKinds(scopeExperiences(experiences, scope)),
@@ -1150,7 +1285,7 @@ export function DiscoveryListView({
                 // rule is that a control either works or admits it cannot.
                 ...(offers.length === 0
                   ? {
-                      note: "Atlas states what you can do at 224 subjects out of 2,680, and none of them are on this page yet. Widen the day or the distance and the verbs come back.",
+                      note: "Nothing here has said what you can do there yet. Widen the day or the distance and the ideas come back.",
                     }
                   : {}),
               },
@@ -1203,7 +1338,7 @@ export function DiscoveryListView({
                       ),
                       note:
                         childAge === undefined
-                          ? "Tell Passport how old and it asks Atlas about that age specifically. Without one it has no verdict to repeat — there is no default."
+                          ? "Tell us how old and we can check age rules. Without it we cannot say."
                           : undefined,
                     }
                   : {}),
@@ -1214,7 +1349,7 @@ export function DiscoveryListView({
                 value: on,
                 onChange: setOn,
                 choices: nextDays(now ? new Date(now) : new Date()),
-                note: "Atlas states start dates, and for a handful of things the weekdays they recur on. Anything it has not dated stays, because silence is not a closure.",
+                note: "Dated events move with the day you pick. Places that have not published hours stay on the list — check with them before you go.",
               },
               {
                 key: "time",
@@ -1230,7 +1365,7 @@ export function DiscoveryListView({
                   { value: "half-day", label: "half a day" },
                   { value: "all-day", label: "the whole day" },
                 ],
-                note: "Atlas states a duration for 17 subjects out of 2,680, so this decides how many ideas to offer — never how long any of them takes.",
+                note: "This decides how many different ideas to offer. We do not know how long any of them takes.",
               },
               {
                 key: "distance",
@@ -1316,14 +1451,55 @@ export function DiscoveryListView({
                   </>
                 ),
                 note: at
-                  ? `Straight-line from ${originLabel}, against the 496 subjects Atlas has placed. Passport has no routing, so this is distance rather than drive time — and somewhere Atlas has not placed is never ruled out.`
+                  ? `Measured in a straight line from ${originLabel} — not a drive time. Places with no published location are kept, in their own group below.`
                   : place.state === "unavailable"
                     ? place.lapse === "denied"
-                      ? "Your browser would not share your location. Pick a town instead — it works just as well, and the distance is measured the same way."
-                      : "Passport could not get a position from your browser. Pick a town instead, or try again."
-                    : "A distance needs somewhere to measure from. Share your location, or pick the town you are setting out from.",
+                      ? "Your browser would not share your location. Pick a town instead — it works just as well."
+                      : "We could not get a position from your browser. Pick a town instead, or try again."
+                    : "Tell us where you are starting from and we can show you what is close.",
               },
             ]}
+            after={
+              /* **You changed an answer, and here is what changed.**
+                 The questions sit at the top and the results a screen and a
+                 half below, so a working filter looked like a broken one: no
+                 count, no acknowledgement, nothing moved. This is the
+                 smallest thing that closes that loop — one line, updating in
+                 place, plus a link to the ideas themselves.
+
+                 It counts what is genuinely measured separately from what is
+                 not, because "24 nearby ideas" over a set that is mostly
+                 unplaced is the claim this whole pass exists to stop
+                 making. */
+              <p
+                data-testid="answer-summary"
+                className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px] text-black/60"
+              >
+                <span className="font-semibold text-[#111] tabular-nums">
+                  {answering.length}
+                  {answering.length === 1 ? " idea" : " ideas"}
+                </span>
+                {within !== undefined && at && (
+                  <span>
+                    within {within} km of {originLabel}
+                  </span>
+                )}
+                {unlocated.length > 0 && (
+                  <span>
+                    · {unlocated.length} more that haven&apos;t published where
+                    they are
+                  </span>
+                )}
+                <a
+                  href="#ideas"
+                  data-testid="see-ideas"
+                  style={{ color: "var(--ghad-accent)" }}
+                  className="font-semibold underline underline-offset-4"
+                >
+                  See your ideas
+                </a>
+              </p>
+            }
           />
 
           {/* Where a situation enters, rather than a search query. */}
@@ -1336,6 +1512,11 @@ export function DiscoveryListView({
                 // This panel answers; it no longer asks the same three things
                 // again twenty pixels lower. See `TodayPanel`.
                 asking={false}
+                // The ideas are the same verbs the first row offers, so
+                // tapping one does what choosing it there does. See
+                // `TodayPanel.onChoose`.
+                onChoose={(next) => setDoing(next === doing ? undefined : next)}
+                {...(doing ? { chosen: doing } : {})}
                 {...((here ?? weather) ? { weather: here ?? weather } : {})}
                 place={place}
                 {...(childAge !== undefined ? { childAge } : {})}
@@ -1398,7 +1579,7 @@ export function DiscoveryListView({
             {/* `min-w-0`: a grid item sizes to its content by default, so the
                 shelves' `overflow-x-auto` never engaged and the **document**
                 scrolled sideways by 2,440px at 1440 instead. */}
-            <div className="flex min-w-0 flex-col gap-6">
+            <div id="ideas" className="flex min-w-0 scroll-mt-4 flex-col gap-6">
               <>
                 <DiscoveryListFilters
                   query={query}
@@ -1410,6 +1591,11 @@ export function DiscoveryListView({
                   availableSeasons={availableSeasons}
                   availableCompanions={availableCompanions}
                   resultCount={visible.length}
+                  {...(!everywhere &&
+                  answering.length > 0 &&
+                  answering.length + unlocated.length < composedPool.length
+                    ? { broadenHref: sessionHref(session, { all: "1" }) }
+                    : {})}
                   {...(intent
                     ? {
                         within:

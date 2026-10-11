@@ -84,6 +84,8 @@ export function TodayPanel({
   onSituation,
   asking = true,
   forecastApplies = true,
+  onChoose,
+  chosen,
   place,
   origin,
   withinLabel,
@@ -137,6 +139,19 @@ export function TodayPanel({
    * — the answer. Any surface that has no other way to ask leaves it alone.
    */
   readonly asking?: boolean;
+  /**
+   * **What happens when somebody taps one of the ideas.**
+   *
+   * The ideas used to be `<li>`s — four tiles reading *Swimming · 33 places*
+   * that looked exactly like controls and did nothing at all. They are the
+   * same verbs the first questionnaire row offers, counted from the same
+   * evidence, so tapping one now does what choosing it there does: the page
+   * leads with that verb and keeps everything else. No new concept, no second
+   * questionnaire, and no dead end.
+   */
+  readonly onChoose?: (doing: string) => void;
+  /** The verb currently chosen, so the tile it came from reads as pressed. */
+  readonly chosen?: string;
   /**
    * **Whether `today` is actually today.**
    *
@@ -310,6 +325,8 @@ export function TodayPanel({
         <Answer
           answer={answer}
           situation={situation}
+          {...(onChoose ? { onChoose } : {})}
+          {...(chosen ? { chosen } : {})}
           weather={shown}
           {...(origin ? { origin } : {})}
           {...(withinLabel ? { withinLabel } : {})}
@@ -455,9 +472,13 @@ function Answer({
   origin,
   withinLabel,
   childAge,
+  onChoose,
+  chosen,
 }: {
   readonly answer: ReturnType<typeof answerFor>;
   readonly situation: Situation;
+  readonly onChoose?: (doing: string) => void;
+  readonly chosen?: string;
   readonly weather?: DayWeather;
   readonly origin?: Point;
   readonly withinLabel?: string;
@@ -469,9 +490,11 @@ function Answer({
         data-testid="today-answer"
         className="mt-5 border-t border-black/15 pt-4 text-sm text-black/60"
       >
-        Passport cannot narrow this down yet — Atlas states what a place offers,
-        and almost nothing about who it suits. Everything below is the full list
-        for today.
+        {/* Consumer copy. The evidence behind it is unchanged and still in
+            `answerFor`; what was here named the knowledge base and counted its
+            records at somebody trying to plan a Saturday. */}
+        Tell us who is coming and we can be more use. Everything below is what
+        is on today.
       </p>
     );
   }
@@ -605,20 +628,43 @@ function Answer({
               phrase are different claims and are counted separately. */}
           {childAge !== undefined && (
             <p data-testid="today-age" className="mt-2 text-sm text-black/70">
-              For a {childAge}-year-old, Atlas states a rule admitting{" "}
-              <strong className="font-semibold">{byAge.welcome.length}</strong>{" "}
-              of them
-              {byAge.described.length > 0 && (
-                <> · {byAge.described.length} are described for families</>
-              )}
+              {/* **The same four facts, said to a person.** This read "Atlas
+                  states a rule admitting 0 of them · 9 are described for
+                  families · it says nothing either way about 71" — four
+                  database counts and the name of the knowledge base. What
+                  actually matters to somebody with a five-year-old is which
+                  places say they are welcome, and that most places say
+                  nothing at all. Both survive; the counting does not. */}
+              {byAge.welcome.length > 0 ? (
+                <>
+                  <strong className="font-semibold">
+                    {byAge.welcome.length}
+                  </strong>{" "}
+                  {byAge.welcome.length === 1 ? "place says" : "places say"} a{" "}
+                  {childAge}-year-old is welcome
+                  {byAge.described.length > 0 && (
+                    <> and {byAge.described.length} sound family-friendly</>
+                  )}
+                  .{" "}
+                </>
+              ) : byAge.described.length > 0 ? (
+                <>
+                  <strong className="font-semibold">
+                    {byAge.described.length}
+                  </strong>{" "}
+                  of these sound family-friendly, though none states an age
+                  rule.{" "}
+                </>
+              ) : null}
+              Most places have not said anything about age
               {shutOut.length > 0 && (
-                <> · {shutOut.length} are shut to them and are not offered</>
+                <>
+                  , and {shutOut.length} {shutOut.length === 1 ? "is" : "are"}{" "}
+                  adults-only so {shutOut.length === 1 ? "it is" : "they are"}{" "}
+                  not shown
+                </>
               )}
-              {byAge.unclear.length > 0 && (
-                <> · {byAge.unclear.length} it cannot settle</>
-              )}
-              . It says nothing either way about{" "}
-              {byAge.unknown.length + byAge.priced.length}.
+              . Worth a quick check before you set out.
             </p>
           )}
 
@@ -667,16 +713,16 @@ function Answer({
           {offered.length > 0 && (
             <>
               {/* **The one number here that is a judgement, said as one.**
-                  Atlas states a duration for 17 candidates out of 2,683, so
-                  Passport cannot know how long any of this takes. The length
-                  of day decides how many different ideas to offer, and
-                  nothing else. */}
+                  Almost nothing in the corpus states how long it takes, so the
+                  length of day decides how many different ideas to offer and
+                  nothing else. The copy below says "ideas", never "hours". */}
               <p className="mt-4 text-xs font-medium tracking-wide text-black/45 uppercase">
                 {LEAD[situation.window ?? "none"]}
               </p>
 
               <ul className="mt-2 flex flex-col gap-2">
                 {naming.map(({ direction, named }) => {
+                  const on = chosen === direction.doing;
                   return (
                     <li
                       key={direction.doing}
@@ -685,9 +731,28 @@ function Answer({
                       className="rounded-xl border border-black/20 bg-white px-3 py-2.5"
                     >
                       <p className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-base text-[#111] first-letter:uppercase">
-                          {direction.doing}
-                        </span>
+                        {/* **A tile that looks like a control now is one.**
+                            Tapping it chooses the verb, exactly as the first
+                            questionnaire row does — the age, the day, the
+                            town and the distance all stay where they are. */}
+                        {onChoose ? (
+                          <button
+                            type="button"
+                            data-testid="today-direction-choose"
+                            aria-pressed={on}
+                            onClick={() => onChoose(direction.doing)}
+                            style={
+                              on ? { color: "var(--ghad-accent)" } : undefined
+                            }
+                            className="text-base font-semibold text-[#111] underline decoration-black/25 underline-offset-4 first-letter:uppercase hover:decoration-black/70"
+                          >
+                            {direction.doing}
+                          </button>
+                        ) : (
+                          <span className="text-base text-[#111] first-letter:uppercase">
+                            {direction.doing}
+                          </span>
+                        )}
                         <span className="text-xs text-black/50 tabular-nums">
                           {direction.places.length}{" "}
                           {direction.places.length === 1 ? "place" : "places"}

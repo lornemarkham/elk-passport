@@ -124,7 +124,7 @@ describe("whether it is open on the day", () => {
   it("says it does not know rather than filling the heading in", () => {
     const open = fact(plan({}, { on: "2026-10-11" }), "Open on your date");
     expect(open.value).toBeUndefined();
-    expect(open.unknown).toContain("not a closure");
+    expect(open.unknown).toContain("does not mean it is shut");
     expect(plan({}, { on: "2026-10-11" }).unknowns).toContain(
       "Open on your date",
     );
@@ -156,7 +156,7 @@ describe("how far, and the capability Passport does not have", () => {
       "How far",
     );
     expect(far.value).toBeUndefined();
-    expect(far.unknown).toContain("not placed this on a map");
+    expect(far.unknown).toContain("No map location");
   });
 
   it("measures nothing when nobody has said where they are", () => {
@@ -166,7 +166,7 @@ describe("how far, and the capability Passport does not have", () => {
       }),
       "How far",
     );
-    expect(far.unknown).toContain("not shared where you are");
+    expect(far.unknown).toContain("where you are starting from");
   });
 });
 
@@ -233,7 +233,7 @@ describe("a child, and only the age that was asked about", () => {
 
   it("asks about nobody when nobody was named", () => {
     const age = fact(plan(WINFIELD), "Who it suits");
-    expect(age.unknown).toContain("not asked about anybody");
+    expect(age.unknown).toContain("who is coming");
   });
 
   it("says unknown is unknown, not unsuitable", () => {

@@ -109,7 +109,7 @@ const pool = [
   northOfVernon("Ellison Park", 12),
   northOfVernon("Kalamalka Lake Park", 22),
   northOfVernon("Silver Star", 45),
-  northOfVernon("Revelstoke Mountain", 150),
+  northOfVernon("Revelstoke Mountain Park", 150),
   unplaced("Jump2it Indoor Playground"),
 ].map(candidateToExperience);
 
@@ -198,7 +198,7 @@ describe("each tier genuinely returns more than the last", () => {
     expect(has("Ellison Park")).toBe(true);
     expect(has("Kalamalka Lake Park")).toBe(false);
     expect(has("Silver Star")).toBe(false);
-    expect(has("Revelstoke Mountain")).toBe(false);
+    expect(has("Revelstoke Mountain Park")).toBe(false);
   });
 
   it("30 km reaches further", () => {
@@ -215,24 +215,124 @@ describe("each tier genuinely returns more than the last", () => {
     pick("60 km");
     expect(has("Silver Star")).toBe(true);
     // 150 km is outside every tier offered.
-    expect(has("Revelstoke Mountain")).toBe(false);
+    expect(has("Revelstoke Mountain Park")).toBe(false);
   });
 
-  it("never rules out what Atlas has not placed", () => {
-    // The rule the whole feature turns on: 68% of the corpus carries no
-    // coordinate, and an unmeasurable distance is not a long one.
+  /**
+   * **"Within 15 km" has to mean within 15 km.**
+   *
+   * The first version kept every unmeasurable subject at every tier, on the
+   * sound principle that unplaced is not far away — and the unsound
+   * conclusion that it could therefore be called near. Measured on
+   * production, "within 15 km" returned 1,799 possibilities of which 146
+   * were known to be within 15 km. The control was honest about its
+   * arithmetic and dishonest about its answer.
+   *
+   * Nothing is dropped. What cannot be measured gets its own section, named
+   * for exactly what it is.
+   */
+  it("does not present what it could not measure as nearby", () => {
     search = new URLSearchParams("at=vernon");
     renderPage();
     pick("15 km");
-    expect(has("Jump2it Indoor Playground")).toBe(true);
+    const near = screen
+      .getAllByTestId("discovery-section")
+      .filter(
+        (s) => !/Haven't published where they are/i.test(s.textContent ?? ""),
+      );
+    for (const section of near) {
+      expect(section.textContent).not.toContain("Jump2it");
+    }
+  });
+
+  it("keeps it, in a section that says what it is", () => {
+    search = new URLSearchParams("at=vernon");
+    renderPage();
+    pick("15 km");
+    const unlocated = screen
+      .getAllByTestId("discovery-section")
+      .find((s) => s.textContent?.includes("Jump2it"))!;
+    expect(unlocated).toBeTruthy();
+    expect(unlocated.textContent).toMatch(/haven't published where they are/i);
+    expect(unlocated.textContent).toContain("may well be close");
+  });
+
+  it("offers no such section until a distance is actually chosen", () => {
+    search = new URLSearchParams("at=vernon");
+    renderPage();
+    expect(
+      screen
+        .getAllByTestId("discovery-section")
+        .some((s) => /haven't published where/i.test(s.textContent ?? "")),
+    ).toBe(false);
   });
 
   it("gives everything back when the distance is let go", () => {
     search = new URLSearchParams("at=vernon");
     renderPage();
     pick("15 km");
-    expect(has("Revelstoke Mountain")).toBe(false);
+    expect(has("Revelstoke Mountain Park")).toBe(false);
     pick("15 km");
-    expect(has("Revelstoke Mountain")).toBe(true);
+    expect(has("Revelstoke Mountain Park")).toBe(true);
+  });
+});
+
+/**
+ * **The questionnaire, search and the ideas are one experience or they are
+ * three widgets.**
+ *
+ * These pin the three seams the quality pass joined: a suggestion is a
+ * control, a search respects the answers above it, and changing an answer
+ * says so without a scroll.
+ */
+describe("the page behaves like one thing", () => {
+  it("counts the answers near the questions, and says what it cannot measure", () => {
+    search = new URLSearchParams("at=vernon&within=15");
+    renderPage();
+    const summary = screen.getByTestId("answer-summary");
+    expect(summary).toHaveTextContent("within 15 km of Vernon, BC");
+    // Never "24 nearby ideas" over a set that is mostly unplaced.
+    expect(summary).toHaveTextContent("haven't published where they are");
+    expect(screen.getByTestId("see-ideas")).toHaveAttribute("href", "#ideas");
+  });
+
+  it("searches inside the answers rather than ignoring them", () => {
+    search = new URLSearchParams("at=vernon&within=15");
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+      target: { value: "park" },
+    });
+    const names = screen
+      .getAllByTestId("possibility")
+      .map((c) => c.textContent ?? "");
+    // 150 km away, and a park. The answers above said within 15 km.
+    expect(names.some((n) => n.includes("Revelstoke Mountain Park"))).toBe(
+      false,
+    );
+    expect(names.some((n) => n.includes("Polson Park"))).toBe(true);
+  });
+
+  it("offers a way out of the answers rather than discarding them silently", () => {
+    search = new URLSearchParams("at=vernon&within=15");
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+      target: { value: "park" },
+    });
+    const out = screen.getByTestId("search-everywhere");
+    expect(out.getAttribute("href")).toContain("all=1");
+  });
+
+  it("searches everything when asked to, and keeps the answers in the URL", () => {
+    search = new URLSearchParams("at=vernon&within=15&all=1");
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+      target: { value: "park" },
+    });
+    const names = screen
+      .getAllByTestId("possibility")
+      .map((c) => c.textContent ?? "");
+    expect(names.some((n) => n.includes("Revelstoke Mountain Park"))).toBe(
+      true,
+    );
   });
 });

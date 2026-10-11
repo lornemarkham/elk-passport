@@ -18,6 +18,16 @@ interface DiscoveryListFiltersProps {
   resultCount: number;
   /** The category the count is inside, where one is chosen. */
   within?: string;
+  /**
+   * **The way out of the answers, offered rather than taken.**
+   *
+   * Search now runs inside the set the questionnaire produced, so a search
+   * that finds nothing might be finding nothing *here*. This is the link that
+   * says so and widens it — present only while the answers are actually
+   * holding something back, so an unfiltered page never offers to unfilter
+   * itself.
+   */
+  broadenHref?: string;
   kinds: ExperienceKind[];
   selectedKind: ExperienceKind | null;
   onKindChange: (kind: ExperienceKind | null) => void;
@@ -88,6 +98,7 @@ export function DiscoveryListFilters({
   availableCompanions,
   resultCount,
   within,
+  broadenHref,
 }: DiscoveryListFiltersProps) {
   const hasChipCategories =
     availableMoods.length > 0 ||
@@ -246,6 +257,19 @@ export function DiscoveryListFilters({
             : `${resultCount} ${resultCount === 1 ? "result" : "results"}${
                 within ? ` in ${within}` : ""
               }${query.trim() ? ` for “${query.trim()}”` : ""}`}
+          {broadenHref && (
+            <>
+              {" · "}
+              <a
+                href={broadenHref}
+                data-testid="search-everywhere"
+                style={{ color: "var(--ghad-accent)" }}
+                className="font-semibold underline underline-offset-4"
+              >
+                search everywhere instead
+              </a>
+            </>
+          )}
         </p>
       )}
     </div>

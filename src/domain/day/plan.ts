@@ -121,7 +121,7 @@ function openingFact(experience: Experience, on: string | undefined): PlanFact {
   if (!on) {
     return {
       label,
-      unknown: "No date picked yet, so there is nothing to check it against.",
+      unknown: "No date picked yet.",
     };
   }
 
@@ -131,13 +131,13 @@ function openingFact(experience: Experience, on: string | undefined): PlanFact {
     if (occurrence.days.includes(on)) {
       return {
         label,
-        value: `Atlas lists ${on} among the ${occurrence.days.length} days this runs.`,
+        value: `${on} is one of the ${occurrence.days.length} days this runs.`,
         ...(occurrence.because ? { because: occurrence.because } : {}),
       };
     }
     return {
       label,
-      value: `Atlas lists ${occurrence.days.length} days this runs, and ${on} is not one of them.`,
+      value: `This runs on ${occurrence.days.length} dates, and ${on} is not one of them.`,
       against: true,
       ...(occurrence.because ? { because: occurrence.because } : {}),
     };
@@ -152,13 +152,13 @@ function openingFact(experience: Experience, on: string | undefined): PlanFact {
     if (weekday && named.includes(weekday)) {
       return {
         label,
-        value: `Atlas states this recurs on ${stated}, and ${on} is a ${weekday}.`,
+        value: `Runs on ${stated} — and ${on} is a ${weekday}.`,
         ...(occurrence.because ? { because: occurrence.because } : {}),
       };
     }
     return {
       label,
-      value: `Atlas states this recurs on ${stated}${weekday ? `, and ${on} is a ${weekday}` : ""}.`,
+      value: `Runs on ${stated}${weekday ? `, and ${on} is a ${weekday}` : ""}.`,
       against: true,
       ...(occurrence.because ? { because: occurrence.because } : {}),
     };
@@ -170,17 +170,17 @@ function openingFact(experience: Experience, on: string | undefined): PlanFact {
   if (startTime && endTime && startTime.slice(0, 10) !== endTime.slice(0, 10)) {
     return {
       label,
-      value: `Atlas knows this runs between ${startTime.slice(0, 10)} and ${endTime.slice(0, 10)}. It does not know which days inside that it is open, so this is a season, not an opening.`,
+      value: `On somewhere between ${startTime.slice(0, 10)} and ${endTime.slice(0, 10)}. Which days inside that it actually opens has not been published — so this is a season, not an opening. Check before you go.`,
       ...(occurrence?.because ? { because: occurrence.because } : {}),
     };
   }
   if (startTime && startTime.slice(0, 10) === on) {
-    return { label, value: `Atlas states this is on ${on}.` };
+    return { label, value: `On ${on}.` };
   }
   if (startTime) {
     return {
       label,
-      value: `Atlas states one date for this — ${startTime.slice(0, 10)} — which is not ${on}.`,
+      value: `The one date for this is ${startTime.slice(0, 10)}, which is not ${on}.`,
       against: true,
     };
   }
@@ -189,14 +189,14 @@ function openingFact(experience: Experience, on: string | undefined): PlanFact {
   if (times.length > 0) {
     return {
       label,
-      value: `Atlas holds start times — ${times.join(", ")} — and no dates, so it cannot say whether ${on} is one of them.`,
+      value: `Start times are published — ${times.join(", ")} — but no dates, so we cannot say whether ${on} is one of them.`,
     };
   }
 
   return {
     label,
     unknown:
-      "Atlas holds no opening information for this. That is not a closure, and it is not an opening either — check with the place before you go.",
+      "No opening hours have been published. That does not mean it is shut — check with them before you go.",
   };
 }
 
@@ -215,8 +215,7 @@ function travelFact(
   if (!origin) {
     return {
       label,
-      unknown:
-        "You have not shared where you are, so there is nothing to measure from.",
+      unknown: "Tell us where you are starting from and we can measure this.",
     };
   }
   const km = distanceTo(experience, origin);
@@ -224,12 +223,12 @@ function travelFact(
     return {
       label,
       unknown:
-        "Atlas has not placed this on a map, so no distance can be measured. 1,813 of its 2,680 subjects are in the same position.",
+        "No map location has been published for this, so we cannot measure the distance.",
     };
   }
   return {
     label,
-    value: `${distanceLabel(km)}, measured straight-line. Passport has no routing, so this is not a drive time.`,
+    value: `${distanceLabel(km)} in a straight line — not a drive time.`,
   };
 }
 
@@ -268,7 +267,7 @@ export function dayPlan(
       ? { value: doingAt(experience).join(" · ") }
       : {
           unknown:
-            "Atlas states what you can do at 224 of its 2,680 subjects, and this is not one of them. The description below is all it holds.",
+            "Nothing specific has been published about what you can do here. The description below is all we have.",
         }),
   });
 
@@ -284,12 +283,11 @@ export function dayPlan(
         : `Suitable for a ${childAge}-year-old`,
     ...(childAge === undefined
       ? {
-          unknown:
-            "Nobody has said who is coming, so Atlas was not asked about anybody in particular.",
+          unknown: "Tell us who is coming and we can check age rules.",
         }
       : age.verdict === "unknown"
         ? {
-            unknown: `Atlas holds no evidence either way about a ${childAge}-year-old here. 2,494 of its subjects are the same. It is not a yes and it is not a no.`,
+            unknown: `No age rules have been published for this one. That is not a yes and it is not a no — most places say nothing either way.`,
           }
         : {
             value: ageLine(experience, childAge) ?? "",
@@ -318,8 +316,7 @@ export function dayPlan(
             : {}),
         }
       : {
-          unknown:
-            "Atlas has classified 122 subjects for weather and this is not one of them.",
+          unknown: "Nothing published about whether rain affects this.",
         }),
   });
 

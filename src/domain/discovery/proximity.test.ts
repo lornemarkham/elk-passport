@@ -275,17 +275,24 @@ describe("the section a shared location earns", () => {
     expect(section.total).toBe(3);
   });
 
-  it("states how much it could not place, in the section's own words", () => {
-    // Unknown geography stays visible as a number rather than as a silence.
-    expect(nearSection(CORPUS, VERNON)!.note).toContain(
-      "does not know where 2 of the others are",
-    );
+  /**
+   * **The unplaced count moved; it did not disappear.**
+   *
+   * This note used to carry it — *"Passport does not know where 2 of the
+   * others are"* — which named the software to a reader and buried the fact
+   * in a parenthetical. It is now its own section, with its own heading, and
+   * only while a distance is actually chosen: see `DiscoveryListView`'s
+   * `unlocated`. The honesty is stronger and the sentence is shorter.
+   */
+  it("says what it measured, without naming the software to a reader", () => {
+    const note = nearSection(CORPUS, VERNON)!.note;
+    expect(note).toContain("nearest first");
+    expect(note).not.toMatch(/Atlas|Passport/);
   });
 
   it("promises nothing it did not measure", () => {
     const note = nearSection(CORPUS, VERNON)!.note;
     expect(note).toContain(`${NEAR_KM} km`);
-    expect(note).toContain("coordinates Atlas states");
     // No travel time, ever. A straight line is not a drive.
     for (const invented of ["minutes", "drive", "min away", "hour"]) {
       expect(note).not.toContain(invented);

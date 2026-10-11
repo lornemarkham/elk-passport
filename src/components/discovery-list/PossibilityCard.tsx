@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Check, Leaf, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
@@ -144,7 +145,17 @@ export function PossibilityCard({
   // `unknown` is Atlas saying it has not classified this yet. True, and not
   // worth printing at somebody.
   const showTag = tag && tag.toLowerCase() !== "unknown";
-  const picture = experience.heroMedia?.src;
+  /**
+   * **A photograph that does not arrive is the same as not having one.**
+   *
+   * Atlas's images are served from dozens of publishers' own hosts, and one
+   * of them being down, moved or hotlink-protected is an ordinary Tuesday —
+   * measured on the live page, one card in fifty rendered the browser's
+   * broken-image glyph. The card falls back to the same text-first treatment
+   * a subject with no photograph gets, so the shelf never shows a torn icon.
+   */
+  const [failed, setFailed] = useState(false);
+  const picture = failed ? undefined : experience.heroMedia?.src;
 
   return (
     <li
@@ -162,9 +173,35 @@ export function PossibilityCard({
         />
       )}
 
+      {/* **A card with no photograph is a different card, not a broken one.**
+          Atlas publishes a lead image for 536 of 2,680 subjects, so this is
+          not an edge case — it is a fifth of what anybody sees, and it was an
+          empty 4:3 rectangle with the words "No photograph" in the corner.
+          Four of those in a row read as a page that had failed to load.
+
+          So the slot keeps its proportions, and the type fills it: the
+          subject's own name, large, on a tinted field with a rule in the
+          reader's accent. Nothing is invented, nothing is borrowed from
+          another place, and the shelf's rhythm is unchanged. */}
       {!picture && (
-        <div className="flex aspect-[4/3] w-full items-end border-t border-black/15 p-3">
-          <span className="text-[12px] text-black/35">No photograph</span>
+        <div
+          data-testid="possibility-untitled"
+          className="relative flex aspect-[4/3] w-full flex-col justify-end overflow-hidden bg-[#111]/[0.04] p-4"
+        >
+          <span
+            aria-hidden
+            className="absolute top-4 left-4 block h-[3px] w-8"
+            style={{ backgroundColor: "var(--ghad-accent)" }}
+          />
+          {/* **The kind of thing it is, not its name.** The name is the `h3`
+              six pixels below; printing it twice made the card read as a
+              stutter and put the same string in the accessibility tree twice.
+              What Atlas states instead — `park`, `seasonal event`, `farmers
+              market` — is real, is not repeated anywhere else on a card
+              without a photograph, and gives the slot something to be. */}
+          <span className="ghad-display line-clamp-3 text-[26px] leading-[1.02] font-extrabold tracking-[-0.03em] text-balance text-[#111]/35 uppercase sm:text-[30px]">
+            {showTag ? tag : experience.kind}
+          </span>
         </div>
       )}
       {picture && (
@@ -175,6 +212,7 @@ export function PossibilityCard({
             alt=""
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
+            onError={() => setFailed(true)}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
         </div>
@@ -228,7 +266,9 @@ export function PossibilityCard({
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {where}
           </p>
-        ) : showTag ? (
+        ) : showTag && picture ? (
+          // Without a photograph the kind is already set large in the slot
+          // above, so printing it again here is the stutter that was.
           <p className="truncate text-[10px] font-medium tracking-wide text-black/70 uppercase">
             {tag}
           </p>

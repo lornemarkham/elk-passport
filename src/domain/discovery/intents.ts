@@ -55,7 +55,7 @@ export const INTENTS: readonly DiscoveryIntentOption[] = [
     key: "outside",
     label: "Get outside",
     section: "Get outside",
-    note: "Parks, trails, beaches and water, from what Atlas has placed.",
+    note: "Parks, trails, beaches and water.",
     subtypes: new Set([
       "park",
       "provincial park",

@@ -400,7 +400,7 @@ export function composeDiscovery(
     section(
       "rest",
       where ? `More in ${where}` : "More to explore",
-      "Everything else Atlas holds here that no heading above claimed.",
+      "Everything else we know about around here.",
       "rest",
       pictureFirst(take(live)),
       size,
