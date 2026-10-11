@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -18,6 +21,13 @@ import type { Alternative, DayPlanned, DayStop } from "@/domain/day/build";
 import { clockLabel } from "@/domain/day/brief";
 import { ageLine } from "@/domain/discovery/suitability";
 import { destinationFor } from "@/domain/experience/destination";
+import type { Journey, TravelMode } from "@/lib/routing/journey";
+import { shownLeg, travelTotal, type Leg } from "@/lib/routing/legs";
+import { dayLegs, unknownsWithTravel } from "@/lib/routing/dayLegs";
+import { useTravelLegs } from "@/lib/routing/useTravelLegs";
+import { LegLine } from "@/components/maps/LegLine";
+import { TravelSummary } from "@/components/maps/TravelSummary";
+import { TravelModeSwitch } from "@/components/maps/TravelModeSwitch";
 
 /**
  * **The day, on screen, before it is on paper.**
@@ -43,6 +53,12 @@ import { destinationFor } from "@/domain/experience/destination";
  *
  * Every stop links to its own entity page, so the evidence behind any of it
  * is one tap away and nothing here has to be taken on faith.
+ *
+ * ## Travel
+ *
+ * **Each move is Atlas's routed estimate, or a straight line that says so**
+ * (`lib/routing`). The plan's own move buffer is still shown beside it, as a
+ * buffer: the routed minutes do not yet replace it in the time budget.
  */
 export interface StopControls {
   readonly onKeep: (index: number) => void;
@@ -59,13 +75,27 @@ export function DayItinerary({
   controls,
   swapping,
   alternatives = [],
+  by = "driving",
+  onBy,
 }: {
   readonly day: DayPlanned;
   readonly controls?: StopControls;
   /** The stop whose alternatives are open, if any. */
   readonly swapping?: number;
   readonly alternatives?: readonly Alternative[];
+  readonly by?: TravelMode;
+  readonly onBy?: (mode: TravelMode) => void;
 }) {
+  const { legs, into, home } = useMemo(() => dayLegs(day), [day]);
+  const travel = useTravelLegs(legs, by);
+  const total = travelTotal(legs, travel.journeys, by);
+  const unknowns = unknownsWithTravel(day.unknowns, travel.status, total);
+  const planned = day.stops.reduce((sum, stop) => sum + stop.minutes, 0);
+  const legAt = (i: number | undefined) =>
+    i === undefined
+      ? undefined
+      : { leg: legs[i]!, journey: shownLeg(legs[i]!, travel.journeys[i]) };
+
   if (day.stops.length === 0) {
     return (
       <p
@@ -90,6 +120,20 @@ export function DayItinerary({
 
       {day.budget && <TimeBar day={day} />}
       {day.money && <MoneyLine day={day} />}
+
+      {legs.length > 0 && (
+        <div className="mt-5" data-testid="go-travel">
+          {onBy && <TravelModeSwitch mode={by} onChange={onBy} />}
+          <TravelSummary
+            legs={legs}
+            answers={travel.journeys}
+            status={travel.status}
+            mode={by}
+            planned={planned}
+            onRetry={travel.retry}
+          />
+        </div>
+      )}
 
       <p className="mt-5 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-black/45">
         <span className="inline-flex items-center gap-1.5">
@@ -139,6 +183,7 @@ export function DayItinerary({
               stop={stop}
               first={index === 0}
               perMove={day.budget?.perMove}
+              arriving={legAt(into[index])}
             />
             <StopCard
               day={day}
@@ -153,13 +198,14 @@ export function DayItinerary({
 
         {town && (
           <>
-            {day.homeKm !== undefined && (
-              <li className="list-none">
+            {(day.homeKm !== undefined || home !== undefined) && (
+              <li className="list-none" data-testid="go-home-leg">
                 <MoveLine
-                  km={day.homeKm}
+                  {...(day.homeKm !== undefined ? { km: day.homeKm } : {})}
                   {...(day.budget?.perMove
                     ? { perMove: day.budget.perMove }
                     : {})}
+                  arriving={legAt(home)}
                 />
               </li>
             )}
@@ -186,7 +232,7 @@ export function DayItinerary({
           Worth checking before you go
         </h3>
         <ul className="mt-2 flex flex-col gap-1">
-          {day.unknowns.map((unknown) => (
+          {unknowns.map((unknown) => (
             <li
               key={unknown}
               className="max-w-[64ch] text-[14px] leading-relaxed text-black/55"
@@ -222,23 +268,30 @@ function RouteNode({
   );
 }
 
+type Arriving = { readonly leg: Leg; readonly journey?: Journey };
+
 function Move({
   stop,
   first,
   perMove,
+  arriving,
 }: {
   readonly stop: DayStop;
   readonly first: boolean;
   readonly perMove?: number;
+  /** The leg arriving here, as Atlas answered it (or a straight line). */
+  readonly arriving?: Arriving | undefined;
 }) {
-  if (stop.km === undefined) {
+  if (stop.km === undefined && !arriving) {
     return first ? null : <MoveLine {...(perMove ? { perMove } : {})} />;
   }
   return (
     <MoveLine
-      km={stop.km}
+      {...(stop.km !== undefined ? { km: stop.km } : {})}
       long={stop.longMove ?? false}
       {...(perMove ? { perMove } : {})}
+      arriving={arriving}
+      first={first}
     />
   );
 }
@@ -248,11 +301,17 @@ function MoveLine({
   km,
   perMove,
   long = false,
+  arriving,
+  first,
 }: {
   readonly km?: number;
   readonly perMove?: number;
   readonly long?: boolean;
+  /** When there is a leg, it speaks for the move: routed, or a straight line. */
+  readonly arriving?: Arriving | undefined;
+  readonly first?: boolean;
 }) {
+  const routed = arriving?.journey?.kind === "routed";
   return (
     <div
       data-testid="go-move"
@@ -263,16 +322,30 @@ function MoveLine({
         className="relative z-10 h-[10px] w-[10px] rounded-full border-2 border-black/25 bg-white"
       />
       <span>
-        {km !== undefined && (
+        {arriving ? (
           <>
             <Check
               className="mr-1 inline h-3 w-3 text-emerald-700"
               aria-label="Stated"
             />
-            {km < 1 ? "under 1 km" : `${Math.round(km)} km`} straight line
+            <LegLine
+              leg={arriving.leg}
+              journey={arriving.journey}
+              {...(first !== undefined ? { first } : {})}
+            />
           </>
+        ) : (
+          km !== undefined && (
+            <>
+              <Check
+                className="mr-1 inline h-3 w-3 text-emerald-700"
+                aria-label="Stated"
+              />
+              {km < 1 ? "under 1 km" : `${Math.round(km)} km`} straight line
+            </>
+          )
         )}
-        {km !== undefined && perMove ? " · " : ""}
+        {(arriving || km !== undefined) && perMove ? " · " : ""}
         {perMove ? (
           <>
             <Sparkles
@@ -283,7 +356,7 @@ function MoveLine({
             {perMove} min set aside to move
           </>
         ) : null}
-        {long && (
+        {long && !routed && (
           <span className="ml-1 font-semibold text-amber-800">
             — a long way; the road will take longer than that.
           </span>

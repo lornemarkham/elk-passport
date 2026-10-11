@@ -1,3 +1,4 @@
+import type { Journey } from "@/lib/routing/journey";
 import type {
   CandidateAvailability,
   CandidateContextualMedia,
@@ -220,6 +221,12 @@ export interface Experience {
    * reading it asked for, so it always belongs to the current origin.
    */
   distance?: CandidateDistance;
+  /**
+   * **Atlas's routed travel time from the same origin** — ADR 097. Attached
+   * in the browser beside `distance`, and only when Atlas answered for this
+   * subject. Absent means no routed time; it never means "near".
+   */
+  travel?: Journey;
   pairsWith?: string[];
 
   isActive: boolean;

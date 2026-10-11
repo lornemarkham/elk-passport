@@ -53,6 +53,8 @@ import {
   type Preferences,
 } from "@/domain/discovery/preference";
 import { useDistances } from "@/lib/location/useDistances";
+import { useTravelTimes } from "@/lib/routing/useTravelTimes";
+import { attributionFor } from "@/lib/routing/attribution";
 import { TOWN_GROUPS, homeArea, townById } from "@/domain/discovery/towns";
 
 /**
@@ -547,16 +549,37 @@ export function DiscoveryListView({
    */
   const radius = at && within !== undefined ? within : undefined;
   const { reading, status: measuring } = useDistances(at, radius ?? 60);
+  /**
+   * **Atlas's drive times from the same origin** (ADR 097), beside the
+   * distances. They label a card and nothing else: the radius filter stays
+   * Atlas's straight-line reading, and a card with no routed time keeps its
+   * straight line.
+   */
+  const driving = useTravelTimes(at, "driving");
   const placedExperiences = useMemo(
     () =>
-      reading
-        ? experiences.map((experience) => ({
-            ...experience,
-            distance: reading.distances[experience.id] ?? UNPLACED,
-          }))
+      reading || driving.journeys
+        ? experiences.map((experience) => {
+            const travel = driving.journeys?.[experience.id];
+            return {
+              ...experience,
+              ...(reading
+                ? { distance: reading.distances[experience.id] ?? UNPLACED }
+                : {}),
+              ...(travel ? { travel } : {}),
+            };
+          })
         : experiences,
-    [experiences, reading],
+    [experiences, reading, driving.journeys],
   );
+  /** Said under the origin once any card shows a routed time, with credit. */
+  const drivingNote = useMemo(() => {
+    const journeys = Object.values(driving.journeys ?? {});
+    const credit = attributionFor(journeys);
+    return credit.length > 0
+      ? ` Drive times on cards are routed estimates; a card without one shows a straight line. ${credit.join(" · ")}.`
+      : "";
+  }, [driving.journeys]);
   /** A radius is in force: it is set, and Atlas has not failed to measure it. */
   const radiusActive = radius !== undefined && measuring !== "failed";
   const radiusReady = radiusActive && measuring === "ready";
@@ -1602,12 +1625,12 @@ export function DiscoveryListView({
                 ),
                 note: at
                   ? radius === undefined
-                    ? `Distances from ${originLabel}, in a straight line — not driving time. Pick a distance to keep it close.`
+                    ? `Distances from ${originLabel}, in a straight line — not driving time. Pick a distance to keep it close.${drivingNote}`
                     : measuring === "measuring"
                       ? `Measuring from ${originLabel}…`
                       : measuring === "failed"
                         ? "Couldn't measure distances just now, so nothing is being left out by distance. Try again in a moment."
-                        : `${answering.length} within ${radius} km of ${originLabel}, in a straight line — not driving time. Places we can't locate aren't shown as nearby.`
+                        : `${answering.length} within ${radius} km of ${originLabel}, in a straight line — not driving time. Places we can't locate aren't shown as nearby.${drivingNote}`
                   : place.state === "unavailable"
                     ? place.lapse === "denied"
                       ? "Your browser would not share your location. Pick a town instead — it works just as well, and the distance is measured the same way."

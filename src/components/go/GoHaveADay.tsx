@@ -30,6 +30,7 @@ import { townById } from "@/domain/discovery/towns";
 import { ZONE } from "@/domain/experience/eventTime";
 import { carryBrief } from "@/domain/day/carry";
 import { DayItinerary, type StopControls } from "./DayItinerary";
+import type { TravelMode } from "@/lib/routing/journey";
 
 /**
  * **"What kind of day do you want?"**
@@ -154,6 +155,7 @@ export function GoHaveADay({
   const [swapping, setSwapping] = useState<number | undefined>();
   const [change, setChange] = useState("");
   const [reply, setReply] = useState<string[]>([]);
+  const [by, setBy] = useState<TravelMode>("driving");
   const [before, setBefore] = useState<readonly string[] | null>(null);
   const [fetched, setFetched] = useState<{
     key: string;
@@ -530,6 +532,8 @@ export function GoHaveADay({
           <div className="mt-8">
             <DayItinerary
               day={day}
+              by={by}
+              onBy={setBy}
               controls={controls}
               {...(swapping !== undefined ? { swapping } : {})}
               alternatives={alternatives}
@@ -540,7 +544,7 @@ export function GoHaveADay({
             <>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href={`/go/print?${printQuery(brief, day)}`}
+                  href={`/go/print?${printQuery(brief, day, by)}`}
                   data-testid="go-print"
                   style={{
                     backgroundColor: "var(--ghad-accent)",
@@ -771,7 +775,7 @@ const fallbackFrom = (
  * time they set by hand and the rain plans they were shown travel with it for
  * the same reason.
  */
-function printQuery(brief: DayBrief, day: DayPlanned): string {
+function printQuery(brief: DayBrief, day: DayPlanned, by: TravelMode): string {
   const params = new URLSearchParams();
   params.set("stops", day.stops.map((s) => s.experience.id).join(","));
   params.set("say", brief.said);
@@ -788,5 +792,7 @@ function printQuery(brief: DayBrief, day: DayPlanned): string {
     .filter((s) => s.rainPlan)
     .map((s) => `${s.experience.id}~${s.rainPlan!.experience.id}`);
   if (rain.length > 0) params.set("rain", rain.join(","));
+  // The guide prints travel in the mode that was on screen.
+  if (by !== "driving") params.set("by", by);
   return params.toString();
 }
