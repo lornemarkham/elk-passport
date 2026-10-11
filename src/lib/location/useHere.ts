@@ -152,6 +152,8 @@ export function useHere(): {
     // A browser that cannot do this is simply never offered it, and neither
     // is one that has already been asked. The default context stands,
     // labelled as the default.
-    ...(supported && place.state === "default" ? { ask } : {}),
+    // Withheld while a fix is in flight, so a second tap cannot stack two
+    // requests. Offered again afterwards, whatever the answer was.
+    ...(supported && place.state !== "asking" ? { ask } : {}),
   };
 }

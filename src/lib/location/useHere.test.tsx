@@ -166,14 +166,34 @@ describe("permission denied", () => {
     expect(screen.getByTestId("lapse")).toHaveTextContent("denied");
   });
 
-  it("never asks again", () => {
+  /**
+   * **This pinned the opposite, and the opposite was wrong.**
+   *
+   * It read: *"Re-prompting somebody who said no is how a product earns a
+   * permanent block, and the offer is gone for this visit."* The instinct is
+   * sound and the implementation of it broke the feature. Once `ask` was
+   * withheld, the three distance controls stayed disabled behind *"Share
+   * where you are first"* for the rest of the visit with nothing left to
+   * press — so a denial, a timed-out fix and an unreachable Environment
+   * Canada all ended in a page telling somebody to do a thing it had just
+   * taken away from them.
+   *
+   * No block is earned by offering a button. A browser shows its prompt once
+   * per decision and calls the error callback immediately thereafter; the
+   * re-offer costs nothing and is the only route back for somebody who has
+   * since changed the site permission.
+   *
+   * The original concern is answered on the surface instead: after a denial
+   * Discovery leads with the town picker and keeps the retry quiet beside it.
+   * Nobody is nagged, and nobody is stuck.
+   */
+  it("offers again, because a denial is not a dead end", () => {
     denies();
     render(<Probe />);
     fireEvent.click(screen.getByTestId("ask"));
-    // Re-prompting somebody who said no is how a product earns a permanent
-    // block, and the offer is gone for this visit.
-    expect(screen.queryByTestId("ask")).not.toBeInTheDocument();
-    expect(geolocation.getCurrentPosition).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("ask")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("ask"));
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
   });
 
   it("holds no position at all", () => {

@@ -331,7 +331,9 @@ test.describe("it can be operated with a thumb", () => {
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
       await expect(far.nth(i)).toBeDisabled();
-      await expect(far.nth(i)).toHaveAttribute("title", /share where you are/i);
+      // **Both routes named.** It said "Share where you are first" at readers
+      // who had already refused that permission and had nowhere else to go.
+      await expect(far.nth(i)).toHaveAttribute("title", /pick a town/i);
     }
   });
 });

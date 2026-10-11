@@ -247,8 +247,8 @@ describe("the controls, and what they are allowed to claim", () => {
   });
 
   it("never offers a distance it has nowhere to measure from", () => {
-    // Nobody has shared where they are, so every distance pill is disabled
-    // and says why — rather than silently returning everything.
+    // Nobody has shared where they are and no town is picked, so every
+    // distance pill is disabled — rather than silently returning everything.
     renderPage();
     const far = screen
       .getAllByTestId("ghad-choice")
@@ -256,8 +256,54 @@ describe("the controls, and what they are allowed to claim", () => {
     expect(far.length).toBeGreaterThan(0);
     for (const pill of far) {
       expect(pill).toBeDisabled();
-      expect(pill.title).toContain("Share where you are");
+      // **Both routes named, not just the permission.** It said "Share where
+      // you are first" at readers who had already refused that permission and
+      // had nowhere else to go.
+      expect(pill.title).toContain("pick a town");
     }
+  });
+
+  /**
+   * **A distance was unreachable for everybody.**
+   *
+   * The only way to produce an origin was a browser permission, and `useHere`
+   * withheld the offer for the rest of the visit the moment it was pressed —
+   * so a denial left three dead pills and nothing to press. A town is the
+   * second honest route: `OCTOBER_PLACES` holds twenty-two Wikidata-verified
+   * centroids, already used for the forecast.
+   */
+  it("measures from a town somebody picked, with no permission involved", () => {
+    search = new URLSearchParams("at=vernon");
+    renderPage();
+    for (const pill of screen
+      .getAllByTestId("ghad-choice")
+      .filter((b) => b.dataset.row === "distance")) {
+      expect(pill).toBeEnabled();
+    }
+    expect(screen.getByTestId("ghad-town")).toHaveValue("vernon");
+    // And it says where the number is measured from, rather than implying it
+    // is the reader's own position.
+    expect(
+      screen.getAllByTestId("ghad-note").map((n) => n.textContent),
+    ).toEqual(expect.arrayContaining([expect.stringContaining("Vernon, BC")]));
+  });
+
+  it("offers a town even to a browser that cannot do geolocation", () => {
+    renderPage();
+    expect(screen.getByTestId("ghad-town")).toBeInTheDocument();
+  });
+
+  it("claims a distance and never a drive time", () => {
+    // These read "15 min" / "30 min" / "an hour's drive" while filtering on
+    // `km <= within`, so "15 min" meant 15 km. Passport has no routing and
+    // cannot convert one into the other.
+    search = new URLSearchParams("at=vernon");
+    renderPage();
+    const labels = screen
+      .getAllByTestId("ghad-choice")
+      .filter((b) => b.dataset.row === "distance")
+      .map((b) => b.textContent);
+    expect(labels).toEqual(["within 15 km", "within 30 km", "within 60 km"]);
   });
 
   it("leads with the verb somebody picked, and keeps the rest of the page", () => {
@@ -573,8 +619,41 @@ describe("geography on the card", () => {
       .getAllByTestId("possibility")
       .find((c) => c.textContent?.includes(title))!;
 
+  /**
+   * **An ordinary local page does not open in Vancouver.**
+   *
+   * Reported from production, browsing around Vernon: *Happening today* led
+   * with Canyon Frights at the Capilano Suspension Bridge, 273 km away. The
+   * badge was correct and the card should not have been there to wear it.
+   *
+   * The cause was that Discovery had no geographic narrowing at all —
+   * `activeScope()` needs an admin token production does not have, so it
+   * returned no scope and served the province. See `domain/discovery/area.ts`.
+   */
+  it("does not lead a local page with somewhere 273 km away", () => {
+    renderPlaced();
+    expect(screen.queryByText("Canyon Frights")).toBeNull();
+  });
+
+  it("keeps what Atlas has not placed, rather than clearing the page", () => {
+    // 1,818 of 2,683 candidates state no area. Silence is not distance.
+    renderPlaced();
+    expect(screen.getByText("Don-O-Ray's Haunted Farm Adventure")).toBeTruthy();
+    expect(screen.getByText("Apple Harvest Fest")).toBeTruthy();
+  });
+
+  it("offers the ones it held back, named and counted", () => {
+    renderPlaced();
+    const offer = screen.getByTestId("further-afield");
+    expect(offer).toHaveTextContent("Metro Vancouver");
+    expect(offer).toHaveTextContent("1");
+  });
+
   it("marks the one that is somewhere else", () => {
     renderPlaced();
+    // Reachable, deliberately: "I am in Vernon" and "show me Vancouver" are
+    // different requests, and the second one is still askable.
+    fireEvent.click(screen.getByTestId("further-afield"));
     expect(
       within(cardFor("Canyon Frights")).getByTestId("possibility-area"),
     ).toHaveTextContent("Metro Vancouver");
@@ -589,6 +668,7 @@ describe("geography on the card", () => {
 
   it("names the town on both, so neither is bare", () => {
     renderPlaced();
+    fireEvent.click(screen.getByTestId("further-afield"));
     expect(cardFor("Canyon Frights")).toHaveTextContent("North Vancouver");
     expect(cardFor("Apple Harvest Fest")).toHaveTextContent("Vernon");
   });

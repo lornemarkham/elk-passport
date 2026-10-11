@@ -1,6 +1,7 @@
 import type { ExperienceKind } from "@/domain/experience/types";
 import { INTENTS, type IntentKey } from "./intents";
 import type { Company, Situation, Window } from "./situation";
+import { placeById } from "@/domain/environment/places";
 
 /**
  * **An exploration is a place, not a mood the page happens to be in.**
@@ -56,6 +57,22 @@ export interface DiscoverySession {
    * refuses to invent the second.
    */
   readonly within?: number;
+  /**
+   * **A town they picked, by id** — `vernon`, `kelowna`, `revelstoke`.
+   *
+   * The answer to *"how far will you go?"* needs somewhere to measure from,
+   * and browser geolocation is not the only honest way to get one. A person
+   * who declines the permission, whose browser has no geolocation, or who is
+   * planning a trip from their sofa to somewhere they are not, can say which
+   * town instead.
+   *
+   * **An id, never a coordinate.** The point comes from `OCTOBER_PLACES` —
+   * twenty-two town centroids verified against Wikidata and already used for
+   * the forecast — so the URL carries a place a person chose and named, not a
+   * position anyone measured. ADR 002 is about the reader's own position and
+   * is untouched by this: there is nothing precise here to leak.
+   */
+  readonly at?: string;
   /** The invitation they tapped — an Atlas affordance name. */
   readonly doing?: string;
 }
@@ -108,6 +125,9 @@ export function readSession(params: URLSearchParams): DiscoverySession {
       ? askedAge
       : undefined;
   const doing = params.get("doing")?.trim();
+  // A town Passport actually has a verified point for. An unknown id is
+  // dropped rather than carried, so nothing downstream has to wonder.
+  const at = placeById(params.get("at")?.trim() ?? "")?.id;
   return {
     ...(oneOf(INTENT_KEYS, params.get("intent"))
       ? { intent: oneOf(INTENT_KEYS, params.get("intent"))! }
@@ -125,6 +145,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
     ...(age !== undefined ? { age } : {}),
     ...(on ? { on } : {}),
     ...(within !== undefined ? { within } : {}),
+    ...(at ? { at } : {}),
     ...(doing ? { doing } : {}),
   };
 }
@@ -141,6 +162,7 @@ export function sessionQuery(session: DiscoverySession): string {
   if (session.on) params.set("on", session.on);
   if (session.within !== undefined)
     params.set("within", String(session.within));
+  if (session.at) params.set("at", session.at);
   if (session.doing) params.set("doing", session.doing);
   return params.toString();
 }

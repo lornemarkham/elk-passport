@@ -46,6 +46,21 @@ import {
 import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { excludesAge, ageEvidence } from "@/domain/discovery/suitability";
+import {
+  countElsewhere,
+  otherAreas,
+  withoutElsewhere,
+} from "@/domain/discovery/area";
+import { OCTOBER_PLACES, placeById } from "@/domain/environment/places";
+
+/**
+ * Why a distance pill is not pressable yet.
+ *
+ * Said as the two things that would fix it rather than only the one — the
+ * previous wording, *"Share where you are first"*, named a permission many
+ * readers had already refused and left them nowhere to go.
+ */
+const NEEDS_ORIGIN = "Share your location or pick a town first";
 import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { TodayPanel } from "./TodayPanel";
 import type { DayWeather, Situation } from "@/domain/discovery/situation";
@@ -190,7 +205,7 @@ export function DiscoveryListView({
 
   // The day a person actually has. Situational and deliberately not persisted
   // — see `situation.ts`. Nothing here becomes a profile.
-  const { place, weather: here, at, ask } = useHere();
+  const { place, weather: here, at: shared, ask } = useHere();
 
   /**
    * What the person said they feel like, in their words rather than Atlas's.
@@ -224,6 +239,8 @@ export function DiscoveryListView({
   const query = session.query ?? "";
   const kind = session.kind ?? null;
   const doing = session.doing;
+  /** The town they picked, where they picked one. Verified, or absent. */
+  const town = session.at ? placeById(session.at) : undefined;
   const childAge = session.age;
   const on = session.on;
   const within = session.within;
@@ -263,6 +280,8 @@ export function DiscoveryListView({
   const setOn = (next: string | undefined) => change({ ...session, on: next });
   const setWithin = (next: number | undefined) =>
     change({ ...session, within: next });
+  const setTown = (next: string | undefined) =>
+    change({ ...session, at: next });
 
   const setChildAge = (next: number | undefined) => {
     const session_ = { ...session, age: next };
@@ -458,6 +477,37 @@ export function DiscoveryListView({
   // Where Passport is looking, said once and used by the opening, the composed
   // remainder section and nothing else.
   const where = scopeLabel(scope);
+
+  /**
+   * **Somewhere to measure from, by either honest route.**
+   *
+   * The distance controls were dead for every reader, because the only way to
+   * produce an origin was a browser permission — and once `ask` had been
+   * pressed it was withheld for the rest of the visit whatever the answer was
+   * (see `useHere`). A denial, a timed-out fix or an unreachable Environment
+   * Canada all ended with three disabled pills saying *"Share where you are
+   * first"* and nothing left to press.
+   *
+   * So there are two routes now. The shared position wins when there is one —
+   * it is the reader's actual position rather than the centre of a town they
+   * named — and a picked town answers whenever there is not. A town is also
+   * the better answer for somebody planning a Sunday somewhere they are not
+   * currently standing, which the geolocation route cannot express at all.
+   *
+   * The point for a town comes from `OCTOBER_PLACES`: twenty-two centroids
+   * verified against Wikidata and already used for the forecast. Nothing is
+   * geocoded and nothing is invented.
+   */
+  const at = useMemo(
+    () =>
+      shared ??
+      (town
+        ? { latitude: town.latitude, longitude: town.longitude }
+        : undefined),
+    [shared, town],
+  );
+  /** Which of the two the number on screen is measured from. Said out loud. */
+  const originLabel = shared ? "where you are" : town?.name;
   /**
    * **What the exploration carries with it into a card's destination.**
    *
@@ -577,6 +627,46 @@ export function DiscoveryListView({
   );
 
   /**
+   * **An ordinary local page does not open in Vancouver.**
+   *
+   * Reported: browsing around Vernon, *Happening today* led with Canyon
+   * Frights at the Capilano Suspension Bridge — 273 km away — beside
+   * Ultimate 90s Night at the Fox Cabaret and two exhibitions at UBC.
+   *
+   * The cause was not a bad ranking. `activeScope()` reads `listRegions()`,
+   * which needs an admin token **Passport's production environment does not
+   * have**, so it caught the failure, returned no scope, and Discovery has
+   * been serving the entire province-wide corpus with no geographic narrowing
+   * at all. Supplying the token would not have fixed it either: Atlas asserts
+   * region membership for 316 of 2,683 candidates and `matchesScope` fails
+   * closed, so a working region scope would have removed 88% of the page —
+   * most of Vernon included. See `domain/discovery/area.ts` for the numbers.
+   *
+   * What Atlas does state, for 862 candidates, is an **area**. Thirty-four of
+   * them say Metro Vancouver. Those are the ones held back here, and only
+   * those: the 1,818 Atlas has not placed all stay, because treating silence
+   * as distance is the same error as reading `unknown` as `unsuitable`.
+   *
+   * **Nothing is unreachable.** Search, `?intent=` and the control below all
+   * still reach every one of them — `visible` is deliberately built from the
+   * unnarrowed pool. This decides what leads an ordinary page, which is a
+   * different question from what exists.
+   */
+  const [further, setFurther] = useState(false);
+  const elsewhereCount = useMemo(
+    () => countElsewhere(composedPool, home),
+    [composedPool, home],
+  );
+  const elsewhereAreas = useMemo(
+    () => otherAreas(composedPool, home),
+    [composedPool, home],
+  );
+  const local = useMemo(
+    () => (further ? composedPool : withoutElsewhere(composedPool, home)),
+    [composedPool, home, further],
+  );
+
+  /**
    * **What the five controls actually do.**
    *
    * Each narrowing is a direct read of something Atlas states, and each one
@@ -586,7 +676,7 @@ export function DiscoveryListView({
    * subject is the oldest mistake in this product.
    */
   const answering = useMemo(() => {
-    let pool = composedPool;
+    let pool = local;
 
     // An age Atlas was asked about. Only a stated rule removes anything —
     // `stated-other-ages` does not, which is the bug this release fixes.
@@ -609,7 +699,7 @@ export function DiscoveryListView({
     }
 
     return pool;
-  }, [composedPool, childAge, on, within, at]);
+  }, [local, childAge, on, within, at]);
 
   /**
    * **Composed first, then given a local lead — never filtered by location.**
@@ -1148,42 +1238,90 @@ export function DiscoveryListView({
                 value: within === undefined ? undefined : String(within),
                 onChange: (next) =>
                   setWithin(next === undefined ? undefined : Number(next)),
+                // **Kilometres, labelled as kilometres.** These read "15 min",
+                // "30 min" and "an hour's drive" while filtering on `km <=
+                // within` — so "15 min" meant 15 km, and the minutes were a
+                // conversion nobody had made. Passport has no routing service,
+                // so it cannot turn a distance into a drive time, and printing
+                // one anyway is the fabrication this product keeps finding in
+                // itself. The three tiers are unchanged; only the claim is.
                 choices: [
                   {
                     value: "15",
-                    label: "15 min",
-                    ...(at ? {} : { blocked: "Share where you are first" }),
+                    label: "within 15 km",
+                    ...(at ? {} : { blocked: NEEDS_ORIGIN }),
                   },
                   {
                     value: "30",
-                    label: "30 min",
-                    ...(at ? {} : { blocked: "Share where you are first" }),
+                    label: "within 30 km",
+                    ...(at ? {} : { blocked: NEEDS_ORIGIN }),
                   },
                   {
                     value: "60",
-                    label: "an hour's drive",
-                    ...(at ? {} : { blocked: "Share where you are first" }),
+                    label: "within 60 km",
+                    ...(at ? {} : { blocked: NEEDS_ORIGIN }),
                   },
                 ],
-                ...(at
-                  ? {
-                      note: "Measured straight-line from where you are, against the 496 subjects Atlas has placed. Somewhere it has not placed is never ruled out.",
-                    }
-                  : ask
-                    ? {
-                        after: (
-                          <button
-                            type="button"
-                            data-testid="ghad-locate"
-                            onClick={ask}
-                            style={{ color: "var(--ghad-accent)" }}
-                            className="inline-flex min-h-11 shrink-0 items-center px-3 text-[14px] font-semibold whitespace-nowrap underline underline-offset-4"
-                          >
-                            share where you are
-                          </button>
-                        ),
+                after: (
+                  <>
+                    {/* **Always offered, and leading once a browser has said
+                        no.** A person planning a Sunday in a town they are not
+                        standing in cannot express that through geolocation at
+                        all, and somebody who declined the permission had no
+                        route to a distance whatsoever. Points come from
+                        `OCTOBER_PLACES` — Wikidata-verified town centroids
+                        already used for the forecast. */}
+                    {/* **`aria-label`, not a visually-hidden `<span>`.** The
+                        first version put the words "or measure from" in an
+                        `sr-only` span, and `sr-only` is `position: absolute` —
+                        which escapes this row's horizontal clipping, so at
+                        375px it sat 18px past the right edge and scrolled the
+                        **document** sideways. The NFR suite caught it. A
+                        positioned element does not belong inside a scroller
+                        when an attribute says the same thing.
+
+                        `w-[9.5rem]` for the same family of reason: a native
+                        `<select>` sizes itself from its longest option, and
+                        "West Kelowna, BC" is wider than the control needs to
+                        be on a phone. */}
+                    <select
+                      data-testid="ghad-town"
+                      aria-label="Measure distances from"
+                      value={session.at ?? ""}
+                      onChange={(event) =>
+                        setTown(event.target.value || undefined)
                       }
-                    : {}),
+                      className="min-h-11 w-[9.5rem] min-w-0 rounded-full bg-white px-3 text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset focus:ring-black/45 sm:w-auto"
+                    >
+                      <option value="">pick a town</option>
+                      {OCTOBER_PLACES.map((place) => (
+                        <option key={place.id} value={place.id}>
+                          {place.name}
+                        </option>
+                      ))}
+                    </select>
+                    {ask && !shared && (
+                      <button
+                        type="button"
+                        data-testid="ghad-locate"
+                        onClick={ask}
+                        style={{ color: "var(--ghad-accent)" }}
+                        className="inline-flex min-h-11 shrink-0 items-center px-3 text-[14px] font-semibold whitespace-nowrap underline underline-offset-4"
+                      >
+                        {place.state === "unavailable"
+                          ? "try my location again"
+                          : "share where you are"}
+                      </button>
+                    )}
+                  </>
+                ),
+                note: at
+                  ? `Straight-line from ${originLabel}, against the 496 subjects Atlas has placed. Passport has no routing, so this is distance rather than drive time — and somewhere Atlas has not placed is never ruled out.`
+                  : place.state === "unavailable"
+                    ? place.lapse === "denied"
+                      ? "Your browser would not share your location. Pick a town instead — it works just as well, and the distance is measured the same way."
+                      : "Passport could not get a position from your browser. Pick a town instead, or try again."
+                    : "A distance needs somewhere to measure from. Share your location, or pick the town you are setting out from.",
               },
             ]}
           />
@@ -1290,6 +1428,29 @@ export function DiscoveryListView({
                     answers "what could I do?"; the flat list answers "where is
                     the thing I already have in mind?", and ranking a magazine
                     or composing a search result would do neither well. */}
+                {/* **Intentional destination discovery, kept.** The page
+                    leads with where you are; it does not pretend the rest of
+                    the province stopped existing. Named, counted, one tap,
+                    and never on by default — "I am in Vernon" and "show me
+                    Vancouver" are different requests and this is the second
+                    one being asked for out loud. */}
+                {!browsing && elsewhereCount > 0 && (
+                  <button
+                    type="button"
+                    data-testid="further-afield"
+                    aria-pressed={further}
+                    onClick={() => setFurther(!further)}
+                    style={
+                      further ? { color: "var(--ghad-accent)" } : undefined
+                    }
+                    className="-mt-2 self-start text-[13px] font-semibold text-black/45 underline underline-offset-4 transition-colors hover:text-black/80"
+                  >
+                    {further
+                      ? `Showing ${elsewhereAreas.join(" and ")} too — back to ${home} only`
+                      : `${elsewhereCount} more in ${elsewhereAreas.join(" and ")} — show them too`}
+                  </button>
+                )}
+
                 {!browsing ? (
                   <DiscoverySections
                     sections={composed}
