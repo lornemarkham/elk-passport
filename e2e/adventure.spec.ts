@@ -57,6 +57,27 @@ test.describe("printable adventure", () => {
     expect(await page.getByTestId("guide-stop").count()).toBeGreaterThan(1);
     await expect(page.getByTestId("adventure-quests")).toBeVisible();
     await expect(page.getByTestId("adventure-memories")).toBeVisible();
+    // The field guide: the route, the sky, and a card to carry.
+    await expect(page.getByTestId("adventure-route")).toBeVisible();
+    await expect(page.getByTestId("adventure-weather")).toBeVisible();
+    await expect(page.getByTestId("adventure-forecast-blank")).toBeVisible();
+    await expect(page.getByTestId("adventure-pocket")).toBeVisible();
+  });
+
+  test("the pocket card and every leg survive print mode", async ({ page }) => {
+    await page.goto(SAMPLE);
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByTestId("adventure-pocket")).toBeVisible();
+    await expect(page.getByTestId("adventure-legs")).toBeVisible();
+    // The sample starts in Vernon and has no positions: every leg is there,
+    // home included, and not one of them has a distance or a time.
+    const legs = page.getByTestId("adventure-leg");
+    expect(await legs.count()).toBeGreaterThan(2);
+    await expect(legs.last()).toContainText("(home)");
+    for (const text of await legs.allTextContents()) {
+      expect(text).toContain("Not measured");
+      expect(text).not.toMatch(/\d+\s*min/);
+    }
   });
 
   test("fits a phone without sideways scrolling", async ({ page }) => {

@@ -1,6 +1,24 @@
 import type { DayPlanned, DayStop } from "@/domain/day/build";
 import type { Experience } from "@/domain/experience/types";
 import { planDateLine } from "@/domain/day/plan";
+import {
+  publishedFacts,
+  publishedHours,
+  type PublishedFact,
+} from "./published";
+import {
+  legsFor,
+  routeFor,
+  type RouteOptions,
+  type RouteSummary,
+} from "./route";
+import {
+  stopRain,
+  weatherFor,
+  type PrintForecast,
+  type StopRain,
+  type WeatherPrep,
+} from "./weather";
 
 /**
  * **The printable adventure — what goes on the paper, and what each line is
@@ -67,6 +85,12 @@ export interface PrintableStop {
   readonly cost?: string;
   /** What is published about the day asked about. */
   readonly open?: string;
+  /** Opening hours the place published, in its words. */
+  readonly hours?: string;
+  /** Anything else it published: parking, access. Verbatim. */
+  readonly published: readonly PublishedFact[];
+  /** What Atlas says rain does here. Absent where it says nothing. */
+  readonly rain?: StopRain;
   readonly notes: readonly string[];
   readonly challenge?: string;
   /**
@@ -120,6 +144,8 @@ export interface PrintableAdventure {
   readonly prep: readonly PrepItem[];
   readonly time: TimeSummary;
   readonly budget: BudgetSummary;
+  readonly route: RouteSummary;
+  readonly weather: WeatherPrep;
   readonly sideQuests: readonly SideQuest[];
   readonly memoryPrompts: readonly string[];
   readonly unknowns: readonly string[];
@@ -205,12 +231,15 @@ const PRACTICAL_FEATURE =
  * better (`suggested`). The suggestions are Passport's idea and are labelled
  * that way, same rule as Fishing With Emi's pack list.
  */
-export function prepFor(day: DayPlanned): PrepItem[] {
+export function prepFor(
+  day: DayPlanned,
+  { forecast, travel }: PrintOptions = {},
+): PrepItem[] {
   const items: PrepItem[] = [];
   const titles = (pick: (s: DayStop) => boolean) =>
     day.stops.filter(pick).map((s) => s.experience.title);
 
-  const noHours = titles((s) => !s.open);
+  const noHours = titles((s) => !s.open && !publishedHours(s.experience));
   if (noHours.length > 0) {
     items.push({
       id: "hours",
@@ -228,10 +257,13 @@ export function prepFor(day: DayPlanned): PrepItem[] {
       basis: "check",
     });
   }
+  const routed = Object.keys(travel ?? {}).length > 0;
   items.push({
     id: "route",
     label: "The route between stops",
-    why: "Distances on this page are straight lines. Passport has no road routing and gives no drive times.",
+    why: routed
+      ? "Travel times here are a routing provider's estimate. Anything without one is a straight line, not a road."
+      : "Distances on this page are straight lines. Passport has no road routing and gives no drive times.",
     basis: "check",
   });
   items.push({
@@ -239,7 +271,9 @@ export function prepFor(day: DayPlanned): PrepItem[] {
     label: day.brief.on
       ? `The forecast for ${planDateLine(day.brief.on)}`
       : "The forecast",
-    why: "Passport is not reading it for this page.",
+    why: forecast
+      ? `This page carries ${forecast.source}'s forecast as it stood when printed. Look again the morning of.`
+      : "Passport is not reading it for this page. There's a box to write it in.",
     basis: "check",
   });
 
@@ -320,7 +354,11 @@ export function prepFor(day: DayPlanned): PrepItem[] {
  * drive on top.
  */
 export function timeFor(day: DayPlanned): TimeSummary {
-  const legs = day.stops.map((s) => s.km);
+  // The legs as printed, between the stops actually next to each other on
+  // the page; not `DayStop.km`, which skips an unplaced stop. Not home.
+  const legs = legsFor(day)
+    .filter((l) => !l.home)
+    .map((l) => l.km);
   const measured = legs.filter((k): k is number => k !== undefined);
   return {
     ...(day.brief.hours !== undefined ? { statedHours: day.brief.hours } : {}),
@@ -428,6 +466,16 @@ export function memoryPromptsFor(day: DayPlanned): string[] {
   ];
 }
 
+export interface PrintOptions extends RouteOptions {
+  readonly sample?: boolean;
+  /**
+   * A forecast the caller already read (Discovery's `weatherToday`, or the
+   * Day Builder's `PlanWeather`). Without one the page leaves a box to write
+   * it in. Passport never writes a forecast itself.
+   */
+  readonly forecast?: PrintForecast;
+}
+
 /**
  * The adapter. The one place that knows the day came from `buildDay`. When
  * the shared Adventure/Moment contracts exist, a second adapter goes here
@@ -435,8 +483,12 @@ export function memoryPromptsFor(day: DayPlanned): string[] {
  */
 export function printableFromDay(
   day: DayPlanned,
-  options: { readonly sample?: boolean } = {},
+  options: PrintOptions = {},
 ): PrintableAdventure {
+  const route = routeFor(day, options);
+  const arriving = new Map(
+    route.legs.filter((l) => !l.home).map((l) => [l.id, l]),
+  );
   return {
     title: day.title,
     opening: day.opening,
@@ -450,16 +502,24 @@ export function printableFromDay(
       const where = e.geography?.locality ?? e.venue?.locality;
       const directions = directionsFor(e);
       const findBy = findByFor(e);
+      const hours = publishedHours(e);
+      const rain = stopRain(stop);
+      // The leg as printed, from the stop above it on the page. The first
+      // stop with no start has no leg, and no distance.
+      const km = arriving.get(e.id)?.km;
       return {
         id: e.id,
         number: index + 1,
         title: e.title,
         ...(where ? { where } : {}),
         minutes: stop.minutes,
-        ...(stop.km !== undefined ? { km: stop.km } : {}),
+        ...(km !== undefined ? { km } : {}),
         because: stop.because,
         ...(stop.cost ? { cost: stop.cost } : {}),
         ...(stop.open ? { open: stop.open } : {}),
+        ...(hours ? { hours } : {}),
+        published: publishedFacts(e, [stop.cost, hours]),
+        ...(rain ? { rain } : {}),
         notes: stop.notes,
         ...(stop.challenge ? { challenge: stop.challenge } : {}),
         alsoHere: alsoHereFor(e),
@@ -467,9 +527,11 @@ export function printableFromDay(
         ...(findBy ? { findBy } : {}),
       };
     }),
-    prep: prepFor(day),
+    prep: prepFor(day, options),
     time: timeFor(day),
     budget: budgetFor(day),
+    route,
+    weather: weatherFor(day, options.forecast),
     sideQuests: sideQuestsFor(day),
     memoryPrompts: memoryPromptsFor(day),
     unknowns: day.unknowns,

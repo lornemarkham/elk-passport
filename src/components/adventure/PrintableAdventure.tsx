@@ -13,6 +13,8 @@ import {
   type PrintableAdventure as Adventure,
   type PrintableStop,
 } from "@/lib/analog/printable";
+import { PocketCard, RouteSection, WeatherSection } from "./FieldGuide";
+import { Box, H2, H3, Rule } from "./paper";
 
 /**
  * **The printable adventure.**
@@ -23,7 +25,8 @@ import {
  * `components/go/AnalogGuide.tsx` (numbered stops, published-or-not, a
  * map link to open before leaving, a challenge, checkboxes, ruled lines) and
  * adds what a day needs before it starts: a checklist, the time and money at
- * a glance, optional side quests, and real room to write.
+ * a glance, the route and the weather (`FieldGuide.tsx`), optional side
+ * quests, real room to write, and a card to cut out and carry.
  *
  * ## A4 and Letter
  *
@@ -108,7 +111,7 @@ export function PrintableAdventure({
             <div className="flex items-start justify-between gap-6">
               <Wordmark size="normal" lines={2} href="/go" />
               <p className="text-right text-[12px] font-semibold tracking-[0.12em] text-[#444] uppercase">
-                Adventure guide
+                Field guide
                 {adventure.dateLine && (
                   <>
                     <br />
@@ -152,6 +155,10 @@ export function PrintableAdventure({
           </header>
 
           <AtAGlance adventure={adventure} />
+
+          <RouteSection route={adventure.route} />
+
+          <WeatherSection weather={adventure.weather} />
 
           <section
             aria-labelledby="prep-heading"
@@ -255,17 +262,26 @@ export function PrintableAdventure({
             )}
           </section>
 
-          <p
-            data-testid="guide-closing"
-            className="ghad-display section mt-10 border-t-2 border-[#111] pt-6 text-[20px] leading-[1.15] font-extrabold tracking-[-0.02em] text-balance sm:text-[24px]"
-          >
-            {adventure.closing}
-          </p>
-          <p className="mt-4 text-[13px] leading-relaxed text-[#444]">
-            Distances are straight lines, not roads. Hours and prices appear
-            only where a place has published them. Nothing on this page is a
-            drive time.
-          </p>
+          {/* The card sits beside the last words, so it costs no page of its
+              own. Half a sheet wide is a pocket's width anyway. */}
+          <div className="mt-10 grid gap-8 border-t-2 border-[#111] pt-6 sm:grid-cols-2 print:grid-cols-2">
+            <div>
+              <p
+                data-testid="guide-closing"
+                className="ghad-display section text-[20px] leading-[1.15] font-extrabold tracking-[-0.02em] text-balance sm:text-[24px]"
+              >
+                {adventure.closing}
+              </p>
+              <p className="mt-4 text-[13px] leading-relaxed text-[#444]">
+                {adventure.route.attribution.length > 0
+                  ? "Travel times are a routing provider's estimate; every other distance is a straight line, not a road."
+                  : "Distances are straight lines, not roads. Nothing on this page is a drive time."}{" "}
+                Hours, prices and rules appear only where a place has published
+                them, in its own words.
+              </p>
+            </div>
+            <PocketCard adventure={adventure} />
+          </div>
         </div>
 
         {/* A plain <style>, not styled-jsx: in the App Router styled-jsx is
@@ -333,24 +349,6 @@ const PRINT_CSS = `
     }
   }
 `;
-
-const H3 = "ghad-display text-[14px] font-bold tracking-[0.06em] uppercase";
-
-const H2 =
-  "ghad-display text-[19px] font-extrabold tracking-[-0.01em] uppercase";
-
-function Box() {
-  return (
-    <span
-      aria-hidden
-      className="mt-0.5 inline-block h-4 w-4 shrink-0 border-2 border-[#111]"
-    />
-  );
-}
-
-function Rule() {
-  return <span aria-hidden className="block h-8 border-b border-[#777]" />;
-}
 
 function PrepLine({ item }: { readonly item: PrepItem }) {
   return (
@@ -495,9 +493,35 @@ function Stop({ stop }: { readonly stop: PrintableStop }) {
           {stop.cost ?? "Not published. Ask, or check their site."}
         </dd>
         <dt className="font-semibold">Open</dt>
-        <dd className="text-[#222]">
-          {stop.open ?? "Hours not published. Worth a call first."}
+        <dd className="text-[#222]" data-testid="adventure-open">
+          {stop.open || stop.hours ? (
+            <>
+              {stop.open}
+              {stop.open && stop.hours && " "}
+              {stop.hours && <>Published hours: {stop.hours}</>}
+              <span className="sr-only"> ({BASIS_LABEL.published})</span>
+            </>
+          ) : (
+            "Hours not published. Worth a call first."
+          )}
         </dd>
+        {stop.published.map((fact) => (
+          <PublishedRow key={fact.label + fact.value} {...fact} />
+        ))}
+        {stop.rain && (
+          <>
+            <dt className="font-semibold">Rain</dt>
+            <dd className="text-[#222]" data-testid="adventure-stop-rain">
+              {stop.rain.line}
+              {stop.rain.because && (
+                <span className="text-[#444]">
+                  {" "}
+                  (&ldquo;{stop.rain.because}&rdquo;)
+                </span>
+              )}
+            </dd>
+          </>
+        )}
         <dt className="font-semibold">Directions</dt>
         <dd className="text-[#222]">
           {stop.directions ? (
@@ -572,5 +596,23 @@ function Stop({ stop }: { readonly stop: PrintableStop }) {
         <Rule />
       </div>
     </li>
+  );
+}
+
+function PublishedRow({
+  label,
+  value,
+}: {
+  readonly label: string;
+  readonly value: string;
+}) {
+  return (
+    <>
+      <dt className="font-semibold">{label}</dt>
+      <dd className="text-[#222]" data-testid="adventure-published">
+        {value}
+        <span className="sr-only"> ({BASIS_LABEL.published})</span>
+      </dd>
+    </>
   );
 }
