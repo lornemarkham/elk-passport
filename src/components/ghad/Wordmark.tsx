@@ -30,7 +30,7 @@ export function Wordmark({
   const type =
     size === "large"
       ? "text-[26px] sm:text-[34px] leading-[0.92]"
-      : "text-[15px] sm:text-[17px] leading-[0.95]";
+      : "text-[13px] sm:text-[17px] leading-[0.95]";
   return (
     <Link
       href={href}

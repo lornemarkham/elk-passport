@@ -80,13 +80,19 @@ export function PassportNav({
   return (
     <ThemeProvider>
       <header className="border-b border-black/10 bg-white">
+        {/* **The bar scrolls rather than pushing the page.** "GO HAVE A DAY"
+            is four times the width of the word it replaced, and at 375px the
+            bar came to 519px — so the whole document scrolled sideways by
+            144px and every section under it could be dragged off the screen.
+            `overflow-x-auto` keeps the overflow where it belongs, the same
+            answer the five control rows already use. */}
         <nav
           aria-label="Go Have A Day"
-          className="mx-auto flex max-w-6xl items-center gap-1 px-4 sm:px-6"
+          className="mx-auto flex max-w-[1760px] items-center gap-1 overflow-x-auto px-4 sm:px-6 lg:px-10"
         >
           {/* The wordmark is the way home, which is the one navigation
               convention it is safe to assume everybody already knows. */}
-          <span className="mr-4 inline-flex min-h-12 shrink-0 items-center">
+          <span className="mr-2 inline-flex min-h-12 shrink-0 items-center sm:mr-4">
             <Wordmark href="/" lines={1} />
           </span>
 
@@ -101,7 +107,7 @@ export function PassportNav({
                 style={
                   current ? { borderColor: "var(--ghad-accent)" } : undefined
                 }
-                className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-2.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+                className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-2 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
                   current
                     ? "text-[#111]"
                     : "border-transparent text-black/45 hover:text-black/80"
