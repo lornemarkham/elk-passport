@@ -1,0 +1,180 @@
+import type { CandidateDistance } from "@/lib/data/types";
+
+/**
+ * **How far, measured how, and on whose word** — Passport's side of Atlas ADR
+ * 097.
+ *
+ * Three different facts get called "distance", and they do not collapse:
+ *
+ * ```
+ * straight-line   km between two points. Atlas's `candidate-distance/1`, or
+ *                 `distanceKm()` in the browser. No minutes, ever: it is a
+ *                 lower bound on the road, not an estimate of it.
+ * routed          a routing provider's answer over a real road network:
+ *                 minutes AND road km, from Atlas, with the provider named,
+ *                 when it was calculated and what it leaves out.
+ * no answer       the provider could not route it (`no-route`), the mode is
+ *                 not configured (`unsupported`), or nobody asked (`unknown`).
+ * ```
+ *
+ * There is deliberately **no "estimated road distance" derived from a straight
+ * line.** Atlas's probe (ADR 097) measured road/straight ratios from 1.12 to
+ * 2.75 out of Vernon — Fintry is 22 km across the lake and 61 minutes around
+ * it — so any single detour factor is wrong for exactly the places where it
+ * matters. Road km exists here only as the provider's `routeKm`.
+ *
+ * Nothing in this file turns kilometres into minutes. A `straight-line`
+ * journey has no `minutes` field to fill, so a caller cannot do it by
+ * accident either.
+ */
+
+/** Atlas's `TravelMode`, verbatim. Which ones are answered is Atlas's to say. */
+export type TravelMode = "driving" | "walking" | "cycling" | "transit";
+
+export const TRAVEL_MODES: readonly TravelMode[] = [
+  "driving",
+  "walking",
+  "cycling",
+  "transit",
+];
+
+export const isTravelMode = (value: unknown): value is TravelMode =>
+  typeof value === "string" && (TRAVEL_MODES as string[]).includes(value);
+
+export type Journey =
+  | {
+      readonly kind: "straight-line";
+      readonly km: number;
+      /** `town`: to a town's centre, which can be several km from the door. */
+      readonly basis: "coordinates" | "town";
+      readonly town?: string;
+    }
+  | {
+      readonly kind: "routed";
+      readonly mode: TravelMode;
+      /** Whole minutes, rounded up by Atlas. The provider's estimate. */
+      readonly minutes: number;
+      /** Kilometres along the route the provider found. */
+      readonly roadKm: number;
+      /** For comparison only. Never a substitute for `roadKm`. */
+      readonly straightKm: number;
+      readonly provider: string;
+      readonly calculatedAt: string;
+      readonly limitations: readonly string[];
+      /** The route crawls: the point may be inside the site, not its gate. */
+      readonly accessCaution?: string;
+    }
+  | {
+      readonly kind: "no-route";
+      readonly mode: TravelMode;
+      readonly provider: string;
+      readonly because: string;
+    }
+  | {
+      readonly kind: "unsupported";
+      readonly mode: TravelMode;
+      readonly provider: string;
+      readonly because: string;
+    }
+  | { readonly kind: "unknown"; readonly because: string };
+
+/**
+ * **Atlas's straight-line reading as a journey**, or nothing where Atlas has
+ * no distance to give. `bounded`, `conflicting` and `unknown` readings are not
+ * a straight line to anywhere, so they do not become one here.
+ */
+export function straightLineJourney(
+  distance: CandidateDistance | undefined,
+): Journey | undefined {
+  if (distance?.state !== "measured") return undefined;
+  return {
+    kind: "straight-line",
+    km: distance.km,
+    basis: distance.basis,
+    ...(distance.basis === "town" && distance.town
+      ? { town: distance.town }
+      : {}),
+  };
+}
+
+/**
+ * "Within N minutes": yes, no, or Passport cannot say. Only a routed journey
+ * answers; a straight line answers `undefined`, however short it is.
+ */
+export function withinMinutes(
+  journey: Journey | undefined,
+  minutes: number,
+): boolean | undefined {
+  return journey?.kind === "routed" ? journey.minutes <= minutes : undefined;
+}
+
+const MODE_WORD: Record<TravelMode, string> = {
+  driving: "drive",
+  walking: "walk",
+  cycling: "ride",
+  transit: "by transit",
+};
+
+const kmLabel = (km: number): string =>
+  km < 1 ? "under 1 km" : `${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
+
+const minutesLabel = (minutes: number): string => {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+};
+
+/**
+ * **The words for a journey**, as a headline and the caveat that must travel
+ * with it. One function, so every surface says the same honest thing.
+ *
+ * A straight line always says "in a straight line" and never names a mode. A
+ * routed journey always names its provider. Neither sentence is optional.
+ */
+export function describeJourney(journey: Journey): {
+  readonly headline: string;
+  readonly caveat: string;
+} {
+  switch (journey.kind) {
+    case "straight-line":
+      return {
+        headline:
+          journey.basis === "town" && journey.town
+            ? `${capitalise(kmLabel(journey.km))} in a straight line to ${journey.town}'s centre`
+            : `${capitalise(kmLabel(journey.km))} in a straight line`,
+        caveat: "Not a travel time. Roads, lakes and hills are not counted.",
+      };
+    case "routed": {
+      const mode = MODE_WORD[journey.mode];
+      const headline =
+        journey.mode === "transit"
+          ? `${minutesLabel(journey.minutes)} ${mode} · ${kmLabel(journey.roadKm)}`
+          : `${minutesLabel(journey.minutes)} ${mode} · ${kmLabel(journey.roadKm)} by road`;
+      const caveat = [
+        `Estimated by ${journey.provider}`,
+        ...journey.limitations,
+        ...(journey.accessCaution ? [journey.accessCaution] : []),
+      ].join("; ");
+      return { headline, caveat: `${caveat}.` };
+    }
+    case "no-route":
+      return {
+        headline: `No ${journey.mode} route found`,
+        caveat: `${capitalise(journey.because)} (${journey.provider}).`,
+      };
+    case "unsupported":
+      return {
+        headline: `No ${journey.mode} times available`,
+        caveat: `${capitalise(journey.because)}.`,
+      };
+    case "unknown":
+      return {
+        headline: "Travel time unknown",
+        caveat: `${capitalise(journey.because)}.`,
+      };
+  }
+}
+
+const capitalise = (s: string): string =>
+  s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
