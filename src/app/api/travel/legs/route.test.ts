@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LEGS_DRIVING_MOCK } from "@/lib/routing/fixtures";
+import { ATLAS_LEGS_DRIVING_MOCK } from "@/lib/routing/fixtures";
 
 const post = async (body: unknown) => {
   const { POST } = await import("./route");
@@ -32,7 +32,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("POST /api/travel/legs", () => {
+describe("POST /api/travel/legs (Passport's own route; Atlas is asked by GET)", () => {
   it("refuses a question that is not one, without asking Atlas", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -54,7 +54,7 @@ describe("POST /api/travel/legs", () => {
   });
 
   it("rounds the start to ~1 km before Atlas sees it, and answers per leg", async () => {
-    const fetchMock = vi.fn(async () => Response.json(LEGS_DRIVING_MOCK));
+    const fetchMock = vi.fn(async () => Response.json(ATLAS_LEGS_DRIVING_MOCK));
     vi.stubGlobal("fetch", fetchMock);
     const response = await post(DAY);
     expect(response.status).toBe(200);
@@ -64,17 +64,19 @@ describe("POST /api/travel/legs", () => {
       string,
       RequestInit,
     ];
-    expect(url).toMatch(/\/travel\/legs$/);
-    expect(init.method).toBe("POST");
-    const sent = String(init.body);
-    expect(sent).not.toMatch(/50\.267|119\.272/);
-    expect(JSON.parse(sent).legs[0].from).toEqual({
-      at: { lng: -119.27, lat: 50.27 },
-    });
+    // Atlas's real route: a GET by Atlas id, with the start rounded.
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+    expect(url).toMatch(
+      /\/travel\/legs\?stops=davison-orchards%2Cokeefe-ranch&mode=driving&lat=50\.27&lng=-119\.27$/,
+    );
+    expect(url).not.toMatch(/50\.267|119\.272/);
 
     const body = await response.json();
     expect(body.state).toBe("ready");
     expect(body.journeys[0]).toMatchObject({ kind: "routed", minutes: 9 });
+    // The way home ends at a town centre: not asked, drawn as a straight line.
+    expect(body.journeys[2]).toBeNull();
   });
 
   it("answers not-served, with a 200, while Atlas has no such endpoint", async () => {

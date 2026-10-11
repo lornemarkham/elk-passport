@@ -30,6 +30,22 @@ If Atlas defines a different shape, only that file changes.
 If the contract exists in an unpublished Atlas workspace, compare it with the
 proposal below before anyone wires the two together.
 
+### Update, 2026-10-11 integration (M178): Passport now asks by GET
+
+Atlas M180 (`767e8f6`, on local Atlas main over `351a168`, **not pushed, not
+deployed**) measured the served contract from its own code: `travel-legs/1` is
+`GET /travel/legs?stops=<id>,…&mode=…[&lat&lng]`, and **a POST gets 405**. The
+`POST` below was a mis-relay. M144/M145 and the domain lane's
+`src/lib/domains/travel/contracts.ts` agree with M180.
+
+`src/lib/routing/atlasLegs.ts` now speaks that GET: it cuts a day's legs into
+questions by Atlas id (`legsQuestions`), rounds the start through
+`travelLegsQuery`, reads each HTTP outcome through `readTravelLegsAnswer`, and
+maps `unrouted` and `unavailable` + `transient` to their own words instead of
+"no route" / "could not read". The way home to a town centre is not a question
+Atlas takes, so it stays a labelled straight line. Not yet used: M180's 404
+body `code: "unknown-stops"`, `total.areaPoints`, and `withinMinutes`.
+
 ### Update, 2026-10-11 afternoon: Atlas reports a real contract, unread
 
 The Atlas session `atlas-b4` reports that Atlas's **local, unpushed** `main`

@@ -25,13 +25,12 @@ export function travelLegsFromAtlas(
   { timeoutMs = LEGS_TIMEOUT_MS }: { readonly timeoutMs?: number } = {},
 ): Promise<LegsAnswer> {
   return readLegs(
-    async (path, body) => {
+    async (pathAndQuery) => {
       let response: Response;
       try {
-        response = await fetch(`${ATLAS_BASE_URL}${path}`, {
-          method: "POST",
-          headers: atlasAuthHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(body),
+        response = await fetch(`${ATLAS_BASE_URL}${pathAndQuery}`, {
+          method: "GET",
+          headers: atlasAuthHeaders(),
           signal: AbortSignal.timeout(timeoutMs),
           cache: "no-store",
         });

@@ -193,3 +193,21 @@ export const LEGS_ONE_UNROUTED_MOCK = {
     mockLeg(18, 19.6, 10.9),
   ],
 };
+
+/**
+ * **Atlas M144's `GET /travel/legs` envelope** around readings, as the M145
+ * report describes it: `legs[].travel`, and a `total` with `state` and
+ * `basis`. Fields the reports do not name are left out on purpose.
+ */
+export const atlasLegsBody = (
+  readings: readonly unknown[],
+  total: { state: string; minutes?: number; basis?: string } = {
+    state: "incomplete",
+  },
+) => ({ legs: readings.map((travel) => ({ travel })), total });
+
+/** Vernon → Davison (probe) → O'Keefe (MOCK), as Atlas M144 answers it. */
+export const ATLAS_LEGS_DRIVING_MOCK = atlasLegsBody(
+  LEGS_DRIVING_MOCK.legs.slice(0, 2),
+  { state: "estimated", minutes: 23, basis: "MOCK: two legs added by Atlas" },
+);

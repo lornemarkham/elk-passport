@@ -8,12 +8,12 @@ const MAX_LEGS = 12;
 
 /**
  * **How long each leg of a day takes, by road or on foot** — Atlas ADR 097,
- * over the wire `atlasLegs.ts` proposes.
+ * over Atlas's `GET /travel/legs` (`atlasLegs.ts`).
  *
  * The discipline of `/api/discovery/travel`: every point arrives in a POST
  * body, never a URL; nothing is stored; nothing is logged but the reason a
  * reading failed. A start point (an end with no Atlas `id`) is rounded to
- * ~1 km by `legsBody()` before it leaves, whatever the browser sent.
+ * ~1 km by `travelLegsQuery()` before it leaves, whatever the browser sent.
  *
  * ```
  * 200 { state: "ready", journeys }   one per leg, in order

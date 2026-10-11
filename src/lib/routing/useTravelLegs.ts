@@ -99,7 +99,8 @@ export function useTravelLegs(
   }
   const journeys = [...none];
   asked.forEach(({ index }, k) => {
-    journeys[index] = answer.journeys[k];
+    // A leg Atlas could not be asked arrives as `null` through JSON.
+    journeys[index] = answer.journeys[k] ?? undefined;
   });
   return { status: "ready", journeys, retry };
 }

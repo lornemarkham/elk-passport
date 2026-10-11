@@ -141,7 +141,18 @@ export function journeyFromReading(
     kind: "unknown",
     because: "Atlas sent a travel reading Passport could not read",
   };
-  if (!r || typeof r !== "object" || !isTravelMode(r.mode)) return malformed;
+  if (!r || typeof r !== "object") return malformed;
+  // Atlas M144: these two are about the place or the question, not a route,
+  // and may arrive without a mode.
+  if (r.state === "unrouted")
+    return {
+      kind: "unknown",
+      because:
+        "Atlas holds no point of its own for this place, so it cannot route to it",
+    };
+  if (r.state === "beyond")
+    return { kind: "unknown", because: "Past the distance asked about" };
+  if (!isTravelMode(r.mode)) return malformed;
   if (r.mode !== asked) return malformed;
   const mode = r.mode;
 
@@ -179,6 +190,13 @@ export function journeyFromReading(
     }
     case "unavailable":
       if (!isString(r.provider) || !isString(r.because)) return malformed;
+      // M144: the provider failed or ran out of quota. The answer may change,
+      // and the place is not to blame — so it is never shown as "no route".
+      if (r.transient === true)
+        return {
+          kind: "unknown",
+          because: `${r.provider} could not answer just now; this may change`,
+        };
       return {
         kind: "no-route",
         mode,
