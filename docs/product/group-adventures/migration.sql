@@ -525,3 +525,7 @@ DO $$ BEGIN
                     WHERE a.id = adventure_id AND a.kind = 'hockey-night'));
   END IF;
 END $$;
+
+-- New functions and tables: tell PostgREST, or every RPC is a 404 until it
+-- next reloads on its own.
+NOTIFY pgrst, 'reload schema';

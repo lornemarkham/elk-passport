@@ -94,4 +94,7 @@ CREATE POLICY "passport_board_invites_owner_writes" ON public.passport_board_inv
     AND board_owner_id = auth.uid()
     AND created_by = auth.uid());
 
+-- New function: tell PostgREST (delivered on commit).
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
