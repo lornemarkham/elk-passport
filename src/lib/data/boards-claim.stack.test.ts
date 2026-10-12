@@ -20,7 +20,11 @@ import { describe, expect, it } from "vitest";
  *     npx vitest run src/lib/data/boards-claim.stack.test.ts
  *
  * It applies the fix to the stack, so the "hole" half runs only on a stack
- * that has not had it yet (a fresh `start`).
+ * that has not had it yet (a fresh `start`), and only if no other suite
+ * applied the fix first: run it on its own, before the others.
+ *
+ * The fix closes a second hole too (naming someone else as owner), proven in
+ * boards-owner-forgery.stack.test.ts.
  */
 
 const ENV_FILE = process.env.ADVENTURES_STACK_ENV;

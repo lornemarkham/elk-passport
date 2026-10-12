@@ -348,23 +348,50 @@ boards, and use adventures for anything that has a group, a date or a plan.
 - read people's rows with a service key;
 - put people in Atlas.
 
-## 6. A live security hole found in boards (not in this foundation)
+## 6. Live security holes found in boards (not in this foundation)
 
-`passport_board_members_self_claim` (baseline, **live in production**) lets any
-signed-in person insert an `owner` row for **any** board id. With it they can:
+`accessToBoard` asks Atlas for a shared board **on behalf of the
+`board_owner_id` the membership row names**. Whoever can write a row or invite
+naming somebody reaches that person's Atlas board. Two baseline policies,
+**live in production**, let a stranger do that:
 
-- read that board's real members, invites, events and interest;
-- mint invites naming the real owner, so a second account that redeems one gets
-  a membership `accessToBoard` serves the owner's Atlas board through.
+1. **Claiming a shared board.** `passport_board_members_self_claim` lets any
+   signed-in person insert an `owner` row for **any** board id. They then read
+   its members, invites, events and interest, and mint invites.
+2. **Naming somebody else as owner.** The owner-writes policies on members and
+   invites never pin `board_owner_id`. Self-claim a board nobody is on yet,
+   then repoint your own row at the real owner, or mint an invite naming them:
+   `accessToBoard` serves the real board to you, or to whoever redeems it, with
+   read and write access.
 
-**What it takes:** the board id and, for the escalation, the owner's user id. A
-member the owner removed already has the board id.
+**What it takes:** a board id and its owner's user id. A member the owner
+removed has both.
 
-- **Proven** by `src/lib/data/boards-claim.stack.test.ts` against the baseline.
-- **Fix:** `boards-owner-claim-fix.sql`. An owner row may be self-claimed only
-  for a board nobody is on yet.
-- **Verified:** the fix closes the hole, and genuine claims and the owner's own
-  upsert still work.
+**First shares are refused today.** `ensureOwnerMembership`'s upsert is always
+refused for a board with no rows: Postgres applies the SELECT policy to an
+upsert's new row, and the policy can't see a row not yet written. The error is
+swallowed, so the invite that follows fails its owner check. A plain insert,
+which an attacker can send, passes. So in production most boards probably have
+no rows, which makes hole 2 reachable on most boards. This is a product bug, separate from the security fix. Its fix needs an app deploy; the security fix does not.
+
+- **Proven** against the baseline: `src/lib/data/boards-claim.stack.test.ts`
+  (hole 1). `src/lib/data/boards-owner-forgery.stack.test.ts` proves hole 2
+  against the first fix (d1ba0be), which closed hole 1 only:
+  `BOARDS_FIX_SQL=<that version>` makes it fail.
+- **Fix:** `boards-owner-claim-fix.sql`, SQL only, one transaction, idempotent,
+  changes no rows. An owner row may be self-claimed only for a board nobody is
+  on yet, and every row or invite an owner writes must name the writer as
+  owner.
+- **Verified:** both holes are refused, while the owner's own sharing still
+  works (owner row, upsert, invite, redeem, revoke, remove). Each new clause is
+  mutation-checked: drop either and the suite fails.
+- **Residual:** somebody who learns the id of a board nobody is on can still
+  pre-claim it in their own name. That reaches nothing, but it stops the real
+  owner sharing it. This is denial, not disclosure.
+- **Audit:** `boards-ownership-audit.sql`, read-only. Run it before and after.
+  It has no false positives on genuine sharing, and it flags several owners,
+  owner rows that name someone else, member rows and invites that name a
+  non-owner, and live forged invites.
 
 **Apply it independently of everything else here.** It is a shared contract,
 so it is proposed rather than applied.
@@ -381,7 +408,9 @@ Prerequisites: no Docker, no cloud, and nothing deployable.
 ```bash
 node docs/product/group-adventures/verification/stack.mjs start   # applies baseline + migration twice
 ADVENTURES_STACK_ENV=/tmp/adventures-stack/env \
-  npx vitest run src/lib/adventures/acceptance.stack.test.ts src/lib/data/boards-claim.stack.test.ts
+  npx vitest run src/lib/data/boards-claim.stack.test.ts   # first: needs the bare baseline
+ADVENTURES_STACK_ENV=/tmp/adventures-stack/env \
+  npx vitest run src/lib/data/boards-owner-forgery.stack.test.ts src/lib/adventures/acceptance.stack.test.ts
 
 # Browser, through the real app (NEXT_PUBLIC_* are inlined at build):
 set -a; . /tmp/adventures-stack/env; set +a; export ATLAS_API_URL=http://127.0.0.1:9
