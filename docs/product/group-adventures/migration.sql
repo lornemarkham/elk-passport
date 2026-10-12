@@ -344,22 +344,27 @@ REVOKE ALL ON public.passport_adventures, public.passport_adventure_members,
   public.passport_adventure_invites, public.passport_adventure_removals,
   public.passport_adventure_items, public.passport_adventure_responses
   FROM anon;
--- Removals are the redeem function's alone.
-REVOKE ALL ON public.passport_adventure_removals FROM authenticated;
-
--- What each role may change, column by column. INSERT on adventures and
--- members is withdrawn entirely: those rows come only from the functions.
-REVOKE INSERT, UPDATE ON public.passport_adventures FROM authenticated;
+-- Signed-in people get exactly what the policies below can allow, granted
+-- here rather than inherited: a project's default privileges are not this
+-- file's to assume (without them every call fails; with Supabase's they
+-- include TRUNCATE, which RLS does not govern). Removals are the redeem
+-- function's alone. INSERT on adventures and members is withheld entirely:
+-- those rows come only from the functions. UPDATE is column by column.
+REVOKE ALL ON public.passport_adventures, public.passport_adventure_members,
+  public.passport_adventure_invites, public.passport_adventure_removals,
+  public.passport_adventure_items, public.passport_adventure_responses
+  FROM authenticated;
+GRANT SELECT, DELETE ON public.passport_adventures TO authenticated;
 GRANT UPDATE (title, starts_on, ends_on, time_zone, destination_label, destination_town_id)
   ON public.passport_adventures TO authenticated;
-REVOKE INSERT, UPDATE ON public.passport_adventure_members FROM authenticated;
+GRANT SELECT, DELETE ON public.passport_adventure_members TO authenticated;
 GRANT UPDATE (display_name, visibility) ON public.passport_adventure_members TO authenticated;
-REVOKE UPDATE ON public.passport_adventure_invites FROM authenticated;
+GRANT SELECT, INSERT, DELETE ON public.passport_adventure_invites TO authenticated;
 GRANT UPDATE (label, revoked_at, expires_at) ON public.passport_adventure_invites TO authenticated;
-REVOKE UPDATE ON public.passport_adventure_items FROM authenticated;
+GRANT SELECT, INSERT, DELETE ON public.passport_adventure_items TO authenticated;
 GRANT UPDATE (atlas_ref, label, note, status, on_day, starts_at, position)
   ON public.passport_adventure_items TO authenticated;
-REVOKE UPDATE ON public.passport_adventure_responses FROM authenticated;
+GRANT SELECT, INSERT, DELETE ON public.passport_adventure_responses TO authenticated;
 GRANT UPDATE (response, answered_at) ON public.passport_adventure_responses TO authenticated;
 
 REVOKE ALL ON FUNCTION public.passport_create_adventure(text, text, text, date, date, text, text, text) FROM anon, public;
@@ -499,7 +504,8 @@ CREATE TABLE IF NOT EXISTS public.passport_adventure_hockey (
 );
 
 ALTER TABLE public.passport_adventure_hockey ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.passport_adventure_hockey FROM anon;
+REVOKE ALL ON public.passport_adventure_hockey FROM anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.passport_adventure_hockey TO authenticated;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'passport_adventure_hockey_touch') THEN
