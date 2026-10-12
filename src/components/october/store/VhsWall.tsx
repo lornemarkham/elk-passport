@@ -20,11 +20,14 @@ import { Sleeve, Spine } from "./Sleeve";
 import { BackCover } from "./BackCover";
 import { CarvedHeader } from "./CarvedHeader";
 import { Waiting } from "@/components/october/shell/Waiting";
+import { usePassage } from "@/components/october/passage/usePassage";
+import { rememberPassage } from "@/domain/october/passage";
 import { Atmosphere, type AtmosphereHandle } from "./Atmosphere";
 import { Presence, type PresenceVariant } from "./Presence";
 import {
   OFFERED_ID,
   REFUSED_ID,
+  SECRET_ID,
   WALL_TAPES,
   type Placement,
 } from "./wallTapes";
@@ -96,6 +99,27 @@ import { armSound, playImpact, playSlide } from "./sound";
 const OVERSCAN = 1.06;
 const DRIFT_LIMIT = 14;
 const DRIFT_EASE = 0.035;
+
+/**
+ * **A phone is narrower than the wall.** Held upright, the viewport shows about
+ * a quarter of the plate, so the camera cannot be a head that looks around a
+ * little — the wall has to be something you *move along*. The span is measured
+ * from where the tapes actually are, so the pan stops at the last cavity with
+ * a margin, never on bare plywood or off the end of the footage.
+ */
+const PAN_MARGIN = 26;
+const SPAN = (() => {
+  let left = Infinity;
+  let right = -Infinity;
+  for (const t of WALL_TAPES) {
+    const box = caseBox(cubbyAt(t.row, t.col), t.nudge);
+    left = Math.min(left, box.left);
+    right = Math.max(right, box.left + box.width);
+  }
+  return { left, right };
+})();
+/** A finger has to travel this far before it is a drag and not a tap. */
+const DRAG_SLOP = 7;
 
 /** Degrees the case turns as it comes out, and keeps in the hand. */
 const TURN_OUT = 16;
@@ -210,8 +234,18 @@ export function VhsWall({
       sink.current?.({ kind, x, y, force }),
     [],
   );
+  const passage = usePassage();
   const plate = useRef<HTMLVideoElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const [panning, setPanning] = useState(false);
+  /** The person has found out the wall moves. */
+  const [hinted, setHinted] = useState(false);
+  const drag = useRef<{
+    id: number;
+    x0: number;
+    d0: number;
+    moved: boolean;
+  } | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [inHand, setInHand] = useState<string | null>(null);
   const [handling, setHandling] = useState<Handling>("none");
@@ -233,6 +267,12 @@ export function VhsWall({
     drift: 0,
     target: 0,
     reach: 0,
+    /** Narrow viewport: the wall is panned along rather than glanced around. */
+    panning: false,
+    panMin: 0,
+    panMax: 0,
+    /** Where the wall was when a tape came off it, so it can go back there. */
+    resume: 0,
     /**
      * The unit being struck. Not a decaying nudge and not screen shake: an
      * impulse into a stiff spring, so it snaps one way, comes back past
@@ -254,6 +294,17 @@ export function VhsWall({
   }, []);
 
   /**
+   * Narrow viewports pan a long way to square up on a tape, so the move is
+   * quicker than the idle drift — and under reduced motion it is a cut, since
+   * the drift loop does not run at all.
+   */
+  const settle = useCallback(() => {
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    camera.current.drift = camera.current.target;
+    paint();
+  }, [paint]);
+
+  /**
    * Aim the head. `fraction` runs −1 (hard left) to +1 (hard right), which is
    * the single seam the camera has: the pointer drives it here, and a phone's
    * `deviceorientation` gamma would drive the same call.
@@ -261,7 +312,10 @@ export function VhsWall({
   const aim = useCallback((fraction: number) => {
     const c = camera.current;
     if (!c.free) return;
-    c.target = -Math.max(-1, Math.min(1, fraction)) * c.reach;
+    const f = Math.max(-1, Math.min(1, fraction));
+    c.target = c.panning
+      ? c.panMax - ((f + 1) / 2) * (c.panMax - c.panMin)
+      : -f * c.reach;
   }, []);
 
   useEffect(() => {
@@ -273,23 +327,53 @@ export function VhsWall({
           window.innerHeight / PLATE.height,
         ) * OVERSCAN;
       const slack = (PLATE.width - window.innerWidth / c.scale) / 2;
-      c.reach = Math.max(0, Math.min(slack * 0.75, DRIFT_LIMIT));
-      c.target = Math.max(-c.reach, Math.min(c.reach, c.target));
+      const view = window.innerWidth / c.scale;
+      const narrow = view < SPAN.right - SPAN.left + PAN_MARGIN * 2;
+      if (narrow) {
+        // The centre of the window, in plate pixels, may travel from the left
+        // end of the tapes to the right end. Drift is the other way round:
+        // content moves right when you look left.
+        const centre = (lo: boolean) =>
+          lo
+            ? SPAN.left - PAN_MARGIN + view / 2
+            : SPAN.right + PAN_MARGIN - view / 2;
+        const was = c.panning;
+        c.panning = true;
+        c.panMin = PLATE.width / 2 - centre(false);
+        c.panMax = PLATE.width / 2 - centre(true);
+        c.reach = 0;
+        // Start at the left end, where the shelf starts. Keep the place if
+        // the window is merely being resized.
+        c.target = was
+          ? Math.max(c.panMin, Math.min(c.panMax, c.target))
+          : c.panMax;
+        c.drift = was ? c.target : c.panMax;
+      } else {
+        c.panning = false;
+        c.reach = Math.max(0, Math.min(slack * 0.75, DRIFT_LIMIT));
+        c.target = Math.max(-c.reach, Math.min(c.reach, c.target));
+      }
       paint();
+      return narrow;
     };
-    fit();
-    window.addEventListener("resize", fit);
+    setPanning(fit());
+    const onResize = () => setPanning(fit());
+    window.addEventListener("resize", onResize);
     const running = timers.current;
     return () => {
-      window.removeEventListener("resize", fit);
+      window.removeEventListener("resize", onResize);
       for (const t of running) clearTimeout(t);
     };
   }, [paint]);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const onMove = (e: PointerEvent) =>
+    // A finger is a drag, handled on the wall itself; only a hovering pointer
+    // aims the head from wherever it happens to be.
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
       aim((e.clientX / window.innerWidth) * 2 - 1);
+    };
     window.addEventListener("pointermove", onMove);
 
     let frame = 0;
@@ -298,7 +382,7 @@ export function VhsWall({
       const gap = c.target - c.drift;
       let moved = false;
       if (Math.abs(gap) > 0.008) {
-        c.drift += gap * DRIFT_EASE;
+        c.drift += gap * (c.panning ? DRIFT_EASE * 3 : DRIFT_EASE);
         moved = true;
       }
       if (Math.abs(c.jolt) > 0.008 || Math.abs(c.joltV) > 0.05) {
@@ -426,12 +510,18 @@ export function VhsWall({
   const release = useCallback(
     (id: string, wasFlipped: boolean, fromHand: boolean) => {
       cue("stow", 0.5, 0.5, 0.45);
+      // A case going home is a small flat knock at the end of its slide.
+      after(RETURN_MS - 90, () => playImpact(0.5, 0.1));
       flushSync(() => {
         setTouch((prior) => ({ ...prior, [id]: handled(id, prior[id]) }));
         setInHand(null);
         setFlipped(false);
         setHandling("none");
         camera.current.free = true;
+        if (camera.current.panning) {
+          camera.current.target = camera.current.resume;
+          settle();
+        }
         setLeaving({ id, settling: false, flipped: wasFlipped });
         setSwapping(fromHand);
       });
@@ -448,7 +538,7 @@ export function VhsWall({
         setLeaving((l) => (l && l.id === id ? null : l)),
       );
     },
-    [after, cue],
+    [after, cue, settle],
   );
 
   const putBack = useCallback(() => {
@@ -459,18 +549,34 @@ export function VhsWall({
   function grab(tape: Placement) {
     if (phase !== "idle" || tape.id === inHand || leaving?.id === tape.id)
       return;
+    // Where the wall was before this tape drew the camera in. Panned along a
+    // narrow wall, letting go carries the camera back there, not to the middle.
+    const resume = camera.current.free
+      ? camera.current.drift
+      : camera.current.resume;
     // **Switching.** The one you were holding starts for the shelf in the same
     // tick the new one starts coming out, so the exchange is one movement
     // rather than a close followed by an open.
     if (inHand) release(inHand, flipped, handling === "arrived");
-    if (alwaysIntervene && tape.id === REFUSED_ID) {
+    // October refuses the obvious tape **once**: the first time you reach for
+    // it, and never after you have been through the room. Always, when the
+    // review flag says so. The first meeting is the joke; a toll would not be.
+    const refuses =
+      tape.id === REFUSED_ID &&
+      (alwaysIntervene || (!passage.refused && !passage.escaped));
+    if (refuses) {
       const c = cubbyAt(tape.row, tape.col);
+      rememberPassage("refused");
       refuse({
         x: (c.x + c.width / 2) / PLATE.width,
         y: (c.top + c.floor) / 2 / PLATE.height,
       });
       return;
     }
+    // The one that was left for somebody. Picking it up is taking it.
+    if (tape.id === SECRET_ID) rememberPassage("tape");
+    const reach = cubbyAt(tape.row, tape.col);
+    playSlide((reach.x + reach.width / 2) / PLATE.width, 0.3);
     setHovered(null);
     setInHand(tape.id);
     setFlipped(false);
@@ -478,7 +584,15 @@ export function VhsWall({
     setSwapping(false);
     // The head stops looking around the moment there is something in it.
     camera.current.free = false;
-    camera.current.target = 0;
+    if (camera.current.panning) {
+      // Square the hand on the middle of the screen, not the middle of the
+      // plate: the two are far apart when the screen is a quarter of it.
+      camera.current.target = PLATE.width / 2 - (HELD.x + READ.x) / 2;
+      camera.current.resume = resume;
+      settle();
+    } else {
+      camera.current.target = 0;
+    }
     cue("pull", 0.5, 0.5, 0.6);
     after(PULL_MS, () => setHandling("lifting"));
     after(PULL_MS + LIFT_MS, () =>
@@ -539,7 +653,45 @@ export function VhsWall({
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
+    <div
+      className="fixed inset-0 z-[60] overflow-hidden bg-black"
+      data-testid="vhs-wall"
+      data-panning={panning ? "true" : "false"}
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        const c = camera.current;
+        if (!c.panning || !c.free || e.pointerType === "mouse") return;
+        drag.current = {
+          id: e.pointerId,
+          x0: e.clientX,
+          d0: c.drift,
+          moved: false,
+        };
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        const c = camera.current;
+        if (!d || d.id !== e.pointerId || !c.free) return;
+        const dx = e.clientX - d.x0;
+        if (!d.moved) {
+          if (Math.abs(dx) < DRAG_SLOP) return;
+          d.moved = true;
+          // From here it is a drag: the finger is the wall's, and the tape
+          // under it will not get a tap when it lets go.
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setHinted(true);
+        }
+        c.target = Math.max(c.panMin, Math.min(c.panMax, d.d0 + dx / c.scale));
+        c.drift = c.target;
+        paint();
+      }}
+      onPointerUp={() => {
+        drag.current = null;
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+      }}
+    >
       {/* The store, before the lights are on. Covers the stage rather than
           delaying it, so the plate goes on loading underneath and the wall is
           already assembled the moment this lifts. */}
@@ -595,6 +747,10 @@ export function VhsWall({
           const mine = inHand === tape.id;
           const going = leaving?.id === tape.id;
           const refused = tape.id === REFUSED_ID;
+          // Taken: it left the shelf with you. It fades rather than pops,
+          // because it spent its last half-second sliding into the cavity.
+          const gone =
+            tape.id === SECRET_ID && !!passage.tape && !mine && !going;
 
           const motion: Motion = mine
             ? handling === "emerging"
@@ -627,7 +783,11 @@ export function VhsWall({
               kick={kickFor(tape, HIT)}
               seizure={SEIZURE}
               elevated={mine || going}
-              grabbable={!mine && !going && phase === "idle"}
+              gone={gone}
+              note={
+                refused && passage.escaped ? "Fine. You earned it." : undefined
+              }
+              grabbable={!gone && !mine && !going && phase === "idle"}
               touch={touch[tape.id] ?? UNTOUCHED}
               onEnter={() => setHovered(tape.id)}
               onLeave={() => setHovered((h) => (h === tape.id ? null : h))}
@@ -668,6 +828,34 @@ export function VhsWall({
           over it would end the illusion before anybody had picked anything
           up. Until now the only way out of this room was the browser's own
           back button, which is not an exit, it is an escape. */}
+      {/* The wall is wider than a phone. Said once, quietly, and gone the
+          moment a finger has moved it. */}
+      {panning && shelfReady && !hinted && !inHand ? (
+        <p
+          aria-hidden
+          data-testid="pan-hint"
+          className="pointer-events-none absolute inset-x-0 bottom-8 z-20 text-center text-[11px] tracking-[0.3em] text-[#e9e6da]/40 uppercase"
+        >
+          ‹ &nbsp; drag &nbsp; ›
+        </p>
+      ) : null}
+
+      {/* What you took, and where it can be played. It is a link because it
+          is the only way out of the store that is not the way you came. */}
+      {passage.tape ? (
+        <a
+          href="/october/room"
+          data-testid="pocket-tape"
+          className="absolute bottom-5 left-5 z-20 flex min-h-11 items-center gap-2 text-[11px] tracking-wide text-[#d9cba3]/55 underline-offset-4 transition-colors hover:text-[#d9cba3] hover:underline"
+        >
+          <span
+            aria-hidden
+            className="inline-block h-2.5 w-4 rounded-[1px] bg-[#d9cba3]/70"
+          />
+          somewhere to play it
+        </a>
+      ) : null}
+
       <a
         href="/october"
         data-testid="leave-store"
@@ -693,6 +881,8 @@ function Tape({
   touch,
   elevated,
   grabbable,
+  gone,
+  note,
   onEnter,
   onLeave,
   onGrab,
@@ -718,6 +908,10 @@ function Tape({
   touch: Touch;
   elevated: boolean;
   grabbable: boolean;
+  /** Taken off the shelf for good. */
+  gone: boolean;
+  /** What October's card says, when it is not the film's own line. */
+  note?: string;
   onEnter: () => void;
   onLeave: () => void;
   onGrab: () => void;
@@ -903,6 +1097,8 @@ function Tape({
   /** Each cavity's own measured light. In the hand it comes all the way up. */
   const level = inHand ? 1 : cavityLevel(light) + proud / 220;
   const depth = shell.width * VHS_DEPTH_RATIO;
+  /** How much larger than it is shown a sleeve is typeset. See the front face. */
+  const ink = Math.max(1, Math.ceil(140 / shell.width));
   const lit = (face: number) => ({
     filter: level === 1 ? undefined : `brightness(${level * face})`,
     transition: `filter ${ease}`,
@@ -915,6 +1111,9 @@ function Tape({
         ...asPercent(shell),
         transformStyle: "preserve-3d",
         zIndex: elevated ? 2 : undefined,
+        opacity: gone ? 0 : 1,
+        transition: "opacity 900ms ease-out",
+        pointerEvents: gone ? "none" : undefined,
       }}
     >
       <span
@@ -971,7 +1170,27 @@ function Tape({
             ...lit(1),
           }}
         >
-          <Sleeve cover={tape.cover} width={shell.width} film={tape.film} />
+          {/* **Typeset large, shown small.** A sleeve asleep in its cubby is
+              forty plate pixels wide, which puts its title at six pixels of
+              real type — where browsers stop positioning letters and start
+              snapping them, and 'CASPER' came out as 'CAS PER'. It is laid
+              out at `ink` times the size and scaled down, so the title is
+              drawn smooth at the size it is looked at. */}
+          <span
+            className="absolute top-0 left-0"
+            style={{
+              width: `${ink * 100}%`,
+              height: `${ink * 100}%`,
+              transform: `scale(${1 / ink})`,
+              transformOrigin: "0 0",
+            }}
+          >
+            <Sleeve
+              cover={tape.cover}
+              width={shell.width * ink}
+              film={tape.film}
+            />
+          </span>
         </span>
 
         <span
@@ -988,6 +1207,7 @@ function Tape({
             width={shell.width}
             onTrailer={() => {}}
             onPutBack={onPutBack}
+            note={note}
           />
         </span>
 
@@ -1045,7 +1265,11 @@ function Tape({
           onPointerLeave={onLeave}
           data-testid={`tape-${tape.id}`}
           data-pulled={out ? "true" : "false"}
-          aria-label={`${tape.film.title}, ${tape.film.year}`}
+          aria-label={
+            tape.film.year
+              ? `${tape.film.title}, ${tape.film.year}`
+              : "A tape with no sleeve"
+          }
           className="absolute inset-0 cursor-pointer border-0 bg-transparent p-0"
           // The room stops taking clicks while something is in your hand, so
           // that a click on nothing puts it back — but the cavities keep

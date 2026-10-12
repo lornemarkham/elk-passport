@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * **The three places October has.**
+ * **The four places October has.**
  *
  * October may become cinematic; this must not. The shell is the part a person
  * has to be able to trust, so it is plain type on a plain bar, it says where
@@ -12,7 +12,8 @@ import { usePathname } from "next/navigation";
  * animates, hides, or changes its mind.
  *
  * An experience is allowed to take the whole screen and leave this behind —
- * the Video Store does exactly that, from its own route outside `/october`.
+ * the Video Store and the Secret Room do exactly that, as fixed full-screen
+ * layers over this bar, from `/october/store` and `/october/room`.
  * That is the distinction the shell exists to make legible: while you can see
  * this bar you are in the product, and when it goes you are somewhere else.
  */
@@ -21,6 +22,7 @@ const DESTINATIONS = [
   { href: "/october", label: "October", hint: "What matters now" },
   { href: "/october/discover", label: "Discover", hint: "What is out there" },
   { href: "/october/mine", label: "My October", hint: "What is mine" },
+  { href: "/october/from", label: "From October", hint: "What it keeps" },
 ] as const;
 
 export function OctoberNav({

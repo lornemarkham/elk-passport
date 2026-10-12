@@ -24,7 +24,7 @@ const at = (path: string) => {
 };
 
 describe("OctoberNav", () => {
-  it("offers the three destinations October has, and no more", () => {
+  it("offers the four destinations October has, and no more", () => {
     at("/october");
     const links = screen
       .getByRole("navigation", { name: "October" })
@@ -33,7 +33,19 @@ describe("OctoberNav", () => {
       "October",
       "Discover",
       "My October",
+      "From October",
     ]);
+  });
+
+  it("knows From October's rooms are From October", () => {
+    at("/october/from");
+    expect(screen.getByTestId("october-nav-from-october")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByTestId("october-nav-october")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("marks where you are, and marks only one place", () => {
