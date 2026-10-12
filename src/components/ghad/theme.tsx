@@ -10,12 +10,15 @@ import { createContext, useContext, useSyncExternalStore } from "react";
  * rule under the wordmark — and nowhere else. **Photography is the colour.**
  * A section tinted orange would be the tourism brochure this is not.
  *
- * Both themes are chosen for contrast on white: burnt orange `#C65A2E` and
- * forest green `#28734A` both clear 4.5:1 against `#FFFFFF`, so accent text is
- * readable rather than decorative, and white text on the accent clears it too.
+ * Both themes are chosen for contrast on white: burnt orange `#B04E28`
+ * (5.3:1) and forest green `#28734A` (5.8:1) both clear 4.5:1 against
+ * `#FFFFFF`, so accent text is readable rather than decorative, and white text
+ * on the accent clears it too. The orange was `#C65A2E`, which this comment
+ * said cleared 4.5:1 and measured 4.28:1 (M200); it also failed as the label
+ * colour on a card's 9% accent tint (3.8:1, now 4.7:1).
  */
 export const THEMES = {
-  orange: { name: "Burnt orange", accent: "#C65A2E", ink: "#ffffff" },
+  orange: { name: "Burnt orange", accent: "#B04E28", ink: "#ffffff" },
   green: { name: "Forest green", accent: "#28734A", ink: "#ffffff" },
 } as const;
 

@@ -784,6 +784,9 @@ certainty. Do not invent an answer here to make the document feel finished.
 4. **Planning UI.** What SHAPE actually looks like. (§2.5)
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
+   _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
+   needs a starting town, and Passport asks rather than picks one. Everywhere
+   else — Discovery, the helper — this stays open._
 6. **How the Passport helper manifests.** Inline? Ambient? Something else? Not
    assumed to be a chatbot. (§4)
 7. **What telemetry and behavioural signals are appropriate.** (§5)

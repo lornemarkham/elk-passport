@@ -1,0 +1,144 @@
+[
+  {
+    "id": "vernon-three-hours",
+    "files": [
+      "01-vernon-three-hours-go-desktop.jpg",
+      "01-vernon-three-hours-go-mobile.jpg",
+      "01-vernon-three-hours-print.jpg",
+      "01-vernon-three-hours-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Civic Memorial Park",
+      "Centennial Outdoor Rink",
+      "Priest Valley Arena"
+    ]
+  },
+  {
+    "id": "vernon-family",
+    "files": [
+      "02-vernon-family-go-desktop.jpg",
+      "02-vernon-family-go-mobile.jpg",
+      "02-vernon-family-print.jpg",
+      "02-vernon-family-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Civic Memorial Park",
+      "Polson Park",
+      "Allan Brooks Nature Centre"
+    ]
+  },
+  {
+    "id": "vernon-unusual",
+    "files": [
+      "03-vernon-unusual-go-desktop.jpg",
+      "03-vernon-unusual-go-mobile.jpg",
+      "03-vernon-unusual-print.jpg",
+      "03-vernon-unusual-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Okanagan Science Centre",
+      "19th Avenue Tot Lot",
+      "Rock Garden Climbing Centre"
+    ]
+  },
+  {
+    "id": "vernon-rainy",
+    "files": [
+      "04-vernon-rainy-go-desktop.jpg",
+      "04-vernon-rainy-go-mobile.jpg",
+      "04-vernon-rainy-print.jpg",
+      "04-vernon-rainy-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Polson Park",
+      "Allan Brooks Nature Centre",
+      "Paddlewheel Park"
+    ]
+  },
+  {
+    "id": "vernon-longer-drive",
+    "files": [
+      "05-vernon-longer-drive-go-desktop.jpg",
+      "05-vernon-longer-drive-go-mobile.jpg",
+      "05-vernon-longer-drive-print.jpg",
+      "05-vernon-longer-drive-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": ["Civic Memorial Park", "Centennial Outdoor Rink"]
+  },
+  {
+    "id": "vancouver-before-meeting",
+    "files": [
+      "06-vancouver-before-meeting-go-desktop.jpg",
+      "06-vancouver-before-meeting-go-mobile.jpg",
+      "06-vancouver-before-meeting-print.jpg",
+      "06-vancouver-before-meeting-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": ["Queen Elizabeth Theatre", "Queen Elizabeth Park"]
+  },
+  {
+    "id": "vancouver-unusual-downtown",
+    "files": [
+      "07-vancouver-unusual-downtown-go-desktop.jpg",
+      "07-vancouver-unusual-downtown-go-mobile.jpg",
+      "07-vancouver-unusual-downtown-print.jpg",
+      "07-vancouver-unusual-downtown-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Roedde House",
+      "Dr. Sun Yat-Sen Classical Chinese Garden",
+      "VanDusen Botanical Garden"
+    ]
+  },
+  {
+    "id": "vancouver-rainy-adventure",
+    "files": [
+      "08-vancouver-rainy-adventure-go-desktop.jpg",
+      "08-vancouver-rainy-adventure-go-mobile.jpg",
+      "08-vancouver-rainy-adventure-print.jpg",
+      "08-vancouver-rainy-adventure-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Queen Elizabeth Park",
+      "Capilano River Regional Park",
+      "Bear Creek Park"
+    ]
+  },
+  {
+    "id": "vancouver-young-family",
+    "files": [
+      "09-vancouver-young-family-go-desktop.jpg",
+      "09-vancouver-young-family-go-mobile.jpg",
+      "09-vancouver-young-family-print.jpg",
+      "09-vancouver-young-family-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Queen Elizabeth Theatre",
+      "Queen Elizabeth Park",
+      "John Hendry Park"
+    ]
+  },
+  {
+    "id": "vancouver-colleagues-evening",
+    "files": [
+      "10-vancouver-colleagues-evening-go-desktop.jpg",
+      "10-vancouver-colleagues-evening-go-mobile.jpg",
+      "10-vancouver-colleagues-evening-print.jpg",
+      "10-vancouver-colleagues-evening-print.pdf"
+    ],
+    "problems": [],
+    "browserTitles": [
+      "Queen Elizabeth Theatre",
+      "Queen Elizabeth Park",
+      "John Hendry Park"
+    ]
+  }
+]

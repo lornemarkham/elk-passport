@@ -303,6 +303,8 @@ test.describe("it can be operated with a thumb", () => {
     // change nobody connected to tappability.
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/discovery");
+    // On a phone the rows sit behind one line, so the photographs come first.
+    await page.getByTestId("ghad-refine").click();
     const controls = page.getByTestId("ghad-choice");
     const count = await controls.count();
     expect(count).toBeGreaterThan(0);
@@ -324,6 +326,7 @@ test.describe("it can be operated with a thumb", () => {
     // from. The brief's rule: a control either works or admits it cannot.
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/discovery");
+    await page.getByTestId("ghad-refine").click();
     const far = page.locator(
       '[data-testid="ghad-choice"][data-row="distance"]',
     );

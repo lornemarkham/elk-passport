@@ -79,7 +79,7 @@ describe("destinationFor", () => {
     expect(destinationFor(undated)).toBe("/passport/event-undated");
   });
 
-  it("gives a thin Place a page it can actually fill, rather than none", () => {
+  it("sends a thin Place to the Place page too, the one that can render it", () => {
     const experience = candidateToExperience(
       candidate({
         kind: "Place",
@@ -87,10 +87,11 @@ describe("destinationFor", () => {
         coordinates: [-119.34, 50.18],
       }),
     );
-    // Readiness still chooses *which* page. It no longer decides whether the
-    // thing is reachable — those were always two different questions.
+    // This test used to expect `/passport/id-1`, a page that asks Atlas for no
+    // Place read and so rendered "There's nothing at this address" for every
+    // Place that was not ready. See `destination.atlas.test.ts`.
     expect(experience.detailReady).toBe(false);
-    expect(destinationFor(experience)).toBe("/passport/id-1");
+    expect(destinationFor(experience)).toBe("/places/id-1");
   });
 
   it("goes to the thing itself, not to whatever contains it", () => {

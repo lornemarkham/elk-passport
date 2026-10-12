@@ -109,6 +109,21 @@ export function candidateToExperience(
         }
       : {}),
     ...(candidate.schedule ? { schedule: candidate.schedule } : {}),
+    // How long a visit usually takes. Only the reading and its words travel:
+    // the rule and source id behind a derived range stay on the subject page.
+    ...(candidate.visitDuration
+      ? {
+          visitDuration: {
+            basis: candidate.visitDuration.basis,
+            ...(candidate.visitDuration.minutes
+              ? { minutes: candidate.visitDuration.minutes }
+              : {}),
+            ...(candidate.visitDuration.text
+              ? { text: candidate.visitDuration.text }
+              : {}),
+          },
+        }
+      : {}),
     location: candidate.coordinates
       ? {
           name: candidate.context?.name ?? candidate.name,

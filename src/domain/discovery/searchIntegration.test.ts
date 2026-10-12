@@ -128,8 +128,8 @@ describe("the ranker inside the list pipeline", () => {
         );
       }
     }
-    // Readiness chooses which page, not whether there is one.
-    expect(destinationFor(unready)).toBe("/passport/thin");
+    // Every Place opens on the Place page, ready or not (M211).
+    expect(destinationFor(unready)).toBe("/places/thin");
     expect(destinationFor(knoxPark)).toBe("/places/knox-park");
   });
 

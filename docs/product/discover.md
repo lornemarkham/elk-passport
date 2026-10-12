@@ -197,3 +197,88 @@ board all along.
 ADR 094 §4). Atlas's migration `202610111200_entity_quality_reports.sql` is not
 applied, so the endpoint answers 503. Wire a server-side proxy and the button
 only once Atlas confirms it answers 202.
+
+## Asking Discovery a question — lane/discovery
+
+**Recorded 2026-10-11.** One sentence box under _What do you feel like
+doing?_, four tappable example questions, and an answer shelf. Code:
+`src/lib/ai/ask/` (read, apply, answer, model), `AskDiscovery.tsx`,
+`POST /api/discovery/ask`.
+
+**A sentence sets the rows; it does not replace them.** `readAsk` reads the
+same fields the five rows hold (how long, who, which day, which town, how far,
+which verb), reusing `/go`'s `readBrief` so both pages read one sentence one
+way. `applyAsk` changes only what the sentence says. Exceptions, each stated
+in code: a typed search / kind / intent is replaced; _worth the drive_ clears
+the radius; naming non-child company drops a child's age. "Nearby" becomes
+15 km only where there is an origin. The sentence lives in the URL as `?ask=`.
+
+| question shape      | lens      | what it does                                                                                                                          | what it refuses                                                    |
+| ------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| "three hours"       | `time`    | 3–4 picks, close first, inside `/go`'s stated planning circle (30 km for ≤4 h), varied; Atlas's typical visit said, and over-long out | a length of visit Atlas does not hold                              |
+| "something unusual" | `unusual` | rarest **family** of kind / doing **in the home area**, counted over the area (saved included); something to do there                 | a judgement of taste; an event's filing as a kind; non-doings      |
+| "take my kid"       | `kids`    | listed child evidence, the per-age verdict, or a source describing it for families / all ages; stated adults-only rules out           | an age from "kid"; "family" read as a child; a timely non-fit lead |
+| "worth the drive"   | `drive`   | measured 40–200 km straight-line, ranked by **what you can do there** (doings, contains, photo); timeliness counts half               | minutes, routing, "an hour" as a distance or as the day            |
+| "what's on today"   | `on`      | dated things on the day, closest first, with a start time where published; places only after                                          | a place with no hours for the day leading                          |
+| "date night"        | `couple`  | stated adults-only and evening start times first; described-for-families down; says the ordering is Passport's                        | a subtype read as romantic; "a couple of hours" as a couple        |
+| "friends in town"   | `group`   | several doings, events, described all-ages / beginners first; says the ordering is Passport's                                         | a subtype read as social                                           |
+
+"On my own" is read and said back but changes no pick: Atlas holds no
+evidence about what suits one person, and the answer says that instead of
+inventing it. "For two" is carried as `pair` on the ask only — the who's
+coming row has no couple.
+
+Every pick carries up to three **reasons**, each a fact (listed affordances,
+age verdict, stated interval, rain reading, rarity count, straight-line km),
+and at most one **caveat** (no published hours for the day asked, Atlas cannot
+place it, stated hours disagree). An answer also names its **gaps** — _how
+old?_, _from where?_ — instead of filling them.
+
+**Quality and repetition.** A pick must be `substantial` (dated, photo, verb,
+contained places, listed features, or a description Atlas has not flagged as
+restating the title). Picks are taken one at a time: same name, same spot
+(~200 m) or same attraction (`partOf` / `context`) is refused; same kind, same
+family of kind (`park` / `public park`) and shared verbs cost. Over and
+not-on-the-day events never appear; on-today and last-day events lead **among
+things that answer the question** — what fails a lens's test (not rare, not
+indoors when asked, no child evidence) counts its timeliness for half and
+costs 4. When nothing fits, the note says so.
+
+**Somewhere, or not an answer.** With an origin, a pick needs Atlas's
+distance. Measured 2026-10-11, 37 of 156 picks from Vernon and Vancouver were
+events Atlas holds no location for — a Sun Peaks turkey sale led "three
+hours" from Vancouver. Those leave the answer (never the page). One pick
+placed only in the home area may follow — never lead — for a question that
+is not about being close.
+
+**The evidence it now reads** (all Atlas's, carried by the mapper):
+`visitDuration` (1,076 held; 1,043 derived, said "going by what we know"),
+`environment.exposure` (indoor 1,150 / outdoor 708 — used after the rain
+reading, for wet days and "inside" / "outside" / "sunny"), `suitability`
+statements about the whole subject (`adults-only` rule, `families`,
+`children`, `all-ages`, `beginner`), and a publisher's start time where
+`timePrecision` is `minute`. A short closed list of listed "affordances"
+that are not doings (`community use`, `Conventions`, `guest services` …) is
+kept out of rarity and the drive count.
+
+**Measuring it.** `src/lib/ai/ask/corpus.eval.test.ts` runs fourteen real
+questions from Vernon and Vancouver against a saved Atlas candidates body
+(`ASK_CORPUS=…`, optional `ASK_TODAY`, `ASK_WET=1`). Skipped without one.
+Findings: `docs/product/discovery-quality-2026-10-11.md`.
+
+**The model.** `model.ts` runs only with `OPENAI_API_KEY`, fills **gaps** in
+the deterministic reading (never overrules a stated number, town or day),
+validates every field against closed sets (Atlas's verbs, `towns.ts`), and has
+no field for a place. Any failure returns the deterministic reading. The
+browser applies the words immediately; a model reading, if one arrives, fills
+in afterwards and only for the question still on screen.
+
+**Into _Go have a day_.** Every card — composed page, search results and the
+answer — has _Plan a day around this →_; the answer has _Make a day of it →_
+with its first two picks. `/go?with=<ids>` builds the day **around** those ids
+(`buildDay`'s `keep`): taken first, allowed past the planning circle, still
+removed by a stated age rule or a stated not-on-that-day, and **said** in the
+guide's unknowns when removed. Never a coordinate in the URL.
+
+While an answer is on screen `TodayPanel` is not rendered — it would answer the
+same situation a second time — and the forecast still orders the answer.

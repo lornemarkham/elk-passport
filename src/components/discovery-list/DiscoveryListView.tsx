@@ -53,6 +53,8 @@ import {
   type Preferences,
 } from "@/domain/discovery/preference";
 import { useDistances } from "@/lib/location/useDistances";
+import { useTravelTimes } from "@/lib/routing/useTravelTimes";
+import { attributionFor } from "@/lib/routing/attribution";
 import { TOWN_GROUPS, homeArea, townById } from "@/domain/discovery/towns";
 
 /**
@@ -79,6 +81,7 @@ import {
   invitationSection,
   invitations,
 } from "@/domain/discovery/directions";
+import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { PossibilityCard } from "./PossibilityCard";
@@ -101,6 +104,10 @@ import {
 } from "@/domain/discovery/session";
 import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
 import type { ExperienceKind } from "@/domain/experience/types";
+import { readAsk, readBack, type DiscoveryAsk } from "@/lib/ai/ask/read";
+import { answerAsk, dayHref } from "@/lib/ai/ask/answer";
+import { applyAsk, daySentence, windowSentence } from "@/lib/ai/ask/apply";
+import { AskDiscovery } from "./AskDiscovery";
 
 /**
  * **The next few days, named the way a person would.**
@@ -543,16 +550,37 @@ export function DiscoveryListView({
    */
   const radius = at && within !== undefined ? within : undefined;
   const { reading, status: measuring } = useDistances(at, radius ?? 60);
+  /**
+   * **Atlas's drive times from the same origin** (ADR 097), beside the
+   * distances. They label a card and nothing else: the radius filter stays
+   * Atlas's straight-line reading, and a card with no routed time keeps its
+   * straight line.
+   */
+  const driving = useTravelTimes(at, "driving");
   const placedExperiences = useMemo(
     () =>
-      reading
-        ? experiences.map((experience) => ({
-            ...experience,
-            distance: reading.distances[experience.id] ?? UNPLACED,
-          }))
+      reading || driving.journeys
+        ? experiences.map((experience) => {
+            const travel = driving.journeys?.[experience.id];
+            return {
+              ...experience,
+              ...(reading
+                ? { distance: reading.distances[experience.id] ?? UNPLACED }
+                : {}),
+              ...(travel ? { travel } : {}),
+            };
+          })
         : experiences,
-    [experiences, reading],
+    [experiences, reading, driving.journeys],
   );
+  /** Said under the origin once any card shows a routed time, with credit. */
+  const drivingNote = useMemo(() => {
+    const journeys = Object.values(driving.journeys ?? {});
+    const credit = attributionFor(journeys);
+    return credit.length > 0
+      ? ` Drive times on cards are routed estimates; a card without one shows a straight line. ${credit.join(" · ")}.`
+      : "";
+  }, [driving.journeys]);
   /** A radius is in force: it is set, and Atlas has not failed to measure it. */
   const radiusActive = radius !== undefined && measuring !== "failed";
   const radiusReady = radiusActive && measuring === "ready";
@@ -894,6 +922,122 @@ export function DiscoveryListView({
     () => availableKinds(scopeExperiences(experiences, scope)),
     [experiences, scope],
   );
+
+  /**
+   * **A question in their own words** — see `src/lib/ai/ask/`.
+   *
+   * The sentence lives in the URL (`?ask=`) and is re-read on every render
+   * against the verbs this page offers, so the answer comes back after a
+   * refresh exactly as it was. A model's reading, where `/api/discovery/ask`
+   * had one, is held beside it for the same sentence only.
+   */
+  const askToday = todayKey ?? dayOf(new Date());
+  const askVerbs = useMemo(() => allOffers.map((o) => o.doing), [allOffers]);
+  const [modelAsk, setModelAsk] = useState<{
+    said: string;
+    ask: DiscoveryAsk;
+  }>();
+  const asked = useMemo(
+    () =>
+      session.ask
+        ? modelAsk?.said === session.ask
+          ? modelAsk.ask
+          : readAsk(session.ask, { today: askToday, verbs: askVerbs })
+        : undefined,
+    [session.ask, modelAsk, askToday, askVerbs],
+  );
+  // The latest exploration, for a model reading that resolves after the
+  // person has already moved on.
+  const latest = useRef(session);
+  latest.current = session;
+
+  /** Apply a reading: a server navigation where Atlas must re-answer. */
+  const applyReading = (from: DiscoverySession, reading: DiscoveryAsk) => {
+    const next = applyAsk(from, reading, { hasOrigin: Boolean(shared) });
+    if (next.on !== from.on || next.age !== from.age) navigate(next);
+    else change(next);
+  };
+
+  const handleAsk = (said: string) => {
+    const reading = readAsk(said, { today: askToday, verbs: askVerbs });
+    applyReading(session, reading);
+    // **The words are the floor; a model only fills gaps** (`model.ts`).
+    // Without a key the route answers with this same reading, and nothing
+    // changes. With one, a gap it fills is applied to whatever the page is
+    // by then — and only if the question on screen is still this one.
+    void fetch("/api/discovery/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ said, today: askToday, verbs: askVerbs }),
+    })
+      .then((response) => (response.ok ? response.json() : undefined))
+      .then((result?: { ask?: DiscoveryAsk; by?: string }) => {
+        if (result?.by !== "model" || !result.ask) return;
+        // Moved on — another question, or a search typed since.
+        if (latest.current.ask !== said || latest.current.query) return;
+        setModelAsk({ said, ask: result.ask });
+        applyReading(latest.current, result.ask);
+      })
+      .catch(() => {});
+  };
+
+  // What "the only llama farm in Okanagan" is counted over: the whole area,
+  // saved things included, whatever radius is drawn.
+  const askReference = useMemo(
+    () =>
+      defaultFeed(scopeExperiences(placedExperiences, scope)).filter(
+        (experience) => !elsewhere(experience, home),
+      ),
+    [placedExperiences, scope, home],
+  );
+
+  const answer = useMemo(() => {
+    if (!asked || browsing) return undefined;
+    if (radiusActive && !radiusReady) return undefined;
+    // "Worth the drive" looks past the circle the page is drawn in; every
+    // other question answers from exactly what the rows leave.
+    const pool =
+      asked.lens === "drive"
+        ? composedPool.filter(answersQuestions)
+        : answering;
+    return answerAsk(pool, asked, {
+      today: askToday,
+      ...(at ? { origin: at } : {}),
+      ...(originLabel ? { originLabel } : {}),
+      ...(home ? { home } : {}),
+      wet,
+      reference: askReference,
+    });
+  }, [
+    asked,
+    browsing,
+    radiusActive,
+    radiusReady,
+    composedPool,
+    answersQuestions,
+    answering,
+    askToday,
+    at,
+    originLabel,
+    home,
+    wet,
+    askReference,
+  ]);
+
+  /**
+   * **Into *Go have a day*, carrying what is already decided** — the town,
+   * the age, the day, and the sentence or the row's length of day. Never the
+   * shared position (ADR 002).
+   */
+  const toDay = (ids: readonly string[]) =>
+    dayHref({
+      say: asked ? daySentence(asked) : windowSentence(situation.window),
+      with: ids,
+      ...(session.at ? { at: session.at } : {}),
+      ...(childAge !== undefined ? { age: childAge } : {}),
+      ...(on ? { on } : {}),
+    });
+  const dayHrefFor = (experience: Experience) => toDay([experience.id]);
 
   // Recently saved, newest first, resolved against the already-loaded
   // catalogue rather than a second fetch — Atlas's board-items response
@@ -1249,10 +1393,59 @@ export function DiscoveryListView({
             date, a length of day and a real distance — and where a control
             cannot narrow anything it says so rather than pretending. */}
           <FeelLikeDoing
+            collapseOnPhone
             {...((chosenDayLine ?? today)
               ? { today: chosenDayLine ?? today! }
               : {})}
             {...(where ? { where } : {})}
+            lead={
+              <AskDiscovery
+                {...(session.ask ? { said: session.ask } : {})}
+                onAsk={handleAsk}
+                onClear={() => change({ ...session, ask: undefined })}
+                {...(answer ? { answer } : {})}
+                understood={
+                  asked
+                    ? readBack(asked, {
+                        today: askToday,
+                        ...(town
+                          ? { townName: town.name.replace(/,\s*BC$/, "") }
+                          : {}),
+                      })
+                    : []
+                }
+                {...(answer && answer.picks.length > 0
+                  ? {
+                      dayHref: toDay(
+                        answer.picks.slice(0, 2).map((p) => p.experience.id),
+                      ),
+                    }
+                  : {})}
+                dayHrefFor={dayHrefFor}
+                {...(cardDay ? { today: cardDay } : {})}
+                {...(home ? { home } : {})}
+                {...(at ? { origin: at } : {})}
+                carry={carry}
+                savedIds={savedIds}
+                savingId={savingId}
+                onSave={handleSave}
+                originPicker={
+                  <OriginPicker
+                    townId={session.at}
+                    onTown={setTown}
+                    {...(ask && !shared
+                      ? {
+                          onLocate: ask,
+                          locateLabel:
+                            place.state === "unavailable"
+                              ? "or try my location again"
+                              : "or share where you are",
+                        }
+                      : {})}
+                  />
+                }
+              />
+            }
             rows={[
               {
                 key: "activity",
@@ -1449,12 +1642,12 @@ export function DiscoveryListView({
                 ),
                 note: at
                   ? radius === undefined
-                    ? `Distances from ${originLabel}, in a straight line — not driving time. Pick a distance to keep it close.`
+                    ? `Distances from ${originLabel}, in a straight line — not driving time. Pick a distance to keep it close.${drivingNote}`
                     : measuring === "measuring"
                       ? `Measuring from ${originLabel}…`
                       : measuring === "failed"
                         ? "Couldn't measure distances just now, so nothing is being left out by distance. Try again in a moment."
-                        : `${answering.length} within ${radius} km of ${originLabel}, in a straight line — not driving time. Places we can't locate aren't shown as nearby.`
+                        : `${answering.length} within ${radius} km of ${originLabel}, in a straight line — not driving time. Places we can't locate aren't shown as nearby.${drivingNote}`
                   : place.state === "unavailable"
                     ? place.lapse === "denied"
                       ? "Your browser would not share your location. Pick a town instead — it works just as well, and the distance is measured the same way."
@@ -1495,7 +1688,12 @@ export function DiscoveryListView({
           />
 
           {/* Where a situation enters, rather than a search query. */}
-          {today && (
+          {/* **One answer to one question.** While a question's answer is on
+              screen, the panel's own suggestions would answer the same
+              situation a second time twenty pixels lower — the duplication
+              `InvitationStrip` was removed for. The forecast still shapes the
+              answer (sheltered first when wet). */}
+          {today && !answer && (
             <div className="mt-6">
               <TodayPanel
                 today={chosenDayLine ?? today}
@@ -1659,6 +1857,7 @@ export function DiscoveryListView({
                     savedIds={savedIds}
                     savingId={savingId}
                     onSave={handleSave}
+                    dayHrefFor={dayHrefFor}
                   />
                 ) : visible.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-black/25 bg-white px-4 py-10 text-center text-sm text-black/60">
@@ -1709,6 +1908,7 @@ export function DiscoveryListView({
                         saved={savedIds.has(experience.id)}
                         saving={savingId === experience.id}
                         onSave={() => handleSave(experience)}
+                        dayHref={dayHrefFor(experience)}
                       />
                     ))}
                   </ul>

@@ -1,0 +1,190 @@
+{
+  "60037e26-f2e6-4b5b-957d-e22a77bd7f9f": {
+    "title": "Civic Memorial Park, Vernon BC",
+    "verdict": "exists",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://www.vernon.ca/node/38",
+      "https://www.vernon.ca/node/868875",
+      "https://globalnews.ca/news/10535094/vernon-civic-memorial-park"
+    ],
+    "hoursOnDate": "hours not found (the City lists no park hours or seasonal notes)",
+    "notes": "City: 3003 37 Ave, on the old Civic Arena site, opened May 2024; matches the coordinates. Playground, walking trail, on-leash dog area, picnic area. A small city park, not a destination."
+  },
+  "575e8e59-93a6-44ae-970d-156e70035efd": {
+    "title": "Centennial Outdoor Rink, Vernon BC",
+    "verdict": "not-open-on-date",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://www.vernon.ca/node/869673",
+      "https://www.vernon.ca/node/872233",
+      "https://vernon.ca/sites/default/files/docs/news/241128-Centennial-Outdoor-Rink-open-MR.pdf"
+    ],
+    "hoursOnDate": "Closed: City releases give the season as about December 1 to late February, weather permitting",
+    "notes": "Real, at the Recreation Complex. A seasonal outdoor refrigerated rink with no ice in October. Atlas already says not-on (stated-season)."
+  },
+  "1526821e-7eb8-44ce-9e68-e6d9b524440a": {
+    "title": "Priest Valley Arena, Vernon BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://www.vernon.ca/parks-recreation/recreation-facilities/priest-valley-arena",
+      "https://www.vernon.ca/node/869092"
+    ],
+    "hoursOnDate": "hours not found (public skate times are on the City's drop-in schedule, which was not checked for this date)",
+    "notes": "Real, at 3409 35 Ave. Mainly a club venue; public skating only at scheduled times, and the City says skate rentals are not available."
+  },
+  "9591cd4f-9a5f-45aa-9a07-d83c0f22cd79": {
+    "title": "Polson Park, Vernon BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://www.vernon.ca/node/38",
+      "https://www.vernon.ca/node/1934"
+    ],
+    "hoursOnDate": "hours not found",
+    "notes": "Real, at 2600 Hwy 6. An outdoor park; the indoor Okanagan Science Centre sits inside it. A claim that the spray park was removed came from a search summary and was not confirmed."
+  },
+  "35d1b3b5-2d12-44bd-b91c-e114ff9fe7ac": {
+    "title": "Allan Brooks Nature Centre, Vernon BC",
+    "verdict": "not-open-on-date",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": ["https://abnc.ca/", "https://abnc.ca/about/plan-your-visit/"],
+    "hoursOnDate": "Closed: published hours are Tuesday to Saturday, 9:00 AM to 3:30 PM, April through October",
+    "notes": "Real, at 250 Allan Brooks Way. Closed on Sundays, with a season that ends in October. Atlas reads the date as unknown, so only the real-world check catches this."
+  },
+  "eacdba44-4971-4095-8456-8409b3fde854": {
+    "title": "Okanagan Science Centre, Vernon BC",
+    "verdict": "exists",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://okscience.ca/pages/contact-us-and-hours-of-operation-okanagan-science-centre"
+    ],
+    "hoursOnDate": "Tuesday to Sunday 10:00 AM to 5:00 PM, closed Mondays",
+    "notes": "Real, at 2704 Hwy 6 in Polson Park. Open on Sunday afternoon. Atlas holds it twice (a Place and an Organization)."
+  },
+  "1e045341-01f4-4640-871e-068455db290e": {
+    "title": "19th Avenue Tot Lot, Vernon BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": ["https://www.vernon.ca/node/38"],
+    "hoursOnDate": "hours not found",
+    "notes": "The City's parks list confirms it at 1904 19th Avenue; the coordinates were not independently confirmed. Its only amenity is a playground."
+  },
+  "97ad4a91-625f-48ac-a461-fb4342ef451f": {
+    "title": "Rock Garden Climbing Centre, Vernon BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://tourismvernon.com/things-to-do/rock-climbing",
+      "https://www.climbthegarden.com/"
+    ],
+    "hoursOnDate": "hours not found (the operator's site showed no hours when fetched)",
+    "notes": "Tourism Vernon: #105-2450 14th Ave. An indoor gym; Sunday and holiday-weekend hours are unconfirmed."
+  },
+  "daf1b14f-2ad0-44f7-b85b-0f6833f139dc": {
+    "title": "Paddlewheel Park, Vernon BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://www.vernon.ca/node/38",
+      "https://okanaganlanding.com/about/paddlewheel-park"
+    ],
+    "hoursOnDate": "hours not found",
+    "notes": "Real, at 7815 Okanagan Landing Rd. Beach, swimming, boat launch, courts and playground: outdoors and mostly summer."
+  },
+  "018b3cbd-c1ee-41e8-b920-a7e8d57c10f5": {
+    "title": "Queen Elizabeth Theatre, Vancouver BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://vancouvercivictheatres.com/venues/queen-elizabeth-theatre",
+      "https://www.songkick.com/es/venues/9403-queen-elizabeth-theatre"
+    ],
+    "hoursOnDate": "No public access outside performances (the box office is not open between performances; the lobby opens one hour before a show). Songkick lists no event on Oct 11.",
+    "notes": "Real, at 630 Hamilton St. With no show that day there is nothing a visitor can do. The event list is from an aggregator; the official calendar was not checked."
+  },
+  "819bc3a5-1ecb-421c-9544-12207bb4b57b": {
+    "title": "Queen Elizabeth Park, Vancouver BC",
+    "verdict": "exists",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://vancouver.ca/parks-recreation-culture/bloedel-conservatory-location-hours.aspx"
+    ],
+    "hoursOnDate": "Bloedel Conservatory 10am to 5pm (Sep 2 to Oct 31), taken from the official page's search snippet because the page returned 403. Park hours not found.",
+    "notes": "Real. Bloedel is an indoor option inside it. About 7 km south of downtown, and Bloedel closes at 5pm."
+  },
+  "580e8658-1e0a-468a-8932-921541f20556": {
+    "title": "Roedde House Museum, Vancouver BC",
+    "verdict": "exists",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": ["https://www.roeddehouse.org/tours/"],
+    "hoursOnDate": "Wednesday, Thursday, Friday and Sunday, 1pm to 4pm, so open Sunday afternoon",
+    "notes": "Real, at 1415 Barclay St, West End. Open, with a narrow window."
+  },
+  "f12498b9-b1d1-4aa0-8633-595f66f46b8e": {
+    "title": "Dr. Sun Yat-Sen Classical Chinese Garden, Vancouver BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://www.vancouverchinesegarden.com/",
+      "https://www.vancouvertourism.org/dr-sun-yat-sen-garden/"
+    ],
+    "hoursOnDate": "Official site: Wednesday to Sunday, 9:30 AM to 4:00 PM (a tourism site gives 10am to 4:30pm daily and conflicts)",
+    "notes": "Real, at 578 Carrall St. Atlas's coordinates are about 400 m north of the garden, toward Gastown: an Atlas geography defect."
+  },
+  "b5228b59-3353-4354-a772-cff2fc09cd3c": {
+    "title": "VanDusen Botanical Garden, Vancouver BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": ["https://vandusengarden.org/plan-your-visit/hours-admission/"],
+    "hoursOnDate": "September 8 to October 31: 9am to 5pm",
+    "notes": "Real, at 5151 Oak St. Open, but in Shaughnessy, about 6 km south of downtown, so not an answer to 'downtown'."
+  },
+  "96f1607a-c06b-4feb-8c57-126f428ba470": {
+    "title": "Capilano River Regional Park, North Vancouver BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://metrovancouver.org/services/regional-parks/park/capilano-river-regional-park"
+    ],
+    "hoursOnDate": "October 6 to November 2: 7:00 am to 7:00 pm",
+    "notes": "Open. The Capilano River Hatchery, its main sheltered draw, has been closed to the public since Oct 1 for construction; some trail and bridge closures. The trails can be used in rain."
+  },
+  "98296e04-fa09-4eee-8aad-e61cdc6c5bc7": {
+    "title": "Bear Creek Park, Surrey BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": ["https://surrey.ca/node/7506"],
+    "hoursOnDate": "Dawn until dusk",
+    "notes": "Real, at 13750 88 Ave. The pool, waterpark and spray park are summer facilities, and there are temporary closures for upgrades. On a rainy day it comes down to trails and gardens."
+  },
+  "bfceb4ca-06cf-48ee-ad37-e2b02ba788d2": {
+    "title": "John Hendry Park (Trout Lake), Vancouver BC",
+    "verdict": "exists-with-caveat",
+    "checked": "2026-10-11",
+    "by": "M173 web check (agent)",
+    "sources": [
+      "https://en.wikipedia.org/wiki/John_Hendry_Park",
+      "https://john-hendry-park.yolasite.com/"
+    ],
+    "hoursOnDate": "Dawn until dusk, from an unofficial site; no Park Board page was opened",
+    "notes": "Real, at 3300 Victoria Dr. Playgrounds and a lake loop suit young children. Dusk is about 6:30pm in mid-October, so it is a poor evening pick."
+  }
+}
