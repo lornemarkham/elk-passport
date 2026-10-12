@@ -72,13 +72,30 @@ function jwt(payload) {
   return `${head}.${body}.${sig}`;
 }
 
-const ANON_KEY = jwt({ role: "anon", iss: "supabase", iat: 1760000000, exp: 2000000000 });
-const SERVICE_KEY = jwt({ role: "service_role", iss: "supabase", iat: 1760000000, exp: 2000000000 });
+const ANON_KEY = jwt({
+  role: "anon",
+  iss: "supabase",
+  iat: 1760000000,
+  exp: 2000000000,
+});
+const SERVICE_KEY = jwt({
+  role: "service_role",
+  iss: "supabase",
+  iat: 1760000000,
+  exp: 2000000000,
+});
 
 /** SQL as the superuser, through `pg` (embedded-postgres ships no psql). */
 async function sql(text) {
-  const { default: pg } = await import(path.join(STACK, "node_modules/pg/lib/index.js"));
-  const client = new pg.Client({ host: "127.0.0.1", port: PG_PORT, user: "postgres", database: "postgres" });
+  const { default: pg } = await import(
+    path.join(STACK, "node_modules/pg/lib/index.js")
+  );
+  const client = new pg.Client({
+    host: "127.0.0.1",
+    port: PG_PORT,
+    user: "postgres",
+    database: "postgres",
+  });
   await client.connect();
   try {
     return await client.query(text);
@@ -189,16 +206,21 @@ async function start() {
   }
   fs.rmSync(DATA, { recursive: true, force: true });
   fs.rmSync(LOGS, { recursive: true, force: true });
-  execFileSync(path.join(pgBin, "initdb"), [
-    "-D", DATA, "-U", "postgres", "--auth=trust", "-E", "UTF8", "--locale=C",
-  ], { stdio: "ignore" });
+  execFileSync(
+    path.join(pgBin, "initdb"),
+    ["-D", DATA, "-U", "postgres", "--auth=trust", "-E", "UTF8", "--locale=C"],
+    { stdio: "ignore" },
+  );
 
   // Recorded as each one starts, so a failure part-way can still be stopped.
   const pids = {};
   const record = () => fs.writeFileSync(PIDS, JSON.stringify(pids));
-  pids.postgres = launch("postgres", path.join(pgBin, "postgres"), [
-    "-D", DATA, "-p", String(PG_PORT), "-h", "127.0.0.1", "-k", STACK,
-  ], {});
+  pids.postgres = launch(
+    "postgres",
+    path.join(pgBin, "postgres"),
+    ["-D", DATA, "-p", String(PG_PORT), "-h", "127.0.0.1", "-k", STACK],
+    {},
+  );
   record();
   for (let i = 0; i < 100; i++) {
     try {
@@ -237,7 +259,15 @@ async function start() {
 
   // Passport's own baseline first — the occasions migration must coexist with
   // it — then the proposal under test.
-  await sql(fs.readFileSync(path.join(repo, "supabase/migrations/20260927000000_passport_baseline.sql"), "utf8"));
+  await sql(
+    fs.readFileSync(
+      path.join(
+        repo,
+        "supabase/migrations/20260927000000_passport_baseline.sql",
+      ),
+      "utf8",
+    ),
+  );
   await sql(fs.readFileSync(path.join(here, "..", "migration.sql"), "utf8"));
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
@@ -253,7 +283,12 @@ async function start() {
   await waitFor(`http://127.0.0.1:${REST_PORT}/`, "rest");
 
   // The proxy runs as its own detached node process so `start` can exit.
-  pids.proxy = launch("proxy", process.execPath, [fileURLToPath(import.meta.url), "proxy"], { STACK });
+  pids.proxy = launch(
+    "proxy",
+    process.execPath,
+    [fileURLToPath(import.meta.url), "proxy"],
+    { STACK },
+  );
   await waitFor(`http://127.0.0.1:${PROXY_PORT}/auth/v1/health`, "proxy");
 
   fs.writeFileSync(PIDS, JSON.stringify(pids));
