@@ -53,6 +53,25 @@ const LOST_BOYS: Film = {
   line: "Vampires with excellent hair, a saxophone player nobody asked for, and the best-looking 1987 ever committed to film.",
 };
 
+/**
+ * **The tape nobody put in the catalogue.** Somebody recorded it, and somebody
+ * else left it on the bottom shelf, in the corner where the carpet is worst.
+ * It is not a film, so it is not in `catalogue` and nothing about it is
+ * recommended, rated or kept anywhere: the one thing it does is get picked up,
+ * and the Secret Room remembers that it was.
+ */
+export const SECRET_ID = "unlabeled";
+const UNLABELED: Film = {
+  id: SECRET_ID,
+  title: "Unlabeled",
+  year: 0,
+  runtimeMinutes: 0,
+  audience: "adults",
+  fear: "spooky",
+  mechanisms: ["delight"],
+  line: "",
+};
+
 interface Spec {
   id: string;
   row: number;
@@ -314,10 +333,36 @@ const SPECS: readonly Spec[] = [
       lines: ["ALIEN"],
     },
   },
+  {
+    id: SECRET_ID,
+    row: 6,
+    col: 2,
+    lean: 2.4,
+    nudge: 3,
+    // Pushed in as far as it goes: it was put there to be found late.
+    seat: 3,
+    wear: 0.9,
+    cover: {
+      field: "linear-gradient(176deg,#0c0c0e 0%,#151416 100%)",
+      accent: "#d9cba3",
+      plate: null,
+      motif: "stripes",
+      lines: [""],
+      handwritten: {
+        front: ["for whoever", "stays"],
+        back: ["tape 1 of 1", "play it where", "it was made"],
+      },
+    },
+  },
 ];
 
 export const WALL_TAPES: readonly Placement[] = SPECS.map((spec) => {
-  const film = spec.id === LOST_BOYS.id ? LOST_BOYS : filmById(spec.id);
+  const film =
+    spec.id === LOST_BOYS.id
+      ? LOST_BOYS
+      : spec.id === UNLABELED.id
+        ? UNLABELED
+        : filmById(spec.id);
   if (!film) throw new Error(`No film for wall tape "${spec.id}"`);
   return { ...spec, film };
 });

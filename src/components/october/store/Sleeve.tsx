@@ -75,6 +75,55 @@ export interface Cover {
   readonly lines: readonly string[];
   /** Some sleeves carry their title at the head. */
   readonly titleHigh?: boolean;
+  /**
+   * **A tape somebody made, not something a studio sold.** No art, no print
+   * and no rating strip: a black case with a strip of masking tape on the
+   * front and a note on the back, in somebody's hand. It exists for exactly
+   * one tape on the wall (`SECRET_ID`), which is why it is a field and not a
+   * motif — there is nothing to share it with.
+   */
+  readonly handwritten?: {
+    readonly front: readonly string[];
+    readonly back: readonly string[];
+  };
+}
+
+/** The pen. Every handwritten thing in the store is in the same hand. */
+export const HAND = {
+  fontFamily: "var(--font-fraunces), Georgia, serif",
+  fontStyle: "italic",
+  color: "#1b1713",
+} as const;
+
+/** A strip of masking tape, as wide as the case and slightly crooked. */
+function MaskingTape({
+  children,
+  width,
+  top,
+  turn = -1.2,
+}: {
+  children: React.ReactNode;
+  width: number;
+  top: string;
+  turn?: number;
+}) {
+  return (
+    <span
+      className="absolute flex flex-col items-center justify-center"
+      style={{
+        left: "8%",
+        right: "8%",
+        top,
+        padding: `${width * 0.05}px ${width * 0.04}px`,
+        background: "rgba(218,204,166,0.92)",
+        transform: `rotate(${turn}deg)`,
+        boxShadow: `0 ${width * 0.01}px ${width * 0.03}px rgba(0,0,0,0.6)`,
+        ...HAND,
+      }}
+    >
+      {children}
+    </span>
+  );
 }
 
 /**
@@ -105,6 +154,23 @@ export function Spine({
     return (
       <span aria-hidden className="absolute inset-0">
         <Panel src={cover.art.spine} />
+      </span>
+    );
+  }
+  if (cover.handwritten) {
+    return (
+      <span
+        aria-hidden
+        className="absolute inset-0 flex items-center justify-center"
+        style={{ background: cover.field }}
+      >
+        <span
+          style={{
+            width: "78%",
+            height: "62%",
+            background: "rgba(218,204,166,0.92)",
+          }}
+        />
       </span>
     );
   }
@@ -154,7 +220,79 @@ export function Sleeve({
       </span>
     );
   }
+  if (cover.handwritten) {
+    return <BlankSleeve cover={cover} width={width} />;
+  }
   return <DrawnSleeve cover={cover} width={width} film={film} />;
+}
+
+function BlankSleeve({ cover, width }: { cover: Cover; width: number }) {
+  const lines = cover.handwritten!.front;
+  const size = Math.min(
+    width * 0.2,
+    (width * 0.7) / (Math.max(...lines.map((l) => l.length)) * 0.5),
+  );
+  return (
+    <span aria-hidden className="absolute inset-0">
+      <span className="absolute inset-0" style={{ background: cover.field }} />
+      {/* The rental label that was peeled off, and what it left. */}
+      <span
+        className="absolute"
+        style={{
+          left: "10%",
+          right: "10%",
+          bottom: "9%",
+          height: "16%",
+          background: "rgba(255,255,255,0.035)",
+        }}
+      />
+      <MaskingTape width={width} top="26%">
+        {lines.map((line) => (
+          <span
+            key={line}
+            style={{
+              fontSize: size,
+              lineHeight: 1.12,
+              whiteSpace: "nowrap",
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {line}
+          </span>
+        ))}
+      </MaskingTape>
+      <Plastic width={width} />
+    </span>
+  );
+}
+
+/** The back of the same case: one note, taped on, in the same hand. */
+export function BlankBack({ cover, width }: { cover: Cover; width: number }) {
+  const lines = cover.handwritten!.back;
+  const size = Math.min(
+    width * 0.11,
+    (width * 0.76) / (Math.max(...lines.map((l) => l.length)) * 0.5),
+  );
+  return (
+    <span className="absolute inset-0" style={{ background: cover.field }}>
+      <MaskingTape width={width} top="34%" turn={0.8}>
+        {lines.map((line) => (
+          <span
+            key={line}
+            style={{
+              fontSize: size,
+              lineHeight: 1.3,
+              textAlign: "center",
+              fontWeight: 600,
+            }}
+          >
+            {line}
+          </span>
+        ))}
+      </MaskingTape>
+    </span>
+  );
 }
 
 function DrawnSleeve({

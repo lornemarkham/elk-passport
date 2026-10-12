@@ -1962,6 +1962,37 @@ And sometimes October should simply let the trailer play.
 
 ---
 
+## 32. From October — the doors opened — 2026-10-11
+
+The rooms under `/labs/october` had no way in. This is the first pass at giving
+October's strange half a public front door, built from what was already there.
+It is **evidence of one Experience**, like everything in this document, not the
+Experience contract (§10).
+
+**What shipped.** A _From October_ strip on Discover and a fourth nav place,
+`/october/from`, holding two doors:
+
+- **The Room** (`/october/room`) — the Secret Room (§9.7) with a real puzzle:
+  tune a radio to three stations that each ask a question of the room (bars on
+  the window, the hour a clock stopped at, pictures missing from a wall) and set
+  three wheels to 4-7-2. A fourth station is October's and lies. October helps
+  when you are stuck and interferes when you are comfortable. It descends from
+  _Another Way Out_, which is untouched.
+- **The Video Store** (`/october/store`) — §31 Layer 2–4 on the existing wall:
+  a phone pan, readable sleeves, October's refusal on first reach, and one tape
+  nobody catalogued.
+- **A small connection** (`domain/october/passage.ts`, four timestamps in
+  `localStorage`): the unlabeled tape plays in the room's video recorder once
+  the door is open; escaping the room stops October refusing the obvious tape.
+  This is the first step toward §31.8 Layer 5 and the Secret Room's
+  foreshadowing, and is **local to one browser**.
+
+**Not built.** Multi-day foreshadowing of the Secret Room (§9.7: "Not yet." →
+"Six nights."). It opens on any day. Witching Hour's dead endings, Found You's
+missing inbound link and the rest of `/labs/october` are as the audit left them.
+
+---
+
 _Nothing in this document is code. When the code disagrees with it, the code is
 right and this document should be corrected — or the code should be killed,
 because that is what scenes are for._
