@@ -63,6 +63,16 @@ export const ActionSchema = z.discriminatedUnion("type", [
       edge: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
     }),
   }),
+  /**
+   * Put a real place on the ballot. Only the Atlas id crosses the wire: the
+   * name and the distance are looked up and measured by the server, so a
+   * nomination cannot claim to be a 0-minute walk.
+   */
+  z.object({
+    type: z.literal("nominate"),
+    promptId,
+    atlasId: z.string().min(1).max(200),
+  }),
   z.object({ type: z.literal("cue"), promptId }),
   z.object({ type: z.literal("consent"), promptId, agreed: z.boolean() }),
   z.object({

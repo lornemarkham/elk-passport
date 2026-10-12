@@ -145,6 +145,44 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     timeout: 15_000,
   });
 
+  // ------------------------------------------------ a real place, from Discovery
+  // Against atlas-stub.mjs: the wiring is real, the places are labelled fake.
+  await lorne.page
+    .getByRole("button", { name: "What's near the arena?" })
+    .click();
+  await expect(
+    lorne.page.getByText(/straight line · \d+\+ min walk \(estimate\)/).first(),
+  ).toBeVisible();
+  await expect(lorne.page.getByText("Stub Museum (synthetic)")).toHaveCount(0);
+  await expect(
+    lorne.page.getByText("Stub Faraway Cafe (synthetic)"),
+  ).toHaveCount(0);
+  await lorne.page
+    .getByRole("button", { name: "Nominate Stub Pub (synthetic)" })
+    .click();
+  await expect(
+    lorne.page.getByRole("button", {
+      name: "Stub Pub (synthetic) is on the ballot",
+    }),
+  ).toBeVisible();
+  const stubPub = maya.page.getByRole("button", {
+    name: /Stub Pub \(synthetic\).*straight line/,
+  });
+  await expect(stubPub).toBeVisible({ timeout: 15_000 });
+  await stubPub.click();
+  // A nomination is looked up by the server: a made-up place cannot be nominated.
+  const fake = await maya.page.request.post(
+    `/hockey/api/occasions/${nightId}/actions`,
+    {
+      data: {
+        type: "nominate",
+        promptId: "pregame-spot",
+        atlasId: "rogers-arena-steakhouse",
+      },
+    },
+  );
+  expect(fake.status()).toBe(422);
+
   // ------------------------------------------------ banter
   await lorne.page
     .getByPlaceholder("Say something to the group")
@@ -180,11 +218,31 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     expect(
       s.state.moments.filter((m: { kind: string }) => m.kind === "note"),
     ).toHaveLength(2);
-    expect(
-      s.state.addedOptions.map(
-        (o: { option: { label: string } }) => o.option.label,
-      ),
-    ).toEqual(["Tap & Barrel Bridges"]);
+    const options = s.state.addedOptions.map(
+      (o: { option: { id: string; label: string; detail?: string } }) =>
+        o.option,
+    );
+    expect(options.map((o: { label: string }) => o.label)).toEqual([
+      "Tap & Barrel Bridges",
+      "Stub Pub (synthetic)",
+    ]);
+    // The distance the server measured travels with the nomination, labelled.
+    const pub = options.find(
+      (o: { label: string }) => o.label === "Stub Pub (synthetic)",
+    );
+    expect(pub.detail).toMatch(
+      /^\d+ m straight line · \d+\+ min walk \(estimate\)$/,
+    );
+    // Maya moved her vote to the pub; Lorne's stayed on the concourse.
+    const byPerson = Object.fromEntries(
+      votes.map((v: { participantId: string; value: string }) => [
+        v.participantId,
+        v.value,
+      ]),
+    );
+    expect(Object.values(byPerson).sort()).toEqual(
+      ["concourse", pub.id].sort(),
+    );
   }
   // Attribution survives: each note is by the person who wrote it.
   const people = Object.fromEntries(

@@ -22,6 +22,7 @@ import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant } from "@/experience-lab/core/types";
 import { CallIt } from "./CallIt";
 import { GuestList } from "./GuestList";
+import { NearbyPicker } from "./NearbyPicker";
 import { YouTonight } from "./YouTonight";
 import { useSharedNight, type NightSnapshot } from "./useSharedNight";
 
@@ -241,6 +242,10 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                       />
                     ))
                   )}
+                  {live.me &&
+                    prompts.some(
+                      (p) => p.prompt.id === "pregame-spot" && p.open,
+                    ) && <NearbyPicker night={night} promptId="pregame-spot" />}
                   {block.inviteOwnPrompt &&
                     live.me &&
                     prompts.some((p) => p.open) && (

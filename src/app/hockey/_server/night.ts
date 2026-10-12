@@ -7,7 +7,13 @@ import type {
   ExperienceState,
 } from "@/experience-lab/core/types";
 import type { PassportUser } from "@/lib/auth/currentUser";
+import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  nearbyFood,
+  walkLabel,
+  type NearbyPlace,
+} from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
 import { cleanName, defaultLook } from "@/domain/hockey/identity";
 import {
@@ -333,6 +339,37 @@ export async function act(
       break;
     }
 
+    case "nominate": {
+      const prompt = live.prompts.find((p) => p.prompt.id === action.promptId);
+      if (!prompt?.prompt.openToSuggestions || !prompt.open) {
+        throw new NightError("That question isn't taking suggestions.", 422);
+      }
+      const { places } = await placesNear(rows.occasion);
+      const place = places.find((p) => p.atlasId === action.atlasId);
+      if (!place)
+        throw new NightError(
+          "Passport can't find that place near the arena.",
+          422,
+        );
+      if (
+        rows.options.some(
+          (o) => o.prompt_id === action.promptId && o.label === place.name,
+        )
+      ) {
+        throw new NightError(`${place.name} is already on the ballot.`, 409);
+      }
+      const { error } = await db.from("passport_occasion_options").insert({
+        occasion_id: id,
+        prompt_id: action.promptId,
+        label: place.name.slice(0, 80),
+        detail: walkLabel(place),
+        place,
+        added_by: user.id,
+      });
+      fail(error, "nominating that");
+      break;
+    }
+
     case "cue": {
       const base = action.promptId.split("::")[0];
       if (rows.cues.some((c) => c.prompt_id === base)) break;
@@ -413,6 +450,32 @@ export async function act(
   const fresh = await loadNight(user, id);
   if (!fresh) throw new NightError("Not found.", 404);
   return fresh;
+}
+
+// ------------------------------------------------------------ places
+
+/**
+ * Food and drink near the venue, from Discovery's own Atlas candidates.
+ * `outage` says Atlas could not be asked — different from "nothing nearby".
+ */
+async function placesNear(
+  occasion: NightRows["occasion"],
+): Promise<{ places: NearbyPlace[]; outage?: string }> {
+  const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
+  const { candidates, outage } = await discoveryCandidates();
+  return { places: nearbyFood(candidates, venue), outage };
+}
+
+export async function nearbyFor(
+  user: PassportUser,
+  id: string,
+): Promise<{ places: NearbyPlace[]; outage?: string }> {
+  const db = await createSupabaseServerClient();
+  const rows = await rowsFor(db, id);
+  if (!rows?.members.some((m) => m.user_id === user.id)) {
+    throw new NightError("Not found.", 404);
+  }
+  return placesNear(rows.occasion);
 }
 
 // ------------------------------------------------------- invitations

@@ -115,7 +115,7 @@ const join = (who, token) =>
   rpc(who, "passport_redeem_occasion_invite", {
     p_token: token,
     p_display_name: who?.name ?? "Anon",
-    p_emoji: "🥅",
+    p_emoji: "🧭",
     p_hue: 250,
   });
 
@@ -279,6 +279,18 @@ const kickHost = await rest(
   `/passport_occasion_members?occasion_id=eq.${occ}&user_id=eq.${lorne.id}`,
 );
 check(rows(kickHost).length === 0, "guest cannot remove the host");
+
+const looks = rows(
+  await rest(
+    nathan,
+    "GET",
+    `/passport_occasion_members?occasion_id=eq.${occ}&select=emoji`,
+  ),
+);
+check(
+  new Set(looks.map((m) => m.emoji)).size === looks.length,
+  "nobody joins wearing somebody else's emoji",
+);
 
 console.log("\nImpersonation");
 const asLorne = await rest(nathan, "POST", "/passport_occasion_responses", {

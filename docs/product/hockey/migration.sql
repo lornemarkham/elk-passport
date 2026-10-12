@@ -331,6 +331,7 @@ CREATE OR REPLACE FUNCTION public.passport_redeem_occasion_invite(
 ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 declare
   v_invite passport_occasion_invites%rowtype;
+  v_emoji text;
 begin
   if auth.uid() is null then
     raise exception 'sign-in required' using errcode = '28000';
@@ -352,8 +353,21 @@ begin
     return null;
   end if;
 
+  -- The emoji is how a person is told apart at a glance, so two people on one
+  -- night never share one while there is a free one. The caller's is a
+  -- preference; the first unclaimed one after it in this ring wins.
+  select e into v_emoji from (
+    select e, ord from unnest(array[p_emoji,
+      '🧭','🥅','🎤','🚕','📸','🥂','🌭','🧤','🍻','🦆',
+      '🐐','🎺','🌮','🧊','🛼','🦫','🍕','🎯','🪩','🧃']) with ordinality as t(e, ord)
+  ) ring
+  where not exists (select 1 from passport_occasion_members m
+                    where m.occasion_id = v_invite.occasion_id and m.emoji = ring.e)
+  order by ord limit 1;
+
   insert into passport_occasion_members (occasion_id, user_id, role, display_name, emoji, hue)
-  values (v_invite.occasion_id, auth.uid(), 'guest', p_display_name, p_emoji, p_hue);
+  values (v_invite.occasion_id, auth.uid(), 'guest', p_display_name,
+          coalesce(v_emoji, p_emoji), p_hue);
 
   update passport_occasion_invites set uses = uses + 1 where id = v_invite.id;
 
