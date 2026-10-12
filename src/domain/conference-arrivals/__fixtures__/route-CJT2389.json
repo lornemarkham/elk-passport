@@ -1,0 +1,31 @@
+{
+  "callsign": "CJT2389",
+  "number": "2389",
+  "airline_code": "CJT",
+  "airport_codes": "CYYC-CYVR",
+  "_airport_codes_iata": "YYC-YVR",
+  "_airports": [
+    {
+      "name": "Calgary International Airport",
+      "icao": "CYYC",
+      "iata": "YYC",
+      "location": "Calgary",
+      "countryiso2": "CA",
+      "lat": 51.113899,
+      "lon": -114.019997,
+      "alt_feet": 3557.0,
+      "alt_meters": 1084.17
+    },
+    {
+      "name": "Vancouver International Airport",
+      "icao": "CYVR",
+      "iata": "YVR",
+      "location": "Vancouver",
+      "countryiso2": "CA",
+      "lat": 49.193901,
+      "lon": -123.183998,
+      "alt_feet": 14.0,
+      "alt_meters": 4.27
+    }
+  ]
+}
