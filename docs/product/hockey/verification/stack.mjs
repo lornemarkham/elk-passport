@@ -250,7 +250,18 @@ async function start() {
     GOTRUE_JWT_ADMIN_ROLES: "service_role",
     GOTRUE_DISABLE_SIGNUP: "false",
     GOTRUE_EXTERNAL_EMAIL_ENABLED: "true",
-    GOTRUE_MAILER_AUTOCONFIRM: "true",
+    // Production may require email confirmation; set CONFIRM_EMAIL=1 to make
+    // this stack do the same, mailing to smtp-sink.mjs on SMTP_PORT.
+    GOTRUE_MAILER_AUTOCONFIRM: process.env.CONFIRM_EMAIL ? "false" : "true",
+    ...(process.env.CONFIRM_EMAIL
+      ? {
+          GOTRUE_SMTP_HOST: "127.0.0.1",
+          GOTRUE_SMTP_PORT: process.env.SMTP_PORT ?? "2525",
+          GOTRUE_SMTP_USER: "x",
+          GOTRUE_SMTP_PASS: "x",
+          GOTRUE_SMTP_ADMIN_EMAIL: "noreply@hockey.local",
+        }
+      : {}),
     GOTRUE_RATE_LIMIT_EMAIL_SENT: "1000",
     GOTRUE_LOG_LEVEL: "warn",
   });

@@ -48,6 +48,10 @@ async function person(browser: Browser, mobile = false) {
 }
 
 test.describe.configure({ mode: "serial" });
+test.skip(
+  !!process.env.CONFIRM_EMAIL,
+  "this run signs up instantly; it needs an auto-confirming stack",
+);
 
 test("Lorne starts Hockey Night, invites Maya, and they share one private night", async ({
   browser,

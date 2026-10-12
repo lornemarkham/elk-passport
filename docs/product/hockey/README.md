@@ -135,6 +135,10 @@ build and `next start -p 3130` with `/tmp/hockey-stack/env` and
 
 ## Before invitations can be sent
 
+> **Superseded by [`PRODUCTION-READINESS.md`](PRODUCTION-READINESS.md)** — exact
+> migration steps, rollback, deploy sequence, smoke tests, GO/NO-GO. The list
+> below is the original summary.
+
 1. **Apply `migration.sql` to the production Supabase project** — by a human,
    in the SQL editor (not `supabase db push`; `supabase/README.md` hazard 1).
    Then the `passport-domain` lane should land it in `supabase/migrations/`.

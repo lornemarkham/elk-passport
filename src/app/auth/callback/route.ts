@@ -25,6 +25,14 @@ import { experienceHomeFor } from "@/lib/domains/experience-domains";
  * An expired or reused recovery link is the ordinary case — people click them
  * twice, or a day later — so it returns to the sign-in screen with a reason,
  * never a 500.
+ *
+ * ## …and it remembers where the person was going
+ *
+ * A confirmation email opened on a different device than the one that signed
+ * up cannot finish the PKCE exchange (the verifier lives in the first
+ * browser), but the account *is* confirmed. Dropping `next` there strands
+ * someone who came from an invitation on Discovery; carrying it means signing
+ * in lands them back on the invitation.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -41,26 +49,23 @@ export async function GET(request: Request) {
   const providerError =
     url.searchParams.get("error_description") ?? url.searchParams.get("error");
 
-  if (providerError) {
-    return NextResponse.redirect(
-      new URL(`/auth?notice=${encodeURIComponent(providerError)}`, url.origin),
+  const asked = safeNext(url.searchParams.get("next"), "");
+  const toAuth = (notice: string) =>
+    NextResponse.redirect(
+      new URL(
+        `/auth?notice=${encodeURIComponent(notice)}${asked ? `&next=${encodeURIComponent(asked)}` : ""}`,
+        url.origin,
+      ),
     );
-  }
 
-  if (!code) {
-    return NextResponse.redirect(
-      new URL("/auth?notice=link-incomplete", url.origin),
-    );
-  }
+  if (providerError) return toAuth(providerError);
+
+  if (!code) return toAuth("link-incomplete");
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error) {
-    return NextResponse.redirect(
-      new URL("/auth?notice=link-expired", url.origin),
-    );
-  }
+  if (error) return toAuth("link-expired");
 
   return NextResponse.redirect(new URL(next, url.origin));
 }
