@@ -381,7 +381,7 @@ describe("Go have a day", () => {
     fireEvent.click(screen.getByTestId("go-change-submit"));
     expect(stops()).toEqual(before);
     expect(screen.getByTestId("go-reply").textContent).toMatch(
-      /Nothing Atlas holds says it offers sharks.*left your day/s,
+      /Nothing Atlas holds says it offers sharks[\s\S]*left your day/,
     );
   });
 });
