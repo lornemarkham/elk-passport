@@ -197,3 +197,23 @@ describe("the bar carries where you are", () => {
     );
   });
 });
+
+describe("rooms that carry their own frame", () => {
+  it.each([
+    "/october/for-bryan",
+    "/october/sketchbook",
+    "/october/sketchbook/the-store",
+    "/october/scariest-room/has-been-here",
+    "/october/secret-room/another-way-out",
+    "/october/discovery",
+    "/october/discovery/legacy",
+  ])("leaves %s without the bar", (path) => {
+    at(path);
+    expect(screen.queryByRole("navigation", { name: "October" })).toBeNull();
+  });
+
+  it("does not mistake Discover for Discovery", () => {
+    at("/october/discover");
+    expect(screen.getByRole("navigation", { name: "October" })).toBeTruthy();
+  });
+});

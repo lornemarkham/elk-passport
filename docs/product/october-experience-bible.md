@@ -1991,6 +1991,30 @@ Experience contract (§10).
 "Six nights."). It opens on any day. Witching Hour's dead endings, Found You's
 missing inbound link and the rest of `/labs/october` are as the audit left them.
 
+## 33. Where the rooms live now — 2026-10-12
+
+October belongs to `iamoctober.com`, which the host mapping serves under
+`/october/*`. Every route in this document written as `/labs/october/…` is
+history; the room is at the same path under `/october`:
+
+| Was                                         | Is                                      |
+| ------------------------------------------- | --------------------------------------- |
+| `/labs/october/found-you`                   | `/october/found-you`                    |
+| `/labs/october/witching-hour[/join/…]`      | `/october/witching-hour[/join/…]`       |
+| `/labs/october/discovery[/a…d, legacy]`     | `/october/discovery[/…]`                |
+| `/labs/october/for-bryan`                   | `/october/for-bryan`                    |
+| `/labs/october/scariest-room/…`             | `/october/scariest-room/…`              |
+| `/labs/october/secret-room/another-way-out` | `/october/secret-room/another-way-out`  |
+| `/labs/october/sketchbook[/scene]`          | `/october/sketchbook[/scene]`           |
+| `/labs/october/video-store`                 | `/october/store` (one wall, not a copy) |
+
+The old URLs forward (307) from `next.config.ts`, query string and join codes
+intact. `/labs/october/synthesis` still serves from Labs; whether it should
+move is for a human. The moved rooms keep their own frame: October's nav bar
+does not appear over them, as it never did in Labs. The Secret Room _puzzle_
+(`/october/room`) and the `another-way-out` prototype are two different
+things and both exist.
+
 ---
 
 _Nothing in this document is code. When the code disagrees with it, the code is

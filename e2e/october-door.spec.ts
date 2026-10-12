@@ -287,7 +287,7 @@ test.describe("the Video Store on a 390px phone", () => {
     page,
   }) => {
     await alreadyRefused(page);
-    await page.goto("/labs/october/video-store");
+    await page.goto("/october/store");
     await expect(page.getByTestId("store-waiting")).toHaveCSS("opacity", "0", {
       timeout: 15_000,
     });
@@ -306,7 +306,7 @@ test.describe("the Video Store on a 390px phone", () => {
   test("a sideways drag looks along the wall to the far end, and back", async ({
     page,
   }) => {
-    await page.goto("/labs/october/video-store");
+    await page.goto("/october/store");
     await expect(page.getByTestId("store-waiting")).toHaveCSS("opacity", "0", {
       timeout: 15_000,
     });
@@ -347,7 +347,7 @@ test.describe("the Video Store on a desktop", () => {
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await alreadyRefused(page);
-    await page.goto("/labs/october/video-store");
+    await page.goto("/october/store");
     await expect(page.getByTestId("store-waiting")).toHaveCSS("opacity", "0", {
       timeout: 15_000,
     });

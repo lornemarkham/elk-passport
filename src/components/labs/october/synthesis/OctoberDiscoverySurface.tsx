@@ -102,10 +102,7 @@ export async function OctoberDiscoverySurface({
               October Discover
             </Link>
             . The experiments it came from —{" "}
-            <Link
-              href="/labs/october/discovery"
-              className="hover:text-[#e9e6da]/60"
-            >
+            <Link href="/october/discovery" className="hover:text-[#e9e6da]/60">
               A, B, C and D
             </Link>{" "}
             — are still there, unchanged.

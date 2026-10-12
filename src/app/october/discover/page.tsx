@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Discover — October" };
  * renders the surface the four discovery experiments produced: one possibility
  * pool across Atlas, films and Doings; one search; one filter vocabulary; one
  * ranking; one Choices. The page it replaced is kept, unchanged and unlinked,
- * at `/labs/october/discovery/legacy`.
+ * at `/october/discovery/legacy`.
  *
  * **From October** sits above it as a strip: the way into the rooms. It is a
  * door beside Discover, not a change to it — the surface below is untouched,

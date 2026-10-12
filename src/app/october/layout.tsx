@@ -12,7 +12,7 @@ import { OctoberNav } from "@/components/october/shell/OctoberNav";
  * leave sideways.
  *
  * Deliberately *not* shown through this shell: the Video Store
- * (`/october/store`, and the lab copy at `/labs/october/video-store`) and the
+ * (`/october/store`) and the
  * Secret Room (`/october/room`). They take the whole screen as a fixed layer
  * above this bar. An authored experience is allowed to break the frame — that
  * is most of what makes it one — and they live under `/october` rather than

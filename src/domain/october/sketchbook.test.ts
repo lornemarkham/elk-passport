@@ -65,9 +65,9 @@ describe("the sketchbook", () => {
       s.interpretations.filter((i) => i.status === "built"),
     );
     expect(built.map((b) => b.href).sort()).toEqual([
-      "/labs/october/scariest-room/has-been-here",
-      "/labs/october/secret-room/another-way-out",
-      "/labs/october/video-store",
+      "/october/scariest-room/has-been-here",
+      "/october/secret-room/another-way-out",
+      "/october/store",
       "/october/witching-hour",
     ]);
   });

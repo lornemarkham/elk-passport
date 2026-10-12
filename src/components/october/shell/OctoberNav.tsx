@@ -25,6 +25,24 @@ const DESTINATIONS = [
   { href: "/october/from", label: "From October", hint: "What it keeps" },
 ] as const;
 
+/**
+ * **Rooms that never had the bar, and still do not.**
+ *
+ * These were built, and are still meant to be met, as whole screens of their
+ * own: For Bryan is a letter, the Sketchbook and the Discovery experiments
+ * carry their own way out. They lived under `/labs/october`, outside this
+ * shell, and moving them under `/october` is a change of address, not of
+ * appearance — so the bar steps aside for them rather than appearing above a
+ * page that was not designed to sit beneath it.
+ */
+const OWN_FRAME = [
+  "/october/for-bryan",
+  "/october/scariest-room",
+  "/october/secret-room",
+  "/october/sketchbook",
+  "/october/discovery",
+] as const;
+
 export function OctoberNav({
   displayName,
   activePath = null,
@@ -55,6 +73,11 @@ export function OctoberNav({
   // Passport's Discovery. Carrying the current path means auth comes back
   // here, and the account page can offer October as the way back.
   const from = encodeURIComponent(pathname || "/october");
+
+  if (
+    OWN_FRAME.some((r) => browserPath === r || browserPath.startsWith(`${r}/`))
+  )
+    return null;
 
   return (
     <header className="border-b border-[#e9e6da]/10">

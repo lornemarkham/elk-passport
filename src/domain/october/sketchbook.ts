@@ -81,7 +81,7 @@ export const SCENES: readonly Scene[] = [
       {
         title: "The VHS Wall",
         status: "built",
-        href: "/labs/october/video-store",
+        href: "/october/store",
         note: "Cases composited into a real shelf, pickup by perspective rather than by modal, a refusal you have to fight, and somebody standing at the back of the aisle who runs past you afterwards.",
       },
       {
@@ -111,7 +111,7 @@ export const SCENES: readonly Scene[] = [
       {
         title: "October has been here",
         status: "built",
-        href: "/labs/october/scariest-room/has-been-here",
+        href: "/october/scariest-room/has-been-here",
         note: "The photograph arrives and nothing happens for a moment — a pause long enough to be uncomfortable, as though something is actually looking. Then recognition, and then it stops. It does not say what it can see. It does not name the objects, or explain why the room is frightening, or perform any of the image-analysis theatre that would turn a haunting into a party trick. Your imagination is better at this than any description, and the only thing the beat has to establish is that October now knows this room exists.",
         lines: ["Oh.", "Yes.", "October spent many years here."],
       },
@@ -220,7 +220,7 @@ export const SCENES: readonly Scene[] = [
       {
         title: "Keep it alight",
         status: "built",
-        href: "/labs/october/secret-room/another-way-out",
+        href: "/october/secret-room/another-way-out",
         note: "The first exit made playable, and a toy rather than a system. You are shut in a room with a door that will not open and a few things worth trying, none of which help. October watches for a while, then offers a different way out: a candle, thirty seconds, and draughts coming in from every direction. You cup a hand around the flame and turn it to meet them. Three hits and it goes out, which costs a dry remark and another go. Survive and the door finally opens.",
         lines: [
           "You haven't found it.",
