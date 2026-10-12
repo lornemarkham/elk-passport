@@ -5,6 +5,11 @@ the code does and needs — **not** product authority. The doctrine is.
 Group / multi-person experience is an open question there (§15.12); nothing
 here answers it.
 
+**Superseded in part (2026-10-12).** The group foundation is now
+`passport_adventures` (`docs/product/group-adventures/README.md`, ADR 003).
+Interest marks, shared days and self-leave here overlap with its items,
+answers and leave; pick one before either migrates (README §4, "Boards").
+
 ## One system, not two
 
 A group adventure is a **board**. A conference is a board plus what an
