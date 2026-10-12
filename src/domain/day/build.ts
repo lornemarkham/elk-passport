@@ -20,6 +20,35 @@ import {
   rainLine,
 } from "@/domain/discovery/environment";
 import { ruledOutOn } from "@/domain/discovery/recurrence";
+
+/**
+ * **Indoors, as Atlas says it.** A stated indoor setting, a sheltered rain
+ * reading, or `exposure: indoor` (`candidate-environment/2`, the reading
+ * Discovery's answers already use).
+ *
+ * "Keep us indoors" used to be answered by `standsUpToRain`, which also counts
+ * *partly sheltered* and *runs in the rain*. On the real corpus that made a
+ * two-hour indoor day for a five-year-old out of Polson Park (a picnic
+ * shelter) and Rutland Lions Park (open-air forest), and the day then said
+ * "every stop here is one Atlas says stands up to rain", while the Okanagan
+ * Science Centre and the Vernon Public Art Gallery, both `exposure: indoor`,
+ * were in range.
+ */
+const indoors = (e: Experience): boolean =>
+  // The rain reading wins over `exposure` (see `CandidateEnvironment`): a
+  // place Atlas says is out in the open is not indoors, whatever its kind.
+  !arguesAgainst(e) &&
+  (e.environment?.setting === "indoor" ||
+    e.environment?.rain?.reading === "sheltered" ||
+    e.environment?.exposure?.value === "indoor");
+
+/** Whether Atlas says a visit is spent outside, and nothing says indoors. */
+const outdoorsByAtlas = (e: Experience): boolean =>
+  !indoors(e) &&
+  (arguesAgainst(e) ||
+    e.environment?.setting === "outdoor" ||
+    e.environment?.exposure?.value === "outdoor" ||
+    e.environment?.exposure?.value === "sheltered-outdoor");
 import { distanceKm } from "@/lib/environment/geo";
 import { activitiesIn, offers, unmetIn, type Unmet } from "./intent";
 
@@ -367,8 +396,8 @@ function fitness(
   if (experience.heroMedia?.src) score += 2;
 
   if (brief.shelter === "indoor") {
-    if (standsUpToRain(experience)) score += 5;
-    if (arguesAgainst(experience)) score -= 6;
+    if (indoors(experience)) score += 6;
+    else if (standsUpToRain(experience)) score += 2;
   }
   if (brief.shelter === "outdoor" && arguesAgainst(experience)) score += 3;
 
@@ -426,10 +455,14 @@ function reasonFor(
   const verbs = verbsOf(experience);
   const hit = brief.interests.find((i) => verbs.some((v) => v.includes(i)));
   if (hit) return `You asked for ${hit}, and this says it has it.`;
-  if (
-    (brief.shelter === "indoor" || weather?.wet) &&
-    standsUpToRain(experience)
-  ) {
+  if (brief.shelter === "indoor" && indoors(experience)) {
+    return (
+      (experience.environment?.rain?.reading === "sheltered"
+        ? rainLine(experience)
+        : undefined) ?? "Indoors, going by what Atlas holds."
+    );
+  }
+  if (weather?.wet && standsUpToRain(experience)) {
     return rainLine(experience) ?? "Somewhere to be when it is wet.";
   }
   if (brief.childAge !== undefined) {
@@ -735,10 +768,10 @@ function rank(
     if (brief.on && ruledOutOn(experience, brief.on)) return false;
     if (brief.on && experience.schedule?.onDate?.reading === "not-on")
       return false;
-    // **"Keep us indoors" is a request, not a mood.** A place Atlas states is
-    // out in the open is left out; one that states nothing about shelter
+    // **"Keep us indoors" is a request, not a mood.** A place Atlas says is
+    // spent outside (`outdoorsByAtlas`) is left out; one that states nothing
     // stays, and the plan says how many of its stops it can vouch for.
-    if (brief.shelter === "indoor" && arguesAgainst(experience)) return false;
+    if (brief.shelter === "indoor" && outdoorsByAtlas(experience)) return false;
     if (radiusKm !== undefined && origin) {
       const here = point(experience);
       // Unmeasured is not excluded — but it cannot lead a day either, so it
@@ -1148,11 +1181,11 @@ export function buildDay({
       `You said you would travel up to ${travelPhrase(brief.withinMinutes)}, but not how long you have — this is a ${budget.totalMinutes / 60}-hour day (assumed). Say “all day” to make room for the drive.`,
     );
   if (brief.shelter === "indoor" && stops.length > 0) {
-    const covered = stops.filter((s) => standsUpToRain(s.experience)).length;
+    const covered = stops.filter((s) => indoors(s.experience)).length;
     unknowns.push(
       covered === stops.length
-        ? "Under cover — every stop here is one Atlas says stands up to rain."
-        : `Under cover — Atlas says ${covered} of ${stops.length} ${stops.length === 1 ? "stop is" : "stops are"} under cover; the rest state nothing either way, only that they are not out in the open.`,
+        ? "Under cover — Atlas says every stop here is indoors."
+        : `Under cover — Atlas says ${covered} of ${stops.length} ${stops.length === 1 ? "stop is" : "stops are"} indoors; it does not say the others are.`,
     );
   }
   if (stops.some((s) => !s.open && !s.hours))
@@ -1211,10 +1244,8 @@ function keptAgainst(kept: readonly Experience[], brief: DayBrief): string[] {
       out.push(
         `${e.title} stays even though you said no ${hit} — you kept it. Remove it if you meant it.`,
       );
-    if (brief.shelter === "indoor" && arguesAgainst(e))
-      out.push(
-        `${e.title} stays even though it is out in the open — you kept it.`,
-      );
+    if (brief.shelter === "indoor" && outdoorsByAtlas(e))
+      out.push(`${e.title} stays even though it is outdoors — you kept it.`);
   }
   return out;
 }
@@ -1429,5 +1460,8 @@ function openingFor(
     unmet.length > 0
       ? `${saidUnmet(unmet)} ${nothingAsked ? "These are only the stops you chose; nothing else was added in its place." : "Here is the rest of what you asked for."} `
       : "";
-  return `${lead}${hours}${who}, ${count}${circle}, and a plan loose enough to abandon.${window}${rain}`;
+  const body = `${hours}${who}, ${count}${circle}, and a plan loose enough to abandon.`;
+  // After a sentence, the summary starts one: "… asked for. A day, 3 stops".
+  const said = lead ? body.charAt(0).toUpperCase() + body.slice(1) : body;
+  return `${lead}${said}${window}${rain}`;
 }

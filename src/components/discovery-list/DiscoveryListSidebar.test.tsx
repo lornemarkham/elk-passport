@@ -96,7 +96,7 @@ describe("saved items that can be navigated to", () => {
 });
 
 describe("saved items the Place template cannot hold", () => {
-  it("still opens a Place that is not detail-ready, on the neutral page", () => {
+  it("still opens a Place that is not detail-ready, on the Place page", () => {
     // Kekuli Bay: real and mapped, and Atlas holds no photograph for it.
     const { sidebar } = renderSidebar([
       saved({
@@ -106,11 +106,11 @@ describe("saved items the Place template cannot hold", () => {
         coordinates: [-119.34027778, 50.18333333],
       }),
     ]);
-    // It has no photograph, so the Place template would render badly — but
-    // a saved thing you cannot reopen is worse than a page with honest gaps.
+    // The neutral page asks Atlas for no Place read, so a thin Place 404'd
+    // there (M211). Atlas's Place read answers for every Place.
     expect(
       within(sidebar).getByRole("link", { name: "Kekuli Bay Provincial Park" }),
-    ).toHaveAttribute("href", "/passport/1d8a002c-a7ac-41d5-9a3e-73ab0849e702");
+    ).toHaveAttribute("href", "/places/1d8a002c-a7ac-41d5-9a3e-73ab0849e702");
   });
 
   it("never routes an Organization without context through /places/{id}", () => {

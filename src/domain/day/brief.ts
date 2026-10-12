@@ -667,7 +667,7 @@ export function heardIn(before: DayBrief, after: DayBrief): string[] {
   if (after.shelter !== before.shelter && after.shelter) {
     out.push(
       after.shelter === "indoor"
-        ? "Leaving out places Atlas says are out in the open, and preferring those it says are under cover."
+        ? "Leaving out places Atlas says are outdoors, and preferring those it says are indoors."
         : "Leaning outdoors.",
     );
   }

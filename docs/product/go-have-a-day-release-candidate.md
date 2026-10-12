@@ -1,4 +1,94 @@
-# GO HAVE A DAY — family-test release candidate (M207)
+# GO HAVE A DAY — family-test release candidate (M207, M211)
+
+## M211 — final family release pass (2026-10-11)
+
+One commit on top of M207's e1cba6e. **Still not merged, pushed or deployed.**
+
+### Live Atlas: not reached, and why
+
+This checkout has no `ATLAS_SERVICE_TOKEN`; the workspace rules forbid copying
+one in or pulling one through Vercel. Production Atlas answers `/health` (200)
+and 401 to everything else. **No test in this pass ran the RC against live
+Atlas.** What was real:
+
+- **Production Passport** (elk-passport.vercel.app = main without the GHAD
+  integration; `/detox` and `/api/travel/legs` 404) is a public site backed by
+  production Atlas. It is where the Discovery bug was found and measured, with
+  real ids, and where the older builder was run on the family sentences.
+- **The committed fixture** (`atlas-candidates-2026-10-11.json.gz`) is real
+  Atlas data, but **from a newer Atlas than production**: it carries
+  `environment.exposure` and `season`, and production's Discovery payload
+  carries neither (production's mapper passes `environment` through whole, so
+  production Atlas is not sending them).
+- Every RC browser run used the stand-in. Its legs are labelled "estimated by
+  standin"; no routed time from real Atlas was seen.
+
+### Fixed
+
+1. **Discovery cards opened "There's nothing at this address."** On
+   production, 740 of the 3,110 cards in Discovery's pool routed to a 404: all
+   290 Activities and the 450 Places that were not `detailReady` (all 17
+   sampled 404'd; Caravan Farm Theatre, U-Pick Apple Orchard Tours, Fairy
+   Doors). `destinationFor` sent them to `/passport/{id}`, which asks Atlas only
+   for Organization, Experience and Event compositions, then fell back to an
+   admin bundle production cannot read. Atlas's `/places/:id/detail` serves
+   any Place (25 of 25 sampled rendered on production); Atlas has **no**
+   Activity detail read.
+   - Every Place now goes to `/places/{id}`.
+   - `/passport/{id}` renders an Activity from its Discovery candidate (the
+     same cached public read `/day/{id}` uses), with "Let's do this", and
+     redirects an old Place link to `/places/{id}` with its query.
+   - An Atlas failure on either detail route is now an error page with a
+     retry, not a 404.
+   - Tests on real ids, and against Atlas's route table in the reference
+     clone: `destination.atlas.test.ts`, `passport/[id]/page.test.tsx`.
+2. **Whole card clickable.** The venue-photo frame and the gaps in the
+   actions row took the tap and did nothing. Hit-tested at 320 points on 40
+   cards, desktop and Pixel 7, plus `e2e/release-navigation.spec.ts`.
+3. **Make a day** leads the home page's buttons, in the accent, full width on
+   a phone.
+4. **Contrast.** The orange accent was `#C65A2E` at 4.28:1 (its own comment
+   claimed 4.5); it is `#B04E28` at 5.3:1, 4.7:1 on the card tint. The nav's
+   inactive grey went from about 3.4:1 to 5.7:1.
+5. **"Indoors" built a day of parks.** A picnic shelter counted as indoors:
+   two hours with a five-year-old, "something indoors", gave Polson Park and
+   Rutland Lions Park, and said every stop stood up to rain. The builder now
+   uses Atlas's `exposure` and `setting`, and the day counts the stops Atlas
+   says are indoors. On the fixture the day is now Priest Valley Arena and Allan
+   Brooks Nature Centre (Vernon), or an art café and a musical (Kelowna).
+6. "…what you asked for. a day, 3 stops…" now starts its sentence.
+
+### Tested
+
+| Gate                                                                   | Result                                                      |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `tsc --noEmit`                                                         | clean                                                       |
+| `vitest run`                                                           | 2587 passed, 1 skipped                                      |
+| `eslint .`                                                             | 0 errors, 40 warnings (none new)                            |
+| `npm run build`                                                        | ok                                                          |
+| full Playwright, stand-in, legs 404                                    | 106 passed, 3 failed (core-loop:26, october:554/570, known) |
+| `go-release` + `go-intent` + `daybuilder` + `release-navigation`, legs | 51 passed                                                   |
+| `go-intent` Atlas-down pair                                            | 2 passed                                                    |
+| journeys config, desktop + Pixel 7                                     | 27 passed, 1 skipped                                        |
+
+### Still open after M211
+
+- **Live Atlas, including `/travel/legs`, is unexercised.** Somebody with the
+  token must open `/go` and a few Discovery cards of each kind against
+  production Atlas before family testing.
+- **Indoor days depend on `exposure` reaching production Atlas.** Without
+  it (simulated by stripping it from the fixture), Vernon still gets Polson
+  Park and Kelowna two farms, but the day now says "1 of 2" / "0 of 2 stops
+  are indoors" instead of claiming every stop is.
+- **An evening "afternoon"** (asked at 6:45 pm) schedules a 5-year-old into
+  the Science Centre at 8 pm and a beach park at 9:16 pm. "Published as open
+  on 2026-10-11" says the day, not the hour.
+- An Activity open makes three composed reads (cached 404s) before the
+  candidate read, because Discovery links carry no `?kind=` hint.
+- `ComposedSubject` links its parts to `/passport/{id}`; a part that is a
+  Place and not a Discovery candidate still 404s on production.
+- On a phone the nav scrolls sideways and "Sign in" starts off screen.
+- Production's own `/go` once took more than 180 s to load (one of six loads).
 
 Branch `release/go-have-a-day-family-rc`. **Not merged to main, not pushed, not
 deployed.** It is built on `integration/go-have-a-day-first-complete-day`
@@ -107,9 +197,8 @@ smooth scroll. Watch it during family testing.
 - **Live Atlas has not been exercised.** No credentials exist here. Before
   family testing, someone with the token should open `/go` against production
   Atlas, including `/travel/legs`.
-- **No way into `/go` from Home or the nav.** This is a product placement
-  decision.
-- **Contrast** (M200): the brand orange on white is 4.28:1, and the nav grey is 3.36:1.
+- ~~No way into `/go` from Home or the nav.~~ Home has Make a day (M211).
+- ~~Contrast (M200)~~: fixed in M211.
 - **A kept day is not pinned to its stops.** Reopening rebuilds it from the
   brief and shaping, so a later corpus or builder can change it. No kept days
   exist in production yet, because `/go` has never shipped there.

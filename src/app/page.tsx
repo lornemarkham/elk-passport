@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { INTENTS } from "@/domain/discovery/intents";
+import { ArrowRight } from "lucide-react";
+import { ThemeProvider } from "@/components/ghad/theme";
 
 /**
  * Passport's front door.
@@ -48,7 +50,25 @@ export default async function HomePage() {
             for.
           </p>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {/* **The way into the Day Builder.** `/go` had no door from here
+                or the nav, so a family had to be sent the address. It leads
+                the row because building a day is what the page's own headline
+                promises. Accent-filled like "Let's do this", the same step. */}
+            <ThemeProvider>
+              <Link
+                href="/go"
+                data-testid="home-make-a-day"
+                style={{
+                  backgroundColor: "var(--ghad-accent)",
+                  color: "var(--ghad-accent-ink)",
+                }}
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-base font-semibold sm:w-auto"
+              >
+                Make a day
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </ThemeProvider>
             <Button size="lg" render={<Link href="/discovery" />}>
               What could you do today?
             </Button>

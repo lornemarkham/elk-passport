@@ -152,7 +152,7 @@ for (const form of forms) {
       await change("No museums");
       await expect(page.getByTestId("go-reply")).toContainText(/museums/);
       await change("Keep us indoors");
-      await expect(page.getByTestId("go-reply")).toContainText(/under cover/i);
+      await expect(page.getByTestId("go-reply")).toContainText(/indoors/i);
       await expect(page.getByTestId("go-unknowns")).toContainText(
         /Under cover/,
       );

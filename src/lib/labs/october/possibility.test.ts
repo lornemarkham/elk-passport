@@ -237,12 +237,12 @@ describe("where a possibility opens", () => {
     expect(place.href).toBe("/places/p1");
   });
 
-  it("sends a thin Place to the neutral page, which states its gaps", () => {
+  it("sends a thin Place to the Place page, whose Atlas read answers for it", () => {
     const place = possibilityFromAtlas(
       atlas({ id: "p2", kind: "Place", detailReady: false }),
       on,
     );
-    expect(place.href).toBe("/passport/p2");
+    expect(place.href).toBe("/places/p2");
   });
 
   it("gives every possibility in the real pool somewhere other than here", () => {

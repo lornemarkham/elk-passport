@@ -199,10 +199,16 @@ export function PossibilityCard({
       // object; the text sits under it on the page's own ground.
       className={`group relative flex h-full flex-col bg-white ${className}`}
     >
+      {/* **The whole card opens the thing.** Above the picture and the words
+          (`z-[1]`), because a positioned element painted after it, such as the
+          venue photograph's frame, otherwise took the tap and did nothing.
+          Only the actions row sits higher, and only its controls take the
+          pointer, so the gaps between them still open the card. */}
       {destination && (
         <Link
           href={destination}
-          className="absolute inset-0 rounded-xl"
+          data-testid="possibility-link"
+          className="absolute inset-0 z-[1] rounded-xl"
           aria-label={experience.title}
         />
       )}
@@ -436,7 +442,7 @@ export function PossibilityCard({
           </p>
         )}
 
-        <div className="relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-4">
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-4">
           {saved ? (
             <span className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 text-xs font-medium">
               <Check className="h-3.5 w-3.5" aria-hidden />
@@ -453,7 +459,7 @@ export function PossibilityCard({
               onClick={onSave}
               disabled={saving}
               title="Keep this to look at later"
-              className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-4 text-xs font-medium text-white transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
+              className="pointer-events-auto inline-flex min-h-11 items-center rounded-full bg-[#111] px-4 text-xs font-medium text-white transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -472,7 +478,7 @@ export function PossibilityCard({
                 onClick={onWant}
                 data-testid="want-to-do"
                 title="Keep this in My October"
-                className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors hover:bg-black/10"
+                className="ghad-accent-text pointer-events-auto inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors hover:bg-black/10"
               >
                 <Leaf className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Want to do
@@ -483,7 +489,7 @@ export function PossibilityCard({
               href={dayHref}
               data-testid="plan-a-day"
               title="Build a day around this on Go have a day"
-              className="ghad-accent-text inline-flex min-h-11 items-center rounded-full px-2.5 text-xs font-semibold underline-offset-4 transition-colors hover:underline"
+              className="ghad-accent-text pointer-events-auto inline-flex min-h-11 items-center rounded-full px-2.5 text-xs font-semibold underline-offset-4 transition-colors hover:underline"
             >
               Plan a day around this →
             </Link>

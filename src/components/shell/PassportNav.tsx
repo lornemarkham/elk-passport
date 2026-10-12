@@ -110,7 +110,7 @@ export function PassportNav({
                 className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-2 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
                   current
                     ? "text-[#111]"
-                    : "border-transparent text-black/45 hover:text-black/80"
+                    : "border-transparent text-black/60 hover:text-black/85"
                 }`}
               >
                 {d.label}
@@ -128,7 +128,7 @@ export function PassportNav({
             <Link
               href={`/account?next=${from}`}
               data-testid="passport-account"
-              className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] text-black/45 transition-colors hover:text-black/80 sm:px-3"
+              className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] text-black/60 transition-colors hover:text-black/85 sm:px-3"
             >
               {displayName}
             </Link>

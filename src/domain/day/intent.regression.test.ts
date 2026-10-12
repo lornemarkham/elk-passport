@@ -159,7 +159,7 @@ describe("the eight sentences", () => {
     const base = readBrief("Half a day near Kelowna", {}, NOW);
     const next = reviseBrief(base, "Keep us indoors", NOW);
     expect(next.shelter).toBe("indoor");
-    expect(heardIn(base, next).join(" ")).toMatch(/under cover/i);
+    expect(heardIn(base, next).join(" ")).toMatch(/indoors/i);
     const day = build(next);
     for (const stop of day.stops) expect(stop.rain).not.toBe("exposed");
     expect(day.unknowns.join(" ")).toMatch(/Under cover/);
@@ -299,4 +299,63 @@ describe("the paper says what the screen said", () => {
     );
     expect(paper.unknowns.join(" ")).toMatch(/plan without it/);
   });
+});
+
+/**
+ * **Indoors means indoors** (M211). Two hours, a five-year-old, "something
+ * indoors": the builder answered with Polson Park and Rutland Lions Park,
+ * because a picnic shelter "stands up to rain", and then told the family every
+ * stop was under cover. Atlas's `exposure` reading says which places are
+ * spent indoors; the builder now asks it.
+ */
+describe("a two-hour indoor day with a five-year-old", () => {
+  const outside = (stop: { experience: { environment?: unknown } }) => {
+    const env = stop.experience.environment as
+      | {
+          setting?: string;
+          rain?: { reading?: string };
+          exposure?: { value?: string };
+        }
+      | undefined;
+    return (
+      env?.setting === "outdoor" ||
+      env?.rain?.reading === "exposed" ||
+      env?.exposure?.value === "outdoor" ||
+      env?.exposure?.value === "sheltered-outdoor"
+    );
+  };
+
+  for (const [townId, sentence] of [
+    ["vernon", "We have two hours with our five-year-old. Something indoors."],
+    ["kelowna", "We have two hours with a 5 year old, indoors please"],
+  ] as const) {
+    it(`${townId}: no stop Atlas says is spent outside, and the count is honest`, () => {
+      const brief = readBrief(sentence, { town: town(townId) }, NOW);
+      expect(brief.shelter).toBe("indoor");
+      expect(brief.hours).toBe(2);
+      expect(brief.childAge).toBe(5);
+      const day = build(brief);
+      expect(day.stops.length).toBeGreaterThan(0);
+      for (const stop of day.stops) {
+        expect(outside(stop), stop.experience.title).toBe(false);
+        expect(stop.experience.title).not.toMatch(/Polson Park|Lions Park/);
+      }
+      // The count it states is the count of stops Atlas says are indoors.
+      const indoorsCount = day.stops.filter((stop) => {
+        const env = stop.experience.environment;
+        return (
+          env?.rain?.reading !== "exposed" &&
+          (env?.setting === "indoor" ||
+            env?.rain?.reading === "sheltered" ||
+            env?.exposure?.value === "indoor")
+        );
+      }).length;
+      const line = day.unknowns.find((u) => u.startsWith("Under cover"))!;
+      if (indoorsCount === day.stops.length)
+        expect(line).toBe(
+          "Under cover — Atlas says every stop here is indoors.",
+        );
+      else expect(line).toContain(`${indoorsCount} of ${day.stops.length}`);
+    });
+  }
 });
