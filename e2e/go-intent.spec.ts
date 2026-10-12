@@ -58,11 +58,23 @@ for (const form of forms) {
       await expect(page.getByTestId("go-not-found-says")).toContainText(
         /Nothing Atlas holds says it offers sharks/,
       );
-      await expect(stops(page)).toHaveCount(0);
+      // Atlas has scuba diving near Kelowna but nothing about sharks: the day
+      // is built around what exists, and the missing part is said first.
+      await expect(stops(page).first()).toBeVisible();
       // The request is still on the page.
       await expect(page.getByTestId("go-working-from")).toContainText(/sharks/);
       await expect(page.getByTestId("go-say")).toHaveValue(
         "Scuba diving with sharks tonight",
+      );
+    });
+
+    test("a request nothing offers builds no day at all", async ({ page }) => {
+      await open(page, "/go?at=kelowna");
+      await say(page, "Shark diving tonight");
+      await expect(page.getByTestId("go-not-found")).toBeVisible();
+      await expect(stops(page)).toHaveCount(0);
+      await expect(page.getByTestId("go-say")).toHaveValue(
+        "Shark diving tonight",
       );
     });
 
