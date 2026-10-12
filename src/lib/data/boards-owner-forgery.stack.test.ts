@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
+import { writeOwnerRow } from "./boards-owner-row";
 
 /**
  * **Nobody but a board's owner may name that owner.**
@@ -66,12 +67,7 @@ async function person(
   return { id: data.user.id, db };
 }
 
-/**
- * The first owner row, as a plain insert. `ensureOwnerMembership`'s upsert is
- * refused for a board with no rows yet (Postgres applies the SELECT policy to
- * an upsert's new row; see the NOTE in the fix), but an attacker sends
- * whatever request they like.
- */
+/** A first owner row written however an attacker likes: a plain insert. */
 function ownerInsert(db: SupabaseClient, boardId: string, userId: string) {
   return db.from("passport_board_members").insert({
     board_id: boardId,
@@ -81,8 +77,8 @@ function ownerInsert(db: SupabaseClient, boardId: string, userId: string) {
   });
 }
 
-/** What `ensureOwnerMembership` writes, as whoever runs it. */
-function ownerUpsert(db: SupabaseClient, boardId: string, userId: string) {
+/** What `ensureOwnerMembership` wrote before it used `writeOwnerRow`. */
+function oldOwnerUpsert(db: SupabaseClient, boardId: string, userId: string) {
   return db.from("passport_board_members").upsert(
     {
       board_id: boardId,
@@ -199,8 +195,15 @@ describe.skipIf(!ENV_FILE)("board owner forgery", () => {
 
     // OLIVE'S OWN SHARING, end to end, as the app does it.
     const shared = `board-shared-${stamp}`;
-    expect((await ownerInsert(olive.db, shared, olive.id)).error).toBeNull();
-    expect((await ownerUpsert(olive.db, shared, olive.id)).error).toBeNull();
+
+    // The old upsert is refused for a board with no rows (why first shares
+    // failed in production); the app's own write succeeds, and is idempotent.
+    expect((await oldOwnerUpsert(olive.db, shared, olive.id)).error?.code).toBe(
+      "42501",
+    );
+    expect(await writeOwnerRow(olive.db, shared, olive.id)).toBe(true);
+    expect(await writeOwnerRow(olive.db, shared, olive.id)).toBe(true);
+    expect((await oldOwnerUpsert(olive.db, shared, olive.id)).error).toBeNull();
 
     const link = await invite(olive.db, {
       boardId: shared,

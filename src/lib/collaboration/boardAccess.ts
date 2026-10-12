@@ -2,6 +2,7 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PassportUser } from "@/lib/auth/currentUser";
 import { getBoardFor, listBoardsFor } from "@/lib/data/boards-server";
+import { writeOwnerRow } from "@/lib/data/boards-owner-row";
 import type { Board } from "@/lib/data/boards-repo";
 
 /**
@@ -152,16 +153,7 @@ export async function ensureOwnerMembership(
   user: PassportUser,
   boardId: string,
 ): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  await supabase.from("passport_board_members").upsert(
-    {
-      board_id: boardId,
-      board_owner_id: user.id,
-      user_id: user.id,
-      role: "owner",
-    },
-    { onConflict: "board_id,user_id" },
-  );
+  await writeOwnerRow(await createSupabaseServerClient(), boardId, user.id);
 }
 
 export interface BoardMember {
