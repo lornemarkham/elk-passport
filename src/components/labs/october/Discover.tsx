@@ -16,7 +16,7 @@ import {
 import { LabKeep } from "./LabKeep";
 import { Shot } from "./atoms";
 
-const HERE = "/labs/october/discovery/d";
+const HERE = "/october/discovery/d";
 const PAGE = 24;
 
 const WORDS = {

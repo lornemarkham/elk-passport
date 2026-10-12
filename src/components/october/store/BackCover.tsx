@@ -1,5 +1,5 @@
 import type { Film } from "@/lib/movies/catalogue";
-import { Panel, type Cover } from "./Sleeve";
+import { BlankBack, Panel, type Cover } from "./Sleeve";
 
 /**
  * **The back of a rental copy.**
@@ -32,10 +32,16 @@ export function BackCover({
   width,
   onTrailer,
   onPutBack,
+  note,
 }: {
   film: Film;
   cover: Cover;
   width: number;
+  /**
+   * October's card, if it has something to say other than the film's own
+   * line — in which case it is not struck through, because this one it meant.
+   */
+  note?: string;
   onTrailer: () => void;
   onPutBack: () => void;
 }) {
@@ -62,6 +68,7 @@ export function BackCover({
       </span>
     );
   }
+  if (cover.handwritten) return <BlankBack cover={cover} width={width} />;
 
   return (
     <span
@@ -234,31 +241,33 @@ export function BackCover({
                 display: "block",
               }}
             >
-              {film.line}
+              {note ?? film.line}
             </span>
             {/* Struck through by the same hand that did the header. */}
-            <svg
-              aria-hidden
-              viewBox="0 0 100 10"
-              preserveAspectRatio="none"
-              style={{
-                position: "absolute",
-                left: "-2%",
-                bottom: `-${u(0.012)}px`,
-                width: "62%",
-                height: u(0.05),
-                overflow: "visible",
-              }}
-            >
-              <path
-                d="M1 6 L28 3.4 L57 6.8 L62 4.2"
-                fill="none"
-                stroke="#241a11"
-                strokeOpacity="0.62"
-                strokeWidth="1.1"
-                strokeLinecap="round"
-              />
-            </svg>
+            {note ? null : (
+              <svg
+                aria-hidden
+                viewBox="0 0 100 10"
+                preserveAspectRatio="none"
+                style={{
+                  position: "absolute",
+                  left: "-2%",
+                  bottom: `-${u(0.012)}px`,
+                  width: "62%",
+                  height: u(0.05),
+                  overflow: "visible",
+                }}
+              >
+                <path
+                  d="M1 6 L28 3.4 L57 6.8 L62 4.2"
+                  fill="none"
+                  stroke="#241a11"
+                  strokeOpacity="0.62"
+                  strokeWidth="1.1"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
           </span>
         </span>
       </span>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * **The three places October has.**
+ * **The four places October has.**
  *
  * October may become cinematic; this must not. The shell is the part a person
  * has to be able to trust, so it is plain type on a plain bar, it says where
@@ -12,7 +12,8 @@ import { usePathname } from "next/navigation";
  * animates, hides, or changes its mind.
  *
  * An experience is allowed to take the whole screen and leave this behind —
- * the Video Store does exactly that, from its own route outside `/october`.
+ * the Video Store and the Secret Room do exactly that, as fixed full-screen
+ * layers over this bar, from `/october/store` and `/october/room`.
  * That is the distinction the shell exists to make legible: while you can see
  * this bar you are in the product, and when it goes you are somewhere else.
  */
@@ -21,6 +22,25 @@ const DESTINATIONS = [
   { href: "/october", label: "October", hint: "What matters now" },
   { href: "/october/discover", label: "Discover", hint: "What is out there" },
   { href: "/october/mine", label: "My October", hint: "What is mine" },
+  { href: "/october/from", label: "From October", hint: "What it keeps" },
+] as const;
+
+/**
+ * **Rooms that never had the bar, and still do not.**
+ *
+ * These were built, and are still meant to be met, as whole screens of their
+ * own: For Bryan is a letter, the Sketchbook and the Discovery experiments
+ * carry their own way out. They lived under `/labs/october`, outside this
+ * shell, and moving them under `/october` is a change of address, not of
+ * appearance — so the bar steps aside for them rather than appearing above a
+ * page that was not designed to sit beneath it.
+ */
+const OWN_FRAME = [
+  "/october/for-bryan",
+  "/october/scariest-room",
+  "/october/secret-room",
+  "/october/sketchbook",
+  "/october/discovery",
 ] as const;
 
 export function OctoberNav({
@@ -53,6 +73,11 @@ export function OctoberNav({
   // Passport's Discovery. Carrying the current path means auth comes back
   // here, and the account page can offer October as the way back.
   const from = encodeURIComponent(pathname || "/october");
+
+  if (
+    OWN_FRAME.some((r) => browserPath === r || browserPath.startsWith(`${r}/`))
+  )
+    return null;
 
   return (
     <header className="border-b border-[#e9e6da]/10">

@@ -11,11 +11,13 @@ import { OctoberNav } from "@/components/october/shell/OctoberNav";
  * Movie Night, which used to be a screen you could only arrive at and never
  * leave sideways.
  *
- * Deliberately *not* under this shell: the Video Store, which lives at
- * `/labs/october/video-store` and takes the whole screen. An authored
- * experience is allowed to break the frame — that is most of what makes it one
- * — and keeping it on its own route means it breaks the frame by being
- * somewhere else rather than by tearing the shell up from inside.
+ * Deliberately *not* shown through this shell: the Video Store
+ * (`/october/store`) and the
+ * Secret Room (`/october/room`). They take the whole screen as a fixed layer
+ * above this bar. An authored experience is allowed to break the frame — that
+ * is most of what makes it one — and they live under `/october` rather than
+ * `/labs` so the host mapping, the theme and the sign-in return path all still
+ * know they are October.
  */
 export default async function OctoberLayout({
   children,

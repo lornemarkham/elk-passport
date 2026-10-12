@@ -1962,6 +1962,61 @@ And sometimes October should simply let the trailer play.
 
 ---
 
+## 32. From October — the doors opened — 2026-10-11
+
+The rooms under `/labs/october` had no way in. This is the first pass at giving
+October's strange half a public front door, built from what was already there.
+It is **evidence of one Experience**, like everything in this document, not the
+Experience contract (§10).
+
+**What shipped.** A _From October_ strip on Discover and a fourth nav place,
+`/october/from`, holding two doors:
+
+- **The Room** (`/october/room`) — the Secret Room (§9.7) with a real puzzle:
+  tune a radio to three stations that each ask a question of the room (bars on
+  the window, the hour a clock stopped at, pictures missing from a wall) and set
+  three wheels to 4-7-2. A fourth station is October's and lies. October helps
+  when you are stuck and interferes when you are comfortable. It descends from
+  _Another Way Out_, which is untouched.
+- **The Video Store** (`/october/store`) — §31 Layer 2–4 on the existing wall:
+  a phone pan, readable sleeves, October's refusal on first reach, and one tape
+  nobody catalogued.
+- **A small connection** (`domain/october/passage.ts`, four timestamps in
+  `localStorage`): the unlabeled tape plays in the room's video recorder once
+  the door is open; escaping the room stops October refusing the obvious tape.
+  This is the first step toward §31.8 Layer 5 and the Secret Room's
+  foreshadowing, and is **local to one browser**.
+
+**Not built.** Multi-day foreshadowing of the Secret Room (§9.7: "Not yet." →
+"Six nights."). It opens on any day. Witching Hour's dead endings, Found You's
+missing inbound link and the rest of `/labs/october` are as the audit left them.
+
+## 33. Where the rooms live now — 2026-10-12
+
+October belongs to `iamoctober.com`, which the host mapping serves under
+`/october/*`. Every route in this document written as `/labs/october/…` is
+history; the room is at the same path under `/october`:
+
+| Was                                         | Is                                      |
+| ------------------------------------------- | --------------------------------------- |
+| `/labs/october/found-you`                   | `/october/found-you`                    |
+| `/labs/october/witching-hour[/join/…]`      | `/october/witching-hour[/join/…]`       |
+| `/labs/october/discovery[/a…d, legacy]`     | `/october/discovery[/…]`                |
+| `/labs/october/for-bryan`                   | `/october/for-bryan`                    |
+| `/labs/october/scariest-room/…`             | `/october/scariest-room/…`              |
+| `/labs/october/secret-room/another-way-out` | `/october/secret-room/another-way-out`  |
+| `/labs/october/sketchbook[/scene]`          | `/october/sketchbook[/scene]`           |
+| `/labs/october/video-store`                 | `/october/store` (one wall, not a copy) |
+
+The old URLs forward (307) from `next.config.ts`, query string and join codes
+intact. `/labs/october/synthesis` still serves from Labs; whether it should
+move is for a human. The moved rooms keep their own frame: October's nav bar
+does not appear over them, as it never did in Labs. The Secret Room _puzzle_
+(`/october/room`) and the `another-way-out` prototype are two different
+things and both exist.
+
+---
+
 _Nothing in this document is code. When the code disagrees with it, the code is
 right and this document should be corrected — or the code should be killed,
 because that is what scenes are for._

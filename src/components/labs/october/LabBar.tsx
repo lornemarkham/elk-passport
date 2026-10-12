@@ -9,15 +9,15 @@ import Link from "next/link";
  */
 export function LabBar({ here }: { readonly here: string }) {
   const tabs = [
-    ["/labs/october/discovery/a", "A · Tonight"],
-    ["/labs/october/discovery/b", "B · What do you feel like"],
-    ["/labs/october/discovery/c", "C · Trust me"],
-    ["/labs/october/discovery/d", "D · Discover"],
+    ["/october/discovery/a", "A · Tonight"],
+    ["/october/discovery/b", "B · What do you feel like"],
+    ["/october/discovery/c", "C · Trust me"],
+    ["/october/discovery/d", "D · Discover"],
   ] as const;
   return (
     <nav className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#e9e6da]/10 pb-4 text-xs">
       <Link
-        href="/labs/october/discovery"
+        href="/october/discovery"
         className="text-[#e9e6da]/35 hover:text-[#e9e6da]"
       >
         Lab

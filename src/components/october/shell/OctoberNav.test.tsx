@@ -24,7 +24,7 @@ const at = (path: string) => {
 };
 
 describe("OctoberNav", () => {
-  it("offers the three destinations October has, and no more", () => {
+  it("offers the four destinations October has, and no more", () => {
     at("/october");
     const links = screen
       .getByRole("navigation", { name: "October" })
@@ -33,7 +33,19 @@ describe("OctoberNav", () => {
       "October",
       "Discover",
       "My October",
+      "From October",
     ]);
+  });
+
+  it("knows From October's rooms are From October", () => {
+    at("/october/from");
+    expect(screen.getByTestId("october-nav-from-october")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByTestId("october-nav-october")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("marks where you are, and marks only one place", () => {
@@ -183,5 +195,25 @@ describe("the bar carries where you are", () => {
       "href",
       "/account?next=%2Foctober%2Fdiscover",
     );
+  });
+});
+
+describe("rooms that carry their own frame", () => {
+  it.each([
+    "/october/for-bryan",
+    "/october/sketchbook",
+    "/october/sketchbook/the-store",
+    "/october/scariest-room/has-been-here",
+    "/october/secret-room/another-way-out",
+    "/october/discovery",
+    "/october/discovery/legacy",
+  ])("leaves %s without the bar", (path) => {
+    at(path);
+    expect(screen.queryByRole("navigation", { name: "October" })).toBeNull();
+  });
+
+  it("does not mistake Discover for Discovery", () => {
+    at("/october/discover");
+    expect(screen.getByRole("navigation", { name: "October" })).toBeTruthy();
   });
 });
