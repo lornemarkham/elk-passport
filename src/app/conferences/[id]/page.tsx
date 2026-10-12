@@ -8,6 +8,7 @@ import { homeFor } from "@/lib/conference/service";
 import { Closed } from "@/components/conference/Closed";
 import { Doors } from "@/components/conference/Doors";
 import { Hero } from "@/components/conference/Hero";
+import { LiveRefresh } from "@/components/conference/LiveRefresh";
 import { MyPresence } from "@/components/conference/MyPresence";
 import { Section } from "@/components/conference/ui";
 
@@ -44,6 +45,7 @@ export default async function ConferenceHome({
 
   return (
     <>
+      <LiveRefresh />
       <Hero details={c} now={d.now}>
         {you.role === "organiser" ? (
           <Link

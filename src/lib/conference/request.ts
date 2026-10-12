@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth/currentUser";
 import type { ConferenceContext } from "@/domain/conference/contracts";
 import type { IdentityKey } from "@/domain/conference/types";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { conferenceSetup, type ConferenceConfig } from "./config";
 import {
   GUEST_COOKIE,
@@ -14,6 +15,7 @@ import {
 import { LIFECYCLE } from "./lifecycle";
 import { contextFor, type Deps, type Failure } from "./service";
 import { store } from "./store";
+import { supabaseStore } from "./supabaseStore";
 
 /**
  * **The glue between Next and the conference service.** Pages and route
@@ -24,11 +26,21 @@ import { store } from "./store";
 
 export const NO_STORE = { "Cache-Control": "private, no-store" } as const;
 
-export const deps = (): Deps => ({
-  store: store(),
-  lifecycle: LIFECYCLE,
-  now: new Date(),
-});
+/**
+ * Dependencies for this request. The durable store is built per request
+ * because it acts as whoever is signed in on it.
+ */
+export const deps = (): Deps => {
+  const setup = conferenceSetup();
+  return {
+    store:
+      setup.open && setup.config.store === "supabase"
+        ? supabaseStore(createSupabaseServerClient)
+        : store(),
+    lifecycle: LIFECYCLE,
+    now: new Date(),
+  };
+};
 
 /** The viewer's identity, or `null` for somebody who has never joined anything. */
 export async function readIdentity(
@@ -37,7 +49,8 @@ export async function readIdentity(
   const [user, jar] = await Promise.all([currentUser(), cookies()]);
   return identityFrom(
     user?.id ?? null,
-    jar.get(GUEST_COOKIE)?.value,
+    // No guests in the durable store: a cookie is not an identity there.
+    config.guests ? jar.get(GUEST_COOKIE)?.value : undefined,
     config.secret,
   );
 }
@@ -99,7 +112,7 @@ export async function gate(needIdentity: "existing" | "issue"): Promise<
   if (!setup.open) return { response: errorResponse("closed") };
   const identity = await readIdentity(setup.config);
   if (identity) return { config: setup.config, identity, issued: null };
-  if (needIdentity === "existing")
+  if (needIdentity === "existing" || !setup.config.guests)
     return { response: errorResponse("signed-out") };
   const guest = issueGuest(setup.config.secret);
   return {

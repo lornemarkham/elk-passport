@@ -50,6 +50,11 @@ export function memberHome(
   conference: Conference,
   memberships: readonly Membership[],
   you: Membership,
+  /**
+   * Everyone in it. A durable store shows a member only some of the rows, so
+   * the count comes from the store separately.
+   */
+  total: number = memberships.length,
 ): MemberHome {
   const visible = memberships
     .filter(
@@ -63,7 +68,7 @@ export function memberHome(
   return {
     conference: summaryOf(conference),
     you: viewerOf(you),
-    people: { total: memberships.length, visible },
+    people: { total, visible },
   };
 }
 
@@ -101,9 +106,10 @@ export function organiserView(
   invites: readonly Invite[],
   you: Membership,
   now: Date,
+  total?: number,
 ): OrganiserView {
   return {
-    ...memberHome(conference, memberships, you),
+    ...memberHome(conference, memberships, you, total),
     accessCode: conference.accessCode,
     invites: invites
       .filter((i) => !i.revokedAt)

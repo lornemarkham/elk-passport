@@ -6,13 +6,15 @@ export type Call<T> =
   | ({ ok: true } & T)
   | {
       ok: false;
+      /** The server's error code, e.g. `signed-out`. */
+      error: string;
       message: string;
       issues?: { path: string; message: string }[];
     };
 
 const WORDS: Record<string, string> = {
   closed: "Conferences aren't open here yet.",
-  "signed-out": "Sign in to Passport to start a conference.",
+  "signed-out": "Sign in to Passport first, then come back to this.",
   "not-found": "That conference isn't here, or you're not in it.",
   forbidden: "Only organisers can do that.",
   invalid: "Something there doesn't look right.",
@@ -43,10 +45,15 @@ export async function call<T extends object>(
     if (r.ok) return { ok: true, ...data };
     return {
       ok: false,
+      error: data.error ?? "unknown",
       message: WORDS[data.error ?? ""] ?? "That didn't work. Try again?",
       ...(data.issues ? { issues: data.issues } : {}),
     };
   } catch {
-    return { ok: false, message: "Couldn't reach Passport. Are you online?" };
+    return {
+      ok: false,
+      error: "offline",
+      message: "Couldn't reach Passport. Are you online?",
+    };
   }
 }

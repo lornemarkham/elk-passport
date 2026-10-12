@@ -31,13 +31,35 @@ describe("configuration", () => {
   it("stays closed in production until the secret and store are stated", () => {
     expect(conferenceSetup({}, false)).toEqual({
       open: false,
-      missing: ["CONFERENCE_SECRET", "CONFERENCE_STORE"],
+      missing: ["CONFERENCE_STORE", "CONFERENCE_SECRET"],
     });
     const s = conferenceSetup(
       { CONFERENCE_SECRET: SECRET, CONFERENCE_STORE: "memory" },
       false,
     );
     expect(s.open && s.config.allowGuestOrganisers).toBe(false);
+  });
+
+  it("the durable store has no guests, needs no guest secret, and says so", () => {
+    const s = conferenceSetup({ CONFERENCE_STORE: "supabase" }, false);
+    expect(s.open && s.config).toMatchObject({
+      store: "supabase",
+      guests: false,
+      allowGuestOrganisers: false,
+    });
+    // Even where guests would otherwise be the development default.
+    const dev = conferenceSetup(
+      { CONFERENCE_STORE: "supabase", CONFERENCE_GUEST_ORGANISERS: "1" },
+      true,
+    );
+    expect(dev.open && dev.config.allowGuestOrganisers).toBe(false);
+  });
+
+  it("refuses a store it has never heard of rather than falling back", () => {
+    expect(conferenceSetup({ CONFERENCE_STORE: "redis" }, true)).toEqual({
+      open: false,
+      missing: ["CONFERENCE_STORE (memory or supabase)"],
+    });
   });
 });
 

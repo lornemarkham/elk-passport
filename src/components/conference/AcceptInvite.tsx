@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { call } from "./api";
 import { Problem } from "./ui";
@@ -15,6 +15,7 @@ export function AcceptInvite({
   ink: string;
 }) {
   const router = useRouter();
+  const here = usePathname();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   return (
@@ -32,6 +33,8 @@ export function AcceptInvite({
           );
           setBusy(false);
           if (r.ok) router.push(`/conferences/${r.conferenceId}`);
+          else if (r.error === "signed-out")
+            router.push(`/auth?next=${encodeURIComponent(here)}`);
           else setProblem(r.message);
         }}
       >

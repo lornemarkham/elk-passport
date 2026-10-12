@@ -351,3 +351,27 @@ describe("modules", () => {
     expect(await svc.conferencesOf(deps, STRANGER)).toEqual([]);
   });
 });
+
+describe("a store that shows a member only some of the rows", () => {
+  it("counts everyone from the store, not from the rows it was shown", async () => {
+    // The durable store hides other members' rows from a member (row level
+    // security), so the headcount cannot be `memberships.length`.
+    const { deps } = world();
+    const id = await sycle(deps);
+    const code = await svc.setAccessCode(deps, ORG, id, "new");
+    if (!code.ok || !code.accessCode) throw new Error("no code");
+    await svc.joinWithCode(deps, ANA, code.accessCode);
+    await svc.joinWithCode(deps, BEN, code.accessCode);
+    const narrow = {
+      ...deps,
+      store: {
+        ...deps.store,
+        memberships: async (c: string) =>
+          (await deps.store.memberships(c)).filter((m) => m.identity === ANA),
+      },
+    };
+    const home = await svc.homeFor(narrow, ANA, id);
+    expect(home?.people.total).toBe(3);
+    expect(home?.people.visible).toEqual([]);
+  });
+});

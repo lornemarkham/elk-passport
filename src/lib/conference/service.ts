@@ -3,7 +3,6 @@ import {
   canAdminister,
   CODE_ALPHABET,
   formatCode,
-  inviteState,
   type InviteState,
 } from "@/domain/conference/access";
 import type {
@@ -203,7 +202,7 @@ export async function setAccessCode(
       code = formatCode(
         Array.from({ length: 9 }, () => randomInt(CODE_ALPHABET.length)),
       );
-    } while (await deps.store.conferenceByCode(code));
+    } while (await deps.store.codeTaken(code));
   }
   await deps.store.putConference({
     ...access.conference,
@@ -291,16 +290,13 @@ export async function describeInvite(
   inviteToken: string,
 ): Promise<InviteLanding | null> {
   await purge(deps);
-  const invite = await deps.store.invite(inviteToken);
-  if (!invite) return null;
-  const conference = await deps.store.conference(invite.conferenceId);
-  if (!conference) return null;
-  const state = inviteState(invite, deps.now);
-  if (state !== "valid") return { state };
+  const found = await deps.store.describeInvite(inviteToken, deps.now);
+  if (!found) return null;
+  if (found.state !== "valid" || !found.details) return { state: found.state };
   const { name, kind, tagline, place, startsOn, endsOn, branding, timeZone } =
-    conference.details;
+    found.details;
   return {
-    state,
+    state: found.state,
     conference: {
       name,
       kind,
@@ -314,21 +310,6 @@ export async function describeInvite(
   };
 }
 
-async function admit(
-  deps: Deps,
-  identity: IdentityKey,
-  conference: Conference,
-  via: "code" | "link",
-): Promise<Membership> {
-  const existing = (await deps.store.memberships(conference.id)).find(
-    (m) => m.identity === identity,
-  );
-  if (existing) return existing;
-  const m = newMembership(conference.id, identity, "member", via, deps.now);
-  await deps.store.putMembership(m);
-  return m;
-}
-
 /**
  * Join with a code. Idempotent: the same person typing it twice lands in the
  * same membership. A conference with codes off matches nothing.
@@ -340,10 +321,8 @@ export async function joinWithCode(
 ): Promise<Result<{ conferenceId: string }>> {
   if (typeof code !== "string") return fail("wrong-code");
   await purge(deps);
-  const conference = await deps.store.conferenceByCode(code);
-  if (!conference) return fail("wrong-code");
-  await admit(deps, identity, conference, "code");
-  return { ok: true, conferenceId: conference.id };
+  const id = await deps.store.redeemCode(identity, code, token(9), deps.now);
+  return id ? { ok: true, conferenceId: id } : fail("wrong-code");
 }
 
 /**
@@ -357,19 +336,13 @@ export async function joinWithInvite(
 ): Promise<Result<{ conferenceId: string }>> {
   if (typeof inviteToken !== "string") return fail("dead-link");
   await purge(deps);
-  const invite = await deps.store.invite(inviteToken);
-  if (!invite) return fail("dead-link");
-  const conference = await deps.store.conference(invite.conferenceId);
-  if (!conference) return fail("dead-link");
-  const already = (await deps.store.membershipsOf(identity)).some(
-    (m) => m.conferenceId === conference.id,
+  const id = await deps.store.redeemInvite(
+    identity,
+    inviteToken,
+    token(9),
+    deps.now,
   );
-  if (!already) {
-    if (inviteState(invite, deps.now) !== "valid") return fail("dead-link");
-    await deps.store.putInvite({ ...invite, uses: invite.uses + 1 });
-    await admit(deps, identity, conference, "link");
-  }
-  return { ok: true, conferenceId: conference.id };
+  return id ? { ok: true, conferenceId: id } : fail("dead-link");
 }
 
 // ── Being in it ─────────────────────────────────────────────────────────
@@ -457,11 +430,11 @@ export async function homeFor(
 ): Promise<MemberHome | null> {
   const found = await membershipIn(deps, conferenceId, identity);
   if (!found) return null;
-  return memberHome(
-    found.conference,
-    await deps.store.memberships(conferenceId),
-    found.you,
-  );
+  const [memberships, total] = await Promise.all([
+    deps.store.memberships(conferenceId),
+    deps.store.headcount(conferenceId),
+  ]);
+  return memberHome(found.conference, memberships, found.you, total);
 }
 
 export async function adminFor(
@@ -471,9 +444,10 @@ export async function adminFor(
 ): Promise<Result<{ view: OrganiserView }>> {
   const access = await asOrganiser(deps, conferenceId, identity);
   if (!access.ok) return fail(access.error);
-  const [memberships, invites] = await Promise.all([
+  const [memberships, invites, total] = await Promise.all([
     deps.store.memberships(conferenceId),
     deps.store.invites(conferenceId),
+    deps.store.headcount(conferenceId),
   ]);
   return {
     ok: true,
@@ -483,6 +457,7 @@ export async function adminFor(
       invites,
       access.you,
       deps.now,
+      total,
     ),
   };
 }

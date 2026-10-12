@@ -279,7 +279,7 @@ be read without running it.
 instance has its own memory. In production, `config.ts` refuses to open
 unless `CONFERENCE_STORE` is stated, so this can't ship by accident.
 
-The proposed tables are in [`proposed-schema.sql`](proposed-schema.sql). They
+A durable store is now built (`CONFERENCE_STORE=supabase`, see [REAL-PEOPLE.md](REAL-PEOPLE.md)); its tables are in [`migration.sql`](migration.sql), and the paragraph below describes the earlier privileged-key plan it replaced. They
 are deliberately **outside** `supabase/migrations/`, which is a shared
 contract. That has the same privileged-key question the `/sycle` prototype
 raised: guest identities aren't `auth.users`, so RLS can't key on

@@ -10,18 +10,27 @@ import { randomBytes } from "node:crypto";
  * people's memberships on a cold start, which is worse than one that is
  * visibly not open yet.
  *
- *   CONFERENCE_SECRET            ≥ 32 chars; signs the guest cookie
- *   CONFERENCE_STORE             "memory": the only store that exists yet.
- *                                Production refuses to open until it is
- *                                stated (see store.ts)
+ *   CONFERENCE_STORE             "memory" or "supabase". Production refuses
+ *                                to open until it is stated (see store.ts).
+ *                                Development defaults to memory.
+ *                                "supabase" is durable and shared, runs as
+ *                                the signed-in person, and has NO GUESTS:
+ *                                everyone needs a Passport account
+ *   CONFERENCE_SECRET            ≥ 32 chars; signs the guest cookie. Only
+ *                                the memory store has guests
  *   CONFERENCE_GUEST_ORGANISERS  "1" lets people without a Passport account
- *                                create conferences. Default: on in
- *                                development (no Supabase here), off in
+ *                                create conferences (memory store only).
+ *                                Default: on in development, off in
  *                                production. Provisional (ROADMAP D2)
  */
 const dev = process.env.NODE_ENV !== "production";
 
+export type StoreKind = "memory" | "supabase";
+
 export interface ConferenceConfig {
+  readonly store: StoreKind;
+  /** Whether somebody without a Passport account can be a member at all. */
+  readonly guests: boolean;
   readonly secret: string;
   readonly allowGuestOrganisers: boolean;
 }
@@ -38,22 +47,32 @@ export function conferenceSetup(
   env: Readonly<Record<string, string | undefined>> = process.env,
   isDev = dev,
 ): ConferenceSetup {
-  let secret = env.CONFERENCE_SECRET ?? "";
-  if (!secret && isDev)
-    secret = g.__conferenceDevSecret ??= randomBytes(32).toString("hex");
-
+  const stated = env.CONFERENCE_STORE;
   const missing: string[] = [];
-  if (secret.length < 32) missing.push("CONFERENCE_SECRET");
-  if (!isDev && env.CONFERENCE_STORE !== "memory")
-    missing.push("CONFERENCE_STORE");
+  if (stated !== undefined && stated !== "memory" && stated !== "supabase")
+    missing.push("CONFERENCE_STORE (memory or supabase)");
+  else if (!isDev && stated === undefined) missing.push("CONFERENCE_STORE");
+  const store: StoreKind = stated === "supabase" ? "supabase" : "memory";
+
+  // Guests are signed with a secret. A store with no guests needs none.
+  let secret = env.CONFERENCE_SECRET ?? "";
+  if (store === "memory") {
+    if (!secret && isDev)
+      secret = g.__conferenceDevSecret ??= randomBytes(32).toString("hex");
+    if (secret.length < 32) missing.push("CONFERENCE_SECRET");
+  }
   if (missing.length) return { open: false, missing };
 
-  const guests = env.CONFERENCE_GUEST_ORGANISERS;
+  const guests = store === "memory";
+  const organisers = env.CONFERENCE_GUEST_ORGANISERS;
   return {
     open: true,
     config: {
+      store,
+      guests,
       secret,
-      allowGuestOrganisers: guests === undefined ? isDev : guests === "1",
+      allowGuestOrganisers:
+        guests && (organisers === undefined ? isDev : organisers === "1"),
     },
   };
 }

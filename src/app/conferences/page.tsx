@@ -77,10 +77,14 @@ export default async function ConferencesPage() {
           </Link>
         ) : (
           <p className="text-black/60">
-            <Link href="/account" className="font-semibold underline">
+            <Link
+              href={`/auth?next=${encodeURIComponent("/conferences")}`}
+              className="font-semibold underline"
+            >
               Sign in to Passport
             </Link>{" "}
-            to start one. Joining needs no account.
+            to start one
+            {setup.config.guests ? ". Joining needs no account" : ""}.
           </p>
         )}
       </Section>

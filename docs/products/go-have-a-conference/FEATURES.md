@@ -59,7 +59,7 @@
 | HTTP API (10 endpoints)                                                                         | Built                  | `src/app/api/conferences/`                         |
 | Pages: list, new, join, invite landing, home, admin                                             | Built                  | `src/app/conferences/`                             |
 | Memory store                                                                                    | Built                  | `src/lib/conference/store.ts`                      |
-| Durable store                                                                                   | **Proposed (blocker)** | `proposed-schema.sql` (D3)                         |
+| Durable store                                                                                   | **Built, not applied** | `migration.sql`, REAL-PEOPLE.md (D3)               |
 | Guest → account claim                                                                           | Proposed               | D2                                                 |
 | Nav entry                                                                                       | Proposed               | D7. Reachable by URL only                          |
 | Co-organisers, per-person invites, cover images                                                 | Proposed               | Roadmap phase 4–5                                  |

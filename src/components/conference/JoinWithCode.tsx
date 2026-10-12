@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { call } from "./api";
 import { field, primary, Problem } from "./ui";
@@ -8,6 +8,7 @@ import { field, primary, Problem } from "./ui";
 /** One box, one button, and a human answer when it's wrong. */
 export function JoinWithCode({ initial = "" }: { initial?: string }) {
   const router = useRouter();
+  const here = usePathname();
   const [code, setCode] = useState(initial);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,6 +26,8 @@ export function JoinWithCode({ initial = "" }: { initial?: string }) {
         );
         setBusy(false);
         if (r.ok) router.push(`/conferences/${r.conferenceId}`);
+        else if (r.error === "signed-out")
+          router.push(`/auth?next=${encodeURIComponent(here)}`);
         else setProblem(r.message);
       }}
     >
