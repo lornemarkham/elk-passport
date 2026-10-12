@@ -157,9 +157,18 @@ build and `next start -p 3130` with `/tmp/hockey-stack/env` and
 - **Run it back** is hidden rather than shown as a dead button.
 - **Live updates are 5-second polling**, not Supabase Realtime.
 - **The winning restaurant is not written into an itinerary block.**
-- **Real Atlas near Rogers Arena is unmeasured.** Discovery's own notes say
-  Vancouver coverage is thin; the picker says so honestly when it finds
-  nothing, and suggesting by name always works.
+- **Atlas knows nowhere to eat near Rogers Arena.** Measured against the
+  committed Atlas snapshot `atlas-candidates-2026-10-11.json.gz` (2,979
+  candidates, on `lane/vision` @ `f617665`): Metro Vancouver holds 143
+  entities and **zero** in Discovery's Eat & drink subtypes; the nearest food
+  Atlas has is 256 km away in the Okanagan. Rogers Arena is not an entity
+  either (BC Place, 220 m away, is). The filter is not the cause — 358 of 479
+  food entities have no location at all, and the located ones are Okanagan.
+  So in production today the picker says, honestly, that Passport knows
+  nowhere nearby, and the group suggests places by name. **This is an Atlas
+  knowledge request, not a Passport fix:** food and drink within ~1.5 km of
+  Rogers Arena, with observed coordinates — the lab README's "highest-value
+  Atlas request" made concrete, and needed by 25 October to matter.
 - **Host is trusted.** The host can move the start time, which moves every
   lock with it. Acceptable for a night among coworkers; named so nobody
   mistakes it for a guarantee.
