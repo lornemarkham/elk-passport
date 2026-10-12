@@ -78,4 +78,20 @@ describe("what October remembers", () => {
     // Choices only: no time, no place, no device, no id.
     expect(stored).not.toMatch(/\d{4}-\d{2}|T\d{2}:|lat|lon|agent|id"/i);
   });
+
+  it("says what the store and the room kept, and forgets it with the rest", () => {
+    window.localStorage.setItem(
+      "october:passage:v1",
+      JSON.stringify({ refused: 1, tape: 2, escaped: 3, played: 4 }),
+    );
+    expect(describeMemory(whatOctoberRemembers())).toEqual([
+      "That she took a tape back from you.",
+      "That you took the tape nobody catalogued.",
+      "That you opened the door in the room.",
+      "That you played the tape where it was made.",
+    ]);
+    forgetEverything();
+    expect(window.localStorage.getItem("october:passage:v1")).toBeNull();
+    expect(whatOctoberRemembers()).toEqual(REMEMBERS_NOTHING);
+  });
 });

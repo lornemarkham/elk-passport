@@ -119,3 +119,14 @@ export function rememberPassage(key: PassageKey, now = Date.now()): void {
   }
   for (const l of listeners) l();
 }
+
+/** All of it, gone — My October's "Make her forget". */
+export function forgetPassage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(PASSAGE_KEY);
+  } catch {
+    return;
+  }
+  for (const l of listeners) l();
+}
