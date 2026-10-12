@@ -1,3 +1,5 @@
+import { PART_OF_DAY_START, type PartOfDay } from "@/domain/day/intent";
+
 /**
  * **Days a person chose to keep, on this device.**
  *
@@ -87,11 +89,22 @@ export function writeKeptDays(days: readonly KeptDay[]): boolean {
 export function withoutStaleClock(shaped: string): string {
   try {
     const saved = JSON.parse(shaped) as {
-      brief?: { startsNow?: boolean; startAt?: number } | null;
+      brief?: {
+        startsNow?: boolean;
+        startAt?: number;
+        startFromWhen?: boolean;
+        when?: PartOfDay;
+      } | null;
     };
     if (saved.brief?.startsNow) {
       delete saved.brief.startsNow;
       delete saved.brief.startAt;
+    }
+    // "This afternoon" was never earlier than the clock it was said at; on
+    // another day it is the afternoon's own start again.
+    if (saved.brief?.startFromWhen && saved.brief.when) {
+      const start = PART_OF_DAY_START[saved.brief.when];
+      if (start !== undefined) saved.brief.startAt = start;
     }
     return JSON.stringify(saved);
   } catch {

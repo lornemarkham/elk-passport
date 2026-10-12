@@ -335,6 +335,13 @@ test.describe("into a day", () => {
     await page.goto("/discovery");
     await page.getByTestId("plan-a-day").first().click();
     await expect(page).toHaveURL(/\/go\?.*with=/);
+    // Discovery had no town, so the day asks where it begins (ADR 003) —
+    // naming the pick it will be built around — rather than guessing.
+    if (!/[?&]at=/.test(page.url())) {
+      await expect(page.getByTestId("go-where")).toBeVisible();
+      await expect(page.getByTestId("go-where-picked")).toBeVisible();
+      await page.getByTestId("go-start-vernon").click();
+    }
     await expect(
       page.getByText(/You picked this in Discovery/i).first(),
     ).toBeVisible();

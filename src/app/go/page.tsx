@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
-import { candidateToExperience } from "@/domain/experience/atlasMapper";
-import { defaultFeed } from "@/domain/discovery/defaultFeed";
 import { GoHaveADay } from "@/components/go/GoHaveADay";
+import { dayPool } from "@/lib/go/pool";
 import { readBrief } from "@/domain/day/brief";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import { ThemeProvider } from "@/components/ghad/theme";
@@ -126,16 +125,7 @@ export default async function GoPage({ searchParams }: Props) {
     .map((id) => id.trim())
     .filter(Boolean)
     .slice(0, 5);
-  const all = candidates.map(candidateToExperience);
-  const feed = defaultFeed(all);
-  const chosen = all.filter(
-    (e) => keep.includes(e.id) && !feed.some((f) => f.id === e.id),
-  );
-  const pool = [...feed, ...chosen].map((e) =>
-    e.description === e.shortDescription
-      ? ({ ...e, description: undefined } as typeof e)
-      : e,
-  );
+  const pool = dayPool(candidates, keep);
 
   // `keep` (above) is ids only; one Atlas no longer serves builds the day
   // without it, and the day says so (`buildDay`'s `keep`).

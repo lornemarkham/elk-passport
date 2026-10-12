@@ -55,6 +55,7 @@ import { KeptDays } from "./KeptDays";
 import type { Timeline } from "@/domain/day/timeline";
 import { dayAsText } from "@/lib/go/dayText";
 import { readKeptDays, withKept, writeKeptDays } from "@/lib/go/keptDays";
+import { readLastStart, writeLastStart } from "@/lib/go/lastStart";
 import type { TravelMode } from "@/lib/routing/journey";
 
 /**
@@ -291,13 +292,25 @@ function ShapedDay({
   const router = useRouter();
   const [asking, startAsking] = useTransition();
   /** Bumped when a sentence is built, so the answer is brought into view. */
-  const [reveal, setReveal] = useState(0);
+  // A day that arrives in the address (Discovery's "Plan a day around this")
+  // is brought into view on arrival too; a day restored from this tab is not,
+  // because the person already scrolled where they wanted it.
+  const [reveal, setReveal] = useState(seed && !saved ? 1 : 0);
   useEffect(() => {
     if (reveal === 0) return;
     // On a phone the answer starts well below the box that was just tapped:
     // without this, pressing Build looks like nothing happened (M200 #10).
-    const target = document.getElementById("go-result");
-    target?.focus?.({ preventScroll: true });
+    // The section takes focus, so a screen reader starts at "Your day"; the
+    // eye goes to what matters first — what could not be found if anything,
+    // else the stops themselves. Scrolling to the section's top left the
+    // first stop below the fold on a phone, under the chips and the change
+    // panel.
+    const result = document.getElementById("go-result");
+    result?.focus?.({ preventScroll: true });
+    const target =
+      document.getElementById("go-not-found") ??
+      document.getElementById("go-stops") ??
+      result;
     target?.scrollIntoView?.({
       block: "start",
       behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -306,6 +319,12 @@ function ShapedDay({
     });
   }, [reveal]);
   const here = useHere();
+  /** The town they chose last time — offered, never applied (`lastStart`). */
+  const lastStart = useSyncExternalStore(
+    noSubscription,
+    readLastStart,
+    () => undefined,
+  );
   const [fetched, setFetched] = useState<{
     key: string;
     weather: PlanWeather | null;
@@ -429,7 +448,12 @@ function ShapedDay({
   const takeBack = () => {
     if (!undo) return;
     setDraft(undo.draft);
-    setBrief(undo.brief);
+    // A start the person chose is not part of the change being taken back.
+    setBrief(
+      undo.brief && !undo.brief.town && brief?.town
+        ? { ...undo.brief, town: brief.town }
+        : undo.brief,
+    );
     setShaping(undo.shaping);
     setSwapping(undefined);
     setBefore(null);
@@ -444,7 +468,8 @@ function ShapedDay({
    * that age — and the shaped day goes with it: the new address finds it in
    * this tab's storage, so nothing kept, set or ordered is lost on the way.
    */
-  const carryToAge = (next: DayBrief, nextShaping: Shaping, said: string) => {
+  /** `shown` is the sentence the top box should hold at the new address. */
+  const carryToAge = (next: DayBrief, nextShaping: Shaping, shown: string) => {
     const age = next.childAge;
     if (age === undefined) return false;
     const params = new URLSearchParams();
@@ -464,7 +489,7 @@ function ShapedDay({
       window.sessionStorage.setItem(
         key,
         JSON.stringify({
-          draft: built,
+          draft: shown,
           brief: next,
           shaping: nextShaping,
           by,
@@ -476,7 +501,10 @@ function ShapedDay({
     setReply([
       `Asking Atlas where a ${age}-year-old is admitted — your kept stops come with you.`,
     ]);
-    startAsking(() => router.push(`/go?${params.toString()}`));
+    // `scroll: false`: the day stays where they were looking at it.
+    startAsking(() =>
+      router.push(`/go?${params.toString()}`, { scroll: false }),
+    );
     return true;
   };
 
@@ -534,9 +562,12 @@ function ShapedDay({
   };
 
   /** Starting somewhere: chosen by the person, never inferred. */
-  const startFrom = (townId: string) => {
+  const startFrom = (townId: string, tapped = true) => {
     const town = townById(townId);
     if (!brief || !town) return;
+    // Only a town tapped from the list is remembered — never one worked out
+    // from a position, which is not stored.
+    if (tapped) writeLastStart(town.id);
     setBrief({ ...brief, town });
     setReply([]);
     setReveal((n) => n + 1);
@@ -596,10 +627,11 @@ function ShapedDay({
     const heard = heardIn(brief, next);
     if (next.childAge !== brief.childAge && next.childAge !== childAge) {
       remember();
-      if (carryToAge(next, { ...shaping, order: null }, said)) return;
+      if (carryToAge(next, { ...shaping, order: null }, built)) return;
     }
     // **A request nothing offers must not wipe a day that works.** If the
-    // revision would leave nothing at all, say so and leave the day alone.
+    // revision would leave nothing, or nothing but what was kept (a kept stop
+    // survives a request that builds no day), say so and leave the day alone.
     if (day.stops.length > 0 && heard.length > 0) {
       const trial = buildDay({
         pool,
@@ -610,8 +642,27 @@ function ShapedDay({
         minutes: shaping.minutes,
         ...(weather ? { weather } : {}),
       });
-      if (trial.stops.length === 0 && (trial.unmet?.length ?? 0) > 0) {
-        setReply([trial.opening, "I've left your day as it was."]);
+      const missing = trial.unmet ?? [];
+      const onlyKept = trial.stops.every(
+        (s) =>
+          shaping.keep.includes(s.experience.id) ||
+          keep.includes(s.experience.id),
+      );
+      if (
+        missing.length >= new Set(next.interests).size &&
+        missing.length > 0 &&
+        onlyKept &&
+        trial.stops.length < day.stops.length
+      ) {
+        setReply([
+          ...missing.map(
+            (u) =>
+              `Nothing Atlas holds says it offers ${u.activity} within reach of ${next.town?.name.replace(/,\s*BC$/, "") ?? "the start"}.${u.nearest ? ` The nearest it can place is ${u.nearest.title}, ${u.nearest.km} km away.` : ""}`,
+          ),
+          heard.length > 1
+            ? "I haven't changed anything, so say the rest on its own."
+            : "I've left your day as it was.",
+        ]);
         return;
       }
     }
@@ -836,6 +887,11 @@ function ShapedDay({
               : undefined
           }
           located={Boolean(here.at)}
+          last={townById(lastStart)}
+          picked={keep.flatMap((id) => {
+            const title = pool.find((e) => e.id === id)?.title;
+            return title ? [title] : [];
+          })}
           onAskLocation={here.ask}
           onStart={startFrom}
         />
@@ -969,7 +1025,8 @@ function ShapedDay({
           )}
 
           <div
-            className="mt-8"
+            id="go-stops"
+            className="mt-8 scroll-mt-4"
             hidden={day.stops.length === 0 && unmetNow.length > 0}
           >
             <DayItinerary
@@ -1054,7 +1111,7 @@ function ShapedDay({
           )}
         </section>
       )}
-      {!day && <KeptDays />}
+      {(!day || atlas === "unreachable") && <KeptDays />}
     </div>
   );
 }
@@ -1105,7 +1162,7 @@ function WorkingFrom({
     chips.push({ label: `planning without ${aside}`, assumed: true });
   if (brief.withinMinutes !== undefined)
     chips.push({
-      label: `Up to ${travelPhrase(brief.withinMinutes)} away — about ${brief.withinKm} km as the crow flies (assumes ~48 km/h), an estimate`,
+      label: `Up to ${travelPhrase(brief.withinMinutes)} away — searching ${brief.withinKm} km in a straight line (assumes ~48 km/h): a search estimate, not a drive time`,
       assumed: true,
     });
   else if (day?.radiusKm !== undefined && brief.town)
@@ -1211,14 +1268,20 @@ function StartPanel({
   brief,
   near,
   located,
+  last,
+  picked,
   onAskLocation,
   onStart,
 }: {
   readonly brief: DayBrief;
   readonly near: ReturnType<typeof nearestTown>;
   readonly located: boolean;
+  /** The town they chose last time on this device, offered first. */
+  readonly last: ReturnType<typeof townById>;
+  /** What they picked in Discovery, which the day will be built around. */
+  readonly picked: readonly string[];
   readonly onAskLocation: (() => void) | undefined;
-  readonly onStart: (townId: string) => void;
+  readonly onStart: (townId: string, tapped?: boolean) => void;
 }) {
   return (
     <section
@@ -1239,7 +1302,27 @@ function StartPanel({
         I&apos;ve kept what you said. A day needs somewhere to start from, or it
         could span the whole province, and I won&apos;t pick that for you.
       </p>
+      {picked.length > 0 && (
+        <p
+          data-testid="go-where-picked"
+          className="mt-2 max-w-[58ch] text-[15px] leading-relaxed text-black/60"
+        >
+          The day will be built around what you picked:{" "}
+          <span className="font-semibold text-[#111]">{picked.join(", ")}</span>
+          .
+        </p>
+      )}
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        {last && (
+          <button
+            type="button"
+            data-testid="go-start-last"
+            onClick={() => onStart(last.id)}
+            className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
+          >
+            {last.name.replace(/,\s*BC$/, "")} — where you started last time
+          </button>
+        )}
         {onAskLocation && !located && (
           <button
             type="button"
@@ -1254,7 +1337,7 @@ function StartPanel({
           <button
             type="button"
             data-testid="go-start-nearest"
-            onClick={() => onStart(near.town.id)}
+            onClick={() => onStart(near.town.id, false)}
             className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
           >
             Start from {near.town.name.replace(/,\s*BC$/, "")} — nearest to you
@@ -1266,8 +1349,9 @@ function StartPanel({
           </p>
         )}
         <p className="text-[12px] text-black/45">
-          Rounded to about 1 km, then sent only to ask Environment Canada for
-          the nearest forecast. Not stored.
+          Your position is rounded to about 1 km, then sent only to ask
+          Environment Canada for the nearest forecast. Not stored. A town you
+          tap is remembered on this device, to offer next time.
         </p>
       </div>
       {TOWN_GROUPS.map((group) => (
@@ -1312,9 +1396,10 @@ function NotFound({
   const unmet = day.unmet ?? [];
   return (
     <div
+      id="go-not-found"
       data-testid="go-not-found"
       role="status"
-      className="mt-6 rounded-2xl bg-amber-50 p-5 text-amber-950 ring-1 ring-amber-900/20 ring-inset"
+      className="mt-6 scroll-mt-4 rounded-2xl bg-amber-50 p-5 text-amber-950 ring-1 ring-amber-900/20 ring-inset"
     >
       <h2 className="ghad-display text-[22px] leading-tight font-extrabold tracking-[-0.02em]">
         {day.stops.length > 0

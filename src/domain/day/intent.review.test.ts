@@ -51,6 +51,15 @@ describe("review findings", () => {
       expect(reviseBrief(base, s).town?.id, s).toBe("vernon");
     expect(readBrief("a golden hour picnic", {}).town).toBeUndefined();
     expect(reviseBrief(base, "Kelowna").town?.id).toBe("kelowna");
+    // M207 review: a travel limit measured from a town is about the start.
+    const k = readBrief("Half a day near Kelowna", {});
+    expect(reviseBrief(k, "within 45 minutes of Vernon").town?.id).toBe(
+      "vernon",
+    );
+    expect(reviseBrief(k, "within 45 minutes of Vernon").withinMinutes).toBe(
+      45,
+    );
+    expect(reviseBrief(k, "near Vernon").town?.id).toBe("vernon");
     expect(reviseBrief(base, "actually, how about Penticton").town?.id).toBe(
       "penticton",
     );

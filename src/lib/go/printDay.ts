@@ -5,6 +5,7 @@ import { readBrief } from "@/domain/day/brief";
 import { uncarryBrief } from "@/domain/day/carry";
 import { buildDay, type DayPlanned } from "@/domain/day/build";
 import { townById } from "@/domain/discovery/towns";
+import { dayPool } from "./pool";
 import {
   keepDayQuery,
   readDayQuery,
@@ -82,6 +83,8 @@ export async function resolvePrintDay(
     count: Math.max(1, chosen.length),
     minutes: query.mins,
     rainPlans,
+    // What is missing is judged against what the screen chose from.
+    catalogue: dayPool(candidates, query.stops),
   });
   return { kind: "day", day, query, carried: keepDayQuery(raw) };
 }

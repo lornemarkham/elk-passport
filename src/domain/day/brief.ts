@@ -684,7 +684,7 @@ export function heardIn(before: DayBrief, after: DayBrief): string[] {
     after.withinMinutes !== undefined
   ) {
     out.push(
-      `Within ${travelPhrase(after.withinMinutes)} of the start — about ${after.withinKm} km as the crow flies. That is an estimate, not a routed time.`,
+      `Within ${travelPhrase(after.withinMinutes)} of the start — about ${after.withinKm} km in a straight line, assuming about 48 km/h. That is a search estimate, not a drive time.`,
     );
   } else if (
     after.withinKm !== before.withinKm &&

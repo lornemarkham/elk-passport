@@ -90,6 +90,7 @@ const mount = (say = "three hours near Vernon") =>
 beforeEach(() => {
   // Each test starts a fresh tab: no day shaped here before.
   window.sessionStorage.clear();
+  window.localStorage.removeItem("ghad.last-start");
   // No forecast in tests: the day is not today, so none is fetched.
   vi.stubGlobal(
     "fetch",
@@ -271,6 +272,23 @@ describe("Go have a day", () => {
     );
   });
 
+  it("remembers the town that was tapped, and offers it next time without applying it", () => {
+    const first = mount("Taking my family out this afternoon");
+    expect(screen.queryByTestId("go-start-last")).toBeNull();
+    fireEvent.click(screen.getByTestId("go-start-vernon"));
+    first.unmount();
+    window.sessionStorage.clear();
+
+    mount("A quiet afternoon, just me");
+    // Still asked: the person may be somewhere else today.
+    expect(screen.getByTestId("go-where")).toBeTruthy();
+    expect(screen.queryAllByTestId("go-stop")).toHaveLength(0);
+    fireEvent.click(screen.getByTestId("go-start-last"));
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(
+      /From Vernon/,
+    );
+  });
+
   it("says nothing matched and substitutes nothing, and keeps the request on screen", () => {
     mount("Scuba diving with sharks tonight, near Vernon");
     expect(screen.queryAllByTestId("go-stop")).toHaveLength(0);
@@ -382,6 +400,33 @@ describe("Go have a day", () => {
     expect(stops()).toEqual(before);
     expect(screen.getByTestId("go-reply").textContent).toMatch(
       /Nothing Atlas holds says it offers sharks[\s\S]*left your day/,
+    );
+  });
+
+  it("does not cut a working day down to its kept stop for a request nothing offers", () => {
+    mount("three hours near Vernon");
+    const before = stops();
+    expect(before.length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByTestId("go-keep-1"));
+    fireEvent.change(screen.getByTestId("go-change"), {
+      target: { value: "we want to see sharks" },
+    });
+    fireEvent.click(screen.getByTestId("go-change-submit"));
+    expect(stops()).toEqual(before);
+    expect(screen.getByTestId("go-reply").textContent).toMatch(
+      /Nothing Atlas holds says it offers sharks[\s\S]*left your day/,
+    );
+  });
+
+  it("says when a refused revision had other parts it did not apply", () => {
+    mount("three hours near Vernon");
+    fireEvent.click(screen.getByTestId("go-keep-1"));
+    fireEvent.change(screen.getByTestId("go-change"), {
+      target: { value: "home by 4, also sharks" },
+    });
+    fireEvent.click(screen.getByTestId("go-change-submit"));
+    expect(screen.getByTestId("go-reply").textContent).toMatch(
+      /haven't changed anything/,
     );
   });
 });

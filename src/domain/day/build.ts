@@ -690,6 +690,14 @@ export interface BuildInput {
    * alternatives the screen showed, rather than re-choosing them.
    */
   readonly rainPlans?: Readonly<Record<string, string>>;
+  /**
+   * **Everything the day was chosen from**, when `pool` is only a replay of
+   * the stops already chosen (the paper, Go Offline). What is *missing* is
+   * judged against this, not against the stops on the page — otherwise a
+   * one-stop paper says Atlas has nothing for every interest that stop does
+   * not cover. Choosing still draws only from `pool`.
+   */
+  readonly catalogue?: readonly Experience[];
 }
 
 interface Ranking {
@@ -849,6 +857,7 @@ export function buildDay({
   count,
   weather,
   rainPlans,
+  catalogue,
 }: BuildInput): DayPlanned {
   const { ranked, origin, radiusKm } = rank(pool, brief, without, weather);
   const byId = new Map(pool.map((e) => [e.id, e]));
@@ -878,13 +887,15 @@ export function buildDay({
   const inStartTown = (e: Experience) =>
     startsIn !== undefined &&
     (e.geography?.locality ?? "").toLowerCase() === startsIn;
-  const placeable = origin
-    ? ranked.filter((e) => point(e) || inStartTown(e))
-    : ranked;
+  const placeableIn = (from: readonly Experience[]) =>
+    origin ? from.filter((e) => point(e) || inStartTown(e)) : from;
+  const placeable = placeableIn(ranked);
   const unmet = unmetIn(
     brief.interests,
-    placeable,
-    pool.filter((e) => !without.includes(e.id)),
+    catalogue
+      ? placeableIn(rank(catalogue, brief, without, weather).ranked)
+      : placeable,
+    (catalogue ?? pool).filter((e) => !without.includes(e.id)),
     origin
       ? (e) => {
           const here = point(e);
@@ -1114,6 +1125,12 @@ export function buildDay({
   };
 
   const unknowns: string[] = [...keptOut];
+  // Set aside by the person, not dropped by the plan: said wherever the day
+  // goes, so the paper never reads as if it was what they asked for.
+  for (const aside of brief.setAside ?? [])
+    unknowns.push(
+      `Not in this day: ${aside} — nothing Atlas holds offered it, and you said to plan without it.`,
+    );
   for (const caution of brief.cautions ?? []) unknowns.push(caution);
   for (const note of keptAgainst(keptExperiences, brief)) unknowns.push(note);
   const unfit = brief.interests.filter(
@@ -1405,9 +1422,12 @@ function openingFor(
     weather?.wet && brief.shelter !== "outdoor"
       ? " Rain is forecast, so open-air places sank and the rest carry a rain plan where one exists."
       : "";
+  // When nothing they asked for exists, the stops are only what they kept:
+  // "the rest of what you asked for" would be false.
+  const nothingAsked = unmet.length >= new Set(brief.interests).size;
   const lead =
     unmet.length > 0
-      ? `${saidUnmet(unmet)} Here is the rest of what you asked for. `
+      ? `${saidUnmet(unmet)} ${nothingAsked ? "These are only the stops you chose; nothing else was added in its place." : "Here is the rest of what you asked for."} `
       : "";
   return `${lead}${hours}${who}, ${count}${circle}, and a plan loose enough to abandon.${window}${rain}`;
 }

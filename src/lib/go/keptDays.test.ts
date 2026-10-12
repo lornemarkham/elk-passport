@@ -54,5 +54,12 @@ describe("kept days", () => {
     expect(back.shaping.order).toEqual(["a"]);
     const typed = JSON.stringify({ brief: { startAt: 600 } });
     expect(JSON.parse(withoutStaleClock(typed)).brief.startAt).toBe(600);
+    // "This afternoon", built at 3:26 pm, reopens as the afternoon's start.
+    const afternoon = JSON.stringify({
+      brief: { startFromWhen: true, when: "afternoon", startAt: 15 * 60 + 30 },
+    });
+    expect(JSON.parse(withoutStaleClock(afternoon)).brief.startAt).toBeLessThan(
+      15 * 60 + 30,
+    );
   });
 });

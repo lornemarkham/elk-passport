@@ -332,7 +332,7 @@ export function townChangeIn(said: string): DiscoveryTown | undefined {
     return undefined;
   if (text === bare) return town;
   const cue = new RegExp(
-    String.raw`\binstead\b|\b(?:let'?s|lets)\s+(?:do|try|go|head|start|switch|move)\b|\bstart(?:ing)?\s+(?:in|from|at|out of)\b|\b(?:move|switch|change|shift)(?:\s+(?:it|us|the day))?\s+(?:over\s+)?to\b|\bhow about\b|\bwhat about\b|\bactually\b|\brather\b|\bmake it\b|\b(?:go|head|over) to\b|\bbased?\s+(?:in|out of)\b|\bfrom\s+${bare}\b`,
+    String.raw`\binstead\b|\b(?:let'?s|lets)\s+(?:do|try|go|head|start|switch|move)\b|\bstart(?:ing)?\s+(?:in|from|at|out of)\b|\b(?:move|switch|change|shift)(?:\s+(?:it|us|the day))?\s+(?:over\s+)?to\b|\bhow about\b|\bwhat about\b|\bactually\b|\brather\b|\bmake it\b|\b(?:go|head|over) to\b|\bbased?\s+(?:in|out of)\b|\bfrom\s+${bare}\b|\b(?:min(?:ute)?s?|hours?|hrs?|km|kilomet(?:re|er)s?|drive)\s+(?:of|from)\s+${bare}\b|\bnear\s+${bare}\b`,
   );
   return cue.test(text) ? town : undefined;
 }

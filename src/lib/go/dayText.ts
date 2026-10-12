@@ -14,7 +14,8 @@ export function dayAsText(day: DayPlanned, timeline?: Timeline): string {
   const town = day.brief.town?.name.replace(/,\s*BC$/, "");
   const at = (n: number, about: boolean) =>
     `${about ? "about " : ""}${clockLabel(n)}`;
-  const lines: string[] = [day.title, ""];
+  // The opening is where a request nothing offered is said first.
+  const lines: string[] = [day.title, day.opening, ""];
   if (day.brief.startAt !== undefined)
     lines.push(
       `Leave ${town ? `${town} ` : ""}${day.brief.startsNow ? "now, about " : ""}${clockLabel(day.brief.startAt)}`,

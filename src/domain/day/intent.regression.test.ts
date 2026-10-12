@@ -221,3 +221,82 @@ describe("the readings underneath", () => {
     expect(heardIn(base, next)).toContain("Youngest is 6.");
   });
 });
+
+/**
+ * **What the release candidate's independent review found** (M207), against
+ * the same fixture. The paper and Go Offline replay the chosen stops; they
+ * must say what the screen said about what is missing.
+ */
+describe("the paper says what the screen said", () => {
+  const replay = (brief: DayBrief, ids: readonly string[]) =>
+    buildDay({
+      pool: pool.filter((e) => ids.includes(e.id)),
+      brief,
+      keep: ids,
+      order: ids,
+      count: ids.length,
+      catalogue: pool,
+    });
+
+  it("a one-stop day does not claim Atlas has nothing for what the stop doesn't cover", () => {
+    const brief = readBrief(
+      "hiking, a museum and swimming",
+      { town: town("kelowna") },
+      NOW,
+    );
+    const screen = build(brief, { count: 1 });
+    const ids = screen.stops.map((s) => s.experience.id);
+    expect(ids).toHaveLength(1);
+    const paper = replay(brief, ids);
+    expect(paper.unmet ?? []).toEqual(screen.unmet ?? []);
+    expect(paper.opening).not.toMatch(/Nothing Atlas holds/);
+    expect(paper.unknowns.join(" ")).toMatch(/Not in this day/);
+    // Without the catalogue it would have said so — the defect, kept visible.
+    const blind = buildDay({
+      pool: pool.filter((e) => ids.includes(e.id)),
+      brief,
+      keep: ids,
+      order: ids,
+      count: ids.length,
+    });
+    expect(blind.opening).toMatch(/Nothing Atlas holds/);
+  });
+
+  it("a partial request prints the missing part, and the stops", () => {
+    const brief = readBrief(
+      "Scuba diving with sharks tonight",
+      { town: town("kelowna") },
+      NOW,
+    );
+    const screen = build(brief);
+    const paper = replay(
+      brief,
+      screen.stops.map((s) => s.experience.id),
+    );
+    expect(paper.stops.map((s) => s.experience.id)).toEqual(
+      screen.stops.map((s) => s.experience.id),
+    );
+    expect(paper.unmet?.map((u) => u.activity)).toEqual(["sharks"]);
+    expect(paper.opening).toMatch(/sharks/);
+  });
+
+  it("an activity set aside is said on the paper, not dropped quietly", () => {
+    const asked = readBrief(
+      "Shark diving tonight",
+      { town: town("kelowna") },
+      NOW,
+    );
+    const brief: DayBrief = {
+      ...asked,
+      interests: asked.interests.filter((i) => i !== "sharks"),
+      setAside: ["sharks"],
+    };
+    const screen = build(brief);
+    expect(screen.stops.length).toBeGreaterThan(0);
+    const paper = replay(
+      brief,
+      screen.stops.map((s) => s.experience.id),
+    );
+    expect(paper.unknowns.join(" ")).toMatch(/plan without it/);
+  });
+});

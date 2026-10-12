@@ -1,6 +1,6 @@
-# 003 · A built day needs a starting point — PROPOSED, needs a human decision
+# 003 · A built day needs a starting point — ACCEPTED for building a day
 
-**Proposed:** 2026-10-11 · **Status:** implemented on `fix/ghad-understand-intent`, **not approved**
+**Proposed:** 2026-10-11 · **Accepted:** 2026-10-11, by the human-written mission brief for M207 ("Require a known starting town before building a day") · **Scope:** `/go` only
 
 ## The problem
 
@@ -35,3 +35,18 @@ open question and is recorded here rather than buried.
 ## To resolve
 
 A human picks one of the above, and §15.5 is then edited to say so.
+
+## Decision (M207)
+
+The family-test release mission states the requirement in a person's words:
+_require a known starting town before building a day; remember the selected
+starting town where appropriate; preserve user control over location
+permissions._ So the first option above stands, for **building a day only**.
+
+"Remember" is implemented as an **offer**, not a default: the last town
+somebody tapped is kept on the device (`src/lib/go/lastStart.ts`, a town id,
+no position) and shown first in "Where does the adventure begin?". It is never
+applied without a tap, because the person may be somewhere else today.
+
+§15.5 stays open for everything else (Discovery, the helper). The doctrine
+says so.
