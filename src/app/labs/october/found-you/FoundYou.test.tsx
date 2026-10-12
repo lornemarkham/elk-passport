@@ -38,6 +38,20 @@ vi.mock("framer-motion", () => {
 import React from "react";
 
 /**
+ * The recording is swapped for spies: jsdom has no audio, and what matters
+ * here is *when* she is allowed to be heard, not what she sounds like.
+ */
+const sound = vi.hoisted(() => ({
+  prepare: vi.fn(),
+  rise: vi.fn(),
+  fall: vi.fn(),
+  close: vi.fn(),
+}));
+vi.mock("./underneath", () => ({
+  createUnderneath: () => ({ ...sound, sounding: false }),
+}));
+
+/**
  * Push the clock far enough that any written pause has elapsed.
  *
  * Sliced rather than advanced in one jump: each beat schedules the next one
@@ -65,6 +79,7 @@ describe("October found you", () => {
   beforeEach(() => {
     forgetOctober();
     vi.useFakeTimers();
+    for (const spy of Object.values(sound)) spy.mockClear();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -77,7 +92,29 @@ describe("October found you", () => {
     expect(screen.queryByText("I remember you.")).toBeNull();
     // And the opening is the opening, not a greeting.
     await settle(3000);
-    expect(screen.getByText("You found a way out.")).toBeTruthy();
+    expect(screen.getByText("You stopped.")).toBeTruthy();
+  });
+
+  it("gives a stranger a beginning, not the middle of a story", async () => {
+    // "You found a way out." presumes somewhere they have been. A first-time
+    // visitor has been nowhere; what they did was stop.
+    render(<FoundYou />);
+    const seen: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      await settle(500, 500);
+      const line = screen
+        .getByTestId("found-you")
+        .querySelector("p")?.textContent;
+      if (line && seen.at(-1) !== line) seen.push(line);
+    }
+    expect(seen.slice(0, 3)).toEqual([
+      "You stopped.",
+      "Nobody stops.",
+      "October notices things like that.",
+    ]);
+    expect(seen).not.toContain("You found a way out.");
+    expect(seen).not.toContain("I remember you.");
+    expect(phase()).toBe("number");
   });
 
   it("plays through, recalls the choice actually made, and ends on the line", async () => {
@@ -193,6 +230,10 @@ describe("October found you", () => {
     render(<FoundYou />);
     await act(async () => {});
     expect(screen.getByText("I remember you.")).toBeTruthy();
+    // And then the remembered beginning, which is true of them now.
+    await settle(3000);
+    expect(screen.getByText("You found a way out.")).toBeTruthy();
+    expect(screen.queryByText("You stopped.")).toBeNull();
   });
 
   it("stops recognising them once the state is cleared", async () => {
@@ -213,5 +254,91 @@ describe("October found you", () => {
     render(<FoundYou />);
     await act(async () => {});
     expect(screen.queryByText("I remember you.")).toBeNull();
+  });
+
+  it("stays silent for somebody who said they could not hear her", async () => {
+    render(<FoundYou />);
+    await settle();
+    await press("31");
+    await settle();
+    await press("LEAVE");
+    await settle();
+    // The file is fetched while she asks, but nothing plays.
+    expect(sound.prepare).toHaveBeenCalled();
+    await press("NO");
+    await settle(40_000);
+    expect(sound.rise).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("hush")).toBeNull();
+  });
+
+  it("is heard only after YES, can be hushed, and is gone at EXIT", async () => {
+    render(<FoundYou />);
+    await settle();
+    await press("10");
+    await settle();
+    await press("STAY");
+    await settle();
+    expect(sound.rise).not.toHaveBeenCalled();
+    await press("YES");
+    // Inside the same tap — the only moment a browser allows it.
+    expect(sound.rise).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("hush")).toBeTruthy();
+
+    await press("hush");
+    expect(sound.fall).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("hush")).toBeNull();
+  });
+
+  it("takes the sound away at EXIT, so the black is silent", async () => {
+    render(<FoundYou />);
+    await settle();
+    await press("12");
+    await settle();
+    await press("STAY");
+    await settle();
+    await press("YES");
+    await settle(40_000);
+    expect(sound.fall).not.toHaveBeenCalled();
+    await press("EXIT");
+    expect(sound.fall).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("hush")).toBeNull();
+  });
+
+  async function walkToTheEnd() {
+    await settle();
+    await press("10");
+    await settle();
+    await press("LEAVE");
+    await settle();
+    await press("NO");
+    await settle(40_000);
+    await press("EXIT");
+    await settle(25_000);
+    expect(phase()).toBe("after");
+  }
+
+  it("mentions the night after dark, and opens the way to it", async () => {
+    vi.setSystemTime(new Date(2026, 9, 24, 21, 30));
+    render(<FoundYou />);
+    await walkToTheEnd();
+    const later = screen.getByTestId("later");
+    expect(later.tagName).toBe("A");
+    expect(later.getAttribute("href")).toBe("/labs/october/witching-hour");
+    expect(later.textContent).toBe("It's dark enough now.");
+    expect(
+      screen
+        .getByRole("link", { name: "back to October" })
+        .getAttribute("href"),
+    ).toBe("/october");
+  });
+
+  it("in daylight, only says to come back later", async () => {
+    vi.setSystemTime(new Date(2026, 9, 24, 14, 0));
+    render(<FoundYou />);
+    await walkToTheEnd();
+    const later = screen.getByTestId("later");
+    expect(later.tagName).toBe("P");
+    expect(later.textContent).toBe("Come back when it's darker.");
+    expect(screen.queryByRole("link", { name: /dark/ })).toBeNull();
   });
 });

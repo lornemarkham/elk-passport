@@ -21,7 +21,6 @@ import {
 } from "@/components/october/shell/atoms";
 import { UnitCard } from "@/components/october/shell/UnitCard";
 import { asDiscoveryUnits } from "@/domain/discovery/discoveryUnits";
-import { Remembered } from "@/components/october/shell/Remembered";
 import { keepFor } from "@/components/october/save/keepFor";
 import { OctoberPicks } from "@/components/october/movies/OctoberPicks";
 import { OCTOBER_PLACES, placeFrom } from "@/domain/environment/places";

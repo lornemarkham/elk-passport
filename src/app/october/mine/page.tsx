@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WhatSheRemembers } from "@/components/october/shell/WhatSheRemembers";
 import { currentUser } from "@/lib/auth/currentUser";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { discoveryCandidates } from "@/lib/data/atlas-repo";
@@ -49,6 +50,7 @@ export default async function MyOctoberPage() {
         >
           Sign in
         </Link>
+        <WhatSheRemembers />
       </main>
     );
   }
@@ -61,10 +63,15 @@ export default async function MyOctoberPage() {
   const experiences = candidates.map(candidateToExperience);
 
   return (
-    <MyOctober
-      things={things}
-      experiences={experiences}
-      reactions={reactions}
-    />
+    <>
+      <MyOctober
+        things={things}
+        experiences={experiences}
+        reactions={reactions}
+      />
+      <div className="mx-auto -mt-16 max-w-3xl px-6 pb-16">
+        <WhatSheRemembers />
+      </div>
+    </>
   );
 }

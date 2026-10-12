@@ -8,8 +8,19 @@ export const metadata: Metadata = {
 
 /**
  * `/labs/october/witching-hour` — the first October scene, as an experiment.
- * Not linked from anywhere. Reached by knowing it exists.
+ *
+ * Reached from the end of Found You, once it is dark where the visitor is.
+ * Nothing else links here.
+ *
+ * `?at=doorway` goes straight to the four choices after the first tap, so the
+ * endings can be screened rather than waited for — the same reason the Video
+ * Store has `?intervene=1`.
  */
-export default function WitchingHourPage() {
-  return <WitchingHour />;
+export default async function WitchingHourPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ at?: string }>;
+}) {
+  const { at } = await searchParams;
+  return <WitchingHour startAt={at === "doorway" ? "doorway" : undefined} />;
 }

@@ -18,21 +18,26 @@ import {
 import {
   AFTER_EXIT_BLACK,
   ASK_DOOR,
+  DARK_ENOUGH,
+  NOT_DARK_YET,
   ASK_HEARING,
   ASK_NUMBER,
   ENDING,
   EXIT_LABEL,
   NUMBERS,
-  OPENING,
   OVERLOOKED,
   RECOGNITION,
   ambiguousRecall,
+  darkEnough,
   greets,
   onHearing,
   onNumber,
+  openingFor,
   plainRecall,
+  voiced,
   type Choices,
 } from "./encounter";
+import { createUnderneath, type Underneath } from "./underneath";
 
 /**
  * **October Found You.**
@@ -53,6 +58,19 @@ import {
  * Most visitors will arrive from a code on a phone, so the choices are large
  * and low on the screen where a thumb already is, nothing depends on hover,
  * and the stage is sized in `svh` so the address bar cannot crop the ending.
+ *
+ * ## Two beginnings, one encounter
+ *
+ * A stranger and somebody she has met are told different first lines
+ * (`openingFor`) and then walk the same encounter. Nothing after the opening
+ * changes, which keeps the recognition rare.
+ *
+ * ## Sound, only if asked for
+ *
+ * Silent until somebody answers YES to "Can you hear me?". Then one recording
+ * rises out of nothing under the rest of the encounter, and EXIT takes it
+ * away, so the black that follows is the only true silence on the page. A
+ * quiet "hush" stays in reach the whole time it sounds.
  */
 
 const IN = 1100;
@@ -137,6 +155,21 @@ export function FoundYou() {
     () => false,
   );
   const saved = useRef(false);
+  const opening = openingFor(knownBefore);
+  const underneath = useRef<Underneath | null>(null);
+  const [sounding, setSounding] = useState(false);
+  /** Read at the moment of EXIT, from the visitor's own clock. */
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    underneath.current = createUnderneath();
+    return () => underneath.current?.close();
+  }, []);
+
+  // Fetched while she asks, so a YES does not wait on the network.
+  useEffect(() => {
+    if (phase === "hearing") underneath.current?.prepare();
+  }, [phase]);
 
   /** Move to a phase and restart its internal counter. */
   const go = useCallback((p: Phase) => {
@@ -166,9 +199,9 @@ export function FoundYou() {
       wait(hold, () => (step < count - 1 ? setStep((n) => n + 1) : onEnd()));
 
     if (phase === "opening") {
-      const line = OPENING[step];
+      const line = opening[step];
       if (!line) return;
-      return through(OPENING.length, line.hold, () => go("number"));
+      return through(opening.length, line.hold, () => go("number"));
     }
     if (phase === "numberReply") {
       const lines = choices.number ? onNumber(choices.number) : [];
@@ -201,7 +234,7 @@ export function FoundYou() {
       return through(ENDING.length, line.hold, () => go("after"));
     }
     return;
-  }, [phase, step, choices, knownBefore, go]);
+  }, [phase, step, choices, knownBefore, opening, go]);
 
   // She keeps it once, at the ending, not on the way past.
   useEffect(() => {
@@ -231,10 +264,26 @@ export function FoundYou() {
   const pickHearing = useCallback(
     (h: Hearing) => {
       setChoices((c) => ({ ...c, hearing: h }));
+      // Inside the tap, or the browser will not let her be heard.
+      if (voiced(h)) {
+        underneath.current?.rise();
+        setSounding(true);
+      }
       go("hearingReply");
     },
     [go],
   );
+
+  const hush = useCallback(() => {
+    underneath.current?.fall();
+    setSounding(false);
+  }, []);
+
+  const leave = useCallback(() => {
+    hush();
+    setDark(darkEnough(new Date()));
+    go("black");
+  }, [go, hush]);
 
   const black = phase === "black";
 
@@ -249,8 +298,8 @@ export function FoundYou() {
         <AnimatePresence mode="wait">
           {phase === "arrive" && knownBefore ? (
             <Say key="recognise" text={RECOGNITION} />
-          ) : phase === "opening" && OPENING[step] ? (
-            <Say key={`o${step}`} text={OPENING[step]!.text} />
+          ) : phase === "opening" && opening[step] ? (
+            <Say key={`o${step}`} text={opening[step]!.text} />
           ) : phase === "number" ? (
             <Say key="askn" text={ASK_NUMBER} />
           ) : phase === "numberReply" && choices.number ? (
@@ -332,7 +381,7 @@ export function FoundYou() {
               key="cx"
               type="button"
               data-testid="exit"
-              onClick={() => go("black")}
+              onClick={leave}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { duration: 2.2, delay: 1 } }}
               exit={{ opacity: 0, transition: { duration: 0.4 } }}
@@ -341,18 +390,50 @@ export function FoundYou() {
               {EXIT_LABEL}
             </motion.button>
           ) : phase === "after" ? (
-            <motion.a
+            <motion.div
               key="ca"
-              href="/october"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { duration: 3, delay: 1.5 } }}
-              className="text-sm text-[#e9e6da]/25 underline-offset-8 transition-colors hover:text-[#e9e6da]/55 hover:underline"
+              className="flex flex-col items-center gap-6"
             >
-              back to October
-            </motion.a>
+              <a
+                href="/october"
+                className="inline-flex min-h-11 items-center text-sm text-[#e9e6da]/45 underline-offset-8 transition-colors hover:text-[#e9e6da]/75 hover:underline"
+              >
+                back to October
+              </a>
+              {/* Somewhere else, later — and only open once it is dark. */}
+              {dark ? (
+                <a
+                  href="/labs/october/witching-hour"
+                  data-testid="later"
+                  className="font-heading inline-flex min-h-11 items-center text-base text-[#d09a4e]/70 italic underline-offset-8 transition-colors hover:text-[#d09a4e] hover:underline"
+                >
+                  {DARK_ENOUGH}
+                </a>
+              ) : (
+                <p
+                  data-testid="later"
+                  className="font-heading text-base text-[#e9e6da]/45 italic"
+                >
+                  {NOT_DARK_YET}
+                </p>
+              )}
+            </motion.div>
           ) : null}
         </AnimatePresence>
       </div>
+
+      {sounding && !black ? (
+        <button
+          type="button"
+          onClick={hush}
+          data-testid="hush"
+          className="absolute top-4 right-4 min-h-11 px-3 text-xs tracking-wide text-[#e9e6da]/45 transition-colors hover:text-[#e9e6da]/80 focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"
+        >
+          hush
+        </button>
+      ) : null}
 
       {/* Present from the first breath and never mentioned. Not decoration —
           it is the only thing on screen that was already here. */}

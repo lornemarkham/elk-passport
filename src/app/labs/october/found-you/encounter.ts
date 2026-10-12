@@ -39,10 +39,40 @@ export interface Choices {
 /** A beat. Most pacing is a multiple of this. */
 export const BEAT = 1200;
 
+/**
+ * For somebody she has met. "You found a way out" is true of them — it is how
+ * the last encounter ended — so it reads as a continuation, which it is.
+ */
 export const OPENING = [
   { text: "You found a way out.", hold: 3000 },
   { text: "October notices things like that.", hold: 3800 },
 ] as const;
+
+/**
+ * For somebody she has not.
+ *
+ * `OPENING` used to be the only beginning, and to a stranger it is the middle
+ * of a story: *a* way out of what? They have not been anywhere yet. What a
+ * first-time visitor has actually done is stop — they noticed one quiet line
+ * at the bottom of a page everybody else scrolls past, and followed it. So
+ * that is what she notices.
+ *
+ * "Nobody stops." is planted here so that "They walked right by me." has
+ * something to land on later. The last line is shared with `OPENING`: whoever
+ * this is, the encounter turns on the same sentence.
+ */
+export const FIRST_OPENING = [
+  { text: "You stopped.", hold: 2800 },
+  { text: "Nobody stops.", hold: 3400 },
+  { text: "October notices things like that.", hold: 3800 },
+] as const;
+
+/** Which beginning this visitor gets. Only a real stored encounter changes it. */
+export function openingFor(
+  knownBefore: boolean,
+): readonly { text: string; hold: number }[] {
+  return knownBefore ? OPENING : FIRST_OPENING;
+}
 
 export const ASK_NUMBER = "Pick one.";
 export const NUMBERS: readonly NumberChoice[] = ["10", "12", "31"];
@@ -115,6 +145,47 @@ export const ENDING = [
   { text: "I couldn't.", hold: 4400 },
   { text: "So I followed you.", hold: 7000 },
 ] as const;
+
+/**
+ * **She becomes audible only to somebody who said they could hear her.**
+ *
+ * The recordings are never fired at anyone (see `for-bryan/Listen.tsx`): a
+ * person has to choose to hear them. "Can you hear me?" already is that
+ * choice, asked in her voice, and YES is a tap — the gesture a browser needs
+ * before it will play anything. NO keeps the silence, which is its own answer.
+ */
+export function voiced(h: Hearing | undefined): boolean {
+  return h === "YES";
+}
+
+/**
+ * What she sounds like underneath. *Subterranean Pressure*, played as it is —
+ * an even, low bed, measured at −18 to −25 dBFS RMS with no spike anywhere in
+ * its two minutes, so it can rise from nothing without ever arriving as an
+ * impact. `level` is the ceiling of the rise, roughly 11 dB under the file;
+ * `rise` is how long it takes to get there, in seconds. It loops: repetition
+ * is the point. It stops at EXIT, so the black after it is absolute.
+ */
+export const UNDERNEATH = {
+  file: "Subterranean Pressure.m4a",
+  level: 0.28,
+  rise: 10,
+  fall: 1.4,
+} as const;
+
+/**
+ * **Somewhere else, later.** After the ending she mentions the night, and
+ * whether the door is open depends on whether it is actually dark where the
+ * visitor is — read from their own clock, nothing else. In daylight the line
+ * is only a line. Late October in the Okanagan is dark by seven.
+ */
+export const NOT_DARK_YET = "Come back when it's darker.";
+export const DARK_ENOUGH = "It's dark enough now.";
+
+export function darkEnough(now: Date): boolean {
+  const h = now.getHours();
+  return h >= 19 || h < 6;
+}
 
 /** Shown on arrival to somebody she has met. Restrained on purpose. */
 export const RECOGNITION = "I remember you.";

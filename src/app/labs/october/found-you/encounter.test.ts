@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  FIRST_OPENING,
+  OPENING,
+  darkEnough,
+  openingFor,
+  voiced,
   ENDING,
   NUMBERS,
   OVERLOOKED,
@@ -77,5 +82,38 @@ describe("the encounter", () => {
   it("only greets somebody it has genuinely met", () => {
     expect(greets(true)).toBe(true);
     expect(greets(false)).toBe(false);
+  });
+});
+
+describe("the two beginnings", () => {
+  it("gives only somebody she has met the remembered opening", () => {
+    expect(openingFor(true)).toBe(OPENING);
+    expect(openingFor(false)).toBe(FIRST_OPENING);
+  });
+
+  it("never tells a stranger about a way out they have not found", () => {
+    const told = FIRST_OPENING.map((l) => l.text).join(" ");
+    expect(told).not.toMatch(/way out|remember|again|before|last time/i);
+  });
+
+  it("turns both on the same sentence", () => {
+    expect(FIRST_OPENING.at(-1)!.text).toBe(OPENING.at(-1)!.text);
+  });
+});
+
+describe("being heard", () => {
+  it("is only for somebody who said YES", () => {
+    expect(voiced("YES")).toBe(true);
+    expect(voiced("NO")).toBe(false);
+    expect(voiced(undefined)).toBe(false);
+  });
+});
+
+describe("dark enough", () => {
+  it("reads the visitor's own clock", () => {
+    expect(darkEnough(new Date(2026, 9, 24, 21, 0))).toBe(true);
+    expect(darkEnough(new Date(2026, 9, 24, 2, 0))).toBe(true);
+    expect(darkEnough(new Date(2026, 9, 24, 12, 0))).toBe(false);
+    expect(darkEnough(new Date(2026, 9, 24, 18, 59))).toBe(false);
   });
 });
