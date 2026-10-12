@@ -122,6 +122,22 @@ export function PassportNav({
 
           <ThemePicker className="mr-1 shrink-0 sm:mr-2" />
 
+          {/* **Discreet on purpose.** Labs is where unfinished experiments
+              live, so it is the quietest thing on the bar: small, uppercase,
+              no accent. It is not a section (§10 is still open). */}
+          <Link
+            href="/labs"
+            aria-current={inside("/labs") ? "page" : undefined}
+            data-testid="passport-nav-labs"
+            className={`inline-flex min-h-12 shrink-0 items-center px-2 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors sm:px-3 ${
+              inside("/labs")
+                ? "text-[#111]"
+                : "text-black/45 hover:text-black/80"
+            }`}
+          >
+            Labs
+          </Link>
+
           {/* Carries where you are, so auth and the account page can bring you
               back — the same fix October's bar already had. */}
           {displayName ? (
