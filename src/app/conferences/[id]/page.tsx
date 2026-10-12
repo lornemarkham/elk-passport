@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { KIND_WORDS } from "@/domain/conference/details";
 import { doorsFor, enabledModules } from "@/domain/conference/modules";
+import { arrivalsEnabled } from "@/lib/conference-arrivals/enabled";
 import { conferenceSetup } from "@/lib/conference/config";
 import { deps, readIdentity } from "@/lib/conference/request";
 import { homeFor } from "@/lib/conference/service";
@@ -41,6 +42,7 @@ export default async function ConferenceHome({
   const { conference: c, you, people } = home;
   const words = KIND_WORDS[c.kind];
   const modules = enabledModules(c);
+  const open = (id: string) => id !== "arrivals" || arrivalsEnabled();
   const doors = c.modules.includes("discover") ? doorsFor(c) : [];
 
   return (
@@ -74,7 +76,9 @@ export default async function ConferenceHome({
                   >
                     <span className="text-[17px] font-bold">{m.label}</span>
                     <span className="mt-1 text-[13px] text-black/55">
-                      {m.status === "built" ? m.promise : "Not built yet"}
+                      {m.status === "built" && open(m.id)
+                        ? m.promise
+                        : "Not open yet"}
                     </span>
                   </Link>
                 </li>

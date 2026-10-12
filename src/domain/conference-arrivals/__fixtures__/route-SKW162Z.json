@@ -1,0 +1,31 @@
+{
+  "callsign": "SKW162Z",
+  "number": "162Z",
+  "airline_code": "SKW",
+  "airport_codes": "KSEA-CYVR",
+  "_airport_codes_iata": "SEA-YVR",
+  "_airports": [
+    {
+      "name": "Seattle Tacoma International Airport",
+      "icao": "KSEA",
+      "iata": "SEA",
+      "location": "Seattle",
+      "countryiso2": "US",
+      "lat": 47.449001,
+      "lon": -122.308998,
+      "alt_feet": 433.0,
+      "alt_meters": 131.98
+    },
+    {
+      "name": "Vancouver International Airport",
+      "icao": "CYVR",
+      "iata": "YVR",
+      "location": "Vancouver",
+      "countryiso2": "CA",
+      "lat": 49.193901,
+      "lon": -123.183998,
+      "alt_feet": 14.0,
+      "alt_meters": 4.27
+    }
+  ]
+}

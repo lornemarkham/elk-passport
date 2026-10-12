@@ -6,7 +6,7 @@
  * with mocked auth or one browser. This stands up PostgreSQL, GoTrue and
  * PostgREST from their own release binaries behind a proxy with Supabase's
  * URL layout, applies Passport's baseline and then
- * docs/products/go-have-a-conference/migration.sql, so the unmodified app,
+ * supabase/migrations/20261012000000_passport_conferences.sql, so the unmodified app,
  * pointed at it, behaves as it would against a project.
  *
  * Adapted from the Hockey lane's stack.mjs (read, not modified), on different
@@ -270,7 +270,10 @@ async function start() {
   );
   await sql(
     fs.readFileSync(
-      path.join(repo, "docs/products/go-have-a-conference/migration.sql"),
+      path.join(
+        repo,
+        "supabase/migrations/20261012000000_passport_conferences.sql",
+      ),
       "utf8",
     ),
   );

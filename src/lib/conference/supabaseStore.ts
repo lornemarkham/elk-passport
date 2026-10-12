@@ -15,7 +15,7 @@ import type { ConferenceStore } from "./store";
  *
  * Every call runs as the signed-in person (their session, the anon key),
  * never a privileged key. So what a request can read or change is decided by
- * the database's policies (docs/products/go-have-a-conference/migration.sql),
+ * the database's policies (supabase/migrations/20261012000000_passport_conferences.sql),
  * and a bug in a route handler cannot hand anyone another conference's rows.
  *
  * ## No guests

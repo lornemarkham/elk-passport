@@ -1,4 +1,6 @@
 import type { ConferenceLifecycle } from "@/domain/conference/contracts";
+import { arrivalsLifecycle } from "@/lib/conference-arrivals/service";
+import { arrivalsStore } from "@/lib/conference-arrivals/store";
 
 /**
  * **Every module that keeps data about people in a conference, listed.**
@@ -8,6 +10,8 @@ import type { ConferenceLifecycle } from "@/domain/conference/contracts";
  * `(conferenceId, memberId)` registers here in the same change that starts
  * storing it. See ARCHITECTURE.md §6.2.
  *
- * Empty today: the only built module, `discover`, keeps nothing.
+ * `discover` keeps nothing. `arrivals` keeps each member's flight.
  */
-export const LIFECYCLE: readonly ConferenceLifecycle[] = [];
+export const LIFECYCLE: readonly ConferenceLifecycle[] = [
+  arrivalsLifecycle(arrivalsStore),
+];

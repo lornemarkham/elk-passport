@@ -37,10 +37,10 @@ export const MODULES: readonly ConferenceModule[] = [
   {
     id: "arrivals",
     label: "Arrivals",
-    promise: "Who's on the way, when they land, and your own countdown.",
+    promise: "Who's in the air, on a live map, until they land.",
     workstream: "passport-flights",
-    status: "proposed",
-    prototype: "/sycle arrival board (untracked in the main checkout)",
+    status: "built",
+    prototype: "/sycle arrival board (branch sycle-prototype)",
   },
   {
     id: "schedule",

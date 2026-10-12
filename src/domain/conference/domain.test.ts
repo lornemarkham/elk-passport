@@ -110,10 +110,10 @@ describe("countdown", () => {
 });
 
 describe("modules", () => {
-  it("are all owned by a workstream, and only discover is built", () => {
+  it("are all owned by a workstream, and only discover and arrivals are built", () => {
     expect(
       MODULES.filter((m) => m.status === "built").map((m) => m.id),
-    ).toEqual(["discover"]);
+    ).toEqual(["discover", "arrivals"]);
     expect(MODULES.every((m) => m.workstream.startsWith("passport-"))).toBe(
       true,
     );

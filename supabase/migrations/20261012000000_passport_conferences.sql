@@ -1,13 +1,13 @@
 -- ============================================================================
--- PROPOSED MIGRATION — passport_conferences (Go Have A Conference, real people)
+-- passport_conferences (Go Have A Conference, real people)
 --
--- Proposed for: supabase/migrations/<timestamp>_passport_conferences.sql
+-- STATUS: written and attacked locally only. NOT applied to any real project.
+-- Owner steps: docs/products/go-have-a-conference/LABS-RELEASE.md.
 --
--- Lives here because supabase/migrations/ is a shared contract this lane may
--- propose to but not change. Applied and attacked only against a local
--- PostgreSQL + GoTrue + PostgREST (scripts/conference-stack/), never against a
--- real Supabase project. See supabase/README.md hazard 1: on the shared
--- project paste it into the SQL editor; do not `supabase db push`.
+-- Apply by pasting into the Supabase SQL editor. Do NOT `supabase db push`:
+-- this project's migration history belongs to Atlas (supabase/README.md,
+-- hazard 1). Verified against local PostgreSQL + GoTrue + PostgREST
+-- (scripts/conference-stack/): 68 attacks at PostgREST as real signed-in users.
 --
 -- ## Security model (same as Hockey Night's occasions, different tables)
 --

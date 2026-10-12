@@ -23,7 +23,7 @@ import type { InviteState } from "@/domain/conference/access";
  * signed-in person under row level security, never with a privileged key, so
  * the database enforces who can read what. It has no guests: everybody is a
  * Passport account. Proposed tables:
- * docs/products/go-have-a-conference/migration.sql.
+ * supabase/migrations/20261012000000_passport_conferences.sql.
  *
  * `config.ts` refuses to open in production until `CONFERENCE_STORE` says
  * which one, so neither can ship by accident.
