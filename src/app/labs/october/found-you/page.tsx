@@ -1,17 +1,6 @@
-import type { Metadata } from "next";
-import { FoundYou } from "./FoundYou";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "October found you",
-  robots: { index: false, follow: false },
-};
-
-/**
- * `/labs/october/found-you`
- *
- * Nothing above it explains it. It begins mid-sentence, as though it had been
- * waiting, which is the only introduction it gets.
- */
+/** Found You is October's, and lives at `/october/found-you`. This URL forwards. */
 export default function Page() {
-  return <FoundYou />;
+  redirect("/october/found-you");
 }

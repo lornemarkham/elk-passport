@@ -405,7 +405,7 @@ export function FoundYou() {
               {/* Somewhere else, later — and only open once it is dark. */}
               {dark ? (
                 <a
-                  href="/labs/october/witching-hour"
+                  href="/october/witching-hour"
                   data-testid="later"
                   className="font-heading inline-flex min-h-11 items-center text-base text-[#d09a4e]/70 italic underline-offset-8 transition-colors hover:text-[#d09a4e] hover:underline"
                 >

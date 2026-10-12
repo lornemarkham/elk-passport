@@ -175,7 +175,7 @@ export const SCENES: readonly Scene[] = [
       {
         title: "Witching Hour v0.1",
         status: "built",
-        href: "/labs/october/witching-hour",
+        href: "/october/witching-hour",
         note: "The earliest pass, kept as it was. The pauses now hold what they contain.",
       },
       {

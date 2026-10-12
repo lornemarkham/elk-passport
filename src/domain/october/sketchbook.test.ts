@@ -68,7 +68,7 @@ describe("the sketchbook", () => {
       "/labs/october/scariest-room/has-been-here",
       "/labs/october/secret-room/another-way-out",
       "/labs/october/video-store",
-      "/labs/october/witching-hour",
+      "/october/witching-hour",
     ]);
   });
 

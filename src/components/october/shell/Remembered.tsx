@@ -49,7 +49,7 @@ export function Remembered() {
   return (
     <p className="mt-24 text-center">
       <Link
-        href="/labs/october/found-you"
+        href="/october/found-you"
         data-testid="october-remembers"
         data-seen={seen}
         className="inline-flex min-h-11 items-center px-2 text-sm text-[#d09a4e]/75 italic underline-offset-8 transition-colors hover:text-[#d09a4e] hover:underline focus-visible:ring-1 focus-visible:ring-[#d09a4e] focus-visible:outline-none"

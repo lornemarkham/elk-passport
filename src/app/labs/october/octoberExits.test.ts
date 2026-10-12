@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
  */
 const source = (path: string) => readFileSync(path, "utf8");
 
-const WITCHING_HOUR = "src/app/labs/october/witching-hour/WitchingHour.tsx";
+const WITCHING_HOUR = "src/components/october/witching-hour/WitchingHour.tsx";
 const VIDEO_STORE = "src/components/october/store/VhsWall.tsx";
 
 describe("the way out of an October room", () => {
@@ -49,7 +49,7 @@ describe("the way out of an October room", () => {
   it("says where it goes, in October's own words", () => {
     expect(source(VIDEO_STORE)).toContain("back to October");
     expect(
-      source("src/app/labs/october/witching-hour/StayInside.tsx"),
+      source("src/components/october/witching-hour/StayInside.tsx"),
     ).toContain("back to October");
   });
 });

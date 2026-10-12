@@ -14,7 +14,7 @@ describe("the way into Found You", () => {
   it("tells a stranger they walked past, and leads to her", () => {
     render(<Remembered />);
     const door = screen.getByRole("link", { name: WALKED_PAST });
-    expect(door.getAttribute("href")).toBe("/labs/october/found-you");
+    expect(door.getAttribute("href")).toBe("/october/found-you");
     expect(screen.queryByText(BEEN_HERE)).toBeNull();
   });
 
@@ -22,7 +22,7 @@ describe("the way into Found You", () => {
     rememberEncounter({ door: "STAY" });
     render(<Remembered />);
     const door = screen.getByRole("link", { name: BEEN_HERE });
-    expect(door.getAttribute("href")).toBe("/labs/october/found-you");
+    expect(door.getAttribute("href")).toBe("/october/found-you");
     expect(screen.queryByText(WALKED_PAST)).toBeNull();
   });
 

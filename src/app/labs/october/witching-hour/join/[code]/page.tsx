@@ -1,17 +1,11 @@
-import type { Metadata } from "next";
-import { PhoneCompanion } from "../../PhoneCompanion";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Witching Hour — Passport Labs",
-  robots: { index: false, follow: false },
-};
-
-/** Where the QR code lands. The phone becomes a prop in the desktop's night. */
-export default async function JoinPage({
+/** QR codes printed before the move still land. */
+export default async function Page({
   params,
 }: {
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  return <PhoneCompanion code={code.toUpperCase()} />;
+  redirect(`/october/witching-hour/join/${encodeURIComponent(code)}`);
 }

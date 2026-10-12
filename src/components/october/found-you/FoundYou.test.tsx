@@ -323,7 +323,7 @@ describe("October found you", () => {
     await walkToTheEnd();
     const later = screen.getByTestId("later");
     expect(later.tagName).toBe("A");
-    expect(later.getAttribute("href")).toBe("/labs/october/witching-hour");
+    expect(later.getAttribute("href")).toBe("/october/witching-hour");
     expect(later.textContent).toBe("It's dark enough now.");
     expect(
       screen

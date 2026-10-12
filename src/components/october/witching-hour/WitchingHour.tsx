@@ -279,7 +279,7 @@ export function WitchingHour({
         origin,
       ),
     );
-    const url = `${origin}/labs/october/witching-hour/join/${c}`;
+    const url = `${origin}/october/witching-hour/join/${c}`;
     setQr(
       await QRCode.toDataURL(url, {
         margin: 1,

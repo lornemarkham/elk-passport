@@ -71,7 +71,7 @@ test.describe("the way in, on a phone", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(390);
 
     await door.tap();
-    await expect(page).toHaveURL(/\/labs\/october\/found-you$/);
+    await expect(page).toHaveURL(/\/october\/found-you$/);
 
     // A beginning, not the middle of a story.
     await expect(saying(page)).toHaveText("You stopped.", { timeout: 8000 });
@@ -169,7 +169,7 @@ test.describe("Witching Hour: every door goes somewhere", () => {
   const night = (page: Page) => page.locator("p.font-serif");
 
   async function toDoorway(page: Page) {
-    await page.goto("/labs/october/witching-hour?at=doorway");
+    await page.goto("/october/witching-hour?at=doorway");
     await page
       .getByRole("button", { name: /^(Click|Touch) to begin$/ })
       .click();
