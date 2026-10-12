@@ -172,3 +172,119 @@ export const DOOR = {
   /** Then the surface. Short — do not leave them staring at trees again. */
   beforeSurface: 900,
 };
+
+/**
+ * **The other three doors, and the way out.**
+ *
+ * Screening (§25.1, §26.2): only Stay Inside went anywhere. The other three
+ * replies were the last thing on screen — "Then don't turn around." and then
+ * nothing, for ever — which reads as unfinished, not as mystery.
+ *
+ * Each is now finished the way the door was: **October does what the line
+ * said.** Stay inside, and the door is locked. Go outside, and she keeps the
+ * light on — a real one, in the sky you have been watching. Ask her to come
+ * back when it is darker, and she makes it darker. Don't turn around, and
+ * nothing behind you happens, at length, which is the whole of the fear.
+ *
+ * None of them adds a loud sound. The slam stays the only impact in the
+ * night; everything here is ticks the scene already taught, the wind going
+ * away, and the world changing while you look at it.
+ */
+
+/** Go outside. The light she promised, and an actual ten minutes. */
+export const OUTSIDE = {
+  replyHold: 2600,
+  /** Then the left window — the one she taught you with and took — comes on. */
+  beforeLight: 1200,
+  afterLight: 1600,
+  lines: [
+    { text: "Ten minutes.", hold: 2200 },
+    { text: "Don't bring me.", hold: 2800 },
+  ],
+  /** What the paired phone says as it is let go. */
+  phoneLine: "Go on.",
+  back: "I'm back",
+  /**
+   * Under a minute is not ten. She noticed — the one thing she can honestly
+   * notice, because it is her own clock.
+   */
+  tooSoonMs: 60_000,
+  returned: [
+    { text: "You came back.", hold: 2400 },
+    { text: "The light stayed on.", hold: 2800 },
+  ],
+  tooSoon: [
+    { text: "That wasn't ten minutes.", hold: 2600 },
+    { text: "The light stayed on anyway.", hold: 2800 },
+  ],
+  /**
+   * **The callback.** Only for somebody who finished Found You in this
+   * browser, which ended: "You found the way out. I couldn't. So I followed
+   * you." Tonight she let them go alone.
+   */
+  followed: { text: "I didn't follow you this time.", hold: 3800 },
+  goodnight: { text: "Goodnight.", hold: 2400 },
+};
+
+/** Tell me something. "Come back when it's darker" — so she makes it darker. */
+export const STORY = {
+  replyHold: 2600,
+  /** The silence where a person decides she has refused them. */
+  refusal: 1800,
+  /** One window at a time, each with the tick on its own side. */
+  perLight: 1500,
+  afterDark: 2200,
+  dark: [
+    { text: "There.", hold: 1800 },
+    { text: "Darker.", hold: 2600 },
+  ],
+  beforeTelling: 1400,
+  /**
+   * What she tells is about her, in her own words, kept verbatim from the
+   * notebook (`domain/october/notebook.ts`). Not the place four kilometres
+   * away — that one is still for another night. Fiction, and it never claims
+   * to be anything else: there is no real place in it.
+   */
+  telling: [
+    { text: "10 is me.", hold: 2600 },
+    { text: "12 brings me back.", hold: 2800 },
+    { text: "31, then everything goes black.", hold: 2200 },
+  ],
+  /** And it does. No sound — the wind is already gone. */
+  black: 3600,
+  last: { text: "That's all you get tonight.", hold: 2800 },
+};
+
+/** Surprise me. "Then don't turn around." Then nothing behind you, for a while. */
+export const SURPRISE = {
+  replyHold: 2800,
+  /** The wind goes away first, so the silence is a thing that arrived. */
+  windAway: 3,
+  silence: 4500,
+  /** The same tick, the same side, closer together each time. */
+  ticks: [2400, 1900, 1500],
+  /** The phone beside them — if there is one — speaks once, a breath later. */
+  phoneLine: "Don't.",
+  afterTicks: 3200,
+  /**
+   * She does not claim to know whether they turned. Nothing in the room is
+   * detected (§26.4); the line is about other people.
+   */
+  most: { text: "Most people turn around.", hold: 2800 },
+  /** Then the night comes back — every light, the moon, the tree. Silently. */
+  restore: 1600,
+  lines: [
+    { text: "Surprise.", hold: 2400 },
+    { text: "There was nothing behind you.", hold: 2800 },
+    {
+      text: "I just wanted someone to stay still with me for a minute.",
+      hold: 4200,
+    },
+  ],
+  release: "Goodnight.",
+};
+
+/** I've had enough. Said kindly, and then actually let go. */
+export const ESCAPE = { hold: 3200 };
+
+export const BACK_TO_OCTOBER = "back to October";

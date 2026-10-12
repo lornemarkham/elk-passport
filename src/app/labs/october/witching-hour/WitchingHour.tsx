@@ -21,10 +21,17 @@ import {
   ACT_IV,
   ACT_V,
   BEAT,
+  BACK_TO_OCTOBER,
   CONTEXT,
   DOOR,
+  ESCAPE,
+  OUTSIDE,
+  STORY,
+  SURPRISE,
 } from "./script";
 import { StayInside } from "./StayInside";
+import { readOctoberMemory } from "@/lib/october/foundYou";
+import { rememberNight, type Ending } from "@/lib/october/remembers";
 
 /**
  * **Witching Hour, v0.**
@@ -36,6 +43,18 @@ import { StayInside } from "./StayInside";
  * Nothing here is an engine. It is a shot list with a state machine wrapped
  * around it, and it should stay that way until a second scene exists to argue
  * with it.
+ *
+ * ## Every door goes somewhere now
+ *
+ * Stay inside, go outside, tell me something, surprise me — and "I've had
+ * enough" — each reach an ending of their own (`script.ts`: `DOOR`,
+ * `OUTSIDE`, `STORY`, `SURPRISE`, `ESCAPE`), and each ending is kept in this
+ * browser (`lib/october/remembers`) so October knows next time how the last
+ * night ended. Going outside is where she remembers Found You.
+ *
+ * `startAt="doorway"` (`?at=doorway`) skips straight to the choices after the
+ * first tap, so the endings can be screened without sitting through the
+ * night. Sound still waits for that tap.
  */
 
 type Phase =
@@ -52,7 +71,11 @@ type Phase =
   | "doorway"
   | "chosen"
   | "door"
-  | "inside";
+  | "inside"
+  /** Gone outside. The screen is a window with one light in it. */
+  | "away"
+  /** An ending has been reached and kept. */
+  | "ended";
 
 type Device = "phone" | "desktop";
 
@@ -73,7 +96,11 @@ function useMedia(query: string, serverValue = false): boolean {
   );
 }
 
-export function WitchingHour() {
+export function WitchingHour({
+  startAt,
+}: {
+  readonly startAt?: "doorway";
+} = {}) {
   const reduced = useReducedMotion() ?? false;
   const tl = useTimeline();
   const coarse = useMedia("(pointer: coarse)");
@@ -88,6 +115,11 @@ export function WitchingHour() {
   const [qr, setQr] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [originReachable, setOriginReachable] = useState(true);
+  /** "31, then everything goes black." — and it does. */
+  const [black, setBlack] = useState(false);
+  const [ending, setEnding] = useState<Ending | null>(null);
+  /** Called when somebody who went outside comes back. */
+  const returned = useRef<(() => void) | null>(null);
   // What the paired phone reported it can do. Shapes the cut, never the copy.
   const phoneAwake = useRef<boolean | null>(null);
 
@@ -125,6 +157,37 @@ export function WitchingHour() {
     async (text: string | null, hold: number) => {
       setLine(text);
       await tl.wait(hold);
+    },
+    [tl],
+  );
+
+  /**
+   * Several lines in a row, with the same short gap Act I uses. The last one
+   * may be left on screen, for the line an ending finishes on.
+   */
+  const sayLines = useCallback(
+    async (
+      lines: readonly { text: string; hold: number }[],
+      keepLast = false,
+    ) => {
+      for (const [i, l] of lines.entries()) {
+        await say(l.text, l.hold);
+        if (keepLast && i === lines.length - 1) return;
+        setLine(null);
+        await tl.wait(ACT_I.gap);
+      }
+    },
+    [say, tl],
+  );
+
+  /** Kept, let go of, and a way back to October offered. */
+  const end = useCallback(
+    (how: Ending, phoneLine?: string) => {
+      if (!tl.isAlive()) return;
+      rememberNight(how);
+      pairing.current?.send({ type: "release", line: phoneLine });
+      setEnding(how);
+      setPhase("ended");
     },
     [tl],
   );
@@ -359,6 +422,118 @@ export function WitchingHour() {
     // Line stays; the choices arrive under it.
   }, [say]);
 
+  // ------------------------------------------------------------ GO OUTSIDE
+  // "I'll keep the light on." So she does: the tick on the left, and the left
+  // window — the one she taught you with and then took away — comes back.
+  // Then she sends you out, and waits, for as long as it takes.
+  const goOutside = useCallback(async () => {
+    await tl.wait(OUTSIDE.replyHold);
+    setLine(null);
+    await tl.wait(OUTSIDE.beforeLight);
+    sound.current?.tick(-1);
+    await tl.wait(ACT_II.lessons[0]!.delay);
+    setWorld((w) => ({ ...w, lights: [true, w.lights[1], w.lights[2]] }));
+    await tl.wait(OUTSIDE.afterLight);
+    await sayLines(OUTSIDE.lines);
+    if (!tl.isAlive()) return;
+
+    pairing.current?.send({ type: "release", line: OUTSIDE.phoneLine });
+    sound.current?.wind(0.03, 6);
+    // Everything else on the hill goes out. Hers is the only light left on.
+    setWorld((w) => ({ ...w, lights: [true, false, false], dim: true }));
+    const left = Date.now();
+    // An hour is a ceiling, not a plan; nobody is held here by a timer.
+    const back = tl.waitFor(60 * 60 * 1000);
+    returned.current = back.signal;
+    setPhase("away");
+    await back.promise;
+    returned.current = null;
+    if (!tl.isAlive()) return;
+
+    setPhase("chosen");
+    sound.current?.wind(0.08, 4);
+    const soon = Date.now() - left < OUTSIDE.tooSoonMs;
+    await sayLines(soon ? OUTSIDE.tooSoon : OUTSIDE.returned);
+    // Only somebody she followed last time — a finished Found You, recorded
+    // in this browser — is told she did not, this time.
+    if (readOctoberMemory().found) {
+      await sayLines([OUTSIDE.followed]);
+    }
+    await sayLines([OUTSIDE.goodnight], true);
+    end("outside");
+  }, [end, sayLines, tl]);
+
+  // ------------------------------------------------------------ TELL ME SOMETHING
+  // "Not tonight. Come back when it's darker." She makes it darker: the far
+  // windows go out one at a time, each with its tick, then the moon, then the
+  // sky. Then she tells you something about herself, and it goes black.
+  const tellSomething = useCallback(async () => {
+    await tl.wait(STORY.replyHold);
+    setLine(null);
+    await tl.wait(STORY.refusal);
+    sound.current?.wind(0, 5);
+    for (const i of [2, 1, 0] as const) {
+      sound.current?.tick(i === 0 ? -1 : 1);
+      await tl.wait(400);
+      setWorld((w) => {
+        const lights = [...w.lights] as [boolean, boolean, boolean];
+        lights[i] = false;
+        return { ...w, lights };
+      });
+      await tl.wait(STORY.perLight);
+    }
+    setWorld((w) => ({ ...w, moonClear: false, dim: true }));
+    await tl.wait(STORY.afterDark);
+    await sayLines(STORY.dark);
+    await tl.wait(STORY.beforeTelling);
+    await sayLines(STORY.telling);
+    if (!tl.isAlive()) return;
+    setBlack(true);
+    await tl.wait(STORY.black);
+    await sayLines([STORY.last], true);
+    end("story");
+  }, [end, sayLines, tl]);
+
+  // ------------------------------------------------------------ SURPRISE ME
+  // "Then don't turn around." The wind leaves. Nothing, for long enough. The
+  // same tick on the same side, closer together. The phone beside you, if it
+  // is here, says one word. Then she gives the whole night back.
+  const surprise = useCallback(async () => {
+    await tl.wait(SURPRISE.replyHold);
+    setLine(null);
+    sound.current?.wind(0, SURPRISE.windAway);
+    await tl.wait(SURPRISE.silence);
+    for (const [n, gap] of SURPRISE.ticks.entries()) {
+      sound.current?.tick(-1);
+      if (n === SURPRISE.ticks.length - 1) {
+        await tl.wait(700);
+        pairing.current?.send({ type: "wake", line: SURPRISE.phoneLine });
+      }
+      await tl.wait(gap);
+    }
+    await tl.wait(SURPRISE.afterTicks);
+    await sayLines([SURPRISE.most]);
+    if (!tl.isAlive()) return;
+    setWorld({
+      lights: [true, true, true],
+      moonClear: true,
+      leftTree: true,
+      branchStir: false,
+      dim: false,
+    });
+    sound.current?.wind(0.05, 8);
+    await tl.wait(SURPRISE.restore);
+    await sayLines(SURPRISE.lines, true);
+    end("surprise", SURPRISE.release);
+  }, [end, sayLines, tl]);
+
+  // ------------------------------------------------------------ I'VE HAD ENOUGH
+  const goodnight = useCallback(async () => {
+    sound.current?.wind(0, 6);
+    await tl.wait(ESCAPE.hold);
+    end("escape", ACT_V.escape.reply);
+  }, [end, tl]);
+
   const choose = useCallback(
     async (id: string) => {
       setChosen(id);
@@ -374,10 +549,10 @@ export function WitchingHour() {
       }
       setLine(reply);
 
-      if (id !== "inside") {
-        sound.current?.wind(0, 8);
-        return;
-      }
+      if (id === "outside") return void goOutside();
+      if (id === "story") return void tellSomething();
+      if (id === "surprise") return void surprise();
+      if (id !== "inside") return void goodnight();
 
       // -------------------------------------------------------- THE DOOR
       // "The door stays closed tonight." Then it does what the line promised.
@@ -405,9 +580,21 @@ export function WitchingHour() {
       // there, behind the surface.
       sound.current?.wind(0.08, 6);
       setPhase("inside");
+      rememberNight("inside");
     },
-    [device, say, tl],
+    [device, say, tl, goOutside, tellSomething, surprise, goodnight],
   );
+
+  // Somebody who went outside and came back to a hidden tab — a phone put in
+  // a pocket — is back the moment the page is in front of them again.
+  useEffect(() => {
+    if (phase !== "away") return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") returned.current?.();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [phase]);
 
   // Registered in an effect, not during render — a ref written during render
   // is the one thing the compiler will not let stand.
@@ -449,6 +636,13 @@ export function WitchingHour() {
         {context} · {CONTEXT.fear}
       </p>
 
+      {/* Everything goes black. Over the sky, under the words. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-black transition-opacity duration-[900ms]"
+        style={{ opacity: black ? 1 : 0 }}
+      />
+
       {/* The line. One at a time, centred, unhurried — and it rises to make
           room when the night finally asks something of you. */}
       <div
@@ -479,7 +673,14 @@ export function WitchingHour() {
       {phase === "arrive" && (
         <button
           type="button"
-          onClick={beginNight}
+          onClick={
+            startAt === "doorway"
+              ? async () => {
+                  await sound.current?.unlock();
+                  acts.current.doorway?.();
+                }
+              : beginNight
+          }
           className="absolute inset-0 flex items-end justify-center pb-[18vh]"
         >
           <motion.span
@@ -604,6 +805,30 @@ export function WitchingHour() {
             window.location.href = "/october";
           }}
         />
+      )}
+
+      {/* Gone outside. One button, for whenever that is. */}
+      {phase === "away" && (
+        <div className="absolute inset-x-0 bottom-[12vh] flex justify-center">
+          <Choice onClick={() => returned.current?.()} muted>
+            {OUTSIDE.back}
+          </Choice>
+        </div>
+      )}
+
+      {/* The end of the night. Quiet, and a real door back. */}
+      {phase === "ended" && (
+        <motion.a
+          href="/october"
+          data-testid="night-ended"
+          data-ending={ending ?? undefined}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 2, delay: 1.2 }}
+          className="absolute inset-x-0 bottom-[10vh] mx-auto flex min-h-11 w-fit items-center px-4 text-sm text-[#e9e6da]/55 underline-offset-8 hover:text-[#e9e6da]/85 hover:underline"
+        >
+          {BACK_TO_OCTOBER}
+        </motion.a>
       )}
 
       {chosen && phase === "chosen" && (

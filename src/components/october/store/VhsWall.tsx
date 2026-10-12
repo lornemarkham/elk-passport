@@ -41,6 +41,7 @@ import {
   type Rejection,
 } from "./rejection";
 import { armSound, playImpact, playSlide } from "./sound";
+import { facing, framing } from "./framing";
 
 /**
  * **A section of an old video store you can browse, handle and put back.**
@@ -88,7 +89,7 @@ import { armSound, playImpact, playSlide } from "./sound";
  *
  * The scene is rendered slightly larger than the window so there is room off
  * each edge to look into, and the pointer aims the head — slowly, eased, and
- * never further than `DRIFT_LIMIT` plate pixels from centre. It moves the
+ * never further than `DRIFT_LIMIT` (`framing.ts`) plate pixels from centre. It moves the
  * **stage**, the one element everything physical lives inside, so the footage
  * cannot slide independently of the woodwork.
  *
@@ -96,30 +97,30 @@ import { armSound, playImpact, playSlide } from "./sound";
  * the room* and *inspect this object* at the same time. It settles to square
  * and picks the pointer back up when the tape goes home.
  */
-const OVERSCAN = 1.06;
-const DRIFT_LIMIT = 14;
 const DRIFT_EASE = 0.035;
 
 /**
- * **A phone is narrower than the wall.** Held upright, the viewport shows about
- * a quarter of the plate, so the camera cannot be a head that looks around a
- * little — the wall has to be something you *move along*. The span is measured
- * from where the tapes actually are, so the pan stops at the last cavity with
- * a margin, never on bare plywood or off the end of the footage.
+ * **On a phone, you look along the wall instead.** (`framing.ts`)
+ *
+ * The stage covers the viewport, so a tall narrow screen sees a slice of the
+ * plate about 210 plate pixels wide while the shelving is 474. The whole left
+ * cabinet, Ghostbusters with it, was off the edge with no way to reach it:
+ * the pointer-aimed head only ever turned 14px, and a thumb has no pointer to
+ * aim with.
+ *
+ * So when the wall does not fit, the head is not aimed by the pointer. It
+ * turns by dragging — sideways, as far as the plate goes — and starts out
+ * facing the middle of the shelving, where the pair October cares about sits
+ * under its card. Focusing a tape from the keyboard turns the head to it.
+ * Desktop is unchanged: the wall fits, and the pointer aims the head exactly
+ * as before.
+ *
+ * `DRAG_SLOP` is how far a touch moves before it is a look rather than a
+ * reach for a tape.
  */
-const PAN_MARGIN = 26;
-const SPAN = (() => {
-  let left = Infinity;
-  let right = -Infinity;
-  for (const t of WALL_TAPES) {
-    const box = caseBox(cubbyAt(t.row, t.col), t.nudge);
-    left = Math.min(left, box.left);
-    right = Math.max(right, box.left + box.width);
-  }
-  return { left, right };
-})();
-/** A finger has to travel this far before it is a drag and not a tap. */
-const DRAG_SLOP = 7;
+const DRAG_SLOP = 8;
+/** How quickly the head turns to the tape in your hand, and back. */
+const TURN_EASE = 0.16;
 
 /** Degrees the case turns as it comes out, and keeps in the hand. */
 const TURN_OUT = 16;
@@ -240,12 +241,6 @@ export function VhsWall({
   const [panning, setPanning] = useState(false);
   /** The person has found out the wall moves. */
   const [hinted, setHinted] = useState(false);
-  const drag = useRef<{
-    id: number;
-    x0: number;
-    d0: number;
-    moved: boolean;
-  } | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [inHand, setInHand] = useState<string | null>(null);
   const [handling, setHandling] = useState<Handling>("none");
@@ -267,12 +262,6 @@ export function VhsWall({
     drift: 0,
     target: 0,
     reach: 0,
-    /** Narrow viewport: the wall is panned along rather than glanced around. */
-    panning: false,
-    panMin: 0,
-    panMax: 0,
-    /** Where the wall was when a tape came off it, so it can go back there. */
-    resume: 0,
     /**
      * The unit being struck. Not a decaying nudge and not screen shake: an
      * impulse into a stiff spring, so it snaps one way, comes back past
@@ -282,6 +271,13 @@ export function VhsWall({
     jolt: 0,
     joltV: 0,
     free: true,
+    /** The wall is wider than the screen: drag to look along it. */
+    pan: false,
+    /** Where the person last chose to look, so putting a tape back returns there. */
+    look: 0,
+    aimed: false,
+    /** Turning to a tape in the hand, or back: quicker than a wandering eye. */
+    fast: false,
   });
 
   const paint = useCallback(() => {
@@ -294,67 +290,57 @@ export function VhsWall({
   }, []);
 
   /**
-   * Narrow viewports pan a long way to square up on a tape, so the move is
-   * quicker than the idle drift — and under reduced motion it is a cut, since
-   * the drift loop does not run at all.
-   */
-  const settle = useCallback(() => {
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    camera.current.drift = camera.current.target;
-    paint();
-  }, [paint]);
-
-  /**
    * Aim the head. `fraction` runs −1 (hard left) to +1 (hard right), which is
    * the single seam the camera has: the pointer drives it here, and a phone's
    * `deviceorientation` gamma would drive the same call.
    */
   const aim = useCallback((fraction: number) => {
     const c = camera.current;
-    if (!c.free) return;
-    const f = Math.max(-1, Math.min(1, fraction));
-    c.target = c.panning
-      ? c.panMax - ((f + 1) / 2) * (c.panMax - c.panMin)
-      : -f * c.reach;
+    if (!c.free || c.pan) return;
+    c.target = -Math.max(-1, Math.min(1, fraction)) * c.reach;
   }, []);
+
+  /**
+   * Turn the head somewhere specific. Eased when the room is animating, and
+   * immediate when it is not — reduced motion stops the drift loop, and a
+   * head that cannot turn would leave half the wall unreachable again.
+   */
+  const turn = useCallback(
+    (target: number, now = false) => {
+      const c = camera.current;
+      c.target = target;
+      c.fast = true;
+      if (
+        now ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        c.drift = target;
+        paint();
+      }
+    },
+    [paint],
+  );
 
   useEffect(() => {
     const fit = () => {
       const c = camera.current;
-      c.scale =
-        Math.max(
-          window.innerWidth / PLATE.width,
-          window.innerHeight / PLATE.height,
-        ) * OVERSCAN;
-      const slack = (PLATE.width - window.innerWidth / c.scale) / 2;
-      const view = window.innerWidth / c.scale;
-      const narrow = view < SPAN.right - SPAN.left + PAN_MARGIN * 2;
-      if (narrow) {
-        // The centre of the window, in plate pixels, may travel from the left
-        // end of the tapes to the right end. Drift is the other way round:
-        // content moves right when you look left.
-        const centre = (lo: boolean) =>
-          lo
-            ? SPAN.left - PAN_MARGIN + view / 2
-            : SPAN.right + PAN_MARGIN - view / 2;
-        const was = c.panning;
-        c.panning = true;
-        c.panMin = PLATE.width / 2 - centre(false);
-        c.panMax = PLATE.width / 2 - centre(true);
-        c.reach = 0;
-        // Start at the left end, where the shelf starts. Keep the place if
-        // the window is merely being resized.
-        c.target = was
-          ? Math.max(c.panMin, Math.min(c.panMax, c.target))
-          : c.panMax;
-        c.drift = was ? c.target : c.panMax;
-      } else {
-        c.panning = false;
-        c.reach = Math.max(0, Math.min(slack * 0.75, DRIFT_LIMIT));
-        c.target = Math.max(-c.reach, Math.min(c.reach, c.target));
+      const f = framing(window.innerWidth, window.innerHeight);
+      c.scale = f.scale;
+      c.pan = f.pan;
+      c.reach = f.reach;
+      if (c.pan && !c.aimed) {
+        // First sight of the wall on a phone: the middle of the shelving.
+        c.aimed = true;
+        c.look = f.first;
+        c.target = f.first;
+        c.drift = f.first;
       }
+      const clamp = (v: number) => Math.max(-c.reach, Math.min(c.reach, v));
+      c.target = clamp(c.target);
+      c.drift = clamp(c.drift);
+      c.look = clamp(c.look);
       paint();
-      return narrow;
+      return f.pan;
     };
     setPanning(fit());
     const onResize = () => setPanning(fit());
@@ -382,8 +368,10 @@ export function VhsWall({
       const gap = c.target - c.drift;
       let moved = false;
       if (Math.abs(gap) > 0.008) {
-        c.drift += gap * (c.panning ? DRIFT_EASE * 3 : DRIFT_EASE);
+        c.drift += gap * (c.fast ? TURN_EASE : DRIFT_EASE);
         moved = true;
+      } else {
+        c.fast = false;
       }
       if (Math.abs(c.jolt) > 0.008 || Math.abs(c.joltV) > 0.05) {
         c.joltV += (-900 * c.jolt - 33 * c.joltV) * 0.016;
@@ -403,6 +391,60 @@ export function VhsWall({
       cancelAnimationFrame(frame);
     };
   }, [aim, paint]);
+
+  /**
+   * Looking along the wall, on a screen too narrow for it. A drag turns the
+   * head and follows the finger exactly; a touch that barely moves is still a
+   * reach for a tape. A drag never also counts as a click on whatever it
+   * ended over.
+   */
+  useEffect(() => {
+    let from: { id: number; x: number; look: number } | null = null;
+    let dragged = false;
+    const down = (e: PointerEvent) => {
+      const c = camera.current;
+      if (!c.pan || !c.free) return;
+      from = { id: e.pointerId, x: e.clientX, look: c.drift };
+      dragged = false;
+    };
+    const move = (e: PointerEvent) => {
+      if (!from || e.pointerId !== from.id) return;
+      const dx = e.clientX - from.x;
+      if (!dragged && Math.abs(dx) < DRAG_SLOP) return;
+      dragged = true;
+      setHinted(true);
+      const c = camera.current;
+      const to = Math.max(
+        -c.reach,
+        Math.min(c.reach, from.look + dx / c.scale),
+      );
+      c.look = to;
+      c.target = to;
+      c.drift = to;
+      paint();
+    };
+    const up = () => {
+      from = null;
+    };
+    const swallow = (e: MouseEvent) => {
+      if (!dragged) return;
+      dragged = false;
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    window.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    window.addEventListener("click", swallow, true);
+    return () => {
+      window.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("click", swallow, true);
+    };
+  }, [paint]);
 
   /** The plate is the room, so it is never allowed to be a still. */
   useEffect(() => {
@@ -518,10 +560,8 @@ export function VhsWall({
         setFlipped(false);
         setHandling("none");
         camera.current.free = true;
-        if (camera.current.panning) {
-          camera.current.target = camera.current.resume;
-          settle();
-        }
+        // Back to wherever they were looking along the wall.
+        if (camera.current.pan) turn(camera.current.look);
         setLeaving({ id, settling: false, flipped: wasFlipped });
         setSwapping(fromHand);
       });
@@ -538,7 +578,7 @@ export function VhsWall({
         setLeaving((l) => (l && l.id === id ? null : l)),
       );
     },
-    [after, cue, settle],
+    [after, cue, turn],
   );
 
   const putBack = useCallback(() => {
@@ -549,11 +589,6 @@ export function VhsWall({
   function grab(tape: Placement) {
     if (phase !== "idle" || tape.id === inHand || leaving?.id === tape.id)
       return;
-    // Where the wall was before this tape drew the camera in. Panned along a
-    // narrow wall, letting go carries the camera back there, not to the middle.
-    const resume = camera.current.free
-      ? camera.current.drift
-      : camera.current.resume;
     // **Switching.** The one you were holding starts for the shelf in the same
     // tick the new one starts coming out, so the exchange is one movement
     // rather than a close followed by an open.
@@ -584,15 +619,10 @@ export function VhsWall({
     setSwapping(false);
     // The head stops looking around the moment there is something in it.
     camera.current.free = false;
-    if (camera.current.panning) {
-      // Square the hand on the middle of the screen, not the middle of the
-      // plate: the two are far apart when the screen is a quarter of it.
-      camera.current.target = PLATE.width / 2 - (HELD.x + READ.x) / 2;
-      camera.current.resume = resume;
-      settle();
-    } else {
-      camera.current.target = 0;
-    }
+    // On a phone the head turns to the hand — centred on where the box is
+    // read, the wider of the two poses, so turning it over stays on screen.
+    if (camera.current.pan) turn(facing(READ.x, camera.current.reach));
+    else camera.current.target = 0;
     cue("pull", 0.5, 0.5, 0.6);
     after(PULL_MS, () => setHandling("lifting"));
     after(PULL_MS + LIFT_MS, () =>
@@ -657,40 +687,9 @@ export function VhsWall({
       className="fixed inset-0 z-[60] overflow-hidden bg-black"
       data-testid="vhs-wall"
       data-panning={panning ? "true" : "false"}
-      style={{ touchAction: "none" }}
-      onPointerDown={(e) => {
-        const c = camera.current;
-        if (!c.panning || !c.free || e.pointerType === "mouse") return;
-        drag.current = {
-          id: e.pointerId,
-          x0: e.clientX,
-          d0: c.drift,
-          moved: false,
-        };
-      }}
-      onPointerMove={(e) => {
-        const d = drag.current;
-        const c = camera.current;
-        if (!d || d.id !== e.pointerId || !c.free) return;
-        const dx = e.clientX - d.x0;
-        if (!d.moved) {
-          if (Math.abs(dx) < DRAG_SLOP) return;
-          d.moved = true;
-          // From here it is a drag: the finger is the wall's, and the tape
-          // under it will not get a tap when it lets go.
-          e.currentTarget.setPointerCapture(e.pointerId);
-          setHinted(true);
-        }
-        c.target = Math.max(c.panMin, Math.min(c.panMax, d.d0 + dx / c.scale));
-        c.drift = c.target;
-        paint();
-      }}
-      onPointerUp={() => {
-        drag.current = null;
-      }}
-      onPointerCancel={() => {
-        drag.current = null;
-      }}
+      // Sideways drags are the head turning; vertical pans and pinch-zoom
+      // stay the browser's, so nobody loses zoom to the shop.
+      style={{ touchAction: "pan-y pinch-zoom" }}
     >
       {/* The store, before the lights are on. Covers the stage rather than
           delaying it, so the plate goes on loading underneath and the wall is
@@ -792,6 +791,13 @@ export function VhsWall({
               onEnter={() => setHovered(tape.id)}
               onLeave={() => setHovered((h) => (h === tape.id ? null : h))}
               onGrab={() => grab(tape)}
+              onFocus={() => {
+                const c = camera.current;
+                if (!c.pan || !c.free) return;
+                const cubby = cubbyAt(tape.row, tape.col);
+                c.look = facing(cubby.x + cubby.width / 2, c.reach);
+                turn(c.look);
+              }}
               onTurn={() => {
                 setFlipped((f) => !f);
                 cue("flip", 0.46, 0.5, 0.4);
@@ -886,6 +892,7 @@ function Tape({
   onEnter,
   onLeave,
   onGrab,
+  onFocus,
   onTurn,
   onPutBack,
 }: {
@@ -915,6 +922,8 @@ function Tape({
   onEnter: () => void;
   onLeave: () => void;
   onGrab: () => void;
+  /** Keyboard focus: on a phone-width screen, turn the head to this tape. */
+  onFocus: () => void;
   onTurn: () => void;
   onPutBack: () => void;
 }) {
@@ -1261,6 +1270,7 @@ function Tape({
         <button
           type="button"
           onClick={onGrab}
+          onFocus={onFocus}
           onPointerEnter={onEnter}
           onPointerLeave={onLeave}
           data-testid={`tape-${tape.id}`}
