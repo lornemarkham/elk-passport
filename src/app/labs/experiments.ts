@@ -94,8 +94,12 @@ export function labExperiments(
       href: conference.open ? "/labs/conference" : undefined,
       note: conference.open
         ? conference.config.guests
-          ? "Running on in-memory storage: it forgets everything when the server restarts."
-          : "Durable and private. Needs a Passport account."
+          ? `In-memory: it forgets everything when the server restarts. ${
+              conference.config.allowGuestOrganisers
+                ? "Anyone can start one."
+                : "Joining needs no account; starting one needs a Passport account."
+            }`
+          : "Durable and private. Everyone needs a Passport account."
         : `Closed here, not broken: ${conference.missing.join(", ")} not set.`,
     },
     {

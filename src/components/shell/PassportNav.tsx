@@ -88,11 +88,11 @@ export function PassportNav({
             answer the five control rows already use. */}
         <nav
           aria-label="Go Have A Day"
-          className="mx-auto flex max-w-[1760px] items-center gap-1 overflow-x-auto px-4 sm:px-6 lg:px-10"
+          className="mx-auto flex max-w-[1760px] items-center gap-0.5 overflow-x-auto px-3 sm:gap-1 sm:px-6 lg:px-10"
         >
           {/* The wordmark is the way home, which is the one navigation
               convention it is safe to assume everybody already knows. */}
-          <span className="mr-2 inline-flex min-h-12 shrink-0 items-center sm:mr-4">
+          <span className="mr-1 inline-flex min-h-12 shrink-0 items-center sm:mr-4">
             <Wordmark href="/" lines={1} />
           </span>
 
@@ -107,7 +107,7 @@ export function PassportNav({
                 style={
                   current ? { borderColor: "var(--ghad-accent)" } : undefined
                 }
-                className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-2 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+                className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-1.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
                   current
                     ? "text-[#111]"
                     : "border-transparent text-black/60 hover:text-black/85"
@@ -120,7 +120,9 @@ export function PassportNav({
 
           <span className="flex-1" />
 
-          <ThemePicker className="mr-1 shrink-0 sm:mr-2" />
+          {/* Hidden below `sm`: at phone width the bar only fits through Saved,
+              and LABS and Sign in sat beyond the edge. */}
+          <ThemePicker className="mr-1 hidden shrink-0 sm:mr-2 sm:flex" />
 
           {/* **Discreet on purpose.** Labs is where unfinished experiments
               live, so it is the quietest thing on the bar: small, uppercase,
@@ -129,7 +131,7 @@ export function PassportNav({
             href="/labs"
             aria-current={inside("/labs") ? "page" : undefined}
             data-testid="passport-nav-labs"
-            className={`inline-flex min-h-12 shrink-0 items-center px-2 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors sm:px-3 ${
+            className={`inline-flex min-h-12 shrink-0 items-center px-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors sm:px-3 ${
               inside("/labs")
                 ? "text-[#111]"
                 : "text-black/45 hover:text-black/80"
