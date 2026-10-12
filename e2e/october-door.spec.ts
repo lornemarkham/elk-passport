@@ -29,6 +29,20 @@ async function remembered(page: Page) {
   );
 }
 
+/**
+ * October takes Ghostbusters back the first time anybody reaches for it
+ * (`october-rooms.spec.ts` plays that). These tests are about holding a tape,
+ * so they arrive as somebody she has already refused once.
+ */
+async function alreadyRefused(page: Page) {
+  await page.addInitScript(() =>
+    window.localStorage.setItem(
+      "october:passage:v1",
+      JSON.stringify({ refused: Date.now() }),
+    ),
+  );
+}
+
 /** The line she is saying, whichever it is. */
 const saying = (page: Page) => page.getByTestId("found-you").locator("p");
 
@@ -156,7 +170,9 @@ test.describe("Witching Hour: every door goes somewhere", () => {
 
   async function toDoorway(page: Page) {
     await page.goto("/labs/october/witching-hour?at=doorway");
-    await page.getByRole("button", { name: "Click to begin" }).click();
+    await page
+      .getByRole("button", { name: /^(Click|Touch) to begin$/ })
+      .click();
     await expect(page.getByText("Still awake?")).toBeVisible({
       timeout: 10_000,
     });
@@ -270,6 +286,7 @@ test.describe("the Video Store on a 390px phone", () => {
   test("Ghostbusters is on screen and can be picked up and put back", async ({
     page,
   }) => {
+    await alreadyRefused(page);
     await page.goto("/labs/october/video-store");
     await expect(page.getByTestId("store-waiting")).toHaveCSS("opacity", "0", {
       timeout: 15_000,
@@ -329,6 +346,7 @@ test.describe("the Video Store on a desktop", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    await alreadyRefused(page);
     await page.goto("/labs/october/video-store");
     await expect(page.getByTestId("store-waiting")).toHaveCSS("opacity", "0", {
       timeout: 15_000,
