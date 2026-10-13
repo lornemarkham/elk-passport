@@ -1,3 +1,4 @@
+import { planBlock, planLines } from "./plan";
 import { hockeyNight } from "@/experience-lab/fixtures/hockeyNight";
 import type {
   Brief,
@@ -394,6 +395,16 @@ export function composeNight(
         : b,
     )
     .map((b) => (b.kind === "recap" ? { ...b, title: occasion.title } : b));
+
+  // Settled decisions follow the group out of "Before the game".
+  const plan = planBlock(
+    planLines(prompts, rows),
+    hockeyNight.phases.map((p) => p.id),
+  );
+  if (plan) {
+    const at = blocks.findIndex((b) => b.kind === "roster");
+    blocks.splice(at + 1, 0, plan);
+  }
 
   const definition: ExperienceDefinition = {
     ...hockeyNight,

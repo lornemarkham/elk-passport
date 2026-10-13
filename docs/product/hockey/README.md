@@ -160,7 +160,10 @@ build and `next start -p 3130` with `/tmp/hockey-stack/env` and
 - **Photos are captions**, as in the lab. No upload, no storage bucket.
 - **Run it back** is hidden rather than shown as a dead button.
 - **Live updates are 5-second polling**, not Supabase Realtime.
-- **The winning restaurant is not written into an itinerary block.**
+- **The winning restaurant is not written into an itinerary block.** It is
+  now shown to the whole group as **The plan** panel (`plan.ts`: leading dinner
+  place and leaving time, ties reported as ties), which stays on the page after
+  the pregame vote closes. Still not an itinerary.
 - **Atlas knows nowhere to eat near Rogers Arena.** Measured against the
   committed Atlas snapshot `atlas-candidates-2026-10-11.json.gz` (2,979
   candidates, on `lane/vision` @ `f617665`): Metro Vancouver holds 143

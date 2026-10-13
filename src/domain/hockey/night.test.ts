@@ -328,3 +328,49 @@ describe("identity", () => {
     expect(defaultLook(GUEST).hue).toBeLessThan(360);
   });
 });
+
+describe("the plan", () => {
+  const spot = (user_id: string, value: string) => ({
+    prompt_id: "pregame-spot",
+    user_id,
+    value,
+    answered_at: "2026-10-13T00:00:00Z",
+  });
+  const planOf = (r: NightRows) =>
+    composeNight(r, HOST).definition.blocks.find((b) => b.id === "plan");
+
+  it("is absent until somebody has voted", () => {
+    expect(planOf(rows())).toBeUndefined();
+  });
+
+  it("names the leader, and says so honestly when tied", () => {
+    const one = planOf(rows({ responses: [spot(HOST, "concourse")] }));
+    expect(one?.lines?.[0]).toMatchObject({
+      label: "Eating",
+      emphasis: true,
+    });
+    expect(one?.lines?.[0].value).toContain("1 vote");
+
+    const tied = planOf(
+      rows({
+        options: [
+          {
+            id: "opt-1",
+            prompt_id: "pregame-spot",
+            label: "Rogue Kitchen",
+            detail: null,
+            added_by: GUEST,
+          },
+        ],
+        responses: [spot(HOST, "concourse"), spot(GUEST, "opt-1")],
+      }),
+    );
+    expect(tied?.lines?.[0].value).toMatch(/^Tied at 1 vote:/);
+  });
+
+  it("ignores votes from people who have left", () => {
+    expect(
+      planOf(rows({ responses: [spot(GONE, "concourse")] })),
+    ).toBeUndefined();
+  });
+});
