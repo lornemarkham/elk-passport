@@ -165,18 +165,20 @@ build and `next start -p 3130` with `/tmp/hockey-stack/env` and
   now shown to the whole group as **The plan** panel (`plan.ts`: leading dinner
   place and leaving time, ties reported as ties), which stays on the page after
   the pregame vote closes. Still not an itinerary.
-- **Atlas knows nowhere to eat near Rogers Arena.** Measured against the
-  committed Atlas snapshot `atlas-candidates-2026-10-11.json.gz` (2,979
-  candidates, on `lane/vision` @ `f617665`): Metro Vancouver holds 143
-  entities and **zero** in Discovery's Eat & drink subtypes; the nearest food
-  Atlas has is 256 km away in the Okanagan. Rogers Arena is not an entity
-  either (BC Place, 220 m away, is). The filter is not the cause — 358 of 479
-  food entities have no location at all, and the located ones are Okanagan.
-  So in production today the picker says, honestly, that Passport knows
-  nowhere nearby, and the group suggests places by name. **This is an Atlas
-  knowledge request, not a Passport fix:** food and drink within ~1.5 km of
-  Rogers Arena, with observed coordinates — the lab README's "highest-value
-  Atlas request" made concrete, and needed by 25 October to matter.
+- **Food near Rogers Arena — the earlier "Atlas has none" is superseded.**
+  The 2026-10-11 snapshot (`atlas-candidates-2026-10-11.json.gz`, `lane/vision`
+  @ `f617665`) held zero Eat & drink within 250 km and no Rogers Arena entity.
+  **Re-measured 2026-10-13 against production** (the public `/go` page carries
+  the whole corpus): Rogers Arena **is** an Atlas entity (`arena`, observed
+  coordinates, 0.01 km from the night's venue point) and **19** Eat & drink
+  entities with observed coordinates lie within 1.6 km, nearest 0.26 km
+  (Chambar, Tokyo In April, Moxies, Shark Club …). Hockey's own `nearbyFood`
+  accepts them. Atlas changed between the two measurements; it can change again,
+  so re-run `verification/prod-nearby-check.mjs` on Friday 23 October (no
+  credentials; exits 1 if the arena is missing or fewer than three places
+  qualify). What still is not proven: the picker's UI on real names (acceptance
+  runs on `atlas-stub.mjs`), and an authenticated Atlas read, which this lane
+  does not have.
 - **Host is trusted.** The host can move the start time, which moves every
   lock with it. Acceptable for a night among coworkers; named so nobody
   mistakes it for a guarantee.

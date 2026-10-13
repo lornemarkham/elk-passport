@@ -251,7 +251,7 @@ Against `https://<origin>`. Use your own account and a second, throwaway email.
 - [ ] Page says **Canucks vs Wild**, Rogers Arena, Sun 25 Oct, 7:00pm Pacific.
 - [ ] **Make a link** → URL is on `<origin>`, shaped `/hockey/join/<32 chars>`.
 - [ ] Vote once; reload; the vote is still there.
-- [ ] "What's near the arena?" → either places or the honest "Passport doesn't know anywhere nearby" (expected today: Atlas has no food near Rogers Arena).
+- [ ] "What's near the arena?" → either places or the honest "Passport doesn't know anywhere nearby" (expected today: places — production Atlas has 19 food and drink entities within 1.6 km; see §12).
 - [ ] Browser devtools → Network: every `/rest/v1/…` call goes to **your** Supabase project; no `localhost`.
 - [ ] Vercel logs show no `[hockey]` errors.
 - [ ] SQL editor: `select count(*) from passport_occasions;` → ≥ 1 (the row exists).
@@ -328,8 +328,8 @@ There is **no unresolved code or security defect** on `feature/hockey`. Everythi
 - **Email confirmation on/off**, and **SMTP**.
 - **The issuing origin** (§1 #1).
 - **`REVOKE TRUNCATE`** hardening (§2.4.1).
-- **Atlas knowledge request** for food near Rogers Arena stands (README): the picker
-  will honestly say "nowhere nearby" on production until Atlas has it.
+- ~~Atlas knowledge request for food near Rogers Arena~~ — superseded: production
+  Atlas now has it (§12).
 
 ---
 
@@ -386,4 +386,91 @@ Known and in the product: Canucks vs Wild, Sun 25 Oct 2026, 7:00pm Pacific
 (public ticket listings agree), 800 Griffiths Way, coordinates good to metres.
 **Not known to Passport, and not asked of anyone:** entrance or meeting point,
 seat sections, transit/parking plan, meeting time before puck drop, and any
-food within walking distance (Atlas has none; see README).
+food within walking distance as the group would know it (Atlas now lists 19 places within 1.6 km; §12).
+
+---
+
+## 12. Re-verification — 2026-10-13 (afternoon), on the Passport release line
+
+**Verdict unchanged: NO-GO until the owner actions are done; no code or security
+defect found.** Nothing applied, deployed, merged or pushed to any shared
+branch. What this pass added, and what it corrected.
+
+### Corrections to earlier sections
+
+- **Atlas does know food near Rogers Arena (supersedes §11 and the README).**
+  Measured from the public production `/go` payload with
+  `verification/prod-nearby-check.mjs`: Rogers Arena is an entity (`arena`,
+  observed coordinates, 0.01 km from the night's venue point) and 19 Eat & drink
+  entities with observed coordinates sit within 1.6 km (nearest 0.26 km).
+  Hockey's real `nearbyFood` accepted the production corpus. The 2026-10-11
+  snapshot was simply older than production. Not verified: an authenticated
+  Atlas call (no credentials in this lane, and production reads are not made
+  from it) and the picker UI over real names (acceptance still uses the stub).
+- **The "email spec is intermittent" caveat in §11 had a cause: a full `/tmp`.**
+  `/tmp` is a quota-limited tmpfs shared with every lane; vitest failed with
+  `Unknown system error -122` (EDQUOT) and Chromium crashed
+  (`Target crashed`, `ERR_INSUFFICIENT_RESOURCES`, "sign-in stays on `/auth?`").
+  With `TMPDIR` on the home disk and `--output` there, the **unmodified**
+  `email-confirmation.spec.ts` passed 6 of 6, and 1 of 4 before. A
+  hydration-race hypothesis (click before React attaches) was tried by making the
+  specs wait for `networkidle`; it changed nothing once `/tmp` was fixed, so it
+  is **not supported** and nothing was changed for it. (The mechanism exists —
+  the server-rendered `<form>` has no method/action and unnamed inputs, so a
+  pre-hydration submit is a `GET /auth?` — but no run showed it happen.)
+  **To run the suite here: `TMPDIR=$HOME/... npx playwright test --output=$TMPDIR/pw`.**
+- **A pid-file trap:** `next start` launched through `npx` writes the wrapper's
+  pid, so "kill the server" leaves the old build listening and the new one dies
+  with `EADDRINUSE`. For a while this pass was testing the previous build. Find
+  the listener with `ss -ltnp`, check `/proc/<pid>/cwd`, and kill that.
+
+### Base branch
+
+`feature/hockey` (`bba1bd1`, cut from `bd6f596`) merges **cleanly, no conflicts**,
+into `conference/live` (`4e55eaf`) and into `integration/release` (`6fd37dd`,
+"gohaveaday.com opens Go Have a Day at /go", 2026-10-13 11:54). Outside Hockey's
+own folders and `docs/` the merge changes exactly two files:
+`src/app/auth/callback/route.ts` and its test. Production is a CLI deploy, so
+git cannot say what it runs: `/labs/conference` was 404 on production while
+`conference/live` contains it. **Merge into whatever the last production deploy
+was built from.**
+
+### Results on `integration/release` + `feature/hockey` (scratch, nothing shared)
+
+| Check                                                            | Result                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tsc --noEmit`                                                   | clean                                                                                                                                                                                                                                                                                                                                          |
+| `eslint src docs/product/hockey`                                 | 0 errors (38 warnings, none in Hockey)                                                                                                                                                                                                                                                                                                         |
+| `prettier --check`                                               | clean on Hockey; one other file's style issue came from the release line (`docs/product/group-adventures/verification/prod-isolation.mjs`)                                                                                                                                                                                                     |
+| `vitest run`                                                     | 244 files, **2893 pass**, 3 skipped (before the `/tmp` fix: 18 files failed to load with `-122`)                                                                                                                                                                                                                                               |
+| `npm run build`                                                  | succeeds                                                                                                                                                                                                                                                                                                                                       |
+| `rls-attack.mjs` (real PG + GoTrue + PostgREST)                  | all checks passed                                                                                                                                                                                                                                                                                                                              |
+| `acceptance.spec.ts` + `plan-and-results.spec.ts`                | pass, 3 of 3 runs                                                                                                                                                                                                                                                                                                                              |
+| `email-confirmation.spec.ts` (confirmation required, both paths) | pass, 6 of 6                                                                                                                                                                                                                                                                                                                                   |
+| full `npx playwright test` against that server                   | 119 pass, 21 fail, 38 skipped — every failure is an Atlas-data spec (Day Builder, Labs "follows whether Atlas is there" which my stub answers, two `october.spec` entities, `core-loop` needs OpenAI). Not run against a no-Hockey baseline here; Hockey changes nothing they touch except the auth callback, which still passes its own tests |
+
+### gohaveaday.com
+
+Domain registered 2026-10-13 and not yet resolving (nameservers pending). The
+new front-door logic is compatible with Hockey:
+
+- It rewrites only `/` (to `/go`); `/hockey/*` is served as on any host. Checked
+  with `Host: gohaveaday.com` against the built server.
+- `www.gohaveaday.com/hockey/join/<token>?…` answers `308` to
+  `gohaveaday.com/hockey/join/<token>?…` (path, token and query kept).
+- Hockey's `next` is explicit, so the callback's new default of `/go` on that
+  host is never used for an invitation.
+- But: **an invitation link carries whatever origin the host was on** (it is
+  `window.location.origin`), and a session cookie is per origin. A night
+  started on `gohaveaday.com` needs `https://gohaveaday.com/**` in Supabase
+  Redirect URLs (§5.2) and the guests will sign up there. **Recommendation: run
+  the night on `elk-passport.vercel.app`** (already step 1 of the owner
+  checklist), and do not start it from the gohaveaday.com address.
+- `iamoctober.com` still dresses `/auth` as October (host-decided). Don't start
+  the night from there.
+
+### Still the owner's, still blocking
+
+B1–B5 in §9 are unchanged: the migration is not applied, the Supabase redirect
+allow-list and SMTP are unseen, the code is not merged or deployed, and the
+two-account run has not been done **on production**.
