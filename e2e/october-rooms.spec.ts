@@ -310,6 +310,37 @@ test.describe("the way in", () => {
     expect(after!.x).toBeLessThan(before!.x - 100);
     await context.close();
   });
+
+  // The bar's five items need ~505px, so on a phone it scrolls. It used to open
+  // at the left and cut off the tab for From October — the page the Room and
+  // the Store are reached from — while the page itself did not overflow.
+  for (const width of [360, 390]) {
+    test(`on a ${width}px phone the tab for From October is whole when you are on it`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({
+        viewport: { width, height: 844 },
+        hasTouch: true,
+        isMobile: true,
+      });
+      const page = await context.newPage();
+      await page.goto("/october/from");
+      const tab = page.getByTestId("october-nav-from-october");
+      await expect(tab).toHaveAttribute("aria-current", "page");
+      await expect(async () => {
+        const box = (await tab.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+      }).toPass({ timeout: 5000 });
+      // Still a bar that scrolls inside itself, not a page that scrolls sideways.
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        ),
+      ).toBe(0);
+      await context.close();
+    });
+  }
 });
 
 test.describe("the Room before it opens", () => {
