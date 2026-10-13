@@ -56,3 +56,19 @@ describe("From October", () => {
     );
   });
 });
+
+describe("the Room's door before it opens", () => {
+  it("says what the date says, in the Room's own words", () => {
+    const [room, store] = DOORS as [
+      (typeof DOORS)[number],
+      (typeof DOORS)[number],
+    ];
+    expect(lineFor(room, {}, { kind: "not-yet" })).toBe("Not yet.");
+    expect(lineFor(room, {}, { kind: "counting", nights: 6 })).toBe(
+      "Six nights.",
+    );
+    // An open door is the door it always was, and the store is not the room.
+    expect(lineFor(room, {}, { kind: "open" })).toBe(room.line);
+    expect(lineFor(store, {}, { kind: "not-yet" })).toBe(store.line);
+  });
+});

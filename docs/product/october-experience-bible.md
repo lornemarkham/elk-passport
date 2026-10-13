@@ -1987,8 +1987,8 @@ Experience contract (§10).
   This is the first step toward §31.8 Layer 5 and the Secret Room's
   foreshadowing, and is **local to one browser**.
 
-**Not built.** Multi-day foreshadowing of the Secret Room (§9.7: "Not yet." →
-"Six nights."). It opens on any day. Witching Hour's dead endings, Found You's
+**Not built (see §34 — since built).** Multi-day foreshadowing of the Secret
+Room (§9.7: "Not yet." → "Six nights."). It opened on any day. Witching Hour's dead endings, Found You's
 missing inbound link and the rest of `/labs/october` are as the audit left them.
 
 ## 33. Where the rooms live now — 2026-10-12
@@ -2014,6 +2014,40 @@ move is for a human. The moved rooms keep their own frame: October's nav bar
 does not appear over them, as it never did in Labs. The Secret Room _puzzle_
 (`/october/room`) and the `another-way-out` prototype are two different
 things and both exist.
+
+---
+
+## 34. The Room keeps its secret until Halloween — 2026-10-13
+
+§9.7's foreshadowing, built. **Evidence of one Experience, not the Experience
+contract (§10).** Until now `/october/room` opened on any day.
+
+```
+Oct 13 – 19   "Not yet."        a dark door
+Oct 20 – 24   "Not yet."        a line of light under it, now and then
+Oct 25 – 30   "Six nights."     … "One night."  the light steady
+Oct 31 →      the room opens
+```
+
+Before it opens, `/october/room` is only a door (`ShutDoor`). The one thing to
+do is knock; October answers mildly and never the same line twice running. The
+Room's card on From October and the strip on Discover say the same thing in the
+same words, so the count is visible before anyone knocks. The rule is
+`domain/october/threshold.ts`, on the visitor's local calendar day.
+
+**Nobody who has been inside is shut out.** A new `entered` memory joins
+`passage`; with `escaped`, `tape` and `played` it keeps the door open for
+whoever it has already opened for, so a puzzle begun yesterday survives the
+date.
+
+**Decisions a human should confirm** (kept in one constant, `ROOM_OPENS`):
+Halloween as the opening night; that the stages above are the right pacing for
+a window of eighteen days rather than the bible's illustrative "Oct 12"; and
+that a first-time visitor gets a door, not the puzzle, for eighteen days. It is
+a story and not a lock — a device clock can open it.
+
+**Still not built:** a _multi-person_ or _account-level_ memory of having been
+inside (it is one browser's `localStorage`, like the rest of `passage`).
 
 ---
 

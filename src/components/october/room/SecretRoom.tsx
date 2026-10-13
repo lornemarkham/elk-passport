@@ -215,6 +215,7 @@ export function SecretRoom() {
   // ----------------------------------------------------------- the cover
   const enter = useCallback(() => {
     if (stage !== "cover") return;
+    rememberPassage("entered");
     armRoomAudio();
     // Skipping the doorway skips what it was saying, and its hold on the floor.
     for (const t of voice.current) clearTimeout(t);
@@ -228,6 +229,7 @@ export function SecretRoom() {
     if (stage !== "cover") return;
     // Read directly: the hook's first snapshot is the server's empty one.
     const lines = getPassage().escaped ? ENTER_AGAIN : ENTER_FIRST;
+    rememberPassage("entered");
     // The cover is a doorway you walk through, and it is quick: it says its
     // one line and lets go.
     say(lines, {
