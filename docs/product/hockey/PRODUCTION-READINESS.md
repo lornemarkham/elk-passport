@@ -474,3 +474,18 @@ new front-door logic is compatible with Hockey:
 B1–B5 in §9 are unchanged: the migration is not applied, the Supabase redirect
 allow-list and SMTP are unseen, the code is not merged or deployed, and the
 two-account run has not been done **on production**.
+
+---
+
+## 13. Pass of 2026-10-13 (afternoon): redemption races
+
+`rls-attack.mjs` covered concurrent votes and comments but not concurrent
+redemption of one single-use link, the one place where a lost race would put a
+stranger inside a private night. Added four checks (real PostgreSQL + GoTrue +
+PostgREST, throwaway stack): four accounts redeeming one `max_uses = 1` link at
+the same instant admit **exactly one**, leave one guest row and `uses = 1`; one
+person double-clicking never becomes two members. All pass; the row lock
+(`for update` in `passport_redeem_occasion_invite`) is what holds. No migration
+change. Not covered, and cosmetic only: two _different_ links to one night
+redeemed at once can pick the same free emoji, as `(occasion_id, emoji)` has no
+unique constraint. The blockers in §9 (B1 to B5) are unchanged and all the owner's.

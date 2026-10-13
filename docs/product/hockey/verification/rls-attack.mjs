@@ -556,6 +556,52 @@ const forgeUses = await rest(
 );
 check(forgeUses.status >= 400, "a spent link cannot be un-spent");
 
+console.log("\nRedeeming at the same instant");
+const racers = await Promise.all(
+  ["Racer1", "Racer2", "Racer3", "Racer4"].map(signUp),
+);
+const raceOcc = await createOccasion(
+  lorne,
+  new Date(Date.now() + 86400000 * 3).toISOString(),
+);
+const raceInvite = await invite(lorne, raceOcc, 1);
+const raced = await Promise.all(racers.map((r) => join(r, raceInvite.token)));
+check(
+  raced.filter((r) => r.body === raceOcc).length === 1,
+  "one single-use link redeemed by four people at once admits exactly one",
+);
+const raceMembers = rows(
+  await rest(
+    lorne,
+    "GET",
+    `/passport_occasion_members?occasion_id=eq.${raceOcc}&role=eq.guest&select=user_id`,
+  ),
+);
+check(raceMembers.length === 1, "and exactly one guest row exists");
+const raceUses = rows(
+  await rest(
+    lorne,
+    "GET",
+    `/passport_occasion_invites?occasion_id=eq.${raceOcc}&select=uses`,
+  ),
+);
+check(raceUses[0]?.uses === 1, "and the link records exactly one use");
+const sameTwice = await Promise.all([
+  join(racers[0], raceInvite.token),
+  join(racers[0], raceInvite.token),
+]);
+check(
+  sameTwice.every((r) => r.status < 400) &&
+    rows(
+      await rest(
+        lorne,
+        "GET",
+        `/passport_occasion_members?occasion_id=eq.${raceOcc}&user_id=eq.${racers[0].id}&select=user_id`,
+      ),
+    ).length <= 1,
+  "one person double-clicking a link never becomes two members",
+);
+
 console.log(
   failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) FAILED.`,
 );
