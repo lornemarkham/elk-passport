@@ -29,7 +29,9 @@ const UNPLACED_ID = "04986cc2-c926-4740-a5ef-7253493719c3";
 async function open(page: Page, path = "/go") {
   await page.goto(path);
   await expect(page.getByTestId("go-say")).toBeVisible();
-  await page.waitForLoadState("networkidle");
+  // Not `networkidle`: on a `/go` page restored from sessionStorage it can run
+  // to the test timeout while the page is already fully rendered. What every
+  // test needs is the page visible, which is asserted above.
 }
 
 async function say(page: Page, sentence: string) {
@@ -192,6 +194,8 @@ for (const form of forms) {
       const shaped = await titles(page);
       await page.getByTestId("go-print").click();
       await expect(page).toHaveURL(/\/go\/print\?/);
+      // `allTextContents` does not wait: the paper must have rendered first.
+      await expect(page.getByTestId("guide-stop").first()).toBeVisible();
       const onPaper = await page.getByTestId("guide-stop").allTextContents();
       expect(onPaper).toHaveLength(shaped.length);
     });
