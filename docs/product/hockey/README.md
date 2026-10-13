@@ -111,6 +111,7 @@ is not yet written into an itinerary block (see open items).
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `stack.mjs` — real PostgreSQL + **GoTrue** + **PostgREST** + proxy, Supabase's default grants                                                                 | used by everything below              |
 | `rls-attack.mjs` — 48 attacks over PostgREST as real signed-up users                                                                                          | **48/48 refused/correct**             |
+| `plan-and-results.spec.ts` — the plan, ties, sealed picks, host-only results (added 2026-10-13)                                                               | **passes, 3/3**                       |
 | `acceptance.spec.ts` — two independent browser contexts (desktop host, **mobile** guest), a signed-out visitor, a stranger, the host again in a fresh session | **passes, 7 of 7 runs**               |
 | `src/domain/hockey/*.test.ts`                                                                                                                                 | 22/22                                 |
 | Migration applied twice                                                                                                                                       | no change (25 policies, RLS on 10/10) |

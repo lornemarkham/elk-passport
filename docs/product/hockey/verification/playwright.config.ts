@@ -9,7 +9,7 @@ const PORT = Number(process.env.E2E_PORT ?? 3130);
 
 export default defineConfig({
   testDir: ".",
-  testMatch: /(acceptance|email-confirmation)\.spec\.ts$/,
+  testMatch: /(acceptance|email-confirmation|plan-and-results)\.spec\.ts$/,
   reporter: "list",
   workers: 1,
   outputDir: "/tmp/hockey-playwright",

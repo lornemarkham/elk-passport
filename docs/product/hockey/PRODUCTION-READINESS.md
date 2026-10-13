@@ -330,3 +330,60 @@ There is **no unresolved code or security defect** on `feature/hockey`. Everythi
 - **`REVOKE TRUNCATE`** hardening (§2.4.1).
 - **Atlas knowledge request** for food near Rogers Arena stands (README): the picker
   will honestly say "nowhere nearby" on production until Atlas has it.
+
+---
+
+## 11. Re-verification — 2026-10-13, on `0493c06` (The plan)
+
+Everything in §§1–10 stands; this adds what changed or was newly measured.
+**Still NO-GO until the owner actions are done** — [`OWNER-CHECKLIST.md`](OWNER-CHECKLIST.md)
+is the short version. No code or security defect found. Nothing applied,
+deployed, merged or pushed.
+
+| Check                                                       | Result                                                                                                                                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tsc --noEmit`                                              | clean                                                                                                                                                                           |
+| `eslint src docs/product/hockey`                            | 0 errors (39 pre-existing warnings, none in Hockey)                                                                                                                             |
+| `prettier --check`                                          | clean                                                                                                                                                                           |
+| `vitest run`                                                | 162 files, **2046/2046**                                                                                                                                                        |
+| `npm run build`                                             | succeeds                                                                                                                                                                        |
+| `rls-attack.mjs` (real PG + GoTrue + PostgREST)             | **49 checks, 0 failures** (was 48)                                                                                                                                              |
+| `verify.sql` on the stack; `preflight.sql` on a migrated DB | all 9 `OK`; preflight lists the already-present objects (it detects a re-run)                                                                                                   |
+| `acceptance.spec.ts` (host desktop, guest mobile, stranger) | **passes**, 3/3 consecutive runs                                                                                                                                                |
+| **new** `plan-and-results.spec.ts`                          | **passes**, 3/3 (mutation-checked: a wrong expected score fails it)                                                                                                             |
+| `email-confirmation.spec.ts` (both paths)                   | passes on a fresh stack, 6/6; see the caveat below                                                                                                                              |
+| Full `npx playwright test` (`E2E_PORT=3130`, own server)    | **46 pass, 3 fail** — the documented environmental baseline (core-loop needs OpenAI; two `october.spec` tests need Atlas entities). `nfr.spec:300` passed this time (stub data) |
+
+### What the new spec proves (the Plan panel and the result, which §7 could not reach)
+
+Two real accounts: no plan before any vote → one vote makes "Eating: …· 1 vote"
+on **both** screens → a nomination plus a vote for it reports **"Tied at 1
+vote"** (never broken) → agreement reports "· 2 votes" → a sealed pick is
+visible only to its author until its own question is answered by the viewer,
+then only that question → a **guest cannot move the start time** (RLS returns
+0 rows; the host's own PATCH moves it) → after lock the plan is still on the page
+at the final horn → only the host sees "Call it", and a guest's `callIt` is
+refused, before and after the host's → the host's calls produce the right
+standings (8 and 3) on both screens without a reload.
+
+### Caveat: the email-confirmation spec is not reliable on a busy machine
+
+It passed 6/6 on a freshly started stack, but was intermittent (about 1 in 3)
+during long repeated runs: Chromium "Target crashed", `ERR_INSUFFICIENT_RESOURCES`,
+and 3 times a sign-in that stayed on `/auth?`. These coincided with another lane
+running its own Playwright suite on the same machine and with hundreds of
+accumulated sign-ups and mails in the local stack; restarting the stack removed
+them. **I could not prove the cause of the `/auth?` stall.** One hypothesis,
+not verified: a click that lands before React hydrates submits the form
+natively (the inputs have no `name`, so nothing sensitive reaches the URL).
+Consequence for the night: a guest whose sign-in seems to do nothing should
+reload and sign in again; the invitation link remains valid. Re-run this spec
+on a quiet machine before relying on it.
+
+### Rogers Arena — what is and is not known
+
+Known and in the product: Canucks vs Wild, Sun 25 Oct 2026, 7:00pm Pacific
+(public ticket listings agree), 800 Griffiths Way, coordinates good to metres.
+**Not known to Passport, and not asked of anyone:** entrance or meeting point,
+seat sections, transit/parking plan, meeting time before puck drop, and any
+food within walking distance (Atlas has none; see README).
