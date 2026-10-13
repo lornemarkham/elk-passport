@@ -45,8 +45,20 @@ for (const [name, device] of [
       page,
     }) => {
       test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
+      // Photos are other people's hosts; with no network they pile up pending
+      // and can take the tab down. Nothing here is about a photo's pixels.
+      await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, (route) =>
+        route.abort(),
+      );
       await page.goto("/discovery");
-      const card = page.getByTestId("possibility").first();
+      // The first card whose page the stand-in can serve: which kind of card
+      // leads Discovery moves with the date (an Event led on 2026-10-13), and
+      // the stand-in has no Event composition to open. Every card is hit-tested
+      // the same way; this one is also followed.
+      const card = page
+        .getByTestId("possibility")
+        .filter({ has: page.locator('a[href^="/places/"]') })
+        .first();
       await expect(card).toBeVisible({ timeout: 60_000 });
       // `elementFromPoint` only sees what is on screen.
       await card.scrollIntoViewIfNeeded();

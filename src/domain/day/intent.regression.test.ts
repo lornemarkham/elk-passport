@@ -359,3 +359,52 @@ describe("a two-hour indoor day with a five-year-old", () => {
     });
   }
 });
+
+describe("an afternoon that is already over", () => {
+  const ask = (nowMinutes: number) =>
+    build(
+      readBrief(
+        "Taking my five year old out this afternoon",
+        { town: town("kelowna") },
+        { nowMinutes },
+      ),
+    );
+  const over = (unknowns: readonly string[]) =>
+    unknowns.filter((u) => /this afternoon is over/.test(u));
+
+  it("said at 6:45 pm, it starts then and says so, instead of passing 9 pm off as an afternoon", () => {
+    const day = ask(18 * 60 + 45);
+    expect(day.brief.startAt).toBe(18 * 60 + 45);
+    expect(over(day.unknowns)).toHaveLength(1);
+    expect(over(day.unknowns)[0]).toMatch(/already 6:45 pm/);
+  });
+
+  it("said at 3:26 pm, it is still the afternoon and nothing is said", () => {
+    expect(over(ask(15 * 60 + 26).unknowns)).toHaveLength(0);
+  });
+
+  it("with no clock (not today), it starts at the afternoon's own start and nothing is said", () => {
+    const day = build(
+      readBrief(
+        "Taking my five year old out this afternoon",
+        { town: town("kelowna") },
+        {},
+      ),
+    );
+    expect(day.brief.startAt).toBe(13 * 60);
+    expect(over(day.unknowns)).toHaveLength(0);
+  });
+
+  it("tonight is still tonight at 10 pm", () => {
+    const day = build(
+      readBrief(
+        "Something tonight",
+        { town: town("kelowna") },
+        {
+          nowMinutes: 22 * 60,
+        },
+      ),
+    );
+    expect(day.unknowns.filter((u) => /is over/.test(u))).toHaveLength(0);
+  });
+});

@@ -20,6 +20,7 @@ import {
   rainLine,
 } from "@/domain/discovery/environment";
 import { ruledOutOn } from "@/domain/discovery/recurrence";
+import { PART_OF_DAY_END } from "./intent";
 
 /**
  * **Indoors, as Atlas says it.** A stated indoor setting, a sheltered rain
@@ -1179,6 +1180,21 @@ export function buildDay({
   if (brief.withinMinutes !== undefined && brief.hours === undefined)
     unknowns.push(
       `You said you would travel up to ${travelPhrase(brief.withinMinutes)}, but not how long you have — this is a ${budget.totalMinutes / 60}-hour day (assumed). Say “all day” to make room for the drive.`,
+    );
+  // **A part of the day that is over.** "This afternoon", said at 6:45 pm,
+  // starts the day at 6:45 pm (never earlier than the clock). It is still the
+  // person's day, but it is not the afternoon they named, and nothing here
+  // knows what is open at that hour — so say so rather than hand a five-year-old
+  // a 9 pm beach park without a word.
+  const partEnds = brief.when ? PART_OF_DAY_END[brief.when] : undefined;
+  if (
+    brief.startFromWhen &&
+    brief.startAt !== undefined &&
+    partEnds !== undefined &&
+    brief.startAt >= partEnds
+  )
+    unknowns.push(
+      `It is already ${clockLabel(brief.startAt)}, so this ${brief.when} is over — this day starts now. Atlas does not say what is still open at this hour, so check before you go.`,
     );
   if (brief.shelter === "indoor" && stops.length > 0) {
     const covered = stops.filter((s) => indoors(s.experience)).length;

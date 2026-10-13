@@ -280,6 +280,15 @@ export const PART_OF_DAY_START: Readonly<Record<PartOfDay, number>> = {
   evening: 18 * 60,
 };
 
+/**
+ * When the part of the day a person can still be *in* runs out. There is no
+ * end for the evening: "tonight" is still tonight at 10 pm.
+ */
+export const PART_OF_DAY_END: Readonly<Partial<Record<PartOfDay, number>>> = {
+  morning: 12 * 60,
+  afternoon: 18 * 60,
+};
+
 // ── Where ───────────────────────────────────────────────────────────────
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
