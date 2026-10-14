@@ -157,8 +157,9 @@ test("Alice starts a conference; Bob and Carol join; they share one roster", asy
   await expect(bob.page.getByText("Carol")).toHaveCount(0);
 
   // ── The organiser sees everyone; Bob can't reach her settings ──
-  // Arrivals keeps flights in per-process memory, so on the durable store it
-  // stays shut for everybody, the organiser included, and asks ADS-B nothing.
+  // On the durable store Arrivals opens only with CONFERENCE_ARRIVALS=on (the
+  // owner applied its migration). This server doesn't set it, so it stays shut
+  // for everybody, the organiser included, and asks ADS-B nothing.
   await alice.page.goto(`/conferences/${id}/arrivals`);
   await expect(alice.page.getByText("Arrivals isn't open yet.")).toBeVisible();
   const closed = await alice.page.request.get(
