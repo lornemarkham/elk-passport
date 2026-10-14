@@ -7,6 +7,7 @@ import { OctoberDiscovery } from "./OctoberDiscovery";
 import { OctoberTray } from "@/components/labs/october/OctoberTray";
 import { ChoicesLink } from "@/components/labs/october/ChoicesLink";
 import { Unanswered } from "@/components/october/shell/atoms";
+import { Remembered } from "@/components/october/shell/Remembered";
 
 /**
  * **October's discovery surface — one implementation, rendered by one route.**
@@ -91,6 +92,9 @@ export async function OctoberDiscoverySurface({
           kept={[...pool.page.kept]}
         />
 
+        {/* Under everything a person came for. See `Remembered`. */}
+        {standalone ? null : <Remembered />}
+
         {standalone ? (
           <p className="mt-16 border-t border-[#e9e6da]/10 pt-5 text-xs text-[#e9e6da]/25">
             This is the same surface as{" "}
@@ -98,10 +102,7 @@ export async function OctoberDiscoverySurface({
               October Discover
             </Link>
             . The experiments it came from —{" "}
-            <Link
-              href="/labs/october/discovery"
-              className="hover:text-[#e9e6da]/60"
-            >
+            <Link href="/october/discovery" className="hover:text-[#e9e6da]/60">
               A, B, C and D
             </Link>{" "}
             — are still there, unchanged.

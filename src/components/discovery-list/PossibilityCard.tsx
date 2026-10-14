@@ -13,6 +13,7 @@ import {
   whereLine,
 } from "@/domain/discovery/compose";
 import { distanceText } from "@/domain/discovery/proximity";
+import { describeJourney, routedShort } from "@/lib/routing/journey";
 import { ageLine } from "@/domain/discovery/suitability";
 import { dayLine } from "@/domain/discovery/preference";
 import { recurrenceLine } from "@/domain/discovery/recurrence";
@@ -62,6 +63,9 @@ export function PossibilityCard({
   onSave,
   wanted = false,
   onWant,
+  because,
+  caveat,
+  dayHref,
 }: {
   readonly experience: Experience;
   /** Today where the subjects are, `YYYY-MM-DD`. Makes the when-line relative. */
@@ -107,6 +111,20 @@ export function PossibilityCard({
   readonly onSave: () => void;
   readonly wanted?: boolean;
   readonly onWant?: () => void;
+  /**
+   * **Why this card is in an answer**, where it is in one — facts from
+   * `answerAsk`, each one checkable. A line that repeats the distance or the
+   * date already on the card is dropped rather than said twice.
+   */
+  readonly because?: readonly string[];
+  /** The one thing an answer could not find out about it. */
+  readonly caveat?: string;
+  /**
+   * **Into *Go have a day*, with this one in it.** Not a save and not a
+   * reaction: a day is built around it on `/go`, and nothing is kept until
+   * somebody keeps it there.
+   */
+  readonly dayHref?: string;
 }) {
   const base = destinationFor(experience);
   const destination = base && carry ? `${base}?${carry}` : base;
@@ -134,7 +152,10 @@ export function PossibilityCard({
   // it has no reliable idea where the reader is, so it states where the thing
   // is and lets them judge.
   const area = areaLabel(experience);
-  const away = distanceText(experience, origin);
+  // Atlas's routed time where it has one; otherwise the straight line. The
+  // pill is too small for a caveat, so the routed one carries it as a title.
+  const routed = origin ? routedShort(experience.travel) : undefined;
+  const away = routed ?? distanceText(experience, origin);
   // **"Elsewhere" is measured from the corpus; a distance is measured from the
   // person.** Shown together they contradict each other — a Vancouver venue
   // carried "UNDER 1 KM AWAY" beside "METRO VANCOUVER" for somebody standing
@@ -166,6 +187,9 @@ export function PossibilityCard({
       ? undefined
       : (ageLine(experience, askedAge) ?? "No age guidance found");
   const day = dayLine(experience);
+  const reasons = (because ?? []).filter(
+    (reason) => reason !== when && !(away && reason.startsWith(away)),
+  );
 
   return (
     <li
@@ -175,10 +199,16 @@ export function PossibilityCard({
       // object; the text sits under it on the page's own ground.
       className={`group relative flex h-full flex-col bg-white ${className}`}
     >
+      {/* **The whole card opens the thing.** Above the picture and the words
+          (`z-[1]`), because a positioned element painted after it, such as the
+          venue photograph's frame, otherwise took the tap and did nothing.
+          Only the actions row sits higher, and only its controls take the
+          pointer, so the gaps between them still open the card. */}
       {destination && (
         <Link
           href={destination}
-          className="absolute inset-0 rounded-xl"
+          data-testid="possibility-link"
+          className="absolute inset-0 z-[1] rounded-xl"
           aria-label={experience.title}
         />
       )}
@@ -255,6 +285,12 @@ export function PossibilityCard({
             {away && (
               <p
                 data-testid="possibility-distance"
+                data-journey={routed ? "routed" : "straight-line"}
+                title={
+                  routed && experience.travel
+                    ? describeJourney(experience.travel).caveat
+                    : undefined
+                }
                 className="ghad-accent-text inline-flex w-fit items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
               >
                 <MapPin className="h-3 w-3 shrink-0" aria-hidden />
@@ -326,6 +362,30 @@ export function PossibilityCard({
             </p>
           ))}
 
+        {reasons.length > 0 && (
+          <ul
+            data-testid="possibility-because"
+            className="mt-2 flex flex-col gap-0.5 text-[11.5px] leading-snug font-medium text-[#111]/75"
+          >
+            {reasons.map((reason) => (
+              <li key={reason} className="flex gap-1.5">
+                <span aria-hidden className="ghad-accent-text">
+                  ✓
+                </span>
+                <span className="first-letter:uppercase">{reason}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {caveat && (
+          <p
+            data-testid="possibility-caveat"
+            className="mt-1 text-[11px] leading-snug text-black/45"
+          >
+            {caveat}
+          </p>
+        )}
+
         {/* When it recurs, in Atlas's own weekday names. A long interval is
             not a season until Atlas says it is. */}
         {recurs && (
@@ -382,7 +442,7 @@ export function PossibilityCard({
           </p>
         )}
 
-        <div className="relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-4">
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-4">
           {saved ? (
             <span className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 text-xs font-medium">
               <Check className="h-3.5 w-3.5" aria-hidden />
@@ -399,7 +459,7 @@ export function PossibilityCard({
               onClick={onSave}
               disabled={saving}
               title="Keep this to look at later"
-              className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-4 text-xs font-medium text-white transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
+              className="pointer-events-auto inline-flex min-h-11 items-center rounded-full bg-[#111] px-4 text-xs font-medium text-white transition-colors hover:bg-[#3a2a1c] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -418,12 +478,22 @@ export function PossibilityCard({
                 onClick={onWant}
                 data-testid="want-to-do"
                 title="Keep this in My October"
-                className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors hover:bg-black/10"
+                className="ghad-accent-text pointer-events-auto inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors hover:bg-black/10"
               >
                 <Leaf className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Want to do
               </button>
             ))}
+          {dayHref && (
+            <Link
+              href={dayHref}
+              data-testid="plan-a-day"
+              title="Build a day around this on Go have a day"
+              className="ghad-accent-text pointer-events-auto inline-flex min-h-11 items-center rounded-full px-2.5 text-xs font-semibold underline-offset-4 transition-colors hover:underline"
+            >
+              Plan a day around this →
+            </Link>
+          )}
         </div>
       </div>
     </li>

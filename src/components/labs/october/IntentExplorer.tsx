@@ -15,7 +15,7 @@ import { search } from "@/lib/labs/october/search";
 import { CardWhen, Shot } from "./atoms";
 import { LabKeep } from "./LabKeep";
 
-const HERE = "/labs/october/discovery/b";
+const HERE = "/october/discovery/b";
 
 /**
  * **Experiment B — you finish the sentence, and the page becomes the answer.**

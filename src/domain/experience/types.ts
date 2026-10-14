@@ -1,9 +1,11 @@
+import type { Journey } from "@/lib/routing/journey";
 import type {
   CandidateAvailability,
   CandidateContextualMedia,
   CandidateDistance,
   CandidateSchedule,
   CandidateSuitability,
+  CandidateVisitDuration,
 } from "@/lib/data/types";
 import type {
   CandidateEnvironment,
@@ -211,12 +213,20 @@ export interface Experience {
   contextualMedia?: CandidateContextualMedia;
   /** Whether stated hours or dates cover the chosen day — `candidate-schedule/1`. */
   schedule?: CandidateSchedule;
+  /** How long a visit usually takes — Atlas's `visitDuration`, untouched. */
+  visitDuration?: CandidateVisitDuration;
   /**
    * **Atlas's distance from the chosen origin** — `candidate-distance/1`.
    * Never set by the mapper: Discovery attaches it in the browser from the
    * reading it asked for, so it always belongs to the current origin.
    */
   distance?: CandidateDistance;
+  /**
+   * **Atlas's routed travel time from the same origin** — ADR 097. Attached
+   * in the browser beside `distance`, and only when Atlas answered for this
+   * subject. Absent means no routed time; it never means "near".
+   */
+  travel?: Journey;
   pairsWith?: string[];
 
   isActive: boolean;

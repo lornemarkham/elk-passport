@@ -49,6 +49,27 @@ const EXPERIENCES: readonly ExperienceDomain[] = [
   },
 ];
 
+/**
+ * **A domain that is a front door, not a whole experience.**
+ *
+ * `gohaveaday.com` opens Go Have a Day at `/go`. It is deliberately *not* an
+ * `ExperienceDomain`: that table also decides which navigation, theme and
+ * wording the shared account and auth pages wear, and those are October's.
+ * Putting `/go` there would have dressed Go Have a Day's sign-in in October's
+ * bar. A front door only answers two questions — what does the root show, and
+ * where does somebody land after signing in — and `canonical` says which host
+ * is the real one (`www.` redirects to it).
+ */
+interface FrontDoor {
+  readonly host: string;
+  readonly home: string;
+  readonly canonical: boolean;
+}
+
+const FRONT_DOORS: readonly FrontDoor[] = [
+  { host: "gohaveaday.com", home: "/go", canonical: true },
+];
+
 /** `WWW.IAmOctober.com:443` and `iamoctober.com` are the same front door. */
 function normalizeHost(host: string): string {
   return host
@@ -110,7 +131,32 @@ export function experienceHomeFor(
 ): string | null {
   if (!host) return null;
   const normalized = normalizeHost(host);
-  return EXPERIENCES.find((e) => e.host === normalized)?.home ?? null;
+  return (
+    EXPERIENCES.find((e) => e.host === normalized)?.home ??
+    FRONT_DOORS.find((d) => d.host === normalized)?.home ??
+    null
+  );
+}
+
+/**
+ * Where `www.gohaveaday.com` goes: the apex, same path and query, or `null`
+ * for any other host. October's `www.` is deliberately left alone — it is the
+ * address its release smoke test and its auth redirects already use.
+ */
+export function canonicalRedirectFor(
+  host: string | null | undefined,
+  pathname: string,
+  search: string,
+): string | null {
+  if (!host) return null;
+  const bare = host
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "")
+    .replace(/\.$/, "");
+  if (!bare.startsWith("www.")) return null;
+  const door = FRONT_DOORS.find((d) => d.canonical && `www.${d.host}` === bare);
+  return door ? `https://${door.host}${pathname}${search}` : null;
 }
 
 /**

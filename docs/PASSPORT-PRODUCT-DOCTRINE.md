@@ -784,6 +784,9 @@ certainty. Do not invent an answer here to make the document feel finished.
 4. **Planning UI.** What SHAPE actually looks like. (§2.5)
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
+   _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
+   needs a starting town, and Passport asks rather than picks one. Everywhere
+   else — Discovery, the helper — this stays open._
 6. **How the Passport helper manifests.** Inline? Ambient? Something else? Not
    assumed to be a chatbot. (§4)
 7. **What telemetry and behavioural signals are appropriate.** (§5)
@@ -793,7 +796,10 @@ certainty. Do not invent an answer here to make the document feel finished.
 10. **How live mode should interrupt — or stay silent.** (§2.7, §6)
 11. **How feedback influences personal versus shared knowledge**, and what may
     flow back to Atlas. (§2.10)
-12. **How group / multi-person experiences work.** (§6, §14)
+12. **How group / multi-person experiences work.** (§6, §14) First concrete
+    case: GO HAVE A CONFERENCE (2026-10-11,
+    `docs/products/go-have-a-conference/VISION.md`), a pilot that should
+    _inform_ this question, not answer it.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

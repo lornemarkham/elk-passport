@@ -1,6 +1,7 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, MapPin } from "lucide-react";
 
 /**
  * **"What do you feel like doing?" — five questions, every one of them real.**
@@ -28,7 +29,9 @@ export function FeelLikeDoing({
   rows,
   today,
   where,
+  lead,
   after,
+  collapseOnPhone = false,
 }: {
   /**
    * The calendar day, already written out — `Saturday, October 10`.
@@ -51,8 +54,24 @@ export function FeelLikeDoing({
     readonly note?: string;
     readonly after?: React.ReactNode;
   }[];
+  /** Between the two facts and the rows — where Discovery's question box sits. */
+  readonly lead?: React.ReactNode;
   readonly after?: React.ReactNode;
+  /**
+   * **Possibilities before questions, on a phone.** The rows stack to about a
+   * thousand pixels — three screens of questions before one photograph, which
+   * is the questionnaire the doctrine says must not stand between a person and
+   * possibility (§2.1, §4). On a phone they sit behind one line that says what
+   * is already chosen; from `sm` up nothing changes.
+   */
+  readonly collapseOnPhone?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const chosen = rows.flatMap((row) => {
+    const picked = row.choices.find((choice) => choice.value === row.value);
+    return picked ? [picked.label] : [];
+  });
+  const folded = collapseOnPhone && !open;
   return (
     <section data-testid="feel-like-doing">
       {/* The wordmark and the theme picker live on the bar above, which every
@@ -91,7 +110,38 @@ export function FeelLikeDoing({
         </p>
       )}
 
-      <div className="mt-5 sm:mt-8">
+      {lead}
+
+      {collapseOnPhone && (
+        <button
+          type="button"
+          data-testid="ghad-refine"
+          aria-expanded={open}
+          aria-controls="ghad-rows"
+          onClick={() => setOpen(!open)}
+          className="mt-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-full px-4 text-left text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset sm:hidden"
+        >
+          <span className="truncate">
+            {chosen.length > 0 ? chosen.join(" · ") : "Narrow it down"}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-black/50">
+            {open
+              ? "Hide"
+              : chosen.length > 0
+                ? "Change"
+                : "Who, when, how far"}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </span>
+        </button>
+      )}
+
+      <div
+        id="ghad-rows"
+        className={`mt-5 sm:mt-8 ${folded ? "hidden sm:block" : ""}`}
+      >
         {rows.map((row) => (
           <div
             key={row.key}

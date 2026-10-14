@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   activeExperience,
+  canonicalRedirectFor,
   experienceForPath,
   experienceFromHeader,
   experienceHomeFor,
@@ -233,5 +234,66 @@ describe("the experience stated on the request", () => {
     expect(experienceFromHeader("evil.example")).toBeNull();
     expect(experienceFromHeader("")).toBeNull();
     expect(experienceFromHeader(null)).toBeNull();
+  });
+});
+
+/**
+ * **`gohaveaday.com` is a front door, and only a front door.**
+ *
+ * Go Have a Day is not an `ExperienceDomain`: that table dresses the shared
+ * account and auth pages, and those are October's. These pin that the root
+ * opens `/go`, that sign-in comes back to it, that `www.` goes to the apex,
+ * and that none of it leaks into October or Passport.
+ */
+describe("gohaveaday.com", () => {
+  it("opens Go Have a Day at the root, and only the root", () => {
+    expect(experienceRewriteFor("gohaveaday.com", "/")).toBe("/go");
+    expect(experienceRewriteFor("GoHaveADay.com:443", "/")).toBe("/go");
+    expect(experienceRewriteFor("gohaveaday.com", "/go")).toBeNull();
+    expect(experienceRewriteFor("gohaveaday.com", "/discovery")).toBeNull();
+  });
+
+  it("brings somebody back to /go after signing in", () => {
+    expect(experienceHomeFor("gohaveaday.com")).toBe("/go");
+  });
+
+  it("is not an experience, so it never wears October's pages", () => {
+    expect(activeExperience({ host: "gohaveaday.com" })).toBeNull();
+    expect(
+      activeExperience({ host: "gohaveaday.com", next: "/go" }),
+    ).toBeNull();
+    expect(experienceForPath("/go")).toBeNull();
+    expect(experienceFromHeader("gohaveaday.com")).toBeNull();
+  });
+
+  it("sends www to the apex, keeping path and query", () => {
+    expect(canonicalRedirectFor("www.gohaveaday.com", "/", "")).toBe(
+      "https://gohaveaday.com/",
+    );
+    expect(
+      canonicalRedirectFor("WWW.GoHaveADay.com:443", "/go/print", "?a=1&b=2"),
+    ).toBe("https://gohaveaday.com/go/print?a=1&b=2");
+  });
+
+  it("redirects nothing else", () => {
+    for (const host of [
+      "gohaveaday.com",
+      "www.iamoctober.com",
+      "iamoctober.com",
+      "elk-passport.vercel.app",
+      "www.gohaveaday.com.evil.example",
+      "wwwgohaveaday.com",
+      "",
+    ]) {
+      expect(canonicalRedirectFor(host, "/", "")).toBeNull();
+    }
+    expect(canonicalRedirectFor(null, "/", "")).toBeNull();
+  });
+
+  it("leaves October exactly as it was", () => {
+    expect(experienceRewriteFor("www.iamoctober.com", "/")).toBe(
+      "/october/discover",
+    );
+    expect(experienceHomeFor("iamoctober.com")).toBe("/october/discover");
   });
 });

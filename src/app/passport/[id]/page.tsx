@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,7 +12,13 @@ import {
   Utensils,
 } from "lucide-react";
 import { loadWorkspaceBundle } from "@/lib/knowledge/workspaceData";
-import { getSubjectDetail } from "@/lib/data/atlas-repo";
+import {
+  getSubjectDetail,
+  listDiscoveryCandidates,
+} from "@/lib/data/atlas-repo";
+import type { DiscoveryCandidate } from "@/lib/data/types";
+import { COMPOSED_READS, subjectHref } from "@/domain/experience/destination";
+import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { subjectPageView } from "@/lib/passport/subjectPage";
 import { ComposedSubjectPage } from "@/components/passport/ComposedSubject";
 import { LetsDoThis } from "@/components/ghad/LetsDoThis";
@@ -81,7 +87,12 @@ export async function generateMetadata({
       getSubjectDetail(kind, id, on).catch(() => null),
     ),
   );
-  const named = compositions.find((c) => c)?.root.name.trim();
+  const named =
+    compositions.find((c) => c)?.root.name.trim() ??
+    // An Activity has no composition; its Discovery candidate has its name.
+    (await listDiscoveryCandidates().catch(() => []))
+      .find((c) => c.id === id)
+      ?.name.trim();
 
   return {
     // The uuid stays as the fallback rather than a cheerful invention: a
@@ -96,7 +107,7 @@ export async function generateMetadata({
  * with the page itself so the title and the body ask the same question — and
  * therefore hit the same cache entry.
  */
-const KINDS = ["organizations", "experiences", "events"] as const;
+const KINDS = Object.values(COMPOSED_READS);
 
 /**
  * `/passport/[id]` — the traveller page, for any entity kind.
@@ -182,9 +193,19 @@ export default async function PassportPage({ params, searchParams }: Props) {
   // hint falls back to asking all three, so no link can break by omitting it.
   const hinted = KINDS.find((k) => k === query.kind);
   const asking = hinted ? [hinted] : KINDS;
-  const compositions = await Promise.all(
-    asking.map((kind) => getSubjectDetail(kind, id, on).catch(() => null)),
+  // A read that failed is kept apart from one that found nothing: "Atlas did
+  // not answer" is not "there is no such thing", and saying the second when
+  // the first happened sent people to a 404 for a subject that exists.
+  const reads = await Promise.all(
+    asking.map((kind) =>
+      getSubjectDetail(kind, id, on).then(
+        (composition) => ({ composition, failed: false }),
+        () => ({ composition: null, failed: true }),
+      ),
+    ),
   );
+  const unanswered = reads.some((read) => read.failed);
+  const compositions = reads.map((read) => read.composition);
 
   for (const composition of compositions) {
     if (composition) {
@@ -268,11 +289,67 @@ export default async function PassportPage({ params, searchParams }: Props) {
     }
   }
 
+  // **No composition. Discovery's own candidate says what this is.**
+  //
+  // Discovery links every Organization, Experience, Event and Activity here,
+  // and Atlas composes only the first three. An Activity, and any Place a link
+  // made before Places went to `/places`, reached the curator's corpus bundle
+  // below, which needs an admin token the traveller's Passport does not hold,
+  // and rendered "There's nothing at this address" (production, 2026-10-11:
+  // 290 Activities and 450 Places routed here; all 17 sampled 404'd). The candidate is the same
+  // cached, public read Discovery and `/day/{id}` already use.
+  // A failed read here is "Atlas did not answer" too: without it, there is no
+  // telling whether the id is an Activity.
+  const listed = await listDiscoveryCandidates().then(
+    (rows) => ({ rows, failed: false }),
+    () => ({ rows: [], failed: true }),
+  );
+  const candidate = listed.rows.find((c) => c.id === id);
+  // A curator keeps their instruments on this page rather than being sent on.
+  if (candidate?.kind === "Place" && !curator) {
+    const carried = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (typeof value === "string") carried.set(key, value);
+    }
+    redirect(
+      `${subjectHref("Place", id)}${carried.size > 0 ? `?${carried}` : ""}`,
+    );
+  }
+  const thin = candidate ? <CandidateSubject candidate={candidate} /> : null;
+  if (thin && !curator) {
+    return (
+      <main className="bg-background min-h-screen">
+        <LetsDoThis
+          id={id}
+          {...(on ? { on } : {})}
+          {...(childAge === undefined ? {} : { childAge })}
+          {...(back ? { back } : {})}
+        />
+        {thin}
+      </main>
+    );
+  }
+
   const bundle = await loadWorkspaceBundle().catch(() => null);
   const entity = (
     bundle?.entities as unknown as EntityKnowledge[] | undefined
   )?.find((e) => e.id === id);
-  if (!entity) notFound();
+  if (!entity) {
+    // A curator without the admin bundle (production) still sees the subject.
+    if (thin) {
+      return (
+        <main className="bg-background min-h-screen">
+          <CuratorBar id={id} />
+          {thin}
+        </main>
+      );
+    }
+    // Atlas failed to answer and nothing else knew the id: say that, through
+    // the error boundary, rather than claim the address is empty.
+    if (unanswered || listed.failed)
+      throw new Error(`Atlas did not answer for subject ${id}`);
+    notFound();
+  }
 
   const related: RelatedEntity[] = (bundle?.relationships ?? [])
     .filter((r) => r.sourceEntityId === id || r.targetEntityId === id)
@@ -406,6 +483,68 @@ export default async function PassportPage({ params, searchParams }: Props) {
         )}
       </article>
     </main>
+  );
+}
+
+/**
+ * **A subject Atlas has not composed, from what Discovery already showed.**
+ *
+ * The picture, what kind of thing it is, its name, Atlas's sentence, and the
+ * thing it is part of where Atlas says so. Nothing else is claimed, and
+ * nothing is invented to fill the page.
+ */
+function CandidateSubject({
+  candidate,
+}: {
+  readonly candidate: DiscoveryCandidate;
+}) {
+  const parent = candidate.partOf ?? candidate.context;
+  // Through the mapper Discovery uses, so the picture is the one the card
+  // showed (Atlas escapes some URLs; the mapper unescapes them).
+  const picture = candidateToExperience(candidate).heroMedia?.src;
+  const label =
+    candidate.subtype && candidate.subtype.toLowerCase() !== "unknown"
+      ? candidate.subtype
+      : candidate.kind;
+  return (
+    <article
+      data-testid="candidate-subject"
+      className="mx-auto max-w-3xl px-6 pb-24"
+    >
+      <header className="pt-10">
+        {picture && (
+          // eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline
+          <img
+            src={picture}
+            alt=""
+            className="border-border h-72 w-full rounded-2xl border object-cover"
+          />
+        )}
+        <p className="text-muted-foreground mt-6 text-xs font-medium tracking-widest uppercase">
+          {label}
+        </p>
+        <h1 className="mt-2 text-4xl font-bold tracking-tight">
+          {candidate.name}
+        </h1>
+      </header>
+      {candidate.description && (
+        <p className="mt-6 text-lg leading-relaxed">{candidate.description}</p>
+      )}
+      {parent && (
+        <p className="mt-6 text-base">
+          Part of{" "}
+          <Link
+            href={subjectHref(parent.kind, parent.id)}
+            className="font-semibold underline underline-offset-4"
+          >
+            {parent.name}
+          </Link>
+        </p>
+      )}
+      <p className="text-muted-foreground mt-10 text-sm">
+        This is everything Atlas holds about it so far.
+      </p>
+    </article>
   );
 }
 

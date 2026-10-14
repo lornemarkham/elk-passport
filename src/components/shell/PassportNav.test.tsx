@@ -96,6 +96,7 @@ describe("what it refuses to promise", () => {
       "Discover",
       "Places",
       "Saved",
+      "Labs",
       "Sign in",
     ]);
   });

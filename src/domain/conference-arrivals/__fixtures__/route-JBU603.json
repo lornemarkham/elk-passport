@@ -1,0 +1,31 @@
+{
+  "callsign": "JBU603",
+  "number": "603",
+  "airline_code": "JBU",
+  "airport_codes": "KJFK-CYVR",
+  "_airport_codes_iata": "JFK-YVR",
+  "_airports": [
+    {
+      "name": "John F Kennedy International Airport",
+      "icao": "KJFK",
+      "iata": "JFK",
+      "location": "New York",
+      "countryiso2": "US",
+      "lat": 40.639801,
+      "lon": -73.7789,
+      "alt_feet": 13.0,
+      "alt_meters": 3.96
+    },
+    {
+      "name": "Vancouver International Airport",
+      "icao": "CYVR",
+      "iata": "YVR",
+      "location": "Vancouver",
+      "countryiso2": "CA",
+      "lat": 49.193901,
+      "lon": -123.183998,
+      "alt_feet": 14.0,
+      "alt_meters": 4.27
+    }
+  ]
+}

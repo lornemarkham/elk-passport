@@ -1,0 +1,31 @@
+{
+  "callsign": "ACA855",
+  "number": "855",
+  "airline_code": "ACA",
+  "airport_codes": "EGLL-CYYZ",
+  "_airport_codes_iata": "LHR-YYZ",
+  "_airports": [
+    {
+      "name": "London Heathrow Airport",
+      "icao": "EGLL",
+      "iata": "LHR",
+      "location": "London",
+      "countryiso2": "GB",
+      "lat": 51.4706,
+      "lon": -0.461941,
+      "alt_feet": 83.0,
+      "alt_meters": 25.3
+    },
+    {
+      "name": "Lester B. Pearson International Airport",
+      "icao": "CYYZ",
+      "iata": "YYZ",
+      "location": "Toronto",
+      "countryiso2": "CA",
+      "lat": 43.6772,
+      "lon": -79.6306,
+      "alt_feet": 569.0,
+      "alt_meters": 173.43
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "callsign": "UAL1580",
+  "number": "1580",
+  "airline_code": "UAL",
+  "airport_codes": "KIAD-KORD-CYVR",
+  "_airport_codes_iata": "IAD-ORD-YVR",
+  "_airports": [
+    {
+      "name": "Washington Dulles International Airport",
+      "icao": "KIAD",
+      "iata": "IAD",
+      "location": "Washington",
+      "countryiso2": "US",
+      "lat": 38.9445,
+      "lon": -77.455803,
+      "alt_feet": 312.0,
+      "alt_meters": 95.1
+    },
+    {
+      "name": "Chicago O'Hare International Airport",
+      "icao": "KORD",
+      "iata": "ORD",
+      "location": "Chicago",
+      "countryiso2": "US",
+      "lat": 41.9786,
+      "lon": -87.9048,
+      "alt_feet": 672.0,
+      "alt_meters": 204.83
+    },
+    {
+      "name": "Vancouver International Airport",
+      "icao": "CYVR",
+      "iata": "YVR",
+      "location": "Vancouver",
+      "countryiso2": "CA",
+      "lat": 49.193901,
+      "lon": -123.183998,
+      "alt_feet": 14.0,
+      "alt_meters": 4.27
+    }
+  ]
+}

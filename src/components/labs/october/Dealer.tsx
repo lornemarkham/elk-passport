@@ -10,7 +10,7 @@ import { useKeeping } from "@/components/october/save/keeping";
 import { addToTray } from "./tray";
 import { CardWhen, Shot } from "./atoms";
 
-const HERE = "/labs/october/discovery/c";
+const HERE = "/october/discovery/c";
 
 /**
  * **Experiment C — October deals, you react, it adjusts.**
