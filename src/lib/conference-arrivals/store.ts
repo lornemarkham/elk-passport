@@ -1,4 +1,7 @@
 import type { ArrivalRecord } from "@/domain/conference-arrivals/board";
+import { conferenceSetup } from "@/lib/conference/config";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabaseArrivals } from "./supabaseStore";
 
 /**
  * **Where arrivals keeps the little it keeps**, keyed on `(conferenceId,
@@ -9,9 +12,8 @@ import type { ArrivalRecord } from "@/domain/conference-arrivals/board";
  * or phone. Erased when the member leaves or is removed and when the
  * conference is deleted or expires, through `arrivalsLifecycle`.
  *
- * Memory only, like the foundation's store, and for the same reason: the
- * durable store is ROADMAP decision D3. Production stays closed until
- * `CONFERENCE_STORE` is stated, so this can't ship by accident.
+ * Two implementations, like the foundation's: memory (development, tests)
+ * and `supabaseArrivals` (durable, shared, under row level security).
  */
 export interface ArrivalsStore {
   list(conferenceId: string): Promise<ArrivalRecord[]>;
@@ -44,15 +46,17 @@ export function memoryArrivals(): ArrivalsStore {
   };
 }
 
-/**
- * Whether `arrivalsStore()` outlives the process and is shared between
- * instances. It does not. `enabled.ts` keeps Arrivals closed outside
- * development until this is true, which needs a table and a migration
- * (docs/products/go-have-a-conference/ARRIVALS.md, "Before Labs").
- */
-export const ARRIVALS_STORE_DURABLE = false;
-
-// Survives dev hot reload; one per server process.
+// Survives dev hot reload; one per server process. Only the memory store.
 const g = globalThis as unknown as { __arrivalsStore?: ArrivalsStore };
-export const arrivalsStore = (): ArrivalsStore =>
-  (g.__arrivalsStore ??= memoryArrivals());
+
+/**
+ * The store for this request: Postgres (as the signed-in person) when the
+ * conference store is `supabase`, so flights are as durable and as shared as
+ * the conference; per-process memory otherwise.
+ */
+export const arrivalsStore = (): ArrivalsStore => {
+  const setup = conferenceSetup();
+  if (setup.open && setup.config.store === "supabase")
+    return supabaseArrivals(createSupabaseServerClient);
+  return (g.__arrivalsStore ??= memoryArrivals());
+};
