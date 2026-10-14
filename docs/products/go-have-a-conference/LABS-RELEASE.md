@@ -7,34 +7,55 @@
 
 ## What is in it
 
-| Piece                                                                                             | State in Labs                                                                   |
-| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Conference foundation: create, branding, access code, invite links, roles, visibility, expiry     | **On**, with `CONFERENCE_STORE=supabase`. Passport accounts only, no guests     |
-| Durable store (`supabaseStore`) running as the signed-in person under RLS, never a privileged key | **On**                                                                          |
-| `discover` module (doors into Go Have A Day)                                                      | **On**                                                                          |
-| `arrivals` module (live ADS-B map)                                                                | **Integrated, deliberately closed.** Its flights are per-process memory (below) |
+| Piece                                                                                             | State in Labs                                                               |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Conference foundation: create, branding, access code, invite links, roles, visibility, expiry     | **On**, with `CONFERENCE_STORE=supabase`. Passport accounts only, no guests |
+| Durable store (`supabaseStore`) running as the signed-in person under RLS, never a privileged key | **On**                                                                      |
+| `discover` module (doors into Go Have A Day)                                                      | **On**                                                                      |
+| `arrivals` module (live ADS-B map)                                                                | **Durable store built; closed until `CONFERENCE_ARRIVALS=on`** (below)      |
 
-### Why Arrivals is closed
+### Arrivals: durable store added (2026-10-14), still closed until you open it
 
-Arrivals keeps each member's flight in `memoryArrivals()`. On Vercel every
-instance has its own memory, so a durable, shared conference would show
-different flights to different people and lose them on a cold start.
-`src/lib/conference-arrivals/enabled.ts` therefore opens Arrivals only when
-`ARRIVALS_STORE_DURABLE` is true (it is `false`, a constant, not an env var) **or**
-in development on the memory conference store. In production, and on
-`CONFERENCE_STORE=supabase` anywhere, the page says "Arrivals isn't open yet.",
-the API answers 404 to everyone (organiser included), the home card says "Not
-open yet", and ADS-B is never called. The 68-attack RLS script and the
-two-browser acceptance run check this (acceptance asserts it as Alice, the
-organiser).
+Arrivals now has `supabaseArrivals` (`src/lib/conference-arrivals/supabaseStore.ts`)
+and `supabase/migrations/20261014000000_passport_conference_arrivals.sql`:
+one row per member, readable by its owner, and by other members only if
+the flight is shared **and** the owner chose to be seen. Writes go through
+`passport_conference_arrivals_save()`. Rows cascade away when the person
+leaves or is removed, and with the conference. On `CONFERENCE_STORE=supabase`
+Arrivals opens only with `CONFERENCE_ARRIVALS=on` (so forgetting the
+migration cannot turn saves into 500s); until then it says "Arrivals isn't
+open yet." and never calls ADS-B.
 
-**To open it:** a `passport_conference_arrivals` table keyed on
-`(conference_id, member_id)` with `ON DELETE CASCADE` from
-`passport_conferences`, RLS reusing `passport_conference_is_member`, a
-`supabaseArrivalsStore`, the same attack script and acceptance treatment, then
-flip `ARRIVALS_STORE_DURABLE`. Not done: it is a second migration and a second
-round of owner steps, and the mission said to keep it closed rather than
-rush it.
+Trust note: any member of a conference can refresh the _tracking_ of a
+colleague's shared flight (whoever has the board open does the lookup, from
+public ADS-B). They cannot change the flight or the sharing choice, cannot
+touch an unshared or hidden member's flight, and cannot write anything that
+isn't shaped like tracking (known phase, trail of at most 240 positions,
+under 16 KB; enforced in the database). What the database cannot do is check
+it against ADS-B: a malicious colleague can still write _false but
+well-formed_ tracking (say "landed") onto a colleague's shared flight. That
+is accepted for Labs and costs one wrong status line, corrected by the next
+honest lookup.
+
+Security review (2026-10-14) found and fixed, in the migration: the tracking
+path accepted any JSON object (now validated); the definer functions'
+`search_path` did not end in `pg_temp`; the size cap used compressed size.
+No path lets a member overwrite another member's flight, sharing choice or
+identity: direct INSERT/UPDATE are revoked, and `_save` writes the caller's
+own row only under the caller's own member id.
+
+Checked: `scripts/conference-stack/arrivals-attack.mjs` 33/33 against the local
+stack; `scripts/conference-arrivals/restart-check.mjs` (two real accounts, one
+shared flight and one private, app stopped and started as a new process:
+everything still there, privacy intact); conference acceptance run still
+passes with Arrivals closed by default. A live three-person run through the
+app is `ACCOUNTS=1 scripts/conference-arrivals/drive.mjs`.
+
+**Owner steps to open it** (after the conference migration is applied):
+paste `20261014000000_passport_conference_arrivals.sql` into the Supabase SQL
+editor, check `select count(*) from pg_policies where tablename =
+'passport_conference_arrivals'` is 2, set `CONFERENCE_ARRIVALS=on` on Vercel,
+and contact ADSB.lol about production use (see ARRIVALS.md).
 
 ## Verified (2026-10-12)
 

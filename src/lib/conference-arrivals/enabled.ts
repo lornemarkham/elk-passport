@@ -1,23 +1,21 @@
 import "server-only";
 import { conferenceSetup } from "@/lib/conference/config";
-import { ARRIVALS_STORE_DURABLE } from "./store";
 
 /**
  * **Whether Arrivals may run at all in this process.**
  *
- * Arrivals keeps each member's flight. A flight kept in per-instance memory
- * would vanish on a cold start, differ between serverless instances and, on
- * the durable conference store, outlive nothing it should: the conference
- * would be shared and the flights would not. That is worse than an Arrivals
- * that is plainly not open, so:
+ * Arrivals keeps each member's flight, so it needs a store that lives and dies
+ * with the conference:
  *
- * - while the arrivals store is not durable (`ARRIVALS_STORE_DURABLE`), it
- *   runs only in development, against the in-memory conference store, where
- *   both halves live and die together;
- * - once it has a durable store it follows the conference store.
+ * - in development on the in-memory conference store, both halves are memory;
+ * - on `CONFERENCE_STORE=supabase`, flights live in
+ *   `passport_conference_arrivals`, which exists only once the second
+ *   migration is applied. Forgetting it would turn every save into a 500, so
+ *   the owner opens Arrivals explicitly with `CONFERENCE_ARRIVALS=on` after
+ *   applying it. Without that it stays plainly closed ("Arrivals isn't open
+ *   yet") and ADS-B is never called.
  *
- * It is a property of the code, not an environment switch, so a deployment
- * cannot turn it on by accident.
+ * Per-instance memory is never used in production.
  */
 export function arrivalsEnabled(
   env: Readonly<Record<string, string | undefined>> = process.env,
@@ -25,6 +23,7 @@ export function arrivalsEnabled(
 ): boolean {
   const setup = conferenceSetup(env, isDev);
   if (!setup.open) return false;
-  if (ARRIVALS_STORE_DURABLE) return true;
-  return isDev && setup.config.store === "memory";
+  if (setup.config.store === "supabase")
+    return env.CONFERENCE_ARRIVALS === "on";
+  return isDev;
 }

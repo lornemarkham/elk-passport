@@ -32,10 +32,10 @@ const STACK = process.env.STACK ?? "/tmp/conference-stack";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "../..");
 
-const PG_PORT = 54429;
-const AUTH_PORT = 54441;
-const REST_PORT = 54442;
-const PROXY_PORT = 54421;
+const PG_PORT = Number(process.env.PG_PORT ?? 54429);
+const AUTH_PORT = Number(process.env.AUTH_PORT ?? 54441);
+const REST_PORT = Number(process.env.REST_PORT ?? 54442);
+const PROXY_PORT = Number(process.env.PROXY_PORT ?? 54421);
 const JWT_SECRET = "conference-local-only-secret-not-for-anything-real";
 const SITE_URL = process.env.SITE_URL ?? "http://localhost:3150";
 
@@ -273,6 +273,15 @@ async function start() {
       path.join(
         repo,
         "supabase/migrations/20261012000000_passport_conferences.sql",
+      ),
+      "utf8",
+    ),
+  );
+  await sql(
+    fs.readFileSync(
+      path.join(
+        repo,
+        "supabase/migrations/20261014000000_passport_conference_arrivals.sql",
       ),
       "utf8",
     ),

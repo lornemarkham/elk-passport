@@ -1,9 +1,9 @@
 # Arrivals — coworkers' real aircraft, live, on one map
 
 > **Status: built on `feature/go-have-a-conference`, 2026-10-12.** Not merged,
-> not deployed. Memory store only, so it is **closed outside development**
-> (`src/lib/conference-arrivals/enabled.ts`) until it has a durable store; see
-> [LABS-RELEASE.md](LABS-RELEASE.md).
+> not deployed. Has a durable Supabase store (2026-10-14); on the durable
+> conference store it opens only with `CONFERENCE_ARRIVALS=on`
+> (`src/lib/conference-arrivals/enabled.ts`); see [LABS-RELEASE.md](LABS-RELEASE.md).
 
 `/conferences/{id}/arrivals` is the `arrivals` module. A member enters a flight
 number, a date and (optionally) where they're flying from. If they choose to
