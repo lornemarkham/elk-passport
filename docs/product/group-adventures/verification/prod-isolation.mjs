@@ -87,14 +87,12 @@ const anonHas = await anon.rpc("passport_board_has_members", {
 });
 check(!!anonHas.error, "signed-out visitors can't call it");
 
-const own = await a.db
-  .from("passport_board_members")
-  .insert({
-    board_id: board,
-    board_owner_id: a.id,
-    user_id: a.id,
-    role: "owner",
-  });
+const own = await a.db.from("passport_board_members").insert({
+  board_id: board,
+  board_owner_id: a.id,
+  user_id: a.id,
+  role: "owner",
+});
 check(
   !own.error,
   "A writes the first owner row of a board (first share works)",
@@ -102,14 +100,12 @@ check(
 );
 
 try {
-  const claim = await b.db
-    .from("passport_board_members")
-    .insert({
-      board_id: board,
-      board_owner_id: b.id,
-      user_id: b.id,
-      role: "owner",
-    });
+  const claim = await b.db.from("passport_board_members").insert({
+    board_id: board,
+    board_owner_id: b.id,
+    user_id: b.id,
+    role: "owner",
+  });
   check(
     claim.error?.code === "42501",
     "B can't claim A's board (hole 1)",
