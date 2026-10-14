@@ -838,6 +838,18 @@ function ShapedDay({
         day out of real places, print it, and then you can leave your phone in
         the glovebox.
       </p>
+      {/* Conference lives inside Go Have a Day (owner decision, 2026-10-13):
+          no separate domain, one visible door from this page. */}
+      <p className="mt-3 text-[15px] text-black/60">
+        Going somewhere with a group?{" "}
+        <Link
+          href="/conferences"
+          data-testid="go-conference"
+          className="font-semibold text-[#111] underline underline-offset-4"
+        >
+          Conference
+        </Link>
+      </p>
 
       <form
         className="mt-6 flex flex-col gap-3 sm:flex-row"
