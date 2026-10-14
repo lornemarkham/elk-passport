@@ -22,7 +22,17 @@ async function seed(page: Page, passage: Record<string, number>) {
   );
 }
 
+/**
+ * The Room opens on Halloween (`domain/october/threshold.ts`). Every test that
+ * means to be *inside* it says what night it is, rather than depend on the day
+ * the suite happens to run.
+ */
+async function itIsHalloween(page: Page) {
+  await page.clock.setFixedTime(new Date(2026, 9, 31, 21, 0));
+}
+
 async function enterRoom(page: Page) {
+  await itIsHalloween(page);
   await page.goto("/october/room");
   await page.getByTestId("room-cover").click();
   await expect(page.getByTestId("spot-radio")).toBeVisible();
@@ -83,6 +93,8 @@ for (const [name, viewport, touch] of [
 ] as const) {
   test.describe(`the Secret Room — ${name}`, () => {
     test.use({ viewport, hasTouch: touch, isMobile: touch });
+
+    test.beforeEach(async ({ page }) => itIsHalloween(page));
 
     test("is a puzzle: wrong codes stay locked, October lies, the right code opens it", async ({
       page,
@@ -241,6 +253,7 @@ test.describe("the way in", () => {
   test("From October is visible on Discover, which is otherwise untouched", async ({
     page,
   }) => {
+    await itIsHalloween(page);
     await page.goto("/october/discover");
     const door = page.getByTestId("from-october");
     await expect(door).toBeVisible();
@@ -296,5 +309,80 @@ test.describe("the way in", () => {
     const after = await page.getByTestId("tape-alien").boundingBox();
     expect(after!.x).toBeLessThan(before!.x - 100);
     await context.close();
+  });
+
+  // The bar's five items need ~505px, so on a phone it scrolls. It used to open
+  // at the left and cut off the tab for From October — the page the Room and
+  // the Store are reached from — while the page itself did not overflow.
+  for (const width of [360, 390]) {
+    test(`on a ${width}px phone the tab for From October is whole when you are on it`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({
+        viewport: { width, height: 844 },
+        hasTouch: true,
+        isMobile: true,
+      });
+      const page = await context.newPage();
+      await page.goto("/october/from");
+      const tab = page.getByTestId("october-nav-from-october");
+      await expect(tab).toHaveAttribute("aria-current", "page");
+      await expect(async () => {
+        const box = (await tab.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+      }).toPass({ timeout: 5000 });
+      // Still a bar that scrolls inside itself, not a page that scrolls sideways.
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        ),
+      ).toBe(0);
+      await context.close();
+    });
+  }
+});
+
+test.describe("the Room before it opens", () => {
+  const on = (page: Page, month: number, day: number) =>
+    page.clock.setFixedTime(new Date(2026, month, day, 21, 0));
+
+  test('is a door that says "Not yet.", answers a knock, and lets you leave', async ({
+    page,
+  }) => {
+    await on(page, 9, 14);
+    await page.goto("/october/room");
+    await expect(page.getByTestId("shut-door")).toHaveAttribute(
+      "data-threshold",
+      "not-yet",
+    );
+    await expect(page.getByTestId("shut-door-line")).toHaveText("Not yet.");
+    await expect(page.getByTestId("shut-door-light")).toHaveCount(0);
+    await expect(page.getByTestId("secret-room")).toHaveCount(0);
+    await page.getByTestId("shut-door-knock").click();
+    await expect(page.getByTestId("shut-door-answer")).toBeVisible();
+    await page.getByTestId("shut-door-leave").click();
+    await page.waitForURL("**/october/from");
+  });
+
+  test("counts the nights down, and From October says so before you knock", async ({
+    page,
+  }) => {
+    await on(page, 9, 25);
+    await page.goto("/october/from");
+    await expect(page.getByTestId("door-room-line")).toHaveText("Six nights.");
+    await page.getByTestId("door-room").click();
+    await page.waitForURL("**/october/room");
+    await expect(page.getByTestId("shut-door-line")).toHaveText("Six nights.");
+    await expect(page.getByTestId("shut-door-light")).toBeVisible();
+  });
+
+  test("never shuts out somebody who has already been inside", async ({
+    page,
+  }) => {
+    await on(page, 9, 14);
+    await seed(page, { entered: 1 });
+    await page.goto("/october/room");
+    await expect(page.getByTestId("secret-room")).toBeVisible();
   });
 });

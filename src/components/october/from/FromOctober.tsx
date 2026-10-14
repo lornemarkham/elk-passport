@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePassage } from "@/components/october/passage/usePassage";
 import type { Passage } from "@/domain/october/passage";
+import { useThreshold } from "@/components/october/room/RoomThreshold";
+import { doorLine, type Threshold } from "@/domain/october/threshold";
 
 /**
  * **From October** — the way into the strange part.
@@ -55,9 +57,29 @@ export const DOORS: readonly Door[] = [
   },
 ];
 
-/** Which door's line to say, given what has been carried. */
-export function lineFor(door: Door, passage: Passage): string {
+/**
+ * Which door's line to say, given what has been carried — and, for the Room,
+ * how many nights are left before it opens. A door that is not open yet says
+ * so in the Room's own words, and nothing else about it.
+ */
+export function lineFor(
+  door: Door,
+  passage: Passage,
+  threshold?: Threshold | null,
+): string {
+  if (door.id === "room" && threshold) {
+    const shut = doorLine(threshold);
+    if (shut) return shut;
+  }
   return door.after(passage) ?? door.line;
+}
+
+/** Is any of the Room's light showing under its door yet? */
+function roomLit(passage: Passage, threshold: Threshold | null): boolean {
+  if (threshold && threshold.kind !== "open") {
+    return threshold.kind === "light" || threshold.kind === "counting";
+  }
+  return !!passage.escaped;
 }
 
 /** A door seen from a dark room: a frame, and the light underneath it. */
@@ -81,6 +103,8 @@ function DoorGlyph({ lit }: { readonly lit: boolean }) {
 /** The strip on Discover. */
 export function FromOctoberBand() {
   const passage = usePassage();
+  const threshold = useThreshold();
+  const shut = threshold ? doorLine(threshold) : null;
   return (
     <div className="mx-auto max-w-4xl px-5 pt-5 sm:px-6">
       <Link
@@ -88,15 +112,17 @@ export function FromOctoberBand() {
         data-testid="from-october"
         className="group flex items-center gap-4 rounded-xl border border-[#e9e6da]/10 bg-[#120f12] px-4 py-3 transition-colors hover:border-[#d09a4e]/50 hover:bg-[#161216]"
       >
-        <DoorGlyph lit={!!passage.escaped} />
+        <DoorGlyph lit={roomLit(passage, threshold)} />
         <span className="min-w-0 flex-1">
           <span className="block text-[11px] tracking-[0.22em] text-[#d09a4e] uppercase">
             From October
           </span>
           <span className="font-heading mt-0.5 block text-base leading-snug text-[#f3efe4]">
-            {passage.escaped
-              ? "The door is open. There's a shop behind it."
-              : "A room with a locked door. A video store that's still open."}
+            {shut
+              ? `A door that says “${shut}” A video store that's still open.`
+              : passage.escaped
+                ? "The door is open. There's a shop behind it."
+                : "A room with a locked door. A video store that's still open."}
           </span>
         </span>
         <span
@@ -113,6 +139,7 @@ export function FromOctoberBand() {
 /** The page it opens. */
 export function FromOctoberDoors() {
   const passage = usePassage();
+  const threshold = useThreshold();
   return (
     <ul className="mt-10 grid gap-4 sm:grid-cols-2">
       {DOORS.map((door) => (
@@ -123,7 +150,11 @@ export function FromOctoberDoors() {
             className="group flex h-full flex-col gap-6 rounded-2xl border border-[#e9e6da]/10 bg-[#120f12] p-6 transition-colors hover:border-[#d09a4e]/50 hover:bg-[#161216]"
           >
             <DoorGlyph
-              lit={door.id === "room" ? !!passage.escaped : !!passage.tape}
+              lit={
+                door.id === "room"
+                  ? roomLit(passage, threshold)
+                  : !!passage.tape
+              }
             />
             <span>
               <span className="font-heading block text-2xl text-[#f3efe4]">
@@ -133,7 +164,7 @@ export function FromOctoberDoors() {
                 data-testid={`door-${door.id}-line`}
                 className="mt-2 block text-base leading-relaxed text-[#e9e6da]/60"
               >
-                {lineFor(door, passage)}
+                {lineFor(door, passage, threshold)}
               </span>
             </span>
           </Link>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SecretRoom } from "@/components/october/room/SecretRoom";
+import { RoomThreshold } from "@/components/october/room/RoomThreshold";
 
 export const metadata: Metadata = { title: "The Room — October" };
 
@@ -11,8 +11,9 @@ export const metadata: Metadata = { title: "The Room — October" };
  * real exit was always in there). That prototype is untouched at
  * `/october/secret-room/another-way-out`.
  *
- * No explanation before the room. You start inside it.
+ * No explanation before the room. You start inside it — once it is open.
+ * Before that (see `domain/october/threshold.ts`) there is only the door.
  */
 export default function Page() {
-  return <SecretRoom />;
+  return <RoomThreshold />;
 }

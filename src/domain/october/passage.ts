@@ -24,11 +24,19 @@ export interface Passage {
   readonly escaped?: number;
   /** The tape has been played in the room. The secret ending has been seen. */
   readonly played?: number;
+  /** The person has been inside the room. Once in, the date can't shut them out. */
+  readonly entered?: number;
 }
 
 export type PassageKey = keyof Passage;
 
-const KEYS: readonly PassageKey[] = ["tape", "refused", "escaped", "played"];
+const KEYS: readonly PassageKey[] = [
+  "tape",
+  "refused",
+  "escaped",
+  "played",
+  "entered",
+];
 
 /** Anything unreadable is nothing remembered. A corrupt note is not an error. */
 export function parsePassage(raw: string | null | undefined): Passage {

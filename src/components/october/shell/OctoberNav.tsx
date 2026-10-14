@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef } from "react";
 
 /**
  * **The four places October has.**
@@ -74,6 +75,21 @@ export function OctoberNav({
   // here, and the account page can offer October as the way back.
   const from = encodeURIComponent(pathname || "/october");
 
+  // **The bar is wider than a phone.** Its five items need about 505px, so on
+  // every phone it scrolls sideways — and it opened at the left, which left
+  // the tab for the page you were on cut off (or out of sight) on
+  // `/october/from`. It still scrolls; it now opens with where you are showing,
+  // moving only as far as it takes, and never touching the page's own scroll.
+  const bar = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = bar.current;
+    const here = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !here) return;
+    const over =
+      here.getBoundingClientRect().right - nav.getBoundingClientRect().right;
+    if (over > 0) nav.scrollLeft += over + 16;
+  }, [pathname]);
+
   if (
     OWN_FRAME.some((r) => browserPath === r || browserPath.startsWith(`${r}/`))
   )
@@ -82,6 +98,7 @@ export function OctoberNav({
   return (
     <header className="border-b border-[#e9e6da]/10">
       <nav
+        ref={bar}
         aria-label="October"
         className="mx-auto flex max-w-5xl items-center gap-1 overflow-x-auto px-4 sm:px-6"
       >
