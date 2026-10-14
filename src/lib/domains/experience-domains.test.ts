@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   activeExperience,
-  canonicalRedirectFor,
   experienceForPath,
   experienceFromHeader,
   experienceHomeFor,
@@ -242,19 +241,20 @@ describe("the experience stated on the request", () => {
  *
  * Go Have a Day is not an `ExperienceDomain`: that table dresses the shared
  * account and auth pages, and those are October's. These pin that the root
- * opens `/go`, that sign-in comes back to it, that `www.` goes to the apex,
- * and that none of it leaks into October or Passport.
+ * opens `/discovery` by rewrite, that sign-in comes back to it, that `www.`
+ * is served identically (no redirect, so no loop), and that none of it leaks into October or Passport.
  */
 describe("gohaveaday.com", () => {
   it("opens Go Have a Day at the root, and only the root", () => {
-    expect(experienceRewriteFor("gohaveaday.com", "/")).toBe("/go");
-    expect(experienceRewriteFor("GoHaveADay.com:443", "/")).toBe("/go");
+    expect(experienceRewriteFor("gohaveaday.com", "/")).toBe("/discovery");
+    expect(experienceRewriteFor("GoHaveADay.com:443", "/")).toBe("/discovery");
     expect(experienceRewriteFor("gohaveaday.com", "/go")).toBeNull();
     expect(experienceRewriteFor("gohaveaday.com", "/discovery")).toBeNull();
+    expect(experienceRewriteFor("gohaveaday.com", "/go/print")).toBeNull();
   });
 
-  it("brings somebody back to /go after signing in", () => {
-    expect(experienceHomeFor("gohaveaday.com")).toBe("/go");
+  it("brings somebody back to /discovery after signing in", () => {
+    expect(experienceHomeFor("gohaveaday.com")).toBe("/discovery");
   });
 
   it("is not an experience, so it never wears October's pages", () => {
@@ -266,28 +266,28 @@ describe("gohaveaday.com", () => {
     expect(experienceFromHeader("gohaveaday.com")).toBeNull();
   });
 
-  it("sends www to the apex, keeping path and query", () => {
-    expect(canonicalRedirectFor("www.gohaveaday.com", "/", "")).toBe(
-      "https://gohaveaday.com/",
-    );
-    expect(
-      canonicalRedirectFor("WWW.GoHaveADay.com:443", "/go/print", "?a=1&b=2"),
-    ).toBe("https://gohaveaday.com/go/print?a=1&b=2");
+  it("serves www exactly as the apex, so neither host can loop", () => {
+    for (const host of [
+      "www.gohaveaday.com",
+      "WWW.GoHaveADay.com:443",
+      "gohaveaday.com.",
+    ]) {
+      expect(experienceRewriteFor(host, "/")).toBe("/discovery");
+      expect(experienceRewriteFor(host, "/go")).toBeNull();
+      expect(experienceHomeFor(host)).toBe("/discovery");
+    }
   });
 
-  it("redirects nothing else", () => {
+  it("does not map look-alike hosts", () => {
     for (const host of [
-      "gohaveaday.com",
-      "www.iamoctober.com",
-      "iamoctober.com",
-      "elk-passport.vercel.app",
       "www.gohaveaday.com.evil.example",
       "wwwgohaveaday.com",
+      "elk-passport.vercel.app",
+      "localhost:3120",
       "",
     ]) {
-      expect(canonicalRedirectFor(host, "/", "")).toBeNull();
+      expect(experienceRewriteFor(host, "/")).toBeNull();
     }
-    expect(canonicalRedirectFor(null, "/", "")).toBeNull();
   });
 
   it("leaves October exactly as it was", () => {

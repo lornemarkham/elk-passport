@@ -4,7 +4,6 @@ import {
   EXPERIENCE_HEADER,
   EXPERIENCE_PATH_HEADER,
   activeExperience,
-  canonicalRedirectFor,
   experienceRewriteFor,
 } from "@/lib/domains/experience-domains";
 
@@ -30,15 +29,6 @@ import {
  * triggers the refresh; discarding the result is intentional.
  */
 export async function middleware(request: NextRequest) {
-  // `www.gohaveaday.com` is not a second address; send it to the apex before
-  // anything else, so no session cookie is ever set on the wrong host.
-  const canonical = canonicalRedirectFor(
-    request.headers.get("host"),
-    request.nextUrl.pathname,
-    request.nextUrl.search,
-  );
-  if (canonical) return NextResponse.redirect(canonical, 308);
-
   // An experience domain's root is served by its experience's route; see
   // `experience-domains.ts`. The session refresh below applies either way.
   const rewriteTo = experienceRewriteFor(

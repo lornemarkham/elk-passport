@@ -52,22 +52,25 @@ const EXPERIENCES: readonly ExperienceDomain[] = [
 /**
  * **A domain that is a front door, not a whole experience.**
  *
- * `gohaveaday.com` opens Go Have a Day at `/go`. It is deliberately *not* an
+ * `gohaveaday.com` opens straight onto Discovery. It is deliberately *not* an
  * `ExperienceDomain`: that table also decides which navigation, theme and
  * wording the shared account and auth pages wear, and those are October's.
- * Putting `/go` there would have dressed Go Have a Day's sign-in in October's
- * bar. A front door only answers two questions — what does the root show, and
- * where does somebody land after signing in — and `canonical` says which host
- * is the real one (`www.` redirects to it).
+ * A front door only answers two questions — what does the root show, and
+ * where does somebody land after signing in.
+ *
+ * `www.` is the same door (`normalizeHost` strips it). This code deliberately
+ * does **not** redirect between `www.` and the apex: which one is canonical is
+ * a Vercel Domains setting, applied before middleware runs, and a second,
+ * opposite redirect here looped the moment the two disagreed. Serving both
+ * hosts the same way works under either setting.
  */
 interface FrontDoor {
   readonly host: string;
   readonly home: string;
-  readonly canonical: boolean;
 }
 
 const FRONT_DOORS: readonly FrontDoor[] = [
-  { host: "gohaveaday.com", home: "/go", canonical: true },
+  { host: "gohaveaday.com", home: "/discovery" },
 ];
 
 /** `WWW.IAmOctober.com:443` and `iamoctober.com` are the same front door. */
@@ -136,27 +139,6 @@ export function experienceHomeFor(
     FRONT_DOORS.find((d) => d.host === normalized)?.home ??
     null
   );
-}
-
-/**
- * Where `www.gohaveaday.com` goes: the apex, same path and query, or `null`
- * for any other host. October's `www.` is deliberately left alone — it is the
- * address its release smoke test and its auth redirects already use.
- */
-export function canonicalRedirectFor(
-  host: string | null | undefined,
-  pathname: string,
-  search: string,
-): string | null {
-  if (!host) return null;
-  const bare = host
-    .trim()
-    .toLowerCase()
-    .replace(/:\d+$/, "")
-    .replace(/\.$/, "");
-  if (!bare.startsWith("www.")) return null;
-  const door = FRONT_DOORS.find((d) => d.canonical && `www.${d.host}` === bare);
-  return door ? `https://${door.host}${pathname}${search}` : null;
 }
 
 /**
