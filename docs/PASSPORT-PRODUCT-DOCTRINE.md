@@ -665,6 +665,19 @@ Equally, Experiences should **not** be treated as another tab beside List / Map
 / AI / Inspiration unless product reasoning later proves that is correct.
 **October is probably not simply another "view mode."**
 
+### How a person finds them (decided 2026-10-15)
+
+The architecture question above stays open. The narrower question of
+_reachability_ is settled: **Passport is the platform. Go Have a Day is its
+flagship discovery experience. Conference, Hockey Night and October are
+specialised experiences powered by Passport.** They are real products and must
+not be hidden, so the Go Have a Day bar carries one **Experiences** item that
+opens to the three — grouped under one word, deliberately not three peer tabs
+beside Discover, Places and Saved, so they can be found without competing with
+Discovery's purpose. Each link opens the existing route (`/conferences`,
+`/hockey`, `/october`) and each experience keeps its own access rules; the bar
+grants nothing.
+
 ---
 
 ## 11. Current near-term direction

@@ -126,3 +126,38 @@ either setting); `gohaveaday.com/discovery` → 200 Discovery;
 `iamoctober.com/` → 308 to `www.`. Deploy was not attempted from this
 checkout (`CLAUDE.local.md`); the fix is live once `integration/release` is
 deployed with `npx vercel deploy --prod` from a checkout that may.
+
+## Addendum, 2026-10-15 — the experiences are findable
+
+Owner decision: Passport is the platform, Go Have a Day is the flagship, and
+Conference, Hockey Night and October are specialised experiences powered by
+Passport. Until now the only ways into them from Go Have a Day were one
+sentence on the Day Builder (Conference) or a link somebody sent you.
+
+The shared bar (`PassportNav`) now carries an **Experiences** item between
+Saved and the right-hand group. It is a button that opens a row under the bar
+with three plain links to the existing routes: `/conferences`, `/hockey`,
+`/october`. The row closes on a second press, on Escape, on a press outside
+the bar, and on navigation. It opens _under_ the bar rather than floating over
+it because the bar scrolls sideways on a phone, and a scrolling container
+clips anything positioned past its edge. No access rule changed: `/hockey`
+still sends a visitor to sign in and returns them, `/conferences` still
+decides for itself whether it is open and whether a code or an account is
+needed, and the middleware is untouched. Doctrine §10 records the decision;
+the architecture question in §15 stays open. `e2e/experiences-nav.spec.ts`
+drives the menu on desktop and on a phone.
+
+Verified on `integration/release` with `next start` on port 3120 and the
+Atlas stand-in: typecheck clean, 2918 unit tests, lint 0 errors (the 39
+baseline warnings), build clean, and `experiences-nav`, `gohaveaday-door`,
+`labs` and `release-navigation` green on desktop. Two environment facts from
+the run, neither caused by this change: a `next-server` from an earlier
+session was still answering port 3120 with an old build and had to be stopped
+by PID before anything new could be measured (the `reuseExistingServer` trap
+again); and under Pixel 7 emulation, this host's headless Chromium crashes its
+GPU process a few seconds into an idle Discovery page with no interaction,
+which takes down tests that linger there. The phone half of
+`experiences-nav` therefore follows the three doors from the homepage, which
+carries the same bar, and keeps two short tests on Discovery itself.
+`/places` could not be checked locally because the stand-in serves
+candidates and legs only; on production it is unchanged by this pass.

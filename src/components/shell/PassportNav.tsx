@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
 import { ThemePicker, ThemeProvider } from "@/components/ghad/theme";
 import { Wordmark } from "@/components/ghad/Wordmark";
 
@@ -37,12 +38,27 @@ import { Wordmark } from "@/components/ghad/Wordmark";
  *
  * ## What is deliberately not on it
  *
- * Inspiration, the planner, LIVE, Experiences-as-a-concept. The doctrine
- * fences those off (§13, §14), and a nav is the loudest possible place to
- * promise something that does not exist — which is exactly what the greyed-out
- * `Map` and `AI` tabs were doing on Discovery for months before they were
- * removed. October is reachable from Discovery's own door, not from here,
- * because an Experience is not a Passport section (§10, still open).
+ * Inspiration, the planner, LIVE. The doctrine fences those off (§13, §14),
+ * and a nav is the loudest possible place to promise something that does not
+ * exist — which is exactly what the greyed-out `Map` and `AI` tabs were doing
+ * on Discovery for months before they were removed.
+ *
+ * ## Why Experiences is a menu and not three tabs
+ *
+ * Conference, Hockey Night and October are real products, and until now the
+ * only way into them from Go Have a Day was one sentence on the Day Builder
+ * (Conference) or an address somebody sent you (the other two). The owner's
+ * decision (2026-10-15): Passport is the platform, Go Have a Day is its
+ * flagship, and the three are specialised experiences powered by it — so they
+ * are reachable from here, but grouped under one word rather than sitting
+ * beside Discover, Places and Saved as if they were sections of this product.
+ * That keeps the question in doctrine §10 (what an Experience *is*) open while
+ * answering the narrower one of how a person finds them.
+ *
+ * The menu is a row that opens *under* the bar rather than a floating panel:
+ * the bar scrolls sideways on a phone, and a scrolling container clips
+ * anything positioned over its edge, so a dropdown anchored to the button
+ * was cut off at exactly the width it was needed most.
  */
 
 const DESTINATIONS = [
@@ -64,6 +80,19 @@ const DESTINATIONS = [
   },
 ] as const;
 
+/**
+ * **The experiences, by their existing routes.** Each one keeps its own
+ * access rules: `/hockey` sends a visitor to sign in and comes back, and
+ * `/conferences` says whether it is open and asks for a code or an account
+ * itself. Nothing here bypasses that — these are links, not doors cut into
+ * the wall.
+ */
+const EXPERIENCES = [
+  { href: "/conferences", label: "Conference", testId: "conference" },
+  { href: "/hockey", label: "Hockey Night", testId: "hockey" },
+  { href: "/october", label: "October", testId: "october" },
+] as const;
+
 export function PassportNav({
   displayName = null,
 }: {
@@ -77,9 +106,36 @@ export function PassportNav({
     inside(destination.href) || (destination.also ?? []).some(inside);
   const from = encodeURIComponent(pathname || "/discovery");
 
+  // **The Experiences row.** Closed until asked; closes again when the page
+  // changes, on Escape, or on a press anywhere outside the header — the three
+  // ways a person says "never mind" without saying it. "Open" is remembered
+  // as *the path it was opened on*, so moving to another page closes it by
+  // arithmetic rather than by an effect that sets state after the render.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  const open = openedOn === pathname;
+  const setOpen = (next: boolean) => setOpenedOn(next ? pathname : null);
+  const header = useRef<HTMLElement>(null);
+  const rowId = useId();
+  const inExperience = EXPERIENCES.some((e) => inside(e.href));
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenedOn(null);
+    };
+    const onPress = (event: PointerEvent) => {
+      if (!header.current?.contains(event.target as Node)) setOpenedOn(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPress);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPress);
+    };
+  }, [open]);
+
   return (
     <ThemeProvider>
-      <header className="border-b border-black/10 bg-white">
+      <header ref={header} className="border-b border-black/10 bg-white">
         {/* **The bar scrolls rather than pushing the page.** "GO HAVE A DAY"
             is four times the width of the word it replaced, and at 375px the
             bar came to 519px — so the whole document scrolled sideways by
@@ -117,6 +173,35 @@ export function PassportNav({
               </Link>
             );
           })}
+
+          {/* Same type and the same underline as the sections, because from
+              here it behaves like one: it lights up when you are inside any
+              experience. It is a button, not a link — it opens the row below
+              rather than going anywhere itself. */}
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={rowId}
+            aria-current={inExperience ? "page" : undefined}
+            data-testid="passport-nav-experiences"
+            onClick={() => setOpen(!open)}
+            style={
+              inExperience ? { borderColor: "var(--ghad-accent)" } : undefined
+            }
+            className={`-mb-px inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-1 border-b-2 px-1.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+              inExperience || open
+                ? "text-[#111]"
+                : "border-transparent text-black/60 hover:text-black/85"
+            }`}
+          >
+            Experiences
+            <span
+              aria-hidden
+              className={`text-[10px] transition-transform ${open ? "rotate-180" : ""}`}
+            >
+              ▾
+            </span>
+          </button>
 
           <span className="flex-1" />
 
@@ -161,6 +246,46 @@ export function PassportNav({
             </Link>
           )}
         </nav>
+
+        {/* **The row.** Rendered only while open, so a closed menu is nothing
+            on the page rather than something hidden on it — and nothing for a
+            screen reader to walk past. The links are plain links to the
+            existing routes. */}
+        {open && (
+          <nav
+            id={rowId}
+            aria-label="Experiences"
+            data-testid="passport-experiences"
+            className="border-t border-black/10 bg-[#fafafa]"
+          >
+            <ul className="mx-auto flex max-w-[1760px] items-center gap-0.5 overflow-x-auto px-3 sm:gap-1 sm:px-6 lg:px-10">
+              {EXPERIENCES.map((e) => {
+                const current = inside(e.href);
+                return (
+                  <li key={e.href} className="shrink-0">
+                    <Link
+                      href={e.href}
+                      aria-current={current ? "page" : undefined}
+                      data-testid={`passport-experience-${e.testId}`}
+                      style={
+                        current
+                          ? { borderColor: "var(--ghad-accent)" }
+                          : undefined
+                      }
+                      className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-1.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+                        current
+                          ? "text-[#111]"
+                          : "border-transparent text-black/60 hover:text-black/85"
+                      }`}
+                    >
+                      {e.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        )}
       </header>
     </ThemeProvider>
   );

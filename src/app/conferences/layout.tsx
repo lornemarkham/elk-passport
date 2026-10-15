@@ -14,8 +14,8 @@ export const metadata: Metadata = {
  * that's about to be somewhere together. See
  * docs/products/go-have-a-conference/VISION.md.
  *
- * Not linked from the Passport nav yet. Whether it should be, and how, waits
- * on the open questions in ROADMAP.md, and the shell is a shared contract.
+ * Reachable from the Go Have a Day bar under Experiences (owner decision,
+ * 2026-10-15; see `PassportNav`), and from the Day Builder's own sentence.
  */
 export default async function ConferencesLayout({
   children,

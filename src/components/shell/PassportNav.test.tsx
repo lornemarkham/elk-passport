@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 /**
  * **Passport had no bar.**
@@ -99,6 +99,11 @@ describe("what it refuses to promise", () => {
       "Labs",
       "Sign in",
     ]);
+    // Experiences is on the bar too, but as a button: it opens a row, it
+    // does not go anywhere itself.
+    expect(screen.getByTestId("passport-nav-experiences")).toHaveTextContent(
+      "Experiences",
+    );
   });
 
   it("advertises nothing the doctrine fences off", () => {
@@ -113,9 +118,102 @@ describe("what it refuses to promise", () => {
   });
 
   it("does not claim October as a Passport section", () => {
-    // An Experience is not a tab on Passport — that question is open (§10),
-    // and October keeps its own door on Discovery rather than a slot here.
+    // An Experience is not a tab beside Discover, Places and Saved — what an
+    // Experience *is* stays open (§10). October is reachable from here, but
+    // only from inside the Experiences row, which is closed until asked.
     at("/discovery");
-    expect(screen.getByRole("navigation").textContent).not.toContain("October");
+    expect(
+      screen.getByRole("navigation", { name: "Go Have A Day" }).textContent,
+    ).not.toContain("October");
+    expect(screen.queryByTestId("passport-experiences")).toBeNull();
+  });
+});
+
+/**
+ * **The experiences are real products, and they are findable.** Owner
+ * decision, 2026-10-15: Passport is the platform, Go Have a Day is the
+ * flagship, and Conference, Hockey Night and October are specialised
+ * experiences powered by it — grouped under one word on the bar so they can
+ * be found without competing with Discovery.
+ */
+describe("experiences", () => {
+  const openRow = () => {
+    fireEvent.click(screen.getByTestId("passport-nav-experiences"));
+    return screen.getByTestId("passport-experiences");
+  };
+
+  it("is closed until asked, and says so", () => {
+    at("/discovery");
+    const button = screen.getByTestId("passport-nav-experiences");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("passport-experiences")).toBeNull();
+  });
+
+  it("opens to the three existing routes, in the stated order", () => {
+    at("/discovery");
+    openRow();
+    const button = screen.getByTestId("passport-nav-experiences");
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    const row = screen.getByRole("navigation", { name: "Experiences" });
+    expect(button).toHaveAttribute("aria-controls", row.id);
+    const links = screen
+      .getAllByRole("link", { name: /Conference|Hockey Night|October/ })
+      .map((a) => [a.textContent?.trim(), a.getAttribute("href")]);
+    expect(links).toEqual([
+      ["Conference", "/conferences"],
+      ["Hockey Night", "/hockey"],
+      ["October", "/october"],
+    ]);
+  });
+
+  it("closes again on a second press, and on Escape", () => {
+    at("/discovery");
+    openRow();
+    fireEvent.click(screen.getByTestId("passport-nav-experiences"));
+    expect(screen.queryByTestId("passport-experiences")).toBeNull();
+    openRow();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("passport-experiences")).toBeNull();
+  });
+
+  it("closes on a press anywhere outside the bar", () => {
+    at("/discovery");
+    openRow();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId("passport-experiences")).toBeNull();
+  });
+
+  it("stays open for a press inside the bar", () => {
+    at("/discovery");
+    const row = openRow();
+    fireEvent.pointerDown(row);
+    expect(screen.getByTestId("passport-experiences")).toBeInTheDocument();
+  });
+
+  it("marks Experiences as where you are when you are inside one", () => {
+    at("/conferences/abc-123");
+    expect(screen.getByTestId("passport-nav-experiences")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    for (const id of ["discover", "places", "saved"]) {
+      expect(screen.getByTestId(`passport-nav-${id}`)).not.toHaveAttribute(
+        "aria-current",
+      );
+    }
+    openRow();
+    expect(
+      screen.getByTestId("passport-experience-conference"),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.getByTestId("passport-experience-hockey"),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks nothing on Discovery", () => {
+    at("/discovery");
+    expect(screen.getByTestId("passport-nav-experiences")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 });
