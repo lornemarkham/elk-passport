@@ -114,6 +114,27 @@ describe("asking a model, where one is configured", () => {
     });
   });
 
+  it("cannot invent a destination: a place, a town or an activity Atlas does not hold is dropped", async () => {
+    process.env.OPENAI_API_KEY = "test";
+    reply({
+      company: "group",
+      // None of these has a field in the reading; a model that offers them
+      // anyway is ignored, and the two that do have a field are checked.
+      destination: "The Lost City of Atlantis",
+      picks: [{ name: "Atlantis Water Park", id: "made-up" }],
+      places: ["Atlantis"],
+      town: "Atlantis",
+      doing: "Submarine tours",
+    });
+    const result = await readAskWithModel("take us to Atlantis", context);
+    expect(result.by).toBe("model");
+    expect(result.ask).toMatchObject({ company: "group" });
+    expect(Object.keys(result.ask).sort()).toEqual(["company", "said"].sort());
+    expect(JSON.stringify(result.ask)).not.toMatch(
+      /Atlantis Water Park|made-up/,
+    );
+  });
+
   it("falls back to the words when the call fails", async () => {
     process.env.OPENAI_API_KEY = "test";
     create.mockRejectedValueOnce(new Error("timeout"));

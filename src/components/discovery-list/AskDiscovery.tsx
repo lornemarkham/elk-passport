@@ -164,8 +164,10 @@ export function AskDiscovery({
           )}
 
           <p
-            data-testid="ask-note"
-            className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-black/50"
+            data-testid={answer.unread ? "ask-unread" : "ask-note"}
+            className={`mt-2 max-w-[76ch] text-[13px] leading-relaxed ${
+              answer.unread ? "font-medium text-[#111]/75" : "text-black/50"
+            }`}
           >
             {answer.note}
           </p>

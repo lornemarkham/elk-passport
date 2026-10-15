@@ -112,6 +112,8 @@ export interface Answer {
   readonly note: string;
   readonly picks: readonly AnswerPick[];
   readonly gaps: readonly AnswerGap[];
+  /** The sentence said nothing Passport could act on; the picks are generic. */
+  readonly unread?: true;
 }
 
 /**
@@ -881,6 +883,19 @@ function routedMinutes(e: Experience): number {
   return e.travel?.kind === "routed" ? e.travel.minutes : 0;
 }
 
+/** Whether the reading found nothing at all beyond the words themselves. */
+export function readNothing(ask: DiscoveryAsk): boolean {
+  return Object.keys(ask).every((key) => key === "said");
+}
+
+/**
+ * What a sentence nothing was read from is told. Passport can only offer
+ * places Atlas holds, so a name it cannot match is said to be one, rather than
+ * answered with something near it.
+ */
+export const UNREAD_NOTE =
+  "Nothing in that matched a length of time, who's coming, a day, a town or something to do, so these are only a starting point, not an answer to it. Try “three hours with my kid on Saturday” or “something unusual near Vernon” — or search by name below. Passport only offers places Atlas knows about, so a place it doesn't hold won't be made up.";
+
 function framing(
   ask: DiscoveryAsk,
   context: AnswerContext,
@@ -954,6 +969,18 @@ function framing(
         note: "Places with several things to do, what's on, and anywhere described as suiting all ages or beginners come first. Atlas doesn't say what suits a group — that ordering is Passport's.",
       };
     default:
+      // **Nothing was read, and the page says so.** A sentence with no length
+      // of time, company, day, town, activity or way of looking used to get
+      // "Here's where I'd start — picked from what fits your answers", which
+      // claimed an understanding nobody had. The picks are the same real
+      // Atlas subjects; what changes is that they are no longer dressed up as
+      // an answer, and the way forward is named. Nothing here echoes the
+      // sentence back or guesses what a place name meant.
+      if (readNothing(ask))
+        return {
+          heading: "I didn't catch what you're after",
+          note: UNREAD_NOTE,
+        };
       return ask.company === "alone"
         ? {
             heading: "On your own — where I'd start",
@@ -1107,6 +1134,7 @@ export function answerAsk(
       : said,
     picks,
     gaps,
+    ...(readNothing(ask) ? { unread: true as const } : {}),
   };
 }
 

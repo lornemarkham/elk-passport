@@ -194,6 +194,19 @@ describe("asking Discovery a question", () => {
     expect(document.getElementById("ghad-rows")).not.toHaveClass("hidden");
   });
 
+  it("says so when it could read nothing from the sentence, and offers no 'Heard:' it did not hear", async () => {
+    renderPage();
+    await ask("take me to Atlantis");
+    expect(screen.getByTestId("ask-heading")).toHaveTextContent(
+      "I didn't catch what you're after",
+    );
+    expect(screen.getByTestId("ask-unread")).toHaveTextContent(
+      /Atlas knows about/,
+    );
+    expect(screen.queryByTestId("ask-understood")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ask-note")).not.toBeInTheDocument();
+  });
+
   it("sets the same rows a tap would, and says what it heard", async () => {
     renderPage();
     await act(async () => {

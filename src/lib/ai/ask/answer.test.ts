@@ -750,3 +750,37 @@ describe("worth the drive, by what you can do there", () => {
     expect(answer.picks[0]?.experience.title).toBe("Canyon Trail");
   });
 });
+
+/**
+ * **A sentence nothing was read from is not an answer.** It used to be
+ * greeted with "Picked from what fits your answers, each for a reason you can
+ * check" — an understanding nobody had. The picks are still real Atlas
+ * subjects; they are now said to be only a starting point.
+ */
+describe("a sentence nothing could be read from", () => {
+  const pool = [
+    subject("Polson Park", { km: 2, verbs: ["Playground"] }),
+    subject("Kal Beach", { km: 6, subtype: "beach", verbs: ["Swimming"] }),
+  ];
+
+  it.each(["blorp zxq", "take me to Atlantis", "waterfall"])(
+    "says it did not catch %j, and still offers only real subjects",
+    (said) => {
+      const answer = answerAsk(pool, ask(said), context);
+      expect(answer.unread).toBe(true);
+      expect(answer.heading).toBe("I didn't catch what you're after");
+      expect(answer.note).toMatch(/Atlas knows about/);
+      expect(answer.note).not.toMatch(/each for a reason you can check/);
+      const real = new Set(pool.map((p) => p.id));
+      expect(answer.picks.length).toBeGreaterThan(0);
+      for (const pick of answer.picks)
+        expect(real).toContain(pick.experience.id);
+    },
+  );
+
+  it("does not apply to a sentence that read something", () => {
+    const answer = answerAsk(pool, ask("a Saturday in Vernon"), context);
+    expect(answer.unread).toBeUndefined();
+    expect(answer.heading).not.toMatch(/didn't catch/);
+  });
+});
