@@ -9,7 +9,7 @@
 //   node e2e/support/atlas-standin.mjs [body.json[.gz]] [port]
 //
 // Modes are switched at runtime so one server can play every failure:
-//   POST /__mode  {"candidates":"ok|empty|500", "distance":"ok|500",
+//   POST /__mode  {"candidates":"ok|empty|500|slow", "distance":"ok|500",
 //                  "legs":"ok|404|500|slow"}
 //   GET  /__mode  → the current modes
 import { createServer } from "node:http";
@@ -66,6 +66,10 @@ createServer(async (req, res) => {
     )
       return json(res, 500, { error: "stand-in: forced failure" });
     if (modes.candidates === "empty") return json(res, 200, { candidates: [] });
+    // A cold Atlas: the real corpus read is 8–19 s. Long enough for a test to
+    // look at what the page is while it waits, short enough not to stall one.
+    if (modes.candidates === "slow")
+      await new Promise((r) => setTimeout(r, 4_000));
     const lat = Number(url.searchParams.get("lat"));
     const lng = Number(url.searchParams.get("lng"));
     const within = Number(url.searchParams.get("withinKm"));

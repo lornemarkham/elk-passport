@@ -95,9 +95,17 @@ const EXPERIENCES = [
 
 export function PassportNav({
   displayName = null,
+  pending = false,
 }: {
   /** The signed-in person's name, or `null` for a visitor. */
   readonly displayName?: string | null;
+  /**
+   * **Who this is is still being read.** The bar is drawn at once — it needs
+   * nobody's name — and the one slot that does reserves its width instead of
+   * saying "Sign in" to somebody who is about to be greeted by name. Used
+   * while a page streams: see `DiscoveryFrame`.
+   */
+  readonly pending?: boolean;
 }) {
   const pathname = usePathname() ?? "";
   const inside = (href: string) =>
@@ -227,7 +235,13 @@ export function PassportNav({
 
           {/* Carries where you are, so auth and the account page can bring you
               back — the same fix October's bar already had. */}
-          {displayName ? (
+          {pending ? (
+            <span
+              aria-hidden
+              data-testid="passport-account-pending"
+              className="inline-flex min-h-12 w-20 shrink-0 sm:w-24"
+            />
+          ) : displayName ? (
             <Link
               href={`/account?next=${from}`}
               data-testid="passport-account"

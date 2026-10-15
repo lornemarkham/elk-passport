@@ -282,3 +282,13 @@ guide's unknowns when removed. Never a coordinate in the URL.
 
 While an answer is on screen `TodayPanel` is not rendered — it would answer the
 same situation a second time — and the forecast still orders the answer.
+
+## What crosses the wire
+
+`/discovery` serialises the whole pool so search and the rows answer without a
+round trip, which is why the page's counts are true. What it sends is
+`forDiscoveryWire` (`src/domain/discovery/wire.ts`): every candidate, minus the
+fields no Discovery surface reads. **Nothing is sent less often** — the pool is
+still complete — and a test holds the page to identical output. Measurements
+and the lead/tail split that was deliberately not built:
+`docs/product/discovery-performance-2026-10-15.md`.

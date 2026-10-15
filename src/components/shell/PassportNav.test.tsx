@@ -217,3 +217,41 @@ describe("experiences", () => {
     );
   });
 });
+
+/**
+ * **The bar is drawn before anybody knows who is asking.** Discovery streams:
+ * its bar is in the first bytes and the reader's name arrives behind it. The
+ * one slot that depends on it holds its width and says nothing — "Sign in"
+ * to somebody about to be greeted by name would be a small lie.
+ */
+describe("while who is signed in is still being read", () => {
+  it("draws the whole bar and says nothing in the reader's slot", () => {
+    pathname = "/discovery";
+    render(<PassportNav pending />);
+    expect(screen.getByTestId("passport-nav-discover")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByTestId("passport-nav-places")).toBeInTheDocument();
+    expect(screen.getByTestId("passport-nav-experiences")).toBeInTheDocument();
+    expect(screen.getByTestId("passport-account-pending")).toBeInTheDocument();
+    expect(screen.queryByTestId("passport-sign-in")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("passport-account")).not.toBeInTheDocument();
+  });
+
+  it("resolves to the same bar, with the answer in the slot", () => {
+    const view = at("/discovery", null);
+    const names = (root: HTMLElement) =>
+      [...root.querySelectorAll("a, button")].map((e) => e.textContent);
+    expect(screen.getByTestId("passport-sign-in")).toBeInTheDocument();
+    view.unmount();
+    const pending = render(<PassportNav pending />);
+    const loading = names(pending.container);
+    pending.unmount();
+    const signedOut = at("/discovery", null);
+    // Everything but the slot is identical, in the same order.
+    expect(names(signedOut.container).slice(0, loading.length)).toEqual(
+      loading,
+    );
+  });
+});

@@ -181,6 +181,36 @@ test.describe("empty results", () => {
     await shoot(page, info, "08-atlas-empty");
   });
 
+  test("a slow Atlas shows Discovery's own bar and frame while it waits, not another page", async ({
+    page,
+  }, info) => {
+    await setAtlas({ candidates: "slow" });
+    await page.goto(`/discovery?age=${freshAge(info, 2)}`, {
+      waitUntil: "commit",
+    });
+    // While Atlas is being read: the real bar, the real question, one h1, and
+    // the page's own white ground — never the cream page with another heading
+    // that used to stand here.
+    const loading = page.getByTestId("discovery-loading");
+    await expect(loading).toBeVisible();
+    await expect(page.getByTestId("ask-input")).toHaveCount(0);
+    await expect(page.getByTestId("passport-nav-discover")).toBeVisible();
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator("h1")).toHaveText("What do you feel like doing?");
+    await expect(loading).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await shoot(page, info, "10-slow-atlas-waiting");
+
+    // Then the page itself replaces it, under the same heading, with the same
+    // bar still in place.
+    await expect(page.getByTestId("ask-input")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(loading).toHaveCount(0);
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator("h1")).toHaveText("What do you feel like doing?");
+    await expect(page.getByTestId("passport-nav-discover")).toBeVisible();
+  });
+
   test("Atlas failing says Atlas, and keeps the account out of it", async ({
     page,
   }, info) => {

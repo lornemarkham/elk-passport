@@ -109,6 +109,24 @@ const FRESH_MS = 10 * 60_000;
  */
 const USABLE_MS = 60 * 60_000;
 
+/**
+ * **How long a stale answer may stand in for one Atlas will not give.**
+ *
+ * Past `USABLE_MS` a reader normally waits for a real read — and when that
+ * read *fails*, they used to get the error page even though this instance
+ * held a complete corpus from a few hours ago. A cold read is 8–19 s and an
+ * outage is the one time it is least likely to succeed, so a warm instance
+ * answers with what it has instead, and says so in its log.
+ *
+ * Six hours: comfortably inside a working day's gap between ingestion runs,
+ * and short enough that "Happening today" cannot be a different day's
+ * listing — every date on the page is judged against the server's clock, not
+ * the corpus's age. Only ever a *failure* reaches this far: any read that
+ * succeeds replaces the stale value at once, and a cold instance, which holds
+ * nothing, still reports `AtlasUnavailableError` exactly as before.
+ */
+export const STALE_IF_ERROR_MS = 6 * 60 * 60_000;
+
 const fresh = new Map<string, { at: number; value: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
 
@@ -130,7 +148,16 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   }
 
   if (running) return running as Promise<T>;
-  return refresh(key, load);
+  const reading = refresh(key, load);
+  if (hit && age < STALE_IF_ERROR_MS) {
+    return reading.catch((error: unknown) => {
+      console.warn(
+        `[atlas] serving a ${Math.round(age / 60_000)}-minute-old ${key} because Atlas did not answer (${isAtlasUnavailable(error) ? error.reason : "failed"})`,
+      );
+      return hit.value as T;
+    });
+  }
+  return reading;
 }
 
 function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -449,13 +476,21 @@ export async function listRegions(): Promise<AtlasRegion[]> {
   const token = process.env.ADMIN_TOKEN;
   if (!token) return [];
   try {
-    const response = await atlasFetch("/admin/regions", {
-      headers: atlasAuthHeaders({ "x-admin-token": token }),
-      cache: "no-store",
+    // **Remembered like the corpus is.** This was a request to Atlas on every
+    // single Discovery view — on the page's critical path, uncached, with the
+    // same two-minute timeout as the corpus read. Regions change when somebody
+    // adds one, not between page views. A failure is still `[]` and still not
+    // stored (`cached` keeps successes only), so an Atlas that is down is
+    // never remembered as "no regions".
+    return await cached("admin/regions", async () => {
+      const response = await atlasFetch("/admin/regions", {
+        headers: atlasAuthHeaders({ "x-admin-token": token }),
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`regions ${response.status}`);
+      const body = (await response.json()) as { regions?: AtlasRegion[] };
+      return (body.regions ?? []).map((r) => ({ id: r.id, name: r.name }));
     });
-    if (!response.ok) return [];
-    const body = (await response.json()) as { regions?: AtlasRegion[] };
-    return (body.regions ?? []).map((r) => ({ id: r.id, name: r.name }));
   } catch {
     return [];
   }

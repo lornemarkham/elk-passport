@@ -4,6 +4,61 @@ import { useState } from "react";
 import { ChevronDown, MapPin } from "lucide-react";
 
 /**
+ * **The question and the two facts under it** — shared with the loading state
+ * (`DiscoverySkeleton`), so the page that is on screen while Atlas is being
+ * read and the page that replaces it set the same words in the same place.
+ * They used to be two hand-written copies, and the loading one said something
+ * else entirely.
+ */
+export function FeelLikeHeading({
+  today,
+  where,
+}: {
+  readonly today?: string;
+  readonly where?: string;
+}) {
+  return (
+    <>
+      {/* The wordmark and the theme picker live on the bar above, which every
+          screen has — a brand that moves from page to page is not a brand, and
+          a colour choice shown on Discovery looks like a property of
+          Discovery. See `PassportNav`. */}
+      <h1 className="ghad-display max-w-[16ch] text-[34px] leading-[0.95] font-extrabold tracking-[-0.045em] text-balance text-[#111] sm:text-[64px]">
+        What do you feel like doing?
+      </h1>
+
+      {/* **Two facts, not a tagline.** The date and the area are the only
+          things this page can state before anybody has told it anything, and
+          both come from the server — the clock and `activeScope()`. Neither is
+          invented when it is missing. */}
+      {(today || where) && (
+        <p
+          data-testid="discovery-context"
+          className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold tracking-[0.12em] uppercase"
+          style={{ color: "var(--ghad-accent)" }}
+        >
+          {today && <span className="tabular-nums">{today}</span>}
+          {today && where && (
+            <span aria-hidden className="opacity-40">
+              ·
+            </span>
+          )}
+          {where && (
+            <span
+              data-testid="active-scope"
+              className="inline-flex items-center gap-1"
+            >
+              <MapPin className="h-3.5 w-3.5" aria-hidden />
+              {where}
+            </span>
+          )}
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
  * **"What do you feel like doing?" — five questions, every one of them real.**
  *
  * Replaces the hero and the row of ontology chips. The rule it is built to is
@@ -74,41 +129,10 @@ export function FeelLikeDoing({
   const folded = collapseOnPhone && !open;
   return (
     <section data-testid="feel-like-doing">
-      {/* The wordmark and the theme picker live on the bar above, which every
-          screen has — a brand that moves from page to page is not a brand, and
-          a colour choice shown on Discovery looks like a property of
-          Discovery. See `PassportNav`. */}
-      <h1 className="ghad-display max-w-[16ch] text-[34px] leading-[0.95] font-extrabold tracking-[-0.045em] text-balance text-[#111] sm:text-[64px]">
-        What do you feel like doing?
-      </h1>
-
-      {/* **Two facts, not a tagline.** The date and the area are the only
-          things this page can state before anybody has told it anything, and
-          both come from the server — the clock and `activeScope()`. Neither is
-          invented when it is missing. */}
-      {(today || where) && (
-        <p
-          data-testid="discovery-context"
-          className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold tracking-[0.12em] uppercase"
-          style={{ color: "var(--ghad-accent)" }}
-        >
-          {today && <span className="tabular-nums">{today}</span>}
-          {today && where && (
-            <span aria-hidden className="opacity-40">
-              ·
-            </span>
-          )}
-          {where && (
-            <span
-              data-testid="active-scope"
-              className="inline-flex items-center gap-1"
-            >
-              <MapPin className="h-3.5 w-3.5" aria-hidden />
-              {where}
-            </span>
-          )}
-        </p>
-      )}
+      <FeelLikeHeading
+        {...(today ? { today } : {})}
+        {...(where ? { where } : {})}
+      />
 
       {lead}
 
