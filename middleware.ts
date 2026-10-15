@@ -60,10 +60,16 @@ export async function middleware(request: NextRequest) {
   if (experience) headers.set(EXPERIENCE_HEADER, experience.host);
   else headers.delete(EXPERIENCE_HEADER);
 
+  // **The query string survives the rewrite.** `new URL(rewriteTo,
+  // request.url)` resolves a bare path against the request and, as URL
+  // resolution does, discards the request's search — so `gohaveaday.com/
+  // ?age=5&on=2026-10-17` arrived at Discovery with neither, and the door
+  // forgot what it was asked on the way in. The path is swapped on a clone of
+  // the request URL instead, so everything else about it is kept.
+  const target = request.nextUrl.clone();
+  if (rewriteTo) target.pathname = rewriteTo;
   const response = rewriteTo
-    ? NextResponse.rewrite(new URL(rewriteTo, request.url), {
-        request: { headers },
-      })
+    ? NextResponse.rewrite(target, { request: { headers } })
     : NextResponse.next({ request: { headers } });
 
   const supabase = createServerClient(

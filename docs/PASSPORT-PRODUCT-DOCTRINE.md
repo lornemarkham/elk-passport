@@ -706,6 +706,12 @@ The feeling it should create:
 Generic Discovery serves someone who has at least some idea of what they want,
 or who is willing to browse possibilities.
 
+**On `gohaveaday.com`, Discovery is the homepage.** Typing the domain opens
+Discovery directly — the root of the domain is served by the one `/discovery`
+implementation, with no landing page, no introduction and no extra click in
+front of it. (Decided 2026-10-14; the root is a rewrite, not a copy, so there
+is still exactly one Discovery.)
+
 ---
 
 ## 13. Inspiration — preserved, fenced off

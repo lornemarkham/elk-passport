@@ -101,3 +101,28 @@ Acceptance:
 - No invented numbers: when the provider is down, the response says so.
 - Passport's fixture `src/lib/domains/travel/__fixtures__/travel-legs-1.json`
   still validates against the live response.
+
+## Addendum, 2026-10-15 — the homepage
+
+Production still served Passport's static landing page ("Go have a day in the
+Okanagan.") at `gohaveaday.com/`, with Discovery one click away at
+`/discovery`. The cause is that production is behind this branch, not a bug in
+this branch: `65c7f1a` already rewrites the domain's root to `/discovery`, and
+Vercel has never been given it.
+
+Found and fixed on top of it in this pass: the rewrite resolved its target
+with `new URL("/discovery", request.url)`, which drops the request's query
+string, so `gohaveaday.com/?age=5` reached Discovery without the age. The
+target is now the request URL with only its path swapped (`middleware.ts`),
+which also fixes the same loss on `iamoctober.com/`. `e2e/gohaveaday-door.spec.ts`
+drives the real middleware with a `Host` header and pins the root, `www.`,
+the query string, `/go`, `/discovery`, Passport's own host and
+`iamoctober.com`.
+
+Live state when checked (2026-10-15, read-only): `gohaveaday.com/` → 200, old
+landing page; `www.gohaveaday.com/` → 308 to the apex (Vercel's domain
+setting; the middleware no longer redirects either way, so no loop under
+either setting); `gohaveaday.com/discovery` → 200 Discovery;
+`iamoctober.com/` → 308 to `www.`. Deploy was not attempted from this
+checkout (`CLAUDE.local.md`); the fix is live once `integration/release` is
+deployed with `npx vercel deploy --prod` from a checkout that may.
