@@ -194,3 +194,57 @@ describe("who, what's on, and the weather", () => {
     expect(read("It's raining, what can we do inside?").shelter).toBe("indoor");
   });
 });
+
+/**
+ * **Sentences the reader once misread**, found by running ordinary phrasings
+ * through it. Each pins what the words say and nothing they do not.
+ */
+describe("ordinary phrasings that were misread", () => {
+  const withBikes = (said: string) =>
+    readAsk(said, { today, verbs: [...verbs, "Cycling", "Kayaking"] });
+
+  it("'a couple hours' is a length of time, not a date", () => {
+    const ask = read("I have a couple hours after work");
+    expect(ask).toMatchObject({ hours: 2, lens: "time" });
+    expect(ask.pair).toBeUndefined();
+    expect(read("a couple of hours").pair).toBeUndefined();
+    expect(read("a couple of days").pair).toBeUndefined();
+  });
+
+  it("'a couple' on its own is still two people", () => {
+    expect(read("something for a couple").pair).toBe(true);
+  });
+
+  it("'toddlers' is a child, not a wish for something odd", () => {
+    const ask = read("rainy day with toddlers");
+    expect(ask).toMatchObject({ company: "child", shelter: "indoor" });
+    expect(ask.lens).toBe("kids");
+  });
+
+  it("'next weekend' is the weekend after this one", () => {
+    // Today is Sunday 2026-10-11; this weekend's Saturday is the 17th.
+    expect(read("this weekend").on).toBe("2026-10-17");
+    expect(read("next weekend").on).toBe("2026-10-24");
+  });
+
+  it("names a day by how far off it is", () => {
+    expect(read("what's on the day after tomorrow").on).toBe("2026-10-13");
+    expect(read("something fun in two days").on).toBe("2026-10-13");
+    expect(read("something fun in 3 days").on).toBe("2026-10-14");
+    // Further out than a week is a date; it is not guessed.
+    expect(read("something in 30 days").on).toBeUndefined();
+  });
+
+  it("'bike' and 'mountain biking' choose Cycling where Atlas offers it", () => {
+    expect(withBikes("mountain biking").doing).toBe("Cycling");
+    expect(withBikes("bike rides near Vernon").doing).toBe("Cycling");
+    expect(withBikes("somewhere to paddle").doing).toBe("Kayaking");
+  });
+
+  it("a synonym never invents a verb Atlas does not offer", () => {
+    expect(read("mountain biking").doing).toBeUndefined();
+    expect(
+      read("something to burn off the kids' energy before dinner").doing,
+    ).toBeUndefined();
+  });
+});

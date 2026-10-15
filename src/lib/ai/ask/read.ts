@@ -177,7 +177,7 @@ const ALONE = /\b(alone|by myself|on my own|solo|just me)\b/;
 
 /** A partner or a date. "Couple" alone, as in "a couple of hours", is not. */
 const PAIR =
-  /\b(date|date night|my (?:partner|wife|husband|girlfriend|boyfriend|spouse|fianc[ée]e?|other half)|the two of us|just us two|us two|romantic|anniversary|a couple\b(?! of))/;
+  /\b(date|date night|my (?:partner|wife|husband|girlfriend|boyfriend|spouse|fianc[ée]e?|other half)|the two of us|just us two|us two|romantic|anniversary|a couple\b(?!\s+(?:of|hours?|hrs?|minutes?|mins?|days?)\b))/;
 
 /** Asking what is on, rather than what is there. */
 const ON =
@@ -278,8 +278,9 @@ const STOP = new Set([
  */
 function verbIn(text: string, verbs: readonly string[]): string | undefined {
   const stem = (word: string) => word.replace(/(?:ing|es|e|s)$/, "");
-  const words = (text.match(/[a-z]{4,}/g) ?? [])
-    .filter((w) => !STOP.has(w))
+  const words = (text.match(/[a-z]{3,}/g) ?? [])
+    .filter((w) => !STOP.has(w) && (w.length >= 4 || w in VERB_SYNONYMS))
+    .map((w) => VERB_SYNONYMS[w] ?? w)
     .map(stem);
   for (const verb of verbs) {
     const v = stem(verb.toLowerCase().trim().split(/\s+/).pop() ?? "");
@@ -288,6 +289,53 @@ function verbIn(text: string, verbs: readonly string[]): string | undefined {
   }
   return undefined;
 }
+
+const NUMBER_WORDS: Readonly<Record<string, number>> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+};
+
+/**
+ * **A day named by how far off it is** — "tomorrow", "the day after
+ * tomorrow", "in two days". Capped at a week: further out is a date, which
+ * this reading does not guess.
+ */
+function relativeDays(text: string): number | undefined {
+  if (/\bday after tomorrow\b/.test(text)) return 2;
+  if (/\btomorrow\b/.test(text)) return 1;
+  const n = /\bin (\d+|one|two|three|four|five|six|seven) days?\b/.exec(
+    text,
+  )?.[1];
+  if (n === undefined) return undefined;
+  const days = /^\d+$/.test(n) ? Number(n) : NUMBER_WORDS[n];
+  return days !== undefined && days >= 1 && days <= 7 ? days : undefined;
+}
+
+/**
+ * Ways people name a verb that its Atlas label does not share a stem with.
+ * Each maps a word in the sentence to a word in the verb; the verb must still
+ * be one Atlas offers — this only widens how it can be asked for.
+ */
+const VERB_SYNONYMS: Readonly<Record<string, string>> = {
+  bike: "cycl",
+  biking: "cycl",
+  biked: "cycl",
+  bikes: "cycl",
+  trail: "hik",
+  trails: "hik",
+  walk: "hik",
+  walks: "hik",
+  paddle: "kayak",
+  paddling: "kayak",
+  canoe: "kayak",
+  snowboard: "ski",
+  snowboarding: "ski",
+};
 
 /** The row's window for a number of hours. Coarse, as the row is. */
 export function windowFor(hours: number): Window {
@@ -324,17 +372,21 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   const weekday = WEEKDAYS.findIndex((w) =>
     new RegExp(`\\b${w}\\b`).test(text),
   );
-  const on = /\btomorrow\b/.test(text)
-    ? plusDays(context.today, 1)
-    : weekday >= 0
-      ? nextWeekday(context.today, weekday)
-      : /\bthis weekend\b|\bweekend\b/.test(text)
-        ? nextWeekday(context.today, 6)
-        : /\btoday\b|\bthis (?:afternoon|morning|evening)\b|\btonight\b|\bright now\b/.test(
-              text,
-            )
-          ? context.today
-          : undefined;
+  const daysAhead = relativeDays(text);
+  const on =
+    daysAhead !== undefined
+      ? plusDays(context.today, daysAhead)
+      : weekday >= 0
+        ? nextWeekday(context.today, weekday)
+        : /\bnext weekend\b/.test(text)
+          ? plusDays(nextWeekday(context.today, 6), 7)
+          : /\bthis weekend\b|\bweekend\b/.test(text)
+            ? nextWeekday(context.today, 6)
+            : /\btoday\b|\bthis (?:afternoon|morning|evening)\b|\btonight\b|\bright now\b/.test(
+                  text,
+                )
+              ? context.today
+              : undefined;
 
   const company: Company | undefined =
     brief.childAge !== undefined || KID.test(text)

@@ -429,7 +429,9 @@ export function readBrief(
       ? ("outdoor" as const)
       : undefined;
 
-  const appetite = /\bweird|unusual|strange|odd|offbeat|surprise\b/.test(text)
+  const appetite = /\bweird|unusual|strange|\bodd\b|offbeat|surprise\b/.test(
+    text,
+  )
     ? ("odd" as const)
     : /\badventur|wild|epic|bold\b/.test(text)
       ? ("adventurous" as const)
@@ -542,7 +544,7 @@ export function reviseBrief(
       withinKm: Math.min(200, (next.withinKm ?? 30) * 2),
     };
   }
-  if (/weird|unusual|strange|odd|surprise/.test(text)) {
+  if (/weird|unusual|strange|\bodd\b|surprise/.test(text)) {
     next = { ...next, appetite: "odd" };
   }
   if (/adventur|wild|bold|epic/.test(text)) {
