@@ -12,11 +12,18 @@ import type {
   ToyFamily,
 } from "@/experience-lab/core/types";
 import type { Action } from "@/domain/hockey/actions";
+import type { SeriesView } from "@/domain/hockey/series";
 
 export interface NightSnapshot {
   readonly definition: ExperienceDefinition;
   readonly state: ExperienceState;
   readonly role: "host" | "guest";
+  /**
+   * The rest of this night's run. Sent with the page, not with every poll:
+   * last time does not change while you are looking at this time, and
+   * reading back every earlier night every five seconds would be absurd.
+   */
+  readonly series?: SeriesView;
 }
 
 /** How often the page asks what everybody else did. Only while it is being looked at. */
@@ -45,6 +52,14 @@ export function useSharedNight(initial: NightSnapshot) {
   const [tick, setTick] = useState(0);
   /** Bumped by every write, so a poll that set off before it cannot undo it. */
   const generation = useRef(0);
+  const series = initial.series;
+  const keepSeries = useCallback(
+    (next: NightSnapshot): NightSnapshot => ({
+      ...next,
+      series: next.series ?? series,
+    }),
+    [series],
+  );
 
   const refresh = useCallback(async () => {
     const started = generation.current;
@@ -60,11 +75,11 @@ export function useSharedNight(initial: NightSnapshot) {
       }
       if (!res.ok) return;
       const next = (await res.json()) as NightSnapshot;
-      if (generation.current === started) setSnapshot(next);
+      if (generation.current === started) setSnapshot(keepSeries(next));
     } catch {
       // Offline for a moment. The next poll will try again.
     }
-  }, [id]);
+  }, [id, keepSeries]);
 
   useEffect(() => {
     const poll = window.setInterval(() => {
@@ -106,16 +121,24 @@ export function useSharedNight(initial: NightSnapshot) {
           await refresh();
           return;
         }
-        if (generation.current === mine) setSnapshot(body as NightSnapshot);
+        if (generation.current === mine)
+          setSnapshot(keepSeries(body as NightSnapshot));
       } catch {
         setError("Couldn't reach Passport. Try again in a second.");
         await refresh();
       }
     },
-    [id, refresh],
+    [id, refresh, keepSeries],
   );
 
-  const { definition, state, role } = snapshot;
+  const { state, role } = snapshot;
+  // Last time's receipts are the lab's `lineage`, so the recap's callback and
+  // the defending champion read them exactly as the prototype did.
+  const lineage = snapshot.series?.lastTime ?? undefined;
+  const definition = useMemo(
+    () => ({ ...snapshot.definition, lineage }),
+    [snapshot.definition, lineage],
+  );
   const live = useMemo(
     () => liveExperience(definition, state, new Date()),
     // `tick` re-derives the page as time passes: phases change on the clock.
@@ -129,6 +152,7 @@ export function useSharedNight(initial: NightSnapshot) {
     state,
     definition,
     role,
+    series: snapshot.series,
     error,
     clearError: () => setError(null),
     hydrated: true as const,

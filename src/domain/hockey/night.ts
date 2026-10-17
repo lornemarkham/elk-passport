@@ -1,4 +1,5 @@
 import { planBlock, planLines } from "./plan";
+import { editionLabel, editionOf, type SeriesDetails } from "./edition";
 import { hockeyNight } from "@/experience-lab/fixtures/hockeyNight";
 import type {
   Brief,
@@ -68,7 +69,8 @@ export interface OccasionRow {
   readonly title: string;
   readonly starts_at: string;
   readonly host_id: string;
-  readonly details: Partial<NightDetails>;
+  /** Template parameters, plus which run of nights this one belongs to. */
+  readonly details: Partial<NightDetails> & SeriesDetails;
   readonly brief: Brief | null;
 }
 
@@ -333,6 +335,7 @@ export function composeNight(
     ...SYCLE_HOCKEY_NIGHT.details,
     ...occasion.details,
   };
+  const edition = editionOf(occasion);
   const memberIds = new Set(rows.members.map((m) => m.user_id));
   const isMember = (id: string | null | undefined) =>
     id !== null && id !== undefined && memberIds.has(id);
@@ -394,7 +397,20 @@ export function composeNight(
           }
         : b,
     )
-    .map((b) => (b.kind === "recap" ? { ...b, title: occasion.title } : b));
+    .map((b) => (b.kind === "recap" ? { ...b, title: occasion.title } : b))
+    // The lab only offered "Run it back" a fortnight later. A real group
+    // decides the next one over breakfast, so it is there from the morning.
+    .map((b) =>
+      b.kind === "runItBack" ? { ...b, phaseIds: ["morning", "again"] } : b,
+    )
+    .map((b) =>
+      b.kind === "leaderboard" && edition > 1
+        ? {
+            ...b,
+            subtitle: `${editionLabel(edition)}. Points start at zero. The grudges don't.`,
+          }
+        : b,
+    );
 
   // Settled decisions follow the group out of "Before the game".
   const plan = planBlock(
@@ -411,7 +427,10 @@ export function composeNight(
     slug: occasion.id,
     title: occasion.title,
     subtitle: `${details.home} vs ${details.opponent}`,
-    kicker: details.venue,
+    kicker:
+      edition > 1
+        ? `${details.venue} · ${editionLabel(edition)}`
+        : details.venue,
     whereLine: `${details.venue}, ${details.city}`,
     anchorAt: new Date(occasion.starts_at).toISOString(),
     hostId: occasion.host_id,

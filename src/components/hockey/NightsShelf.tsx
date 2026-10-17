@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { GameChoice } from "@/domain/hockey/schedule";
+import { editionLabel } from "@/domain/hockey/edition";
+import type { Cup } from "@/domain/hockey/series";
+import { CupRoll } from "./CupRoll";
+import { StartNight } from "./StartNight";
 
 interface Night {
   readonly id: string;
@@ -9,6 +14,10 @@ interface Night {
   readonly startsAt: string;
   readonly role: "host" | "guest";
   readonly members: number;
+  readonly opponent: string;
+  readonly series: string;
+  readonly edition: number;
+  readonly over: boolean;
 }
 
 const when = (iso: string) =>
@@ -21,46 +30,54 @@ const when = (iso: string) =>
     timeZone: "America/Vancouver",
   });
 
+function NightCard({ night }: { night: Night }) {
+  return (
+    <Link
+      href={`/hockey/${night.id}`}
+      className="block rounded-2xl border border-white/15 bg-white/[0.04] p-4 transition hover:border-white/40"
+    >
+      <p className="text-[17px] font-medium">
+        🏒 {night.title}
+        {night.edition > 1 && (
+          <span className="text-white/45">
+            {" "}
+            · {editionLabel(night.edition)}
+          </span>
+        )}
+      </p>
+      <p className="mt-0.5 text-[14px] text-white/70">vs {night.opponent}</p>
+      <p className="mt-1 text-[13px] text-white/55">
+        {when(night.startsAt)} · {night.members} in ·{" "}
+        {night.role === "host" ? "you're hosting" : "you're invited"}
+      </p>
+    </Link>
+  );
+}
+
 /**
- * Your nights, and the one button that starts Sycle Hockey Night.
+ * **Your nights.** What's coming, the Cup, and what already happened.
  *
- * Not a create-an-event form. The night is already written — the opponent,
- * the puck drop, the questions, the jokes — and starting it is one tap, the
- * same instinct as the lab's curator setup: the less the host has to author,
- * the sooner anybody else is having fun.
+ * M216's shelf was one night and a button that started that night; once you
+ * hosted it, the button went away. A tradition needs more than one — so the
+ * button stays, the coming nights come first, and the past ones sit under
+ * the Cup they were played for.
  */
 export function NightsShelf({
   nights,
+  cups,
   name,
   gone,
+  suggestion,
 }: {
   nights: readonly Night[];
+  cups: readonly Cup[];
   name: string;
   gone: boolean;
+  suggestion: GameChoice;
 }) {
-  const [starting, setStarting] = useState(false);
-  // Asked here for the same reason the join page asks: the host's name is on
-  // the roster, on the leaderboard and in "Will ___ buy a $19 arena beer?",
-  // and an email address in that blank is not a joke anybody laughs at.
-  const [hostName, setHostName] = useState(name);
-  const [error, setError] = useState<string | null>(null);
-
-  async function start() {
-    setStarting(true);
-    setError(null);
-    const res = await fetch("/hockey/api/occasions", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: hostName.trim() || undefined }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? "Couldn't start it.");
-      setStarting(false);
-      return;
-    }
-    window.location.href = `/hockey/${body.id}`;
-  }
+  const [starting, setStarting] = useState(nights.length === 0);
+  const upcoming = nights.filter((n) => !n.over);
+  const past = nights.filter((n) => n.over).reverse();
 
   return (
     <main className="min-h-dvh bg-[oklch(0.14_0.015_260)] px-5 pt-14 pb-24 text-white">
@@ -77,54 +94,71 @@ export function NightsShelf({
           </p>
         )}
 
-        <ul className="mt-6 flex flex-col gap-3">
-          {nights.map((n) => (
-            <li key={n.id}>
-              <Link
-                href={`/hockey/${n.id}`}
-                className="block rounded-2xl border border-white/15 bg-white/[0.04] p-4 transition hover:border-white/40"
-              >
-                <p className="text-[17px] font-medium">🏒 {n.title}</p>
-                <p className="mt-1 text-[13px] text-white/55">
-                  {when(n.startsAt)} · {n.members} in ·{" "}
-                  {n.role === "host" ? "you're hosting" : "you're invited"}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {upcoming.length > 0 && (
+          <section aria-label="Coming up" className="mt-6">
+            <h2 className="text-[12px] tracking-wide text-white/40 uppercase">
+              Coming up
+            </h2>
+            <ul className="mt-2 flex flex-col gap-3">
+              {upcoming.map((n) => (
+                <li key={n.id}>
+                  <NightCard night={n} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-        {!nights.some((n) => n.role === "host") && (
-          <div className="mt-8 rounded-2xl border border-dashed border-white/20 p-5">
-            <p className="text-[16px] font-medium">Sycle Hockey Night</p>
-            <p className="mt-1 text-[14px] text-white/55">
-              Canucks vs Wild · Rogers Arena · Sunday 25 October, 7pm. Start it,
-              then invite people one link at a time.
-            </p>
-            <label className="mt-4 block text-[13px] text-white/55">
-              What should everyone call you?
-              <input
-                value={hostName}
-                onChange={(e) => setHostName(e.target.value)}
-                maxLength={40}
-                aria-label="Your name"
-                className="mt-1.5 w-full rounded-full border border-white/20 bg-black/20 px-4 py-2.5 text-[15px] text-white focus:border-white/50 focus:outline-none"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => void start()}
-              disabled={starting}
-              className="mt-4 w-full rounded-full bg-white py-3 text-[15px] font-semibold text-black disabled:opacity-50"
-            >
-              {starting ? "Starting…" : "Start it"}
-            </button>
-            {error && (
-              <p role="alert" className="mt-2 text-[13px] text-white/70">
-                {error}
+        <div className="mt-8 rounded-2xl border border-dashed border-white/20 p-5">
+          <p className="text-[16px] font-medium">Sycle Hockey Night</p>
+          {starting ? (
+            <>
+              <p className="mt-1 mb-4 text-[14px] text-white/55">
+                Pick the game, start it, then invite people one link at a time.
+                The questions, the toy box and the awards come with it.
               </p>
-            )}
-          </div>
+              <StartNight suggestion={suggestion} name={name} cta="Start it" />
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-[14px] text-white/55">
+                Another game, another guest list. Every night keeps its own
+                picks, its own chat and its own winner.
+              </p>
+              <button
+                type="button"
+                onClick={() => setStarting(true)}
+                className="mt-4 w-full rounded-full border border-white/30 py-3 text-[15px] font-semibold text-white transition hover:border-white/60"
+              >
+                Start another night
+              </button>
+            </>
+          )}
+        </div>
+
+        {cups.map((cup) => (
+          <section
+            key={cup.series}
+            aria-label="The Sycle Cup"
+            className="mt-10"
+          >
+            <CupRoll cup={cup} />
+          </section>
+        ))}
+
+        {past.length > 0 && (
+          <section aria-label="Already happened" className="mt-10">
+            <h2 className="text-[12px] tracking-wide text-white/40 uppercase">
+              Already happened
+            </h2>
+            <ul className="mt-2 flex flex-col gap-3">
+              {past.map((n) => (
+                <li key={n.id}>
+                  <NightCard night={n} />
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </div>
     </main>
