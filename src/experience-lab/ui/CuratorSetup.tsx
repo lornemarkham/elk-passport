@@ -250,7 +250,7 @@ export function MyLimit({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[12px] text-white/35 underline-offset-4 hover:text-white/70 hover:underline"
+        className="min-h-10 text-left text-[12px] text-white/35 underline-offset-4 hover:text-white/70 hover:underline"
       >
         You&apos;re set to “{EDGE_LABELS[effective]}” — change
       </button>

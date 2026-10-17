@@ -52,7 +52,7 @@ export function NearbyPicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 self-start text-[13.5px] text-white/55 hover:text-white"
+        className="inline-flex min-h-10 items-center gap-1.5 self-start text-[13.5px] text-white/55 hover:text-white"
       >
         <MapPin className="h-4 w-4" />
         What&apos;s near the arena?

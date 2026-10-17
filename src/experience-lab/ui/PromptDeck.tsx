@@ -59,21 +59,25 @@ export function PromptDeck({
 
   return (
     <div>
-      <div className="mb-2.5 flex items-center gap-1.5">
+      <div className="-my-1.5 mb-1 flex items-center gap-1.5">
         {prompts.map((prompt, i) => (
           <button
             key={prompt.prompt.id}
             type="button"
             aria-label={`Question ${i + 1}`}
             onClick={() => go(i)}
-            className={`h-1.5 flex-1 rounded-full transition ${
-              i === at
-                ? "bg-white"
-                : prompt.myResponse !== undefined
-                  ? "bg-white/45"
-                  : "bg-white/15"
-            }`}
-          />
+            className="group flex h-8 flex-1 items-center"
+          >
+            <span
+              className={`block h-1.5 w-full rounded-full transition ${
+                i === at
+                  ? "bg-white"
+                  : prompt.myResponse !== undefined
+                    ? "bg-white/45"
+                    : "bg-white/15"
+              }`}
+            />
+          </button>
         ))}
       </div>
 

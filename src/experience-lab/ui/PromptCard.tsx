@@ -622,7 +622,7 @@ function AddOption({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-white/55 transition hover:text-white"
+        className="mt-1 inline-flex min-h-10 items-center gap-1.5 text-[13px] font-medium text-white/55 transition hover:text-white"
       >
         <Plus className="h-3.5 w-3.5" />
         Suggest somewhere else
