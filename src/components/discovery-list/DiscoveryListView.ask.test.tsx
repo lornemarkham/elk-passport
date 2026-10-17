@@ -168,23 +168,27 @@ beforeEach(() => {
 });
 
 describe("asking Discovery a question", () => {
-  it("offers the four questions as doors before anybody types", () => {
+  it("offers starting points as doors before anybody types", () => {
     renderPage();
     expect(
       screen.getAllByTestId("ask-example").map((b) => b.textContent),
-    ).toEqual([
-      "What can we do with three hours?",
-      "What's something unusual nearby?",
-      "Where can I take my kid this afternoon?",
-      "What is worth driving an hour for?",
-    ]);
+    ).toEqual(
+      expect.arrayContaining([
+        "Surprise me",
+        "With the kids",
+        "Something different",
+        "Get outside",
+        "A great date",
+        "Rainy day",
+      ]),
+    );
   });
 
   it("keeps the rows behind one line on a phone, and says what is already chosen", async () => {
     renderPage();
     const refine = screen.getByTestId("ghad-refine");
     expect(refine).toHaveAttribute("aria-expanded", "false");
-    expect(refine).toHaveTextContent("Narrow it down");
+    expect(refine).toHaveTextContent("Fine-tune it yourself");
     expect(document.getElementById("ghad-rows")).toHaveClass("hidden");
     await ask("three hours");
     // What the sentence set is what the line says — nothing needs opening.
@@ -209,11 +213,7 @@ describe("asking Discovery a question", () => {
 
   it("sets the same rows a tap would, and says what it heard", async () => {
     renderPage();
-    await act(async () => {
-      fireEvent.click(
-        screen.getByText("Where can I take my kid this afternoon?"),
-      );
-    });
+    await ask("Where can I take my kid this afternoon?");
     expect(pressed("company")).toEqual(["a young child"]);
     expect(pressed("time")).toEqual(["half a day"]);
     expect(pressed("when")).toEqual(["today"]);

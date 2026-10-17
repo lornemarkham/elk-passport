@@ -1,4 +1,6 @@
 import { readBrief } from "@/domain/day/brief";
+import { asksForFree, travelIn } from "@/domain/day/intent";
+import { activityByKey, activityIn } from "@/domain/discovery/activities";
 import type { Company, Window } from "@/domain/discovery/situation";
 
 /**
@@ -64,8 +66,32 @@ export interface DiscoveryAsk {
    * nothing but Atlas's own routed estimate, where there is one.
    */
   readonly driveHours?: number;
-  /** A stated verb, matched against the verbs Atlas offers on this page. */
+  /**
+   * **How long they will travel, at most**, in minutes — "within 20
+   * minutes", "happy to drive an hour", or "maybe 45 minutes" said in answer
+   * to *how far?*. A limit, not a lens: it keeps what Atlas's routed estimate
+   * puts inside it, and never turns into a speed Passport made up.
+   */
+  readonly driveMinutes?: number;
+  /**
+   * **The activity they named**, by `activities.ts` key — "biking" is
+   * `cycling`, "the movies" is `movies`. Whether anything here offers it is
+   * the answer's question, not the reader's.
+   */
   readonly doing?: string;
+  /** Activities they said no to — "outside, but not hiking". Keys. */
+  readonly avoid?: readonly string[];
+  /** Asked for things that cost nothing. Atlas rarely says, and the answer says so. */
+  readonly free?: true;
+  /**
+   * **Easy going** — grandparents, "nothing strenuous", a wheelchair. Moves
+   * gentle things up and long hikes down; promises nothing about access.
+   */
+  readonly gentle?: true;
+  /** "Show me something completely different" — away from what was shown. */
+  readonly different?: true;
+  /** "Start over", "forget that" — the conversation begins again here. */
+  readonly reset?: true;
   /** Asked to stay dry, or to get outside. */
   readonly shelter?: "indoor" | "outdoor";
   /**
@@ -79,6 +105,8 @@ export interface DiscoveryAsk {
 }
 
 /**
+ * `surprise` — "I'm bored", "surprise me": a varied handful, nothing asked.
+ * `adventure` — climbing, ziplines, paddling: Atlas's words for a thrill.
  * `unusual` — the rarer things here, by what Atlas holds.
  * `drive`   — further out, and with more to it.
  * `kids`    — somewhere a child can do something, by stated evidence.
@@ -88,13 +116,27 @@ export interface DiscoveryAsk {
  * `time`    — they said how long, and that is the question.
  */
 export type AskLens =
-  "unusual" | "drive" | "kids" | "on" | "couple" | "group" | "time";
+  | "unusual"
+  | "drive"
+  | "kids"
+  | "on"
+  | "couple"
+  | "group"
+  | "time"
+  | "surprise"
+  | "adventure";
 
 export interface ReadContext {
   /** Today where the subjects are, `YYYY-MM-DD`. Resolves "tomorrow", "Saturday". */
   readonly today: string;
-  /** The verbs Atlas offers on this page, so "hiking" can choose one. */
+  /** Kept for callers that still pass Atlas's verbs; activities are read from words. */
   readonly verbs?: readonly string[];
+  /**
+   * **The question Passport just asked**, so a bare answer means what it
+   * answers: "maybe 45 minutes" after *how far?* is a drive, after *how much
+   * time?* it is the length of the outing, and "5" after *how old?* is an age.
+   */
+  readonly expecting?: "time" | "distance" | "age";
 }
 
 const WEEKDAYS = [
@@ -188,107 +230,40 @@ const FINE =
   /\b(sunny|sunshine|nice (?:day|out|weather)|beautiful day|gorgeous day)\b/;
 
 const UNUSUAL =
-  /\b(unusual|weird|strange|odd|offbeat|quirky|unexpected|hidden|secret|different|surprise me|never (?:been|heard))\b/;
+  /\b(unusual|weird|strange|odd|offbeat|quirky|unexpected|hidden|secret|different|never (?:been|heard|tried|done)|something new|new to me|first time|try something)\b/;
 
-/** Words too common to choose a verb with. */
-const STOP = new Set([
-  "what",
-  "with",
-  "where",
-  "something",
-  "worth",
-  "near",
-  "nearby",
-  "this",
-  "that",
-  "take",
-  "have",
-  "hour",
-  "hours",
-  "afternoon",
-  "morning",
-  "evening",
-  "today",
-  "tomorrow",
-  "there",
-  "some",
-  "could",
-  "should",
-  "would",
-  "about",
-  "around",
-  "place",
-  "places",
-  "things",
-  "thing",
-  "somewhere",
-  "unusual",
-  "driving",
-  "drive",
-  "here",
-  "want",
-  "like",
-  "good",
-  "best",
-  "kind",
-  "more",
-  "less",
-  "time",
-  "week",
-  "weekend",
-  "kids",
-  "family",
-  "friends",
-  "your",
-  "them",
-  "they",
-  "from",
-  "into",
-  "over",
-  "just",
-  "very",
-  "really",
-  "maybe",
-  "anything",
-  "everything",
-  "going",
-  "doing",
-  "make",
-  "does",
-  "spend",
-  "spent",
-  "close",
-  "local",
-  "quick",
-  "date",
-  "night",
-  "tonight",
-  "partner",
-  "happening",
-  "events",
-]);
+/** Nothing in mind, and saying so — a mood, not a constraint. */
+const SURPRISE =
+  /\b(bored|boring|surprise me|surprise us|anything|whatever|no idea|don'?t know what|something fun|fun|inspire me|ideas?)\b/;
 
-/**
- * The verb Atlas offers that the sentence names, where it names one.
- *
- * Matched on stems both ways round — "hike" chooses *Hiking*, "swim"
- * chooses *Swimming* — on words of four letters or more, so "go" and "do"
- * choose nothing. Against the verb's **last word**, which is the doing:
- * "date night" once chose *night skiing* because the verb began "night".
- */
-function verbIn(text: string, verbs: readonly string[]): string | undefined {
-  const stem = (word: string) => word.replace(/(?:ing|es|e|s)$/, "");
-  const words = (text.match(/[a-z]{3,}/g) ?? [])
-    .filter((w) => !STOP.has(w) && (w.length >= 4 || w in VERB_SYNONYMS))
-    .map((w) => VERB_SYNONYMS[w] ?? w)
-    .map(stem);
-  for (const verb of verbs) {
-    const v = stem(verb.toLowerCase().trim().split(/\s+/).pop() ?? "");
-    if (v.length < 3) continue;
-    if (words.some((w) => v.startsWith(w) || w.startsWith(v))) return verb;
-  }
-  return undefined;
-}
+const ADVENTURE =
+  /\b(adventur\w*|thrill\w*|adrenaline|exciting|daring|epic|wild|extreme|active)\b/;
+
+/** Easy going: older company, or saying nothing strenuous. */
+const GENTLE =
+  /\b(grand(?:parents?|ma|pa|mother|father|mom|dad)|seniors?|elderly|older (?:folks|relatives|parents)|my (?:mom|mum|dad|parents)|easy|gentle|not too (?:strenuous|hard|active)|nothing strenuous|low[- ]key|relaxing|accessible|wheelchair|stroller)\b/;
+
+/** Away from what was just shown — not a lens, a direction. */
+const DIFFERENT =
+  /\b(completely different|totally different|something else|anything else|other ideas|other options|show me (?:something |some )?(?:else|other)|not these|different ones|none of these|more ideas)\b/;
+
+const RESET =
+  /\b(start (?:over|again)|forget (?:that|it|all that|everything)|never ?mind|scratch that|from scratch)\b/;
+
+/** "walking distance" — a product judgement of ~2 km, said as one. */
+export const WALKING_KM = 2;
+
+/** A drive they will make, as a limit: "happy to drive an hour", "within 20 minutes". */
+const TOLERANCE =
+  /\b(?:within|under|up to|less than|no more than|at most|max(?:imum)?|happy to|willing to|don'?t mind|(?:is |it'?s )?ok(?:ay)? to|fine to|can|could|maybe|about|around)\b/;
+
+/** Somewhere close, said any way. */
+const NEAR =
+  /\b(nearby|near me|near here|close by|close to (?:here|home)|around here|not far|not too far|local|don'?t want to (?:drive|go|travel) (?:far|too far|much)|no (?:long )?drive|not much driving|less driving|walking distance)\b/;
+
+/** "not hiking", "no museums", "anything but the beach". */
+const NEGATED =
+  /\b(?:not|no|without|skip|avoid|anything but|except|rather not|don'?t want to|do not want to|nothing with)\s+(?:a\s+|an\s+|any\s+|the\s+|to\s+|go\s+|more\s+)?([a-z-]+(?:\s+[a-z-]+)?)/g;
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   one: 1,
@@ -316,27 +291,6 @@ function relativeDays(text: string): number | undefined {
   return days !== undefined && days >= 1 && days <= 7 ? days : undefined;
 }
 
-/**
- * Ways people name a verb that its Atlas label does not share a stem with.
- * Each maps a word in the sentence to a word in the verb; the verb must still
- * be one Atlas offers — this only widens how it can be asked for.
- */
-const VERB_SYNONYMS: Readonly<Record<string, string>> = {
-  bike: "cycl",
-  biking: "cycl",
-  biked: "cycl",
-  bikes: "cycl",
-  trail: "hik",
-  trails: "hik",
-  walk: "hik",
-  walks: "hik",
-  paddle: "kayak",
-  paddling: "kayak",
-  canoe: "kayak",
-  snowboard: "ski",
-  snowboarding: "ski",
-};
-
 /** The row's window for a number of hours. Coarse, as the row is. */
 export function windowFor(hours: number): Window {
   if (hours <= 1.5) return "an-hour";
@@ -351,21 +305,99 @@ export function driveSpan(hours: number): string {
   return `${hours} hours`;
 }
 
-export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
-  const text = said.toLowerCase().replace(/[’']/g, "'");
+/** A bare duration — "45 minutes", "maybe an hour", "about 3 hours". */
+const BARE_SPAN =
+  /\b(\d+(?:\.\d+)?|an?|one|two|three|four|five|six|half an?|a couple of|a couple)\s*(hours?|hrs?|minutes?|mins?)\b/;
 
+const SPOKEN: Readonly<Record<string, number>> = {
+  a: 1,
+  an: 1,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+};
+
+function spanMinutes(match: RegExpExecArray): number | undefined {
+  const [, qty = "", unit = ""] = match;
+  const n = /^\d/.test(qty)
+    ? Number(qty)
+    : qty.startsWith("half")
+      ? 0.5
+      : qty.includes("couple")
+        ? 2
+        : SPOKEN[qty];
+  if (n === undefined || !(n > 0)) return undefined;
+  return /^h/.test(unit) ? Math.round(n * 60) : Math.round(n);
+}
+
+/** What they said no to, as activity keys, and the sentence without it. */
+function negations(text: string): { avoid: string[]; rest: string } {
+  const avoid: string[] = [];
+  let rest = text;
+  for (const m of text.matchAll(NEGATED)) {
+    const activity = activityIn(m[1] ?? "");
+    if (!activity) continue;
+    avoid.push(activity.key);
+    rest = rest.replace(m[0], " ");
+  }
+  return { avoid: [...new Set(avoid)], rest };
+}
+
+export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
+  const lowered = said.toLowerCase().replace(/[’']/g, "'");
+  // **Said no to first**, so "outside but not hiking" never chooses hiking.
+  const { avoid, rest: text } = negations(lowered);
+
+  // **A drive they will make is a limit; "worth the drive" is a lens.**
+  // "Happy to drive an hour", "within 20 minutes" and — in answer to *how
+  // far?* — a bare "maybe 45 minutes" are how far they will go. "Worth
+  // driving an hour for" and "a road trip" are asking for somewhere further.
+  const travel = travelIn(text);
+  const bare =
+    context.expecting === "distance" && travel.minutes === undefined
+      ? BARE_SPAN.exec(text)
+      : null;
   const driveMatch = DRIVE.exec(text);
-  const drive = driveMatch !== null;
-  const driveHours = driveMatch ? driveHoursIn(driveMatch[0]) : undefined;
+  const tolerance =
+    bare !== null ||
+    (travel.minutes !== undefined &&
+      (!driveMatch ||
+        (!/\bworth\b|\b(?:road|day)\s*trip/.test(text) &&
+          TOLERANCE.test(text.slice(0, driveMatch.index + 1) + " "))));
+  const driveMinutes = tolerance
+    ? (travel.minutes ?? (bare ? spanMinutes(bare) : undefined))
+    : undefined;
+  const drive = driveMatch !== null && !tolerance;
+  const driveHours =
+    drive && driveMatch ? driveHoursIn(driveMatch[0]) : undefined;
   // `readBrief` reads hours, a stated age, a town, a stated distance and
   // shelter — the parts both pages must read identically.
-  const brief = readBrief(drive ? text.replace(DRIVE, " ") : text);
+  const forBrief = tolerance
+    ? bare
+      ? text.replace(bare[0], " ")
+      : travel.rest
+    : drive
+      ? text.replace(DRIVE, " ")
+      : text;
+  // "5" after *how old?* is an age.
+  const ageAnswer =
+    context.expecting === "age"
+      ? /^\D*(\d{1,2})\D*$/.exec(forBrief)?.[1]
+      : undefined;
+  const brief = readBrief(
+    ageAnswer !== undefined ? `${ageAnswer} year old` : forBrief,
+  );
 
   const partOfDay = /\bafternoon\b/.test(text)
     ? ("afternoon" as const)
     : /\bmorning\b/.test(text)
       ? ("morning" as const)
-      : /\b(evening|tonight)\b/.test(text)
+      : /\b(evening|tonight|after dinner|after supper|after work|night out)\b/.test(
+            text,
+          )
         ? ("evening" as const)
         : undefined;
 
@@ -397,7 +429,10 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
           ? "alone"
           : undefined;
 
-  const hours = brief.hours;
+  // "All afternoon" is the afternoon, and most of it.
+  const hours =
+    brief.hours ??
+    (/\ball afternoon\b|\bthe whole afternoon\b/.test(text) ? 4 : undefined);
   const window =
     hours !== undefined
       ? windowFor(hours)
@@ -410,38 +445,49 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   // wish that needs somewhere to measure from before it can become one.
   const statedKm = /\d+(?:\.\d+)?\s*km\b/.test(text)
     ? brief.withinKm
-    : undefined;
-  const near =
-    /\b(nearby|near me|near here|close by|close to here|around here|not far|local)\b/.test(
-      text,
-    ) || undefined;
+    : /\bwalking distance\b|\bwalkable\b|\bon foot\b/.test(text)
+      ? WALKING_KM
+      : undefined;
+  const near = NEAR.test(lowered) || undefined;
 
-  const unusual = UNUSUAL.test(text) || brief.appetite === "odd";
+  const different = DIFFERENT.test(text);
+  const unusual =
+    !different &&
+    (UNUSUAL.test(text) ||
+      (brief.appetite === "odd" && !/\bsurprise\b/.test(text)));
+  const adventure = ADVENTURE.test(text);
   const pair = company !== "child" && PAIR.test(text);
   const asksOn = ON.test(text);
+  const surprise = SURPRISE.test(text);
   // **The most specific question wins the lens**; everything else it said
   // still applies — the hours still draw the circle, the day still filters.
   const lens: AskLens | undefined = drive
     ? "drive"
     : unusual
       ? "unusual"
-      : company === "child"
-        ? "kids"
-        : pair
-          ? "couple"
-          : asksOn
-            ? "on"
-            : company === "group"
-              ? "group"
-              : hours !== undefined
-                ? "time"
-                : undefined;
+      : adventure
+        ? "adventure"
+        : company === "child"
+          ? "kids"
+          : pair
+            ? "couple"
+            : asksOn
+              ? "on"
+              : company === "group"
+                ? "group"
+                : hours !== undefined
+                  ? "time"
+                  : surprise
+                    ? "surprise"
+                    : undefined;
   // "What's on?" with no day is about today.
   const day = on ?? (asksOn ? context.today : undefined);
   const shelter =
     brief.shelter ?? (FINE.test(text) ? ("outdoor" as const) : undefined);
 
-  const doing = context.verbs ? verbIn(text, context.verbs) : undefined;
+  const doing = activityIn(text)?.key;
+  const gentle = GENTLE.test(text);
+  const free = asksForFree(text);
 
   return {
     said: said.trim(),
@@ -456,7 +502,13 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
     ...(brief.town ? { townId: brief.town.id } : {}),
     ...(near ? { near } : {}),
     ...(statedKm !== undefined ? { withinKm: statedKm } : {}),
+    ...(driveMinutes !== undefined ? { driveMinutes } : {}),
     ...(doing ? { doing } : {}),
+    ...(avoid.length > 0 ? { avoid } : {}),
+    ...(free ? { free: true as const } : {}),
+    ...(gentle ? { gentle: true as const } : {}),
+    ...(different ? { different: true as const } : {}),
+    ...(RESET.test(text) ? { reset: true as const } : {}),
     ...(shelter ? { shelter } : {}),
     ...(pair ? { pair: true as const } : {}),
     ...(lens ? { lens } : {}),
@@ -474,12 +526,20 @@ export function readBack(
   context: { readonly today: string; readonly townName?: string },
 ): readonly string[] {
   const out: string[] = [];
+  if (ask.lens === "surprise") out.push("surprise me");
+  if (ask.lens === "adventure") out.push("something adventurous");
+  if (ask.different) out.push("something different");
   if (ask.lens === "unusual") out.push("something unusual");
   if (ask.lens === "drive") out.push("worth the drive");
   if (ask.driveHours !== undefined)
     out.push(`${driveSpan(ask.driveHours)} each way`);
   if (ask.lens === "on") out.push("what's on");
-  if (ask.doing) out.push(ask.doing.toLowerCase());
+  if (ask.doing)
+    out.push((activityByKey(ask.doing)?.label ?? ask.doing).toLowerCase());
+  for (const key of ask.avoid ?? [])
+    out.push(`no ${(activityByKey(key)?.label ?? key).toLowerCase()}`);
+  if (ask.free) out.push("free");
+  if (ask.gentle) out.push("easy going");
   if (ask.hours !== undefined)
     out.push(ask.hours === 1 ? "an hour" : `${ask.hours} hours`);
   if (ask.company === "child")
@@ -508,7 +568,14 @@ export function readBack(
         }).format(new Date(`${ask.on}T12:00:00Z`)),
       );
   }
-  if (ask.withinKm !== undefined) out.push(`within ${ask.withinKm} km`);
+  if (ask.withinKm === WALKING_KM) out.push("walking distance");
+  else if (ask.withinKm !== undefined) out.push(`within ${ask.withinKm} km`);
+  else if (ask.driveMinutes !== undefined)
+    out.push(
+      ask.driveMinutes % 60 === 0
+        ? `up to ${driveSpan(ask.driveMinutes / 60)} away`
+        : `up to ${ask.driveMinutes} min away`,
+    );
   else if (ask.near) out.push("close by");
   if (context.townName) out.push(`from ${context.townName}`);
   if (ask.shelter === "indoor") out.push("staying dry");

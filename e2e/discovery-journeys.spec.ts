@@ -196,7 +196,9 @@ test.describe("empty results", () => {
     await expect(page.getByTestId("ask-input")).toHaveCount(0);
     await expect(page.getByTestId("passport-nav-discover")).toBeVisible();
     await expect(page.locator("h1")).toHaveCount(1);
-    await expect(page.locator("h1")).toHaveText("What do you feel like doing?");
+    await expect(page.locator("h1")).toHaveText(
+      "What kind of day are you looking for?",
+    );
     await expect(loading).toHaveCSS("background-color", "rgb(255, 255, 255)");
     await shoot(page, info, "10-slow-atlas-waiting");
 
@@ -207,7 +209,9 @@ test.describe("empty results", () => {
     });
     await expect(loading).toHaveCount(0);
     await expect(page.locator("h1")).toHaveCount(1);
-    await expect(page.locator("h1")).toHaveText("What do you feel like doing?");
+    await expect(page.locator("h1")).toHaveText(
+      "What kind of day are you looking for?",
+    );
     await expect(page.getByTestId("passport-nav-discover")).toBeVisible();
   });
 

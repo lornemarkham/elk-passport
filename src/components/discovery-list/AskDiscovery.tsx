@@ -5,27 +5,72 @@ import { useState } from "react";
 import type { Experience } from "@/domain/experience/types";
 import type { Point } from "@/domain/discovery/situation";
 import type { Answer } from "@/lib/ai/ask/answer";
+import type { FollowUp } from "@/lib/ai/ask/conversation";
 import { PossibilityCard } from "./PossibilityCard";
 
 /**
- * **Say it, and the page answers.**
+ * **Say what kind of day it is, and the page answers.**
  *
- * One box under the page's own question, for somebody who already knows how
- * they would put it: *"what can we do with three hours?"*. Not a chatbot —
- * no persona, no thread, no typing indicator (doctrine §3). The sentence sets
- * the same rows a tap would, the rows below visibly change, and a short
- * answer appears here with the reason for every pick.
+ * The front door of Discovery: one sentence in ordinary words — *"something
+ * fun with the kids, not too far away"* — read into what Passport can act on,
+ * answered at once with real Atlas places, each with the reason it is there.
  *
- * The four examples are real questions, tappable, so nobody has to invent
- * the first sentence. They are doors, not a questionnaire (§4): nothing is
- * asked of anyone who would rather tap the rows.
+ * Not a chatbot (doctrine §3): no persona, no bubbles, no typing indicator.
+ * What it keeps is the **conversation** — every sentence somebody has said,
+ * so "about three hours" after "something with my daughter" is three hours
+ * *with her*, and "actually, indoors" changes the sky and nothing else. The
+ * sentences are on screen, small, so a wrong reading is visible and the way
+ * back is one tap.
+ *
+ * At most one question at a time, and only under an answer (§4): results
+ * come first, and a question is a shortcut with tap replies, never a gate.
  */
-export const EXAMPLE_QUESTIONS = [
-  "What can we do with three hours?",
-  "What's something unusual nearby?",
-  "Where can I take my kid this afternoon?",
-  "What is worth driving an hour for?",
-] as const;
+export interface Starter {
+  /** On the chip. */
+  readonly label: string;
+  /** What it says, read exactly as if it were typed. */
+  readonly say: string;
+}
+
+/**
+ * **Doors, not categories.** Each is a sentence handed to the same reader a
+ * typed one goes to — nothing here is a filter, and anything else a person
+ * types is understood the same way.
+ */
+export const STARTERS: readonly Starter[] = [
+  { label: "Surprise me", say: "Surprise me" },
+  { label: "With the kids", say: "Something fun with the kids" },
+  { label: "Something different", say: "Something different" },
+  { label: "Get outside", say: "Get outside" },
+  { label: "Tonight", say: "Something to do tonight" },
+  { label: "A great date", say: "A great date" },
+  { label: "Rainy day", say: "It's raining — something indoors" },
+];
+
+/**
+ * The starters in the order this moment suggests: a wet sky puts *Rainy day*
+ * first; late in the day *Tonight* leads; after nine at night it is gone.
+ */
+export function startersFor(options: {
+  readonly wet?: boolean;
+  /** The hour where the subjects are, 0–23, from the server's clock. */
+  readonly hour?: number;
+}): readonly Starter[] {
+  const { wet, hour } = options;
+  let list = [...STARTERS];
+  if (hour !== undefined && hour >= 21)
+    list = list.filter((s) => s.label !== "Tonight");
+  const lead = (label: string) => {
+    const at = list.findIndex((s) => s.label === label);
+    if (at > 0) list = [list[at]!, ...list.slice(0, at), ...list.slice(at + 1)];
+  };
+  if (hour !== undefined && hour >= 15 && hour < 21) lead("Tonight");
+  if (wet) lead("Rainy day");
+  return list;
+}
+
+/** Kept for callers that still name the old examples. */
+export const EXAMPLE_QUESTIONS = STARTERS.map((s) => s.say);
 
 export function AskDiscovery({
   said,
@@ -33,6 +78,9 @@ export function AskDiscovery({
   onClear,
   answer,
   understood,
+  question,
+  starters = STARTERS,
+  alternatives = [],
   dayHref,
   dayHrefFor,
   today,
@@ -44,14 +92,19 @@ export function AskDiscovery({
   onSave,
   originPicker,
 }: {
-  /** The question on screen, where there is one. */
-  readonly said?: string;
+  /** Every sentence of the conversation so far, oldest first. */
+  readonly said?: readonly string[];
   readonly onAsk: (said: string) => void;
   readonly onClear: () => void;
   readonly answer?: Answer;
-  /** What the sentence was read as, said back. */
+  /** What the whole conversation adds up to, said back. */
   readonly understood: readonly string[];
-  /** *Make a day of these* — the sentence and the first picks, into `/go`. */
+  /** The one question worth asking now, where there is one. */
+  readonly question?: FollowUp;
+  readonly starters?: readonly Starter[];
+  /** Other things to do around here, as sentences to say. */
+  readonly alternatives?: readonly Starter[];
+  /** *Make a day of these* — the conversation and the first picks, into `/go`. */
   readonly dayHref?: string;
   readonly dayHrefFor: (experience: Experience) => string;
   readonly today?: string;
@@ -64,62 +117,105 @@ export function AskDiscovery({
   /** Offered under the "from where?" gap, so the question and its answer meet. */
   readonly originPicker?: React.ReactNode;
 }) {
-  // **Keyed to the question, not copied in an effect.** A new `said` (a
-  // tapped example, a back button) replaces the draft during render.
-  const [draft, setDraft] = useState(said ?? "");
-  const [lastSaid, setLastSaid] = useState(said);
-  if (said !== lastSaid) {
-    setLastSaid(said);
-    setDraft(said ?? "");
+  const talking = (said?.length ?? 0) > 0;
+  // **Empty once something is said.** The sentence is now in the
+  // conversation above the box; leaving it in the box invites retyping it.
+  const [draft, setDraft] = useState("");
+  const [lastCount, setLastCount] = useState(said?.length ?? 0);
+  if ((said?.length ?? 0) !== lastCount) {
+    setLastCount(said?.length ?? 0);
+    setDraft("");
   }
+
+  const send = (text: string) => {
+    const trimmed = text.trim();
+    if (trimmed) onAsk(trimmed);
+  };
 
   return (
     <div data-testid="ask-discovery" className="mt-5 sm:mt-7">
+      {talking && (
+        <ol
+          data-testid="ask-conversation"
+          aria-label="What you've said"
+          className="mb-3 flex flex-wrap items-center gap-1.5 text-[13px] text-black/55"
+        >
+          {said!.map((sentence, index) => (
+            <li
+              key={`${index}-${sentence}`}
+              data-testid="ask-turn"
+              className="rounded-full bg-black/[0.045] px-3 py-1 font-medium text-[#111]/75"
+            >
+              “{sentence}”
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              data-testid="ask-clear"
+              onClick={onClear}
+              className="px-1.5 py-1 text-[12.5px] font-semibold text-black/45 underline underline-offset-4 hover:text-black/80"
+            >
+              Start over
+            </button>
+          </li>
+        </ol>
+      )}
+
       <form
         role="search"
         aria-label="Ask Discovery"
         className="flex flex-col gap-2 sm:flex-row"
         onSubmit={(event) => {
           event.preventDefault();
-          if (draft.trim()) onAsk(draft.trim());
+          send(draft);
         }}
       >
         <input
           data-testid="ask-input"
           value={draft}
           maxLength={300}
+          enterKeyHint="send"
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Or just say it — three hours, a kid, something weird…"
-          aria-label="Say what kind of time you have"
-          className="min-h-12 flex-1 rounded-full bg-white px-5 text-[16px] text-[#111] ring-1 ring-black/15 ring-inset placeholder:text-black/35 focus:ring-2 focus:ring-black/50 focus:outline-none"
+          placeholder={
+            talking
+              ? "Add to it, or change your mind — “actually, indoors”…"
+              : "Something fun with the kids, not too far away…"
+          }
+          aria-label={
+            talking
+              ? "Tell Passport more, or change your mind"
+              : "What kind of day are you looking for?"
+          }
+          className="min-h-14 flex-1 rounded-full bg-white px-6 text-[17px] text-[#111] shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-black/20 ring-inset placeholder:text-black/35 focus:ring-2 focus:ring-black/60 focus:outline-none sm:min-h-16 sm:text-[19px]"
         />
         <button
           type="submit"
           data-testid="ask-submit"
           disabled={!draft.trim()}
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#111] px-6 text-[15px] font-semibold text-white transition-colors hover:bg-[#3a2a1c] disabled:opacity-40"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#111] px-7 text-[15px] font-semibold text-white transition-colors hover:bg-[#3a2a1c] disabled:opacity-40 sm:min-h-16 sm:text-[16px]"
         >
-          Show me
+          {talking ? "Update" : "Show me"}
         </button>
       </form>
 
-      {!said && (
+      {!talking && (
         <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-          {EXAMPLE_QUESTIONS.map((question) => (
+          {starters.map((starter) => (
             <button
-              key={question}
+              key={starter.label}
               type="button"
               data-testid="ask-example"
-              onClick={() => onAsk(question)}
-              className="inline-flex min-h-10 shrink-0 items-center rounded-full px-3.5 text-[13.5px] font-medium whitespace-nowrap text-black/60 ring-1 ring-black/10 transition-colors ring-inset hover:text-black/85 hover:ring-black/35"
+              onClick={() => send(starter.say)}
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-[14px] font-semibold whitespace-nowrap text-[#111]/75 ring-1 ring-black/15 transition-colors ring-inset hover:text-[#111] hover:ring-black/45"
             >
-              {question}
+              {starter.label}
             </button>
           ))}
         </div>
       )}
 
-      {said && answer && (
+      {talking && answer && (
         <section
           data-testid="ask-answer"
           aria-live="polite"
@@ -128,22 +224,12 @@ export function AskDiscovery({
             backgroundColor: "color-mix(in srgb, var(--ghad-accent) 6%, white)",
           }}
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-            <h2
-              data-testid="ask-heading"
-              className="ghad-display text-[26px] leading-[0.98] font-extrabold tracking-[-0.04em] text-[#111] sm:text-[38px]"
-            >
-              {answer.heading}
-            </h2>
-            <button
-              type="button"
-              data-testid="ask-clear"
-              onClick={onClear}
-              className="text-[13px] font-semibold text-black/45 underline underline-offset-4 hover:text-black/80"
-            >
-              Clear the question
-            </button>
-          </div>
+          <h2
+            data-testid="ask-heading"
+            className="ghad-display text-[26px] leading-[0.98] font-extrabold tracking-[-0.04em] text-[#111] sm:text-[38px]"
+          >
+            {answer.heading}
+          </h2>
 
           {understood.length > 0 && (
             <p
@@ -159,8 +245,30 @@ export function AskDiscovery({
                   {part}
                 </span>
               ))}
-              <span className="text-black/40">— change any of it below.</span>
             </p>
+          )}
+
+          {question && answer.picks.length > 0 && (
+            <div
+              data-testid="ask-question"
+              data-about={question.about}
+              className="mt-3 flex flex-wrap items-center gap-2"
+            >
+              <span className="text-[15px] font-semibold text-[#111]">
+                {question.text}
+              </span>
+              {question.replies.map((reply) => (
+                <button
+                  key={reply.label}
+                  type="button"
+                  data-testid="ask-reply"
+                  onClick={() => send(reply.say)}
+                  className="inline-flex min-h-10 items-center rounded-full bg-white px-3.5 text-[13.5px] font-semibold text-[#111]/80 ring-1 ring-black/15 ring-inset hover:ring-black/45"
+                >
+                  {reply.label}
+                </button>
+              ))}
+            </div>
           )}
 
           <p
@@ -193,8 +301,8 @@ export function AskDiscovery({
               className="mt-4 rounded-xl border border-dashed border-black/25 bg-white px-4 py-8 text-center text-sm text-black/60"
             >
               Nothing Atlas holds fits that well enough to offer as an answer.
-              Try a bigger distance, another day, or fewer of the choices below
-              — the full page is still under here.
+              Try a bigger distance, another day, or say it another way — the
+              full page is still under here.
             </p>
           ) : (
             <ul className="-mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:gap-6 sm:px-6">
@@ -219,18 +327,52 @@ export function AskDiscovery({
             </ul>
           )}
 
-          {dayHref && answer.picks.length > 0 && (
-            <Link
-              href={dayHref}
-              data-testid="ask-make-a-day"
-              className="mt-4 inline-flex min-h-12 items-center rounded-full px-5 text-[15px] font-semibold"
-              style={{
-                backgroundColor: "var(--ghad-accent)",
-                color: "var(--ghad-accent-ink)",
-              }}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {dayHref && answer.picks.length > 0 && (
+              <Link
+                href={dayHref}
+                data-testid="ask-make-a-day"
+                className="inline-flex min-h-12 items-center rounded-full px-5 text-[15px] font-semibold"
+                style={{
+                  backgroundColor: "var(--ghad-accent)",
+                  color: "var(--ghad-accent-ink)",
+                }}
+              >
+                Make a day of it →
+              </Link>
+            )}
+            {answer.picks.length > 0 && (
+              <button
+                type="button"
+                data-testid="ask-different"
+                onClick={() => send("Show me something completely different")}
+                className="inline-flex min-h-12 items-center rounded-full bg-white px-5 text-[15px] font-semibold text-[#111]/80 ring-1 ring-black/15 ring-inset hover:ring-black/45"
+              >
+                Something different
+              </button>
+            )}
+          </div>
+
+          {alternatives.length > 0 && (
+            <div
+              data-testid="ask-alternatives"
+              className="mt-4 flex flex-wrap items-center gap-1.5"
             >
-              Make a day of it →
-            </Link>
+              <span className="mr-1 text-[12.5px] font-semibold text-black/45">
+                Or around here:
+              </span>
+              {alternatives.map((alternative) => (
+                <button
+                  key={alternative.label}
+                  type="button"
+                  data-testid="ask-alternative"
+                  onClick={() => send(alternative.say)}
+                  className="inline-flex min-h-9 items-center rounded-full px-3 text-[13px] font-medium text-black/60 ring-1 ring-black/10 ring-inset hover:text-black/85 hover:ring-black/35"
+                >
+                  {alternative.label}
+                </button>
+              ))}
+            </div>
           )}
         </section>
       )}

@@ -30,11 +30,15 @@ export const NEARBY_KM = 15;
 export function applyAsk(
   session: DiscoverySession,
   ask: DiscoveryAsk,
-  options: { readonly hasOrigin: boolean },
+  options: {
+    readonly hasOrigin: boolean;
+    /** Every sentence of the conversation so far, this one last. */
+    readonly conversation?: readonly string[];
+  },
 ): DiscoverySession {
   const next: Record<string, unknown> = {
     ...session,
-    ask: ask.said,
+    ask: options.conversation ?? [ask.said],
     query: undefined,
     intent: undefined,
     kind: undefined,

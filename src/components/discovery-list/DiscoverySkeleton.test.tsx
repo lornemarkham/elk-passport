@@ -18,7 +18,7 @@ describe("Discovery while Atlas is being read", () => {
     render(<DiscoverySkeleton today="Thursday, October 15" />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "What do you feel like doing?",
+      "What kind of day are you looking for?",
     );
     expect(screen.getByTestId("discovery-context")).toHaveTextContent(
       "Thursday, October 15",

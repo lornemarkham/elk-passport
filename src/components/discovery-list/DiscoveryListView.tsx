@@ -76,11 +76,11 @@ import {
   placedBeyond,
   sortKm,
 } from "@/domain/discovery/proximity";
+import { invitationSection } from "@/domain/discovery/directions";
 import {
-  MAX_INVITATIONS,
-  invitationSection,
-  invitations,
-} from "@/domain/discovery/directions";
+  activityForDoing,
+  activityOffers,
+} from "@/domain/discovery/activities";
 import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
@@ -107,7 +107,38 @@ import type { ExperienceKind } from "@/domain/experience/types";
 import { readAsk, readBack, type DiscoveryAsk } from "@/lib/ai/ask/read";
 import { answerAsk, dayHref } from "@/lib/ai/ask/answer";
 import { applyAsk, daySentence, windowSentence } from "@/lib/ai/ask/apply";
-import { AskDiscovery } from "./AskDiscovery";
+import { readConversation } from "@/lib/ai/ask/conversation";
+import { AskDiscovery, startersFor } from "./AskDiscovery";
+
+/** How many activities the row offers before it would become a wall. */
+const ACTIVITY_CHIPS = 8;
+
+/**
+ * **The rows are the truth for what they hold.** A sentence sets them; a tap
+ * after it wins. So who is coming, the age, the day and the activity are
+ * read back from the rows into what the conversation adds up to.
+ */
+function withRows(ask: DiscoveryAsk, session: DiscoverySession): DiscoveryAsk {
+  const out: Record<string, unknown> = { ...ask };
+  out.company = session.company;
+  if (session.company !== "child") delete out.childAge;
+  out.childAge = session.age;
+  out.on = session.on;
+  const doing = activityForDoing(session.doing)?.key;
+  if (doing) out.doing = doing;
+  // A tapped length of day that is not what the hours said: the tap wins.
+  if (
+    ask.window !== undefined &&
+    session.window !== undefined &&
+    session.window !== ask.window
+  ) {
+    delete out.hours;
+    out.window = session.window;
+  }
+  return Object.fromEntries(
+    Object.entries(out).filter(([, v]) => v !== undefined),
+  ) as unknown as DiscoveryAsk;
+}
 
 /**
  * **The next few days, named the way a person would.**
@@ -302,6 +333,16 @@ export function DiscoveryListView({
   const navigate = (next: DiscoverySession) => {
     setSession(next);
     const query = sessionQuery(next);
+    // **The address first, then the server.** The navigation commits only
+    // once Atlas has answered for the new day or age — seconds, cold — and a
+    // card tapped before then abandoned it, so Back returned to a bare
+    // `/discovery` and the question was gone. Written now, the URL is right
+    // whatever happens to the navigation.
+    window.history.replaceState(
+      null,
+      "",
+      query ? `?${query}` : window.location.pathname,
+    );
     router.replace(query ? `?${query}` : "/discovery", { scroll: false });
   };
   const setOn = (next: string | undefined) =>
@@ -831,7 +872,45 @@ export function DiscoveryListView({
   );
 
   /**
-   * **The verbs, drawn from whatever the page is honestly talking about.**
+   * **A conversation in their own words** — see `src/lib/ai/ask/`.
+   *
+   * The sentences live in the URL (`?ask=…&ask=…`) and are re-read on every
+   * render, so the answer comes back after a refresh exactly as it was. A
+   * model's reading of a sentence, where `/api/discovery/ask` had one, is
+   * held beside it and used for that sentence only.
+   */
+  const askToday = todayKey ?? dayOf(new Date());
+  /** The hour where the subjects are, from the server's instant — for the starters. */
+  const hourNow = useMemo(
+    () =>
+      now
+        ? Number(
+            new Intl.DateTimeFormat("en-CA", {
+              hour: "numeric",
+              hourCycle: "h23",
+              timeZone: ZONE,
+            }).format(new Date(now)),
+          )
+        : undefined,
+    [now],
+  );
+  const [modelReadings, setModelReadings] = useState<
+    ReadonlyMap<string, DiscoveryAsk>
+  >(() => new Map());
+  const conversation = useMemo(
+    () =>
+      session.ask?.length
+        ? readConversation(session.ask, { today: askToday }, modelReadings)
+        : undefined,
+    [session.ask, askToday, modelReadings],
+  );
+  const asked = useMemo(
+    () => (conversation ? withRows(conversation.ask, session) : undefined),
+    [conversation, session],
+  );
+
+  /**
+   * **The activities, drawn from whatever the page is honestly talking about.**
    *
    * Inside the radius when there is one; near them once there is an origin;
    * the whole feed until then.
@@ -840,25 +919,44 @@ export function DiscoveryListView({
     () => (radiusActive ? answering : at ? nearYou(answering, at) : answering),
     [answering, at, radiusActive],
   );
+  // **Leaning with the situation** — what was said, and the sky. Ordering
+  // only: an activity is offered because Atlas holds places for it here.
   const allOffers = useMemo(
-    () => invitations(invitePool, Number.POSITIVE_INFINITY),
-    [invitePool],
+    () =>
+      activityOffers(invitePool, {
+        day: on ?? todayKey,
+        wet,
+        ...(asked?.shelter ? { shelter: asked.shelter } : {}),
+        child: situation.company === "child",
+        pair: Boolean(asked?.pair),
+        adventure: asked?.lens === "adventure",
+        evening: asked?.partOfDay === "evening",
+        gentle: Boolean(asked?.gentle),
+        ...(asked?.avoid ? { without: asked.avoid } : {}),
+      }),
+    [invitePool, on, todayKey, wet, asked, situation.company],
   );
-  // A suggestion below can choose a verb outside the top four, so the lookup
-  // is over every verb and the row shows the top four plus the chosen one.
-  const chosen = allOffers.find(
-    (offer) => offer.doing.toLowerCase() === doing?.toLowerCase(),
-  );
+  const chosenActivity = activityForDoing(doing);
+  const chosen = chosenActivity
+    ? allOffers.find((offer) => offer.activity.key === chosenActivity.key)
+    : undefined;
   const offers = useMemo(() => {
-    const top = allOffers.slice(0, MAX_INVITATIONS);
+    const top = allOffers.slice(0, ACTIVITY_CHIPS);
     return chosen && !top.includes(chosen) ? [...top, chosen] : top;
   }, [allOffers, chosen]);
 
-  // Moving between towns changes which verbs exist. A selection that no longer
-  // has evidence behind it is dropped during render — but not while a
+  // Moving between towns changes which activities exist. A selection with no
+  // evidence behind it any more is dropped during render — but not while a
   // distance is still being measured, when the pool is empty for a moment
-  // rather than for a reason.
-  if (doing && !chosen && measuring !== "measuring") setDoing(undefined);
+  // rather than for a reason, and not when the conversation named it: then
+  // the answer says Atlas lists nowhere for it, which is the honest reply.
+  if (
+    doing &&
+    !chosen &&
+    measuring !== "measuring" &&
+    conversation?.ask.doing !== chosenActivity?.key
+  )
+    setDoing(undefined);
 
   const composed = useMemo(() => {
     if (radiusActive && !radiusReady) return [];
@@ -900,7 +998,10 @@ export function DiscoveryListView({
         : withNear;
     // What they just asked for leads, because they just asked for it.
     if (!chosen) return withBeyond;
-    const lead = invitationSection(chosen, Boolean(at));
+    const lead = invitationSection(
+      { doing: chosen.activity.label, places: chosen.places, examples: [] },
+      Boolean(at),
+    );
     return [{ ...lead, items: order(lead.items) }, ...withBeyond];
   }, [
     answering,
@@ -923,60 +1024,89 @@ export function DiscoveryListView({
     [experiences, scope],
   );
 
-  /**
-   * **A question in their own words** — see `src/lib/ai/ask/`.
-   *
-   * The sentence lives in the URL (`?ask=`) and is re-read on every render
-   * against the verbs this page offers, so the answer comes back after a
-   * refresh exactly as it was. A model's reading, where `/api/discovery/ask`
-   * had one, is held beside it for the same sentence only.
-   */
-  const askToday = todayKey ?? dayOf(new Date());
-  const askVerbs = useMemo(() => allOffers.map((o) => o.doing), [allOffers]);
-  const [modelAsk, setModelAsk] = useState<{
-    said: string;
-    ask: DiscoveryAsk;
-  }>();
-  const asked = useMemo(
-    () =>
-      session.ask
-        ? modelAsk?.said === session.ask
-          ? modelAsk.ask
-          : readAsk(session.ask, { today: askToday, verbs: askVerbs })
-        : undefined,
-    [session.ask, modelAsk, askToday, askVerbs],
-  );
   // The latest exploration, for a model reading that resolves after the
   // person has already moved on.
   const latest = useRef(session);
   latest.current = session;
 
+  /**
+   * **What has been on screen in this conversation**, so "something
+   * completely different" can be. Situational, like the rest: not stored.
+   */
+  const [shownIds, setShownIds] = useState<readonly string[]>([]);
+
   /** Apply a reading: a server navigation where Atlas must re-answer. */
-  const applyReading = (from: DiscoverySession, reading: DiscoveryAsk) => {
-    const next = applyAsk(from, reading, { hasOrigin: Boolean(shared) });
+  const applyReading = (
+    from: DiscoverySession,
+    reading: DiscoveryAsk,
+    sentences: readonly string[],
+  ) => {
+    let next = applyAsk(from, reading, {
+      hasOrigin: Boolean(shared),
+      conversation: sentences,
+    });
+    // Tired of it, or said no to it: the activity row lets go too.
+    const current = activityForDoing(from.doing)?.key;
+    if (
+      !reading.doing &&
+      (reading.different ||
+        (current !== undefined && reading.avoid?.includes(current)))
+    )
+      next = { ...next, doing: undefined };
     if (next.on !== from.on || next.age !== from.age) navigate(next);
     else change(next);
   };
 
   const handleAsk = (said: string) => {
-    const reading = readAsk(said, { today: askToday, verbs: askVerbs });
-    applyReading(session, reading);
+    const expecting = conversation?.question?.about;
+    const reading = readAsk(said, {
+      today: askToday,
+      ...(expecting ? { expecting } : {}),
+    });
+    const sentences = reading.reset
+      ? [said]
+      : [...(session.ask ?? []), said].slice(-8);
+    if (answer)
+      setShownIds((before) =>
+        [
+          ...new Set([...before, ...answer.picks.map((p) => p.experience.id)]),
+        ].slice(-60),
+      );
+    // **Start over** clears what the earlier sentences set on the rows; the
+    // town stays, because that is where they are, not what they asked.
+    const from: DiscoverySession = reading.reset
+      ? {
+          ...session,
+          company: undefined,
+          window: undefined,
+          age: undefined,
+          on: undefined,
+          within: undefined,
+          doing: undefined,
+        }
+      : session;
+    applyReading(from, reading, sentences);
     // **The words are the floor; a model only fills gaps** (`model.ts`).
     // Without a key the route answers with this same reading, and nothing
     // changes. With one, a gap it fills is applied to whatever the page is
-    // by then — and only if the question on screen is still this one.
+    // by then — and only if this sentence is still the latest one.
     void fetch("/api/discovery/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ said, today: askToday, verbs: askVerbs }),
+      body: JSON.stringify({
+        said,
+        today: askToday,
+        previous: sentences.slice(0, -1),
+        ...(expecting ? { expecting } : {}),
+      }),
     })
       .then((response) => (response.ok ? response.json() : undefined))
       .then((result?: { ask?: DiscoveryAsk; by?: string }) => {
         if (result?.by !== "model" || !result.ask) return;
-        // Moved on — another question, or a search typed since.
-        if (latest.current.ask !== said || latest.current.query) return;
-        setModelAsk({ said, ask: result.ask });
-        applyReading(latest.current, result.ask);
+        const now = latest.current.ask ?? [];
+        if (now[now.length - 1] !== said || latest.current.query) return;
+        setModelReadings((before) => new Map(before).set(said, result.ask!));
+        applyReading(latest.current, result.ask, now);
       })
       .catch(() => {});
   };
@@ -1007,8 +1137,12 @@ export function DiscoveryListView({
       ...(home ? { home } : {}),
       wet,
       reference: askReference,
+      shown: shownIds,
+      seed: session.ask?.length ?? 0,
     });
   }, [
+    shownIds,
+    session.ask,
     asked,
     browsing,
     radiusActive,
@@ -1031,7 +1165,9 @@ export function DiscoveryListView({
    */
   const toDay = (ids: readonly string[]) =>
     dayHref({
-      say: asked ? daySentence(asked) : windowSentence(situation.window),
+      say: asked
+        ? daySentence({ ...asked, said: (session.ask ?? []).join(". ") })
+        : windowSentence(situation.window),
       with: ids,
       ...(session.at ? { at: session.at } : {}),
       ...(childAge !== undefined ? { age: childAge } : {}),
@@ -1394,6 +1530,7 @@ export function DiscoveryListView({
             cannot narrow anything it says so rather than pretending. */}
           <FeelLikeDoing
             collapseOnPhone
+            collapsed
             {...((chosenDayLine ?? today)
               ? { today: chosenDayLine ?? today! }
               : {})}
@@ -1402,8 +1539,22 @@ export function DiscoveryListView({
               <AskDiscovery
                 {...(session.ask ? { said: session.ask } : {})}
                 onAsk={handleAsk}
-                onClear={() => change({ ...session, ask: undefined })}
+                onClear={() => {
+                  setShownIds([]);
+                  change({ ...session, ask: undefined });
+                }}
                 {...(answer ? { answer } : {})}
+                {...(conversation?.question
+                  ? { question: conversation.question }
+                  : {})}
+                starters={startersFor({ wet, hour: hourNow })}
+                alternatives={offers
+                  .filter((o) => o.activity.key !== asked?.doing)
+                  .slice(0, 6)
+                  .map((o) => ({
+                    label: o.activity.label,
+                    say: o.activity.label,
+                  }))}
                 understood={
                   asked
                     ? readBack(asked, {
@@ -1449,13 +1600,14 @@ export function DiscoveryListView({
             rows={[
               {
                 key: "activity",
-                label: "What do you feel like doing?",
-                value: doing,
+                label: "Something to do",
+                value: chosenActivity?.key,
                 onChange: setDoing,
+                // **No counts.** "Hiking 60" was how many records Atlas
+                // holds, which tells nobody whether to go hiking.
                 choices: offers.map((offer) => ({
-                  value: offer.doing,
-                  label: offer.doing,
-                  count: offer.places.length,
+                  value: offer.activity.key,
+                  label: offer.activity.label,
                 })),
                 // **A row with nothing in it says why.** Atlas states
                 // affordances for 224 subjects out of 2,680, so a narrow

@@ -18,7 +18,7 @@ describe("applying a question to the page", () => {
       { hasOrigin: false },
     );
     expect(next).toEqual({
-      ask: "what can we do with three hours?",
+      ask: ["what can we do with three hours?"],
       at: "kelowna",
       age: 5,
       company: "child",
@@ -75,6 +75,21 @@ describe("applying a question to the page", () => {
     const back = readSession(new URLSearchParams(sessionQuery(next)));
     expect(back).toEqual(next);
     expect(sessionQuery(next)).toContain("ask=");
+  });
+
+  it("carries a whole conversation through the URL, in order", () => {
+    const said = ["Something fun with my daughter", "About three hours"];
+    const next = applyAsk({}, read(said[1]!), {
+      hasOrigin: false,
+      conversation: said,
+    });
+    expect(next.ask).toEqual(said);
+    const back = readSession(new URLSearchParams(sessionQuery(next)));
+    expect(back.ask).toEqual(said);
+    // A single `?ask=` from an older link is still a conversation of one.
+    expect(readSession(new URLSearchParams("ask=three+hours")).ask).toEqual([
+      "three hours",
+    ]);
   });
 });
 

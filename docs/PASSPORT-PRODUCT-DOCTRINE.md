@@ -725,6 +725,27 @@ implementation, with no landing page, no introduction and no extra click in
 front of it. (Decided 2026-10-14; the root is a rewrite, not a copy, so there
 is still exactly one Discovery.)
 
+### Discovery leads with a sentence (decided 2026-10-16)
+
+From the owner's _Discovery 2.0_ brief, recorded in
+[ADR 005](architecture/decisions/005-discovery-leads-with-a-sentence.md):
+
+- **The front door asks "What kind of day are you looking for?"** and takes an
+  ordinary sentence. A handful of starting points (_Surprise me, With the kids,
+  Rainy day…_) are sentences handed to the same reader, not categories. The
+  who / when / how-long / how-far rows are kept, working and **secondary** —
+  behind one line on every screen size.
+- **Discovery remembers the conversation.** Each later sentence changes what it
+  mentions and leaves the rest alone (§2.5's rule), so "actually, indoors" does
+  not start over. The sentences are the state, in the URL.
+- **Activities are named in a person's words, evidenced by Atlas's.** Passport
+  groups Atlas's affordances, subtypes and play features into human activities
+  ("Hiking & walks", "Movies", "Paddling"); a place belongs only where Atlas
+  listed a word the activity recognises, and the card says which word. This
+  replaces the earlier rule that Passport offers only Atlas's raw verbs.
+- **AI reads; Atlas decides.** A model may fill what the words left unread, from
+  closed sets only; it never names a place or states a fact (§3).
+
 ---
 
 ## 13. Inspiration — preserved, fenced off
@@ -804,10 +825,15 @@ certainty. Do not invent an answer here to make the document feel finished.
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
    _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
-   needs a starting town, and Passport asks rather than picks one. Everywhere
-   else — Discovery, the helper — this stays open._
+   needs a starting town, and Passport asks rather than picks one._
+   _Answered narrowly for Discovery's sentence box (ADR 005, 2026-10-16):
+   results first, then at most one question beneath them — how much time, how
+   far, how old, in that order and only where unknown — and no more than two
+   questions in a conversation. The helper beyond that box stays open._
 6. **How the Passport helper manifests.** Inline? Ambient? Something else? Not
-   assumed to be a chatbot. (§4)
+   assumed to be a chatbot. (§4) _Discovery's sentence box (ADR 005) is one
+   inline answer to this — a remembered conversation with no persona — not the
+   general one._
 7. **What telemetry and behavioural signals are appropriate.** (§5)
 8. **Privacy and consent boundaries for richer context.** Especially anything
    in §14.

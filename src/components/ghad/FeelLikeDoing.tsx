@@ -24,7 +24,7 @@ export function FeelLikeHeading({
           a colour choice shown on Discovery looks like a property of
           Discovery. See `PassportNav`. */}
       <h1 className="ghad-display max-w-[16ch] text-[34px] leading-[0.95] font-extrabold tracking-[-0.045em] text-balance text-[#111] sm:text-[64px]">
-        What do you feel like doing?
+        What kind of day are you looking for?
       </h1>
 
       {/* **Two facts, not a tagline.** The date and the area are the only
@@ -87,6 +87,7 @@ export function FeelLikeDoing({
   lead,
   after,
   collapseOnPhone = false,
+  collapsed = false,
 }: {
   /**
    * The calendar day, already written out — `Saturday, October 10`.
@@ -120,13 +121,20 @@ export function FeelLikeDoing({
    * is already chosen; from `sm` up nothing changes.
    */
   readonly collapseOnPhone?: boolean;
+  /**
+   * **Behind one line on every screen**, not just a phone. Discovery leads
+   * with what kind of day it is, in words; these rows are the fine-tuning
+   * under it — kept, working, and secondary.
+   */
+  readonly collapsed?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const chosen = rows.flatMap((row) => {
     const picked = row.choices.find((choice) => choice.value === row.value);
     return picked ? [picked.label] : [];
   });
-  const folded = collapseOnPhone && !open;
+  const folding = collapseOnPhone || collapsed;
+  const folded = folding && !open;
   return (
     <section data-testid="feel-like-doing">
       <FeelLikeHeading
@@ -136,17 +144,21 @@ export function FeelLikeDoing({
 
       {lead}
 
-      {collapseOnPhone && (
+      {folding && (
         <button
           type="button"
           data-testid="ghad-refine"
           aria-expanded={open}
           aria-controls="ghad-rows"
           onClick={() => setOpen(!open)}
-          className="mt-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-full px-4 text-left text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset sm:hidden"
+          className={`mt-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-full px-4 text-left text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset ${collapsed ? "sm:max-w-xl" : "sm:hidden"}`}
         >
           <span className="truncate">
-            {chosen.length > 0 ? chosen.join(" · ") : "Narrow it down"}
+            {chosen.length > 0
+              ? chosen.join(" · ")
+              : collapsed
+                ? "Fine-tune it yourself"
+                : "Narrow it down"}
           </span>
           <span className="inline-flex shrink-0 items-center gap-1 text-black/50">
             {open
@@ -164,7 +176,7 @@ export function FeelLikeDoing({
 
       <div
         id="ghad-rows"
-        className={`mt-5 sm:mt-8 ${folded ? "hidden sm:block" : ""}`}
+        className={`mt-5 sm:mt-8 ${folded ? (collapsed ? "hidden" : "hidden sm:block") : ""}`}
       >
         {rows.map((row) => (
           <div

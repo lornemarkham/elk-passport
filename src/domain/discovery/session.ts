@@ -87,8 +87,11 @@ export interface DiscoverySession {
    * answers are already the fields above, and re-reading the sentence is how
    * the answer comes back after a refresh or a round trip through sign-in.
    */
-  readonly ask?: string;
+  readonly ask?: readonly string[];
 }
+
+/** How many sentences of a conversation a URL keeps — the most recent. */
+const TURNS_KEPT = 8;
 
 const INTENT_KEYS: readonly IntentKey[] = INTENTS.map((i) => i.key);
 const COMPANY: readonly Company[] = ["alone", "child", "group"];
@@ -141,7 +144,13 @@ export function readSession(params: URLSearchParams): DiscoverySession {
   // A town Passport actually has a verified point for. An unknown id is
   // dropped rather than carried, so nothing downstream has to wonder.
   const at = townById(params.get("at")?.trim())?.id;
-  const ask = params.get("ask")?.trim().slice(0, 300);
+  // **A conversation is the sentences, in order** — `?ask=…&ask=…`. One
+  // `ask` is the single question this used to hold, so old links still work.
+  const ask = params
+    .getAll("ask")
+    .map((said) => said.trim().slice(0, 300))
+    .filter(Boolean)
+    .slice(-TURNS_KEPT);
   return {
     ...(oneOf(INTENT_KEYS, params.get("intent"))
       ? { intent: oneOf(INTENT_KEYS, params.get("intent"))! }
@@ -162,7 +171,7 @@ export function readSession(params: URLSearchParams): DiscoverySession {
     ...(at ? { at } : {}),
     ...(doing ? { doing } : {}),
     ...(params.get("all") === "1" ? { everywhere: true } : {}),
-    ...(ask ? { ask } : {}),
+    ...(ask.length > 0 ? { ask } : {}),
   };
 }
 
@@ -181,7 +190,8 @@ export function sessionQuery(session: DiscoverySession): string {
   if (session.at) params.set("at", session.at);
   if (session.doing) params.set("doing", session.doing);
   if (session.everywhere) params.set("all", "1");
-  if (session.ask?.trim()) params.set("ask", session.ask.trim());
+  for (const said of session.ask ?? [])
+    if (said.trim()) params.append("ask", said.trim());
   return params.toString();
 }
 

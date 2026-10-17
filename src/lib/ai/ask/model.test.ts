@@ -54,7 +54,7 @@ describe("filling the gaps a sentence left", () => {
       on: "2026-10-11",
       hours: 2,
       window: "half-day",
-      doing: "Playground",
+      doing: "playgrounds",
       shelter: "outdoor",
     });
   });
@@ -63,7 +63,7 @@ describe("filling the gaps a sentence left", () => {
     const floor = readAsk("something", context);
     const filled = fillGaps(
       floor,
-      { doing: "bowling", town: "Atlantis" },
+      { doing: "unicorn riding", town: "Atlantis" },
       context,
     );
     expect(filled.doing).toBeUndefined();

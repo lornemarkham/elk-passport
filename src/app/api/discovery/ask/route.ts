@@ -25,7 +25,9 @@ const askLimiter = rateLimiter({
 });
 
 /**
- * **Read a question somebody asked Discovery** — `POST { said, today, verbs }`.
+ * **Read a sentence somebody said to Discovery** — `POST { said, today,
+ * previous?, expecting? }`: the latest sentence, the earlier ones in the
+ * conversation as context, and the question Passport had just asked.
  *
  * The deterministic reading runs in the browser too, so the page never waits
  * on this; it exists so a configured model can fill what the words alone
@@ -44,7 +46,8 @@ export async function POST(request: Request) {
 
   const said = field("said");
   const today = field("today");
-  const verbs = field("verbs");
+  const previous = field("previous");
+  const expecting = field("expecting");
   if (
     typeof said !== "string" ||
     said.trim().length === 0 ||
@@ -54,17 +57,29 @@ export async function POST(request: Request) {
   ) {
     return Response.json({ error: "question" }, { status: 400 });
   }
-  const offered = Array.isArray(verbs)
-    ? verbs
-        .filter((v): v is string => typeof v === "string" && v.length <= 60)
-        .slice(0, 200)
+  // The conversation so far: context for reading this sentence, never stored.
+  const earlier = Array.isArray(previous)
+    ? previous
+        .filter(
+          (v): v is string =>
+            typeof v === "string" && v.length > 0 && v.length <= 300,
+        )
+        .slice(-6)
     : [];
+  const asked =
+    expecting === "time" || expecting === "distance" || expecting === "age"
+      ? expecting
+      : undefined;
 
   // After validation, before the model: a malformed body costs nothing, and
   // only a request that could reach OpenAI is counted.
   const decision = askLimiter.take(clientKey(request.headers));
   if (!decision.ok) return tooManyRequests(decision.retryAfterSeconds);
 
-  const reading = await readAskWithModel(said, { today, verbs: offered });
+  const reading = await readAskWithModel(
+    said,
+    { today, ...(asked ? { expecting: asked } : {}) },
+    earlier,
+  );
   return Response.json(reading, { headers: { "Cache-Control": "no-store" } });
 }

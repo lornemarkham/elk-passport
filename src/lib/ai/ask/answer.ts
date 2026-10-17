@@ -20,6 +20,14 @@ import { areaOf } from "@/domain/discovery/area";
 import { ZONE } from "@/domain/experience/eventTime";
 import type { SuitabilityStatement } from "@/lib/data/types";
 import { defaultRadiusKm } from "@/domain/day/build";
+import {
+  activitiesOf,
+  activityByKey,
+  activityEvidence,
+  doesActivity,
+  type Activity,
+  type ActivityTag,
+} from "@/domain/discovery/activities";
 import { driveSpan, type DiscoveryAsk } from "./read";
 
 /**
@@ -90,6 +98,16 @@ export interface AnswerContext {
    * of the area, not of whatever circle happens to be drawn.
    */
   readonly reference?: readonly Experience[];
+  /**
+   * **What was already shown in this conversation**, for "show me something
+   * completely different": none of these again, and less of what they were.
+   */
+  readonly shown?: readonly string[];
+  /**
+   * Varies "surprise me" from one ask to the next. The same seed gives the
+   * same answer, so a refresh does not reshuffle what somebody was reading.
+   */
+  readonly seed?: number;
 }
 
 export interface AnswerPick {
@@ -228,6 +246,83 @@ const aDoing = (verb: string, experience: Experience): boolean => {
   return !key
     .split(/\s+/)
     .some((word) => word.length > 3 && title.includes(word));
+};
+
+/** The first Atlas words that put this in an activity with this tag. */
+const taggedEvidence = (
+  experience: Experience,
+  tag: ActivityTag,
+): { activity: Activity; words: readonly string[] } | undefined => {
+  for (const activity of activitiesOf(experience)) {
+    if (!activity.tags.includes(tag)) continue;
+    const words = activityEvidence(experience, activity);
+    if (words.length > 0) return { activity, words };
+  }
+  return undefined;
+};
+
+/** "Kayaking, as Atlas lists it" — or "A cinema" where the subtype is the evidence. */
+const evidenceLine = (
+  experience: Experience,
+  words: readonly string[],
+): string => {
+  const subtype = (experience.subtype ?? "").replace(/[_-]+/g, " ").trim();
+  const listed = words.filter((w) => w.toLowerCase() !== subtype.toLowerCase());
+  if (listed.length > 0)
+    return `${listed.slice(0, 2).join(", ")}, as Atlas lists it`;
+  // "skydiving" is a doing, not a thing: said as one.
+  if (/ing$/i.test(subtype))
+    return `${subtype.charAt(0).toUpperCase()}${subtype.slice(1).toLowerCase()}`;
+  const article = /^[aeiou]/i.test(subtype) ? "An" : "A";
+  return `${article} ${subtype.toLowerCase().replace(/\//g, " and ")}`;
+};
+
+/**
+ * **What a person would pay**, only where a source said it costs nothing.
+ * Atlas holds no price field for Discovery; a description that says "free
+ * admission" or "by donation" is the only evidence there is — and it is
+ * quoted, not paraphrased, because "free admission on Family Day" is not
+ * free on a Friday. A free that comes with a condition is not claimed.
+ */
+const FREE_SAID =
+  /\b(free (?:admission|entry|of charge|to (?:visit|enter|attend|the public)|event|public skating|skate|tours?|workshop|concert|show)|admission is free|no admission(?: fee)?|by donation|no cost|free for all)\b/i;
+const CONDITION =
+  /^[^.;]{0,30}\b(on|during|every|each|for members|with|until|before|after|between|first|select|some)\b/i;
+
+export function freeLine(experience: Experience): string | undefined {
+  if (/^free\b|\bfree$|\(free\)/i.test(experience.title.trim()))
+    return "Free, by its own name";
+  const text = `${experience.shortDescription} ${experience.description ?? ""}`;
+  const match = FREE_SAID.exec(text);
+  if (!match || match.index === undefined) return undefined;
+  const after = text.slice(match.index + match[0].length);
+  if (CONDITION.test(after)) return undefined;
+  return `“${match[0].toLowerCase()}”, as its description says`;
+}
+
+export const statesFree = (experience: Experience): boolean =>
+  freeLine(experience) !== undefined;
+
+/** Not something the public goes and does, whatever its interval says. */
+const NOT_AN_OUTING =
+  /\b(conference|election|professional development|meeting|agm|trade show|infrastructure|road rehabilitation|sponsor|fundraising event)\b/i;
+
+/**
+ * **Somewhere that sells something** — a winery, a restaurant, a spa. Not a
+ * claim about price; a reason not to offer it to somebody who asked for free.
+ */
+const SELLS =
+  /\b(restaurant|caf[eé]|coffee|bakery|bistro|pub|bar|winery|vineyard|brewery|cidery|distillery|spa|hotel|motel|resort|lodge|shop|store|boutique|golf|tour company|guided tour company|rental|escape room|bowling|cinema|arcade|amusement|zipline|yoga studio|food truck|ice cream)\b/i;
+
+/** Features that say something about getting around — never a promise of access. */
+const ACCESS = /\b(accessib|wheelchair|elevator|step-free|ramp)\b/i;
+
+/** Tiny deterministic hash, for a seeded shuffle that survives a refresh. */
+const jitter = (id: string, seed: number): number => {
+  let h = seed | 0;
+  for (let i = 0; i < id.length; i++)
+    h = (Math.imul(h ^ id.charCodeAt(i), 2654435761) >>> 0) | 0;
+  return ((h >>> 0) % 1000) / 1000;
 };
 
 /**
@@ -406,10 +501,17 @@ function rarity(reference: readonly Experience[]) {
   };
 }
 
+interface Scoring extends AnswerContext {
+  /** Whether anything in the pool does the activity they named. */
+  readonly doingHere?: boolean;
+  readonly shownKinds?: ReadonlySet<string>;
+  readonly shownActivities?: ReadonlySet<string>;
+}
+
 function score(
   experience: Experience,
   ask: DiscoveryAsk,
-  context: AnswerContext,
+  context: Scoring,
   rare: ReturnType<typeof rarity>,
   timely: { today: Set<string>; now: Set<string>; soon: Set<string> },
 ): Scored {
@@ -431,12 +533,13 @@ function score(
   if (experience.knowledge?.descriptionAddsKnowledge === false) value -= 2;
   if (experience.knowledge?.descriptionCaveat) value -= 1;
 
-  // **What they named, first.**
+  // **What they named, first** — an activity, evidenced by Atlas's words.
   if (ask.doing) {
-    const hit = verbs.find((v) => v.toLowerCase() === ask.doing!.toLowerCase());
-    if (hit) {
+    const activity = activityByKey(ask.doing);
+    const words = activity ? activityEvidence(experience, activity) : [];
+    if (words.length > 0) {
       value += 6;
-      reasons.push(`${hit}, as Atlas lists it here`);
+      reasons.push(evidenceLine(experience, words));
     }
   }
 
@@ -511,6 +614,30 @@ function score(
       }
       break;
     }
+    case "surprise": {
+      // **Nothing asked, so a good spread.** A photograph and things to do
+      // count; a seeded jitter keeps two asks from being identical, and the
+      // variety rule below does the rest. No claim is made about why — the
+      // reasons are the same facts any pick carries.
+      if (experience.heroMedia?.src) value += 2;
+      value += Math.min(doings.length, 3) * 0.5;
+      value += jitter(experience.id, context.seed ?? 0) * 4;
+      const kind = rare.family(experience);
+      if (kind > 0 && kind <= 6 && experience.kind !== "Event") value += 1.5;
+      break;
+    }
+    case "adventure": {
+      // **Atlas's words for a thrill**: climbing, ziplines, paddling,
+      // mountain biking, skiing. The activity is Passport's grouping; the
+      // word on the card is Atlas's.
+      const thrill = taggedEvidence(experience, "adventure");
+      fits = thrill !== undefined;
+      if (thrill) {
+        value += 7;
+        reasons.push(evidenceLine(experience, thrill.words));
+      } else value -= 4;
+      break;
+    }
     case "kids": {
       // **Evidence a child could do something here**, or a source saying it
       // is for families — or it does not lead, however soon it is on. A
@@ -541,8 +668,18 @@ function score(
             ? "Described as for all ages"
             : "Described as for families",
         );
+      // A farm, a museum, animals: an activity Passport groups as one a
+      // child does, evidenced by Atlas's own word for it.
+      const childish =
+        things.length === 0 ? taggedEvidence(experience, "kids") : undefined;
+      if (childish) {
+        value += 3;
+        if (reasons.length < 2)
+          reasons.push(evidenceLine(experience, childish.words));
+      }
       fits =
         things.length > 0 ||
+        childish !== undefined ||
         described !== undefined ||
         verdict === "welcome" ||
         verdict === "described" ||
@@ -560,9 +697,25 @@ function score(
         reasons.push("Adults only, as stated");
       }
       const start = startsAt(experience);
-      if (start && start.hour >= 17) value += 3;
+      // "An afternoon" is the afternoon: a 7:30 concert is not an answer to it.
+      const byDay =
+        ask.partOfDay === "afternoon" || ask.partOfDay === "morning";
+      if (start && start.hour >= 17) value += byDay ? -9 : 3;
+      // **By day, somewhere for two** — a winery, a gallery, a view, a spa:
+      // activities Passport groups that way, by Atlas's word for each.
+      const together =
+        ask.partOfDay !== "evening"
+          ? taggedEvidence(experience, "date")
+          : undefined;
+      if (together && together.activity.key !== "eat") {
+        value += 4;
+        if (reasons.length < 2)
+          reasons.push(evidenceLine(experience, together.words));
+      }
       fits =
-        adultsOnly(experience) || (start !== undefined && start.hour >= 17);
+        adultsOnly(experience) ||
+        (!byDay && start !== undefined && start.hour >= 17) ||
+        (together !== undefined && together.activity.key !== "eat");
       if (audience(experience, "families") || audience(experience, "children"))
         value -= 2;
       break;
@@ -591,6 +744,48 @@ function score(
     default:
       break;
   }
+
+  // **Easy going.** Gentle things up, thrills and long hikes down, and a
+  // listed accessibility feature said as listed — never as a promise.
+  if (ask.gentle) {
+    if (taggedEvidence(experience, "gentle")) value += 2;
+    if (taggedEvidence(experience, "adventure")) value -= 4;
+    const access = (experience.knowledge?.features ?? []).find((f) =>
+      ACCESS.test(f),
+    );
+    if (access) {
+      value += 2;
+      if (reasons.length < 2) reasons.push(`${access}, as listed`);
+    }
+  }
+
+  // **Free, where a source said so** — and nowhere else is it claimed. A
+  // ticketed event or a place that sells something goes down, not out.
+  if (ask.free) {
+    const free = freeLine(experience);
+    if (free) {
+      value += 6;
+      reasons.unshift(free);
+    } else if (SELLS.test(experience.subtype ?? "")) value -= 8;
+    else if (experience.kind === "Event") value -= 5;
+  }
+
+  // **They named an activity.** Something that is not it does not lead, however
+  // soon it is on.
+  if (ask.doing && context.doingHere) {
+    const activity = activityByKey(ask.doing);
+    if (activity && activityEvidence(experience, activity).length === 0)
+      value -= 9;
+  }
+
+  // **Different from what was just shown**: less of the same kinds and
+  // activities, whichever lens is asked.
+  if (context.shownKinds?.has(kindOf(experience))) value -= 3;
+  if (
+    context.shownActivities &&
+    activitiesOf(experience).some((a) => context.shownActivities!.has(a.key))
+  )
+    value -= 2;
 
   // **The sky**, read once: it can decide whether this fits at all.
   const exposure = exposureOf(experience);
@@ -654,9 +849,20 @@ function score(
 
   // **The sky**, where it is wet or they asked to stay dry — Atlas's rain
   // reading first, then whether a visit is spent indoors at all.
+  if (ask.shelter === "indoor") {
+    // **Asked to stay dry**: a museum, a rink, a cinema — an activity that is
+    // spent indoors, by Atlas's word for it — before a park with a shelter.
+    const inside = taggedEvidence(experience, "indoor");
+    if (inside) {
+      value += 3;
+      if (reasons.length < 2)
+        reasons.push(evidenceLine(experience, inside.words));
+    }
+    if (exposure?.value === "indoor") value += 2;
+  }
   if (context.wet || ask.shelter === "indoor") {
     if (standsUpToRain(experience)) {
-      value += 3;
+      value += ask.shelter === "indoor" ? 1 : 3;
       const line = rainLine(experience);
       if (line) reasons.push(line);
     } else if (arguesAgainst(experience)) value -= 4;
@@ -688,7 +894,13 @@ function score(
   // for a fact nobody knows.
   const km = distanceTo(experience, context.origin);
   if (km !== undefined && ask.lens !== "drive") {
-    const reach = ask.withinKm ?? (ask.near ? 15 : 30);
+    const reach =
+      ask.withinKm ??
+      (ask.driveMinutes !== undefined
+        ? Math.max(5, ask.driveMinutes * 0.8)
+        : ask.near
+          ? 15
+          : 30);
     const pull = ask.lens === "on" ? 6 : 4;
     value += pull * (1 - Math.min(km / reach, 1));
     if (km > reach) value -= 3 * Math.min((km - reach) / reach, 1);
@@ -727,6 +939,8 @@ function caveatFor(
       ? undefined
       : "Atlas can't place this, so we can't say how far";
   }
+  if (ask.free && !statesFree(experience))
+    return "No price stated — check before you go";
   if (experience.schedule?.onDate?.reading === "conflicting")
     return "Its stated hours disagree — check before you go";
   if (
@@ -844,6 +1058,7 @@ function limitFor(ask: DiscoveryAsk): number {
  */
 const aboutClose = (ask: DiscoveryAsk): boolean =>
   ask.near === true ||
+  ask.driveMinutes !== undefined ||
   ask.hours !== undefined ||
   ask.lens === "time" ||
   ask.lens === "on" ||
@@ -872,6 +1087,7 @@ function circleFor(
 ): number | undefined {
   if (ask.hours === undefined || ask.lens === "drive") return undefined;
   if (!context.origin || ask.withinKm !== undefined) return undefined;
+  if (ask.driveMinutes !== undefined) return undefined;
   return defaultRadiusKm(ask.hours);
 }
 
@@ -921,6 +1137,20 @@ function framing(
             heading: "Worth the drive",
             note: "Worth the drive from where? Until you pick a town or share your location, these are just the places with the most to them.",
           };
+    case "surprise":
+      return {
+        heading: near
+          ? `A few ideas, close to ${near}`
+          : "A few ideas to start",
+        note: "A spread of real places and things on, each different from the last — tap one, or tell me more and it'll sharpen.",
+      };
+    case "adventure":
+      return {
+        heading: near
+          ? `Something adventurous, near ${near}`
+          : "Something adventurous",
+        note: "Climbing, ziplines, paddling, mountain biking and the like — Passport's grouping of what Atlas lists at each place.",
+      };
     case "unusual":
       return {
         heading: ask.near
@@ -956,6 +1186,11 @@ function framing(
       };
     }
     case "couple":
+      if (ask.partOfDay === "afternoon" || ask.partOfDay === "morning")
+        return {
+          heading: `For the two of you, this ${ask.partOfDay}`,
+          note: "Wineries, galleries, views, spas and shows by day come first — by Atlas's word for each place — and nothing that starts in the evening. That ordering is Passport's; Atlas doesn't say what makes a good date.",
+        };
       return {
         heading:
           ask.partOfDay === "evening"
@@ -976,10 +1211,27 @@ function framing(
       // Atlas subjects; what changes is that they are no longer dressed up as
       // an answer, and the way forward is named. Nothing here echoes the
       // sentence back or guesses what a place name meant.
+      if (ask.different)
+        return {
+          heading: "Something completely different",
+          note: "Away from what was just on screen, keeping who, when and how far.",
+        };
       if (readNothing(ask))
         return {
           heading: "I didn't catch what you're after",
           note: UNREAD_NOTE,
+        };
+      if (ask.shelter === "indoor")
+        return {
+          heading: near ? `Somewhere dry, near ${near}` : "Somewhere dry",
+          note: "Things spent indoors come first — museums, rinks, cinemas, galleries — by what Atlas says each place is; where Atlas reads the weather, that decides.",
+        };
+      if (ask.shelter === "outdoor" && !ask.doing)
+        return {
+          heading: near
+            ? `Out in the fresh air, near ${near}`
+            : "Out in the fresh air",
+          note: "Outdoors by Atlas's reading of each place, and different from each other.",
         };
       return ask.company === "alone"
         ? {
@@ -1005,7 +1257,9 @@ export function answerAsk(
   context: AnswerContext,
 ): Answer {
   const day = ask.on ?? context.today;
-  let candidates = onTheDay(pool, ask.on, context.today).filter(substantial);
+  let candidates = onTheDay(pool, ask.on, context.today)
+    .filter(substantial)
+    .filter((e) => !NOT_AN_OUTING.test(e.subtype ?? ""));
 
   if (ask.lens === "drive" && context.origin) {
     candidates = candidates.filter((e) => {
@@ -1029,10 +1283,55 @@ export function answerAsk(
       return !over;
     });
   }
+  // **A drive they will make, at most.** Atlas's routed estimate decides
+  // where it has one. Where it has none, only physics may: a place further
+  // in a straight line than a car covers at 100 km/h in that time cannot be
+  // inside it. That bound removes; it is never printed as a drive time.
+  const limit = ask.driveMinutes;
+  let overLimit = 0;
+  if (limit !== undefined && context.origin && ask.lens !== "drive") {
+    candidates = candidates.filter((e) => {
+      const routed = e.travel?.kind === "routed" ? e.travel.minutes : undefined;
+      const km = distanceTo(e, context.origin);
+      const over =
+        routed !== undefined
+          ? routed > limit
+          : km !== undefined && km > (limit / 60) * 100;
+      if (over) overLimit += 1;
+      return !over;
+    });
+  }
+  // **What they said no to.** A trail is hiking; a park that also lists
+  // hiking is still a park with other things in it, and stays.
+  if (ask.avoid?.length) {
+    const avoided = new Set(ask.avoid);
+    candidates = candidates.filter((e) => {
+      const all = activitiesOf(e);
+      if (all.length === 0) return true;
+      const subtype = (e.subtype ?? "").toLowerCase();
+      const isIt = all.some(
+        (a) => avoided.has(a.key) && a.subtype?.test(subtype),
+      );
+      return !isIt && !all.every((a) => avoided.has(a.key));
+    });
+  }
+  // **Something completely different**: nothing already shown.
+  const shown = new Set(ask.different ? (context.shown ?? []) : []);
+  const shownBefore = (context.reference ?? pool).filter((e) =>
+    shown.has(e.id),
+  );
+  if (shown.size > 0) candidates = candidates.filter((e) => !shown.has(e.id));
   // **Somewhere, or not an answer** (see the top of this file). With an
   // origin, a pick needs a distance — or, for a question that is not about
   // being close, an area Atlas places it in that is this one.
-  const isPlaced = (e: Experience) => placed(e, context.origin);
+  // **An activity they named is answered even where Atlas cannot place it**
+  // — five cinemas with no location are still the honest answer to "movies",
+  // each saying it cannot be placed — rather than replaced by something
+  // that can be measured and is not a film.
+  const named = activityByKey(ask.doing);
+  const doer = (e: Experience) =>
+    named !== undefined && activityEvidence(e, named).length > 0;
+  const isPlaced = (e: Experience) => placed(e, context.origin) || doer(e);
   if (context.origin) {
     const close = aboutClose(ask);
     candidates = candidates.filter(
@@ -1040,6 +1339,11 @@ export function answerAsk(
         isPlaced(e) ||
         (!close && context.home !== undefined && areaOf(e) === context.home),
     );
+    // Past a day trip is not an answer to anything but "worth the drive".
+    if (ask.lens !== "drive")
+      candidates = candidates.filter(
+        (e) => (distanceTo(e, context.origin) ?? 0) <= DRIVE_TO_KM,
+      );
   }
   // **A stated adults-only rule is not somewhere to take a child**, whatever
   // age they are — the age row only checks the ages Atlas was asked about.
@@ -1072,13 +1376,29 @@ export function answerAsk(
     ),
   };
 
+  const scoring: Scoring = {
+    ...context,
+    doingHere: candidates.some(doer),
+    ...(shownBefore.length > 0
+      ? {
+          shownKinds: new Set(shownBefore.map(kindOf)),
+          shownActivities: new Set(
+            shownBefore.flatMap((e) => activitiesOf(e).map((a) => a.key)),
+          ),
+        }
+      : {}),
+  };
   const scored = candidates
-    .map((e) => score(e, ask, context, rare, timely))
+    .map((e) => score(e, ask, scoring, rare, timely))
     .sort((a, b) => b.score - a.score);
 
-  const chosen = varied(scored, limitFor(ask), (e) =>
-    context.origin ? isPlaced(e) : true,
+  let chosen = varied(scored, limitFor(ask), (e) =>
+    context.origin ? placed(e, context.origin) || doer(e) : true,
   );
+  // **An activity they named, and enough of it:** nothing else is offered
+  // beside it. One cinema and four concerts is not an answer to "movies".
+  if (named && chosen.filter(({ experience }) => doer(experience)).length >= 2)
+    chosen = chosen.filter(({ experience }) => doer(experience));
   // **Nothing answered it — say so**, rather than pass the nearest things
   // off as an answer to a question they do not answer.
   const missed =
@@ -1099,10 +1419,11 @@ export function answerAsk(
   if (ask.company === "child" && ask.childAge === undefined)
     gaps.push({
       about: "age",
-      text: "How old? Pick an age above and stated age rules get checked.",
+      text: "How old? Say it — “she's 6” — and stated age rules get checked.",
     });
   if (
     (ask.near ||
+      ask.driveMinutes !== undefined ||
       ask.lens === "drive" ||
       ask.lens === "time" ||
       ask.lens === "on") &&
@@ -1114,7 +1435,36 @@ export function answerAsk(
     });
 
   const framed = framing(ask, context, overSpan);
-  const { heading } = framed;
+  const activity = activityByKey(ask.doing);
+  const doingFound =
+    !activity ||
+    chosen.some(({ experience }) => doesActivity(experience, activity.key));
+  const heading =
+    activity && doingFound && !ask.lens
+      ? `${activity.label}${context.originLabel ? `, from ${context.originLabel.replace(/,\s*BC$/, "")}` : ""}`
+      : framed.heading;
+  const extras: string[] = [];
+  if (activity && !doingFound)
+    extras.push(
+      `Atlas doesn't list anywhere for ${activity.label.toLowerCase()} that fits the rest of this, so these are the nearest things to it.`,
+    );
+  // Without an origin the "From where?" gap below says it once.
+  if (limit !== undefined && ask.lens !== "drive" && context.origin)
+    extras.push(
+      `Up to ${limit} minutes away: Atlas's drive estimate decides where it has one${overLimit > 0 ? ` (${overLimit} ${overLimit === 1 ? "was" : "were"} left out as further)` : ""}; anywhere it has none is shown with its straight-line distance.`,
+    );
+  if (ask.free)
+    extras.push(
+      "Atlas rarely states prices. Where a description says free, the card says so; places that sell things are left down, and everything else says no price is stated.",
+    );
+  if (ask.avoid?.length)
+    extras.push(
+      `No ${ask.avoid
+        .map((k) => activityByKey(k)?.label.toLowerCase() ?? k)
+        .join(" or ")} — places that are only that are left out.`,
+    );
+  if (ask.different && shown.size > 0)
+    extras.push("None of what you were just shown, and less of its kind.");
   // **An empty drive says which wall it hit**, so the next move is obvious:
   // the span, or the band, or there being nowhere to measure from.
   const note =
@@ -1123,9 +1473,10 @@ export function answerAsk(
         ? `Atlas's drive estimates put everything it could offer past ${driveSpan(ask.driveHours)} from ${context.originLabel ?? "here"}. Try a longer drive, or a different starting town.`
         : `Nothing Atlas can place and say something about sits ${DRIVE_FROM_KM}–${DRIVE_TO_KM} km from ${context.originLabel ?? "here"}. Try another starting town — or ask for something close.`
       : framed.note;
-  const said = missed
+  const answered = missed
     ? `${note} Nothing Atlas holds here clearly answers that${ask.on ? ` for ${dayWord(ask.on, context.today)}` : ""}, so these are the nearest things to it.`
     : note;
+  const said = [answered, ...extras].join(" ");
   return {
     heading,
     // The forecast changed the order, so the answer says so.

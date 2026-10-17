@@ -2,6 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 import { z } from "zod";
 import { townById } from "@/domain/discovery/towns";
+import { ACTIVITIES, activityByKey } from "@/domain/discovery/activities";
 import {
   readAsk,
   windowFor,
@@ -41,8 +42,23 @@ const modelReading = z.object({
   doing: z.string().optional(),
   shelter: z.enum(["indoor", "outdoor"]).optional(),
   pair: z.boolean().optional(),
+  driveMinutes: z.number().positive().max(600).optional(),
+  avoid: z.array(z.string()).max(6).optional(),
+  free: z.boolean().optional(),
+  gentle: z.boolean().optional(),
+  different: z.boolean().optional(),
   lens: z
-    .enum(["unusual", "drive", "kids", "on", "couple", "group", "time"])
+    .enum([
+      "unusual",
+      "drive",
+      "kids",
+      "on",
+      "couple",
+      "group",
+      "time",
+      "surprise",
+      "adventure",
+    ])
     .optional(),
 });
 
@@ -63,12 +79,37 @@ Fields:
 - partOfDay: "morning" | "afternoon" | "evening"
 - town: a town name, only if one was named
 - near: true if they want somewhere close
-- doing: one activity, chosen ONLY from the provided list, copied exactly
+- doing: one activity key, chosen ONLY from the provided list, copied exactly
+- avoid: activity keys from the same list they said they do NOT want
 - shelter: "indoor" | "outdoor"
 - pair: true if it is the two of them — a partner, a date
-- lens: "unusual" (odd, hidden, surprising), "drive" (worth a trip / road trip), \
-"kids" (about a child), "on" (what is on / happening / events), "couple" (a \
-partner or a date), "group" (friends), "time" (about how long they have)`;
+- driveMinutes: the most minutes they will travel, if they said
+- free: true if they want it to cost nothing
+- gentle: true for older company, or nothing strenuous
+- different: true if they want something unlike what they were just shown
+- lens: "unusual" (odd, hidden, never tried), "drive" (worth a trip / road \
+trip), "kids" (about a child), "on" (what is on / happening / events), \
+"couple" (a partner or a date), "group" (friends), "time" (about how long \
+they have), "surprise" (bored, no idea, surprise me), "adventure" (thrills)
+
+Earlier sentences, where given, are context for reading the last one only: \
+"about three hours" after "something with my daughter" is three hours. \
+Return what the LAST sentence says, read in that light.`;
+
+/**
+ * **An activity the model named, exactly** — a key, a label, or one of the
+ * words an activity is known by. Nothing looser: "Submarine tours" is not
+ * Tours, it is a model reaching for something Atlas does not hold.
+ */
+function namedActivity(raw: string) {
+  const said = raw.trim().toLowerCase();
+  return (
+    activityByKey(said) ??
+    ACTIVITIES.find(
+      (a) => a.label.toLowerCase() === said || a.words.includes(said),
+    )
+  );
+}
 
 /**
  * Merge a validated model reading under the deterministic one. Pure, so the
@@ -111,11 +152,20 @@ export function fillGaps(
   }
   if (floor.near === undefined && model.near) filled.near = true;
   if (floor.doing === undefined && model.doing) {
-    const verb = context.verbs?.find(
-      (v) => v.toLowerCase() === model.doing!.trim().toLowerCase(),
-    );
-    if (verb) filled.doing = verb;
+    const activity = namedActivity(model.doing);
+    if (activity) filled.doing = activity.key;
   }
+  if (floor.avoid === undefined && model.avoid?.length) {
+    const keys = model.avoid
+      .map((key) => namedActivity(key)?.key)
+      .filter((key): key is NonNullable<typeof key> => key !== undefined);
+    if (keys.length > 0) filled.avoid = [...new Set(keys)];
+  }
+  if (floor.driveMinutes === undefined && model.driveMinutes !== undefined)
+    filled.driveMinutes = Math.round(model.driveMinutes);
+  if (floor.free === undefined && model.free) filled.free = true;
+  if (floor.gentle === undefined && model.gentle) filled.gentle = true;
+  if (floor.different === undefined && model.different) filled.different = true;
   if (floor.shelter === undefined && model.shelter)
     filled.shelter = model.shelter;
   // "For two" never sits beside a child: the age row would be lying.
@@ -132,6 +182,8 @@ export function fillGaps(
 export async function readAskWithModel(
   said: string,
   context: ReadContext,
+  /** The conversation's earlier sentences, oldest first. Context only. */
+  previous: readonly string[] = [],
 ): Promise<{ ask: DiscoveryAsk; by: "words" | "model" }> {
   const floor = readAsk(said, context);
   if (!process.env.OPENAI_API_KEY) return { ask: floor, by: "words" };
@@ -142,7 +194,13 @@ export async function readAskWithModel(
       timeout: 4_000,
       maxRetries: 0,
     });
-    const verbs = (context.verbs ?? []).slice(0, 120).join(", ");
+    const activities = ACTIVITIES.map((a) => `${a.key} (${a.label})`).join(
+      ", ",
+    );
+    const earlier = previous
+      .slice(-6)
+      .map((line) => `- ${line.slice(0, 300)}`)
+      .join("\n");
     const completion = await client.chat.completions.create({
       model: process.env.OPENAI_DISCOVERY_MODEL ?? "gpt-4o-mini",
       temperature: 0,
@@ -151,7 +209,7 @@ export async function readAskWithModel(
         { role: "system", content: SYSTEM },
         {
           role: "user",
-          content: `Activities available: ${verbs || "none"}\nSentence: ${said}`,
+          content: `Activities: ${activities}\n${earlier ? `Earlier sentences:\n${earlier}\n` : ""}${context.expecting ? `They were just asked about: ${context.expecting}\n` : ""}Last sentence: ${said}`,
         },
       ],
     });

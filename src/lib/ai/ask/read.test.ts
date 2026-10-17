@@ -66,17 +66,14 @@ describe("what else it reads", () => {
     expect(read("Sunday with friends").company).toBe("group");
   });
 
-  it("chooses a verb only from those Atlas offers", () => {
-    expect(read("a hike with the kids").doing).toBe("Hiking");
-    expect(read("swimming somewhere warm").doing).toBe("Swimming");
-    expect(read("go bowling").doing).toBeUndefined();
-    // Common words never choose a verb by accident.
-    expect(
-      readAsk("something good near here this weekend", {
-        today,
-        verbs: ["Heritage walks", "Weekend market", "Goodwill shopping"],
-      }).doing,
-    ).toBeUndefined();
+  it("names an activity in the person's words, not Atlas's", () => {
+    expect(read("a hike with the kids").doing).toBe("hiking");
+    expect(read("swimming somewhere warm").doing).toBe("swimming");
+    expect(read("go bowling").doing).toBe("games");
+    expect(read("the movies tonight").doing).toBe("movies");
+    expect(read("ice skating").doing).toBe("skating");
+    // Common words never choose an activity by accident.
+    expect(read("something good near here this weekend").doing).toBeUndefined();
   });
 
   it("keeps a stated distance as a radius", () => {
@@ -235,14 +232,14 @@ describe("ordinary phrasings that were misread", () => {
     expect(read("something in 30 days").on).toBeUndefined();
   });
 
-  it("'bike' and 'mountain biking' choose Cycling where Atlas offers it", () => {
-    expect(withBikes("mountain biking").doing).toBe("Cycling");
-    expect(withBikes("bike rides near Vernon").doing).toBe("Cycling");
-    expect(withBikes("somewhere to paddle").doing).toBe("Kayaking");
+  it("'bike', 'mountain biking' and 'paddle' are the activities they name", () => {
+    expect(withBikes("mountain biking").doing).toBe("mountain-biking");
+    expect(withBikes("bike rides near Vernon").doing).toBe("cycling");
+    expect(withBikes("somewhere to paddle").doing).toBe("paddling");
+    expect(read("a canoe on the lake").doing).toBe("paddling");
   });
 
-  it("a synonym never invents a verb Atlas does not offer", () => {
-    expect(read("mountain biking").doing).toBeUndefined();
+  it("a sentence that names no activity chooses none", () => {
     expect(
       read("something to burn off the kids' energy before dinner").doing,
     ).toBeUndefined();

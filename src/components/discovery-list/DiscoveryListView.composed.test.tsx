@@ -170,7 +170,7 @@ describe("what the page says before anything is asked of it", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: /what do you feel like doing/i,
+        name: /what kind of day are you looking for/i,
       }),
     ).toBeTruthy();
   });
@@ -228,18 +228,35 @@ describe("the controls, and what they are allowed to claim", () => {
         today="Saturday, October 10"
       />,
     );
+    // Atlas's words, gathered into activities a person would name.
     expect(verbs("activity")).toEqual(
-      expect.arrayContaining(["swimming", "fishing", "cycling"]),
+      expect.arrayContaining(["Swimming & beaches", "Fishing", "Cycling"]),
     );
     // Nothing on this page states skiing, so skiing is never on offer.
-    expect(verbs("activity")).not.toContain("skiing");
+    expect(verbs("activity")).not.toContain("Skiing & snowboarding");
+  });
+
+  it("reads what a place is, not only the verbs it lists", () => {
+    // A concert, a talk, a festival, a park and a winery: Atlas states an
+    // affordance for none of them, and three are still plainly something to
+    // go and do — by what Atlas says they are.
+    renderPage();
+    expect(verbs("activity")).toEqual(
+      expect.arrayContaining(["Live music & shows", "Wine, beer & tasting"]),
+    );
   });
 
   it("says so rather than offering a control that cannot narrow anything", () => {
-    // This pool is a concert, a talk, a festival, a park and a winery, and
-    // Atlas states an affordance for none of them. The old page would have
-    // printed chips anyway.
-    renderPage();
+    render(
+      <DiscoveryListView
+        experiences={[
+          candidate({ id: "talk", name: "A Talk", subtype: "lecture" }),
+        ].map(candidateToExperience)}
+        displayName={null}
+        now={NOW}
+        today="Saturday, October 10"
+      />,
+    );
     expect(verbs("activity")).toEqual([]);
     expect(
       screen.getAllByTestId("ghad-note").map((n) => n.textContent),
@@ -336,7 +353,7 @@ describe("the controls, and what they are allowed to claim", () => {
     );
     const swimming = screen
       .getAllByTestId("ghad-choice")
-      .find((b) => b.textContent?.startsWith("swimming"))!;
+      .find((b) => b.textContent?.startsWith("Swimming"))!;
     fireEvent.click(swimming);
     const headings = screen
       .getAllByTestId("discovery-section")

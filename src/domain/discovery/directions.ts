@@ -22,6 +22,11 @@ import { SECTION_PAGES, SECTION_SIZE, type DiscoverySection } from "./compose";
  * each has real, inspectable places behind it — Kalamoir Park, Kekuli Bay,
  * Otter Lake, The Grouse Grind.
  *
+ * > **Superseded for Discovery's activity row on 2026-10-16** (ADR 005): the
+ * > row now offers `activities.ts` — human activities gathered from Atlas's
+ * > affordances, subtypes and play features. `invitationSection` is still
+ * > used; `invitations` remains for the labs and the history below.
+ *
  * ## Nothing here is written by Passport
  *
  * The label is Atlas's own affordance name, in Atlas's own spelling. Passport

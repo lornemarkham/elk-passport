@@ -585,7 +585,11 @@ describe("the sky", () => {
       context,
     );
     expect(answer.picks[0]?.experience.title).toBe("Roedde House");
-    expect(answer.picks[0]?.reasons[0]).toBe("Indoors, going by what we know");
+    // What it is leads — a museum is spent indoors — and Atlas's reading
+    // of the place is still said.
+    expect(answer.picks[0]?.reasons).toEqual(
+      expect.arrayContaining(["A museum", "Indoors, going by what we know"]),
+    );
   });
 
   it("on a wet day, an outdoor reading goes down", () => {
@@ -763,7 +767,7 @@ describe("a sentence nothing could be read from", () => {
     subject("Kal Beach", { km: 6, subtype: "beach", verbs: ["Swimming"] }),
   ];
 
-  it.each(["blorp zxq", "take me to Atlantis", "waterfall"])(
+  it.each(["blorp zxq", "take me to Atlantis", "the Qwerty Building"])(
     "says it did not catch %j, and still offers only real subjects",
     (said) => {
       const answer = answerAsk(pool, ask(said), context);
@@ -778,9 +782,157 @@ describe("a sentence nothing could be read from", () => {
     },
   );
 
+  it("'waterfall' is now an activity, and nothing here offers one", () => {
+    const answer = answerAsk(pool, ask("waterfall"), context);
+    expect(answer.unread).toBeUndefined();
+    expect(answer.note).toMatch(/doesn't list anywhere for views & waterfalls/);
+  });
+
   it("does not apply to a sentence that read something", () => {
     const answer = answerAsk(pool, ask("a Saturday in Vernon"), context);
     expect(answer.unread).toBeUndefined();
     expect(answer.heading).not.toMatch(/didn't catch/);
+  });
+});
+
+/** Discovery 2.0: what the newer readings may and may not claim. */
+describe("answers to the newer readings", () => {
+  const routed = (e: Experience, minutes: number): Experience => ({
+    ...e,
+    travel: {
+      kind: "routed",
+      mode: "driving",
+      minutes,
+      roadKm: minutes,
+      straightKm: minutes,
+      provider: "test",
+      calculatedAt: "2026-10-11T00:00:00.000Z",
+      limitations: [],
+    },
+  });
+
+  it("'free' is quoted where a description says it, and never claimed with a condition", () => {
+    const rink = subject("Outdoor Rink", {
+      km: 1,
+      subtype: "rink",
+      description:
+        "An outdoor rink that provides free public skating all winter.",
+    });
+    const pool = subject("Aquatic Centre", {
+      km: 2,
+      subtype: "aquatic centre",
+      description:
+        "A pool with a waterslide, with free admission on Family Day.",
+    });
+    const winery = subject("Fancy Winery", { km: 1, subtype: "winery" });
+    const answer = answerAsk(
+      [winery, pool, rink],
+      ask("something free"),
+      context,
+    );
+    expect(answer.picks[0]?.experience.title).toBe("Outdoor Rink");
+    expect(answer.picks[0]?.reasons[0]).toBe(
+      "“free public skating”, as its description says",
+    );
+    const aquatic = answer.picks.find(
+      (p) => p.experience.title === "Aquatic Centre",
+    );
+    expect(aquatic?.reasons.join(" ")).not.toMatch(/free/i);
+    expect(aquatic?.caveat).toBe("No price stated — check before you go");
+    expect(titles(answer).at(-1)).toBe("Fancy Winery");
+    expect(answer.note).toMatch(/Atlas rarely states prices/);
+  });
+
+  it("a drive limit uses Atlas's routed time, else only a physical bound", () => {
+    const quick = routed(subject("Quick Lake", { km: 20 }), 18);
+    const slow = routed(subject("Slow Lake", { km: 15 }), 40);
+    const unrouted = subject("Unrouted Park", { km: 25 });
+    const impossible = subject("Far Park", { km: 80 });
+    const answer = answerAsk(
+      [quick, slow, unrouted, impossible],
+      ask("within 30 minutes"),
+      context,
+    );
+    expect(titles(answer).sort()).toEqual(["Quick Lake", "Unrouted Park"]);
+    expect(answer.note).toMatch(/2 were left out as further/);
+  });
+
+  it("'not hiking' leaves out a trail and keeps a park that also has a beach", () => {
+    const trail = subject("Ridge Trail", {
+      km: 2,
+      subtype: "trail",
+      verbs: ["Hiking"],
+    });
+    const park = subject("Lake Park", { km: 3, verbs: ["Hiking", "Swimming"] });
+    const answer = answerAsk(
+      [trail, park],
+      ask("outside but not hiking"),
+      context,
+    );
+    expect(titles(answer)).toEqual(["Lake Park"]);
+  });
+
+  it("'something completely different' shows none of what was shown", () => {
+    const a = subject("Alpha Park", { km: 1, verbs: ["Playground"] });
+    const b = subject("Beta Museum", { km: 2, subtype: "museum" });
+    const answer = answerAsk(
+      [a, b],
+      ask("show me something completely different"),
+      { ...context, shown: [a.id] },
+    );
+    expect(titles(answer)).toEqual(["Beta Museum"]);
+  });
+
+  it("a named activity is answered even where Atlas cannot place it, and says so", () => {
+    const cinema = subject("Town Cinema", { km: null, subtype: "cinema" });
+    const cinema2 = subject("Plaza Cinema", { km: null, subtype: "cinema" });
+    const park = subject("Near Park", { km: 1, verbs: ["Playground"] });
+    const answer = answerAsk(
+      [park, cinema, cinema2],
+      ask("the movies"),
+      context,
+    );
+    expect(titles(answer).sort()).toEqual(["Plaza Cinema", "Town Cinema"]);
+    expect(answer.picks[0]?.caveat).toMatch(/can't place this/);
+    expect(answer.heading).toBe("Movies, from Vernon");
+  });
+
+  it("says when nothing here does the activity they named", () => {
+    const park = subject("Near Park", { km: 1, verbs: ["Playground"] });
+    const answer = answerAsk([park], ask("go bowling"), context);
+    expect(answer.note).toMatch(
+      /doesn't list anywhere for bowling, games & escape rooms/,
+    );
+  });
+
+  it("'I'm bored' is answered, with nothing asked of them first", () => {
+    const answer = answerAsk(
+      [
+        subject("Alpha Park", { km: 1, verbs: ["Playground"] }),
+        subject("Beta Museum", { km: 2, subtype: "museum" }),
+      ],
+      ask("I'm bored"),
+      context,
+    );
+    expect(answer.unread).toBeUndefined();
+    expect(answer.picks.length).toBe(2);
+    expect(answer.heading).toMatch(/A few ideas/);
+  });
+
+  it("an afternoon for two is not an evening concert", () => {
+    const concert = subject("Late Concert", {
+      kind: "Event",
+      subtype: "Concert",
+      startTime: "2026-10-11T19:30:00-07:00",
+      endTime: "2026-10-11T22:00:00-07:00",
+      timePrecision: "minute",
+    } as Partial<DiscoveryCandidate>);
+    const winery = subject("Hill Winery", { km: 4, subtype: "winery" });
+    const answer = answerAsk(
+      [concert, winery],
+      ask("a romantic afternoon"),
+      context,
+    );
+    expect(titles(answer)[0]).toBe("Hill Winery");
   });
 });
