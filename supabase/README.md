@@ -132,3 +132,12 @@ only forward changes, and nothing that drops or rewrites a column somebody's
 rows are in. Do not edit the baseline: it is a record of what was captured on
 one day, and rewriting it would destroy the only evidence of what production
 actually looked like.
+
+**State every table grant.** The shared project does not give `authenticated`
+privileges on new `public` tables by default. A migration that only enables RLS
+and writes policies leaves signed-in people with `42501 permission denied`, and
+the policies never run. That happened to the conference tables on 2026-10-16;
+`20261016000000_passport_conference_grants.sql` is the fix. Grant exactly the
+commands the app issues, as the baseline's "grants" section does. The
+conference test stack (`scripts/conference-stack/stack.mjs`) now leaves those
+defaults off too, so a missing grant fails there before it reaches production.

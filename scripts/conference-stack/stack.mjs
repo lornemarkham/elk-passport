@@ -13,9 +13,10 @@
  * ports and its own data directory, so both can run at once. The binaries and
  * node deps are shared: this expects /tmp/conference-stack/{bin,node_modules}
  * to exist (symlink them from /tmp/hockey-stack, or install as Hockey's README
- * describes). Roles and default privileges mirror Supabase's (anon and
- * authenticated hold ALL on new public tables), so RLS, not a missing GRANT,
- * is what keeps people out.
+ * describes). Roles mirror Supabase's. Default privileges mirror the
+ * production project, which does NOT grant new public tables to anon or
+ * authenticated: a migration must GRANT what it needs. (This stack used to
+ * grant ALL by default, and that hid a production crash on 2026-10-16.)
  *
  *   node scripts/conference-stack/stack.mjs start|stop
  *
@@ -131,7 +132,7 @@ create role supabase_auth_admin login createrole superuser;
 create schema auth authorization supabase_auth_admin;
 grant usage on schema auth to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
@@ -257,35 +258,14 @@ async function start() {
   record();
   await waitFor(`http://127.0.0.1:${AUTH_PORT}/health`, "auth");
 
-  // Passport's own baseline first — the occasions migration must coexist with
-  // it — then the proposal under test.
-  await sql(
-    fs.readFileSync(
-      path.join(
-        repo,
-        "supabase/migrations/20260927000000_passport_baseline.sql",
-      ),
-      "utf8",
-    ),
-  );
-  await sql(
-    fs.readFileSync(
-      path.join(
-        repo,
-        "supabase/migrations/20261012000000_passport_conferences.sql",
-      ),
-      "utf8",
-    ),
-  );
-  await sql(
-    fs.readFileSync(
-      path.join(
-        repo,
-        "supabase/migrations/20261014000000_passport_conference_arrivals.sql",
-      ),
-      "utf8",
-    ),
-  );
+  // Every migration, in filename order, exactly as production receives them:
+  // Passport's baseline first, then the conference migrations and their grants.
+  const migrations = path.join(repo, "supabase/migrations");
+  for (const file of fs
+    .readdirSync(migrations)
+    .filter((f) => f.endsWith(".sql"))
+    .sort())
+    await sql(fs.readFileSync(path.join(migrations, file), "utf8"));
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,

@@ -15,7 +15,18 @@ export default async function ConferencesPage() {
   const setup = conferenceSetup();
   if (!setup.open) return <Closed missing={setup.missing} />;
   const identity = await readIdentity(setup.config);
-  const mine = identity ? await conferencesOf(deps(), identity) : [];
+  // The list is the one part of this page that needs the store. If it fails,
+  // say so and keep the doors open: a code or a new conference may still work.
+  let mine: Awaited<ReturnType<typeof conferencesOf>> = [];
+  let listFailed = false;
+  if (identity) {
+    try {
+      mine = await conferencesOf(deps(), identity);
+    } catch (error) {
+      listFailed = true;
+      console.error("conferences: could not list yours", error);
+    }
+  }
   const canCreate =
     identity === null
       ? setup.config.allowGuestOrganisers
@@ -33,6 +44,16 @@ export default async function ConferencesPage() {
         One private place for the group: who&apos;s coming, what&apos;s on, and
         something great to do with the hours in between.
       </p>
+
+      {listFailed ? (
+        <p
+          role="status"
+          className="mt-8 rounded-2xl border border-black/10 p-4 text-black/70"
+        >
+          We couldn&apos;t load your conferences just now. Nothing is lost; try
+          again in a moment.
+        </p>
+      ) : null}
 
       {mine.length ? (
         <Section title="Yours">
