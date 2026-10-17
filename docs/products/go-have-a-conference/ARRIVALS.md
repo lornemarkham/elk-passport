@@ -147,6 +147,27 @@ Enforced in `board.ts` and `service.ts`, pinned by tests.
   12 h). The `api.adsb.lol/api/0/routeset` endpoint returned an empty 201 on
   2026-10-12. Route records are community-maintained and can be out of date.
 
+## Free flight-data providers, checked live 2026-10-16
+
+| Provider                      | Result                                                                                                                                                                   | Use                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADSB.lol                      | Works, no key. Unpublished rate limit. Asks production users to get in touch                                                                                             | **Primary.**                                                                                                                                        |
+| adsb.fi open data             | Works, no key. `/v2/callsign`, `/v2/hex` and `/v3/lat/…/lon/…/dist/…` return ADSB.lol's exact shape (`/v2/lat…` and `/v2/point` do not). Terms: personal, non-commercial | **Opt-in fallback**, `ADSB_FALLBACK=adsbfi`: asked only while ADSB.lol is resting after a 429/5xx. Off by default. Read their terms before enabling |
+| airplanes.live                | HTTP 403: "contact us… your email MUST include any links, a description of the project"                                                                                  | Not usable without asking them                                                                                                                      |
+| OpenSky (anonymous)           | Works, but a different shape (state vectors, no registration/type), and anonymous quota is small                                                                         | Not integrated                                                                                                                                      |
+| Schedules, codeshares, delays | None of the free ones provide them                                                                                                                                       | Still the AeroDataBox recommendation below (decision D5)                                                                                            |
+
+All of these are ground-receiver ADS-B: none gives mid-ocean positions, and
+none can say where a flight is **before** it is flying. Those flights stay
+"waiting", never simulated.
+
+## Map framing (2026-10-16)
+
+On load the map frames the airport and the aircraft that have a real
+position (regional view of the airport when there are none), rather than
+the continent. "Show everyone" is still the wide view, including the
+departure end of flights nobody has identified.
+
 ## Recommendation: a complementary flight-status API
 
 ADSB.lol answers "where is the aircraft calling itself X". It cannot answer

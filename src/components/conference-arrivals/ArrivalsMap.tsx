@@ -294,20 +294,40 @@ export function ArrivalsMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
-  function fitEveryone() {
+  /**
+   * `everyone` includes the departure airports of flights nobody has
+   * identified yet (the wide view). Without it, only the airport and aircraft
+   * with a real position, so the first look is of what is really flying.
+   */
+  function fit(everyone: boolean, duration = 900) {
     const m = map.current;
     if (!m || !lib.current) return;
     const points: [number, number][] = [[arrival.lon, arrival.lat]];
     for (const r of rows) {
       if (r.position)
         points.push([near(r.position.lon, arrival.lon), r.position.lat]);
-      else if (r.from && r.phase !== "landed")
+      else if (everyone && r.from && r.phase !== "landed")
         points.push([near(r.from.lon, arrival.lon), r.from.lat]);
+    }
+    if (points.length === 1) {
+      // Nothing with a real position: a regional view of the airport.
+      m.easeTo({ center: points[0], zoom: 5, duration });
+      return;
     }
     const bounds = new lib.current.LngLatBounds(points[0], points[0]);
     for (const p of points) bounds.extend(p);
-    m.fitBounds(bounds, { padding: 60, maxZoom: 7, duration: 900 });
+    m.fitBounds(bounds, { padding: 60, maxZoom: everyone ? 7 : 9, duration });
   }
+  const fitEveryone = () => fit(true);
+
+  // Once, when the map is ready: frame the airport and the real aircraft.
+  const framed = useRef(false);
+  useEffect(() => {
+    if (!ready || framed.current) return;
+    framed.current = true;
+    fit(false, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   return (
     <div className="relative">
