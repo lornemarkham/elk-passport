@@ -13,9 +13,8 @@ import type { DiscoveryAsk } from "./read";
  * Three deliberate exceptions, each because the question replaces the thing
  * rather than adding to it:
  *
- * - **A typed search, a chosen kind and an intent are cleared.** A question
- *   is the same kind of input as a search, and the answer only appears on the
- *   composed page.
+ * - **A chosen kind and an intent are cleared.** The answer only appears
+ *   on the composed page.
  * - **"Worth the drive" clears the radius.** A 15 km circle cannot hold an
  *   answer that starts at 40.
  * - **Saying who is coming replaces the child's age** unless it is a child.
@@ -39,7 +38,6 @@ export function applyAsk(
   const next: Record<string, unknown> = {
     ...session,
     ask: options.conversation ?? [ask.said],
-    query: undefined,
     intent: undefined,
     kind: undefined,
     everywhere: undefined,

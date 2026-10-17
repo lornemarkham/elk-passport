@@ -188,7 +188,7 @@ describe("asking Discovery a question", () => {
     renderPage();
     const refine = screen.getByTestId("ghad-refine");
     expect(refine).toHaveAttribute("aria-expanded", "false");
-    expect(refine).toHaveTextContent("Fine-tune it yourself");
+    expect(refine).toHaveTextContent("Refine");
     expect(document.getElementById("ghad-rows")).toHaveClass("hidden");
     await ask("three hours");
     // What the sentence set is what the line says — nothing needs opening.

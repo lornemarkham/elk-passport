@@ -1,3 +1,4 @@
+import type { NamedPick } from "./byName";
 import type { Experience } from "@/domain/experience/types";
 import {
   comingUp,
@@ -108,6 +109,12 @@ export interface AnswerContext {
    * same answer, so a refresh does not reshuffle what somebody was reading.
    */
   readonly seed?: number;
+  /**
+   * **Places the latest sentence named** (`findByName`). They lead the
+   * answer whatever else the sentence said; when nothing else was read, they
+   * are the answer.
+   */
+  readonly named?: readonly NamedPick[];
 }
 
 export interface AnswerPick {
@@ -1099,6 +1106,74 @@ function routedMinutes(e: Experience): number {
   return e.travel?.kind === "routed" ? e.travel.minutes : 0;
 }
 
+/** A trail is hiking; a park that also lists hiking is still a park. */
+function onlyWhatTheyRefused(e: Experience, avoid: readonly string[]): boolean {
+  const avoided = new Set(avoid);
+  const all = activitiesOf(e);
+  if (all.length === 0) return false;
+  const subtype = (e.subtype ?? "").toLowerCase();
+  const isIt = all.some((a) => avoided.has(a.key) && a.subtype?.test(subtype));
+  return isIt || all.every((a) => avoided.has(a.key));
+}
+
+/**
+ * **What the rest of the page may show, once somebody has said something.**
+ *
+ * The answer picks a handful; the editorial sections under it (*Happening
+ * today*, *Get outside*, …) used to carry on as though nothing had been said,
+ * so "somewhere indoors" sat above a full *Get outside* shelf. This is the
+ * same set of hard answers `answerAsk` removes by — a stated drive, a stated
+ * length of visit, an adults-only rule with a child, what they said no to,
+ * the planning circle — plus the sky they asked for, where Atlas states
+ * which side of a wall a visit is on. Silence removes nothing: a place Atlas
+ * says nothing about stays, as it does everywhere else on the page.
+ */
+export function fitsConversation(
+  ask: DiscoveryAsk,
+  context: Pick<AnswerContext, "origin">,
+): (experience: Experience) => boolean {
+  const limit =
+    ask.driveMinutes !== undefined && context.origin && ask.lens !== "drive"
+      ? ask.driveMinutes
+      : undefined;
+  const circle = circleFor(ask, { today: "", ...context });
+  return (e) => {
+    if (ask.avoid?.length && onlyWhatTheyRefused(e, ask.avoid)) return false;
+    if (ask.company === "child" && adultsOnly(e)) return false;
+    if (
+      ask.hours !== undefined &&
+      ask.lens !== "drive" &&
+      outlasts(e, ask.hours)
+    )
+      return false;
+    if (limit !== undefined) {
+      const routed = e.travel?.kind === "routed" ? e.travel.minutes : undefined;
+      const km = distanceTo(e, context.origin);
+      if (
+        routed !== undefined
+          ? routed > limit
+          : km !== undefined && km > (limit / 60) * 100
+      )
+        return false;
+    }
+    if (circle !== undefined && (distanceTo(e, context.origin) ?? 0) > circle)
+      return false;
+    const exposure = exposureOf(e);
+    if (ask.shelter === "indoor") {
+      if (standsUpToRain(e) || exposure?.value === "indoor") return true;
+      if (taggedEvidence(e, "indoor")) return true;
+      if (
+        arguesAgainst(e) ||
+        exposure?.value === "outdoor" ||
+        exposure?.value === "weather-dependent"
+      )
+        return false;
+    }
+    if (ask.shelter === "outdoor" && exposure?.value === "indoor") return false;
+    return true;
+  };
+}
+
 /** Whether the reading found nothing at all beyond the words themselves. */
 export function readNothing(ask: DiscoveryAsk): boolean {
   return Object.keys(ask).every((key) => key === "said");
@@ -1110,7 +1185,7 @@ export function readNothing(ask: DiscoveryAsk): boolean {
  * answered with something near it.
  */
 export const UNREAD_NOTE =
-  "Nothing in that matched a length of time, who's coming, a day, a town or something to do, so these are only a starting point, not an answer to it. Try “three hours with my kid on Saturday” or “something unusual near Vernon” — or search by name below. Passport only offers places Atlas knows about, so a place it doesn't hold won't be made up.";
+  "Nothing in that matched a length of time, who's coming, a day, a town or something to do, so these are only a starting point, not an answer to it. Try “three hours with my kid on Saturday”, “something unusual near Vernon”, or the name of a place. Passport only offers places Atlas knows about, so a place it doesn't hold won't be made up.";
 
 function framing(
   ask: DiscoveryAsk,
@@ -1304,16 +1379,8 @@ export function answerAsk(
   // **What they said no to.** A trail is hiking; a park that also lists
   // hiking is still a park with other things in it, and stays.
   if (ask.avoid?.length) {
-    const avoided = new Set(ask.avoid);
-    candidates = candidates.filter((e) => {
-      const all = activitiesOf(e);
-      if (all.length === 0) return true;
-      const subtype = (e.subtype ?? "").toLowerCase();
-      const isIt = all.some(
-        (a) => avoided.has(a.key) && a.subtype?.test(subtype),
-      );
-      return !isIt && !all.every((a) => avoided.has(a.key));
-    });
+    const avoided = ask.avoid;
+    candidates = candidates.filter((e) => !onlyWhatTheyRefused(e, avoided));
   }
   // **Something completely different**: nothing already shown.
   const shown = new Set(ask.different ? (context.shown ?? []) : []);
@@ -1410,7 +1477,21 @@ export function answerAsk(
     spanMinutes !== undefined
       ? [...chosen].sort((a, b) => sortKm(a.experience) - sortKm(b.experience))
       : chosen;
-  const picks = ordered.map(({ experience, reasons }) => {
+  // **What they named comes first** — and when nothing else in the sentence
+  // could be read, it is the whole answer, not a starting point beside it.
+  const byName = context.named ?? [];
+  const unread = readNothing(ask);
+  const namedIds = new Set(byName.map((n) => n.experience.id));
+  const merged = [
+    ...byName.map(({ experience, reason }) => ({
+      experience,
+      reasons: [reason],
+    })),
+    ...(unread && byName.length > 0
+      ? []
+      : ordered.filter(({ experience }) => !namedIds.has(experience.id))),
+  ].slice(0, Math.max(limitFor(ask), byName.length));
+  const picks = merged.map(({ experience, reasons }) => {
     const caveat = caveatFor(experience, ask, context);
     return { experience, reasons, ...(caveat ? { caveat } : {}) };
   });
@@ -1476,16 +1557,24 @@ export function answerAsk(
   const answered = missed
     ? `${note} Nothing Atlas holds here clearly answers that${ask.on ? ` for ${dayWord(ask.on, context.today)}` : ""}, so these are the nearest things to it.`
     : note;
-  const said = [answered, ...extras].join(" ");
+  const said =
+    unread && byName.length > 0
+      ? `Found by name in what Atlas holds${byName.length > 1 ? ", best match first" : ""}. Say more — who's coming, how long, when — and the rest of the page answers around it.`
+      : [answered, ...extras].join(" ");
   return {
-    heading,
+    heading:
+      unread && byName.length > 0
+        ? byName.length === 1
+          ? byName[0]!.experience.title
+          : `Matching “${ask.said.trim()}”`
+        : heading,
     // The forecast changed the order, so the answer says so.
     note: context.wet
       ? `${said} It's wet today, so somewhere under cover comes first where Atlas knows.`
       : said,
     picks,
     gaps,
-    ...(readNothing(ask) ? { unread: true as const } : {}),
+    ...(unread && byName.length === 0 ? { unread: true as const } : {}),
   };
 }
 

@@ -75,6 +75,16 @@ vi.mock("sonner", () => {
 
 const { DiscoveryListView } = await import("./DiscoveryListView");
 
+/** Say something in the one box Discovery has. */
+const say = (said: string) => {
+  fireEvent.change(screen.getByTestId("ask-input"), {
+    target: { value: said },
+  });
+  fireEvent.click(screen.getByTestId("ask-submit"));
+};
+const answerCards = () =>
+  within(screen.getByTestId("ask-answer")).getAllByTestId("possibility");
+
 const candidate = (over: Partial<DiscoveryCandidate>): DiscoveryCandidate => ({
   id: "id",
   kind: "Place",
@@ -402,26 +412,31 @@ describe("what must not have changed", () => {
     expect(screen.getByText("A winery")).toBeTruthy();
   });
 
-  it("still searches, and a search replaces the composed page with results", async () => {
+  it("still finds a place by name — in the one box, answered by name", async () => {
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText(/search/i), {
-      target: { value: "Kalamoir" },
-    });
+    say("Kalamoir");
     await waitFor(() =>
-      expect(screen.queryByTestId("discovery-section")).toBeNull(),
+      expect(screen.getByTestId("ask-heading")).toHaveTextContent(
+        "Kalamoir Park",
+      ),
     );
-    expect(screen.getByText("Kalamoir Park")).toBeTruthy();
-    expect(screen.queryByText("A winery")).toBeNull();
+    expect(answerCards()).toHaveLength(1);
+    expect(answerCards()[0]!).toHaveTextContent("The name you said");
   });
 
   it("still finds something the composed page never showed", () => {
-    // `browsing` searches the whole corpus, not the composed selection —
-    // which is the entire reason the two are kept apart.
+    // A name searches everything Passport holds here, not the composed
+    // selection — the reason the old search box browsed the whole corpus.
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText(/search/i), {
-      target: { value: "September" },
-    });
-    expect(screen.getByText("A festival in September")).toBeTruthy();
+    say("September");
+    expect(answerCards()[0]!).toHaveTextContent("A festival in September");
+  });
+
+  it("has exactly one text box", () => {
+    renderPage();
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(screen.getAllByRole("search")).toHaveLength(1);
+    expect(screen.queryByPlaceholderText(/Search places/)).toBeNull();
   });
 });
 
@@ -529,22 +544,16 @@ describe("an intent refines the page rather than replacing the product", () => {
     );
   });
 
-  it("lets relevance win once something is typed", () => {
+  it("lets a name lead whatever else the sentence was read as", () => {
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText(/search/i), {
-      target: { value: "winery" },
-    });
-    expect(screen.getAllByTestId("possibility")[0]!).toHaveTextContent(
-      "A winery",
-    );
+    say("Kalamoir Park with the kids");
+    expect(answerCards()[0]!).toHaveTextContent("Kalamoir Park");
   });
 
-  it("renders search results as the same cards", () => {
+  it("renders a named answer as the same cards", () => {
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText(/search/i), {
-      target: { value: "Kalamoir" },
-    });
-    expect(screen.getAllByTestId("possibility").length).toBeGreaterThan(0);
+    say("Kalamoir");
+    expect(answerCards().length).toBeGreaterThan(0);
   });
 });
 

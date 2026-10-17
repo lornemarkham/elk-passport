@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { Experience } from "@/domain/experience/types";
 import type { DiscoveryCandidate } from "@/lib/data/types";
-import { answerAsk, dayHref, DRIVE_FROM_KM, substantial } from "./answer";
+import {
+  answerAsk,
+  dayHref,
+  DRIVE_FROM_KM,
+  fitsConversation,
+  substantial,
+} from "./answer";
+import { findByName } from "./byName";
 import { readAsk } from "./read";
 
 // A Sunday.
@@ -934,5 +941,93 @@ describe("answers to the newer readings", () => {
       context,
     );
     expect(titles(answer)[0]).toBe("Hill Winery");
+  });
+});
+
+describe("a place said by name, in the one box", () => {
+  const orchard = subject("Davison Orchards", { km: 4 });
+  const kangaroo = subject("Kangaroo Creek Farm", {
+    km: 6,
+    subtype: "farm",
+  });
+  const park = subject("Polson Park", { km: 2 });
+  const pool = [orchard, kangaroo, park];
+  const answerFor = (said: string) => {
+    const reading = ask(said);
+    const loose = Object.keys(reading).every((k) => k === "said");
+    return answerAsk(pool, reading, {
+      ...context,
+      named: findByName(pool, said, { loose }),
+    });
+  };
+
+  it("answers a name the reader hears nothing in with that place, and nothing passed off as an answer", () => {
+    const answer = answerFor("Davison Orchards");
+    expect(answer.heading).toBe("Davison Orchards");
+    expect(titles(answer)).toEqual(["Davison Orchards"]);
+    expect(answer.picks[0]?.reasons).toEqual(["The name you said"]);
+    expect(answer.unread).toBeUndefined();
+  });
+
+  it("leads with the named place even when the sentence also reads as something", () => {
+    // "Kangaroo Creek Farm" reads as *farms*; the farm they named still leads.
+    const answer = answerFor("Kangaroo Creek Farm with my daughter");
+    expect(titles(answer)[0]).toBe("Kangaroo Creek Farm");
+  });
+
+  it("does not lead with a one-word name merely mentioned in a sentence", () => {
+    const vernon = subject("Vernon", { km: 1 });
+    expect(
+      findByName([vernon], "something fun near Vernon", { loose: false }),
+    ).toEqual([]);
+  });
+
+  it("still says it heard nothing when nothing is named either", () => {
+    const answer = answerFor("take me to Atlantis");
+    expect(answer.unread).toBe(true);
+    expect(answer.note).not.toMatch(/search by name below/);
+  });
+});
+
+describe("the rest of the page listens to the conversation", () => {
+  const exposed = (name: string, value: "indoor" | "outdoor") =>
+    subject(name, {
+      km: 3,
+      environment: {
+        setting: "unknown",
+        rain: { reading: "unknown", basis: "none" },
+        exposure: { value, basis: "derived" },
+      },
+    });
+  const museum = exposed("Museum", "indoor");
+  const field = exposed("Open Field", "outdoor");
+  const unknown = subject("Somewhere Atlas says nothing about", { km: 3 });
+
+  it("asked for indoors, drops what Atlas says is outdoors and keeps silence", () => {
+    const fits = fitsConversation(ask("somewhere indoors"), context);
+    expect([museum, field, unknown].filter(fits).map((e) => e.title)).toEqual([
+      "Museum",
+      "Somewhere Atlas says nothing about",
+    ]);
+  });
+
+  it("asked for outdoors, drops what Atlas says is indoors", () => {
+    const fits = fitsConversation(ask("get outside"), context);
+    expect(fits(museum)).toBe(false);
+    expect(fits(field)).toBe(true);
+  });
+
+  it("a stated drive removes only what physics or Atlas's route puts past it", () => {
+    const fits = fitsConversation(ask("within 30 minutes"), context);
+    expect(fits(subject("Close", { km: 10 }))).toBe(true);
+    // 30 minutes at 100 km/h is 50 km in a straight line.
+    expect(fits(subject("Far", { km: 80 }))).toBe(false);
+    // Unplaced stays: a missing distance is not a long one.
+    expect(fits(subject("Unplaced", { km: null }))).toBe(true);
+  });
+
+  it("without an origin, a stated drive removes nothing", () => {
+    const fits = fitsConversation(ask("within 30 minutes"), {});
+    expect(fits(subject("Far", { km: 80 }))).toBe(true);
   });
 });

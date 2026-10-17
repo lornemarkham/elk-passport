@@ -209,7 +209,8 @@ doing?_, four tappable example questions, and an answer shelf. Code:
 same fields the five rows hold (how long, who, which day, which town, how far,
 which verb), reusing `/go`'s `readBrief` so both pages read one sentence one
 way. `applyAsk` changes only what the sentence says. Exceptions, each stated
-in code: a typed search / kind / intent is replaced; _worth the drive_ clears
+in code: a kind / intent is replaced (the typed search went with the second
+box on 2026-10-16 — see ADR 006); _worth the drive_ clears
 the radius; naming non-child company drops a child's age. "Nearby" becomes
 15 km only where there is an origin. The sentence lives in the URL as `?ask=`.
 

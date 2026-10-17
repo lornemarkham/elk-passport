@@ -27,13 +27,12 @@ describe("applying a question to the page", () => {
     });
   });
 
-  it("replaces a typed search, a kind and an intent", () => {
+  it("replaces a kind and an intent", () => {
     const next = applyAsk(
-      { query: "farm", kind: "Place", intent: "local", everywhere: true },
+      { kind: "Place", intent: "local", everywhere: true },
       read("something unusual"),
       { hasOrigin: false },
     );
-    expect(next.query).toBeUndefined();
     expect(next.kind).toBeUndefined();
     expect(next.intent).toBeUndefined();
     expect(next.everywhere).toBeUndefined();

@@ -59,22 +59,19 @@ test.describe("arriving", () => {
     await expect(page.getByTestId("ask-input")).toBeVisible();
     await shoot(page, info, "01-arrive");
     const viewport = page.viewportSize()!;
-    if (info.project.name === "mobile") {
-      // The rows are behind one line on a phone…
-      await expect(page.getByTestId("ghad-refine")).toBeVisible();
-      await expect(page.getByTestId("ghad-choice").first()).toBeHidden();
-      // …so the first photograph-bearing section starts above the fold's end
-      // plus one screen, rather than after a thousand pixels of pills.
-      const first = page.getByTestId("possibility").first();
-      const box = await first.boundingBox();
-      expect(box, "no possibility card rendered").not.toBeNull();
-      expect(box!.y + (await page.evaluate(() => window.scrollY))).toBeLessThan(
-        viewport.height * 1.6,
-      );
-    } else {
-      await expect(page.getByTestId("ghad-refine")).toBeHidden();
-      await expect(page.getByTestId("ghad-choice").first()).toBeVisible();
-    }
+    // The rows are behind *Refine* on every screen (ADR 005)…
+    await expect(page.getByTestId("ghad-refine")).toBeVisible();
+    await expect(page.getByTestId("ghad-choice").first()).toBeHidden();
+    // …and there is one text box, so a real photograph-bearing card starts
+    // on the first screen — it was ~1,040px down at 1440×900 and ~950px on a
+    // Pixel 7 while a second search box sat above the results.
+    const first = page.getByTestId("possibility").first();
+    const box = await first.boundingBox();
+    expect(box, "no possibility card rendered").not.toBeNull();
+    expect(box!.y + (await page.evaluate(() => window.scrollY))).toBeLessThan(
+      viewport.height,
+    );
+    await expect(page.getByRole("textbox")).toHaveCount(1);
     // Never scrolls sideways.
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
@@ -84,7 +81,6 @@ test.describe("arriving", () => {
   test("the rows open from the one line, and say what is chosen", async ({
     page,
   }, info) => {
-    test.skip(info.project.name !== "mobile", "the line exists on phones");
     await page.goto("/discovery");
     await page.getByTestId("ghad-refine").click();
     await expect(page.getByTestId("ghad-choice").first()).toBeVisible();
@@ -152,10 +148,12 @@ test.describe("empty results", () => {
   test("a search that matches nothing says so, and the way back is one tap", async ({
     page,
   }, info) => {
+    // An old `?q=` link arrives as the first thing said in the one box.
     await page.goto("/discovery?q=zzzqqqxxx");
-    await expect(page.getByTestId("result-summary")).toContainText(
-      /nothing .* matches that/i,
+    await expect(page.getByTestId("ask-unread")).toContainText(
+      /Atlas knows about/,
     );
+    await expect(page.getByTestId("ask-clear")).toBeVisible();
     await shoot(page, info, "06-empty-search");
   });
 

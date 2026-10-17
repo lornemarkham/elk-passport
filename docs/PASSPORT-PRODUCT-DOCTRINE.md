@@ -746,6 +746,23 @@ From the owner's _Discovery 2.0_ brief, recorded in
 - **AI reads; Atlas decides.** A model may fill what the words left unread, from
   closed sets only; it never names a place or states a fact (§3).
 
+### One search box (decided 2026-10-16)
+
+From the owner's _One search, one intelligent experience_ brief, recorded in
+[ADR 006](architecture/decisions/006-one-search-box.md):
+
+- **Discovery has exactly one text box** — the sentence box. The name search
+  that sat above the results is gone; a place said by name ("Davison
+  Orchards") is answered in the same box, inside the answers already given
+  first and further only when nothing inside them matches, saying so.
+- **The rows, the kind of thing, and looking everywhere live under _Refine_**,
+  one line beside a count of what the answers leave. Nothing there is asked
+  before results.
+- **The editorial sections listen to the conversation.** Once something is
+  said, _Happening today_, _Get outside_ and the rest draw only from what fits
+  it — a stated drive, the sky asked for, what was refused — and a section
+  with nothing that fits is not shown rather than filled.
+
 ---
 
 ## 13. Inspiration — preserved, fenced off

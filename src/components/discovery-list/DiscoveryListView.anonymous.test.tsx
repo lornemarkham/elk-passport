@@ -103,15 +103,17 @@ describe("Discovery for someone who has not signed in", () => {
     expect(screen.getByText("Kekuli Bay")).toBeTruthy();
   });
 
-  it("still searches and narrows", async () => {
+  it("still finds a place by name, in the one box", async () => {
     render(<DiscoveryListView experiences={experiences} displayName={null} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+    fireEvent.change(screen.getByTestId("ask-input"), {
       target: { value: "Kekuli" },
     });
+    fireEvent.click(screen.getByTestId("ask-submit"));
 
-    await waitFor(() => expect(screen.queryByText("Ellison Park")).toBeNull());
-    expect(screen.getByText("Kekuli Bay")).toBeTruthy();
+    const answer = await screen.findByTestId("ask-answer");
+    expect(answer).toHaveTextContent("Kekuli Bay");
+    expect(answer).not.toHaveTextContent("Ellison Park");
   });
 
   it("never asks Atlas for boards it knows nobody owns", async () => {

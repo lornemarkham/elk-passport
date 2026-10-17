@@ -24,6 +24,10 @@ import { PossibilityCard } from "./PossibilityCard";
  *
  * At most one question at a time, and only under an answer (§4): results
  * come first, and a question is a shortcut with tap replies, never a gate.
+ *
+ * **The only text box on Discovery.** A name — "Davison Orchards" — is
+ * answered here too (`findByName`); there used to be a second box for that,
+ * above the results, and nobody could tell which one to use.
  */
 export interface Starter {
   /** On the chip. */
@@ -165,7 +169,7 @@ export function AskDiscovery({
       <form
         role="search"
         aria-label="Ask Discovery"
-        className="flex flex-col gap-2 sm:flex-row"
+        className="flex flex-row gap-2"
         onSubmit={(event) => {
           event.preventDefault();
           send(draft);
@@ -180,20 +184,20 @@ export function AskDiscovery({
           placeholder={
             talking
               ? "Add to it, or change your mind — “actually, indoors”…"
-              : "Something fun with the kids, not too far away…"
+              : "Something fun with the kids nearby — or a place by name…"
           }
           aria-label={
             talking
               ? "Tell Passport more, or change your mind"
               : "What kind of day are you looking for?"
           }
-          className="min-h-14 flex-1 rounded-full bg-white px-6 text-[17px] text-[#111] shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-black/20 ring-inset placeholder:text-black/35 focus:ring-2 focus:ring-black/60 focus:outline-none sm:min-h-16 sm:text-[19px]"
+          className="min-h-14 min-w-0 flex-1 rounded-full bg-white px-6 text-[17px] text-[#111] shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-black/20 ring-inset placeholder:text-black/35 focus:ring-2 focus:ring-black/60 focus:outline-none sm:min-h-16 sm:text-[19px]"
         />
         <button
           type="submit"
           data-testid="ask-submit"
           disabled={!draft.trim()}
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#111] px-7 text-[15px] font-semibold text-white transition-colors hover:bg-[#3a2a1c] disabled:opacity-40 sm:min-h-16 sm:text-[16px]"
+          className="inline-flex min-h-14 shrink-0 items-center justify-center rounded-full bg-[#111] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#3a2a1c] disabled:opacity-40 sm:min-h-16 sm:px-7 sm:text-[16px]"
         >
           {talking ? "Update" : "Show me"}
         </button>

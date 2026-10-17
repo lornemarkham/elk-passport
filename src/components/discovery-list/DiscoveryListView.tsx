@@ -6,17 +6,11 @@ import { ZONE } from "@/domain/experience/eventTime";
 import { Leaf } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { filterExperiences } from "@/domain/discovery/filterExperiences";
-import { rankByQuery } from "@/domain/discovery/searchRank";
 import {
   scopeExperiences,
   scopeLabel,
   type GeographicScope,
 } from "@/domain/discovery/geographicScope";
-import {
-  createEmptyFilterState,
-  type DiscoveryFilterState,
-} from "@/domain/discovery/types";
 import type { Experience } from "@/domain/experience/types";
 import {
   clearStoredActiveBoardId,
@@ -38,7 +32,6 @@ import {
 import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
 import { isOctoberKind } from "@/lib/october/types";
 import { DeleteBoardDialog } from "./DeleteBoardDialog";
-import { DiscoveryListFilters } from "./DiscoveryListFilters";
 import {
   DiscoveryListSidebar,
   type SavedListItem,
@@ -105,7 +98,14 @@ import {
 import { availableKinds, defaultFeed } from "@/domain/discovery/defaultFeed";
 import type { ExperienceKind } from "@/domain/experience/types";
 import { readAsk, readBack, type DiscoveryAsk } from "@/lib/ai/ask/read";
-import { answerAsk, dayHref } from "@/lib/ai/ask/answer";
+import {
+  answerAsk,
+  dayHref,
+  fitsConversation,
+  readNothing,
+} from "@/lib/ai/ask/answer";
+import { findByName } from "@/lib/ai/ask/byName";
+import { kindLabel } from "@/domain/discovery/defaultFeed";
 import { applyAsk, daySentence, windowSentence } from "@/lib/ai/ask/apply";
 import { readConversation } from "@/lib/ai/ask/conversation";
 import { AskDiscovery, startersFor } from "./AskDiscovery";
@@ -177,10 +177,6 @@ const UNPLACED = { state: "unknown" } as const;
 
 /** How many results a page of search or browse shows before offering more. */
 const RESULT_PAGE = 24;
-
-function uniqueSorted(values: string[]): string[] {
-  return Array.from(new Set(values)).sort();
-}
 
 interface DiscoveryListViewProps {
   experiences: Experience[];
@@ -288,7 +284,6 @@ export function DiscoveryListView({
     readSession(new URLSearchParams(params.toString())),
   );
   const intent = session.intent ?? null;
-  const query = session.query ?? "";
   const kind = session.kind ?? null;
   const doing = session.doing;
   /** The town they picked, where they picked one. Verified, or absent. */
@@ -312,7 +307,6 @@ export function DiscoveryListView({
       ...session,
       ...(next ? { intent: next } : { intent: undefined }),
     });
-  const setQuery = (next: string) => change({ ...session, query: next });
   const setKind = (next: ExperienceKind | null) =>
     change({ ...session, ...(next ? { kind: next } : { kind: undefined }) });
   const setSituation = (next: Situation) =>
@@ -362,18 +356,13 @@ export function DiscoveryListView({
   // Which Things are already in this person's October. Loaded once for a
   // signed-in person; a visitor has none and is never asked.
   const [wantedIds, setWantedIds] = useState<ReadonlySet<string>>(new Set());
-  // Which way the same catalogue is being browsed. List is the default because
-  // a returning traveller usually arrives with something in mind.
-  const [filters, setFilters] = useState<DiscoveryFilterState>(
-    createEmptyFilterState(),
-  );
 
   // **Reset during render, not in an effect.** A new question starts at the
   // top of a short page rather than halfway down a long one — and doing that
   // in an effect renders the stale page first and corrects it a frame later,
   // which is the pattern React documents as adjusting state when a prop
   // changes, not as something to put in `useEffect`.
-  const question = JSON.stringify([query, kind, intent, filters]);
+  const question = JSON.stringify([kind, intent]);
   const [lastQuestion, setLastQuestion] = useState(question);
   if (question !== lastQuestion) {
     setLastQuestion(question);
@@ -504,23 +493,6 @@ export function DiscoveryListView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, boardsReady, experiences]);
 
-  const availableMoods = useMemo(
-    () => uniqueSorted(experiences.flatMap((e) => e.moods)),
-    [experiences],
-  );
-  const availableActivities = useMemo(
-    () => uniqueSorted(experiences.flatMap((e) => e.activities)),
-    [experiences],
-  );
-  const availableSeasons = useMemo(
-    () => uniqueSorted(experiences.flatMap((e) => e.seasons)),
-    [experiences],
-  );
-  const availableCompanions = useMemo(
-    () => uniqueSorted(experiences.flatMap((e) => e.companions)),
-    [experiences],
-  );
-
   const savedIds = useMemo(
     () => new Set(visibleBoardItems.map((item) => item.experienceId)),
     [visibleBoardItems],
@@ -540,7 +512,14 @@ export function DiscoveryListView({
   // owes them one ranked answer rather than a composed magazine, and the whole
   // corpus is in scope — `Snowboarding` leaves the composed page and is still
   // findable, which is the entire point of keeping the two questions apart.
-  const browsing = query.trim().length > 0 || kind !== null || intent !== null;
+  //
+  // **One box.** A typed name search used to be a second way into this mode,
+  // from a second text box; names are now answered by the sentence box
+  // (`findByName`). A kind picked under *Refine*, or an intent from an old
+  // link, still browses — but not over a conversation, which it narrows
+  // instead.
+  const talking = (session.ask?.length ?? 0) > 0;
+  const browsing = !talking && (kind !== null || intent !== null);
   // Where Passport is looking, said once and used by the opening, the composed
   // remainder section and nothing else.
   const where = scopeLabel(scope);
@@ -774,28 +753,15 @@ export function DiscoveryListView({
   const everywhereResults = useMemo(() => {
     const scoped = scopeExperiences(placedExperiences, scope);
     const pool = browsing ? scoped : defaultFeed(scoped);
-    const narrowed = filterExperiences(pool, filters)
+    const narrowed = pool
       .filter((experience) => (kind ? experience.kind === kind : true))
       .filter((experience) => (intent ? intentOf(experience) === intent : true))
       .filter((experience) => !savedIds.has(experience.id));
 
-    // **With a query, relevance decides. Without one, a picture does** — and
-    // then the soft answers: a stated welcome for this age, stated hours on
-    // the chosen day, shelter on a wet one.
-    return query.trim().length > 0
-      ? rankByQuery(narrowed, query)
-      : byPreference(pictureFirst(narrowed), preferences);
-  }, [
-    placedExperiences,
-    filters,
-    query,
-    savedIds,
-    browsing,
-    kind,
-    intent,
-    scope,
-    preferences,
-  ]);
+    // **A picture first**, then the soft answers: a stated welcome for this
+    // age, stated hours on the chosen day, shelter on a wet one.
+    return byPreference(pictureFirst(narrowed), preferences);
+  }, [placedExperiences, savedIds, browsing, kind, intent, scope, preferences]);
   const contextResults = useMemo(
     () => everywhereResults.filter(inContext),
     [everywhereResults, inContext],
@@ -910,14 +876,60 @@ export function DiscoveryListView({
   );
 
   /**
+   * **The rest of the page listens too.** Once somebody has said something,
+   * the editorial sections under the answer draw only from what fits it — a
+   * stated drive, the sky they asked for, what they said no to (see
+   * `fitsConversation`) — and from the kind picked under *Refine*. A section
+   * with nothing left that fits is not shown, rather than filled.
+   */
+  const listening = useMemo(() => {
+    const byKind = (e: Experience) => !kind || e.kind === kind;
+    if (!asked) return kind ? answering.filter(byKind) : answering;
+    const fits = fitsConversation(asked, at ? { origin: at } : {});
+    return answering.filter((e) => byKind(e) && fits(e));
+  }, [answering, asked, at, kind]);
+
+  /**
+   * **A place said by name**, from the latest sentence — over everything
+   * Passport holds here, not only the default feed, because naming a place is
+   * the most specific thing a person can say. Inside the answers already given
+   * (the distance, the day, the age) first, as the old search box did; only
+   * when nothing inside them matches does it look further, and each card then
+   * says it is outside what they chose. Loose (a weak name, a description
+   * that mentions the words) only when the sentence was read as nothing else.
+   */
+  const named = useMemo(() => {
+    const latestSaid = session.ask?.[session.ask.length - 1];
+    if (!latestSaid) return [];
+    const alone =
+      modelReadings.get(latestSaid) ?? readAsk(latestSaid, { today: askToday });
+    const options = { loose: readNothing(alone) };
+    const all = scopeExperiences(placedExperiences, scope);
+    const inside = findByName(all.filter(inContext), latestSaid, options);
+    if (inside.length > 0 || !contextLabel) return inside;
+    return findByName(all, latestSaid, options).map((n) => ({
+      ...n,
+      reason: `${n.reason} — outside ${contextLabel}`,
+    }));
+  }, [
+    session.ask,
+    modelReadings,
+    askToday,
+    placedExperiences,
+    scope,
+    inContext,
+    contextLabel,
+  ]);
+
+  /**
    * **The activities, drawn from whatever the page is honestly talking about.**
    *
    * Inside the radius when there is one; near them once there is an origin;
    * the whole feed until then.
    */
   const invitePool = useMemo(
-    () => (radiusActive ? answering : at ? nearYou(answering, at) : answering),
-    [answering, at, radiusActive],
+    () => (radiusActive ? listening : at ? nearYou(listening, at) : listening),
+    [listening, at, radiusActive],
   );
   // **Leaning with the situation** — what was said, and the sky. Ordering
   // only: an activity is offered because Atlas holds places for it here.
@@ -964,7 +976,7 @@ export function DiscoveryListView({
     // subjects with evidence for this day, age and sky, then each section is
     // ordered again after nearest-first so a pictured beach in the rain
     // cannot lead.
-    const sections = composeDiscovery(byPreference(answering, preferences), {
+    const sections = composeDiscovery(byPreference(listening, preferences), {
       now: now ? new Date(now) : new Date(),
       ...(where ? { where } : {}),
       // The page composes around the day somebody picked, so a heading never
@@ -979,7 +991,7 @@ export function DiscoveryListView({
     }));
     // Inside a radius every card is already near; a "Near you" shelf would
     // repeat the page.
-    const near = radiusActive ? undefined : nearSection(answering, at);
+    const near = radiusActive ? undefined : nearSection(listening, at);
     const withNear = near ? [near, ...placed] : placed;
     const withBeyond =
       further && radius !== undefined && beyond.length > 0
@@ -1004,7 +1016,7 @@ export function DiscoveryListView({
     );
     return [{ ...lead, items: order(lead.items) }, ...withBeyond];
   }, [
-    answering,
+    listening,
     now,
     where,
     at,
@@ -1104,7 +1116,7 @@ export function DiscoveryListView({
       .then((result?: { ask?: DiscoveryAsk; by?: string }) => {
         if (result?.by !== "model" || !result.ask) return;
         const now = latest.current.ask ?? [];
-        if (now[now.length - 1] !== said || latest.current.query) return;
+        if (now[now.length - 1] !== said) return;
         setModelReadings((before) => new Map(before).set(said, result.ask!));
         applyReading(latest.current, result.ask, now);
       })
@@ -1126,11 +1138,11 @@ export function DiscoveryListView({
     if (radiusActive && !radiusReady) return undefined;
     // "Worth the drive" looks past the circle the page is drawn in; every
     // other question answers from exactly what the rows leave.
-    const pool =
-      asked.lens === "drive"
-        ? composedPool.filter(answersQuestions)
-        : answering;
+    const pool = (
+      asked.lens === "drive" ? composedPool.filter(answersQuestions) : answering
+    ).filter((e) => !kind || e.kind === kind);
     return answerAsk(pool, asked, {
+      named: kind ? named.filter((n) => n.experience.kind === kind) : named,
       today: askToday,
       ...(at ? { origin: at } : {}),
       ...(originLabel ? { originLabel } : {}),
@@ -1141,6 +1153,8 @@ export function DiscoveryListView({
       seed: session.ask?.length ?? 0,
     });
   }, [
+    named,
+    kind,
     shownIds,
     session.ask,
     asked,
@@ -1806,35 +1820,56 @@ export function DiscoveryListView({
                       : "Passport could not get a position from your browser. Pick a town instead, or try again."
                     : "A distance needs somewhere to measure from. Share your location, or pick the town you are setting out from.",
               },
+              /* **Browse by what Atlas says a thing is** — moved here from
+                 the second search box when that box was removed. Over a
+                 conversation it narrows the answer; on its own it lists the
+                 whole corpus of that kind, past the default feed. */
+              ...(kinds.length > 1
+                ? [
+                    {
+                      key: "kind",
+                      label: "What kind of thing?",
+                      value: kind ?? undefined,
+                      onChange: (next: string | undefined) =>
+                        setKind((next as ExperienceKind | undefined) ?? null),
+                      choices: kinds.map((k) => ({
+                        value: k,
+                        label: kindLabel(k),
+                      })),
+                    },
+                  ]
+                : []),
             ]}
-            after={
-              /* **You changed an answer, and here is what changed** (from
-                 ca80efc). The questions sit at the top and the results a
-                 screen and a half below, so a working filter looked like a
-                 broken one. One line, updating in place, with a link down. */
+            beside={
+              /* **What the answers leave, in a line beside *Refine*.** It
+                 used to be its own paragraph with a "See your ideas" link,
+                 because the results were a screen and a half below. They
+                 now start just under it. */
               <p
                 data-testid="answer-summary"
-                className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px] text-black/60"
+                className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-black/55"
               >
                 {radiusActive && !radiusReady ? (
                   <span>Measuring from {originLabel}…</span>
                 ) : (
                   <>
                     <span className="font-semibold text-[#111] tabular-nums">
-                      {answering.length}
-                      {answering.length === 1 ? " idea" : " ideas"}
+                      {listening.length}
+                      {listening.length === 1 ? " idea" : " ideas"}
                     </span>
                     {contextLabel && <span>{contextLabel}</span>}
                   </>
                 )}
-                <a
-                  href="#discovery-results"
-                  data-testid="see-ideas"
-                  style={{ color: "var(--ghad-accent)" }}
-                  className="font-semibold underline underline-offset-4"
+                {/* October keeps its door: a link out to an Experience with
+                    its own route tree, now on this line rather than a row of
+                    its own between the questions and the photographs. */}
+                <Link
+                  href="/october"
+                  data-testid="october-door"
+                  className="ghad-accent-text inline-flex items-center gap-1 font-semibold underline-offset-4 hover:underline"
                 >
-                  See your ideas
-                </a>
+                  <Leaf className="h-3.5 w-3.5" aria-hidden />I Am October →
+                </Link>
               </p>
             }
           />
@@ -1846,10 +1881,11 @@ export function DiscoveryListView({
               `InvitationStrip` was removed for. The forecast still shapes the
               answer (sheltered first when wet). */}
           {today && !answer && (
-            <div className="mt-6">
+            <div className="mt-3">
               <TodayPanel
                 today={chosenDayLine ?? today}
                 forecastApplies={!chosenDayLine}
+                dated={false}
                 // The five rows above ask who is coming, how old and how long.
                 // This panel answers; it no longer asks the same three things
                 // again twenty pixels lower. See `TodayPanel`.
@@ -1881,46 +1917,11 @@ export function DiscoveryListView({
             </div>
           )}
 
-          {/* **`InvitationStrip` used to sit here and does not any more.**
-            It printed the same verbs, with the same counts, that the first of
-            the five rows above now prints — *Hiking 63 · Swimming 33* twice on
-            one screen, forty pixels apart, one of them labelled "Things you
-            could do" and the other "What do you feel like doing?". Two
-            controls for one question is the filter dashboard this brief rules
-            out. The component is untouched and still used by the labs. */}
-
-          <div
-            aria-hidden
-            className="my-5 border-t border-dashed border-black/25 sm:my-8"
-          />
-
-          {/* **The mode switcher is gone, and with it a duplicate label.**
-            Passport now has a real bar, and its second item says *Discover* —
-            so a tab underneath it also saying *Discover* asked somebody to
-            work out which of the two identically-named things they were in.
-
-            Its only peer was *Inspiration*, which the doctrine fences off
-            from implementation (§13) and the brief fences off from being
-            advertised. Offering it as a tab promises a product that does not
-            exist yet. The experimental feed and its shelves are untouched in
-            the codebase — `InspirationFeed.tsx`, `inspirationShelves.ts` —
-            because that is real work worth keeping. It is simply not on the
-            nav.
-
-            October keeps its door. It is a link out to an Experience with its
-            own route tree, not a way of looking at this page. */}
-          <div className="flex items-center justify-end border-b border-black/10 pb-2">
-            <Link
-              href="/october"
-              data-testid="october-door"
-              className="ghad-accent-text inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-black/25 px-4 text-sm font-medium transition-colors hover:border-black/55 hover:bg-black/10"
-            >
-              <Leaf className="h-4 w-4" aria-hidden />I Am October
-              <span className="text-black/50">→</span>
-            </Link>
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 gap-6 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* **No rule, no door row, no second search box** between the
+              question and the photographs. The October door moved up beside
+              *Refine*; the mode switcher and `InvitationStrip` went earlier
+              (see git history for why). */}
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_320px]">
             {/* `min-w-0`: a grid item sizes to its content by default, so the
                 shelves' `overflow-x-auto` never engaged and the **document**
                 scrolled sideways by 2,440px at 1440 instead. */}
@@ -1929,34 +1930,73 @@ export function DiscoveryListView({
               className="flex min-w-0 scroll-mt-4 flex-col gap-6"
             >
               <>
-                <DiscoveryListFilters
-                  query={query}
-                  onQueryChange={setQuery}
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  availableMoods={availableMoods}
-                  availableActivities={availableActivities}
-                  availableSeasons={availableSeasons}
-                  availableCompanions={availableCompanions}
-                  resultCount={visible.length}
-                  {...(intent
-                    ? {
-                        within:
-                          INTENTS.find((i) => i.key === intent)?.label ??
-                          intent,
+                {/* **The kind they picked, said once, with the one way to
+                    widen it.** This was the second search box; what it did
+                    that nothing else did — browse by kind, look past the
+                    answers above — lives under *Refine* and here. */}
+                {browsing && (
+                  <p
+                    data-testid="result-summary"
+                    className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-black/55"
+                  >
+                    <span className="font-semibold text-[#111]">
+                      {visible.length === 0
+                        ? "Nothing here"
+                        : `${visible.length} ${visible.length === 1 ? "result" : "results"}`}
+                      {kind
+                        ? ` in ${kindLabel(kind)}`
+                        : intent
+                          ? ` in ${INTENTS.find((i) => i.key === intent)?.label ?? intent}`
+                          : ""}
+                    </span>
+                    {everywhere ? (
+                      <>
+                        <span>— everywhere, ignoring your answers above.</span>
+                        {contextLabel && (
+                          <button
+                            type="button"
+                            data-testid="search-in-context"
+                            onClick={() => setEverywhere(false)}
+                            className="ghad-accent-text font-semibold underline underline-offset-4"
+                          >
+                            Only {contextLabel}
+                          </button>
+                        )}
+                      </>
+                    ) : contextLabel ? (
+                      <>
+                        <span>{contextLabel}</span>
+                        {everywhereResults.length > contextResults.length && (
+                          <button
+                            type="button"
+                            data-testid="search-everywhere"
+                            onClick={() => setEverywhere(true)}
+                            className="ghad-accent-text font-semibold underline underline-offset-4"
+                          >
+                            Everywhere —{" "}
+                            {everywhereResults.length - contextResults.length}{" "}
+                            more
+                          </button>
+                        )}
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      data-testid="browse-clear"
+                      onClick={() =>
+                        change({
+                          ...session,
+                          kind: undefined,
+                          intent: undefined,
+                          everywhere: undefined,
+                        })
                       }
-                    : {})}
-                  kinds={kinds}
-                  selectedKind={kind}
-                  onKindChange={setKind}
-                  browsing={browsing}
-                  {...(contextLabel ? { context: contextLabel } : {})}
-                  everywhere={everywhere}
-                  onEverywhere={setEverywhere}
-                  outsideCount={
-                    everywhereResults.length - contextResults.length
-                  }
-                />
+                      className="font-semibold text-black/45 underline underline-offset-4 hover:text-black/80"
+                    >
+                      Back to everything
+                    </button>
+                  </p>
+                )}
 
                 {/* **Composed when nobody has asked for anything; ranked when
                     they have.** Those are different jobs. The composed page
@@ -2023,11 +2063,11 @@ export function DiscoveryListView({
                           onClick={() => setEverywhere(true)}
                           className="ghad-accent-text font-semibold underline underline-offset-4"
                         >
-                          Search everywhere — {everywhereResults.length} found
+                          Look everywhere — {everywhereResults.length} found
                         </button>
                       </>
                     ) : (
-                      "Nothing matches that. Try fewer words, or clear what you have chosen."
+                      "Nothing of that kind fits what you have chosen. Try another kind, or loosen an answer under Refine."
                     )}
                   </div>
                 ) : (

@@ -288,22 +288,28 @@ describe("each tier genuinely returns more than the last", () => {
     expect(window.location.search).not.toMatch(/\d+\.\d+/);
   });
 
-  it("searches inside the radius, and widens only when asked", async () => {
+  it("finds by name inside the radius, and looks further only when nothing inside matches", async () => {
     search = new URLSearchParams("at=vernon");
     renderPage();
     pick("15 km");
     await waitFor(() => expect(has("Polson Park")).toBe(true));
-    fireEvent.change(screen.getByPlaceholderText(/Search places/), {
-      target: { value: "Park" },
-    });
-    expect(screen.getByTestId("search-scope").textContent).toMatch(
-      /within 15 km of Vernon/,
-    );
-    expect(has("Ellison Park")).toBe(true);
-    expect(has("Kalamalka Lake Park")).toBe(false);
-    fireEvent.click(screen.getByTestId("search-everywhere"));
-    expect(has("Kalamalka Lake Park")).toBe(true);
-    // Widening search resets nothing above it.
+    const say = (said: string) => {
+      fireEvent.change(screen.getByTestId("ask-input"), {
+        target: { value: said },
+      });
+      fireEvent.click(screen.getByTestId("ask-submit"));
+    };
+    say("Ellison Park");
+    let answer = screen.getByTestId("ask-answer");
+    expect(answer).toHaveTextContent("Ellison Park");
+    expect(answer).not.toHaveTextContent("outside");
+    // Kalamalka Lake Park is past 15 km: named, it is still found, and the
+    // card says it is outside what they chose.
+    say("Kalamalka Lake Park");
+    answer = screen.getByTestId("ask-answer");
+    expect(answer).toHaveTextContent("Kalamalka Lake Park");
+    expect(answer).toHaveTextContent(/outside within 15 km of Vernon/);
+    // Naming a place resets nothing above it.
     expect(new URLSearchParams(window.location.search).get("within")).toBe(
       "15",
     );

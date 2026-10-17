@@ -146,16 +146,18 @@ beforeEach(() => {
 });
 
 describe("the exploration is written down as it happens", () => {
-  it("keeps a category, a search, a situation and a verb in the URL", async () => {
+  it("keeps what they said, a situation and a verb in the URL", async () => {
     view(false);
     fireEvent.click(control("company", "a young child"));
     await waitFor(() => expect(here()).toContain("who=child"));
     fireEvent.click(control("time", "half a day"));
-    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+    fireEvent.change(screen.getByTestId("ask-input"), {
       target: { value: "farm" },
     });
-    await waitFor(() => expect(here()).toContain("q=farm"));
+    fireEvent.click(screen.getByTestId("ask-submit"));
+    await waitFor(() => expect(here()).toContain("ask=farm"));
     expect(here()).toContain("how=half-day");
+    expect(here()).toContain("who=child");
   });
 
   it("starts where a link put it, which is what a refresh is", async () => {
@@ -163,9 +165,9 @@ describe("the exploration is written down as it happens", () => {
     // linked into an exploration it can be refreshed inside one.
     view(
       false,
-      "https://passport.test/discovery?q=farm&who=child&how=half-day",
+      "https://passport.test/discovery?ask=farm&who=child&how=half-day",
     );
-    expect(screen.getByPlaceholderText(/search/i)).toHaveValue("farm");
+    expect(screen.getByTestId("ask-conversation")).toHaveTextContent("farm");
     expect(control("company", "a young child")).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -209,8 +211,9 @@ describe("being interrupted by sign-in", () => {
     });
 
     const next = decodeURIComponent(sent.split("next=")[1] ?? "");
-    // This used to be the literal string "/discovery".
-    expect(next).toContain("q=farm");
+    // This used to be the literal string "/discovery". An old link's `q`
+    // comes back as the first thing said.
+    expect(next).toContain("ask=farm");
     expect(next).toContain("who=child");
     expect(next).toContain("how=half-day");
     // The colon stays percent-encoded inside the `next` value, which is what
@@ -250,7 +253,7 @@ describe("coming back signed in", () => {
   it("puts them back in the exploration they left", async () => {
     view(true, RETURNED);
     await waitFor(() => expect(wantToDo).toHaveBeenCalled());
-    expect(screen.getByPlaceholderText(/search/i)).toHaveValue("farm");
+    expect(screen.getByTestId("ask-conversation")).toHaveTextContent("farm");
     expect(control("company", "a young child")).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -261,8 +264,8 @@ describe("coming back signed in", () => {
     view(true, RETURNED);
     await waitFor(() => expect(wantToDo).toHaveBeenCalled());
     expect(here()).not.toContain("do=");
-    // ...and the exploration is still there.
-    expect(here()).toContain("q=farm");
+    // ...and the exploration is still there — the old `q` now a sentence.
+    expect(here()).toContain("ask=farm");
     expect(here()).toContain("who=child");
   });
 

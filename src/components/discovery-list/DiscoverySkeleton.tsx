@@ -32,54 +32,49 @@ export function DiscoverySkeleton({ today }: { readonly today?: string }) {
           <section>
             <FeelLikeHeading {...(today ? { today } : {})} />
 
-            {/* Where the question box and its four doors are. */}
+            {/* Where the one question box and its doors are. */}
             <div className="mt-5 sm:mt-7" aria-hidden>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <span className="min-h-12 flex-1 animate-pulse rounded-full bg-black/[0.05] ring-1 ring-black/10 ring-inset" />
-                <span className="min-h-12 w-full animate-pulse rounded-full bg-black/[0.05] sm:w-[104px]" />
+              <div className="flex flex-row gap-2">
+                <span className="min-h-14 min-w-0 flex-1 animate-pulse rounded-full bg-black/[0.05] ring-1 ring-black/10 ring-inset sm:min-h-16" />
+                <span className="min-h-14 w-[96px] shrink-0 animate-pulse rounded-full bg-black/[0.05] sm:min-h-16 sm:w-[128px]" />
               </div>
               <div className="mt-3 flex gap-2 overflow-hidden pb-1 sm:flex-wrap">
-                {[236, 244, 276, 252].map((width) => (
+                {[96, 120, 132, 160, 116].map((width) => (
                   <span
                     key={width}
                     style={{ width }}
-                    className="inline-flex min-h-10 shrink-0 animate-pulse rounded-full bg-black/[0.04] ring-1 ring-black/10 ring-inset"
+                    className="inline-flex min-h-11 shrink-0 animate-pulse rounded-full bg-black/[0.04] ring-1 ring-black/10 ring-inset"
                   />
                 ))}
               </div>
             </div>
 
-            {/* The rows, at the same offset the real ones sit at. The first
-                row's label says what is happening, in the label's own type, so
-                nobody reads a blank as broken and nothing is pushed down. */}
-            <div className="mt-5 sm:mt-8">
-              {[3, 4, 3].map((choices, row) => (
-                <div
-                  key={row}
-                  className="border-t border-black/10 py-3 sm:py-3.5"
-                >
-                  {row === 0 ? (
-                    <p
-                      role="status"
-                      className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase"
-                    >
-                      Finding what’s on and what’s worth doing…
-                    </p>
-                  ) : (
-                    <span
-                      aria-hidden
-                      className="block h-[11px] w-40 animate-pulse rounded bg-black/[0.06]"
-                    />
-                  )}
-                  <div aria-hidden className="mt-2 flex gap-2 overflow-hidden">
-                    {Array.from({ length: choices }, (_, choice) => (
-                      <span
-                        key={choice}
-                        className="inline-flex min-h-11 w-28 shrink-0 animate-pulse rounded-full bg-black/[0.04] ring-1 ring-black/10 ring-inset"
-                      />
-                    ))}
-                  </div>
-                </div>
+            {/* Where *Refine* and the summary line sit — the rows themselves
+                are behind it on the real page, so they are not drawn here. */}
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <span
+                aria-hidden
+                className="min-h-11 w-full animate-pulse rounded-full bg-black/[0.04] ring-1 ring-black/10 ring-inset sm:w-[22rem]"
+              />
+              <p
+                role="status"
+                className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase"
+              >
+                Finding what’s on and what’s worth doing…
+              </p>
+            </div>
+
+            {/* **Then photographs**, where the first section's cards land, so
+                the page that replaces this one does not jump. */}
+            <div
+              aria-hidden
+              className="mt-8 flex gap-4 overflow-hidden sm:gap-6"
+            >
+              {[0, 1, 2, 3].map((card) => (
+                <span
+                  key={card}
+                  className="aspect-[4/3] w-[78vw] shrink-0 animate-pulse rounded-2xl bg-black/[0.05] sm:w-[320px] lg:w-[340px]"
+                />
               ))}
             </div>
           </section>

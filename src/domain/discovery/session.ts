@@ -21,7 +21,7 @@ import { townById } from "./towns";
  * because all three are the same problem.
  *
  * ```
- * /discovery?intent=local&q=farm&who=child&how=half-day
+ * /discovery?intent=local&who=child&how=half-day&ask=a+farm
  * ```
  *
  * Short keys because this is a URL somebody might see, and a stable order so
@@ -29,8 +29,6 @@ import { townById } from "./towns";
  */
 export interface DiscoverySession {
   readonly intent?: IntentKey;
-  /** What they typed. */
-  readonly query?: string;
   readonly kind?: ExperienceKind;
   readonly company?: Company;
   readonly window?: Window;
@@ -146,16 +144,21 @@ export function readSession(params: URLSearchParams): DiscoverySession {
   const at = townById(params.get("at")?.trim())?.id;
   // **A conversation is the sentences, in order** — `?ask=…&ask=…`. One
   // `ask` is the single question this used to hold, so old links still work.
-  const ask = params
+  // **One box, one state.** Discovery used to hold a typed search (`?q=`)
+  // beside the conversation, in a second box. The second box is gone; an old
+  // link's search arrives as the first thing said, which the sentence box
+  // answers by name (`findByName`) when it reads as nothing else.
+  const said = params
     .getAll("ask")
-    .map((said) => said.trim().slice(0, 300))
-    .filter(Boolean)
-    .slice(-TURNS_KEPT);
+    .map((sentence) => sentence.trim().slice(0, 300))
+    .filter(Boolean);
+  const ask = (said.length === 0 && query ? [query.slice(0, 300)] : said).slice(
+    -TURNS_KEPT,
+  );
   return {
     ...(oneOf(INTENT_KEYS, params.get("intent"))
       ? { intent: oneOf(INTENT_KEYS, params.get("intent"))! }
       : {}),
-    ...(query ? { query } : {}),
     ...(oneOf(KINDS, params.get("kind"))
       ? { kind: oneOf(KINDS, params.get("kind"))! }
       : {}),
@@ -179,7 +182,6 @@ export function readSession(params: URLSearchParams): DiscoverySession {
 export function sessionQuery(session: DiscoverySession): string {
   const params = new URLSearchParams();
   if (session.intent) params.set("intent", session.intent);
-  if (session.query?.trim()) params.set("q", session.query.trim());
   if (session.kind) params.set("kind", session.kind);
   if (session.company) params.set("who", session.company);
   if (session.window) params.set("how", session.window);

@@ -23,7 +23,11 @@ export function FeelLikeHeading({
           screen has — a brand that moves from page to page is not a brand, and
           a colour choice shown on Discovery looks like a property of
           Discovery. See `PassportNav`. */}
-      <h1 className="ghad-display max-w-[16ch] text-[34px] leading-[0.95] font-extrabold tracking-[-0.045em] text-balance text-[#111] sm:text-[64px]">
+      {/* **Smaller than it was** (64px → 48px wide, 34px → 30px on a phone).
+          Every line of headline sat between somebody and the first
+          photograph; the question still leads, at a size that leaves room
+          for an answer on the first screen. */}
+      <h1 className="ghad-display max-w-[22ch] text-[30px] leading-[0.95] font-extrabold tracking-[-0.045em] text-balance text-[#111] sm:text-[48px]">
         What kind of day are you looking for?
       </h1>
 
@@ -34,7 +38,7 @@ export function FeelLikeHeading({
       {(today || where) && (
         <p
           data-testid="discovery-context"
-          className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold tracking-[0.12em] uppercase"
+          className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold tracking-[0.12em] uppercase"
           style={{ color: "var(--ghad-accent)" }}
         >
           {today && <span className="tabular-nums">{today}</span>}
@@ -86,6 +90,7 @@ export function FeelLikeDoing({
   where,
   lead,
   after,
+  beside,
   collapseOnPhone = false,
   collapsed = false,
 }: {
@@ -113,6 +118,8 @@ export function FeelLikeDoing({
   /** Between the two facts and the rows — where Discovery's question box sits. */
   readonly lead?: React.ReactNode;
   readonly after?: React.ReactNode;
+  /** On the same line as *Refine* — what the answers currently leave. */
+  readonly beside?: React.ReactNode;
   /**
    * **Possibilities before questions, on a phone.** The rows stack to about a
    * thousand pixels — three screens of questions before one photograph, which
@@ -144,35 +151,38 @@ export function FeelLikeDoing({
 
       {lead}
 
-      {folding && (
-        <button
-          type="button"
-          data-testid="ghad-refine"
-          aria-expanded={open}
-          aria-controls="ghad-rows"
-          onClick={() => setOpen(!open)}
-          className={`mt-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-full px-4 text-left text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset ${collapsed ? "sm:max-w-xl" : "sm:hidden"}`}
-        >
-          <span className="truncate">
-            {chosen.length > 0
-              ? chosen.join(" · ")
-              : collapsed
-                ? "Fine-tune it yourself"
-                : "Narrow it down"}
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-1 text-black/50">
-            {open
-              ? "Hide"
-              : chosen.length > 0
-                ? "Change"
-                : "Who, when, how far"}
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-              aria-hidden
-            />
-          </span>
-        </button>
-      )}
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        {folding && (
+          <button
+            type="button"
+            data-testid="ghad-refine"
+            aria-expanded={open}
+            aria-controls="ghad-rows"
+            onClick={() => setOpen(!open)}
+            className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-full px-4 text-left text-[14px] font-semibold text-[#111] ring-1 ring-black/15 ring-inset ${collapsed ? "sm:w-auto sm:max-w-xl sm:min-w-[22rem]" : "sm:hidden"}`}
+          >
+            <span className="truncate">
+              {chosen.length > 0
+                ? chosen.join(" · ")
+                : collapsed
+                  ? "Refine"
+                  : "Narrow it down"}
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1 text-black/50">
+              {open
+                ? "Hide"
+                : chosen.length > 0
+                  ? "Change"
+                  : "Who, when, how far, what kind"}
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </span>
+          </button>
+        )}
+        {beside}
+      </div>
 
       <div
         id="ghad-rows"

@@ -24,7 +24,6 @@ import {
 
 const FULL: DiscoverySession = {
   intent: "local",
-  query: "farm",
   kind: "Place",
   company: "child",
   window: "half-day",
@@ -46,16 +45,24 @@ describe("writing an exploration down", () => {
     // of where it has been.
     expect(sessionQuery(FULL)).toBe(sessionQuery({ ...FULL }));
     expect(sessionQuery(FULL)).toBe(
-      "intent=local&q=farm&kind=Place&who=child&how=half-day&doing=Playground",
+      "intent=local&kind=Place&who=child&how=half-day&doing=Playground",
     );
   });
 
-  it("keeps what somebody typed, spaces and all", () => {
-    const href = sessionHref({ query: "kangaroo creek" });
-    expect(href).toContain("q=kangaroo+creek");
-    expect(readSession(new URLSearchParams(href.split("?")[1]))).toEqual({
-      query: "kangaroo creek",
+  it("reads an old link's typed search as the first thing said", () => {
+    // There is one box now. `?q=` from before arrives as a sentence, which
+    // the sentence box answers by name when it reads as nothing else.
+    expect(readSession(new URLSearchParams("q=kangaroo+creek"))).toEqual({
+      ask: ["kangaroo creek"],
     });
+    // A conversation already in the link wins; the old search is dropped.
+    expect(
+      readSession(new URLSearchParams("q=farm&ask=something+indoors")),
+    ).toEqual({ ask: ["something indoors"] });
+    // And it is never written back as `q`.
+    expect(sessionHref({ ask: ["kangaroo creek"] })).toBe(
+      "/discovery?ask=kangaroo+creek",
+    );
   });
 });
 
@@ -97,7 +104,7 @@ describe("the button they pressed before being interrupted", () => {
       do: pendingParam({ act: "want", id: "kangaroo-creek" }),
     });
     expect(href).toContain("intent=local");
-    expect(href).toContain("q=farm");
+    expect(href).toContain("who=child");
     expect(href).toContain("do=want%3Akangaroo-creek");
   });
 

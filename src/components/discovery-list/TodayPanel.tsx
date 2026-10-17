@@ -88,6 +88,7 @@ export function TodayPanel({
   onSituation,
   asking = true,
   forecastApplies = true,
+  dated = true,
   place,
   origin,
   withinLabel,
@@ -160,6 +161,12 @@ export function TodayPanel({
    * than reusing it.
    */
   readonly forecastApplies?: boolean;
+  /**
+   * Whether this panel says the date. Discovery's heading already does, two
+   * lines up; saying it twice cost a phone a line between the question and
+   * the first photograph.
+   */
+  readonly dated?: boolean;
 }) {
   const shown = forecastApplies ? weather : undefined;
   const answer = answerFor(experiences, situation, { wet: shown?.wet });
@@ -170,42 +177,44 @@ export function TodayPanel({
   return (
     <section
       data-testid="today-panel"
-      className="border-t border-black/10 pt-5"
+      className={dated ? "border-t border-black/10 pt-5" : ""}
     >
       {/* What Passport already knows, said once and never asked for. */}
-      <p
-        data-testid="today-known"
-        className="ghad-accent-text flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide uppercase"
-      >
-        <span>{today}</span>
-        {shown && (
-          <>
-            <Dot />
-            <span className="inline-flex items-center gap-1">
-              {shown.wet ? (
-                <CloudRain className="h-3.5 w-3.5" aria-hidden />
-              ) : (
-                <Sun className="h-3.5 w-3.5" aria-hidden />
-              )}
-              {shown.description ?? (shown.wet ? "Rain expected" : "Dry")}
-            </span>
-            {shown.area && (
-              <>
-                <Dot />
-                {/* **"Vernon" and "the Vernon area" are different claims.**
+      {(dated || shown) && (
+        <p
+          data-testid="today-known"
+          className="ghad-accent-text flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium tracking-wide uppercase"
+        >
+          {dated && <span>{today}</span>}
+          {shown && (
+            <>
+              {dated && <Dot />}
+              <span className="inline-flex items-center gap-1">
+                {shown.wet ? (
+                  <CloudRain className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <Sun className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {shown.description ?? (shown.wet ? "Rain expected" : "Dry")}
+              </span>
+              {shown.area && (
+                <>
+                  <Dot />
+                  {/* **"Vernon" and "the Vernon area" are different claims.**
                     One says the forecast is for Vernon; the other says it is
                     the area's default and not about the reader. The second is
                     what the page can honestly say until somebody taps. */}
-                <span data-testid="today-area">
-                  {place.state === "observed"
-                    ? shown.area
-                    : `${shown.area} area`}
-                </span>
-              </>
-            )}
-          </>
-        )}
-      </p>
+                  <span data-testid="today-area">
+                    {place.state === "observed"
+                      ? shown.area
+                      : `${shown.area} area`}
+                  </span>
+                </>
+              )}
+            </>
+          )}
+        </p>
+      )}
 
       {/* One line, and only where there is something true to say. No modal, no
           up-front explanation of what geolocation is: the offer is the
