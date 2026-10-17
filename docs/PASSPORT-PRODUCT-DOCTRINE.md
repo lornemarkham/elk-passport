@@ -763,6 +763,26 @@ From the owner's _One search, one intelligent experience_ brief, recorded in
   it — a stated drive, the sky asked for, what was refused — and a section
   with nothing that fits is not shown rather than filled.
 
+### Every activity is findable (decided 2026-10-16)
+
+From the owner's _Discovery activity taxonomy and explorer_ brief, recorded in
+[ADR 007](architecture/decisions/007-activity-explorer.md):
+
+- **The full range of activities is discoverable, not just the popular
+  ones.** Behind one _All activities_ link sits every activity Passport
+  recognises in Atlas's words, on nine shelves (Outdoors, Adventure, Water,
+  Winter, Arts & Culture, Entertainment, Family, Food & Drink, Relaxation).
+  A rare activity with one place is listed. An out-of-season one says when it
+  usually is. The page itself stays uncluttered: the row under Refine still
+  offers a handful.
+- **Near, further away, and nothing yet are three different answers**, and
+  the explorer shows which one applies to each activity.
+- **The shelves are Passport's; membership is still Atlas's.** Atlas has
+  Activity entities and no grouping above them, so the shelves add a layer
+  over Atlas's vocabulary rather than replacing it.
+- **Picking an activity is saying it**: the same reader and the same answer as
+  a typed sentence.
+
 ---
 
 ## 13. Inspiration — preserved, fenced off

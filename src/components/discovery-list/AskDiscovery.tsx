@@ -95,6 +95,7 @@ export function AskDiscovery({
   savingId,
   onSave,
   originPicker,
+  explore,
 }: {
   /** Every sentence of the conversation so far, oldest first. */
   readonly said?: readonly string[];
@@ -120,6 +121,8 @@ export function AskDiscovery({
   readonly onSave: (experience: Experience) => void;
   /** Offered under the "from where?" gap, so the question and its answer meet. */
   readonly originPicker?: React.ReactNode;
+  /** The way into every activity — after the starters, and after the alternatives. */
+  readonly explore?: React.ReactNode;
 }) {
   const talking = (said?.length ?? 0) > 0;
   // **Empty once something is said.** The sentence is now in the
@@ -216,6 +219,7 @@ export function AskDiscovery({
               {starter.label}
             </button>
           ))}
+          {explore}
         </div>
       )}
 
@@ -357,14 +361,16 @@ export function AskDiscovery({
             )}
           </div>
 
-          {alternatives.length > 0 && (
+          {(alternatives.length > 0 || explore) && (
             <div
               data-testid="ask-alternatives"
               className="mt-4 flex flex-wrap items-center gap-1.5"
             >
-              <span className="mr-1 text-[12.5px] font-semibold text-black/45">
-                Or around here:
-              </span>
+              {alternatives.length > 0 && (
+                <span className="mr-1 text-[12.5px] font-semibold text-black/45">
+                  Or around here:
+                </span>
+              )}
               {alternatives.map((alternative) => (
                 <button
                   key={alternative.label}
@@ -376,6 +382,7 @@ export function AskDiscovery({
                   {alternative.label}
                 </button>
               ))}
+              {explore}
             </div>
           )}
         </section>

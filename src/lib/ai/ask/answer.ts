@@ -26,6 +26,8 @@ import {
   activityByKey,
   activityEvidence,
   doesActivity,
+  inSeason,
+  seasonLine,
   type Activity,
   type ActivityTag,
 } from "@/domain/discovery/activities";
@@ -783,6 +785,13 @@ function score(
     const activity = activityByKey(ask.doing);
     if (activity && activityEvidence(experience, activity).length === 0)
       value -= 9;
+    // Somewhere that does it and can be measured leads somewhere that does
+    // it and cannot.
+    else if (
+      context.origin &&
+      distanceTo(experience, context.origin) === undefined
+    )
+      value -= 3;
   }
 
   // **Different from what was just shown**: less of the same kinds and
@@ -1332,8 +1341,15 @@ export function answerAsk(
   context: AnswerContext,
 ): Answer {
   const day = ask.on ?? context.today;
+  const named = activityByKey(ask.doing);
+  const doer = (e: Experience) =>
+    named !== undefined && activityEvidence(e, named).length > 0;
+  // **Doing what they named is substance enough.** A ski hill with no
+  // photograph and one short line is still the answer to "skiing" — the only
+  // one, where it is the only ski hill — and a rare activity found in the
+  // explorer must not vanish for want of a picture.
   let candidates = onTheDay(pool, ask.on, context.today)
-    .filter(substantial)
+    .filter((e) => substantial(e) || doer(e))
     .filter((e) => !NOT_AN_OUTING.test(e.subtype ?? ""));
 
   if (ask.lens === "drive" && context.origin) {
@@ -1395,10 +1411,14 @@ export function answerAsk(
   // — five cinemas with no location are still the honest answer to "movies",
   // each saying it cannot be placed — rather than replaced by something
   // that can be measured and is not a film.
-  const named = activityByKey(ask.doing);
-  const doer = (e: Experience) =>
-    named !== undefined && activityEvidence(e, named).length > 0;
-  const isPlaced = (e: Experience) => placed(e, context.origin) || doer(e);
+  // Not one Atlas places in another area, though: from Vancouver, an
+  // unplaced bird observatory Atlas files under the Okanagan is not an answer.
+  const isPlaced = (e: Experience) =>
+    placed(e, context.origin) ||
+    (doer(e) &&
+      (context.home === undefined ||
+        areaOf(e) === undefined ||
+        areaOf(e) === context.home));
   if (context.origin) {
     const close = aboutClose(ask);
     candidates = candidates.filter(
@@ -1528,6 +1548,17 @@ export function answerAsk(
   if (activity && !doingFound)
     extras.push(
       `Atlas doesn't list anywhere for ${activity.label.toLowerCase()} that fits the rest of this, so these are the nearest things to it.`,
+    );
+  // **Out of season is said, not hidden.** Someone who asks for skiing in
+  // October gets the ski hills Atlas holds — and the calendar, as a general
+  // rule rather than a claim about any of them.
+  const season =
+    activity && doingFound && !inSeason(activity, day)
+      ? seasonLine(activity)
+      : undefined;
+  if (activity && season)
+    extras.push(
+      `${activity.label} usually runs ${season} here — a general rule for BC, not something Atlas says about these places, so check before you go.`,
     );
   // Without an origin the "From where?" gap below says it once.
   if (limit !== undefined && ask.lens !== "drive" && context.origin)

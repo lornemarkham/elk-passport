@@ -62,6 +62,7 @@ import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { TodayPanel } from "./TodayPanel";
 import type { DayWeather, Situation } from "@/domain/discovery/situation";
 import {
+  distanceTo,
   measuredWithin,
   nearSection,
   nearYou,
@@ -71,9 +72,15 @@ import {
 } from "@/domain/discovery/proximity";
 import { invitationSection } from "@/domain/discovery/directions";
 import {
+  activityExplorer,
   activityForDoing,
   activityOffers,
+  placesByActivity,
+  relatedActivities,
+  type Activity,
 } from "@/domain/discovery/activities";
+import { areaOf } from "@/domain/discovery/area";
+import { ActivityExplorer, ActivityExplorerButton } from "./ActivityExplorer";
 import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
@@ -931,31 +938,108 @@ export function DiscoveryListView({
     () => (radiusActive ? listening : at ? nearYou(listening, at) : listening),
     [listening, at, radiusActive],
   );
+  /** Which places Atlas's words put in each activity, in that pool. */
+  const localByKey = useMemo(() => placesByActivity(invitePool), [invitePool]);
   // **Leaning with the situation** — what was said, and the sky. Ordering
   // only: an activity is offered because Atlas holds places for it here.
   const allOffers = useMemo(
     () =>
-      activityOffers(invitePool, {
-        day: on ?? todayKey,
-        wet,
-        ...(asked?.shelter ? { shelter: asked.shelter } : {}),
-        child: situation.company === "child",
-        pair: Boolean(asked?.pair),
-        adventure: asked?.lens === "adventure",
-        evening: asked?.partOfDay === "evening",
-        gentle: Boolean(asked?.gentle),
-        ...(asked?.avoid ? { without: asked.avoid } : {}),
-      }),
-    [invitePool, on, todayKey, wet, asked, situation.company],
+      activityOffers(
+        invitePool,
+        {
+          day: on ?? todayKey,
+          wet,
+          ...(asked?.shelter ? { shelter: asked.shelter } : {}),
+          child: situation.company === "child",
+          pair: Boolean(asked?.pair),
+          adventure: asked?.lens === "adventure",
+          evening: asked?.partOfDay === "evening",
+          gentle: Boolean(asked?.gentle),
+          ...(asked?.avoid ? { without: asked.avoid } : {}),
+        },
+        localByKey,
+      ),
+    [invitePool, on, todayKey, wet, asked, situation.company, localByKey],
   );
   const chosenActivity = activityForDoing(doing);
-  const chosen = chosenActivity
-    ? allOffers.find((offer) => offer.activity.key === chosenActivity.key)
-    : undefined;
+  // **A chosen activity stands on its own evidence**, not on making the
+  // row's cut: kayaking picked in the explorer, or skiing in October, still
+  // leads the page with every place Atlas holds for it here.
+  const chosen = useMemo(() => {
+    if (!chosenActivity) return undefined;
+    const offered = allOffers.find(
+      (offer) => offer.activity.key === chosenActivity.key,
+    );
+    if (offered) return offered;
+    const places = localByKey.get(chosenActivity.key) ?? [];
+    return places.length > 0 ? { activity: chosenActivity, places } : undefined;
+  }, [chosenActivity, allOffers, localByKey]);
   const offers = useMemo(() => {
     const top = allOffers.slice(0, ACTIVITY_CHIPS);
     return chosen && !top.includes(chosen) ? [...top, chosen] : top;
   }, [allOffers, chosen]);
+
+  /**
+   * **After an activity is said, its neighbours first** — kayaking leads to
+   * canoeing and paddleboarding, birdwatching to wildlife watching — where
+   * Atlas holds places for them here; then the row's own offers.
+   */
+  const alternatives = useMemo(() => {
+    const said = asked?.doing;
+    const near = said
+      ? relatedActivities(said)
+          .filter((a) => (localByKey.get(a.key)?.length ?? 0) > 0)
+          .map((activity) => ({ activity }))
+      : [];
+    const seen = new Set<string>(said ? [said] : []);
+    return [...near, ...offers]
+      .filter(({ activity }) => {
+        if (seen.has(activity.key)) return false;
+        seen.add(activity.key);
+        return true;
+      })
+      .slice(0, 6)
+      .map(({ activity }) => ({ label: activity.label, say: activity.label }));
+  }, [asked?.doing, localByKey, offers]);
+
+  /**
+   * **Every activity, behind one button** (`ActivityExplorer`). "Here" is the
+   * pool the row draws from, plus what Atlas places in this area without a
+   * distance — the same allowance the answer makes — so the explorer never
+   * says "nothing near" about a ski hill the answer would then show.
+   * Counted only while it is open.
+   */
+  const [exploring, setExploring] = useState(false);
+  const explorer = useMemo(() => {
+    if (!exploring) return [];
+    const unplaced =
+      at && home
+        ? listening.filter(
+            (e) => distanceTo(e, at) === undefined && areaOf(e) === home,
+          )
+        : [];
+    const here =
+      unplaced.length > 0 ? [...invitePool, ...unplaced] : invitePool;
+    return activityExplorer(here, composedPool, {
+      day: on ?? todayKey,
+      ...(unplaced.length === 0 ? { hereByKey: localByKey } : {}),
+    });
+  }, [
+    exploring,
+    at,
+    home,
+    listening,
+    invitePool,
+    composedPool,
+    on,
+    todayKey,
+    localByKey,
+  ]);
+  const explore = (
+    <ActivityExplorerButton compact onOpen={() => setExploring(true)} />
+  );
+  const explorerWhere = at ? originLabel?.replace(/,\s*BC$/, "") : home;
+  const explorerChosen = asked?.doing ?? chosenActivity?.key;
 
   // Moving between towns changes which activities exist. A selection with no
   // evidence behind it any more is dropped during render — but not while a
@@ -1562,13 +1646,8 @@ export function DiscoveryListView({
                   ? { question: conversation.question }
                   : {})}
                 starters={startersFor({ wet, hour: hourNow })}
-                alternatives={offers
-                  .filter((o) => o.activity.key !== asked?.doing)
-                  .slice(0, 6)
-                  .map((o) => ({
-                    label: o.activity.label,
-                    say: o.activity.label,
-                  }))}
+                alternatives={alternatives}
+                explore={explore}
                 understood={
                   asked
                     ? readBack(asked, {
@@ -1623,6 +1702,9 @@ export function DiscoveryListView({
                   value: offer.activity.key,
                   label: offer.activity.label,
                 })),
+                after: (
+                  <ActivityExplorerButton onOpen={() => setExploring(true)} />
+                ),
                 // **A row with nothing in it says why.** Atlas states
                 // affordances for 224 subjects out of 2,680, so a narrow
                 // enough page genuinely has no verb to offer — and the brief's
@@ -2146,6 +2228,19 @@ export function DiscoveryListView({
           isDeleting={isDeletingBoard}
           onOpenChange={(open) => !open && setConfirmingDeleteBoard(false)}
           onConfirm={handleConfirmDeleteBoard}
+        />
+
+        <ActivityExplorer
+          open={exploring}
+          onOpenChange={setExploring}
+          groups={explorer}
+          {...(explorerWhere ? { where: explorerWhere } : {})}
+          {...(explorerChosen ? { chosen: explorerChosen } : {})}
+          narrowed={Boolean(asked || kind || radiusActive)}
+          onPick={(activity: Activity) => {
+            setExploring(false);
+            handleAsk(activity.label);
+          }}
         />
       </main>
     </ThemeProvider>

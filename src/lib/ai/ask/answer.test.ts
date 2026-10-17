@@ -907,9 +907,7 @@ describe("answers to the newer readings", () => {
   it("says when nothing here does the activity they named", () => {
     const park = subject("Near Park", { km: 1, verbs: ["Playground"] });
     const answer = answerAsk([park], ask("go bowling"), context);
-    expect(answer.note).toMatch(
-      /doesn't list anywhere for bowling, games & escape rooms/,
-    );
+    expect(answer.note).toMatch(/doesn't list anywhere for bowling/);
   });
 
   it("'I'm bored' is answered, with nothing asked of them first", () => {

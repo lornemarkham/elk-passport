@@ -69,7 +69,7 @@ describe("what else it reads", () => {
   it("names an activity in the person's words, not Atlas's", () => {
     expect(read("a hike with the kids").doing).toBe("hiking");
     expect(read("swimming somewhere warm").doing).toBe("swimming");
-    expect(read("go bowling").doing).toBe("games");
+    expect(read("go bowling").doing).toBe("bowling");
     expect(read("the movies tonight").doing).toBe("movies");
     expect(read("ice skating").doing).toBe("skating");
     // Common words never choose an activity by accident.
@@ -236,7 +236,7 @@ describe("ordinary phrasings that were misread", () => {
     expect(withBikes("mountain biking").doing).toBe("mountain-biking");
     expect(withBikes("bike rides near Vernon").doing).toBe("cycling");
     expect(withBikes("somewhere to paddle").doing).toBe("paddling");
-    expect(read("a canoe on the lake").doing).toBe("paddling");
+    expect(read("a canoe on the lake").doing).toBe("canoeing");
   });
 
   it("a sentence that names no activity chooses none", () => {

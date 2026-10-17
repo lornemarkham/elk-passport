@@ -284,6 +284,26 @@ guide's unknowns when removed. Never a coordinate in the URL.
 While an answer is on screen `TodayPanel` is not rendered — it would answer the
 same situation a second time — and the forecast still orders the answer.
 
+## Activities and the explorer — ADR 007
+
+**Recorded 2026-10-16.** `src/domain/discovery/activities.ts` holds 58
+activities on nine shelves (`ACTIVITY_GROUPS`). A place is in an activity only
+where Atlas listed a word the activity recognises: an affordance (an `offers`
+edge to an Atlas Activity, or a stated activity), a subtype, or one of a few
+play features. Narrow activities name their broad one (`within`), and the
+committed fixture test holds that every narrow match is also a broad one.
+
+- **The row** under Refine: the best eight broad activities for the moment, in
+  season, with two or more places (`activityOffers`).
+- **The explorer** behind _All activities →_: every activity
+  (`activityExplorer`), counted near here against everywhere, with out of
+  season marked and none dropped. Picking an activity says its label.
+- **Measuring it.** `ACTIVITY_CORPUS=<body> npx vitest run
+src/domain/discovery/activities.eval` writes each activity's counts for
+  Vernon and Vancouver, then the Atlas words no activity recognises. It reads
+  a saved candidates body or production's embedded pool (an array of mapped
+  experiences). Results for 2026-10-16: `docs/product/discovery-activities/`.
+
 ## What crosses the wire
 
 `/discovery` serialises the whole pool so search and the rows answer without a

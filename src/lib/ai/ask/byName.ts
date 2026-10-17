@@ -1,4 +1,5 @@
 import type { Experience } from "@/domain/experience/types";
+import { activityNamedExactly } from "@/domain/discovery/activities";
 import {
   compareMatches,
   normalizeForSearch,
@@ -42,6 +43,9 @@ export function findByName(
 ): NamedPick[] {
   const words = said.trim();
   if (words.length < 3) return [];
+  // "Skiing", said alone or picked in the explorer, is an activity — answered
+  // by the places Atlas says offer it, not by an entity titled "Skiing".
+  if (activityNamedExactly(words)) return [];
   const strongest = options.loose ? 4 : 2;
   const found: {
     experience: Experience;

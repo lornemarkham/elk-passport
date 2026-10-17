@@ -1,0 +1,418 @@
+corpus docs/product/critic/evidence/atlas-candidates-2026-10-11.json.gz · 2979 subjects · 2492 in the feed · 2026-10-11
+
+## Vernon — 685 subjects within 50 km
+  Outdoors
+    Hiking & walks: 56 here · 114 anywhere — Vernon Parks & Recreation [Walking]; Civic Memorial Park [Walking/hiking]; Polson Park [Walking/hiking]
+    Cycling: 10 here · 29 anywhere — Kekuli Bay Provincial Park [Cycling]; Kalamalka Lake Park [Cycling, E-Biking]; Ellison Park [Cycling, E-Biking]
+    Mountain biking: 9 here · 14 anywhere — Kalamalka Lake Park [fat biking, Scenic mountain bike ride, mountain biking]; Predator Ridge [mountain biking]; Predator Ridge Resort [mountain biking]
+    Fishing: 14 here · 34 anywhere — Kekuli Bay Provincial Park [Fishing]; Kalamalka Lake [Fishing]; Kalamalka Lake Park [Fishing]
+    Snowshoeing: 11 here · 18 anywhere · out of season — SilverStar Mountain Resort [snowshoeing]; Kalamalka Lake Park [snowshoeing]; Predator Ridge [snowshoeing]
+    Cross-country skiing: 4 here · 9 anywhere · out of season — SilverStar Mountain Resort [cross-country skiing]; Sovereign Lake Nordic Centre [Nordic Centre]; Sovereign Lake Nordic Centre [cross-country skiing]
+    Skateboarding: 2 here · 4 anywhere — Polson Park [Skateboarding, Skateboard park]; Swalwell Park [skatepark]
+    Horseback riding: 3 here · 8 anywhere — Kalamalka Lake Park [Horseback riding]; Silver Star Provincial Park [Horseback riding]; Wrinkly Face Provincial Park [Horseback riding]
+    Animals & wildlife: 13 here · 34 anywhere — Allan Brooks Nature Centre [Birdwatching, Spot songbirds, Birding, nature centre]; Allan Brooks Nature Centre [nature centre]; Kekuli Bay Provincial Park [Wildlife viewing]
+    Birdwatching: 4 here · 6 anywhere — Allan Brooks Nature Centre [Birdwatching, Spot songbirds, Birding]; The Commonage [Birding, birding route]; Rotary Marsh Park [Bird watching]
+    Wildlife watching: 5 here · 16 anywhere — Kekuli Bay Provincial Park [Wildlife viewing]; Kalamalka Lake Park [Wildlife viewing]; Fintry Provincial Park [Wildlife viewing]
+    Gardens: 2 here · 14 anywhere — Kasugai Gardens [Japanese garden]; Guisachan Heritage Park [Visiting historical gardens]
+    Golf & disc golf: 9 here · 31 anywhere — Back Nine Indoor Golf [indoor golf facility]; Vernon Golf and Country Club [golf club]; Hillview Golf Course [golf course]
+    Courts & fields: 17 here · 22 anywhere — Vernon Parks & Recreation [Volleyball]; Polson Park [Tennis courts, Lawn bowling]; Alexis Park [Basketball]
+    Views & waterfalls: 5 here · 12 anywhere — Silver Star Foothills [viewpoint]; BX Falls [waterfall]; Cougar Canyon [canyon]
+    Photography: 5 here · 8 anywhere — Free Family Photos - Mother's Day Weekend [Photography]; Free Family Photo at The Apple Orchard [Photography]; Free Family Photos in the Orchard [Photography Event]
+    Stargazing: 0 here · 5 anywhere
+    Out with the dog: 8 here · 13 anywhere — Mission Hill Park [Dog park (off leash)]; Mutrie Park [Dog park (off leash)]; BX Trail [Dog park (off leash)]
+    Hunting: 4 here · 8 anywhere — Kalamalka Lake Park [Hunting]; Silver Star Provincial Park [hunting]; Fintry Provincial Park [hunting]
+    Camping: 7 here · 12 anywhere · out of season — Upper BX Creek Campground [campground]; Dutch's Campground [campground]; Cedar Falls Campground [campground]
+  Adventure
+    Mountain biking: 9 here · 14 anywhere — Kalamalka Lake Park [fat biking, Scenic mountain bike ride, mountain biking]; Predator Ridge [mountain biking]; Predator Ridge Resort [mountain biking]
+    Skiing: 4 here · 20 anywhere · out of season — SilverStar Mountain Resort [Skiing, downhill skiing]; Monashee Powder Snowcats [cat skiing operator]; Silver Star Mountain Resort [ski resort]
+    Snowboarding: 1 here · 3 anywhere · out of season — SilverStar Mountain Resort [Snowboarding]
+    Climbing: 5 here · 16 anywhere — Rock Garden Climbing Centre [indoor climbing, indoor climbing facility]; Cougar Canyon [Rock climbing]; Ellison Park [Rock climbing, Climbing]
+    Skateboarding: 2 here · 4 anywhere — Polson Park [Skateboarding, Skateboard park]; Swalwell Park [skatepark]
+    Ziplines & thrills: 5 here · 10 anywhere — Okanagan Skydive [Skydiving]; Paraglide Canada [Paragliding]; Okanagan Family Fun Farm [High-Powered Air Cannons]
+    Horseback riding: 3 here · 8 anywhere — Kalamalka Lake Park [Horseback riding]; Silver Star Provincial Park [Horseback riding]; Wrinkly Face Provincial Park [Horseback riding]
+    Camping: 7 here · 12 anywhere · out of season — Upper BX Creek Campground [campground]; Dutch's Campground [campground]; Cedar Falls Campground [campground]
+  Water
+    Swimming & beaches: 38 here · 74 anywhere — Vernon Aquatic Center [aquatic center]; Vernon Parks & Recreation [Swimming]; Vernon Recreation Centre [aquatic center]
+    Paddling: 13 here · 25 anywhere · out of season — Kalavida Surf Shop [Paddleboard]; Kekuli Bay Provincial Park [Canoeing, Kayaking, SUP]; Kalamalka Lake [Paddle Sports]
+    Kayaking: 7 here · 15 anywhere · out of season — Kekuli Bay Provincial Park [Kayaking]; Hurlburt Park [Guided kayak tours, Kayaking]; Fintry Provincial Park [Kayaking]
+    Canoeing: 9 here · 18 anywhere · out of season — Kekuli Bay Provincial Park [Canoeing]; Kalamalka Lake Park [Canoeing]; Hurlburt Park [Canoeing]
+    Paddleboarding: 6 here · 9 anywhere · out of season — Kalavida Surf Shop [Paddleboard]; Kekuli Bay Provincial Park [SUP]; Outback Lakeside Vacation Homes [Paddleboarding]
+    Fishing: 14 here · 34 anywhere — Kekuli Bay Provincial Park [Fishing]; Kalamalka Lake [Fishing]; Kalamalka Lake Park [Fishing]
+    Boats & water sports: 15 here · 22 anywhere · out of season — SilverStar Mountain Resort [tubing]; Kal Beach [Boating]; Paddlewheel Park [Boating]
+    Water parks: 2 here · 8 anywhere · out of season — Splashdown Vernon [water park]; Ben Lee Park [Skate and water parks]
+  Winter
+    Ice skating: 10 here · 19 anywhere — SilverStar Mountain Resort [Skating, ice skating]; Priest Valley Arena [public skating]; Centennial Outdoor Rink [Free public skating, Shinny, rink]
+    Skiing: 4 here · 20 anywhere · out of season — SilverStar Mountain Resort [Skiing, downhill skiing]; Monashee Powder Snowcats [cat skiing operator]; Silver Star Mountain Resort [ski resort]
+    Snowboarding: 1 here · 3 anywhere · out of season — SilverStar Mountain Resort [Snowboarding]
+    Snowshoeing: 11 here · 18 anywhere · out of season — SilverStar Mountain Resort [snowshoeing]; Kalamalka Lake Park [snowshoeing]; Predator Ridge [snowshoeing]
+    Cross-country skiing: 4 here · 9 anywhere · out of season — SilverStar Mountain Resort [cross-country skiing]; Sovereign Lake Nordic Centre [Nordic Centre]; Sovereign Lake Nordic Centre [cross-country skiing]
+    Sledding & tobogganing: 1 here · 4 anywhere · out of season — Caravan Farm Theatre [Winter Sleigh Ride Show]
+    Hockey: 11 here · 19 anywhere — Priest Valley Arena [adult hockey]; Kal Tire Place [Hockey]; Winfield Arena [Hockey]
+  Arts & Culture
+    Museums & history: 18 here · 67 anywhere — The Canadian Wildlife Museum and Gift Shop [museum]; Greater Vernon Museum & Archives [museum]; The Museum and Archives of Vernon [history museum]
+    Art & galleries: 13 here · 36 anywhere — Vernon Community Arts Centre Gallery [gallery]; Vernon Public Art Gallery [art gallery]; Nadine's Fine Art & Frames [art gallery]
+    Classes & workshops: 4 here · 19 anywhere — Vernon Community Arts Centre [Art Classes]; Make Your Own Mini Pie [Workshop]; Build a Garden Bench [workshop]
+    Live music & shows: 64 here · 131 anywhere — Vernon Jazz Club [Jazz Nights, Jazz Club]; Powerhouse Theatre [theatre]; Anthony D’Alessandro Quartet at the Vernon Jazz Club [Music Performance]
+    Theatre: 22 here · 44 anywhere — Powerhouse Theatre [theatre]; The Towne Theatre [theatre]; Ballet Jörgen: Swan Lake [Ballet]
+    Live music: 29 here · 64 anywhere — Vernon Jazz Club [Jazz Nights, Jazz Club]; Anthony D’Alessandro Quartet at the Vernon Jazz Club [Music Performance]; Aretha Tillotson Quartet at the Vernon Jazz Club [Music Performance]
+    Photography: 5 here · 8 anywhere — Free Family Photos - Mother's Day Weekend [Photography]; Free Family Photo at The Apple Orchard [Photography]; Free Family Photos in the Orchard [Photography Event]
+    Tours: 12 here · 72 anywhere — Boos and Booze [Ghost Tour and Speakeasy Night]; Alex Mackenzie's Hungry for Laughs Comedy Tour [Comedy Tour]; Ghost Tours of Vernon Halloween Flagship Tours [Tour]
+  Entertainment
+    Movies: 3 here · 9 anywhere — HorrorFest XVII [Film Festival]; Okanagan International Film Festival and Forum Opening Night [Film Festival Opening Night]; Bernie's Supper Club & Cinema [supper club and cinema]
+    Live music & shows: 64 here · 131 anywhere — Vernon Jazz Club [Jazz Nights, Jazz Club]; Powerhouse Theatre [theatre]; Anthony D’Alessandro Quartet at the Vernon Jazz Club [Music Performance]
+    Theatre: 22 here · 44 anywhere — Powerhouse Theatre [theatre]; The Towne Theatre [theatre]; Ballet Jörgen: Swan Lake [Ballet]
+    Live music: 29 here · 64 anywhere — Vernon Jazz Club [Jazz Nights, Jazz Club]; Anthony D’Alessandro Quartet at the Vernon Jazz Club [Music Performance]; Aretha Tillotson Quartet at the Vernon Jazz Club [Music Performance]
+    Comedy: 10 here · 12 anywhere — RON JAMES: The Noise Between Our Ears [Comedy Show]; Alex Mackenzie's Hungry for Laughs Comedy Tour [Comedy Tour]; Dakoda's Comedy Lounge [comedy lounge]
+    Bowling, games & escape rooms: 4 here · 24 anywhere — Lincoln Lanes Bowling [bowling alley]; Planet Lazer [laser tag facility]; Okanagan Family Fun Farm [Maze Game]
+    Bowling: 1 here · 7 anywhere — Lincoln Lanes Bowling [bowling alley]
+    Escape rooms: 0 here · 3 anywhere
+    Casinos: 0 here · 4 anywhere
+    Hockey: 11 here · 19 anywhere — Priest Valley Arena [adult hockey]; Kal Tire Place [Hockey]; Winfield Arena [Hockey]
+    Festivals & fairs: 11 here · 54 anywhere — Apple Harvest Fest 2026 [Festival]; Thanksgiving Long Weekend at Davison Orchards [Festival]; Father's Day at Davison Orchards [Celebration]
+  Family
+    Swimming & beaches: 38 here · 74 anywhere — Vernon Aquatic Center [aquatic center]; Vernon Parks & Recreation [Swimming]; Vernon Recreation Centre [aquatic center]
+    Water parks: 2 here · 8 anywhere · out of season — Splashdown Vernon [water park]; Ben Lee Park [Skate and water parks]
+    Playgrounds: 27 here · 42 anywhere — Civic Memorial Park [Playground]; Polson Park [Playground]; Alexis Park [Playground]
+    Ice skating: 10 here · 19 anywhere — SilverStar Mountain Resort [Skating, ice skating]; Priest Valley Arena [public skating]; Centennial Outdoor Rink [Free public skating, Shinny, rink]
+    Sledding & tobogganing: 1 here · 4 anywhere · out of season — Caravan Farm Theatre [Winter Sleigh Ride Show]
+    Animals & wildlife: 13 here · 34 anywhere — Allan Brooks Nature Centre [Birdwatching, Spot songbirds, Birding, nature centre]; Allan Brooks Nature Centre [nature centre]; Kekuli Bay Provincial Park [Wildlife viewing]
+    Farms & u-pick: 20 here · 76 anywhere — Planet Bee Honey Farm [farm]; Davison Orchards [Orchard Tours, U-Pick Apple Orchard Tours, Orchard]; U-Pick Pumpkins [Farm Event]
+    Museums & history: 18 here · 67 anywhere — The Canadian Wildlife Museum and Gift Shop [museum]; Greater Vernon Museum & Archives [museum]; The Museum and Archives of Vernon [history museum]
+    Picnics: 16 here · 35 anywhere — Civic Memorial Park [Picnicking, Picnic]; Polson Park [Picnic shelter]; Allan Brooks Nature Centre [Enjoy the picnic area]
+    Bowling, games & escape rooms: 4 here · 24 anywhere — Lincoln Lanes Bowling [bowling alley]; Planet Lazer [laser tag facility]; Okanagan Family Fun Farm [Maze Game]
+    Bowling: 1 here · 7 anywhere — Lincoln Lanes Bowling [bowling alley]
+    Libraries & story time: 8 here · 15 anywhere — Vernon Library [library]; The Accidental Canadian [Musical storytelling show]; Okanagan Regional Library [library]
+    Festivals & fairs: 11 here · 54 anywhere — Apple Harvest Fest 2026 [Festival]; Thanksgiving Long Weekend at Davison Orchards [Festival]; Father's Day at Davison Orchards [Celebration]
+  Food & Drink
+    Farms & u-pick: 20 here · 76 anywhere — Planet Bee Honey Farm [farm]; Davison Orchards [Orchard Tours, U-Pick Apple Orchard Tours, Orchard]; U-Pick Pumpkins [Farm Event]
+    Wine, beer & tasting: 40 here · 174 anywhere — Olive Us Oil and Vinegar Tasting Room [tasting room]; Silverstar Brewing Co. [brewery]; Okanagan Spirits [brewery]
+    Wineries: 22 here · 97 anywhere — Vernon Vintners [winery]; Hardcore Cider Co. [winery]; The Perch Winery [winery]
+    Breweries & cideries: 17 here · 73 anywhere — Silverstar Brewing Co. [brewery]; Okanagan Spirits [brewery]; Okanagan Spring Brewery [brewery]
+    Eat & drink: 54 here · 327 anywhere — The Boarding House Cafe [cafe]; Eatology [restaurant]; The Kal Eatery [restaurant]
+    Markets: 13 here · 86 anywhere — Polson Park [Polson Artisan Market, Artisan market]; Sobr Market Vernon [market]; Vernon Farmers' Market [Market]
+  Relaxation
+    Spa & wellness: 4 here · 37 anywhere — Yoga With Goats [yoga session]; Sparkling Hill Resort [Couples massage]; Silver Hills Wellness Centre [Rejuvenating Spa Treatments, Daily Wellness Classes, wellness centre]
+    Picnics: 16 here · 35 anywhere — Civic Memorial Park [Picnicking, Picnic]; Polson Park [Picnic shelter]; Allan Brooks Nature Centre [Enjoy the picnic area]
+    Gardens: 2 here · 14 anywhere — Kasugai Gardens [Japanese garden]; Guisachan Heritage Park [Visiting historical gardens]
+
+## Vancouver — 140 subjects within 50 km
+  Outdoors
+    Hiking & walks: 20 here · 114 anywhere — Stanley Park [Walking, Running]; Queen Elizabeth Park [Jogging]; Bloedel Conservatory [Walking]
+    Cycling: 6 here · 29 anywhere — Stanley Park [Cycling]; John Hendry Park [Biking trails]; Capilano River Regional Park [Cycling]
+    Mountain biking: 0 here · 14 anywhere
+    Fishing: 6 here · 34 anywhere — Stanley Park [Fishing]; Capilano River Regional Park [Fishing]; Mount Seymour Park [Fishing]
+    Snowshoeing: 1 here · 18 anywhere · out of season — Mt Seymour [snowshoeing]
+    Cross-country skiing: 0 here · 9 anywhere · out of season
+    Skateboarding: 2 here · 4 anywhere — Town Centre Park [Skateboarding]; Bear Creek Park [Skatepark]
+    Horseback riding: 1 here · 8 anywhere — Mount Seymour Park [Horseback riding]
+    Animals & wildlife: 6 here · 34 anywhere — Vancouver Aquarium [aquarium]; Bloedel Conservatory [Garden/Aquarium/Science Centre]; Cypress Park [Wildlife viewing]
+    Birdwatching: 1 here · 6 anywhere — George C. Reifel Migratory Bird Sanctuary [Birding, Birdwatching, migratory bird sanctuary]
+    Wildlife watching: 2 here · 16 anywhere — Cypress Park [Wildlife viewing]; Pinecone Burke Park [Wildlife viewing]
+    Gardens: 9 here · 14 anywhere — Stanley Park [Gardens]; Bloedel Conservatory [Garden/Aquarium/Science Centre]; VanDusen Botanical Garden [botanical garden]
+    Golf & disc golf: 3 here · 31 anywhere — Queen Elizabeth Park [Pitch and putt golf course, Little Mountain disc golf course]; Central Park [Pitch & Putt golf]; Central Park Pitch & Putt [Pitch & Putt golf, golf course]
+    Courts & fields: 4 here · 22 anywhere — Kitsilano Beach [Beach volleyball]; Queen Elizabeth Park [Tennis courts, Lawn bowling club]; Central Park [Tennis, Volleyball, Lawn bowling]
+    Views & waterfalls: 3 here · 12 anywhere — Vancouver Aquarium [Sightseeing]; Capilano Suspension Bridge Park [Capilano Suspension Bridge]; Westminster Pier Park [sight-seeing, elevated viewpoints]
+    Photography: 2 here · 8 anywhere — Into the Deep Undersea Photo Experience [Photo Experience]; Britannia Shipyards National Historic Site [Photography]
+    Stargazing: 1 here · 5 anywhere — H.R. MacMillan Space Centre [planetarium]
+    Out with the dog: 2 here · 13 anywhere — Bear Creek Park [Dog off-leash area]; Blackie Spit Park [Dog off-leash swim, Dog off-leash areas]
+    Hunting: 1 here · 8 anywhere — Pinecone Burke Park [Hunting]
+    Camping: 1 here · 12 anywhere · out of season — Capilano River Regional Park [Camping - Group]
+  Adventure
+    Mountain biking: 0 here · 14 anywhere
+    Skiing: 2 here · 20 anywhere · out of season — Mt Seymour [ski resort]; Cypress Mountain Resort [ski resort]
+    Snowboarding: 0 here · 3 anywhere · out of season
+    Climbing: 1 here · 16 anywhere — Pinecone Burke Park [Climbing]
+    Skateboarding: 2 here · 4 anywhere — Town Centre Park [Skateboarding]; Bear Creek Park [Skatepark]
+    Ziplines & thrills: 1 here · 10 anywhere — Capilano Suspension Bridge Park [Treetops Adventure, Cliffwalk, Capilano Suspension Bridge]
+    Horseback riding: 1 here · 8 anywhere — Mount Seymour Park [Horseback riding]
+    Camping: 1 here · 12 anywhere · out of season — Capilano River Regional Park [Camping - Group]
+  Water
+    Swimming & beaches: 11 here · 74 anywhere — Stanley Park [Sandy beaches, Seaside swimming pool]; Kitsilano Beach [Swimming, beach]; Kitsilano Pool [Swimming, swimming pool]
+    Paddling: 2 here · 25 anywhere · out of season — Deer Lake Park [Canoeing, Kayaking, Paddleboarding]; Pinecone Burke Park [Canoeing, Kayaking]
+    Kayaking: 2 here · 15 anywhere · out of season — Deer Lake Park [Kayaking]; Pinecone Burke Park [Kayaking]
+    Canoeing: 2 here · 18 anywhere · out of season — Deer Lake Park [Canoeing]; Pinecone Burke Park [Canoeing]
+    Paddleboarding: 1 here · 9 anywhere · out of season — Deer Lake Park [Paddleboarding]
+    Fishing: 6 here · 34 anywhere — Stanley Park [Fishing]; Capilano River Regional Park [Fishing]; Mount Seymour Park [Fishing]
+    Boats & water sports: 1 here · 22 anywhere · out of season — Mt Seymour [tubing]
+    Water parks: 1 here · 8 anywhere · out of season — Bear Creek Park [Waterpark]
+  Winter
+    Ice skating: 1 here · 19 anywhere — The Shipyards Skate Plaza [Skating, skating rink]
+    Skiing: 2 here · 20 anywhere · out of season — Mt Seymour [ski resort]; Cypress Mountain Resort [ski resort]
+    Snowboarding: 0 here · 3 anywhere · out of season
+    Snowshoeing: 1 here · 18 anywhere · out of season — Mt Seymour [snowshoeing]
+    Cross-country skiing: 0 here · 9 anywhere · out of season
+    Sledding & tobogganing: 2 here · 4 anywhere · out of season — Mt Seymour [Tobogganing]; Redwood Park [Sledding]
+    Hockey: 0 here · 19 anywhere
+  Arts & Culture
+    Museums & history: 19 here · 67 anywhere — Chinese Canadian Museum [museum]; Chinatown Storytelling Centre [museum]; Vancouver Art Gallery [art museum]
+    Art & galleries: 7 here · 36 anywhere — Queen Elizabeth Theatre [art gallery]; Roedde House [Museum/Gallery]; Vancouver Maritime Museum [Museum/Gallery]
+    Classes & workshops: 1 here · 19 anywhere — Anvil Centre [Workshops]
+    Live music & shows: 15 here · 131 anywhere — Vancouver Symphony Orchestra [Orchestra]; Commodore Ballroom [concert venue]; 54-40 [concert]
+    Theatre: 1 here · 44 anywhere — Queen Elizabeth Theatre [opera, Broadway shows, theatre]
+    Live music: 11 here · 64 anywhere — Vancouver Symphony Orchestra [Orchestra]; Commodore Ballroom [concert venue]; 54-40 [concert]
+    Photography: 2 here · 8 anywhere — Into the Deep Undersea Photo Experience [Photo Experience]; Britannia Shipyards National Historic Site [Photography]
+    Tours: 6 here · 72 anywhere — Final Austerity Tour and Discussion Panel [Tour and Discussion]; St. Roch [Self-guided tours]; FREE October Bird Tours [guided tour]
+  Entertainment
+    Movies: 1 here · 9 anywhere — Movie Matinees in the Boiler House Theatre [Movie Matinee]
+    Live music & shows: 15 here · 131 anywhere — Vancouver Symphony Orchestra [Orchestra]; Commodore Ballroom [concert venue]; 54-40 [concert]
+    Theatre: 1 here · 44 anywhere — Queen Elizabeth Theatre [opera, Broadway shows, theatre]
+    Live music: 11 here · 64 anywhere — Vancouver Symphony Orchestra [Orchestra]; Commodore Ballroom [concert venue]; 54-40 [concert]
+    Comedy: 1 here · 12 anywhere — The Sunday Service [Comedy]
+    Bowling, games & escape rooms: 1 here · 24 anywhere — Playland [amusement park]
+    Bowling: 0 here · 7 anywhere
+    Escape rooms: 0 here · 3 anywhere
+    Casinos: 0 here · 4 anywhere
+    Hockey: 0 here · 19 anywhere
+    Festivals & fairs: 2 here · 54 anywhere — Canyon Lights [holiday lights event]; Richmond Maritime Festival [Festival]
+  Family
+    Swimming & beaches: 11 here · 74 anywhere — Stanley Park [Sandy beaches, Seaside swimming pool]; Kitsilano Beach [Swimming, beach]; Kitsilano Pool [Swimming, swimming pool]
+    Water parks: 1 here · 8 anywhere · out of season — Bear Creek Park [Waterpark]
+    Playgrounds: 9 here · 42 anywhere — Stanley Park [Playgrounds, Water spray park]; Kitsilano Beach [Playground]; Central Park [Spray park]
+    Ice skating: 1 here · 19 anywhere — The Shipyards Skate Plaza [Skating, skating rink]
+    Sledding & tobogganing: 2 here · 4 anywhere · out of season — Mt Seymour [Tobogganing]; Redwood Park [Sledding]
+    Animals & wildlife: 6 here · 34 anywhere — Vancouver Aquarium [aquarium]; Bloedel Conservatory [Garden/Aquarium/Science Centre]; Cypress Park [Wildlife viewing]
+    Farms & u-pick: 4 here · 76 anywhere — Maplewood Farm [farm]; Richmond Country Farms [farm]; Aldor Acres Family Farm [farm]
+    Museums & history: 19 here · 67 anywhere — Chinese Canadian Museum [museum]; Chinatown Storytelling Centre [museum]; Vancouver Art Gallery [art museum]
+    Picnics: 13 here · 35 anywhere — John Hendry Park [Picnic area]; Capilano River Regional Park [Picnic Area, Picnic Shelter]; Pacific Spirit Regional Park [Picnic Area]
+    Bowling, games & escape rooms: 1 here · 24 anywhere — Playland [amusement park]
+    Bowling: 0 here · 7 anywhere
+    Libraries & story time: 2 here · 15 anywhere — Bob Prittie Metrotown [library]; Surrey Nature Centre [Story Time in the Park]
+    Festivals & fairs: 2 here · 54 anywhere — Canyon Lights [holiday lights event]; Richmond Maritime Festival [Festival]
+  Food & Drink
+    Farms & u-pick: 4 here · 76 anywhere — Maplewood Farm [farm]; Richmond Country Farms [farm]; Aldor Acres Family Farm [farm]
+    Wine, beer & tasting: 0 here · 174 anywhere
+    Wineries: 0 here · 97 anywhere
+    Breweries & cideries: 0 here · 73 anywhere
+    Eat & drink: 0 here · 327 anywhere
+    Markets: 3 here · 86 anywhere — Kids Market [market]; Granville Island Public Market [public market]; Lonsdale Quay Market [public market]
+  Relaxation
+    Spa & wellness: 0 here · 37 anywhere
+    Picnics: 13 here · 35 anywhere — John Hendry Park [Picnic area]; Capilano River Regional Park [Picnic Area, Picnic Shelter]; Pacific Spirit Regional Park [Picnic Area]
+    Gardens: 9 here · 14 anywhere — Stanley Park [Gardens]; Bloedel Conservatory [Garden/Aquarium/Science Centre]; VanDusen Botanical Garden [botanical garden]
+
+## Atlas words on subjects no activity recognises
+  55 Activity subtype: unknown
+  7 Activity subtype: fitness
+  6 Activity subtype: aquafit
+  3 Activity subtype: recreation
+  2 Activity subtype: outdoor
+  2 Activity subtype: dining
+  2 Activity subtype: exploring
+  1 affordance: shopping
+  1 affordance: snacking
+  1 Place subtype: main strip
+  1 affordance: casual use
+  1 affordance: dogs on-leash oct 1 - mar 31
+  1 Place subtype: park
+  1 affordance: boat launch
+  1 Place subtype: boat launch
+  1 affordance: 55+ / seniors activities
+  1 Place subtype: facility
+  1 affordance: family activities
+  1 Place subtype: stadium
+  1 affordance: exploring
+  1 Place subtype: bay
+  1 affordance: conventions
+  1 affordance: trade shows
+  1 affordance: meetings
+  1 affordance: banquets & holiday parties
+  1 Place subtype: convention centre
+  1 affordance: private events
+  1 Place subtype: venue
+  1 affordance: mountain access
+  1 affordance: guest services
+  1 affordance: dining
+  1 affordance: retail
+  1 Place subtype: mountain
+  1 affordance: evening haunt
+  1 affordance: family fun hours
+  1 affordance: the black mountain haunted house
+  1 Organization subtype: haunted house
+  1 affordance: road rehabilitation
+  1 Organization subtype: municipal government
+  1 affordance: swimming lessons
+  1 Organization subtype: recreation services
+  1 affordance: wild mushroom identification tour
+  1 Organization subtype: adventure company
+  1 Activity subtype: snow-shoeing
+  1 Activity subtype: personal training
+  1 Activity subtype: dance
+  1 Activity subtype: shooting
+  1 Activity subtype: fitness classes
+  1 Activity subtype: event attendance
+  1 Activity subtype: baking
+  1 Activity subtype: wine tours
+  1 Activity subtype: hearing stories
+  1 Activity subtype: performances
+  1 Activity subtype: wildflower spotting
+  1 Activity subtype: game
+  1 Activity subtype: leisure
+  1 Activity subtype: arts and entertainment
+  1 Activity subtype: artistic swimming
+  1 Activity subtype: meeting
+  1 Activity subtype: art exploration
+  1 Activity subtype: drinking
+  1 Activity subtype: museums & galleries
+  1 Activity subtype: watching movies
+  1 Activity subtype: snowmobile rides
+  1 Activity subtype: interactive presentations
+  1 Activity subtype: distilling
+  1 Activity subtype: foraging
+  1 Activity subtype: non-motorized lake rentals
+  1 Activity subtype: harvesting fresh fruit
+  1 Activity subtype: theatres
+  1 Activity subtype: science-themed shows
+  1 Activity subtype: conference
+  1 Activity subtype: playing board games
+  1 Activity subtype: art & entertainment
+  1 Activity subtype: wine touring
+  1 Activity subtype: biking
+  1 Activity subtype: leadership training
+  1 Activity subtype: family
+  1 Activity subtype: cheese making
+  1 Activity subtype: exploring local history
+  1 Activity subtype: travel
+  1 Activity subtype: motorbiking
+  1 Activity subtype: u-pick apples
+  1 Activity subtype: scavenger hunt
+  1 Activity subtype: attending live sports events
+  1 Activity subtype: cheering
+  1 Activity subtype: paragliding
+  1 Activity subtype: hunting
+  1 Activity subtype: farms
+  1 Activity subtype: cultural exploration
+  1 Activity subtype: spoken word
+  1 Activity subtype: outdoor adventures
+  1 Activity subtype: event
+  1 Activity subtype: taste of local culture
+  1 Activity subtype: cafes
+  1 Activity subtype: craft beverages
+  1 Activity subtype: arts & culture
+  1 Activity subtype: painting
+  1 Activity subtype: golfing
+  1 Activity subtype: road maintenance
+  1 Activity subtype: chairlift rides
+  1 Activity subtype: gravel biking
+  1 Activity subtype: preschool
+  1 Activity subtype: fat biking
+  1 Activity subtype: food and drink tasting
+  1 Activity subtype: swimming lessons
+  1 Activity subtype: sport
+  1 Activity subtype: baseball
+  1 Activity subtype: basketball
+  1 Activity subtype: beach access
+  1 Activity subtype: beach volleyball
+  1 Activity subtype: bike
+  1 Activity subtype: boat launch
+  1 Activity subtype: boat rentals
+  1 Activity subtype: canoeing
+  1 Activity subtype: casual use
+  1 Activity subtype: children’s play-park
+  1 Activity subtype: community use
+  1 Activity subtype: cycling
+  1 Activity subtype: cyclists
+  1 Activity subtype: e-biking
+  1 Activity subtype: enjoy the picnic area
+  1 Activity subtype: exploration
+  1 Activity subtype: explore nature trails
+  1 Activity subtype: explore o’keefe ranch
+  1 Activity subtype: exploring okanagan lake
+  1 Activity subtype: family skate
+  1 Activity subtype: field hockey
+  1 Activity subtype: fishing
+  1 Activity subtype: football
+  1 Activity subtype: gentle stroll
+  1 Activity subtype: hike
+  1 Activity subtype: horseshoe pitches
+  1 Activity subtype: interactive exhibits
+  1 Activity subtype: interpretive programs
+  1 Activity subtype: interpretive walk
+  1 Activity subtype: invigorating hike
+  1 Activity subtype: kayaking
+  1 Activity subtype: kids activities
+  1 Activity subtype: kite surfers
+  1 Activity subtype: lakefront lounging
+  1 Activity subtype: launch a boat
+  1 Activity subtype: learn about local ecosystems
+  1 Activity subtype: nature excursion
+  1 Activity subtype: outdoor fun
+  1 Activity subtype: paddle
+  1 Activity subtype: paddle sports
+  1 Activity subtype: paddleboard rentals
+  1 Activity subtype: paddleboarding
+  1 Activity subtype: pedestrians
+  1 Activity subtype: pets on leash
+  1 Activity subtype: picnic
+  1 Activity subtype: ping pong
+  1 Activity subtype: play volleyball
+  1 Activity subtype: play with interactive exhibits
+  1 Activity subtype: prenatal exercise
+  1 Activity subtype: relaxation
+  1 Activity subtype: rent kayaks
+  1 Activity subtype: rugby
+  1 Activity subtype: running
+  1 Activity subtype: salmon spawning
+  1 Activity subtype: scenic mountain bike ride
+  1 Activity subtype: scenic walks
+  1 Activity subtype: scuba diving
+  1 Activity subtype: shopping
+  1 Activity subtype: short hike
+  1 Activity subtype: skate and water parks
+  1 Activity subtype: slip a kayak into the water
+  1 Activity subtype: snacking
+  1 Activity subtype: soccer fields
+  1 Activity subtype: soccer full
+  1 Activity subtype: soccer small
+  1 Activity subtype: social opportunities
+  1 Activity subtype: softball
+  1 Activity subtype: spotting koi in the pond
+  1 Activity subtype: stand-up paddleboarding
+  1 Activity subtype: stroll through the indoor exhibits
+  1 Activity subtype: sunset walk
+  1 Activity subtype: swim
+  1 Activity subtype: tennis
+  1 Activity subtype: tennis courts
+  1 Activity subtype: track and field activities
+  1 Activity subtype: training
+  1 Activity subtype: urban experience
+  1 Activity subtype: visual arts
+  1 Activity subtype: volleyball
+  1 Activity subtype: volleyball – beach courts
+  1 Activity subtype: wakesurfing
+  1 Activity subtype: walk a shoreline
+  1 Activity subtype: water sports
+  1 Activity subtype: windsurfing
+  1 Activity subtype: winter recreation
+  1 Activity subtype: finding magical doors
+  1 Activity subtype: prohibition
+  1 Activity subtype: stand up paddleboarding
+  1 Activity subtype: strolling
+  1 Activity subtype: paddle boarding
+  1 Activity subtype: hayrides
+  1 Activity subtype: thrifting
+  1 Activity subtype: recreational programs
+  1 Activity subtype: skydiving
+  1 Activity subtype: watersports
+  1 Activity subtype: shinny pond
+  1 Activity subtype: bike rentals
+  1 Activity subtype: youth activities and camps
+  1 Activity subtype: children's activities
+  1 Activity subtype: certification
+  1 Activity subtype: paddling
+  1 Activity subtype: drinks
+  1 Activity subtype: food tasting
+  1 Activity subtype: fitness gym
+  1 Activity subtype: cultural experience
+  1 Activity subtype: certification courses
+  1 Activity subtype: after-school programs
+  1 Activity subtype: food
+  1 Activity subtype: outdoor thrills
+  1 Activity subtype: wine making
+  1 Activity subtype: festive markets
+  1 Activity subtype: couples massage
+  1 Activity subtype: farming
+  1 Activity subtype: family fun
+  1 Activity subtype: skydiving & paragliding
+  1 Activity subtype: road biking
+
+58 activities in 9 groups
