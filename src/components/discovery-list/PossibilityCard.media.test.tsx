@@ -127,4 +127,54 @@ describe("what a card says about the answers above", () => {
       "In Vernon",
     );
   });
+
+  describe("Atlas's presentation image (ADR 106)", () => {
+    const image = (over: Record<string, unknown>) => ({
+      url: "https://example.test/p.jpg",
+      relationship: "category",
+      depictsEntity: false,
+      confidence: "low",
+      source: { host: "commons.wikimedia.org", evidence: "licensed:CC BY 4.0" },
+      attribution: "Illustrative market photo by Someone (CC BY 4.0). Not a photo of Harvest Pumpkin Festival.",
+      license: { name: "CC BY 4.0", author: "Someone" },
+      ...over,
+    });
+
+    it("shows it, says it is illustrative, and credits its author", () => {
+      const { container } = card({ ...base, presentationImage: image({}) } as unknown as Experience);
+      expect(container.querySelector("img")!.getAttribute("src")).toBe("https://example.test/p.jpg");
+      expect(screen.getByTestId("possibility-presented-label")).toHaveTextContent("Illustrative photo · Someone, CC BY 4.0");
+      expect(screen.queryByTestId("possibility-text-lead")).toBeNull();
+    });
+
+    it("labels a venue's picture with whose it is", () => {
+      card({
+        ...base,
+        presentationImage: image({ relationship: "venue", source: { host: "x", evidence: "curator", heldBy: { id: "v", kind: "Place", name: "Prospera Place" } } }),
+      } as unknown as Experience);
+      expect(screen.getByTestId("possibility-presented-label")).toHaveTextContent("Venue photo · Prospera Place");
+    });
+
+    it("shows an exact picture without a label", () => {
+      card({ ...base, presentationImage: image({ relationship: "exact", depictsEntity: true }) } as unknown as Experience);
+      expect(screen.queryByTestId("possibility-presented-label")).toBeNull();
+    });
+
+    it("never replaces the candidate's own picture", () => {
+      const { container } = card({
+        ...base,
+        heroMedia: { type: "image", src: "https://example.test/own.jpg" },
+        presentationImage: image({}),
+      } as unknown as Experience);
+      expect(container.querySelector("img")!.getAttribute("src")).toBe("https://example.test/own.jpg");
+      expect(screen.queryByTestId("possibility-presented-label")).toBeNull();
+    });
+
+    it("falls back to the text lead when the presented picture fails to load", () => {
+      const { container } = card({ ...base, presentationImage: image({}) } as unknown as Experience);
+      fireEvent.error(container.querySelector("img")!);
+      expect(container.querySelector("img")).toBeNull();
+      expect(screen.getByTestId("possibility-text-lead")).toBeInTheDocument();
+    });
+  });
 });

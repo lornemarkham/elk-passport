@@ -532,6 +532,12 @@ export interface DiscoveryCandidate {
    */
   contextualMedia?: CandidateContextualMedia;
   /**
+   * **A picture a card may carry, and what it is** — `presentation-image/1`
+   * (Atlas ADR 106). Separate from `heroUrl`, which stays the strict "picture
+   * of this thing". Always say what `relationship` it has.
+   */
+  presentationImage?: CandidatePresentationImage;
+  /**
    * **Whether stated hours, seasons or dates cover the day asked about** —
    * `candidate-schedule/1`. `onDate` is present only when Passport sends `on`.
    */
@@ -569,6 +575,26 @@ export type CandidateDistance =
     }
   | { readonly state: "conflicting"; readonly because: string }
   | { readonly state: "unknown"; readonly because?: string };
+
+export interface CandidatePresentationImage {
+  readonly url: string;
+  /** `exact` shows the thing itself; every other relationship must be labelled. */
+  readonly relationship: "exact" | "venue" | "organization" | "representative" | "category";
+  readonly depictsEntity: boolean;
+  readonly confidence: "high" | "medium" | "low";
+  readonly source: {
+    readonly page?: string;
+    readonly host: string;
+    readonly heldBy?: { readonly id: string; readonly kind: string; readonly name: string };
+    readonly evidence: string;
+  };
+  /** One sentence to print under or beside the picture. */
+  readonly attribution: string;
+  readonly caption?: string;
+  /** Category pictures only. */
+  readonly license?: { readonly name: string; readonly url?: string; readonly author: string };
+  readonly category?: string;
+}
 
 export interface CandidateContextualMedia {
   readonly heroUrl: string;
