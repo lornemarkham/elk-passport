@@ -44,6 +44,13 @@ export interface AdsbSource {
 }
 
 const API = process.env.ADSB_LOL_API_URL ?? "https://api.adsb.lol";
+/**
+ * adsb.fi's open data API answers in ADSB.lol's own shape (checked live,
+ * 2026-10-16: `/v2/callsign`, `/v2/hex` and `/v3/lat/…/lon/…/dist/…` all return
+ * `{ ac: […], now: <ms> }` with the same fields). It is offered only as an
+ * opt-in fallback because its terms say personal, non-commercial use.
+ */
+const FALLBACK_API = "https://opendata.adsb.fi/api";
 const ROUTES =
   process.env.ADSB_LOL_ROUTES_URL ?? "https://vrs-standing-data.adsb.lol";
 /** Says who is asking, so ADSB.lol can tell us apart from a scraper. */
@@ -61,7 +68,22 @@ interface Entry<T> {
   readonly value: T;
 }
 
-export function adsbLol(fetcher: typeof fetch = fetch): AdsbSource {
+/** A source that knows whether it is currently sitting out a back-off. */
+export interface AdsbProvider extends AdsbSource {
+  readonly name: string;
+  ready(): boolean;
+}
+
+interface ProviderOptions {
+  readonly name?: string;
+  readonly api?: string;
+  readonly area?: (api: string, lat: number, lon: number) => string;
+}
+
+export function adsbLol(
+  fetcher: typeof fetch = fetch,
+  { name = "ADSB.lol", api = API, area }: ProviderOptions = {},
+): AdsbProvider {
   const cache = new Map<string, Entry<unknown>>();
   const inflight = new Map<string, Promise<unknown>>();
   let nextSlot = 0;
@@ -100,7 +122,7 @@ export function adsbLol(fetcher: typeof fetch = fetch): AdsbSource {
         }
         if (r.status === 429 || r.status >= 500) {
           pausedUntil = Date.now() + BACKOFF;
-          console.warn(`[arrivals] ADSB.lol ${r.status}; pausing two minutes`);
+          console.warn(`[arrivals] ${name} ${r.status}; pausing two minutes`);
           return hit?.value ?? null;
         }
         if (!r.ok) return hit?.value ?? null;
@@ -108,7 +130,7 @@ export function adsbLol(fetcher: typeof fetch = fetch): AdsbSource {
         cache.set(url, { at: Date.now(), value });
         return value;
       } catch (error) {
-        console.warn("[arrivals] ADSB.lol request failed", url, error);
+        console.warn(`[arrivals] ${name} request failed`, url, error);
         return hit?.value ?? null;
       } finally {
         inflight.delete(url);
@@ -120,23 +142,27 @@ export function adsbLol(fetcher: typeof fetch = fetch): AdsbSource {
 
   const safe = (s: string) => encodeURIComponent(s.trim().toUpperCase());
   return {
+    name,
+    ready: () => Date.now() >= pausedUntil,
     around: (lat, lon) =>
       cached(
-        `${API}/v2/point/${lat.toFixed(4)}/${lon.toFixed(4)}/${AREA_NM}`,
+        area
+          ? area(api, lat, lon)
+          : `${api}/v2/point/${lat.toFixed(4)}/${lon.toFixed(4)}/${AREA_NM}`,
         LIVE_TTL,
         readSnapshot,
         true,
       ),
     byCallsign: (callsign) =>
       cached(
-        `${API}/v2/callsign/${safe(callsign)}`,
+        `${api}/v2/callsign/${safe(callsign)}`,
         LIVE_TTL,
         readSnapshot,
         true,
       ),
     byHex: (hex) =>
       cached(
-        `${API}/v2/hex/${encodeURIComponent(hex.toLowerCase())}`,
+        `${api}/v2/hex/${encodeURIComponent(hex.toLowerCase())}`,
         LIVE_TTL,
         readSnapshot,
         true,
@@ -154,6 +180,53 @@ export function adsbLol(fetcher: typeof fetch = fetch): AdsbSource {
   };
 }
 
+/**
+ * **Ask the first provider that isn't resting.** Live lookups only: routes are
+ * static files and come from the primary. If every provider is resting or
+ * silent the primary's cached answer (or `null`, "didn't answer") is returned,
+ * so a fallback never turns silence into an empty sky.
+ */
+export function withFallback(
+  primary: AdsbProvider,
+  fallback: AdsbProvider,
+): AdsbSource {
+  async function live(ask: (s: AdsbSource) => Promise<AdsbSnapshot | null>) {
+    if (primary.ready()) {
+      const answer = await ask(primary);
+      if (answer) return answer;
+    }
+    if (fallback.ready()) {
+      const answer = await ask(fallback);
+      if (answer) return answer;
+    }
+    return ask(primary);
+  }
+  return {
+    around: (lat, lon) => live((s) => s.around(lat, lon)),
+    byCallsign: (c) => live((s) => s.byCallsign(c)),
+    byHex: (h) => live((s) => s.byHex(h)),
+    route: (c) => primary.route(c),
+  };
+}
+
+/** `ADSB_FALLBACK=adsbfi` turns the adsb.fi fallback on. Off by default. */
+export function configuredSource(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  fetcher: typeof fetch = fetch,
+): AdsbSource {
+  const primary = adsbLol(fetcher);
+  if (env.ADSB_FALLBACK !== "adsbfi") return primary;
+  return withFallback(
+    primary,
+    adsbLol(fetcher, {
+      name: "adsb.fi",
+      api: FALLBACK_API,
+      area: (api, lat, lon) =>
+        `${api}/v3/lat/${lat.toFixed(4)}/lon/${lon.toFixed(4)}/dist/${AREA_NM}`,
+    }),
+  );
+}
+
 const g = globalThis as unknown as { __arrivalsAdsb?: AdsbSource };
 /** One client per server process, so the cache and the pace are shared. */
-export const adsb = (): AdsbSource => (g.__arrivalsAdsb ??= adsbLol());
+export const adsb = (): AdsbSource => (g.__arrivalsAdsb ??= configuredSource());
