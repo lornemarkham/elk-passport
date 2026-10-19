@@ -76,7 +76,7 @@ export default function SketchbookPage() {
       <div className="mx-auto max-w-3xl px-5 pt-14 pb-32 sm:px-8">
         <Link
           href="/october"
-          className="text-sm text-[#e9e6da]/35 underline-offset-4 hover:text-[#e9e6da]/70 hover:underline"
+          className="inline-flex min-h-11 items-center text-sm text-[#e9e6da]/35 underline-offset-4 hover:text-[#e9e6da]/70 hover:underline"
         >
           ← back out
         </Link>

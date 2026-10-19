@@ -479,7 +479,7 @@ export default async function OctoberHomePage({
             action={
               <Link
                 href="/october/mine"
-                className="text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
+                className="inline-flex min-h-11 items-center text-sm text-[#e9e6da]/45 underline-offset-4 hover:text-[#e9e6da]/75 hover:underline"
               >
                 Open
               </Link>
