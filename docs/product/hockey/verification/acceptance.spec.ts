@@ -140,6 +140,8 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   // Maya nominates somewhere; Lorne sees it arrive without reloading.
   await maya.page
     .getByRole("button", { name: "Suggest somewhere else" })
+    // Eating comes first; "Where are we meeting?" takes suggestions too.
+    .first()
     .click();
   await maya.page
     .getByPlaceholder(/Nominate a real place/)
@@ -187,6 +189,29 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   );
   expect(fake.status()).toBe(422);
 
+  // ------------------------------------------------ the curated list, beside Atlas
+  // Real places Passport keeps itself (collections/vancouver.ts), with an
+  // address, and nominated through the same server lookup.
+  await expect(
+    lorne.page.getByText("568 Beatty Street, Downtown"),
+  ).toBeVisible();
+  await lorne.page.getByRole("button", { name: "Nominate Chambar" }).click();
+  await expect(
+    lorne.page.getByRole("button", { name: "Chambar is on the ballot" }),
+  ).toBeVisible();
+  await expect(
+    maya.page.getByRole("button", { name: /^Chambar.*straight line/ }),
+  ).toBeVisible({ timeout: 15_000 });
+
+  // ------------------------------------------------ where we meet
+  const station = (p: Page) =>
+    p.getByRole("button", { name: /Stadium–Chinatown Station/ });
+  await Promise.all([station(lorne.page).click(), station(maya.page).click()]);
+  // The plan says it back to everyone.
+  await expect(
+    maya.page.getByText("Stadium–Chinatown Station · 2 votes"),
+  ).toBeVisible({ timeout: 15_000 });
+
   // ------------------------------------------------ banter
   await lorne.page
     .getByPlaceholder("Say something to the group")
@@ -229,7 +254,15 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     expect(options.map((o: { label: string }) => o.label)).toEqual([
       "Tap & Barrel Bridges",
       "Stub Pub (synthetic)",
+      "Chambar",
     ]);
+    // Both meeting votes landed on the meeting question, not the food one.
+    expect(
+      s.state.responses.filter(
+        (r: { promptId: string; value: string }) =>
+          r.promptId === "meet-spot" && r.value === "stadium-chinatown-station",
+      ),
+    ).toHaveLength(2);
     // The distance the server measured travels with the nomination, labelled.
     const pub = options.find(
       (o: { label: string }) => o.label === "Stub Pub (synthetic)",

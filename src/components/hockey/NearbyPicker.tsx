@@ -73,10 +73,17 @@ export function NearbyPicker({
         <div className="mt-3 h-16 animate-pulse rounded-xl bg-white/[0.04]" />
       )}
 
-      {(failed || nearby?.outage) && (
+      {(failed || (nearby?.outage && nearby.places.length === 0)) && (
         <p className="mt-3 text-[13.5px] text-white/65">
           Passport can&apos;t reach its map of Vancouver right now. Suggest a
           place by name instead — it counts just the same.
+        </p>
+      )}
+
+      {nearby?.outage && nearby.places.length > 0 && (
+        <p className="mt-3 text-[13.5px] text-white/65">
+          Passport&apos;s full map of Vancouver isn&apos;t answering, so this is
+          just the short list it keeps itself. Suggest anywhere else by name.
         </p>
       )}
 
@@ -104,6 +111,11 @@ export function NearbyPicker({
                     {place.subtype ? `${place.subtype} · ` : ""}
                     {walkLabel(place)}
                   </p>
+                  {place.address && (
+                    <p className="truncate text-[12px] text-white/35">
+                      {place.address}
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"

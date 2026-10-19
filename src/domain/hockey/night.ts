@@ -1,6 +1,9 @@
 import { planBlock, planLines } from "./plan";
 import { editionLabel, editionOf, type SeriesDetails } from "./edition";
 import { hockeyNight } from "@/experience-lab/fixtures/hockeyNight";
+import { curatedNear } from "@/domain/collections/places";
+import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
+import { walkLabel } from "./nearby";
 import type {
   Brief,
   Edge,
@@ -261,7 +264,57 @@ export function templatePrompts(
         default:
           return unasked;
       }
-    });
+    })
+    .flatMap((prompt) =>
+      prompt.id === "pregame-spot"
+        ? [prompt, ...meetingPrompt(details)]
+        : [prompt],
+    );
+}
+
+/**
+ * **Where we meet: real places by the venue, from the shared curated list.**
+ *
+ * A template question the lab fixture never had, because the lab's people
+ * already knew each other's habits. Coworkers coming from different offices
+ * do not. Options are real meeting points within a short walk, each with its
+ * straight-line distance; anyone may add another. Absent for a venue the
+ * curated list knows nothing near.
+ */
+export const MEET_PROMPT_ID = "meet-spot";
+
+export function meetingPrompt(details: NightDetails): Prompt[] {
+  const near = curatedNear(VANCOUVER_PLACES, details.venueAt, {
+    kinds: ["meeting"],
+    withinKm: 1,
+  });
+  if (near.length === 0) return [];
+  return [
+    {
+      id: MEET_PROMPT_ID,
+      question: "Where are we meeting?",
+      kind: "choice",
+      phaseId: "before",
+      locksAtPhaseId: "warmup",
+      reveal: "immediate",
+      openToSuggestions: true,
+      hint: "Pick somewhere everyone can find. Or add your own.",
+      options: [
+        ...near.map(({ place, km, walkMinutes }) => ({
+          id: place.id.split(":").pop() as string,
+          label: place.name,
+          detail: `${place.blurb} ${walkLabel({ km, walkMinutes })} to ${details.venue}.`,
+          emoji: "📍",
+        })),
+        {
+          id: "at-seats",
+          label: "Just meet at our seats",
+          detail: "Zero coordination. Someone will still be late.",
+          emoji: "🎟️",
+        },
+      ],
+    },
+  ];
 }
 
 /** What `passport_create_occasion` writes: the rules RLS enforces. */
@@ -393,7 +446,11 @@ export function composeNight(
             ...b,
             promptIds: b.promptIds
               .filter((id) => !NOT_YET.has(id))
-              .map((id) => (id === "lorne-beer" ? "host-beer" : id)),
+              .map((id) => (id === "lorne-beer" ? "host-beer" : id))
+              // Where we meet sits right after where we eat.
+              .flatMap((id) =>
+                id === "pregame-spot" ? [id, MEET_PROMPT_ID] : [id],
+              ),
           }
         : b,
     )

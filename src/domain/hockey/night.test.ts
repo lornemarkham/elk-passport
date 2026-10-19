@@ -5,6 +5,7 @@ import { defaultLook } from "./identity";
 import {
   SYCLE_HOCKEY_NIGHT,
   composeNight,
+  meetingPrompt,
   templateRules,
   type MemberRow,
   type NightRows,
@@ -106,6 +107,32 @@ describe("the real night carries no invented facts", () => {
     expect(spot?.options?.map((o) => o.id)).toEqual(["concourse"]);
   });
 
+  it("offers real meeting points by the arena, from the curated list, with honest distances", () => {
+    const meet = definition.prompts.find((p) => p.id === "meet-spot");
+    expect(meet).toMatchObject({
+      reveal: "immediate",
+      openToSuggestions: true,
+    });
+    const labels = meet?.options?.map((o) => o.label) ?? [];
+    expect(labels).toContain("Stadium–Chinatown Station");
+    expect(labels.at(-1)).toBe("Just meet at our seats");
+    for (const o of meet?.options?.slice(0, -1) ?? [])
+      expect(o.detail).toMatch(
+        /straight line .* min walk \(estimate\) to Rogers Arena\.$/,
+      );
+    const pregame = definition.blocks.find((b) => b.id === "pregame");
+    expect(pregame?.promptIds?.slice(0, 2)).toEqual([
+      "pregame-spot",
+      "meet-spot",
+    ]);
+  });
+
+  it("asks no meeting question at a venue the curated list knows nothing near", () => {
+    expect(
+      meetingPrompt({ ...SYCLE_HOCKEY_NIGHT.details, venueAt: [45.5, -73.55] }),
+    ).toEqual([]);
+  });
+
   it("keeps the prototype's shape: every block's questions exist", () => {
     const ids = new Set(definition.prompts.map((p) => p.id));
     for (const block of definition.blocks) {
@@ -134,6 +161,11 @@ describe("rules written to the database match the questions", () => {
     expect(rules.get("vault")).toMatchObject({
       reveal: "onCue",
       lockOffsetMinutes: 100,
+    });
+    expect(rules.get("meet-spot")).toMatchObject({
+      reveal: "immediate",
+      lockOffsetMinutes: -90,
+      openToSuggestions: true,
     });
     expect(rules.has("story")).toBe(false);
   });

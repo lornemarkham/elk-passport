@@ -9,8 +9,9 @@ import type {
 import type { PassportUser } from "@/lib/auth/currentUser";
 import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import {
-  nearbyFood,
+  nearbyWithCurated,
   walkLabel,
   type NearbyPlace,
 } from "@/domain/hockey/nearby";
@@ -622,15 +623,20 @@ export async function act(
 // ------------------------------------------------------------ places
 
 /**
- * Food and drink near the venue, from Discovery's own Atlas candidates.
- * `outage` says Atlas could not be asked — different from "nothing nearby".
+ * Food and drink near the venue: Discovery's own Atlas candidates, plus the
+ * curated downtown list where Atlas has nothing. `outage` says Atlas could
+ * not be asked — different from "nothing nearby"; the curated places still
+ * come back, so an Atlas outage no longer empties the picker.
  */
 async function placesNear(
   occasion: NightRows["occasion"],
 ): Promise<{ places: NearbyPlace[]; outage?: string }> {
   const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
   const { candidates, outage } = await discoveryCandidates();
-  return { places: nearbyFood(candidates, venue), outage };
+  return {
+    places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue),
+    outage,
+  };
 }
 
 export async function nearbyFor(

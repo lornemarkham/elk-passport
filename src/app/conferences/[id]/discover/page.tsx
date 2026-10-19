@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 import { doorsFor } from "@/domain/conference/modules";
 import { conferenceContext } from "@/lib/conference/request";
 import { Doors } from "@/components/conference/Doors";
+import { NearbyPlaces } from "@/components/conference/NearbyPlaces";
+import {
+  CONVENTION_CENTRE_WEST,
+  VANCOUVER_PLACES,
+} from "@/domain/collections/vancouver";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +36,7 @@ export default async function DiscoverModule({
   const doors = doorsFor(c);
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 pt-10">
+    <div className="mx-auto max-w-[760px] px-5 pt-10 pb-16">
       <Link
         href={`/conferences/${c.id}`}
         className="text-[15px] text-black/55 underline"
@@ -58,6 +63,22 @@ export default async function DiscoverModule({
             : ""}
         </p>
       )}
+      {c.place.townId === "vancouver" ? (
+        <>
+          <h2 className="mt-12 text-[24px] leading-tight font-black tracking-[-0.02em]">
+            A walk from the Convention Centre
+          </h2>
+          <p className="mt-2 text-black/60">
+            A short list of real places, checked by hand. Distances are straight
+            lines from {CONVENTION_CENTRE_WEST.name}, so the walk is a little
+            longer.
+          </p>
+          <NearbyPlaces
+            places={VANCOUVER_PLACES}
+            from={CONVENTION_CENTRE_WEST}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

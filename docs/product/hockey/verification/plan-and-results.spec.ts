@@ -134,6 +134,8 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   // ------------------------------------------ a second voter, a different way
   await maya.page
     .getByRole("button", { name: "Suggest somewhere else" })
+    // Eating comes first; "Where are we meeting?" takes suggestions too.
+    .first()
     .click();
   await maya.page
     .getByPlaceholder(/Nominate a real place/)

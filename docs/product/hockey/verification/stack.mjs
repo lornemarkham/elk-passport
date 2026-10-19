@@ -18,10 +18,11 @@
  * `/rest/v1`), so the unmodified app, pointed at it with
  * `NEXT_PUBLIC_SUPABASE_URL`, behaves exactly as it does against a project.
  *
- * Roles and default privileges mirror Supabase's: `anon`, `authenticated`
- * and `service_role` get ALL on new public tables by default, so RLS — not a
- * missing GRANT — has to be what keeps people out. That is the posture the
- * migration has to survive in production.
+ * Roles mirror Supabase's. Default privileges mirror the production project,
+ * which does NOT grant new public tables to `anon` or `authenticated`: the
+ * migration must GRANT what it needs, and RLS decides rows. (This stack used
+ * to grant ALL by default; that hid the same 42501 that crashed Conference in
+ * production on 2026-10-16.)
  *
  * Usage (binaries and node deps live in $STACK, default /tmp/hockey-stack):
  *
@@ -142,7 +143,7 @@ create role supabase_auth_admin login createrole superuser;
 create schema auth authorization supabase_auth_admin;
 grant usage on schema auth to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;

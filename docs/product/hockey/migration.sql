@@ -22,7 +22,8 @@
 --
 -- Every row belongs to one occasion, and nobody who is not a member of that
 -- occasion can read or write anything about it — enforced here, by RLS, under
--- Supabase's default grants (anon and authenticated hold ALL on public tables),
+-- explicit grants (below: production does NOT apply Supabase's default grants
+-- to new public tables — see 20261016000000_passport_conference_grants.sql),
 -- so a member talking to PostgREST directly with their own JWT has exactly the
 -- authority the app gives them and no more. Members write only rows that carry
 -- their own `auth.uid()`. Sealed answers are sealed in the database: whether
@@ -390,6 +391,25 @@ ALTER TABLE public.passport_occasion_consents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.passport_occasion_cues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.passport_occasion_moments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.passport_occasion_reactions ENABLE ROW LEVEL SECURITY;
+
+-- Signed-in people: the table privileges RLS needs to run at all.
+--
+-- This used to rely on Supabase's default privileges (anon and authenticated
+-- holding ALL on new public tables). The shared production project does not
+-- apply them: on 2026-10-16 Conference, written the same way, crashed for
+-- every signed-in visitor with `42501 permission denied`. So the posture the
+-- attack suite tested is now stated outright — the same DML the defaults
+-- gave, without TRUNCATE/REFERENCES/TRIGGER — and the column-level UPDATE
+-- grants below still narrow the four tables that have them. RLS decides rows.
+GRANT SELECT, INSERT, DELETE ON public.passport_occasions,
+  public.passport_occasion_members, public.passport_occasion_invites,
+  public.passport_occasion_prompts
+  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.passport_occasion_options,
+  public.passport_occasion_responses, public.passport_occasion_consents,
+  public.passport_occasion_cues, public.passport_occasion_moments,
+  public.passport_occasion_reactions
+  TO authenticated;
 
 -- Signed-out visitors get nothing from any of these, by grant as well as by policy.
 REVOKE ALL ON public.passport_occasions, public.passport_occasion_members,

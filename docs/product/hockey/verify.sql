@@ -46,7 +46,17 @@ select 'authenticated cannot UPDATE invites.uses',
        has_column_privilege('authenticated', 'public.passport_occasion_invites', 'uses', 'update')::text,
        case when not has_column_privilege('authenticated', 'public.passport_occasion_invites', 'uses', 'update') then 'OK' else 'STOP' end
 union all
+-- Production does not apply Supabase's default grants: without these, every
+-- signed-in read is `42501 permission denied` (Conference, 2026-10-16).
+select 'authenticated can SELECT every occasion table', coalesce(string_agg(t, ', '), 'none missing'),
+       case when count(*) = 0 then 'OK' else 'STOP' end
+from (select tablename t from pg_tables
+      where schemaname = 'public' and tablename like 'passport\_occasion%'
+        and not has_table_privilege('authenticated', 'public.' || tablename, 'select')) x
+union all
 -- Nothing of Passport's baseline was touched.
 select 'baseline still has 8 passport_* tables', count(*)::text,
        case when count(*) = 8 then 'OK' else 'STOP' end
-from pg_tables where schemaname = 'public' and tablename like 'passport\_%' and tablename not like 'passport\_occasion%';
+-- Conference's tables (20261012/20261014) are not the baseline either.
+from pg_tables where schemaname = 'public' and tablename like 'passport\_%' and tablename not like 'passport\_occasion%'
+  and tablename not like 'passport\_conference%';

@@ -79,9 +79,16 @@ Files, all in `docs/product/hockey/`:
   to `passport_events`, or to any baseline table. Boards are untouched.
 - **PG features:** `gen_random_uuid()` (core since PG13), `sha256(bytea)` (PG11),
   `make_interval`, `WITH ORDINALITY`. Supabase runs 15+.
-- **Grants posture** is the one Supabase gives every project (`anon`/`authenticated`
-  hold ALL on new `public` tables), which is exactly what the attack run used, so
-  RLS — not a missing grant — is what was tested.
+- **Grants posture — corrected 2026-10-19.** This said the migration could rely
+  on Supabase's default privileges (`anon`/`authenticated` holding ALL on new
+  `public` tables). The production project does **not** apply them: Conference,
+  written the same way, crashed for every signed-in visitor on 2026-10-16 with
+  `42501 permission denied`. Re-run on a stack without those defaults, this
+  migration did the same (`permission denied for table passport_occasions`, 14
+  attacks failing because nothing could be read). `migration.sql` now grants
+  `authenticated` the same DML outright (no TRUNCATE/REFERENCES/TRIGGER — which
+  also closes §2.4 finding 1), the stack mirrors production, `verify.sql` checks
+  the grant, and `rls-attack.mjs` passes again under that posture.
 - **I could not read the production database** (no credentials, by design). Anything
   about live state is therefore _verified by `preflight.sql` when you run it_, not
   asserted here.
