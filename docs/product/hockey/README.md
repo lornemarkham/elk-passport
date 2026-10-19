@@ -8,6 +8,14 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-16 — more than one night.** A host now picks the game (any home
+opponent, any date) and can start as many nights as they like; the shelf
+splits coming up from already happened; **Run it back** (the lab's round-2
+lineage) is restored, so a member of a finished night starts the next one,
+which opens with last time's receipts; and the **Sycle Cup** persists across a
+run as titles, not points. Where the ideas came from and what was lost:
+[`ORIGINAL-VISION.md`](ORIGINAL-VISION.md).
+
 ---
 
 ## What already existed
@@ -107,14 +115,16 @@ is not yet written into an itinerary block (see open items).
 
 ## Verification — `verification/`
 
-| What                                                                                                                                                          | Result                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `stack.mjs` — real PostgreSQL + **GoTrue** + **PostgREST** + proxy, Supabase's default grants                                                                 | used by everything below              |
-| `rls-attack.mjs` — 48 attacks over PostgREST as real signed-up users                                                                                          | **48/48 refused/correct**             |
-| `plan-and-results.spec.ts` — the plan, ties, sealed picks, host-only results (added 2026-10-13)                                                               | **passes, 3/3**                       |
-| `acceptance.spec.ts` — two independent browser contexts (desktop host, **mobile** guest), a signed-out visitor, a stranger, the host again in a fresh session | **passes, 7 of 7 runs**               |
-| `src/domain/hockey/*.test.ts`                                                                                                                                 | 22/22                                 |
-| Migration applied twice                                                                                                                                       | no change (25 policies, RLS on 10/10) |
+| What                                                                                                                                                                                                                                    | Result                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `stack.mjs` — real PostgreSQL + **GoTrue** + **PostgREST** + proxy, Supabase's default grants                                                                                                                                           | used by everything below              |
+| `rls-attack.mjs` — 48 attacks over PostgREST as real signed-up users                                                                                                                                                                    | **48/48 refused/correct**             |
+| `plan-and-results.spec.ts` — the plan, ties, sealed picks, host-only results (added 2026-10-13)                                                                                                                                         | **passes, 3/3**                       |
+| `acceptance.spec.ts` — two independent browser contexts (desktop host, **mobile** guest), a signed-out visitor, a stranger, the host again in a fresh session                                                                           | **passes, 7 of 7 runs**               |
+| `mobile.spec.ts` — 320px and 375px touch phones: no sideways scroll, every tap target ≥ 32px high (added 2026-10-16; found and fixed seven undersized taps)                                                                             | **passes, 2/2**                       |
+| `multi-night.spec.ts` — two nights, two guest lists, a stranger to both: no cross-night reads, picks, chat, invites or results; a guest runs it back to No. 2 with last time's receipts; the Cup on the shelf; 320px (added 2026-10-16) | **passes**                            |
+| `src/domain/hockey/*.test.ts`                                                                                                                                                                                                           | 22/22                                 |
+| Migration applied twice                                                                                                                                                                                                                 | no change (25 policies, RLS on 10/10) |
 
 The acceptance run covers: start → invite → signed-out visitor sees nothing →
 guest signs up _through the link_ → joins → both see one roster → simultaneous
@@ -159,7 +169,7 @@ build and `next start -p 3130` with `/tmp/hockey-stack/env` and
   the lab did that in the browser, which on a shared page would expose every
   author to devtools. Needs server-side materialisation.
 - **Photos are captions**, as in the lab. No upload, no storage bucket.
-- **Run it back** is hidden rather than shown as a dead button.
+- ~~**Run it back** is hidden~~ — restored 2026-10-16, see `ORIGINAL-VISION.md`.
 - **Live updates are 5-second polling**, not Supabase Realtime.
 - **The winning restaurant is not written into an itinerary block.** It is
   now shown to the whole group as **The plan** panel (`plan.ts`: leading dinner

@@ -107,6 +107,12 @@ export function GuestList({ night }: { night: SharedNight }) {
     (p) => p.id !== night.definition.hostId,
   );
   const open = invites.filter((i) => statusOf(i) === "waiting");
+  // A link already waiting for somebody means they have been asked.
+  const asked = new Set(open.map((i) => i.label));
+  const crew = (night.series?.crew ?? []).filter(
+    (p) =>
+      !asked.has(p.name) && !night.live.participants.some((q) => q.id === p.id),
+  );
 
   return (
     <section aria-label="Guest list">
@@ -139,6 +145,29 @@ export function GuestList({ night }: { night: SharedNight }) {
             Make a link
           </button>
         </form>
+
+        {crew.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[12.5px] text-white/45">
+              Last time&apos;s crew. Tap a name, then make their link — they
+              still have to say yes.
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {crew.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => setLabel(p.name)}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/20 px-3 text-[13px] text-white/80 hover:border-white/50"
+                  >
+                    <Avatar person={p} size={20} />
+                    {p.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {fresh && (
           <div className="mt-3 rounded-xl border border-white/20 bg-white/[0.06] p-3">

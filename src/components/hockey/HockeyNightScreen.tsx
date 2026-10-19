@@ -20,9 +20,13 @@ import { QuietMode } from "@/experience-lab/ui/QuietMode";
 import { ToyBox } from "@/experience-lab/ui/ToyBox";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant } from "@/experience-lab/core/types";
+import { actOf } from "@/domain/hockey/acts";
+import { nextGameAfter } from "@/domain/hockey/schedule";
 import { CallIt } from "./CallIt";
 import { GuestList } from "./GuestList";
 import { NearbyPicker } from "./NearbyPicker";
+import { LastTime, RunItBack } from "./RunItBack";
+import { RunningOrder } from "./RunningOrder";
 import { YouTonight } from "./YouTonight";
 import { useSharedNight, type NightSnapshot } from "./useSharedNight";
 
@@ -81,7 +85,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
       <div className="mx-auto flex max-w-2xl items-center justify-between px-5 pt-4">
         <Link
           href="/hockey"
-          className="inline-flex items-center gap-1.5 text-[12.5px] text-white/45 transition hover:text-white"
+          className="inline-flex min-h-10 items-center gap-1.5 text-[12.5px] text-white/45 transition hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Your nights
@@ -93,6 +97,15 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
       </div>
 
       <Poster definition={definition} live={live} />
+
+      {live.attention !== "quiet" && <RunningOrder live={live} />}
+
+      {!showSetup &&
+        live.attention !== "quiet" &&
+        night.series &&
+        actOf(live.phase.id).id === "before" && (
+          <LastTime series={night.series} live={live} />
+        )}
 
       {showSetup && (
         <CuratorSetup
@@ -181,9 +194,20 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               );
             }
 
-            // "Run it back" is the lab's highest-value unbuilt thing, and it
-            // is still unbuilt. A button that does nothing is worse than none.
-            if (block.kind === "runItBack") return null;
+            if (block.kind === "runItBack") {
+              // Polls never carry the series; the page always does. Without
+              // it there is nothing honest to offer, so offer nothing.
+              if (!night.series) return null;
+              return (
+                <section key={block.id} aria-label="Run it back">
+                  <RunItBack
+                    live={live}
+                    series={night.series}
+                    suggestion={nextGameAfter(definition.anchorAt)}
+                  />
+                </section>
+              );
+            }
 
             const prompts = live.prompts.filter(
               (p) =>

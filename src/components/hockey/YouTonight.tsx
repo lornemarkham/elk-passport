@@ -33,7 +33,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
           setVibe(me.vibe ?? "");
           setOpen(true);
         }}
-        className="flex items-center gap-2 self-start text-[13px] text-white/45 hover:text-white"
+        className="flex min-h-10 items-center gap-2 self-start text-[13px] text-white/45 hover:text-white"
       >
         <Avatar person={me} size={22} />
         {me.vibe ? `“${me.vibe}”` : "Tell the group who you are tonight"}

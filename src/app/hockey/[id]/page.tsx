@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth/currentUser";
 import { HockeyNightScreen } from "@/components/hockey/HockeyNightScreen";
-import { loadNight } from "../_server/night";
+import { loadNightWithSeries } from "../_server/night";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export default async function HockeyNightPage({
   const { id } = await params;
   const user = await currentUser();
   if (!user) redirect(`/auth?next=${encodeURIComponent(`/hockey/${id}`)}`);
-  const night = await loadNight(user, id);
+  const night = await loadNightWithSeries(user, id);
   if (!night) notFound();
   return <HockeyNightScreen initial={night} />;
 }

@@ -16,6 +16,15 @@ import {
 } from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
 import { cleanName, defaultLook } from "@/domain/hockey/identity";
+import { editionOf, seriesOf } from "@/domain/hockey/edition";
+import { chooseGame, isOver, type GameRequest } from "@/domain/hockey/schedule";
+import {
+  lastTime,
+  sycleCup,
+  type Cup,
+  type SeriesNight,
+  type SeriesView,
+} from "@/domain/hockey/series";
 import {
   SYCLE_HOCKEY_NIGHT,
   composeNight,
@@ -23,6 +32,7 @@ import {
   templateRules,
   type MemberRow,
   type NightRows,
+  type OccasionRow,
 } from "@/domain/hockey/night";
 
 /**
@@ -142,6 +152,10 @@ export interface NightSummary {
   readonly startsAt: string;
   readonly role: "host" | "guest";
   readonly members: number;
+  readonly opponent: string;
+  readonly series: string;
+  readonly edition: number;
+  readonly over: boolean;
 }
 
 export async function myNights(user: PassportUser): Promise<NightSummary[]> {
@@ -156,7 +170,8 @@ export async function myNights(user: PassportUser): Promise<NightSummary[]> {
   const [{ data: occasions }, { data: everyone }] = await Promise.all([
     db
       .from("passport_occasions")
-      .select("id, title, starts_at")
+      .select("id, title, starts_at, details")
+      .eq("template", SYCLE_HOCKEY_NIGHT.template)
       .in("id", ids)
       .order("starts_at"),
     db
@@ -164,28 +179,180 @@ export async function myNights(user: PassportUser): Promise<NightSummary[]> {
       .select("occasion_id")
       .in("occasion_id", ids),
   ]);
-  return (occasions ?? []).map((o) => ({
-    id: o.id as string,
-    title: o.title as string,
-    startsAt: o.starts_at as string,
-    role: mine.find((m) => m.occasion_id === o.id)?.role as "host" | "guest",
-    members: (everyone ?? []).filter((m) => m.occasion_id === o.id).length,
-  }));
+  const now = new Date();
+  return (occasions ?? []).map((o) => {
+    const night = {
+      id: o.id as string,
+      details: (o.details ?? {}) as OccasionRow["details"],
+    };
+    return {
+      id: night.id,
+      title: o.title as string,
+      startsAt: o.starts_at as string,
+      role: mine.find((m) => m.occasion_id === o.id)?.role as "host" | "guest",
+      members: (everyone ?? []).filter((m) => m.occasion_id === o.id).length,
+      opponent: night.details.opponent ?? SYCLE_HOCKEY_NIGHT.details.opponent,
+      series: seriesOf(night),
+      edition: editionOf(night),
+      over: isOver(o.starts_at as string, now),
+    };
+  });
 }
 
-/** Start Sycle Hockey Night. The caller becomes its host. */
+/** At most this many nights are read back to build one Cup. */
+const CUP_DEPTH = 12;
+
+/**
+ * Every night of one series this person was at, composed as they may see it.
+ * The ids come from `myNights`, which RLS already limited to their own; each
+ * night is then read with their session, so a night they were never at — or
+ * were removed from — is simply not in the Cup.
+ */
+async function seriesNights(
+  user: PassportUser,
+  series: string,
+  mine: readonly NightSummary[],
+): Promise<SeriesNight[]> {
+  const db = await createSupabaseServerClient();
+  const wanted = mine
+    .filter((n) => n.series === series)
+    .sort((a, b) => b.edition - a.edition)
+    .slice(0, CUP_DEPTH);
+  const read = await Promise.all(
+    wanted.map(async (n) => {
+      const rows = await rowsFor(db, n.id);
+      if (!rows?.members.some((m) => m.user_id === user.id)) return null;
+      return {
+        id: n.id,
+        edition: n.edition,
+        startsAt: n.startsAt,
+        ...composeNight(rows, user.id),
+      } satisfies SeriesNight;
+    }),
+  );
+  return read.filter((n): n is SeriesNight => n !== null);
+}
+
+export async function seriesView(
+  user: PassportUser,
+  night: NightSnapshot,
+): Promise<SeriesView> {
+  const mine = await myNights(user);
+  const here = mine.find((n) => n.id === night.state.slug);
+  if (!here) throw new NightError("Not found.", 404);
+  const nights = await seriesNights(user, here.series, mine);
+  const now = new Date();
+  const previous = nights
+    .filter((n) => n.edition < here.edition)
+    .sort((a, b) => b.edition - a.edition)[0];
+  const onThisNight = new Set(night.definition.participants.map((p) => p.id));
+  const later = mine
+    .filter((n) => n.series === here.series && n.edition > here.edition)
+    .sort((a, b) => a.edition - b.edition)[0];
+  return {
+    edition: here.edition,
+    cup: sycleCup(here.series, nights, now),
+    lastTime: lastTime(
+      { edition: here.edition, participants: night.definition.participants },
+      nights,
+      now,
+    ),
+    crew: (previous?.definition.participants ?? []).filter(
+      (p) => !onThisNight.has(p.id),
+    ),
+    next: later ? { id: later.id, edition: later.edition } : null,
+  };
+}
+
+/** The night, and what it knows about the rest of its run. For the page, not the poll. */
+export async function loadNightWithSeries(
+  user: PassportUser,
+  id: string,
+): Promise<(NightSnapshot & { series: SeriesView }) | null> {
+  const night = await loadNight(user, id);
+  if (!night) return null;
+  return { ...night, series: await seriesView(user, night) };
+}
+
+/** Every Cup this person has a seat at, for the shelf. */
+export async function myCups(
+  user: PassportUser,
+  mine: readonly NightSummary[],
+): Promise<Cup[]> {
+  const series = [...new Set(mine.filter((n) => n.over).map((n) => n.series))];
+  const now = new Date();
+  const cups = await Promise.all(
+    series.map(async (s) =>
+      sycleCup(s, await seriesNights(user, s, mine), now),
+    ),
+  );
+  return cups.filter((c) => c.nights.some((n) => n.status !== "upcoming"));
+}
+
+export interface StartRequest {
+  readonly name?: string;
+  /** Absent: the night M216 was for. */
+  readonly game?: GameRequest;
+  /** "Run it back": the night this one follows. */
+  readonly after?: string;
+}
+
+/**
+ * Start a Sycle Hockey Night. The caller becomes its host.
+ *
+ * With `after`, it is the next night of that one's run — any member of the
+ * last night may start it, and whoever does hosts it. That is how a run gets
+ * more than one host without anybody being made an administrator of
+ * anything: the person who says "again?" first is the person organising it.
+ */
 export async function createSycleNight(
   user: PassportUser,
-  name: string | undefined,
+  request: StartRequest,
 ): Promise<string> {
   const db = await createSupabaseServerClient();
+  const now = new Date();
+
+  let startsAt: string = SYCLE_HOCKEY_NIGHT.startsAt;
+  let details: OccasionRow["details"] = SYCLE_HOCKEY_NIGHT.details;
+  if (request.game) {
+    const chosen = chooseGame(request.game, now);
+    if (!chosen.ok) throw new NightError(chosen.problem, 422);
+    startsAt = chosen.startsAt;
+    details = chosen.details;
+  }
+
+  if (request.after) {
+    const previous = await loadNight(user, request.after);
+    if (!previous) throw new NightError("Not found.", 404);
+    if (new Date(previous.definition.anchorAt).getTime() > now.getTime()) {
+      throw new NightError("That one hasn't happened yet.", 422);
+    }
+    if (
+      new Date(startsAt).getTime() <=
+      new Date(previous.definition.anchorAt).getTime()
+    ) {
+      throw new NightError("The next one has to come after the last one.", 422);
+    }
+    const mine = await myNights(user);
+    const last = mine.find((n) => n.id === request.after);
+    if (!last) throw new NightError("Not found.", 404);
+    const edition =
+      Math.max(
+        ...mine.filter((n) => n.series === last.series).map((n) => n.edition),
+      ) + 1;
+    details = { ...details, series: last.series, edition };
+  }
+
   const look = defaultLook(user.id);
   const { data, error } = await db.rpc("passport_create_occasion", {
     p_template: SYCLE_HOCKEY_NIGHT.template,
     p_title: SYCLE_HOCKEY_NIGHT.title,
-    p_starts_at: SYCLE_HOCKEY_NIGHT.startsAt,
-    p_details: SYCLE_HOCKEY_NIGHT.details,
-    p_display_name: cleanName(name, cleanName(user.displayName, "Host")),
+    p_starts_at: startsAt,
+    p_details: details,
+    p_display_name: cleanName(
+      request.name,
+      cleanName(user.displayName, "Host"),
+    ),
     p_emoji: look.emoji,
     p_hue: look.hue,
     p_prompts: templateRules(),
