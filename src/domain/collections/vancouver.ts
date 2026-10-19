@@ -326,7 +326,7 @@ export const VANCOUVER_PLACES: readonly CuratedPlace[] = [
     address: "578 Carrall Street",
     neighbourhood: "Chinatown",
     at: [49.27956, -123.10394],
-    blurb: "A walled Ming-style garden, ten quiet minutes from the arena.",
+    blurb: "A walled Ming-style garden, the quietest corner of Chinatown.",
     source: { osm: osm("way/456158488"), checked: CHECKED },
   },
   {
