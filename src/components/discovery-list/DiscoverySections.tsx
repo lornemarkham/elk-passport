@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Experience } from "@/domain/experience/types";
 import type { DiscoverySection } from "@/domain/discovery/compose";
 import type { Point } from "@/domain/discovery/situation";
+import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
 import { PossibilityCard } from "./PossibilityCard";
 
 /**
@@ -94,7 +95,9 @@ function Section({
   // How many extra pages of this section the person has asked for. Local to
   // the section, so opening one up leaves the others as they were.
   const [more, setMore] = useState(0);
-  const shown = section.items.slice(0, section.size * (more + 1));
+  const shown = withoutRepeatedIllustrations(
+    section.items.slice(0, section.size * (more + 1)),
+  );
   const canReveal = shown.length < section.items.length;
 
   return (

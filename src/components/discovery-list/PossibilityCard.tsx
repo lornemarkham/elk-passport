@@ -13,6 +13,7 @@ import {
   whenLine,
   whereLine,
 } from "@/domain/discovery/compose";
+import { isIllustrative } from "@/domain/discovery/illustrations";
 import { distanceText } from "@/domain/discovery/proximity";
 import { describeJourney, routedShort } from "@/lib/routing/journey";
 import { ageLine } from "@/domain/discovery/suitability";
@@ -179,16 +180,23 @@ export function PossibilityCard({
   // card may carry when the candidate has no lead image of its own. It always
   // says what it is — a venue's, an organizer's, a representative or an
   // illustrative photo — and only `exact` is shown unlabelled.
-  const presented =
+  const offered =
     !picture &&
     experience.presentationImage &&
     !broken.has(experience.presentationImage.url)
       ? experience.presentationImage
       : undefined;
-  const venuePicture =
-    !picture && !presented && venue?.heroUrl && !broken.has(venue.heroUrl)
+  // **Truer pictures first.** A stand-in photograph of the *kind* of thing
+  // (`representative`, `category`) gives way to the venue's own, and is the
+  // last picture tried before words.
+  const venueUsable =
+    !picture && venue?.heroUrl && !broken.has(venue.heroUrl)
       ? venue
       : undefined;
+  const standIn = offered ? isIllustrative(offered) : false;
+  const presented = offered && !(standIn && venueUsable) ? offered : undefined;
+  const venuePicture = !picture && !presented ? venueUsable : undefined;
+  const hasPicture = Boolean(picture || presented || venuePicture);
   const fail = (src: string) => setBroken((prev) => new Set(prev).add(src));
   // Atlas's verdict for the age it was asked about — the card says what was
   // stated, and says plainly when nothing was.
@@ -237,7 +245,7 @@ export function PossibilityCard({
           a picture the card leads with its words instead — what kind of thing
           it is and its name, set large on a quiet tint — at a third of the
           height, so a shelf of mixed cards still reads as one row. */}
-      {!picture && !presented && !venuePicture && (
+      {!hasPicture && (
         <div
           data-testid="possibility-text-lead"
           className="flex min-h-[7.5rem] w-full flex-col justify-end rounded-xl p-4"
@@ -249,7 +257,7 @@ export function PossibilityCard({
           <p className="ghad-accent-text text-[10px] font-semibold tracking-[0.12em] uppercase">
             {showTag ? tag : experience.kind}
           </p>
-          <h3 className="ghad-display mt-1 line-clamp-3 text-[24px] leading-[1.02] font-extrabold tracking-[-0.035em] text-balance text-[#111]">
+          <h3 className="ghad-display mt-1 line-clamp-3 text-[24px] leading-[1.02] font-extrabold tracking-[-0.035em] text-balance [overflow-wrap:anywhere] text-[#111]">
             {experience.title}
           </h3>
         </div>
@@ -288,7 +296,7 @@ export function PossibilityCard({
             <p
               data-testid="possibility-presented-label"
               title={presented.attribution}
-              className="absolute bottom-2 left-2 max-w-[90%] truncate rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white uppercase"
+              className="absolute bottom-2 left-2 line-clamp-2 max-w-[calc(100%-1rem)] rounded-xl bg-black/70 px-2.5 py-1 text-[10px] leading-snug font-semibold tracking-wide [overflow-wrap:anywhere] text-white uppercase"
             >
               {presentedLabel(presented)}
             </p>
@@ -307,7 +315,7 @@ export function PossibilityCard({
           />
           <p
             data-testid="possibility-venue-photo"
-            className="absolute bottom-2 left-2 max-w-[90%] truncate rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white uppercase"
+            className="absolute bottom-2 left-2 line-clamp-2 max-w-[calc(100%-1rem)] rounded-xl bg-black/70 px-2.5 py-1 text-[10px] leading-snug font-semibold tracking-wide [overflow-wrap:anywhere] text-white uppercase"
           >
             Venue photo · {venuePicture.via.name}
           </p>
@@ -368,15 +376,15 @@ export function PossibilityCard({
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             {where}
           </p>
-        ) : showTag && (picture || venuePicture) ? (
+        ) : showTag && hasPicture ? (
           <p className="truncate text-[10px] font-medium tracking-wide text-black/70 uppercase">
             {tag}
           </p>
         ) : null}
 
         {/* Without a picture the heading is in the text lead above. */}
-        {(picture || venuePicture) && (
-          <h3 className="ghad-display mt-1 text-[18px] leading-[1.1] font-extrabold tracking-[-0.03em] text-balance text-[#111]">
+        {hasPicture && (
+          <h3 className="ghad-display mt-1 line-clamp-4 text-[18px] leading-[1.1] font-extrabold tracking-[-0.03em] text-balance [overflow-wrap:anywhere] text-[#111]">
             {experience.title}
           </h3>
         )}
@@ -552,13 +560,13 @@ export function PossibilityCard({
 function presentedLabel(image: CandidatePresentationImage): string {
   switch (image.relationship) {
     case "venue":
-      return `Venue photo${image.source.heldBy ? ` · ${image.source.heldBy.name}` : ""}`;
+      return `Venue photo${image.source?.heldBy ? ` · ${image.source.heldBy.name}` : ""}`;
     case "organization":
-      return `From ${image.source.heldBy?.name ?? "the organizer"}`;
+      return `From ${image.source?.heldBy?.name ?? "the organizer"}`;
     case "representative":
       return "Representative image";
     case "category":
-      return `Illustrative photo${image.license ? ` · ${image.license.author}, ${image.license.name}` : ""}`;
+      return `Illustrative photo${image.license?.author ? ` · ${image.license.author}, ${image.license.name}` : ""}`;
     default:
       return "";
   }

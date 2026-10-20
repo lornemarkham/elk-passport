@@ -127,7 +127,7 @@ export function forDiscoveryWire(experience: Experience): Experience {
       confidence,
       attribution,
       ...(license ? { license } : {}),
-      ...(source.heldBy ? { source: { heldBy: source.heldBy } } : {}),
+      ...(source?.heldBy ? { source: { heldBy: source.heldBy } } : {}),
     };
   }
 

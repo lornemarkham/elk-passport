@@ -206,3 +206,140 @@ describe("what a card says about the answers above", () => {
     });
   });
 });
+
+/**
+ * **Regression: a card with a labelled picture lost its title and kind.**
+ * The heading and the kind tag were gated on a lead picture or a venue photo,
+ * so every card carrying Atlas's `presentationImage` (2,089 in production)
+ * showed a picture and no name. Pinned for every kind of entity.
+ */
+describe("a labelled picture still has a title and a kind (all entity kinds)", () => {
+  const kinds = [
+    "Place",
+    "Organization",
+    "Activity",
+    "Event",
+    "Experience",
+  ] as const;
+  const labelled = (
+    relationship: string,
+    over: Record<string, unknown> = {},
+  ) => ({
+    url: "https://example.test/p.jpg",
+    relationship,
+    depictsEntity: false,
+    confidence: "low",
+    attribution: "x",
+    ...over,
+  });
+
+  describe.each(kinds)("%s", (kind) => {
+    it.each(["exact", "venue", "organization", "representative", "category"])(
+      "keeps its heading and kind tag with a %s picture",
+      (relationship) => {
+        card({
+          ...base,
+          kind,
+          subtype: "Pumpkin patch",
+          title: "Aldor Acres Fall Pumpkin Patch",
+          presentationImage: labelled(relationship),
+        } as unknown as Experience);
+        expect(
+          screen.getByRole("heading", {
+            name: "Aldor Acres Fall Pumpkin Patch",
+          }),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Pumpkin patch")).toBeInTheDocument();
+        expect(screen.queryByTestId("possibility-text-lead")).toBeNull();
+      },
+    );
+  });
+
+  it("does not crash when the wire dropped `source` (no heldBy) or `license`", () => {
+    for (const relationship of ["venue", "organization", "category"]) {
+      const { unmount } = card({
+        ...base,
+        presentationImage: labelled(relationship),
+      } as unknown as Experience);
+      expect(
+        screen.getByTestId("possibility-presented-label"),
+      ).toBeInTheDocument();
+      unmount();
+    }
+    card({
+      ...base,
+      presentationImage: labelled("category", {
+        license: { name: "CC BY 4.0" },
+      }),
+    } as unknown as Experience);
+    expect(screen.getByTestId("possibility-presented-label")).toHaveTextContent(
+      "Illustrative photo",
+    );
+  });
+
+  it("prefers the venue's own photograph over an illustrative one", () => {
+    for (const relationship of ["category", "representative"]) {
+      const { container, unmount } = card({
+        ...base,
+        contextualMedia: {
+          heroUrl: "https://example.test/barn.jpg",
+          via: { id: "v", kind: "Organization", name: "Davison Orchards" },
+        },
+        presentationImage: labelled(relationship),
+      } as unknown as Experience);
+      expect(container.querySelector("img")!.getAttribute("src")).toBe(
+        "https://example.test/barn.jpg",
+      );
+      expect(screen.getByTestId("possibility-venue-photo")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("keeps an authentic presented picture over the venue's contextual one", () => {
+    const { container } = card({
+      ...base,
+      contextualMedia: {
+        heroUrl: "https://example.test/barn.jpg",
+        via: { id: "v", kind: "Organization", name: "Davison Orchards" },
+      },
+      presentationImage: labelled("venue"),
+    } as unknown as Experience);
+    expect(container.querySelector("img")!.getAttribute("src")).toBe(
+      "https://example.test/p.jpg",
+    );
+  });
+
+  it("falls to the illustrative photo when the venue photo is broken", () => {
+    const { container } = card({
+      ...base,
+      contextualMedia: {
+        heroUrl: "https://example.test/barn.jpg",
+        via: { id: "v", kind: "Organization", name: "Davison Orchards" },
+      },
+      presentationImage: labelled("category"),
+    } as unknown as Experience);
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("img")!.getAttribute("src")).toBe(
+      "https://example.test/p.jpg",
+    );
+  });
+
+  it("lets a long title and a long credit wrap instead of overflowing", () => {
+    card({
+      ...base,
+      title: "Supercalifragilisticexpialidocious".repeat(4),
+      presentationImage: labelled("category", {
+        license: {
+          name: "CC BY-SA 4.0",
+          author: "A Photographer With A Very Long Name",
+        },
+      }),
+    } as unknown as Experience);
+    const label = screen.getByTestId("possibility-presented-label");
+    expect(label.className).toContain("line-clamp-2");
+    expect(label.className).not.toContain("truncate");
+    expect(screen.getByRole("heading").className).toContain(
+      "[overflow-wrap:anywhere]",
+    );
+  });
+});

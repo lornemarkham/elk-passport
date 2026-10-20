@@ -583,7 +583,8 @@ export interface CandidatePresentationImage {
     "exact" | "venue" | "organization" | "representative" | "category";
   readonly depictsEntity: boolean;
   readonly confidence: "high" | "medium" | "low";
-  readonly source: {
+  /** Absent on the Discovery wire unless it names who holds the picture. */
+  readonly source?: {
     readonly page?: string;
     readonly host: string;
     readonly heldBy?: {

@@ -84,6 +84,7 @@ import { ActivityExplorer, ActivityExplorerButton } from "./ActivityExplorer";
 import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
+import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
 import { PossibilityCard } from "./PossibilityCard";
 import {
   composeDiscovery,
@@ -2171,20 +2172,22 @@ export function DiscoveryListView({
                      same rule — a distance where both ends are stated, and
                      nothing at all otherwise. */
                   <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {visible.slice(0, shown).map((experience) => (
-                      <PossibilityCard
-                        key={experience.id}
-                        experience={experience}
-                        {...(cardDay ? { today: cardDay } : {})}
-                        {...(home ? { home } : {})}
-                        {...(at ? { origin: at } : {})}
-                        carry={carry}
-                        saved={savedIds.has(experience.id)}
-                        saving={savingId === experience.id}
-                        onSave={() => handleSave(experience)}
-                        dayHref={dayHrefFor(experience)}
-                      />
-                    ))}
+                    {withoutRepeatedIllustrations(visible.slice(0, shown)).map(
+                      (experience) => (
+                        <PossibilityCard
+                          key={experience.id}
+                          experience={experience}
+                          {...(cardDay ? { today: cardDay } : {})}
+                          {...(home ? { home } : {})}
+                          {...(at ? { origin: at } : {})}
+                          carry={carry}
+                          saved={savedIds.has(experience.id)}
+                          saving={savingId === experience.id}
+                          onSave={() => handleSave(experience)}
+                          dayHref={dayHrefFor(experience)}
+                        />
+                      ),
+                    )}
                   </ul>
                 )}
 
