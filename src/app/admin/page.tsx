@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Compass, Layers, MapPin, Search, Split, Waves } from "lucide-react";
@@ -62,6 +63,9 @@ export const metadata: Metadata = { title: "Atlas" };
  * if it were the thing. Omitted rather than approximated.
  */
 export default async function AtlasHomePage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const [missions, regionsResult, runs, duplicates] = await Promise.all([
     loadResearchMissions(),
     loadRegions(),

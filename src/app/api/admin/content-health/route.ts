@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
-
-// Same proxy shape as /api/admin/duplicates/route.ts — see that file's
-// comment for why this exists (keeping ADMIN_TOKEN server-only).
-const ATLAS_BASE_URL = "http://localhost:3000";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 export async function GET() {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

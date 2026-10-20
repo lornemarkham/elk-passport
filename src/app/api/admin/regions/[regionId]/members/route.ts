@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * Assert region membership for a set of entities.
@@ -8,12 +9,14 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * stays server-side. The write itself is `RegionMembershipService`, the
  * same one `define-region` uses.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ regionId: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

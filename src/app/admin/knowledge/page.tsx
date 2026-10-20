@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import { DOMAIN_STATUS_MEANING } from "@/lib/knowledge/knowledgeDomains";
 import { loadAllDomainProgress } from "@/lib/knowledge/missionContext";
@@ -54,6 +55,9 @@ export const metadata: Metadata = {
  * never disagree about what to do next.
  */
 export default async function KnowledgeDomainsPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const states = await loadAllDomainProgress(new Date());
 
   return (

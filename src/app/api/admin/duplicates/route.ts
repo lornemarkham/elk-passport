@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
-
-// Proxies to Atlas's admin API so ADMIN_TOKEN never reaches the browser —
-// it's a server-only env var here (no NEXT_PUBLIC_ prefix), read and
-// attached to the outgoing request on the server, same boundary reasoning
-// as OPENAI_API_KEY in /api/recommend. The client (admin-repo.ts) only ever
-// talks to this same-origin route, never to Atlas's /admin/* directly.
-const ATLAS_BASE_URL = "http://localhost:3000";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 export async function GET() {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     // 503, not 500 — this isn't a runtime failure, it's an unfinished setup

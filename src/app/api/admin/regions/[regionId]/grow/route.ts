@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * Start region-scoped growth. Same proxy reasoning as every other
@@ -11,12 +12,14 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * nothing long to wait for. Progress is read afterwards from the run's
  * own events.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ regionId: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

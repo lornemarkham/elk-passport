@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Check, X } from "lucide-react";
@@ -49,6 +50,9 @@ export const metadata: Metadata = { title: "Review — Atlas" };
  * reviewer would be approving something whose edges they cannot see.
  */
 export default async function ReviewPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const [missions, bundle, regionsResult] = await Promise.all([
     loadResearchMissions(),
     loadWorkspaceBundle().catch((): WorkspaceBundle | null => null),

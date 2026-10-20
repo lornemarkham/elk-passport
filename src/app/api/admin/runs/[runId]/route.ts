@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * One run and its events, for the Region workspace to poll while growth
@@ -15,12 +16,14 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * every tick, and two round trips per second per viewer is a waste of a
  * localhost that is also running ingestion.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ runId: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

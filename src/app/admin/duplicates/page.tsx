@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
 // unchanged here — only the page shell now knows it's the second step,
 // reached from the Content Operations overview rather than being the
 // landing page.
-export default function AdminDuplicatesPage() {
+export default async function AdminDuplicatesPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   return (
     <>
       <Link

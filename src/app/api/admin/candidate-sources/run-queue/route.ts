@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * **Read the pages Atlas has discovered, from the mission that owns them.**
@@ -17,9 +18,11 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * read from that run's own events, exactly as region growth already does.
  * Nothing here waits, and nothing here reports completion.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(request: Request) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

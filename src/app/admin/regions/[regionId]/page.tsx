@@ -1,3 +1,7 @@
+import {
+  adminVerdictForRequest,
+  requireAdminPage,
+} from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -55,6 +59,9 @@ import {
 type Props = { params: Promise<{ regionId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // Metadata resolves alongside the page, so it must not read Atlas (or name
+  // anything from it) for someone who is not an administrator.
+  if (!(await adminVerdictForRequest()).ok) return { title: "Region — Atlas" };
   const { regionId } = await params;
   const region = findRegion(await loadRegions(), regionId);
   return { title: region ? `${region.name} — Atlas` : "Region — Atlas" };
@@ -103,6 +110,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * worse than no button. The page prints the real commands instead.
  */
 export default async function RegionPage({ params }: Props) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const { regionId } = await params;
 
   const [regionsResult, bundle, missions, runs] = await Promise.all([
