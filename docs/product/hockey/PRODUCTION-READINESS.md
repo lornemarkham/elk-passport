@@ -79,9 +79,18 @@ Files, all in `docs/product/hockey/`:
   to `passport_events`, or to any baseline table. Boards are untouched.
 - **PG features:** `gen_random_uuid()` (core since PG13), `sha256(bytea)` (PG11),
   `make_interval`, `WITH ORDINALITY`. Supabase runs 15+.
-- **Grants posture** is the one Supabase gives every project (`anon`/`authenticated`
-  hold ALL on new `public` tables), which is exactly what the attack run used, so
-  RLS — not a missing grant — is what was tested.
+- **Grants posture — corrected 2026-10-19.** This said the migration could rely
+  on Supabase's default privileges (`anon`/`authenticated` holding ALL on new
+  `public` tables). The production project does **not** apply them: Conference,
+  written the same way, crashed for every signed-in visitor on 2026-10-16 with
+  `42501 permission denied`. Re-run on a stack without those defaults, this
+  migration did the same (`permission denied for table passport_occasions`, 14
+  attacks failing because nothing could be read). `migration.sql` now grants
+  `authenticated` the same DML outright (no TRUNCATE/REFERENCES/TRIGGER — which
+  also closes §2.4 finding 1), the stack mirrors production, `verify.sql` checks
+  the grant, and `rls-attack.mjs` passes again under that posture. Earlier
+  "tested under default grants" statements in this file (§2.3, §5.3, §11–§13)
+  are superseded by §14.
 - **I could not read the production database** (no credentials, by design). Anything
   about live state is therefore _verified by `preflight.sql` when you run it_, not
   asserted here.
@@ -489,3 +498,85 @@ person double-clicking never becomes two members. All pass; the row lock
 change. Not covered, and cosmetic only: two _different_ links to one night
 redeemed at once can pick the same free emoji, as `(occasion_id, emoji)` has no
 unique constraint. The blockers in §9 (B1 to B5) are unchanged and all the owner's.
+
+---
+
+## 14. Pass of 2026-10-20: strict grants (supersedes the grants claims above)
+
+**What changed.** Took the three grants files from `integration/release`
+(`migration.sql`, `verify.sql`, `verification/stack.mjs`) unchanged. The other
+Hockey differences on that branch (curated Vancouver list, "Where are we
+meeting?", their spec edits) are not in this branch and were deliberately not
+taken. `playwright.config.ts` now honours `PW_OUT` (the default `/tmp` fills).
+New: `verification/grants-check.sql` and `GRANTS-REGRESSION-CHECK.md`.
+
+**Environment.** Disposable stack at `~/passport/scratch/hockey-stack`, rebuilt
+from empty with production's posture (new `public` tables go to `service_role`
+only; `anon`/`authenticated` get nothing by default). Before wiping, its data
+was checked: one database, one synthetic `@example.test` user, zero occasions.
+The old stack, running the old migration, reproduced the bug first:
+`permission denied for table passport_occasion_members` in `next.log`.
+
+| Check                                                                  | Result                                                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `verify.sql`                                                           | 10 rows, all `OK` (incl. "authenticated can SELECT every occasion table") |
+| `grants-check.sql` (Hockey scope)                                      | 4 rows, all `OK`; each of 4 deliberate breakages caught                   |
+| `rls-attack.mjs`, real GoTrue + PostgREST, strict grants               | **53/53**, 0 failures                                                     |
+| Browser: `acceptance` (host desktop + guest phone + strangers)         | pass                                                                      |
+| Browser: `plan-and-results`                                            | pass                                                                      |
+| Browser: `multi-night` (two concurrent nights, isolation, Run it back) | pass                                                                      |
+| Browser: `mobile` 320 px and 375 px                                    | pass (0 px overflow, 0 small taps)                                        |
+| Browser: `email-confirmation` ×2 (stack with `CONFIRM_EMAIL=1`)        | pass                                                                      |
+| `tsc --noEmit`; `vitest run src/domain/hockey`                         | clean; 47/47                                                              |
+
+Meaning, against what was asked: the Conference failure cannot recur _for this
+migration_ (the grant is stated, `verify.sql` and `grants-check.sql` fail
+without it); RLS still decides every row (anon refused, strangers refused, 53
+attacks); single-use links admit exactly one of four simultaneous redeemers;
+two concurrent nights stay separate.
+
+**Not verified, and why.** Production itself (no credentials, by design — the
+claim "production applies no default grants" is the Conference post-mortem's,
+not re-measured here). The full Passport suite (`eslint .`, `next build`,
+repo-wide vitest/playwright) was not re-run: only SQL, `.mjs` and a docs-lane
+config changed, and the last full run is §12/`RELEASE-HANDOFF.md`. The
+Atlas-backed places in the browser runs come from `atlas-stub.mjs` (synthetic).
+
+**Found while building the check — not Hockey's, not touched.**
+`grants-check.sql` with scope `%` reports on the **baseline** tables
+(`passport_events`, `passport_profiles`, `passport_board_*`, …) in the
+stack's baseline: policies that admit `anon`/`authenticated` for operations the
+role holds no privilege for, and `anon`/`authenticated` holding
+TRUNCATE/REFERENCES/TRIGGER. The baseline migration says its grants are "the
+dump's own text", so this may be production's real state; I could not check.
+PostgREST does not expose TRUNCATE, so this is hygiene, not a known hole.
+Owner/`passport-domain` decision — run the check at scope `%` against
+production (read-only) and look.
+
+### Exact remaining steps (all the owner's; nothing below has been done)
+
+The night is Sunday 25 October. In order:
+
+1. **Fetch the commit**: `git fetch metatron:passport/main feature/hockey`, and
+   review the diff. Merge into the release line with the rest of the release
+   (it is not pushed from here).
+2. **Supabase → Authentication → URL configuration**: add
+   `https://gohaveaday.com/**` and `https://elk-passport.vercel.app/**`. Decide
+   Confirm email; if on, custom SMTP (§5.2).
+3. **Check the grant gap first** (project `frllwwxesxbmmaadzfaf`, SQL editor):
+   `select has_table_privilege('authenticated','public.passport_conference_members','select');`
+   `false` confirms production applies no default grants, and that the
+   Conference grant migration (`20261016000000_…`) is also still owed.
+4. **Run, in the SQL editor, never `supabase db push`**: `preflight.sql` (all
+   OK) → `migration.sql` → `verify.sql` (10 rows, all OK). If the older
+   migration was ever applied, run the new one anyway: it is guarded and only
+   adds the grants.
+5. **Run `verification/grants-check.sql`** in the same editor (read-only). Four
+   rows, all `OK`. This is the check that would have caught Conference.
+6. **Deploy** through the coordinated release. Env: same Supabase project as
+   step 4; `ATLAS_API_URL` without `/api`.
+7. **Smoke test with two real accounts before inviting anyone**: §6, then §7.
+   Includes signing in as the second account and reading the night — a
+   permission failure shows there first.
+8. Decisions still open (§10): email confirmation, issuing origin, doctrine
+   §15.12. Rollback: `disable.sql` / `rollback.sql` (§3).
