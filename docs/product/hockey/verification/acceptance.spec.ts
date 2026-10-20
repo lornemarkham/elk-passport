@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { TEST_PASSWORD } from "./test-credentials";
 
 /**
  * **M216's first acceptance milestone, with two real people.**
@@ -17,20 +18,19 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  *   E2E_PORT=3130 npx playwright test -c docs/product/hockey/verification
  */
 
-const PASSWORD = "puck-drops-at-seven";
 const stamp = Date.now().toString(36);
 const emailFor = (who: string) => `${who}-${stamp}@example.test`;
 
 async function signUp(page: Page, who: string) {
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
 }
 
 async function logIn(page: Page, who: string) {
   await page.getByLabel("Email address").fill(emailFor(who));
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Log in" }).click();
 }
 

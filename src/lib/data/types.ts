@@ -579,20 +579,29 @@ export type CandidateDistance =
 export interface CandidatePresentationImage {
   readonly url: string;
   /** `exact` shows the thing itself; every other relationship must be labelled. */
-  readonly relationship: "exact" | "venue" | "organization" | "representative" | "category";
+  readonly relationship:
+    "exact" | "venue" | "organization" | "representative" | "category";
   readonly depictsEntity: boolean;
   readonly confidence: "high" | "medium" | "low";
   readonly source: {
     readonly page?: string;
     readonly host: string;
-    readonly heldBy?: { readonly id: string; readonly kind: string; readonly name: string };
+    readonly heldBy?: {
+      readonly id: string;
+      readonly kind: string;
+      readonly name: string;
+    };
     readonly evidence: string;
   };
   /** One sentence to print under or beside the picture. */
   readonly attribution: string;
   readonly caption?: string;
   /** Category pictures only. */
-  readonly license?: { readonly name: string; readonly url?: string; readonly author: string };
+  readonly license?: {
+    readonly name: string;
+    readonly url?: string;
+    readonly author: string;
+  };
   readonly category?: string;
 }
 

@@ -1,4 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+
+// One throwaway password per run, shared by every spec (see test-credentials.ts).
+process.env.HOCKEY_TEST_PASSWORD ??= `t-${randomBytes(12).toString("hex")}`;
 
 /**
  * Hockey Night's two-person acceptance run. Deliberately starts no server:

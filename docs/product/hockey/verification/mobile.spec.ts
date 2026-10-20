@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { TEST_PASSWORD } from "./test-credentials";
 
 /**
  * Hockey Night on a phone (320 and 375 wide, touch). Checks what a coworker
@@ -6,7 +7,6 @@ import { expect, test } from "@playwright/test";
  * meant to tap is big enough to tap. Runs against the same built server and
  * local stack as the acceptance run.
  */
-const PASSWORD = "puck-drops-at-seven";
 const stamp = Date.now().toString(36);
 
 for (const width of [320, 375]) {
@@ -61,7 +61,7 @@ for (const width of [320, 375]) {
     await page
       .getByLabel("Email address")
       .fill(`phone${width}-${stamp}@example.test`);
-    await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+    await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page.getByText(/Nothing on yet/)).toBeVisible();
     await audit("shelf");

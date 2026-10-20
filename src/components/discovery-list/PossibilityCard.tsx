@@ -275,7 +275,9 @@ export function PossibilityCard({
           {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
           <img
             src={presented.url}
-            alt={presented.relationship === "exact" ? "" : presented.attribution}
+            alt={
+              presented.relationship === "exact" ? "" : presented.attribution
+            }
             title={presented.attribution}
             data-relationship={presented.relationship}
             loading={priority ? "eager" : "lazy"}

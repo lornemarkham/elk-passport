@@ -24,7 +24,8 @@ describe("Atlas's presentationImage (ADR 106)", () => {
           depictsEntity: false,
           confidence: "low",
           source: { host: "x.test", evidence: "licensed:CC0" },
-          attribution: "Illustrative brewery photo. Not a photo of Some Brewery.",
+          attribution:
+            "Illustrative brewery photo. Not a photo of Some Brewery.",
           license: { name: "CC0", author: "A" },
         },
       }),

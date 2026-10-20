@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { TEST_PASSWORD } from "./test-credentials";
 
 /**
  * **The Plan panel, the vote, and the result — with two real people.**
@@ -20,7 +21,6 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  *   E2E_PORT=3130 npx playwright test -c docs/product/hockey/verification plan-and-results
  */
 
-const PASSWORD = "puck-drops-at-seven";
 const stamp = Date.now().toString(36);
 const emailFor = (who: string) => `${who}-plan-${stamp}@example.test`;
 
@@ -30,7 +30,7 @@ const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 async function signUp(page: Page, who: string) {
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
 }
 
@@ -52,7 +52,7 @@ async function token(who: string): Promise<string> {
   const res = await fetch(`${SUPABASE}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: ANON, "content-type": "application/json" },
-    body: JSON.stringify({ email: emailFor(who), password: PASSWORD }),
+    body: JSON.stringify({ email: emailFor(who), password: TEST_PASSWORD }),
   });
   expect(res.status).toBe(200);
   return (await res.json()).access_token as string;

@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { TEST_PASSWORD } from "./test-credentials";
 import fs from "node:fs";
 
 /**
@@ -16,7 +17,6 @@ import fs from "node:fs";
  */
 
 const MAIL_DIR = process.env.MAIL_DIR ?? "/tmp/hockey-mail";
-const PASSWORD = "puck-drops-at-seven";
 const stamp = Date.now().toString(36);
 const emailFor = (who: string) => `${who}-${stamp}@example.test`;
 
@@ -48,7 +48,7 @@ async function confirmationLink(to: string): Promise<string> {
 async function signUp(page: Page, who: string) {
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
 }
 
@@ -137,7 +137,7 @@ test("opens the confirmation email on another device, and is still brought back 
   // The account is confirmed even though this browser could not finish the
   // exchange, so signing in carries straight on to the invitation.
   await phone.page.getByLabel("Email address").fill(emailFor("noor"));
-  await phone.page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await phone.page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await phone.page.getByRole("button", { name: "Log in" }).click();
   await expect(phone.page).toHaveURL(new RegExp(`${invitePath}$`));
   await phone.page.getByLabel("Your name").fill("Noor");
