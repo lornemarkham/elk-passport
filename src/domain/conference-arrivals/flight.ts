@@ -142,3 +142,18 @@ export function readFlightDate(typed: string): string | null {
     ? null
     : typed;
 }
+
+/**
+ * `YYYY-MM-DDTHH:mm`: a wall-clock time at the conference's airport, as a
+ * booking prints it. Deliberately not an instant: it is what the person
+ * stated, and the board shows it as stated (seconds, if a browser adds
+ * them, are dropped).
+ */
+export function readLocalTime(typed: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(
+    typed,
+  );
+  if (!m || !readFlightDate(m[1]!)) return null;
+  if (Number(m[2]) > 23 || Number(m[3]) > 59) return null;
+  return `${m[1]}T${m[2]}:${m[3]}`;
+}

@@ -15,8 +15,12 @@
  *   membership check; a stranger never gets this far (`service.ts`).
  * - **A person is never located.** The board draws aircraft. Once landed, a
  *   person is "in Vancouver", not anywhere finer.
+ *
+ * And every arrival time says what kind of claim it is (`arrivalTime`):
+ * observed, estimated from an observation, or stated by the person.
  */
 import type { FlightIdent } from "./flight";
+import { distanceKm } from "./geo";
 import type { Airport, Evidence, Leg } from "./matching";
 import {
   LOST_AFTER_SECONDS,
@@ -34,6 +38,12 @@ export interface ArrivalRecord {
     readonly date: string;
     /** As the person stated it. `null`: they didn't. */
     readonly departure: Airport | null;
+    /**
+     * When their booking says it lands, `YYYY-MM-DDTHH:mm` at the conference's
+     * airport, as they typed it. Optional, and absent on records saved before
+     * it was asked. Never used to place an aircraft.
+     */
+    readonly lands?: string | null;
   };
   readonly shared: boolean;
   readonly createdAt: string;
@@ -49,6 +59,8 @@ export interface ArrivalRow {
   readonly flight: string;
   readonly airline: string | null;
   readonly date: string;
+  /** Scheduled landing, local wall time at `to`, as the person stated it. */
+  readonly lands: string | null;
   readonly from: Airport | null;
   readonly fromBasis: Leg["fromBasis"] | null;
   readonly to: Airport;
@@ -109,6 +121,7 @@ export function rowFor(
     flight: r.flight.ident.display,
     airline: r.flight.ident.airlineName,
     date: r.flight.date,
+    lands: r.flight.lands ?? null,
     from: leg?.from ?? r.flight.departure,
     fromBasis: leg?.fromBasis ?? (r.flight.departure ? "stated" : null),
     to: arrival,
@@ -153,6 +166,14 @@ export function asOf(row: ArrivalRow, now: Date): ArrivalRow {
   };
 }
 
+/** By landing time where one was given; untimed flights last on their day. */
+const whenKey = (r: ArrivalRow) => r.lands ?? `${r.date}T99:99`;
+const byWhen = (a: ArrivalRow, b: ArrivalRow) => {
+  const x = whenKey(a);
+  const y = whenKey(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+};
+
 /**
  * @param named  memberId → display name, for members who chose to be seen.
  *               Exactly the foundation's `MemberHome.people.visible`.
@@ -184,7 +205,7 @@ export function boardFor(
   rows.sort(
     (a, b) =>
       ORDER[a.phase] - ORDER[b.phase] ||
-      a.date.localeCompare(b.date) ||
+      byWhen(a, b) ||
       (a.name ?? "").localeCompare(b.name ?? ""),
   );
   return {
@@ -197,4 +218,53 @@ export function boardFor(
       total: shared.length,
     },
   };
+}
+
+/** Below this, ground speed says more about the approach than the trip. */
+export const ESTIMATE_MIN_KT = 100;
+
+/**
+ * **When someone gets in, and what kind of claim that is.** The board never
+ * shows a time without its kind, because they are different things
+ * (doctrine §5: signals, inference and stated facts stay distinguishable):
+ *
+ * - `landed`: ADS-B saw it land, or (`inferred`) its signal ended on short
+ *   final. An instant.
+ * - `estimated`: a live, identified aircraft's distance to the airport at its
+ *   current ground speed, straight in, from its last real report. An instant,
+ *   and an inference: holding patterns and the slowdown on approach make the
+ *   real landing later. Only for a fresh `airborne` row (run `asOf` first).
+ * - `scheduled`: what the person's booking says, as they typed it. A local
+ *   wall time at the airport, not checked against any airline.
+ *
+ * Lost, searching and missed flights get only their scheduled time, if any:
+ * a stale position estimates nothing.
+ */
+export type ArrivalTime =
+  | { readonly kind: "landed"; readonly at: string; readonly inferred: boolean }
+  | { readonly kind: "estimated"; readonly at: string }
+  | { readonly kind: "scheduled"; readonly local: string };
+
+export function arrivalTime(row: ArrivalRow): ArrivalTime | null {
+  if (row.phase === "landed" && row.landedAt)
+    return {
+      kind: "landed",
+      at: row.landedAt,
+      inferred: row.landedBasis === "inferred",
+    };
+  const p = row.position;
+  if (
+    row.phase === "airborne" &&
+    p &&
+    !p.onGround &&
+    p.groundSpeedKt !== null &&
+    p.groundSpeedKt >= ESTIMATE_MIN_KT
+  ) {
+    const hours = distanceKm(p, row.to) / (p.groundSpeedKt * 1.852);
+    return {
+      kind: "estimated",
+      at: new Date(Date.parse(p.at) + hours * 3_600_000).toISOString(),
+    };
+  }
+  return row.lands ? { kind: "scheduled", local: row.lands } : null;
 }

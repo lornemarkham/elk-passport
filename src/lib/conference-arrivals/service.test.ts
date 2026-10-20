@@ -283,6 +283,42 @@ describe("saving", () => {
     expect(paths).toEqual(["flight", "date", "from", "displayName"]);
   });
 
+  it("keeps the landing time from the booking, as stated, for everyone who can see the flight", async () => {
+    const { d, id } = await world();
+    await saveMine(d, ANA, id, {
+      flight: "AC855",
+      date: "2026-10-22",
+      from: "LHR",
+      lands: "2026-10-22T14:20",
+      shared: true,
+      displayName: "Ana",
+    });
+    expect((await readArrivals(d, ANA, id))?.mine?.lands).toBe(
+      "2026-10-22T14:20",
+    );
+    const ben = await readArrivals(d, BEN, id);
+    expect(ben?.board?.rows[0]).toMatchObject({
+      name: "Ana",
+      lands: "2026-10-22T14:20",
+    });
+    expect(ben?.mine).toBeNull();
+  });
+
+  it("a landing time is optional, and has to belong to the same trip", async () => {
+    const { d, id } = await world();
+    const base = { flight: "AC855", date: "2026-10-22" };
+    expect(await saveMine(d, ANA, id, { ...base, lands: "" })).toEqual({
+      ok: true,
+    });
+    for (const lands of ["2026-10-25T09:00", "2026-10-20T09:00", "soon"]) {
+      const r = await saveMine(d, ANA, id, { ...base, lands });
+      expect(!r.ok && r.issues?.map((i) => i.path)).toEqual(["lands"]);
+    }
+    // The day before (westbound over the dateline) and the next day are fine.
+    for (const lands of ["2026-10-21T22:00", "2026-10-23T06:10"])
+      expect((await saveMine(d, ANA, id, { ...base, lands })).ok).toBe(true);
+  });
+
   it("won't take the conference's own airport as where you're leaving from", async () => {
     const { d, id } = await world();
     const r = await saveMine(d, ANA, id, { ...flight, from: "YVR" });

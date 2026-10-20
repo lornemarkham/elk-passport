@@ -33,6 +33,8 @@ const view = (p, id) =>
   }, `/api/conferences/${id}/arrivals`);
 const flights = (v) =>
   (v.view?.board?.rows ?? []).map((r) => `${r.flight}${r.isYou ? "*" : ""}`);
+const landsOf = (v, flight) =>
+  (v.view?.board?.rows ?? []).find((r) => r.flight === flight)?.lands;
 
 if (mode === "write") {
   const stamp = Date.now().toString(36);
@@ -77,6 +79,7 @@ if (mode === "write") {
     (await save(org.p, {
       flight: "WS137",
       date,
+      lands: `${date}T13:45`,
       shared: true,
       displayName: "Ana",
     })) === 200,
@@ -91,6 +94,10 @@ if (mode === "write") {
       .sort()
       .join() === "AC8*,WS137",
     "before restart Ben sees AC8 (his) and WS137",
+  );
+  check(
+    landsOf(await view(ben.p, id), "WS137") === `${date}T13:45`,
+    "…with Ana's scheduled landing time",
   );
   await org.c.storageState({ path: file("ana.json") });
   await ben.c.storageState({ path: file("ben.json") });
@@ -114,6 +121,10 @@ if (mode === "write") {
   check(
     flights(b).sort().join() === "AC8*,WS137",
     "Ben still has AC8 and sees Ana's shared WS137",
+  );
+  check(
+    landsOf(b, "WS137") === `${date}T13:45`,
+    "…still with Ana's scheduled landing time",
   );
 }
 await browser.close();

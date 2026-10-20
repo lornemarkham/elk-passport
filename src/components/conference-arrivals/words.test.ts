@@ -3,7 +3,7 @@ import type {
   ArrivalRow,
   ArrivalsBoard,
 } from "@/domain/conference-arrivals/board";
-import { headline, statusLine } from "./words";
+import { headline, statusLine, timeCell, versusSchedule } from "./words";
 
 const YVR = {
   iata: "YVR",
@@ -22,6 +22,7 @@ const row = (over: Partial<ArrivalRow>): ArrivalRow => ({
   flight: "AC123",
   airline: "Air Canada",
   date: "2026-10-22",
+  lands: null,
   from: {
     ...YVR,
     iata: "YYZ",
@@ -149,5 +150,78 @@ describe("the line under a name", () => {
     expect(statusLine(lost, NOW, "America/Vancouver")).toBe(
       "Signal lost · last seen 14 min ago",
     );
+  });
+});
+
+describe("every time on the board says what kind of claim it is", () => {
+  const TZ = "America/Vancouver";
+
+  it("a live aircraft gets an estimate, marked as one, from its own speed", () => {
+    // 450 kt is 833 km/h; Calgary-ish to YVR is ~690 km: about 50 min.
+    const r = row({ phase: "airborne", position: at(51.1, -114.0) });
+    const t = timeCell(r, TZ);
+    expect(t.kind).toBe("estimated");
+    expect(t.tag).toBe("Estimate");
+    expect(t.time).toMatch(/^~13:[45]\d$/);
+    expect(t.says).toMatch(/current speed/);
+  });
+
+  it("a lost signal estimates nothing, and falls back to the booking", () => {
+    const r = row({
+      phase: "lost",
+      lands: "2026-10-22T14:20",
+      position: at(51.1, -114.0),
+    });
+    expect(timeCell(r, TZ)).toMatchObject({
+      kind: "scheduled",
+      time: "14:20",
+      tag: "Scheduled",
+    });
+  });
+
+  it("a slow aircraft (taxiing, or a bad report) gets no estimate", () => {
+    const r = row({
+      phase: "airborne",
+      position: { ...at(49.3, -123.0), groundSpeedKt: 40 },
+    });
+    expect(timeCell(r, TZ).kind).toBe("leaves");
+  });
+
+  it("the booking is shown as scheduled, never as live", () => {
+    const t = timeCell(row({ lands: "2026-10-22T14:20" }), TZ);
+    expect(t).toMatchObject({ kind: "scheduled", time: "14:20" });
+    expect(t.says).toBe("Scheduled Thu, Oct 22 14:20, from their booking");
+  });
+
+  it("with no time at all, it says the day it leaves, as that", () => {
+    expect(timeCell(row({}), TZ)).toMatchObject({
+      kind: "leaves",
+      time: "Oct 22",
+      tag: "Leaves",
+    });
+  });
+
+  it("a landing is the observed time; an inferred one is marked unsure", () => {
+    const seen = row({
+      phase: "landed",
+      landedAt: "2026-10-22T21:05:00Z",
+      landedBasis: "ground",
+    });
+    expect(timeCell(seen, TZ)).toMatchObject({ time: "14:05", tag: "Landed" });
+    expect(timeCell({ ...seen, landedBasis: "inferred" }, TZ).tag).toBe(
+      "Landed?",
+    );
+  });
+
+  it("compares the estimate with the booking, and says it's an estimate", () => {
+    const r = row({ phase: "airborne", position: at(51.1, -114.0) });
+    expect(versusSchedule(r, TZ)).toBeNull();
+    expect(versusSchedule({ ...r, lands: "2026-10-22T13:00" }, TZ)).toMatch(
+      /^About \d+ min behind schedule, by the estimate\.$/,
+    );
+    expect(versusSchedule({ ...r, lands: "2026-10-22T15:30" }, TZ)).toMatch(
+      /ahead of schedule/,
+    );
+    expect(versusSchedule({ ...r, lands: "2026-10-23T13:00" }, TZ)).toBeNull();
   });
 });

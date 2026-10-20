@@ -64,6 +64,7 @@ test("share a flight, see a coworker's, and nothing for strangers", async ({
   await ana.getByLabel("Flight", { exact: true }).fill("ac 855");
   await ana.getByLabel("Date it leaves").fill(NEXT_YEAR);
   await ana.getByLabel(/Flying from/).fill("lhr");
+  await ana.getByLabel(/Lands in/).fill(`${NEXT_YEAR}T14:20`);
   await ana.getByLabel(/Share my flight with/).check();
   await ana.getByLabel("Name on the map").fill("Ana");
   await ana.getByRole("button", { name: "Save my flight" }).click();
@@ -83,6 +84,14 @@ test("share a flight, see a coworker's, and nothing for strangers", async ({
   await expect(ben.getByTestId("arrivals-list")).toContainText("Ana");
   await expect(ben.getByTestId("arrivals-list")).toContainText("AC855");
   await expect(ben.getByTestId("arrivals-list")).toContainText("London");
+  // Her booking's time is on the board as scheduled, never as live.
+  await expect(ben.getByTestId("arrivals-list")).toContainText("14:20");
+  await expect(
+    ben.getByRole("button", { name: /Ana AC855/ }).getByTestId("time-kind"),
+  ).toHaveText("Scheduled");
+  await expect(ben.getByTestId("arrivals-list")).not.toContainText(/live/i);
+  // The destination is named on the map.
+  await expect(ben.getByTestId("arrivals-airport")).toContainText("YVR");
   await ana.reload();
   await expect(ana.getByTestId("arrivals-list")).toContainText("AC855");
   await expect(ana.getByTestId("arrivals-list")).not.toContainText("WS133");
@@ -90,6 +99,10 @@ test("share a flight, see a coworker's, and nothing for strangers", async ({
   // ── Tapping a row explains what's known, and claims no position ──
   await ben.getByRole("button", { name: /Ana AC855/ }).click();
   await expect(ben.getByTestId("arrival-details")).toContainText("London");
+  await expect(ben.getByTestId("details-time")).toContainText("Scheduled");
+  await expect(ben.getByTestId("details-time")).toContainText(
+    "from their booking",
+  );
   await expect(ben.getByTestId("arrival-details")).not.toContainText(
     "Telemetry",
   );
@@ -108,6 +121,22 @@ test("share a flight, see a coworker's, and nothing for strangers", async ({
   await expect(
     ben.getByText(/doesn't look like a flight number/),
   ).toBeVisible();
+
+  // ── Changing it changes it for everyone ──
+  await ana.getByRole("button", { name: "Change" }).click();
+  await ana.getByLabel(/Lands in/).fill(`${NEXT_YEAR}T15:05`);
+  await ana.getByRole("button", { name: "Save my flight" }).click();
+  await expect(ana.getByText(/Lands .* at 15:05, scheduled\./)).toBeVisible();
+  await ben.reload();
+  await expect(ben.getByTestId("arrivals-list")).toContainText("15:05");
+  await expect(ben.getByTestId("arrivals-list")).not.toContainText("14:20");
+
+  // ── A landing time from another trip is refused, and said why ──
+  await ana.getByRole("button", { name: "Change" }).click();
+  await ana.getByLabel(/Lands in/).fill(`${NEXT_YEAR.slice(0, 4)}-11-30T09:00`);
+  await ana.getByRole("button", { name: "Save my flight" }).click();
+  await expect(ana.getByText(/not the same trip/)).toBeVisible();
+  await ana.getByRole("button", { name: "Cancel" }).click();
 
   // ── Removing it is removing it ──
   await ana.getByRole("button", { name: "Remove my flight" }).click();

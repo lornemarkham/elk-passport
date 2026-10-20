@@ -11,6 +11,7 @@ export function MyFlight({
   conferenceId,
   conferenceName,
   place,
+  airport,
   you,
   mine,
   onSaved,
@@ -18,6 +19,8 @@ export function MyFlight({
   conferenceId: string;
   conferenceName: string;
   place: string;
+  /** `YVR`: the airport the board is for. */
+  airport: string;
   you: ArrivalsView["you"];
   mine: ArrivalsView["mine"];
   onSaved: () => Promise<void>;
@@ -26,6 +29,7 @@ export function MyFlight({
   const [flight, setFlight] = useState(mine?.flight ?? "");
   const [date, setDate] = useState(mine?.date ?? "");
   const [from, setFrom] = useState(mine?.from ?? "");
+  const [lands, setLands] = useState(mine?.lands ?? "");
   const [shared, setShared] = useState(mine?.shared ?? false);
   const [displayName, setDisplayName] = useState(you.displayName ?? "");
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -67,6 +71,11 @@ export function MyFlight({
         <p className="text-[17px] font-bold">
           {mine.flight}
           {mine.from ? ` from ${mine.from}` : ""} · {mine.date}
+        </p>
+        <p className="text-[15px] text-black/60">
+          {mine.lands
+            ? `Lands ${mine.lands.slice(0, 10)} at ${mine.lands.slice(11, 16)}, scheduled.`
+            : `No landing time given.`}
         </p>
         <p className="mt-1 text-[15px] text-black/60">
           {mine.shared
@@ -114,6 +123,7 @@ export function MyFlight({
             flight,
             date,
             from,
+            lands,
             shared,
             displayName,
           })
@@ -153,6 +163,25 @@ export function MyFlight({
         />
       </label>
       <Problem>{issue("date")}</Problem>
+      <label className="block">
+        <span className="text-[15px] font-semibold">
+          Lands in {place}{" "}
+          <span className="font-normal text-black/50">(optional)</span>
+        </span>
+        <input
+          className={`${field} mt-1`}
+          type="datetime-local"
+          value={lands}
+          onChange={(e) => setLands(e.target.value)}
+          aria-describedby="lands-hint"
+          name="lands"
+        />
+      </label>
+      <p id="lands-hint" className="-mt-3 text-[13px] text-black/50">
+        From your booking, {airport} local time. Everyone sees it marked
+        &ldquo;scheduled&rdquo;: it&apos;s your word, not the airline&apos;s.
+      </p>
+      <Problem>{issue("lands")}</Problem>
       <label className="block">
         <span className="text-[15px] font-semibold">
           Flying from{" "}

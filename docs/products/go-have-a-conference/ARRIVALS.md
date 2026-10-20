@@ -1,9 +1,11 @@
 # Arrivals — coworkers' real aircraft, live, on one map
 
-> **Status: built on `feature/go-have-a-conference`, 2026-10-12.** Not merged,
-> not deployed. Has a durable Supabase store (2026-10-14); on the durable
-> conference store it opens only with `CONFERENCE_ARRIVALS=on`
+> **Status (2026-10-20):** on `fix/conference-prod-crash` in `lanes/conference`.
+> Not merged, not deployed. Durable Supabase store since 2026-10-14; on the
+> durable conference store it opens only with `CONFERENCE_ARRIVALS=on`
 > (`src/lib/conference-arrivals/enabled.ts`); see [LABS-RELEASE.md](LABS-RELEASE.md).
+> 2026-10-20 added arrival times (scheduled, estimated, landed), the dark
+> map, and the side-by-side board. Remaining blockers are at the end.
 
 `/conferences/{id}/arrivals` is the `arrivals` module. A member enters a flight
 number, a date and (optionally) where they're flying from. If they choose to
@@ -14,16 +16,84 @@ reports arrive.
 
 ## What it will and won't say
 
-| The map shows                        | Only when                                                                                                                  |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| A coloured plane, "live"             | The aircraft was **identified** (below) and its last ADS-B position is current                                             |
-| A plane gliding                      | Between two real reported positions, ending on the newer one. It never runs ahead of the latest report                     |
-| A grey plane, "last seen 12 min…"    | It was identified, then the signal went quiet (oceans, remote land). Frozen at the last real position, with its age        |
-| "Landed"                             | Reported on the ground at the airport, **or** (labelled "by the look of it") the signal ended ≤ 1,000 ft within 8 km of it |
-| A dashed line, no plane              | A planned route from the departure airport. Shown for flights not yet identified and for ones on another day               |
-| "Waiting to identify your aircraft." | Anything short of identification, with the reason in one sentence, and the checks behind it on tap                         |
+| The map shows                          | Only when                                                                                                                  |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| A coloured plane, "live"               | The aircraft was **identified** (below) and its last ADS-B position is current                                             |
+| A plane gliding                        | Between two real reported positions, ending on the newer one. It never runs ahead of the latest report                     |
+| A grey plane, "last seen 12 min…"      | It was identified, then the signal went quiet (oceans, remote land). Frozen at the last real position, with its age        |
+| "Landed"                               | Reported on the ground at the airport, **or** (labelled "by the look of it") the signal ended ≤ 1,000 ft within 8 km of it |
+| A dashed line, no plane                | A planned route from the departure airport. Shown for flights not yet identified and for ones on another day               |
+| A time marked **Scheduled**            | The person typed it from their booking. Passport doesn't check it with the airline                                         |
+| A time marked **~ Estimate**           | A **live** aircraft's distance to the airport at its current ground speed, straight in. Never from a stale position        |
+| A time marked **Landed** / **Landed?** | The landing ADS-B saw, or (with `?`) the moment its signal ended on short final                                            |
+| "Waiting to identify your aircraft."   | Anything short of identification, with the reason in one sentence, and the checks behind it on tap                         |
 
 Nothing is simulated. No position is ever computed from a timetable.
+
+## Arrival times: three kinds, never mixed (2026-10-20)
+
+"Who's arriving when" is the board's first question. Before 2026-10-20 the
+board couldn't answer it: it knew the date a flight leaves and, once ADS-B
+had it, where the aircraft was, but never a time. Every time it shows now
+carries its kind, in the same words on the list, in the details panel and in
+the legend under the board (`arrivalTime` in `board.ts`, `timeCell` in
+`words.ts`). That is doctrine §5 (signals, inference and stated facts stay
+distinguishable), applied to flights:
+
+| Kind          | Where it comes from                                                                                                                  | Shown as                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| **Landed**    | ADS-B: seen on the ground, or the signal ended ≤ 1,000 ft within 8 km (`Landed?`)                                                    | `14:05` · LANDED           |
+| **Estimate**  | Only for a fresh `airborne` row: great-circle distance ÷ ground speed (≥ 100 kt), added to that report's own timestamp. An inference | `~14:35` · ESTIMATE, amber |
+| **Scheduled** | The optional **Lands in Vancouver** field, `YYYY-MM-DDTHH:mm` at the conference's airport, exactly as typed                          | `14:20` · SCHEDULED        |
+| (none)        | Nothing above: the day it leaves, said as that                                                                                       | `Oct 22` · LEAVES          |
+
+- A **lost** signal estimates nothing; it falls back to the booking.
+- The estimate tends to run early, because it is straight-line arithmetic:
+  holding, the descent slowdown and the approach all make the real landing
+  later. The legend says "Approaches take longer."
+- With both an estimate and a booking, the details panel says "About 25 min
+  behind schedule, by the estimate." Under 10 minutes: "About on schedule".
+  More than six hours apart: nothing, because that's a booking for another
+  day or leg, not a delay.
+- The board is ordered by phase, then landing time; flights with no time go
+  last on their day.
+- **Date it leaves stays the identifier.** The brief asked for an _arrival_
+  date. Flight numbers are dated by departure (by airlines, and by every
+  schedule API checked), and identification (`flightWindow`) is built and
+  tested on that. So the form asks for the day it leaves (required) and when
+  it lands (optional, date and time). The landing must be within one day
+  before (westbound across the dateline) to two days after the departure
+  date. A human can overturn this; it is recorded here so it isn't silent.
+- Stored inside the existing `record` jsonb (`flight.lands`), so **no
+  migration**. Older records without it read as "no time". The database
+  already refuses to let a colleague change anything but `tracking` on
+  somebody else's row; `arrivals-attack.mjs` now checks the landing time
+  specifically.
+
+## How it looks (2026-10-20)
+
+- **Map-first, dark.** OpenFreeMap's `dark` style, re-tinted after load toward
+  a night chart: navy water, runways in amber. Faint distance rings at 50,
+  150 and 400 km from the airport (geometry only). The airport is one lit
+  amber badge, `YVR · VANCOUVER`.
+- **Board beside the map** on wide screens (map sticky on the left, board on
+  the right), stacked on a phone. Each row: time and its kind, name, flight, a
+  status word (`LIVE` only for an identified aircraft with a position under
+  two minutes old; `LAST SEEN`, `LANDED`, `LOOKING`, `NOT FLYING YET`), and a
+  line of plain words.
+- **Celebration, quietly.** The headline already says "Dana has landed."; a
+  row that landed in the last 45 minutes also gets a `JUST LANDED` pill in the
+  conference's colour. No confetti, no motion beyond the aircraft gliding
+  between real reports.
+- The map frames the airport and real aircraft within the part of the map
+  that's actually on screen, and the attribution starts collapsed so it
+  doesn't cover a phone's map (ADSB.lol is still credited in words under the
+  board, and one tap away on the map).
+
+Screenshots `arrivals/04-board-desktop-stubbed.png` and
+`arrivals/05-board-phone-stubbed.png` were taken with the board API **stubbed**
+(invented rows in recorded shapes) to show every state at once. They are not
+real flights.
 
 ## Identification: a flight number is not an aircraft
 
@@ -147,42 +217,89 @@ Enforced in `board.ts` and `service.ts`, pinned by tests.
   12 h). The `api.adsb.lol/api/0/routeset` endpoint returned an empty 201 on
   2026-10-12. Route records are community-maintained and can be out of date.
 
-## Free flight-data providers, checked live 2026-10-16
+## Flight-data providers, compared (2026-10-20)
 
-| Provider                      | Result                                                                                                                                                                   | Use                                                                                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADSB.lol                      | Works, no key. Unpublished rate limit. Asks production users to get in touch                                                                                             | **Primary.**                                                                                                                                        |
-| adsb.fi open data             | Works, no key. `/v2/callsign`, `/v2/hex` and `/v3/lat/…/lon/…/dist/…` return ADSB.lol's exact shape (`/v2/lat…` and `/v2/point` do not). Terms: personal, non-commercial | **Opt-in fallback**, `ADSB_FALLBACK=adsbfi`: asked only while ADSB.lol is resting after a 429/5xx. Off by default. Read their terms before enabling |
-| airplanes.live                | HTTP 403: "contact us… your email MUST include any links, a description of the project"                                                                                  | Not usable without asking them                                                                                                                      |
-| OpenSky (anonymous)           | Works, but a different shape (state vectors, no registration/type), and anonymous quota is small                                                                         | Not integrated                                                                                                                                      |
-| Schedules, codeshares, delays | None of the free ones provide them                                                                                                                                       | Still the AeroDataBox recommendation below (decision D5)                                                                                            |
+Prices and terms read from each provider's own pages on 2026-10-20 (desk
+research; nothing was signed up for or bought). "Not verified" means exactly
+that. Re-check before paying.
 
-All of these are ground-receiver ADS-B: none gives mid-ocean positions, and
-none can say where a flight is **before** it is flying. Those flights stay
-"waiting", never simulated.
+| Provider                     | Free tier                                                     | Cheapest paid                                                             | Flight number + date                                                    | Live positions                    | Arrival times                                                                                                             | Commercial use                                                                                                                                            |
+| ---------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ADSB.lol** (in use)        | Free, no key yet; unpublished rate limit (measured above)     | —                                                                         | Callsign → aircraft only                                                | Yes, community ADS-B              | None                                                                                                                      | Data dumps are ODbL. Live API terms not confirmed (docs site 503/403 on 2026-10-20); asks production users to get in touch, and a feeder-key is announced |
+| adsb.fi                      | 1 req/s                                                       | —                                                                         | Callsign → aircraft                                                     | Yes                               | None                                                                                                                      | **"Personal, non-commercial use only"**, with credit. See below                                                                                           |
+| airplanes.live               | 1 req/s                                                       | not checked                                                               | Callsign → aircraft                                                     | Yes                               | None                                                                                                                      | Non-commercial, no SLA (search snippet; page is JS)                                                                                                       |
+| OpenSky                      | 4,000 credits/day registered (OAuth2 only now), 400 anonymous | Licence by negotiation                                                    | **No** callsign/flight-number lookup                                    | Yes                               | Historical only                                                                                                           | **Any for-profit use, and any operational use in a live product, needs a written licence**                                                                |
+| **AeroDataBox** (API.market) | 7-day trial, 400 units, non-commercial                        | **Pro $7.50/mo, 5,000 units, commercial OK** (RapidAPI Pro $8; Pro 2 $15) | **Yes**: `/flights/number/{n}/{date}`, 2 units/call → ~2,500 lookups/mo | Coarse last-known `location` only | Scheduled, revised, predicted, runway; status (Delayed, Canceled, Arrived, Diverted); **ATC callsign and codeshare flag** | A consumer app showing number, time, status is allowed without their derived-work licence                                                                 |
+| Aviationstack                | 100 req/mo, non-commercial                                    | Basic $49.99/mo, 10k req, commercial                                      | Yes (paid)                                                              | Partial (not verified)            | Scheduled/estimated/actual (not verified)                                                                                 | Free tier non-commercial                                                                                                                                  |
+| FlightAware AeroAPI          | $5/mo usage, personal/academic only                           | **Standard $100/mo minimum** for commercial                               | Yes, $0.005/result set                                                  | Yes, $0.010/result set            | Scheduled/estimated/actual (not verified)                                                                                 | Uptime SLA only at $1,000/mo                                                                                                                              |
+| Flightradar24 API            | None                                                          | Explorer $9/mo, 30k credits, 10 req/min                                   | Partial; no future schedules found                                      | Yes, with ETA and callsign        | ETA + actuals; no schedule/delay status found                                                                             | FAQ: commercial use allowed. Display/attribution rules not checked                                                                                        |
+| AirLabs                      | Exists, quota not checked                                     | ~$19 per 10k queries (homepage; plans not verified)                       | Yes                                                                     | Yes                               | Not verified                                                                                                              | No reselling "as is"                                                                                                                                      |
+| Cirium                       | —                                                             | Enterprise sales                                                          | Yes                                                                     | Yes                               | Yes                                                                                                                       | Not at this scale                                                                                                                                         |
 
-## Map framing (2026-10-16)
+Sources: each provider's pricing/terms page (openskynetwork.github.io/opensky-api,
+opensky-network.org/about/terms-of-use, aviationstack.com/pricing,
+aerodatabox.com/pricing + its API.market OpenAPI, flightaware.com/commercial/aeroapi,
+fr24api.flightradar24.com/subscriptions-and-credits, airlabs.co,
+github.com/adsblol/api, github.com/adsbfi/opendata).
 
-On load the map frames the airport and the aircraft that have a real
-position (regional view of the airport when there are none), rather than
-the continent. "Show everyone" is still the wide view, including the
-departure end of flights nobody has identified.
+All the ADS-B sources are ground receivers: none gives mid-ocean positions,
+and none can say anything about a flight **before** it flies. Those flights
+stay "waiting", never simulated.
+
+**adsb.fi fallback vs its terms.** `ADSB_FALLBACK=adsbfi` (b28d871) is off by
+default and must stay off while Passport is a commercial product: adsb.fi's
+open data is personal, non-commercial use. Same for airplanes.live. Turning
+it on needs their written permission first.
+
+## Costs
+
+|                                                | Today                        | With the recommended complement                                     |
+| ---------------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| Live positions                                 | **$0** (ADSB.lol)            | $0, or FR24 Explorer $9/mo if ADSB.lol becomes key-gated or says no |
+| Map tiles                                      | **$0** (OpenFreeMap, no key) | $0                                                                  |
+| Schedules, delays, codeshares, callsign bridge | none                         | **AeroDataBox Pro, $7.50/mo** (5,000 units)                         |
+
+Rough AeroDataBox budget (estimate, not measured): one lookup when a flight
+is saved, then about three on the day (morning, −3 h, −1 h), **shared by
+everyone on the same flight + date** and cached. 160 people ≈ 640 lookups ≈
+1,280 units: about three conferences a month on Pro, before deduplication.
+Spending is still decision D5; nothing here is wired to a paid provider.
 
 ## Recommendation: a complementary flight-status API
 
 ADSB.lol answers "where is the aircraft calling itself X". It cannot answer
 "which callsign is flight AC 855 on Oct 22", or anything before take-off. The
-gaps that matter: codeshare numbers, scheduled times for "not flying yet",
-delays, and identification over oceans.
+gaps that matter: codeshare numbers, airline-scheduled times (today they're
+only what the person typed), delays, and identification over oceans.
 
-**AeroDataBox, about $19/month** (direct Starter, 40k units; researched
-2026-10-11 in `docs/sycle/flight-data.md` on `sycle-prototype`), is the
-cheapest practical complement. Flight number + date returns scheduled and
-revised times, the airports, a codeshare flag and the operating flight's ATC
-**callsign**: exactly the missing bridge into the ADS-B search. The prototype's
-adapter (`src/lib/sycle/providers/aerodatabox.ts`) is written and has never
-seen a live response. Plugging it in would add one evidence row ("schedule
-says this flight is `ACA855`"), not replace any. Spending is decision D5.
+**AeroDataBox Pro** (above) is still the cheapest practical complement, and
+cheaper than the ~$19/month noted on 2026-10-11. Flight number + date returns
+scheduled and revised times, the airports, a codeshare flag and the
+operating flight's ATC **callsign**: exactly the missing bridge into the
+ADS-B search, and it would turn "Scheduled (their booking)" into
+"Scheduled (airline)". The prototype adapter
+(`src/lib/sycle/providers/aerodatabox.ts` on `sycle-prototype`) has never
+seen a live response, so it was deliberately **not** wired in here: build it
+against a real response once a key exists. Plugging it in adds evidence
+rows, it doesn't replace any.
+
+## Remaining blockers (2026-10-20)
+
+1. **Production database:** `20261014000000_passport_conference_arrivals.sql`
+   and `20261016000000_passport_conference_grants.sql` must be pasted into the
+   production Supabase SQL editor (not `db push`), then `CONFERENCE_ARRIVALS=on`
+   set on Vercel. No new migration on 2026-10-20.
+2. **ADSB.lol production use:** they ask production users to get in touch,
+   and a feeder-key is announced. Not contacted from here.
+3. **adsb.fi fallback** must stay off (non-commercial terms), as above.
+4. **Spending (D5):** AeroDataBox Pro $7.50/mo for airline schedules,
+   delays and codeshares. Until then, times are what people type.
+5. **Not verified against a real aircraft today:** the estimate and the new
+   board states were checked with unit tests and with screenshots from a
+   stubbed board API. `scripts/conference-arrivals/drive.mjs` against the
+   live sky is the remaining check, best run on a travel day.
+6. **ODbL** share-alike: a human read before anything is republished
+   (unchanged).
 
 ## Running it
 

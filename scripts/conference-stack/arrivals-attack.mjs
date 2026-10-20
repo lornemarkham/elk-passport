@@ -124,6 +124,7 @@ const recordFor = (conf, member, shared, extra = {}) => ({
     ident: { display: "FI665" },
     date: "2026-10-24",
     departure: null,
+    lands: "2026-10-24T14:20",
   },
   shared,
   createdAt: "2026-10-14T00:00:00.000Z",
@@ -246,7 +247,12 @@ r = await save(
   alice,
   C.id,
   recordFor(C.id, bobM, false, {
-    flight: { ident: { display: "XX1" }, date: "2026-10-24", departure: null },
+    flight: {
+      ident: { display: "XX1" },
+      date: "2026-10-24",
+      departure: null,
+      lands: "2026-10-24T03:00",
+    },
     tracking: { ...live, phase: "lost" },
   }),
 );
@@ -254,9 +260,10 @@ const after = await bobRow();
 check(
   after.shared === true &&
     after.record.flight.ident.display === "FI665" &&
+    after.record.flight.lands === "2026-10-24T14:20" &&
     after.record.shared === true &&
     after.record.tracking.phase === "lost",
-  "…it changes the tracking only: not the flight, not the sharing choice",
+  "…it changes the tracking only: not the flight, its landing time, nor the sharing choice",
 );
 r = await save(alice, C.id, recordFor(C.id, carolM, false, { tracking: live }));
 check(

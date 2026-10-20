@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { candidatesFor, readFlight, readFlightDate } from "./flight";
+import {
+  candidatesFor,
+  readFlight,
+  readFlightDate,
+  readLocalTime,
+} from "./flight";
 
 describe("reading a typed flight", () => {
   it.each([
@@ -63,5 +68,14 @@ describe("dates", () => {
     expect(readFlightDate("2026-10-22")).toBe("2026-10-22");
     expect(readFlightDate("2026-02-30")).toBeNull();
     expect(readFlightDate("22/10/2026")).toBeNull();
+  });
+
+  it("reads a landing time as a wall time, as a booking prints it", () => {
+    expect(readLocalTime("2026-10-22T14:20")).toBe("2026-10-22T14:20");
+    expect(readLocalTime("2026-10-22T14:20:00")).toBe("2026-10-22T14:20");
+    expect(readLocalTime("2026-10-22T24:00")).toBeNull();
+    expect(readLocalTime("2026-02-30T10:00")).toBeNull();
+    expect(readLocalTime("2026-10-22T14:20Z")).toBeNull();
+    expect(readLocalTime("14:20")).toBeNull();
   });
 });

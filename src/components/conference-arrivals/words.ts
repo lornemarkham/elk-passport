@@ -1,6 +1,7 @@
-import type {
-  ArrivalRow,
-  ArrivalsBoard,
+import {
+  arrivalTime,
+  type ArrivalRow,
+  type ArrivalsBoard,
 } from "@/domain/conference-arrivals/board";
 import { distanceKm } from "@/domain/conference-arrivals/geo";
 import type { ConferenceKind } from "@/domain/conference/types";
@@ -179,4 +180,97 @@ export function statusLine(r: ArrivalRow, now: Date, timeZone: string): string {
     case "scheduled":
       return `${day(r.date)}${from ? ` · ${from} → ${r.to.iata ?? r.to.icao}` : ""} · not flying yet`;
   }
+}
+
+/** An instant as a wall time where the conference is: `YYYY-MM-DDTHH:mm`. */
+export function localWall(iso: string, timeZone: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZone,
+    })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+export type TimeKind = "landed" | "estimated" | "scheduled" | "leaves";
+
+export interface TimeCell {
+  /** `14:20`, `~14:35`, or a day when there's no time. */
+  readonly time: string;
+  readonly kind: TimeKind;
+  /** The small word under it. Says what kind of claim the time is. */
+  readonly tag: string;
+  /** The whole claim, for screen readers and the details panel. */
+  readonly says: string;
+}
+
+/**
+ * The arrivals board's left column. Every time carries its kind: an observed
+ * landing, an estimate from a live aircraft, or the person's own booking.
+ * With none of those, the day it leaves, said as such.
+ */
+export function timeCell(r: ArrivalRow, timeZone: string): TimeCell {
+  const t = arrivalTime(r);
+  if (t?.kind === "landed") {
+    const at = clock(t.at, timeZone);
+    return {
+      time: at,
+      kind: "landed",
+      tag: t.inferred ? "Landed?" : "Landed",
+      says: t.inferred
+        ? `Signal ended on short final at ${at}`
+        : `Landed at ${at}`,
+    };
+  }
+  if (t?.kind === "estimated") {
+    const at = clock(t.at, timeZone);
+    return {
+      time: `~${at}`,
+      kind: "estimated",
+      tag: "Estimate",
+      says: `Estimated ${at}, at its current speed, straight in`,
+    };
+  }
+  if (t?.kind === "scheduled") {
+    const at = t.local.slice(11, 16);
+    return {
+      time: at,
+      kind: "scheduled",
+      tag: "Scheduled",
+      says: `Scheduled ${day(t.local.slice(0, 10))} ${at}, from ${r.isYou ? "your" : "their"} booking`,
+    };
+  }
+  return {
+    time: day(r.date).replace(/^\w+, /, ""),
+    kind: "leaves",
+    tag: "Leaves",
+    says: `Leaves ${day(r.date)}`,
+  };
+}
+
+/**
+ * The estimate against the booking, when both exist and differ by 10 minutes
+ * or more: "About 25 min behind schedule." An estimate, said as one. Not at
+ * all when they are more than six hours apart.
+ */
+export function versusSchedule(r: ArrivalRow, timeZone: string): string | null {
+  const t = arrivalTime(r);
+  if (t?.kind !== "estimated" || !r.lands) return null;
+  const minutes = Math.round(
+    (Date.parse(`${localWall(t.at, timeZone)}Z`) - Date.parse(`${r.lands}Z`)) /
+      60_000,
+  );
+  // Hours apart is not a delay; it's a booking for another day or another
+  // leg. Say nothing rather than something silly.
+  if (Math.abs(minutes) > 6 * 60) return null;
+  if (Math.abs(minutes) < 10) return "About on schedule, by the estimate.";
+  return `About ${Math.abs(minutes)} min ${minutes > 0 ? "behind" : "ahead of"} schedule, by the estimate.`;
 }
