@@ -114,6 +114,23 @@ export function forDiscoveryWire(experience: Experience): Experience {
     };
   }
 
+  // `presentationImage` (Atlas ADR 106): a card reads the url, what it is, whose
+  // it is (`source.heldBy`), the sentence to print and a category photo's
+  // credit. The page, host, evidence class, caption and `depictsEntity` are the
+  // working behind it.
+  if (rest.presentationImage) {
+    const { url, relationship, confidence, attribution, license, source } =
+      rest.presentationImage;
+    lean.presentationImage = {
+      url,
+      relationship,
+      confidence,
+      attribution,
+      ...(license ? { license } : {}),
+      ...(source.heldBy ? { source: { heldBy: source.heldBy } } : {}),
+    };
+  }
+
   return withoutUndefined(lean) as unknown as Experience;
 }
 

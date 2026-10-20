@@ -2,6 +2,7 @@ import type { Journey } from "@/lib/routing/journey";
 import type {
   CandidateAvailability,
   CandidateContextualMedia,
+  CandidatePresentationImage,
   CandidateDistance,
   CandidateSchedule,
   CandidateSuitability,
@@ -211,6 +212,8 @@ export interface Experience {
   occurrence?: CandidateOccurrence;
   /** A venue's picture for an event with none of its own — `candidate-media/1`. Never this subject's own. */
   contextualMedia?: CandidateContextualMedia;
+  /** A labelled picture for a card — Atlas's `presentationImage`, carried through. */
+  presentationImage?: CandidatePresentationImage;
   /** Whether stated hours or dates cover the chosen day — `candidate-schedule/1`. */
   schedule?: CandidateSchedule;
   /** How long a visit usually takes — Atlas's `visitDuration`, untouched. */

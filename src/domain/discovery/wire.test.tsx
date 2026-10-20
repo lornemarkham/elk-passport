@@ -153,7 +153,7 @@ describe("what the wire drops is not read by the Discovery client", () => {
     "src/lib/routing",
   ];
   const READS =
-    /\.(?:slug|practical|conditions|season|seenAt|voice|sourceRecordId)\b/;
+    /\.(?:slug|practical|conditions|season|seenAt|voice|sourceRecordId|depictsEntity|evidence)\b/;
   const files = (directory: string): string[] =>
     readdirSync(join(process.cwd(), directory)).flatMap((name) => {
       const path = join(directory, name);

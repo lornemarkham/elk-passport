@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Check, Leaf, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
+import type { CandidatePresentationImage } from "@/lib/data/types";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
@@ -174,8 +175,18 @@ export function PossibilityCard({
   const own = experience.heroMedia?.src;
   const venue = experience.contextualMedia;
   const picture = own && !broken.has(own) ? own : undefined;
+  // **Atlas's labelled picture** (`presentationImage`, Atlas ADR 106): what a
+  // card may carry when the candidate has no lead image of its own. It always
+  // says what it is — a venue's, an organizer's, a representative or an
+  // illustrative photo — and only `exact` is shown unlabelled.
+  const presented =
+    !picture &&
+    experience.presentationImage &&
+    !broken.has(experience.presentationImage.url)
+      ? experience.presentationImage
+      : undefined;
   const venuePicture =
-    !picture && venue?.heroUrl && !broken.has(venue.heroUrl)
+    !picture && !presented && venue?.heroUrl && !broken.has(venue.heroUrl)
       ? venue
       : undefined;
   const fail = (src: string) => setBroken((prev) => new Set(prev).add(src));
@@ -194,7 +205,15 @@ export function PossibilityCard({
   return (
     <li
       data-testid="possibility"
-      data-has-image={picture ? "true" : venuePicture ? "venue" : "false"}
+      data-has-image={
+        picture
+          ? "true"
+          : presented
+            ? `presented-${presented.relationship}`
+            : venuePicture
+              ? "venue"
+              : "false"
+      }
       // **White, no border, no shadow, no card.** The photograph is the
       // object; the text sits under it on the page's own ground.
       className={`group relative flex h-full flex-col bg-white ${className}`}
@@ -218,7 +237,7 @@ export function PossibilityCard({
           a picture the card leads with its words instead — what kind of thing
           it is and its name, set large on a quiet tint — at a third of the
           height, so a shelf of mixed cards still reads as one row. */}
-      {!picture && !venuePicture && (
+      {!picture && !presented && !venuePicture && (
         <div
           data-testid="possibility-text-lead"
           className="flex min-h-[7.5rem] w-full flex-col justify-end rounded-xl p-4"
@@ -251,6 +270,29 @@ export function PossibilityCard({
       {/* **The venue's photograph, said to be the venue's.** An event with no
           picture of itself may show where it happens (ADR 086) — labelled on
           the image, so nobody mistakes the building for the event. */}
+      {presented && (
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
+          <img
+            src={presented.url}
+            alt={presented.relationship === "exact" ? "" : presented.attribution}
+            title={presented.attribution}
+            data-relationship={presented.relationship}
+            loading={priority ? "eager" : "lazy"}
+            onError={() => fail(presented.url)}
+            className="h-full w-full object-cover"
+          />
+          {presented.relationship !== "exact" && (
+            <p
+              data-testid="possibility-presented-label"
+              title={presented.attribution}
+              className="absolute bottom-2 left-2 max-w-[90%] truncate rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white uppercase"
+            >
+              {presentedLabel(presented)}
+            </p>
+          )}
+        </div>
+      )}
       {venuePicture && (
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
           {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
@@ -498,4 +540,24 @@ export function PossibilityCard({
       </div>
     </li>
   );
+}
+
+/**
+ * What to print on a picture that is not of the thing itself. The words say
+ * whose picture it is; a category photograph also carries its author and
+ * licence, which its licence requires.
+ */
+function presentedLabel(image: CandidatePresentationImage): string {
+  switch (image.relationship) {
+    case "venue":
+      return `Venue photo${image.source.heldBy ? ` · ${image.source.heldBy.name}` : ""}`;
+    case "organization":
+      return `From ${image.source.heldBy?.name ?? "the organizer"}`;
+    case "representative":
+      return "Representative image";
+    case "category":
+      return `Illustrative photo${image.license ? ` · ${image.license.author}, ${image.license.name}` : ""}`;
+    default:
+      return "";
+  }
 }

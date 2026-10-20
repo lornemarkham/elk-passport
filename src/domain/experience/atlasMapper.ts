@@ -108,6 +108,16 @@ export function candidateToExperience(
           },
         }
       : {}),
+    // A picture for the card, with what it is. `heroMedia` above stays the
+    // strict one; this is the labelled answer (Atlas ADR 106).
+    ...(candidate.presentationImage
+      ? {
+          presentationImage: {
+            ...candidate.presentationImage,
+            url: unescapeUrl(candidate.presentationImage.url),
+          },
+        }
+      : {}),
     ...(candidate.schedule ? { schedule: candidate.schedule } : {}),
     // How long a visit usually takes. Only the reading and its words travel:
     // the rule and source id behind a derived range stay on the subject page.
