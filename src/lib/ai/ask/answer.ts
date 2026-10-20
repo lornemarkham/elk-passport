@@ -129,7 +129,7 @@ export interface AnswerPick {
 
 /** What would make the answer better, and which row on the page supplies it. */
 export interface AnswerGap {
-  readonly about: "age" | "origin";
+  readonly about: "age" | "origin" | "place";
   readonly text: string;
 }
 
@@ -1226,7 +1226,10 @@ function framing(
         heading: near
           ? `A few ideas, close to ${near}`
           : "A few ideas to start",
-        note: "A spread of real places and things on, each different from the last — tap one, or tell me more and it'll sharpen.",
+        note:
+          ask.shelter === "indoor"
+            ? "Places Atlas reads as indoors or under cover come first, each different from the last — tap one, or tell me more and it'll sharpen."
+            : "A spread of real places and things on, each different from the last — tap one, or tell me more and it'll sharpen.",
       };
     case "adventure":
       return {
@@ -1528,11 +1531,18 @@ export function answerAsk(
       ask.lens === "drive" ||
       ask.lens === "time" ||
       ask.lens === "on") &&
-    !context.origin
+    !context.origin &&
+    !ask.unknownPlace
   )
     gaps.push({
       about: "origin",
       text: "From where? Pick a town or share your location, and distances count.",
+    });
+
+  if (ask.unknownPlace)
+    gaps.push({
+      about: "place",
+      text: `I don't know where ${ask.unknownPlace} is yet, so nothing is measured from there. Pick the nearest town and distances count.`,
     });
 
   const framed = framing(ask, context, overSpan);

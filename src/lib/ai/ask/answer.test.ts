@@ -599,6 +599,16 @@ describe("the sky", () => {
     );
   });
 
+  it("a place Passport cannot locate is said, with the town picker, instead of measuring from elsewhere", () => {
+    const answer = answerAsk(
+      [subject("Somewhere", { km: 4 })],
+      ask("Anything an hour from Tofino"),
+      { ...context, origin: undefined, originLabel: undefined },
+    );
+    expect(answer.gaps.map((g) => g.about)).toEqual(["place"]);
+    expect(answer.gaps[0]?.text).toContain("Tofino");
+  });
+
   it("on a wet day, an outdoor reading goes down", () => {
     const answer = answerAsk(
       [

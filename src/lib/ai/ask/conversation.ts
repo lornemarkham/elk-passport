@@ -78,6 +78,7 @@ export function foldAsk(
     for (const key of DISTANCE) delete merged[key];
     if (next.lens !== "drive" && merged.lens === "drive") delete merged.lens;
   }
+  if (has("townId")) delete merged.unknownPlace;
   if (TIME.some(has)) for (const key of TIME) delete merged[key];
   if (has("company")) {
     if (next.company !== "child") delete merged.childAge;

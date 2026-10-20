@@ -245,3 +245,60 @@ describe("ordinary phrasings that were misread", () => {
     ).toBeUndefined();
   });
 });
+
+/**
+ * **A place Passport does not hold is named, not guessed.** Salmon Arm is not
+ * in `towns.ts`; "Salmon" once read as wildlife-watching and the distance was
+ * quietly measured from somewhere else.
+ */
+describe("a place named that Passport cannot locate", () => {
+  it("is carried, and its words name no activity", () => {
+    const ask = read("Anything fun an hour from Tofino tomorrow?");
+    expect(ask.unknownPlace).toBe("Tofino");
+    expect(ask.doing).toBeUndefined();
+    expect(ask.townId).toBeUndefined();
+    expect(ask.driveMinutes).toBe(60);
+  });
+
+  it("a town after 'N hours from' keeps its first letter", () => {
+    for (const [said, id] of [
+      ["Anything fun an hour from Salmon Arm tomorrow?", "salmon-arm"],
+      ["two hours from Kelowna", "kelowna"],
+      ["an hour out of Vernon", "vernon"],
+    ] as const) {
+      const ask = read(said);
+      expect(ask.townId).toBe(id);
+      expect(ask.unknownPlace).toBeUndefined();
+      expect(ask.doing).toBeUndefined();
+    }
+  });
+
+  it("is not raised for a town Passport knows, a month, or a holiday", () => {
+    expect(read("within 30 minutes of Vernon").unknownPlace).toBeUndefined();
+    expect(read("within 30 minutes of Vernon").townId).toBe("vernon");
+    expect(read("What's on in October?").unknownPlace).toBeUndefined();
+    expect(read("something near Halloween").unknownPlace).toBeUndefined();
+    expect(read("things to do in the Okanagan").unknownPlace).toBeUndefined();
+  });
+
+  it("the five natural questions read as the rows they mean", () => {
+    expect(read("What can I do with my five-year-old today?")).toMatchObject({
+      company: "child",
+      childAge: 5,
+      on: today,
+    });
+    expect(read("It's raining. Find something fun indoors.").shelter).toBe(
+      "indoor",
+    );
+    expect(read("What can we do within 30 minutes of Vernon?")).toMatchObject({
+      townId: "vernon",
+      driveMinutes: 30,
+    });
+    expect(read("Surprise me with something unusual.").lens).toBe("unusual");
+    expect(read("What's happening in Vancouver this weekend?")).toMatchObject({
+      townId: "vancouver",
+      lens: "on",
+      on: "2026-10-17",
+    });
+  });
+});

@@ -160,7 +160,7 @@ export function travelIn(text: string): {
   // ("two hours from 9") is a window, not a place.
   add(
     new RegExp(
-      String.raw`${QTY}[-\s]*${UNIT}\s+(?:of driving|drive|driving|away|by car|each way|one way|each direction|max(?:imum)?(?:\s+drive)?|out of\s+[a-z]|from\s+(?!noon|midnight|\d|\d)[a-z])`,
+      String.raw`${QTY}[-\s]*${UNIT}\s+(?:of driving|drive|driving|away|by car|each way|one way|each direction|max(?:imum)?(?:\s+drive)?|out of\s+(?=[a-z])|from\s+(?!noon|midnight|\d|\d)(?=[a-z]))`,
       "g",
     ),
     1,

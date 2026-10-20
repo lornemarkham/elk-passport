@@ -297,7 +297,8 @@ export function AskDiscovery({
                   className="text-[13px] font-semibold text-[#111]/75"
                 >
                   {gap.text}
-                  {gap.about === "origin" && originPicker}
+                  {(gap.about === "origin" || gap.about === "place") &&
+                    originPicker}
                 </li>
               ))}
             </ul>

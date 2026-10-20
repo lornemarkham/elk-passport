@@ -284,6 +284,37 @@ guide's unknowns when removed. Never a coordinate in the URL.
 While an answer is on screen `TodayPanel` is not rendered — it would answer the
 same situation a second time — and the forecast still orders the answer.
 
+## Natural sentences — audit 2026-10-20
+
+The five sentences a person types ("what can I do with my five-year-old
+today", "it's raining, find something fun indoors", "within 30 minutes of
+Vernon", "surprise me with something unusual", "what's happening in Vancouver
+this weekend") were run through the reader and `answerAsk` against the
+committed fixture (`corpus.eval.test.ts`, which now carries them) and through
+the browser (`e2e/discovery-natural.spec.ts`). The reading was already right;
+two defects were not:
+
+- **"an hour from Salmon Arm" lost the town.** `travelIn` consumed the first
+  letter of whatever followed `from` / `out of`, so "an hour from Kelowna"
+  became "elowna" and the sentence fell back to the default origin. Fixed
+  with lookaheads in `src/domain/day/intent.ts` (this also repairs `/go`).
+- **A town's name was read as an activity.** "Salmon" Arm matched
+  wildlife-watching. A recognised town's name is removed before activity words
+  are read.
+
+A place the closed town set does not hold ("from Tofino") is now carried as
+`unknownPlace` and **said** — _I don't know where Tofino is yet, so nothing is
+measured from there_ — with the town picker, rather than silently measuring
+from somewhere else. Passport still does not geocode a guess.
+
+A rainy ask's note now says what it did: places Atlas reads as indoors or
+under cover come first.
+
+**Not changed, deliberately.** With a town chosen, a pick needs Atlas's
+distance reading (see _Somewhere, or not an answer_); the e2e stand-in serves
+none, so those specs run without a chosen town. Against a real Atlas that rule
+is measured, not assumed.
+
 ## Activities and the explorer — ADR 007
 
 **Recorded 2026-10-16.** `src/domain/discovery/activities.ts` holds 58

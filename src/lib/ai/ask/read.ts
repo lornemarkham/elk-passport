@@ -56,6 +56,12 @@ export interface DiscoveryAsk {
   readonly partOfDay?: "morning" | "afternoon" | "evening";
   /** A town they named, by `towns.ts` id. */
   readonly townId?: string;
+  /**
+   * **A place they named that Passport cannot locate** — "an hour from Salmon
+   * Arm". Said back, never guessed at, and kept out of the words that name an
+   * activity (it once read "Salmon" as wildlife-watching).
+   */
+  readonly unknownPlace?: string;
   /** "nearby", "close", "around here". */
   readonly near?: boolean;
   /** A distance they actually stated, in km. */
@@ -346,8 +352,31 @@ function negations(text: string): { avoid: string[]; rest: string } {
   return { avoid: [...new Set(avoid)], rest };
 }
 
+/** A capitalised name after a preposition of place: "from Salmon Arm". */
+const NAMED_PLACE =
+  /\b(?:of|from|near|around|in|outside|by)\s+((?:[A-Z][\p{L}'.-]*)(?:\s+[A-Z][\p{L}'.-]*)*)/u;
+
+/** Capitalised words that follow those prepositions and are not places. */
+const NOT_A_PLACE =
+  /^(?:i|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|halloween|christmas|easter|thanksgiving|diwali|okanagan|metro vancouver|bc|british columbia|canada)\b/i;
+
+/**
+ * **A place by name that `towns.ts` does not hold.** A closed set stays
+ * closed: Passport does not geocode a guess. It notices the name so the
+ * answer can say "I don't know where that is" instead of quietly measuring
+ * from somewhere else.
+ */
+function unknownPlaceIn(said: string): string | undefined {
+  const named = NAMED_PLACE.exec(said)?.[1]?.replace(/[.'-]+$/, "");
+  if (!named || NOT_A_PLACE.test(named)) return undefined;
+  return readBrief(named).town ? undefined : named;
+}
+
 export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
-  const lowered = said.toLowerCase().replace(/[’']/g, "'");
+  const unknownPlace = unknownPlaceIn(said);
+  const lowered = (unknownPlace ? said.split(unknownPlace).join(" ") : said)
+    .toLowerCase()
+    .replace(/[’']/g, "'");
   // **Said no to first**, so "outside but not hiking" never chooses hiking.
   const { avoid, rest: text } = negations(lowered);
 
@@ -485,7 +514,11 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   const shelter =
     brief.shelter ?? (FINE.test(text) ? ("outdoor" as const) : undefined);
 
-  const doing = activityIn(text)?.key;
+  // A town's name is a place, not a thing to do: "Salmon" Arm is not salmon.
+  const townBare = brief.town?.name.replace(/,\s*BC$/i, "").toLowerCase();
+  const doing = activityIn(
+    townBare ? text.split(townBare).join(" ") : text,
+  )?.key;
   const gentle = GENTLE.test(text);
   const free = asksForFree(text);
 
@@ -500,6 +533,7 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
     ...(day ? { on: day } : {}),
     ...(partOfDay ? { partOfDay } : {}),
     ...(brief.town ? { townId: brief.town.id } : {}),
+    ...(unknownPlace && !brief.town ? { unknownPlace } : {}),
     ...(near ? { near } : {}),
     ...(statedKm !== undefined ? { withinKm: statedKm } : {}),
     ...(driveMinutes !== undefined ? { driveMinutes } : {}),

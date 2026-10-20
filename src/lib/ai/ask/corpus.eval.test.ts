@@ -68,6 +68,12 @@ export const QUESTIONS = [
   "I want to do something I've never tried.",
   "Movies tonight",
   "Something for grandparents",
+  // Natural Discovery (2026-10-20): the five the mission names.
+  "What can I do with my five-year-old today?",
+  "It's raining. Find something fun indoors.",
+  "What can we do within 30 minutes of Vernon?",
+  "Surprise me with something unusual.",
+  "What's happening in Vancouver this weekend?",
 ];
 
 /** Whole conversations, turn by turn. */
