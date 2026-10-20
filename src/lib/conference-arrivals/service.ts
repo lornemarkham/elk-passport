@@ -11,6 +11,7 @@ import {
 import {
   readFlight,
   readFlightDate,
+  readLocalTime,
 } from "@/domain/conference-arrivals/flight";
 import type { Airport } from "@/domain/conference-arrivals/matching";
 import { NOT_STARTED } from "@/domain/conference-arrivals/tracking";
@@ -48,6 +49,8 @@ export interface MyFlightForm {
   readonly flight: string;
   readonly date: string;
   readonly from: string;
+  /** `YYYY-MM-DDTHH:mm` local at the conference's airport, or `""`. */
+  readonly lands: string;
   readonly shared: boolean;
 }
 
@@ -108,6 +111,7 @@ export async function readArrivals(
           date: mine.flight.date,
           from:
             mine.flight.departure?.iata ?? mine.flight.departure?.icao ?? "",
+          lands: mine.flight.lands ?? "",
           shared: mine.shared,
         }
       : null,
@@ -173,6 +177,26 @@ export async function saveMine(
       message: `That's where you're flying to. Where are you leaving from?`,
     });
 
+  // When it lands, from their booking: optional, and stated, never checked
+  // against an airline. It has to be the same trip as the date it leaves:
+  // the day before (the dateline, westbound) to two days after.
+  const landsTyped = String(body.lands ?? "").trim();
+  const lands = landsTyped ? readLocalTime(landsTyped) : null;
+  if (landsTyped && !lands)
+    issues.push({
+      path: "lands",
+      message: "Give the date and time it lands, like your booking shows.",
+    });
+  else if (lands && date) {
+    const gap = Date.parse(lands.slice(0, 10)) - Date.parse(date);
+    if (gap < -DAY || gap > 2 * DAY)
+      issues.push({
+        path: "lands",
+        message:
+          "That's not the same trip as the day it leaves. Check both dates.",
+      });
+  }
+
   const shared = body.shared === true;
   const typedName =
     typeof body.displayName === "string" ? body.displayName.trim() : "";
@@ -208,7 +232,7 @@ export async function saveMine(
   const record: ArrivalRecord = {
     conferenceId,
     memberId: home.you.memberId,
-    flight: { ident, date, departure },
+    flight: { ident, date, departure, lands },
     shared,
     createdAt: existing?.createdAt ?? stamp,
     updatedAt: stamp,

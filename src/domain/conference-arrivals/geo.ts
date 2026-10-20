@@ -104,3 +104,32 @@ export function greatCirclePath(
   }
   return out;
 }
+
+/**
+ * A ring `km` from `centre`, as `[lon, lat]` points, closed. Drawn around the
+ * conference's airport as distance rings: geometry, never a position.
+ */
+export function ringAround(
+  centre: LatLon,
+  km: number,
+  steps = 96,
+): [number, number][] {
+  const δ = km / EARTH_KM;
+  const φ1 = centre.lat * RAD;
+  const λ1 = centre.lon * RAD;
+  const out: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const θ = (i / steps) * 2 * Math.PI;
+    const φ2 = Math.asin(
+      Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ),
+    );
+    const λ2 =
+      λ1 +
+      Math.atan2(
+        Math.sin(θ) * Math.sin(δ) * Math.cos(φ1),
+        Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2),
+      );
+    out.push([λ2 / RAD, φ2 / RAD]);
+  }
+  return out;
+}
