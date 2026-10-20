@@ -13,7 +13,7 @@ export default defineConfig({
     /(acceptance|email-confirmation|plan-and-results|mobile|multi-night)\.spec\.ts$/,
   reporter: "list",
   workers: 1,
-  outputDir: "/tmp/hockey-playwright",
+  outputDir: process.env.PW_OUT ?? "/tmp/hockey-playwright",
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
