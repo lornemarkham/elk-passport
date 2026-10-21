@@ -2,7 +2,7 @@
 
 **Status:** implemented and verified on lane `boards`, 2026-10-12. The
 migration is **proposed, not applied** anywhere real. The decision is recorded in
-`docs/architecture/decisions/003-one-group-foundation.md`.
+`docs/architecture/decisions/009-one-group-foundation.md`.
 
 > Atlas knows what's out there. Passport knows who's going, what they're doing,
 > and who they're doing it with.

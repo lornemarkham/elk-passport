@@ -885,7 +885,7 @@ certainty. Do not invent an answer here to make the document feel finished.
     the level of capability only:_ every group thing shares one
     Passport-owned membership, invitation and shared-plan foundation, with
     kind-specific facts in typed extensions
-    (`docs/architecture/decisions/003-one-group-foundation.md`). Still open:
+    (`docs/architecture/decisions/009-one-group-foundation.md`). Still open:
     how a group experience should feel, live and adapt; whether a group plan
     needs a commitment state (§2.6, item 14); who may invite; what an
     invitation reveals.

@@ -113,7 +113,7 @@ being generic.
 This section used to say Groups were deferred: every sharing need was
 membership on a resource. That stopped being true when Hockey Night and
 Conference each built their own membership, invitation and roster system.
-The group foundation is `passport_adventures` (ADR 003,
+The group foundation is `passport_adventures` (ADR 009,
 `docs/product/group-adventures/README.md`): one owner/participant membership,
 hashed invite links, removal, a shared plan of Atlas references and answers,
 and typed per-kind extensions. Board sharing above is unchanged; it shares a

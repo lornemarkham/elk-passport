@@ -1,8 +1,10 @@
-# 003 · One foundation for doing things together
+# 009 · One foundation for doing things together
 
 **Decided:** 2026-10-12, by mission ("Shared group experiences foundation",
 lane `boards`) · **Status:** implemented on `lane/boards`; migration proposed,
 not applied
+
+_Numbered 003 on `lane/boards`; renumbered 009 when it reached `integration/release`, where 003 was already the Go-day start decision._
 
 ## The problem
 

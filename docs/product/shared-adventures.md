@@ -6,7 +6,7 @@ Group / multi-person experience is an open question there (§15.12); nothing
 here answers it.
 
 **Superseded in part (2026-10-12).** The group foundation is now
-`passport_adventures` (`docs/product/group-adventures/README.md`, ADR 003).
+`passport_adventures` (`docs/product/group-adventures/README.md`, ADR 009).
 Interest marks, shared days and self-leave here overlap with its items,
 answers and leave; pick one before either migrates (README §4, "Boards").
 
