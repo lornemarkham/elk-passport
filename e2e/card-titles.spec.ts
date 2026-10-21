@@ -52,11 +52,20 @@ for (const form of forms) {
       }
 
       for (const title of TITLES) {
+        // By its own name: one search leads with at most six name matches
+        // (ADR 006), and Green Croft only says "pumpkin patch" in its
+        // description.
+        await open(page, title);
         const named = page.getByTestId("possibility").filter({
           has: page
             .getByRole("heading", { name: title, exact: true })
             .or(page.getByRole("link", { name: title, exact: true })),
         });
+        // Aldor Acres is in Langley, and a local page holds other areas back
+        // until the reader asks for them (`area.ts`), as a reader would.
+        const further = page.getByTestId("further-afield");
+        if (!(await named.count()) && (await further.count()))
+          await further.first().click();
         // The picture card when the corpus has two of one name, so the
         // before-the-fix bug (a picture and no heading) is what is looked at.
         for (let i = 0; i < 10 && !(await named.count()); i++) {
