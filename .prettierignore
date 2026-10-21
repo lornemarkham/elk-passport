@@ -5,3 +5,5 @@ playwright-report
 test-results
 # Atlas's own travel-legs/1 fixture, kept byte-for-byte so a diff against Atlas is meaningful
 src/lib/domains/travel/__fixtures__/travel-legs-1.json
+# A Creative Archive original (src/app/creative/archive.ts), kept byte-for-byte as it was made
+public/labs/discovery-space/christmas-passport.html
