@@ -56,10 +56,12 @@ createServer(async (req, res) => {
     const candidates = body.map((c) => {
       let out = c;
       if (on !== answersOn && out.schedule?.onDate) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { onDate: _onDate, ...schedule } = out.schedule;
         out = { ...out, schedule };
       }
       if (Number(age) !== answersAge && out.suitability?.forAge) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { forAge: _forAge, ...suitability } = out.suitability;
         out = { ...out, suitability };
       }
