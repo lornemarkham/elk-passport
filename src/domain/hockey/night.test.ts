@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { liveExperience } from "@/experience-lab/core/engine";
 import { answerProblem, ActionSchema } from "./actions";
 import { defaultLook } from "./identity";
+import { MODULE_IDS, modulesOf, storedModules } from "./modules";
 import {
   SYCLE_HOCKEY_NIGHT,
   composeNight,
@@ -404,5 +405,113 @@ describe("the plan", () => {
     expect(
       planOf(rows({ responses: [spot(GONE, "concourse")] })),
     ).toBeUndefined();
+  });
+});
+
+describe("what's in tonight", () => {
+  const withModules = (modules: readonly string[]) =>
+    rows({
+      occasion: {
+        ...rows().occasion,
+        details: { ...SYCLE_HOCKEY_NIGHT.details, modules },
+      },
+    });
+  const ids = (r: NightRows) =>
+    liveExperience(
+      composeNight(r, GUEST).definition,
+      composeNight(r, GUEST).state,
+      BEFORE,
+    ).prompts.map((p) => p.prompt.id);
+
+  it("has everything on a night that never said, and says so", () => {
+    const night = composeNight(rows(), HOST);
+    expect(night.modules).toEqual([...MODULE_IDS]);
+    expect(ids(rows())).toEqual(
+      expect.arrayContaining(["pregame-spot", "hard-out", "final-score"]),
+    );
+  });
+
+  it("leaves out exactly the questions of a module the host turned off", () => {
+    const night = withModules(["dinner", "meet", "leaving", "games"]);
+    const on = ids(night);
+    expect(on).toContain("pregame-spot");
+    expect(on).toContain("hard-out");
+    for (const pick of ["final-score", "first-team", "overtime", "host-beer"]) {
+      expect(on).not.toContain(pick);
+    }
+    expect(
+      composeNight(night, HOST).definition.blocks.find((b) => b.id === "picks")
+        ?.title,
+    ).toBe("Ask the group");
+    expect(composeNight(night, HOST).modules).toEqual([
+      "dinner",
+      "meet",
+      "leaving",
+      "games",
+    ]);
+  });
+
+  it("refuses an answer to a question that is switched off, as it would one that never existed", () => {
+    const night = withModules(["picks"]);
+    const { definition, state } = composeNight(night, GUEST);
+    const live = liveExperience(definition, state, BEFORE);
+    const dinner = live.prompts.find((p) => p.prompt.id === "pregame-spot");
+    expect(dinner).toBeUndefined();
+    expect(answerProblem(dinner, "concourse", live.participants)).not.toBe(
+      null,
+    );
+  });
+
+  it("without games there is no toy box, and what was asked through it is hidden, not deleted", () => {
+    const asked = {
+      prompt_id: "toy-ask-x1",
+      reveal: "immediate" as const,
+      lock_offset_minutes: null,
+      audience_only: null,
+      open_to_suggestions: false,
+      asked_by: GUEST,
+      content: {
+        id: "toy-ask-x1",
+        question: "Who cries first?",
+        kind: "person" as const,
+        phaseId: "before",
+        reveal: "immediate" as const,
+      },
+      resolution: null,
+    };
+    const base = withModules(["dinner", "picks"]);
+    const night = { ...base, prompts: [...base.prompts, asked] };
+    const { definition, state } = composeNight(night, HOST);
+    expect(definition.blocks.some((b) => b.inviteOwnPrompt)).toBe(false);
+    expect(state.addedPrompts).toHaveLength(0);
+
+    const back = {
+      ...night,
+      occasion: {
+        ...night.occasion,
+        details: { ...night.occasion.details, modules: [...MODULE_IDS] },
+      },
+    };
+    expect(composeNight(back, HOST).state.addedPrompts).toHaveLength(1);
+  });
+
+  it("stores only modules it knows, in one order, and reads junk as everything", () => {
+    expect(storedModules(["picks", "nonsense", "dinner", "picks"])).toEqual([
+      "dinner",
+      "picks",
+    ]);
+    expect([...modulesOf({ modules: "all" })]).toEqual([...MODULE_IDS]);
+    expect([...modulesOf({ modules: [] })]).toEqual([]);
+  });
+
+  it("only takes module lists made of modules", () => {
+    expect(
+      ActionSchema.safeParse({ type: "setModules", modules: ["picks"] })
+        .success,
+    ).toBe(true);
+    expect(
+      ActionSchema.safeParse({ type: "setModules", modules: ["betting"] })
+        .success,
+    ).toBe(false);
   });
 });

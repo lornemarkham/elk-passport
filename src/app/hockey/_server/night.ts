@@ -16,6 +16,11 @@ import {
   type NearbyPlace,
 } from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
+import {
+  modulesOf,
+  storedModules,
+  type ModuleId,
+} from "@/domain/hockey/modules";
 import { cleanName, defaultLook } from "@/domain/hockey/identity";
 import { editionOf, seriesOf } from "@/domain/hockey/edition";
 import { chooseGame, isOver, type GameRequest } from "@/domain/hockey/schedule";
@@ -52,6 +57,8 @@ export interface NightSnapshot {
   readonly definition: ExperienceDefinition;
   readonly state: ExperienceState;
   readonly role: "host" | "guest";
+  /** Which modules the host has on (`domain/hockey/modules.ts`). */
+  readonly modules: ModuleId[];
 }
 
 export class NightError extends Error {
@@ -223,11 +230,13 @@ async function seriesNights(
     wanted.map(async (n) => {
       const rows = await rowsFor(db, n.id);
       if (!rows?.members.some((m) => m.user_id === user.id)) return null;
+      const { definition, state } = composeNight(rows, user.id);
       return {
         id: n.id,
         edition: n.edition,
         startsAt: n.startsAt,
-        ...composeNight(rows, user.id),
+        definition,
+        state,
       } satisfies SeriesNight;
     }),
   );
@@ -296,6 +305,8 @@ export interface StartRequest {
   readonly game?: GameRequest;
   /** "Run it back": the night this one follows. */
   readonly after?: string;
+  /** Absent: everything on, or — running it back — whatever last time had. */
+  readonly modules?: readonly string[];
 }
 
 /**
@@ -341,7 +352,16 @@ export async function createSycleNight(
       Math.max(
         ...mine.filter((n) => n.series === last.series).map((n) => n.edition),
       ) + 1;
-    details = { ...details, series: last.series, edition };
+    details = {
+      ...details,
+      series: last.series,
+      edition,
+      // Same night again means the same modules, unless the starter said.
+      modules: request.modules ? undefined : previous.modules,
+    };
+  }
+  if (request.modules) {
+    details = { ...details, modules: storedModules(request.modules) };
   }
 
   const look = defaultLook(user.id);
@@ -462,6 +482,9 @@ export async function act(
 
     case "addToy": {
       const { input, family } = action;
+      if (!modulesOf(rows.occasion.details).has("games")) {
+        throw new NightError("The host left the games out tonight.", 422);
+      }
       if (
         input.targetId &&
         !live.participants.some((p) => p.id === input.targetId)
@@ -572,6 +595,22 @@ export async function act(
         .update({ brief: action.brief })
         .eq("id", id);
       fail(error, "setting the brief");
+      break;
+    }
+
+    case "setModules": {
+      if (me.role !== "host")
+        throw new NightError("The host decides what's in tonight.", 403);
+      const { error } = await db
+        .from("passport_occasions")
+        .update({
+          details: {
+            ...rows.occasion.details,
+            modules: storedModules(action.modules),
+          },
+        })
+        .eq("id", id);
+      fail(error, "changing what's in tonight");
       break;
     }
 

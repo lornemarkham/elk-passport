@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant, ResponseValue } from "@/experience-lab/core/types";
+import { MODULE_IDS, type ModuleId } from "./modules";
 
 /**
  * **Everything a member can do to a night, as data.**
@@ -20,6 +21,11 @@ const promptId = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,64}(::[A-Za-z0-9_-]{1,64})?$/);
 const emoji = z.string().min(1).max(16);
+
+/** Which modules a night has on: known ids only, each at most once. */
+export const modulesValue = z
+  .array(z.enum(MODULE_IDS as [ModuleId, ...ModuleId[]]))
+  .max(MODULE_IDS.length);
 
 const responseValue: z.ZodType<ResponseValue> = z.union([
   z.string().max(280),
@@ -106,6 +112,7 @@ export const ActionSchema = z.discriminatedUnion("type", [
     promptId,
     value: responseValue.nullable(),
   }),
+  z.object({ type: z.literal("setModules"), modules: modulesValue }),
 ]);
 
 export type Action = z.infer<typeof ActionSchema>;

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { MODULE_IDS, type ModuleId } from "@/domain/hockey/modules";
+import { ModuleToggles } from "./Modules";
 import {
   OPPONENTS,
   toRequest,
@@ -25,11 +27,14 @@ export function StartNight({
   suggestion,
   name,
   after,
+  modules: initialModules = MODULE_IDS,
   cta,
 }: {
   suggestion: GameChoice;
   name: string;
   after?: string;
+  /** What starts ticked: everything, or — running it back — last time's. */
+  modules?: readonly ModuleId[];
   cta: string;
 }) {
   const [opponent, setOpponent] = useState(suggestion.opponent);
@@ -39,6 +44,7 @@ export function StartNight({
   // the roster, on the leaderboard and in "Will ___ buy a $19 arena beer?",
   // and an email address in that blank is not a joke anybody laughs at.
   const [hostName, setHostName] = useState(name);
+  const [modules, setModules] = useState<ModuleId[]>([...initialModules]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +64,7 @@ export function StartNight({
         name: hostName.trim() || undefined,
         game,
         after,
+        modules,
       }),
     });
     const body = await res.json().catch(() => ({}));
@@ -119,6 +126,12 @@ export function StartNight({
         Rogers Arena, Vancouver time. Home games only for now — Passport only
         knows how far things are from this one arena.
       </p>
+      <fieldset className="mt-4">
+        <legend className="mb-1.5 text-[13px] text-white/55">
+          What&apos;s in it — the chat and the Cup always are
+        </legend>
+        <ModuleToggles on={modules} onChange={setModules} />
+      </fieldset>
       <label className="mt-4 block text-[13px] text-white/55">
         What should everyone call you?
         <input

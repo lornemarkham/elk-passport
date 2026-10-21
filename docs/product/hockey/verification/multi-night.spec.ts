@@ -269,7 +269,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   ).toContainText("The morning after");
   await shot(maya.page, "2-kraken-morning-after-phone");
   const runItBack = maya.page.getByRole("region", { name: "Run it back" });
-  await expect(runItBack.getByText("Run it back?")).toBeVisible();
+  await expect(runItBack.getByText("Now go have another.")).toBeVisible();
   await runItBack.getByRole("button", { name: "Start the next one" }).click();
   await maya.page.setViewportSize({ width: 320, height: 700 });
   await noSidewaysScroll(maya.page);

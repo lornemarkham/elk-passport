@@ -12,12 +12,15 @@ import type {
   ToyFamily,
 } from "@/experience-lab/core/types";
 import type { Action } from "@/domain/hockey/actions";
+import type { ModuleId } from "@/domain/hockey/modules";
 import type { SeriesView } from "@/domain/hockey/series";
 
 export interface NightSnapshot {
   readonly definition: ExperienceDefinition;
   readonly state: ExperienceState;
   readonly role: "host" | "guest";
+  /** Which modules the host has on (`domain/hockey/modules.ts`). */
+  readonly modules: ModuleId[];
   /**
    * The rest of this night's run. Sent with the page, not with every poll:
    * last time does not change while you are looking at this time, and
@@ -152,6 +155,7 @@ export function useSharedNight(initial: NightSnapshot) {
     state,
     definition,
     role,
+    modules: snapshot.modules,
     series: snapshot.series,
     error,
     clearError: () => setError(null),
@@ -218,6 +222,13 @@ export function useSharedNight(initial: NightSnapshot) {
 
     setBrief: (brief: Brief) =>
       void send({ type: "setBrief", brief }, (s) => ({ ...s, brief })),
+
+    // The ticks move at once, so a second quick tap builds on the first; what
+    // the night then contains is composed by the server and arrives with it.
+    setModules: (modules: ModuleId[]) => {
+      setSnapshot((prev) => ({ ...prev, modules }));
+      void send({ type: "setModules", modules });
+    },
 
     setMyEdge: (edge: Edge | null) =>
       void send({ type: "setMyEdge", edge }, (s) => ({ ...s, myEdge: edge })),

@@ -24,6 +24,7 @@ import { actOf } from "@/domain/hockey/acts";
 import { nextGameAfter } from "@/domain/hockey/schedule";
 import { CallIt } from "./CallIt";
 import { GuestList } from "./GuestList";
+import { TonightSettings } from "./Modules";
 import { NearbyPicker } from "./NearbyPicker";
 import { LastTime, RunItBack } from "./RunItBack";
 import { RunningOrder } from "./RunningOrder";
@@ -204,6 +205,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                     live={live}
                     series={night.series}
                     suggestion={nextGameAfter(definition.anchorAt)}
+                    modules={night.modules}
                   />
                 </section>
               );
@@ -305,6 +307,8 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
           <YouTonight night={night} />
 
           {role === "host" && <GuestList night={night} />}
+
+          <TonightSettings night={night} />
 
           <p className="pt-4 pb-2 text-[11.5px] leading-relaxed text-white/30">
             Private to the people on this page. Points are bragging rights only
