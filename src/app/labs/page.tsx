@@ -103,6 +103,18 @@ export default async function LabsIndex() {
               </ul>
             </>
           ) : null}
+          <p className="mt-12 text-[14px] text-white/55">
+            Everything older — the first experiments, every design round, the
+            founding documents — is kept in the{" "}
+            <Link
+              href="/creative"
+              data-testid="labs-creative-archive"
+              className="text-white/85 underline underline-offset-4"
+            >
+              ELK Creative Archive
+            </Link>
+            .
+          </p>
         </div>
       </main>
     </>

@@ -945,6 +945,7 @@ named rather than quietly resolved.
 | `docs/architecture/`                           | Architecture, including `decisions/`.                                                                                                                                     |
 | `docs/old-might-be-garbage/passport-vision.md` | Vision from 2026-07-25. Its core claim survives here: Passport is not a tourism website, an itinerary builder, or a recommendation engine. Folder name is a fair warning. |
 | `archive/01-mission.md` … `archive/14-…`       | The original "Product Brain." `13-philosophy.md` is where _"one hell of a day"_ was first written down.                                                                   |
+| `src/app/creative/archive.ts` (`/creative`)    | The ELK Creative Archive: every experiment, prototype, design round and founding document, with source, first commit and status. An index of history, not authority.      |
 
 **Outside this repository (workspace root, NOT version controlled):**
 
