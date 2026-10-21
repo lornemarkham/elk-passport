@@ -299,7 +299,11 @@ test.describe("the Video Store on a 390px phone", () => {
     await tape.tap();
     const back = page.getByTestId("backdrop");
     await expect(back).toBeVisible();
-    await back.tap();
+    // Putting it down is tapping anywhere that is not the tape. The held tape
+    // settles over the middle of the screen, so a tap aimed at the backdrop's
+    // own centre lands on the tape once it has arrived — which it has by the
+    // time the machine is busy. Tap the corner, which the tape never covers.
+    await back.tap({ position: { x: 12, y: 12 } });
     await expect(back).toHaveCount(0);
   });
 
