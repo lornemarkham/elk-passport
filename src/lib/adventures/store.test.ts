@@ -188,6 +188,16 @@ describe("what a member sees", () => {
       error: null,
     },
     passport_adventure_hockey: { data: null, error: null },
+    passport_adventure_days: {
+      data: [
+        {
+          on_day: "2026-10-25",
+          ask: "say=Saturday&on=2026-10-25",
+          updated_at: "2026-10-21T00:00:00Z",
+        },
+      ],
+      error: null,
+    },
   };
 
   it("never carries a user id, and says what is yours and what you may change", async () => {

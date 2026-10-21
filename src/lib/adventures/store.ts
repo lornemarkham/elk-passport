@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adventureKind, type AdventureVisibility } from "./kinds";
+import { dayWrites } from "./days";
 import type {
   AdventureDetails,
   HockeyFacts,
   InviteRequest,
   ItemInput,
+  ItemPatch,
   ItemStatus,
   NewAdventure,
   ResponseValue,
@@ -22,7 +24,7 @@ import type {
  *
  * Every function takes the caller's own Supabase client (anon key + their
  * session) and nothing else that confers authority. Row-level security in
- * `docs/product/group-adventures/migration.sql` decides what they may read
+ * `supabase/migrations/20261021000000_passport_adventures.sql` decides what they may read
  * and change; this module only shapes requests and answers. So a bug here
  * cannot hand one group's plans to another, and a native or voice client
  * holding the same JWT gets the same rows without this code.
@@ -116,6 +118,15 @@ export interface AdventureView extends AdventureDetails {
   readonly items: readonly ItemView[];
   /** The hockey extension, for a kind that has one. */
   readonly hockey: HockeyFacts | null;
+  /** Days somebody planned with Go Have a Day, and how each was asked for. */
+  readonly days: readonly DayView[];
+}
+
+export interface DayView {
+  readonly onDay: string;
+  /** The `/go` day query without its stops (`days.ts`, `askFrom`). */
+  readonly ask: string;
+  readonly updatedAt: string;
 }
 
 export interface InviteView {
@@ -311,7 +322,7 @@ export async function adventureFor(
   const a = adventure.data;
 
   const wantsHockey = adventureKind(a.kind)?.extension === "hockey";
-  const [members, items, responses, hockey] = await Promise.all([
+  const [members, items, responses, hockey, days] = await Promise.all([
     db
       .from("passport_adventure_members")
       .select("user_id, member_id, role, display_name, visibility")
@@ -337,8 +348,13 @@ export async function adventureFor(
           .eq("adventure_id", id)
           .maybeSingle<HockeyRow>()
       : Promise.resolve({ data: null, error: null }),
+    db
+      .from("passport_adventure_days")
+      .select("on_day, ask, updated_at")
+      .eq("adventure_id", id)
+      .order("on_day", { ascending: true }),
   ]);
-  for (const r of [members, items, responses, hockey]) {
+  for (const r of [members, items, responses, hockey, days]) {
     if (r.error) raise(r.error);
   }
 
@@ -405,6 +421,10 @@ export async function adventureFor(
           arenaLabel: h?.arena_label ?? null,
         }
       : null,
+    days: (
+      (days.data as
+        { on_day: string; ask: string; updated_at: string }[] | null) ?? []
+    ).map((d) => ({ onDay: d.on_day, ask: d.ask, updatedAt: d.updated_at })),
   };
 }
 
@@ -628,8 +648,9 @@ export async function updateMe(
 
 // ------------------------------------------------------------------ items
 
-function itemRow(input: Partial<ItemInput>) {
+function itemRow(input: ItemPatch) {
   const row: Record<string, unknown> = {};
+  if (input.position !== undefined) row.position = input.position;
   if (input.atlasRef !== undefined) row.atlas_ref = input.atlasRef;
   if (input.label !== undefined) row.label = input.label;
   if (input.note !== undefined) row.note = input.note;
@@ -674,7 +695,7 @@ export async function updateItem(
   db: Db,
   id: string,
   itemId: string,
-  patch: Partial<ItemInput>,
+  patch: ItemPatch,
 ): Promise<void> {
   const { data, error } = await db
     .from("passport_adventure_items")
@@ -745,4 +766,157 @@ export async function respond(
     answered_at: answeredAt,
   });
   if (error) raise(error);
+}
+
+// ------------------------------------------------------------------- days
+
+async function nextPosition(db: Db, id: string): Promise<number> {
+  const last = await db
+    .from("passport_adventure_items")
+    .select("position")
+    .eq("adventure_id", id)
+    .order("position", { ascending: false })
+    .limit(1);
+  if (last.error) raise(last.error);
+  return (
+    (((last.data as { position: number }[] | null) ?? [])[0]?.position ?? -1) +
+    1
+  );
+}
+
+/**
+ * Saved things become ideas on the adventure: Atlas ids not on a day yet.
+ * Ones the adventure already holds are skipped, so adding twice is harmless.
+ * An idea is a proposal, whoever adds it; it is confirmed when the owner
+ * puts it on a day (`saveDay`). Returns how many were new.
+ */
+export async function addIdeas(
+  db: Db,
+  id: string,
+  me: string,
+  atlasRefs: readonly string[],
+): Promise<number> {
+  const held = await db
+    .from("passport_adventure_items")
+    .select("atlas_ref")
+    .eq("adventure_id", id)
+    .in("atlas_ref", [...atlasRefs]);
+  if (held.error) raise(held.error);
+  const have = new Set(
+    ((held.data as { atlas_ref: string }[] | null) ?? []).map(
+      (r) => r.atlas_ref,
+    ),
+  );
+  const fresh = atlasRefs.filter((ref) => !have.has(ref));
+  if (fresh.length === 0) return 0;
+  const start = await nextPosition(db, id);
+  const { error } = await db.from("passport_adventure_items").insert(
+    fresh.map((atlasRef, i) => ({
+      adventure_id: id,
+      added_by: me,
+      atlas_ref: atlasRef,
+      status: "proposed",
+      position: start + i,
+    })),
+  );
+  if (error) raise(error);
+  return fresh.length;
+}
+
+/**
+ * **Save a day Go Have a Day built** onto the adventure. Owner only: it sets
+ * every stop's day and order, and keeps how the day was asked for so it can
+ * be reopened and refined (`passport_adventure_days`).
+ *
+ * Several requests, not one transaction: a failure part-way leaves some
+ * stops placed, and saving again finishes the job (every step is
+ * idempotent). Nothing is ever deleted — a stop the new day left out goes
+ * back to the ideas (`dayWrites`).
+ */
+export async function saveDay(
+  db: Db,
+  id: string,
+  me: string,
+  input: {
+    readonly onDay: string;
+    readonly ask: string;
+    readonly stops: readonly string[];
+  },
+): Promise<void> {
+  const current = await db
+    .from("passport_adventure_items")
+    .select("id, atlas_ref, on_day, position")
+    .eq("adventure_id", id);
+  if (current.error) raise(current.error);
+  const items = (
+    (current.data as
+      | {
+          id: string;
+          atlas_ref: string | null;
+          on_day: string | null;
+          position: number;
+        }[]
+      | null) ?? []
+  ).map((r) => ({
+    id: r.id,
+    atlasRef: r.atlas_ref,
+    onDay: r.on_day,
+    position: r.position,
+  }));
+  const writes = dayWrites(items, input.onDay, input.stops);
+
+  // The day row first: it is the owner check. A participant is refused here,
+  // before any item moves.
+  const updated = await db
+    .from("passport_adventure_days")
+    .update({ ask: input.ask, updated_by: me })
+    .eq("adventure_id", id)
+    .eq("on_day", input.onDay)
+    .select("on_day");
+  if (updated.error) raise(updated.error);
+  if (!updated.data || updated.data.length === 0) {
+    const { error } = await db.from("passport_adventure_days").insert({
+      adventure_id: id,
+      on_day: input.onDay,
+      ask: input.ask,
+      updated_by: me,
+    });
+    if (error) raise(error);
+  }
+
+  for (const itemId of writes.release) {
+    await updateItem(db, id, itemId, { onDay: null });
+  }
+  for (const { id: itemId, position } of writes.place) {
+    await updateItem(db, id, itemId, {
+      onDay: input.onDay,
+      position,
+      status: "confirmed",
+    });
+  }
+  if (writes.add.length > 0) {
+    const { error } = await db.from("passport_adventure_items").insert(
+      writes.add.map(({ atlasRef, position }) => ({
+        adventure_id: id,
+        added_by: me,
+        atlas_ref: atlasRef,
+        status: "confirmed",
+        on_day: input.onDay,
+        position,
+      })),
+    );
+    if (error) raise(error);
+  }
+}
+
+/** The caller's role in an adventure, or `null` when it is not theirs. */
+export async function roleIn(
+  db: Db,
+  id: string,
+): Promise<AdventureRole | null> {
+  const { data, error } = await db.rpc("passport_adventure_role", {
+    p_adventure: id,
+  });
+  if (error) raise(error);
+  return data === "owner" || data === "participant" ? data : null;
 }

@@ -307,7 +307,10 @@ async function services({ fresh }) {
       ),
     );
     const proposal = fs.readFileSync(
-      path.join(here, "..", "migration.sql"),
+      path.join(
+        repo,
+        "supabase/migrations/20261021000000_passport_adventures.sql",
+      ),
       "utf8",
     );
     await sql(proposal);

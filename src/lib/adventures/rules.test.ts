@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseAdventurePatch,
   parseHockeyFacts,
+  parseIdeas,
   parseInviteRequest,
   parseItem,
   parseItemPatch,
@@ -194,5 +195,35 @@ describe("hockey facts", () => {
     });
     expect(parseHockeyFacts({ puckDrop: "not a time" }).ok).toBe(false);
     expect(parseHockeyFacts({ arenaAtlasRef: "has space" }).ok).toBe(false);
+  });
+});
+
+describe("saved things as ideas, and moving them", () => {
+  it("takes Atlas ids only, once each, a board's worth at a time", () => {
+    expect(parseIdeas({ atlasRefs: ["a:1", "b", "a:1"] })).toEqual({
+      ok: true,
+      value: ["a:1", "b"],
+    });
+    expect(parseIdeas({ atlasRefs: [] }).ok).toBe(false);
+    expect(parseIdeas({ atlasRefs: ["has space"] }).ok).toBe(false);
+    expect(
+      parseIdeas({ atlasRefs: Array.from({ length: 25 }, (_, i) => `x${i}`) })
+        .ok,
+    ).toBe(false);
+    expect(parseIdeas(null).ok).toBe(false);
+  });
+
+  it("moves an item to a whole-number place in its list", () => {
+    expect(parseItemPatch({ position: 3 })).toEqual({
+      ok: true,
+      value: { position: 3 },
+    });
+    expect(parseItemPatch({ position: -1 }).ok).toBe(false);
+    expect(parseItemPatch({ position: 1.5 }).ok).toBe(false);
+    expect(parseItemPatch({ position: "2" }).ok).toBe(false);
+    expect(parseItemPatch({ onDay: null })).toEqual({
+      ok: true,
+      value: { onDay: null },
+    });
   });
 });

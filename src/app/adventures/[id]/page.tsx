@@ -11,7 +11,8 @@ import {
   type AdventureView,
   type InviteView,
 } from "@/lib/adventures/store";
-import { atlasNamesFor } from "@/lib/adventures/atlas-names";
+import { atlasStopsFor } from "@/lib/adventures/atlas-names";
+import { ZONE } from "@/domain/experience/eventTime";
 import { kindLabel } from "@/lib/adventures/kinds";
 import { momentLabel, whenLabel } from "@/lib/adventures/present";
 
@@ -68,7 +69,16 @@ export default async function AdventurePage({
         ...(view.hockey?.arenaAtlasRef ? [view.hockey.arenaAtlasRef] : []),
       ]
     : [];
-  const atlasNames = refs.length > 0 ? await atlasNamesFor(refs) : {};
+  const { names: atlasNames, experiences } =
+    refs.length > 0
+      ? await atlasStopsFor(refs)
+      : { names: {}, experiences: {} };
+  const today = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: view?.timeZone ?? ZONE,
+  }).format(new Date());
 
   return (
     <>
@@ -150,12 +160,34 @@ export default async function AdventurePage({
                   )}
               </header>
 
+              <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <Link
+                  href={`/saved?adventure=${encodeURIComponent(view.id)}`}
+                  data-testid="add-from-saved"
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  Add from Saved
+                </Link>
+                <Link
+                  href="/discovery"
+                  className="text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  Find more in Discovery
+                </Link>
+              </p>
+
               <AdventurePlan
                 adventureId={view.id}
                 isOwner={view.role === "owner"}
                 items={view.items}
                 atlasNames={atlasNames}
+                experiences={experiences}
                 timeZone={view.timeZone}
+                startsOn={view.startsOn}
+                endsOn={view.endsOn}
+                days={view.days}
+                townId={view.destinationTownId}
+                today={today}
               />
 
               <AdventurePeople

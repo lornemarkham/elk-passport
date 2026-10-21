@@ -5,8 +5,16 @@ import {
   bodyOf,
   requireAdventureSession,
 } from "@/lib/adventures/server";
-import { adventuresOf, createAdventure } from "@/lib/adventures/store";
-import { parseHockeyFacts, parseNewAdventure } from "@/lib/adventures/rules";
+import {
+  addIdeas,
+  adventuresOf,
+  createAdventure,
+} from "@/lib/adventures/store";
+import {
+  parseHockeyFacts,
+  parseIdeas,
+  parseNewAdventure,
+} from "@/lib/adventures/rules";
 import { adventureKind } from "@/lib/adventures/kinds";
 
 /** Every adventure the signed-in person is in, made or joined. */
@@ -21,6 +29,7 @@ export async function GET() {
 /**
  * Start one. The kind must be declared in code; the caller becomes owner.
  * A kind with a typed extension may send its facts alongside (`hockey`).
+ * Saved things may come with it as its first ideas (`atlasRefs`).
  */
 export async function POST(request: Request) {
   const session = await requireAdventureSession();
@@ -41,12 +50,17 @@ export async function POST(request: Request) {
     hockey = facts.value;
   }
 
+  const sentIdeas = (body as { atlasRefs?: unknown }).atlasRefs;
+  const ideas = sentIdeas === undefined ? null : parseIdeas(body);
+  if (ideas && !ideas.ok) return badRequest(ideas.error);
+
   return answer(async () => {
     const id = await createAdventure(session.db, {
       ...parsed.value,
       displayName: session.user.displayName,
       hockey,
     });
+    if (ideas?.ok) await addIdeas(session.db, id, session.user.id, ideas.value);
     return NextResponse.json({ id }, { status: 201 });
   });
 }

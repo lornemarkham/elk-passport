@@ -74,9 +74,10 @@ const DESTINATIONS = [
     /**
      * A board **is** a saved collection, so somebody looking at one is in this
      * section even though the link points elsewhere. Without this, opening a
-     * board unlit the only nav item that described where they were.
+     * board unlit the only nav item that described where they were. An
+     * adventure is where saved things are planned, so it lights Saved too.
      */
-    also: ["/boards"],
+    also: ["/boards", "/adventures"],
   },
 ] as const;
 

@@ -7,6 +7,10 @@ import { currentUser } from "@/lib/auth/currentUser";
 import { loadSaved } from "@/lib/data/loadSaved";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { safeNext } from "@/lib/auth/safeNext";
+import { adventureSession } from "@/lib/adventures/server";
+import { adventuresOf, type AdventureSummary } from "@/lib/adventures/store";
+import { kindLabel } from "@/lib/adventures/kinds";
+import { whenLabel } from "@/lib/adventures/present";
 
 export const metadata: Metadata = { title: "Saved — Passport" };
 
@@ -28,7 +32,13 @@ export default async function SavedPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const asked = (await searchParams)?.["back"];
+  const query = await searchParams;
+  const asked = query?.["back"];
+  const adventure =
+    typeof query?.["adventure"] === "string" &&
+    /^[A-Za-z0-9_-]{8,64}$/.test(query["adventure"])
+      ? query["adventure"]
+      : undefined;
   const back = safeNext(typeof asked === "string" ? asked : null, "/discovery");
 
   const [user, saved] = await Promise.all([currentUser(), loadSaved()]);
@@ -39,6 +49,17 @@ export default async function SavedPage({
     saved.status === "ok" && user
       ? await octoberThingsFor(user).catch(() => [])
       : [];
+
+  // Adventures this person is planning, to come back to. Not reachable (no
+  // session, or the adventures tables not migrated here) means the strip is
+  // not shown — never "you have none".
+  const adventures: AdventureSummary[] | null = user
+    ? await adventureSession()
+        .then((session) =>
+          session ? adventuresOf(session.db, session.user.id) : null,
+        )
+        .catch(() => null)
+    : null;
 
   return (
     <>
@@ -57,6 +78,33 @@ export default async function SavedPage({
           <h1 className="font-heading mt-4 text-3xl text-[#2b2015] sm:text-4xl">
             Saved
           </h1>
+
+          {adventures && (
+            <nav
+              aria-label="Your adventures"
+              data-testid="saved-adventures"
+              className="mt-3 flex flex-wrap items-center gap-2 text-sm"
+            >
+              <Link
+                href="/adventures"
+                className="font-medium text-[#8a5a24] hover:text-[#2b2015]"
+              >
+                Your adventures
+              </Link>
+              {adventures.slice(0, 6).map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/adventures/${a.id}`}
+                  className="inline-flex min-h-9 items-center rounded-full border border-[#8a5a24]/30 bg-[#f7ecd3]/60 px-3 text-[#2b2015] hover:bg-[#f7ecd3]"
+                >
+                  {a.title}
+                  <span className="ml-1.5 text-[#2b2015]/50">
+                    {whenLabel(a.startsOn, a.endsOn) ?? kindLabel(a.kind)}
+                  </span>
+                </Link>
+              ))}
+            </nav>
+          )}
 
           {saved.status === "signed-out" && (
             <Panel
@@ -92,6 +140,7 @@ export default async function SavedPage({
               october={october}
               back={back}
               readOnly={saved.role === "viewer"}
+              adventure={adventure}
             />
           )}
         </div>

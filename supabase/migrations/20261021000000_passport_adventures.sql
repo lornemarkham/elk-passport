@@ -1,7 +1,10 @@
 -- ============================================================================
--- PROPOSED MIGRATION — passport_adventures (shared group foundation)
--- Proposed for: supabase/migrations/<timestamp>_passport_adventures.sql
--- Lane: boards, 2026-10-12. NOT applied to any real project.
+-- MIGRATION — passport_adventures (shared group foundation)
+-- Written on lane boards, 2026-10-12 (docs/product/group-adventures/).
+-- Moved here by integration, 2026-10-21, with two changes: invites can be
+-- revoked after they are used, and a planned day keeps how it was asked for
+-- (passport_adventure_days). NOT applied to any real project yet; see
+-- docs/product/group-adventures/RELEASE.md.
 --
 -- WHAT THIS IS
 --
@@ -154,6 +157,21 @@ CREATE TABLE IF NOT EXISTS public.passport_adventure_responses (
 );
 CREATE INDEX IF NOT EXISTS passport_adventure_responses_by_adventure
   ON public.passport_adventure_responses (adventure_id);
+
+-- A day of the adventure that somebody planned with Go Have a Day: how it
+-- was asked for, so it can be reopened and refined rather than started over.
+-- `ask` is the /go day query (src/lib/domains/integration/dayQuery.ts)
+-- WITHOUT its stops: the sentence, hours, age, town, carried brief, minutes,
+-- rain plans and travel mode. Which stops, and in what order, stays with
+-- the items (on_day, position), so there is one list and not two.
+CREATE TABLE IF NOT EXISTS public.passport_adventure_days (
+  adventure_id text NOT NULL REFERENCES public.passport_adventures(id) ON DELETE CASCADE,
+  on_day date NOT NULL,
+  ask text NOT NULL CHECK (char_length(ask) <= 2000),
+  updated_by uuid REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (adventure_id, on_day)
+);
 
 -- ---------------------------------------------------------------- helpers
 -- SECURITY DEFINER so policies can ask about membership without recursing
@@ -324,6 +342,10 @@ DO $$ BEGIN
     CREATE TRIGGER passport_adventure_items_touch BEFORE UPDATE ON public.passport_adventure_items
       FOR EACH ROW EXECUTE FUNCTION public.passport_adventure_touch();
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'passport_adventure_days_touch') THEN
+    CREATE TRIGGER passport_adventure_days_touch BEFORE UPDATE ON public.passport_adventure_days
+      FOR EACH ROW EXECUTE FUNCTION public.passport_adventure_touch();
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'passport_adventure_members_gone') THEN
     CREATE TRIGGER passport_adventure_members_gone AFTER DELETE ON public.passport_adventure_members
       FOR EACH ROW EXECUTE FUNCTION public.passport_adventure_member_gone();
@@ -338,11 +360,13 @@ ALTER TABLE public.passport_adventure_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.passport_adventure_removals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.passport_adventure_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.passport_adventure_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.passport_adventure_days ENABLE ROW LEVEL SECURITY;
 
 -- Signed-out visitors get nothing, by grant as well as by policy.
 REVOKE ALL ON public.passport_adventures, public.passport_adventure_members,
   public.passport_adventure_invites, public.passport_adventure_removals,
-  public.passport_adventure_items, public.passport_adventure_responses
+  public.passport_adventure_items, public.passport_adventure_responses,
+  public.passport_adventure_days
   FROM anon;
 -- Signed-in people get exactly what the policies below can allow, granted
 -- here rather than inherited: a project's default privileges are not this
@@ -352,7 +376,8 @@ REVOKE ALL ON public.passport_adventures, public.passport_adventure_members,
 -- those rows come only from the functions. UPDATE is column by column.
 REVOKE ALL ON public.passport_adventures, public.passport_adventure_members,
   public.passport_adventure_invites, public.passport_adventure_removals,
-  public.passport_adventure_items, public.passport_adventure_responses
+  public.passport_adventure_items, public.passport_adventure_responses,
+  public.passport_adventure_days
   FROM authenticated;
 GRANT SELECT, DELETE ON public.passport_adventures TO authenticated;
 GRANT UPDATE (title, starts_on, ends_on, time_zone, destination_label, destination_town_id)
@@ -366,6 +391,8 @@ GRANT UPDATE (atlas_ref, label, note, status, on_day, starts_at, position)
   ON public.passport_adventure_items TO authenticated;
 GRANT SELECT, INSERT, DELETE ON public.passport_adventure_responses TO authenticated;
 GRANT UPDATE (response, answered_at) ON public.passport_adventure_responses TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.passport_adventure_days TO authenticated;
+GRANT UPDATE (ask, updated_by) ON public.passport_adventure_days TO authenticated;
 
 REVOKE ALL ON FUNCTION public.passport_create_adventure(text, text, text, date, date, text, text, text) FROM anon, public;
 REVOKE ALL ON FUNCTION public.passport_redeem_adventure_invite(text, text, text) FROM anon, public;
@@ -374,6 +401,7 @@ REVOKE ALL ON FUNCTION public.passport_is_adventure_member(text) FROM anon, publ
 REVOKE ALL ON FUNCTION public.passport_is_adventure_owner(text) FROM anon, public;
 REVOKE ALL ON FUNCTION public.passport_adventure_item_adventure(uuid) FROM anon, public;
 REVOKE ALL ON FUNCTION public.passport_adventure_member_gone() FROM anon, public, authenticated;
+REVOKE ALL ON FUNCTION public.passport_adventure_touch() FROM anon, public, authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_create_adventure(text, text, text, date, date, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_redeem_adventure_invite(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_describe_adventure_invite(text) TO anon, authenticated;
@@ -381,6 +409,9 @@ GRANT EXECUTE ON FUNCTION public.passport_adventure_role(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_is_adventure_member(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_is_adventure_owner(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_adventure_item_adventure(uuid) TO authenticated;
+
+-- The lane draft's single invites policy, for a database that applied it.
+DROP POLICY IF EXISTS passport_adventure_invites_owner_all ON public.passport_adventure_invites;
 
 DO $$ BEGIN
   -- adventures: members read; the owner edits and deletes.
@@ -420,12 +451,51 @@ DO $$ BEGIN
         AND (user_id = auth.uid() OR passport_is_adventure_owner(adventure_id)));
   END IF;
 
-  -- invites: the owner's business only (hashes, never tokens).
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_invites' AND policyname = 'passport_adventure_invites_owner_all') THEN
-    CREATE POLICY passport_adventure_invites_owner_all ON public.passport_adventure_invites
-      FOR ALL TO authenticated
-      USING (passport_is_adventure_owner(adventure_id))
+  -- invites: the owner's business only (hashes, never tokens). A new link
+  -- starts unspent and in the owner's name. Revoking or relabelling one
+  -- must work after it has been used, so `uses = 0` binds INSERT only (the
+  -- lane draft put it on every command, and a used link could not be
+  -- revoked). The column grants above keep `uses` out of anybody's hands.
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_invites' AND policyname = 'passport_adventure_invites_owner_read') THEN
+    CREATE POLICY passport_adventure_invites_owner_read ON public.passport_adventure_invites
+      FOR SELECT TO authenticated USING (passport_is_adventure_owner(adventure_id));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_invites' AND policyname = 'passport_adventure_invites_owner_create') THEN
+    CREATE POLICY passport_adventure_invites_owner_create ON public.passport_adventure_invites
+      FOR INSERT TO authenticated
       WITH CHECK (passport_is_adventure_owner(adventure_id) AND created_by = auth.uid() AND uses = 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_invites' AND policyname = 'passport_adventure_invites_owner_change') THEN
+    CREATE POLICY passport_adventure_invites_owner_change ON public.passport_adventure_invites
+      FOR UPDATE TO authenticated
+      USING (passport_is_adventure_owner(adventure_id))
+      WITH CHECK (passport_is_adventure_owner(adventure_id));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_invites' AND policyname = 'passport_adventure_invites_owner_delete') THEN
+    CREATE POLICY passport_adventure_invites_owner_delete ON public.passport_adventure_invites
+      FOR DELETE TO authenticated USING (passport_is_adventure_owner(adventure_id));
+  END IF;
+
+  -- days: members read; the owner plans (the same person who confirms items,
+  -- because saving a day sets every stop's day and order).
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_days' AND policyname = 'passport_adventure_days_member_read') THEN
+    CREATE POLICY passport_adventure_days_member_read ON public.passport_adventure_days
+      FOR SELECT TO authenticated USING (passport_is_adventure_member(adventure_id));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_days' AND policyname = 'passport_adventure_days_owner_plan') THEN
+    CREATE POLICY passport_adventure_days_owner_plan ON public.passport_adventure_days
+      FOR INSERT TO authenticated
+      WITH CHECK (passport_is_adventure_owner(adventure_id) AND updated_by = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_days' AND policyname = 'passport_adventure_days_owner_replan') THEN
+    CREATE POLICY passport_adventure_days_owner_replan ON public.passport_adventure_days
+      FOR UPDATE TO authenticated
+      USING (passport_is_adventure_owner(adventure_id))
+      WITH CHECK (passport_is_adventure_owner(adventure_id) AND updated_by = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_adventure_days' AND policyname = 'passport_adventure_days_owner_clear') THEN
+    CREATE POLICY passport_adventure_days_owner_clear ON public.passport_adventure_days
+      FOR DELETE TO authenticated USING (passport_is_adventure_owner(adventure_id));
   END IF;
 
   -- items: every member reads and proposes, in their own name. Only the owner

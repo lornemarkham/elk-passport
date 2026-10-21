@@ -114,6 +114,13 @@ export default async function AdventuresPage() {
                 <h2 id="start-heading" className="text-lg font-semibold">
                   Start one
                 </h2>
+                <p className="text-muted-foreground text-sm">
+                  Planning a day, a weekend or a trip? Start from{" "}
+                  <Link href="/saved" className="text-foreground underline">
+                    what you saved
+                  </Link>{" "}
+                  and choose <em>Plan with these</em>.
+                </p>
                 <StartAdventure />
               </section>
             </>

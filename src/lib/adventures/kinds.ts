@@ -8,7 +8,7 @@
  *
  * What a kind does NOT get to vary: who may read, who may invite, who may
  * remove, what an invite link reveals. Those are the core's, enforced by
- * Postgres (docs/product/group-adventures/migration.sql), identical for
+ * Postgres (supabase/migrations/20261021000000_passport_adventures.sql), identical for
  * every kind.
  *
  * Kind-specific facts (a game's puck drop, a conference's flights) belong in
@@ -65,7 +65,19 @@ export const ADVENTURE_KINDS: readonly AdventureKind[] = [
     blurb: "Two days, somewhere worth going.",
     joinVisibility: "members",
   },
+  {
+    id: "trip",
+    label: "Longer Trip",
+    blurb: "Several days, one plan, a day at a time.",
+    joinVisibility: "members",
+  },
 ];
+
+/**
+ * The kinds Saved offers when somebody turns what they collected into an
+ * adventure: the ones that are about days out, not a game or a conference.
+ */
+export const PLANNING_KINDS: readonly string[] = ["day", "weekend", "trip"];
 
 /** Same rule as the database's CHECK, so a bad kind fails before Postgres. */
 export const KIND_PATTERN = /^[a-z][a-z0-9-]{1,39}$/;

@@ -210,6 +210,9 @@ export interface ItemInput {
   readonly startsAt: string | null;
 }
 
+/** A change to an item. `position` orders it within its day or the ideas. */
+export type ItemPatch = Partial<ItemInput> & { readonly position?: number };
+
 /** Something for the plan: an Atlas thing, a place in the group's words, or a note. */
 export function parseItem(body: unknown): Parsed<ItemInput> {
   if (!body || typeof body !== "object") return fail("Nothing was sent.");
@@ -251,7 +254,7 @@ export function parseItem(body: unknown): Parsed<ItemInput> {
   });
 }
 
-export function parseItemPatch(body: unknown): Parsed<Partial<ItemInput>> {
+export function parseItemPatch(body: unknown): Parsed<ItemPatch> {
   if (!body || typeof body !== "object") return fail("Nothing was sent.");
   const b = body as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
@@ -280,8 +283,18 @@ export function parseItemPatch(body: unknown): Parsed<Partial<ItemInput>> {
     if (startsAt === undefined) return fail("That time isn't a real time.");
     patch.startsAt = startsAt;
   }
+  if (b.position !== undefined) {
+    if (
+      typeof b.position !== "number" ||
+      !Number.isInteger(b.position) ||
+      b.position < 0 ||
+      b.position > 10_000
+    )
+      return fail("That isn't a place in the list.");
+    patch.position = b.position;
+  }
   if (Object.keys(patch).length === 0) return fail("Nothing to change.");
-  return ok(patch as Partial<ItemInput>);
+  return ok(patch as ItemPatch);
 }
 
 export type ResponseValue = "in" | "maybe" | "out";
@@ -339,4 +352,18 @@ export function parseHockeyFacts(body: unknown): Parsed<HockeyFacts> {
     arenaAtlasRef: arenaAtlasRef ?? null,
     arenaLabel: arenaLabel ?? null,
   });
+}
+
+/**
+ * Saved things to add as ideas: Atlas ids only, de-duplicated, at most 24
+ * at once (a board's worth of choosing, not a bulk import).
+ */
+export function parseIdeas(body: unknown): Parsed<string[]> {
+  const refs = (body as { atlasRefs?: unknown } | null)?.atlasRefs;
+  if (!Array.isArray(refs) || refs.length === 0)
+    return fail("Pick at least one thing.");
+  if (refs.length > 24) return fail("Add up to 24 at a time.");
+  if (!refs.every((r) => typeof r === "string" && ATLAS_REF.test(r)))
+    return fail("That isn't an Atlas id.");
+  return ok([...new Set(refs as string[])]);
 }

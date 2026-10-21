@@ -4,6 +4,7 @@ import {
   adventureKind,
   KIND_PATTERN,
   kindLabel,
+  PLANNING_KINDS,
 } from "./kinds";
 
 describe("adventure kinds", () => {
@@ -14,6 +15,7 @@ describe("adventure kinds", () => {
       "day",
       "birthday",
       "weekend",
+      "trip",
     ]);
   });
 
@@ -28,6 +30,11 @@ describe("adventure kinds", () => {
   it("a conference lists people only if they choose; a night out lists them", () => {
     expect(adventureKind("conference")?.joinVisibility).toBe("hidden");
     expect(adventureKind("hockey-night")?.joinVisibility).toBe("members");
+  });
+
+  it("Saved plans days, weekends and trips — not games or conferences", () => {
+    expect(PLANNING_KINDS).toEqual(["day", "weekend", "trip"]);
+    for (const id of PLANNING_KINDS) expect(adventureKind(id)).toBeDefined();
   });
 
   it("names a kind it does not know rather than refusing to render it", () => {

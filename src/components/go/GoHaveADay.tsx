@@ -52,6 +52,7 @@ import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
 import { offlineHref } from "@/lib/detox/day";
 import { DayItinerary, type StopControls } from "./DayItinerary";
 import { KeptDays } from "./KeptDays";
+import { SaveToAdventure, type AdventureTarget } from "./SaveToAdventure";
 import type { Timeline } from "@/domain/day/timeline";
 import { dayAsText } from "@/lib/go/dayText";
 import { readKeptDays, withKept, writeKeptDays } from "@/lib/go/keptDays";
@@ -235,7 +236,10 @@ function ShapedDay({
   keep = NONE,
   memoryKey,
   saved,
+  adventure,
 }: {
+  /** The adventure this day was opened from, when the person is in it. */
+  readonly adventure?: AdventureTarget;
   /** `unreachable` when Atlas did not answer: say so, build nothing. */
   readonly atlas?: "ok" | "unreachable";
   /** Where this tab keeps the shaped day (`sessionStorage`). */
@@ -478,6 +482,8 @@ function ShapedDay({
     if (next.town) params.set("at", next.town.id);
     params.set("on", day0);
     if (keep.length > 0) params.set("with", keep.join(","));
+    // The adventure it was opened from comes along, or it could not go back.
+    if (adventure) params.set("adventure", adventure.id);
     const key = memoryKeyFor({
       say: next.said,
       age,
@@ -1092,6 +1098,9 @@ function ShapedDay({
                   </button>
                 </div>
               </div>
+              {adventure && (
+                <SaveToAdventure adventure={adventure} query={query} />
+              )}
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
                   type="button"

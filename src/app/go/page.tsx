@@ -17,6 +17,9 @@ import { OCTOBER_PLACES } from "@/domain/environment/places";
 import { hoursBetween } from "@/domain/environment/types";
 import { readWeather } from "@/domain/discovery/situation";
 import type { PlanWeather } from "@/domain/day/build";
+import type { AdventureTarget } from "@/components/go/SaveToAdventure";
+import { adventureSession } from "@/lib/adventures/server";
+import { roleIn } from "@/lib/adventures/store";
 
 export const metadata: Metadata = {
   title: "Go have a day",
@@ -127,6 +130,8 @@ export default async function GoPage({ searchParams }: Props) {
     .slice(0, 5);
   const pool = dayPool(candidates, keep);
 
+  const adventure = await adventureTarget(one(query.adventure));
+
   // `keep` (above) is ids only; one Atlas no longer serves builds the day
   // without it, and the day says so (`buildDay`'s `keep`).
   const simulated = simulatedWeather(one(query.sim));
@@ -146,10 +151,39 @@ export default async function GoPage({ searchParams }: Props) {
           atlas={atlas}
           {...(simulated ? { simulatedWeather: simulated } : {})}
           {...(keep.length > 0 ? { keep } : {})}
+          {...(adventure ? { adventure } : {})}
         />
       </main>
     </ThemeProvider>
   );
+}
+
+/**
+ * **The adventure a day was opened from**, as the signed-in person may see
+ * it — or nothing, for a visitor, somebody not in it, a malformed id, or
+ * adventures not reachable here. Nothing about the day depends on it; it
+ * only decides whether the day can be saved back.
+ */
+async function adventureTarget(
+  id: string | undefined,
+): Promise<AdventureTarget | undefined> {
+  if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) return undefined;
+  try {
+    const session = await adventureSession();
+    if (!session) return undefined;
+    const [role, row] = await Promise.all([
+      roleIn(session.db, id),
+      session.db
+        .from("passport_adventures")
+        .select("title")
+        .eq("id", id)
+        .maybeSingle<{ title: string }>(),
+    ]);
+    if (!role || row.error || !row.data) return undefined;
+    return { id, title: row.data.title, role };
+  } catch {
+    return undefined;
+  }
 }
 
 /**

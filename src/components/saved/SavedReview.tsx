@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Share2, Trash2 } from "lucide-react";
+import { Check, Share2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Experience } from "@/domain/experience/types";
 import type { OctoberThing } from "@/lib/october/types";
@@ -11,6 +11,7 @@ import { removeExperienceFromBoard } from "@/lib/data/boards-repo";
 import { forget, wantToDo } from "@/lib/october/october-repo";
 import { useHere } from "@/lib/location/useHere";
 import { PossibilityCard } from "@/components/discovery-list/PossibilityCard";
+import { PlanFromSaved } from "./PlanFromSaved";
 
 /**
  * **"What did I collect, and which of these do I actually want to do?"**
@@ -46,6 +47,13 @@ import { PossibilityCard } from "@/components/discovery-list/PossibilityCard";
  * Shipping it would quietly overwrite the date of every saved Event somebody
  * committed to. That needs a decision about where a chosen day belongs, not a
  * button added under deadline, so it is reported rather than faked.
+ *
+ * ## Where saving leads: a day, or an adventure
+ *
+ * *Plan with these* lets somebody choose cards and either make a day out of
+ * them in Go Have a Day or add them to an adventure (`PlanFromSaved`). That
+ * is not the missing rung above: it writes to the adventure, never to My
+ * October's `starts_at`, and leaves what each thing is on Saved unchanged.
  */
 export function SavedReview({
   boardId,
@@ -55,7 +63,10 @@ export function SavedReview({
   october,
   back,
   readOnly = false,
+  adventure,
 }: {
+  /** An adventure being added to (`/saved?adventure=`): start choosing. */
+  readonly adventure?: string | undefined;
   readonly boardId: string;
   readonly boardName: string;
   readonly experiences: readonly Experience[];
@@ -74,6 +85,12 @@ export function SavedReview({
     () => new Set(october.map((thing) => thing.entityId)),
   );
   const [busy, setBusy] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState(Boolean(adventure));
+  const [chosen, setChosen] = useState<readonly string[]>([]);
+  const choose = (id: string) =>
+    setChosen((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const showing = useMemo(
     () => experiences.filter((e) => !removed.has(e.id)),
@@ -132,10 +149,23 @@ export function SavedReview({
 
   return (
     <div data-testid="saved-review">
-      <p className="mt-1 text-sm text-black/60">
-        {total} {total === 1 ? "possibility" : "possibilities"} in {boardName}
-        {readOnly ? " · shared with you to look at" : ""}
-      </p>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-black/60">
+          {total} {total === 1 ? "possibility" : "possibilities"} in {boardName}
+          {readOnly ? " · shared with you to look at" : ""}
+        </p>
+        {showing.length > 0 && !choosing && (
+          <button
+            type="button"
+            data-testid="saved-plan"
+            onClick={() => setChoosing(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#111] px-4 text-sm font-medium text-white"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Plan with these
+          </button>
+        )}
+      </div>
 
       {/* Never silently dropped — see `loadBoardWithExperiences`. */}
       {unresolved.length > 0 && (
@@ -175,7 +205,26 @@ export function SavedReview({
                 saving={false}
                 onSave={() => {}}
               />
-              {!readOnly && (
+              {choosing && (
+                <button
+                  type="button"
+                  data-testid="saved-choose"
+                  aria-pressed={chosen.includes(experience.id)}
+                  aria-label={`Choose ${experience.title}`}
+                  onClick={() => choose(experience.id)}
+                  className={`mt-2 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors ${chosen.includes(experience.id) ? "border-[#111] bg-[#111] text-white" : "border-black/30 hover:bg-black/5"}`}
+                >
+                  {chosen.includes(experience.id) ? (
+                    <>
+                      <Check className="h-4 w-4" aria-hidden />
+                      Chosen
+                    </>
+                  ) : (
+                    "Choose"
+                  )}
+                </button>
+              )}
+              {!readOnly && !choosing && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {wanted.has(experience.id) ? (
                     <span
@@ -211,6 +260,18 @@ export function SavedReview({
             </li>
           ))}
         </ul>
+      )}
+
+      {choosing && (
+        <PlanFromSaved
+          chosen={chosen}
+          titles={Object.fromEntries(showing.map((e) => [e.id, e.title]))}
+          preselect={adventure}
+          onClear={() => {
+            setChosen([]);
+            setChoosing(false);
+          }}
+        />
       )}
 
       {/* Sharing is real and kept — just not above the things somebody came
