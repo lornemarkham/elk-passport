@@ -386,7 +386,7 @@ export const CREATIVE_ARCHIVE: readonly CreativeWork[] = [
         "Preserve the Sycle prototype (uncommitted work, snapshot before GO HAVE A DAY integration)",
     },
     notes:
-      "Exists only in git history, on branch sycle-prototype (6ae9ab2, also m184/int-on-main). Not on this release; restoring it means merging that branch on purpose, not copying files in.",
+      "Exists only in git history: 6ae9ab2, on branch sycle-prototype and in the release's history through an ours-merge (ae45111), so every clone can recover it. Not built or served; restoring it means merging that branch's tree on purpose, not copying files in.",
   },
 
   // ─────────────────────────────────────────────────────────── October

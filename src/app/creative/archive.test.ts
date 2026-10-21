@@ -174,6 +174,11 @@ describe.skipIf(!HAS_HISTORY)("the manifest against git history", () => {
   it("can recover every git-only original from the commit it names", () => {
     for (const w of missing) {
       if (!w.commit) continue;
+      // In this release's own history, so any clone of it (the runner's, GitHub's) holds it, not just a local branch.
+      expect(
+        git("merge-base", "--is-ancestor", w.commit.hash, "HEAD"),
+        `${w.id}: ${w.commit.hash} is not in this release's history`,
+      ).not.toBe(null);
       for (const s of w.sources) {
         expect(inCommit(w.commit.hash, s), `${w.id}: ${s}`).toBe(true);
       }
