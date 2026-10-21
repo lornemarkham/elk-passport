@@ -881,7 +881,14 @@ certainty. Do not invent an answer here to make the document feel finished.
 12. **How group / multi-person experiences work.** (§6, §14) First concrete
     case: GO HAVE A CONFERENCE (2026-10-11,
     `docs/products/go-have-a-conference/VISION.md`), a pilot that should
-    _inform_ this question, not answer it.
+    _inform_ this question, not answer it. _Partly answered 2026-10-12, at
+    the level of capability only:_ every group thing shares one
+    Passport-owned membership, invitation and shared-plan foundation, with
+    kind-specific facts in typed extensions
+    (`docs/architecture/decisions/003-one-group-foundation.md`). Still open:
+    how a group experience should feel, live and adapt; whether a group plan
+    needs a commitment state (§2.6, item 14); who may invite; what an
+    invitation reveals.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

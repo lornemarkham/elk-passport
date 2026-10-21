@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { safeNext } from "@/lib/auth/safeNext";
-import { ArrowLeft, Compass, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Compass, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +11,14 @@ import {
 import { loadBoardWithExperiences } from "@/lib/data/loadBoardWithExperiences";
 import { LiveBoard } from "@/components/boards/LiveBoard";
 import { ShareBoard } from "@/components/boards/ShareBoard";
+import { gatheringForBoard } from "@/lib/data/boards-gatherings";
+import { currentUser } from "@/lib/auth/currentUser";
+import {
+  loadBoardTogether,
+  type BoardTogether,
+} from "@/lib/data/boards-together-server";
+import { InterestProvider } from "@/components/boards/GatheringInterest";
+import { SharedPlans } from "@/components/boards/SharedPlans";
 import type { Experience } from "@/domain/experience/types";
 
 type BoardPageProps = {
@@ -70,6 +78,13 @@ export default async function BoardPage({
   const asked = (await searchParams)?.["back"];
   const back = safeNext(typeof asked === "string" ? asked : null, "/discovery");
   const result = await loadBoardWithExperiences(id);
+  const gathering = gatheringForBoard(id);
+  const user =
+    result.status === "ok" ? await currentUser().catch(() => null) : null;
+  const together: BoardTogether | null =
+    result.status === "ok" && user
+      ? await loadBoardTogether(user, result.board.id, result.role)
+      : null;
 
   return (
     <main className="bg-background min-h-screen">
@@ -121,9 +136,52 @@ export default async function BoardPage({
               </p>
             )}
 
+            {/* A gathering's board is still a board — this page keeps working
+                for it — but the staff game and who's interested live on the
+                conference view. */}
+            {gathering && (
+              <Link
+                href={`/boards/conference/${gathering.slug}`}
+                className="bg-primary/5 hover:bg-primary/10 mb-6 flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium"
+              >
+                This is the {gathering.title} board — open the activities view
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+
             <div className="mb-8">
               <ShareBoard boardId={result.board.id} role={result.role} />
             </div>
+
+            {/* The group half of a board: days people built and shared, and
+                who's in on them. Same on every board — a gathering's page
+                shows exactly this too. */}
+            {together && user && (
+              <div className="mb-10">
+                {together.interest ? (
+                  <InterestProvider
+                    boardId={result.board.id}
+                    initial={together.interest}
+                    yourName={user.displayName}
+                    circle="people"
+                  >
+                    <SharedPlans
+                      boardId={result.board.id}
+                      initial={together.plans}
+                      canShare={result.role !== "viewer"}
+                      withInterest
+                    />
+                  </InterestProvider>
+                ) : (
+                  <SharedPlans
+                    boardId={result.board.id}
+                    initial={together.plans}
+                    canShare={result.role !== "viewer"}
+                    withInterest={false}
+                  />
+                )}
+              </div>
+            )}
             {/* **"Nothing saved yet" was a lie told to somebody looking at
                 two saved items.** It is only true when the board is genuinely
                 empty — not when every row failed to resolve, which is what

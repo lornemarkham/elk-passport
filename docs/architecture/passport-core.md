@@ -108,13 +108,16 @@ game-specific (predictions, scores, votes, forfeits) belongs in Passport Core;
 those are an Experience's, and the moment one appears here the seam has stopped
 being generic.
 
-## Groups — deferred, deliberately
+## Groups — now one foundation
 
-Investigated and **not built**. Every current sharing need is satisfied by
-membership on a resource, and a Group would today be a second way to express the
-same row. It becomes worth building when the same set of people is used for more
-than one resource — at which point `passport_board_members` grows a nullable
-`group_id` and the roles stay exactly as they are.
+This section used to say Groups were deferred: every sharing need was
+membership on a resource. That stopped being true when Hockey Night and
+Conference each built their own membership, invitation and roster system.
+The group foundation is `passport_adventures` (ADR 003,
+`docs/product/group-adventures/README.md`): one owner/participant membership,
+hashed invite links, removal, a shared plan of Atlas references and answers,
+and typed per-kind extensions. Board sharing above is unchanged; it shares a
+collection, while an adventure is people doing something together.
 
 ## Native-ready and voice-ready
 
