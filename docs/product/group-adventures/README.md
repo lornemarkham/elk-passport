@@ -88,6 +88,8 @@ passport_adventure_removals    who an owner removed, when — read only by redee
 passport_adventure_items       the shared plan: atlas_ref | label | note,
                                proposed|confirmed, day, time, position, added_by
 passport_adventure_responses   (item, person) → in | maybe | out
+passport_adventure_days        a planned day: how it was asked for (the /go
+                               day query without stops); owner writes (ADR 010)
 passport_adventure_hockey      TYPED EXTENSION, 1:1: puck drop, teams,
                                arena atlas_ref and/or label
 ```

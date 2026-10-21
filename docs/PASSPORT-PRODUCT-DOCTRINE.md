@@ -604,6 +604,22 @@ DISCOVER → WANT → ORGANIZE → DO → REMEMBER
 **Saving must lead somewhere.** A person's collection is raw material for a real
 day, weekend, or season — not persistence for its own sake. See §2.6.
 
+### Saved leads to adventures (decided 2026-10-21)
+
+From the owner's _Complete Saved & Adventures_ brief, recorded in
+[ADR 010](architecture/decisions/010-saved-leads-to-adventures.md):
+
+- **Saved is where planning starts.** A person chooses saved things and
+  either makes a day out of them in Go Have a Day or adds them to an
+  **adventure** — a day, a weekend or a longer trip — as ideas.
+- **Go Have a Day plans each day of an adventure**: seeded with its ideas,
+  refined in words or by hand, and saved back. A thing a new day leaves out
+  goes back to the ideas; it is never deleted.
+- **An adventure is shared** with its own invite links, and a planned day is
+  shareable with anyone as its printed page.
+- Choosing something for an adventure does not change what it is on Saved;
+  the Want / Plan / Lived vocabulary (§15.14) stays open.
+
 ---
 
 ## 10. Experiences — an explicit open architectural question
@@ -859,6 +875,9 @@ certainty. Do not invent an answer here to make the document feel finished.
 3. **Reaction states — exact set and names.** How many, and what distinguishes
    them? (§2.2)
 4. **Planning UI.** What SHAPE actually looks like. (§2.5)
+   _Answered narrowly for adventures (ADR 010, 2026-10-21): a day of an
+   adventure is shaped in Go Have a Day and saved back; a weekend is shaped
+   a day at a time. What SHAPE looks like beyond that stays open._
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
    _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
