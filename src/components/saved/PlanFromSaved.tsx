@@ -7,6 +7,7 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import { ADVENTURE_KINDS, PLANNING_KINDS } from "@/lib/adventures/kinds";
 import { MAX_SEED } from "@/lib/adventures/days";
 import { whenLabel } from "@/lib/adventures/present";
+import { TOWN_GROUPS, townById } from "@/domain/discovery/towns";
 
 interface AdventureChoice {
   readonly id: string;
@@ -62,6 +63,7 @@ export function PlanFromSaved({
   const [kind, setKind] = useState("day");
   const [startsOn, setStartsOn] = useState("");
   const [endsOn, setEndsOn] = useState("");
+  const [townId, setTownId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +113,10 @@ export function PlanFromSaved({
             title,
             startsOn: startsOn || null,
             endsOn: kind === "day" ? null : endsOn || null,
+            destinationTownId: townId || null,
+            destinationLabel: townId
+              ? (townById(townId)?.name.replace(/,\s*BC$/, "") ?? null)
+              : null,
             atlasRefs: chosen,
           }),
         });
@@ -285,6 +291,27 @@ export function PlanFromSaved({
                       ))}
                     </div>
                   </fieldset>
+                  <label className="space-y-1 text-sm sm:col-span-2">
+                    <span className="font-medium">
+                      Starting from (optional)
+                    </span>
+                    <select
+                      value={townId}
+                      onChange={(e) => setTownId(e.target.value)}
+                      className="block min-h-11 w-full rounded-xl border border-black/20 bg-white px-3"
+                    >
+                      <option value="">Decide when planning</option>
+                      {TOWN_GROUPS.map((group) => (
+                        <optgroup key={group.area} label={group.area}>
+                          {group.towns.map((town) => (
+                            <option key={town.id} value={town.id}>
+                              {town.name.replace(/,\s*BC$/, "")}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
                   <label className="space-y-1 text-sm">
                     <span className="font-medium">
                       {kind === "day"
