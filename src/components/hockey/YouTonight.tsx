@@ -33,7 +33,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
           setVibe(me.vibe ?? "");
           setOpen(true);
         }}
-        className="flex min-h-10 items-center gap-2 self-start text-[13px] text-white/45 hover:text-white"
+        className="flex min-h-10 items-center gap-2 self-start text-[14.5px] text-white/65 hover:text-white"
       >
         <Avatar person={me} size={22} />
         {me.vibe ? `“${me.vibe}”` : "Tell the group who you are tonight"}
@@ -61,7 +61,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
         onChange={(e) => setName(e.target.value)}
         maxLength={40}
         aria-label="Your name"
-        className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[14px] text-white focus:border-white/40 focus:outline-none"
+        className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[16px] text-white focus:border-white/40 focus:outline-none"
       />
       <input
         value={vibe}
@@ -69,7 +69,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
         maxLength={80}
         placeholder="One line. e.g. Will explain icing whether asked or not"
         aria-label="Your vibe"
-        className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[14px] text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none"
+        className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[16px] text-white placeholder:text-white/45 focus:border-white/40 focus:outline-none"
       />
       <div
         className="flex flex-wrap gap-1.5"
@@ -98,7 +98,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
         </button>
         {night.role === "guest" &&
           (leaving ? (
-            <span className="flex items-center gap-2 text-[12.5px]">
+            <span className="flex items-center gap-2 text-[14px]">
               <span className="text-white/55">
                 Leave? Your picks go with you.
               </span>
@@ -117,7 +117,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
               </button>
               <button
                 type="button"
-                className="text-white/45"
+                className="text-white/65"
                 onClick={() => setLeaving(false)}
               >
                 Stay
@@ -127,7 +127,7 @@ export function YouTonight({ night }: { night: SharedNight }) {
             <button
               type="button"
               onClick={() => setLeaving(true)}
-              className="text-[12.5px] text-white/40"
+              className="text-[14px] text-white/60"
             >
               Leave this night
             </button>

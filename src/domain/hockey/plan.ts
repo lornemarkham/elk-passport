@@ -80,3 +80,65 @@ export function planBlock(
         lines,
       };
 }
+
+/**
+ * **The group's plan, as the page shows it** — the same rule as `planLines`
+ * (only questions that reveal as they happen; a tie stays a tie), read from
+ * what the engine already let this person see rather than from rows, so the
+ * page's plan moves the moment somebody votes.
+ */
+export interface PlanItem {
+  readonly id: string;
+  readonly label: string;
+  /** The leading option labels; more than one is a tie. Empty: nobody voted. */
+  readonly leaders: readonly string[];
+  readonly votes: number;
+  /** Everybody who has voted on it at all. */
+  readonly voters: number;
+  readonly locked: boolean;
+  /** What I voted for, if I did. */
+  readonly mine?: string;
+}
+
+const LIVE_PLAN = [
+  { id: "pregame-spot", label: "Eating" },
+  { id: "meet-spot", label: "Meeting" },
+  { id: "hard-out", label: "Leaving" },
+  { id: "postgame", label: "After" },
+] as const;
+
+export function planItems(
+  prompts: readonly {
+    readonly prompt: Pick<Prompt, "id" | "reveal">;
+    readonly locked: boolean;
+    readonly myResponse?: { readonly value: unknown };
+    readonly tally: readonly {
+      readonly optionId: string;
+      readonly label: string;
+      readonly voters: readonly unknown[];
+    }[];
+  }[],
+): PlanItem[] {
+  return LIVE_PLAN.flatMap(({ id, label }) => {
+    const live = prompts.find((p) => p.prompt.id === id);
+    if (!live || live.prompt.reveal !== "immediate") return [];
+    const top = Math.max(0, ...live.tally.map((o) => o.voters.length));
+    return [
+      {
+        id,
+        label,
+        leaders:
+          top === 0
+            ? []
+            : live.tally
+                .filter((o) => o.voters.length === top)
+                .map((o) => o.label),
+        votes: top,
+        voters: live.tally.reduce((n, o) => n + o.voters.length, 0),
+        locked: live.locked,
+        mine: live.tally.find((o) => o.optionId === live.myResponse?.value)
+          ?.label,
+      },
+    ];
+  });
+}

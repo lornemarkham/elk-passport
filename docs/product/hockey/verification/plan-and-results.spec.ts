@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -96,6 +97,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   await expect(lorne.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = lorne.page.url().split("/").pop()!;
   await lorne.page.getByRole("button", { name: /Skip/ }).click();
+  await lorne.page.getByRole("button", { name: "Invite" }).click();
   await lorne.page.getByLabel("Who the invitation is for").fill("Maya");
   await lorne.page.getByRole("button", { name: "Make a link" }).click();
   const invitePath = new URL(
@@ -109,54 +111,61 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   await maya.page.getByLabel("Your name").fill("Maya");
   await maya.page.getByRole("button", { name: "I'm in" }).click();
   await expect(maya.page).toHaveURL(new RegExp(`/hockey/${nightId}$`));
+  await openTab(maya.page, "Group");
   await expect(maya.page.getByText(/^Lorne\s*host$/)).toBeVisible({
     timeout: 15_000,
   });
+  await Promise.all([openTab(lorne.page, "Plan"), openTab(maya.page, "Plan")]);
 
-  // ------------------------------------------- nobody has voted: no plan yet
+  // The plan leads Plan from the start, and says what it does not know yet.
+  const eating = (p: Page) =>
+    p
+      .getByRole("region", { name: "The plan" })
+      .getByRole("link", { name: /^Eating/ });
+  const dinner = (p: Page) =>
+    p.getByRole("region", { name: "Where are we going before?" });
+
+  // ------------------------------------------- nobody has voted: nobody
   for (const p of [lorne.page, maya.page]) {
-    await expect(p.getByText("The plan", { exact: true })).toHaveCount(0);
+    await expect(eating(p)).toHaveAccessibleName(/Nobody's voted yet/);
   }
 
   // -------------------------------------------------------- one vote: a plan
-  await lorne.page
-    .getByRole("button", { name: /Just eat in the concourse/ })
+  await dinner(lorne.page)
+    .getByRole("button", { name: "Vote for Just eat in the concourse" })
     .click();
   for (const p of [lorne.page, maya.page]) {
-    await expect(p.getByText("The plan", { exact: true })).toBeVisible({
-      timeout: 15_000,
-    });
-    await expect(
-      p.getByText(/Just eat in the concourse · 1 vote$/),
-    ).toBeVisible();
+    await expect(eating(p)).toHaveAccessibleName(
+      /Just eat in the concourse\s*1 vote/,
+      { timeout: 15_000 },
+    );
   }
 
   // ------------------------------------------ a second voter, a different way
-  await maya.page
-    .getByRole("button", { name: "Suggest somewhere else" })
-    // Eating comes first; "Where are we meeting?" takes suggestions too.
-    .first()
-    .click();
-  await maya.page
-    .getByPlaceholder(/Nominate a real place/)
+  await dinner(maya.page)
+    .getByPlaceholder("Somewhere else? Type a name")
     .fill("Tap & Barrel Bridges");
-  await maya.page.getByRole("button", { name: "Add", exact: true }).click();
-  await maya.page
-    .getByRole("button", { name: /Tap & Barrel Bridges/ })
-    .first()
+  await dinner(maya.page)
+    .getByRole("button", { name: "Add", exact: true })
     .click();
-  await expect(lorne.page.getByText(/Tied at 1 vote/)).toBeVisible({
-    timeout: 15_000,
-  });
+  await dinner(maya.page)
+    .getByRole("button", { name: "Vote for Tap & Barrel Bridges" })
+    .click();
+  // A tie is said as a tie, not broken.
+  await expect(eating(lorne.page)).toHaveAccessibleName(
+    /Tied: .*Tap & Barrel Bridges.*1 vote|Tied: .*Just eat in the concourse.*1 vote/,
+    { timeout: 15_000 },
+  );
 
   // ---------------------------------------- they agree: both screens say so
-  await maya.page
-    .getByRole("button", { name: /Just eat in the concourse/ })
+  await dinner(maya.page)
+    .getByRole("button", { name: "Vote for Just eat in the concourse" })
     .click();
   for (const p of [lorne.page, maya.page]) {
-    await expect(
-      p.getByText(/Just eat in the concourse · 2 votes$/),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(eating(p)).toHaveAccessibleName(
+      /Just eat in the concourse\s*2 votes/,
+      { timeout: 15_000 },
+    );
   }
 
   // -------- a sealed pick stays sealed until lock (or until you commit yours)
@@ -219,7 +228,9 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
     ).ok(),
   ).toBe(true);
   // The Plan carries only what is public: no pick leaks into the panel.
-  await expect(lorne.page.getByText("The plan", { exact: true })).toBeVisible();
+  const plan = lorne.page.getByRole("region", { name: "The plan" });
+  await expect(plan).toBeVisible();
+  await expect(plan).not.toContainText(/3–2|Canucks|Wild/);
 
   // ------------------------------------------------ who may move the start
   const past = new Date(Date.now() - 3 * 3600_000).toISOString();
@@ -234,16 +245,17 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
 
   // The plan outlives the vote: it is still on the page at the final horn.
   for (const p of [lorne.page, maya.page]) {
-    await expect(p.getByText("The plan", { exact: true })).toBeVisible();
-    await expect(
-      p.getByText(/Just eat in the concourse · 2 votes$/),
-    ).toBeVisible();
+    await openTab(p, "Plan");
+    await expect(eating(p)).toHaveAccessibleName(
+      /locked in.*Just eat in the concourse\s*2 votes/,
+    );
   }
 
   // Locked picks are now everyone's to see.
   expect(await answers(maya.page, "final-score")).toHaveLength(2);
 
   // Only the referee has a whistle: no "Call it" for Maya, and the API agrees.
+  await Promise.all([openTab(lorne.page, "Play"), openTab(maya.page, "Play")]);
   await expect(lorne.page.getByText("Call it", { exact: true })).toBeVisible();
   await expect(maya.page.getByText("Call it", { exact: true })).toHaveCount(0);
   const mayaCall = await act(maya.page, {

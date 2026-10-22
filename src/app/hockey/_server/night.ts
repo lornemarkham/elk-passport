@@ -7,7 +7,10 @@ import type {
   ExperienceState,
 } from "@/experience-lab/core/types";
 import type { PassportUser } from "@/lib/auth/currentUser";
-import { discoveryCandidates } from "@/lib/data/atlas-repo";
+import {
+  discoveryCandidates,
+  listDiscoveryCandidates,
+} from "@/lib/data/atlas-repo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import {
@@ -23,7 +26,12 @@ import {
 } from "@/domain/hockey/modules";
 import { cleanName, defaultLook } from "@/domain/hockey/identity";
 import { editionOf, seriesOf } from "@/domain/hockey/edition";
-import { chooseGame, isOver, type GameRequest } from "@/domain/hockey/schedule";
+import {
+  ZONE,
+  chooseGame,
+  isOver,
+  type GameRequest,
+} from "@/domain/hockey/schedule";
 import {
   lastTime,
   sycleCup,
@@ -666,15 +674,36 @@ export async function act(
  * curated downtown list where Atlas has nothing. `outage` says Atlas could
  * not be asked — different from "nothing nearby"; the curated places still
  * come back, so an Atlas outage no longer empties the picker.
+ *
+ * Asked **for game day** (`?on=`), so Atlas can say whether a place's stated
+ * hours cover it — Discovery asks the same way for a picked day. If that read
+ * fails, the plain corpus read decides whether Atlas is really out.
  */
 async function placesNear(
   occasion: NightRows["occasion"],
 ): Promise<{ places: NearbyPlace[]; outage?: string }> {
   const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
-  const { candidates, outage } = await discoveryCandidates();
+  const { day, weekday } = gameDayOf(occasion.starts_at);
+  const { candidates, outage } = await listDiscoveryCandidates(undefined, day)
+    .then((candidates) => ({ candidates, outage: undefined }))
+    .catch(() => discoveryCandidates());
   return {
-    places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue),
+    places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
+      weekday,
+      limit: 24,
+    }),
     outage,
+  };
+}
+
+/** Game day as Vancouver has it: `YYYY-MM-DD` and `"sunday"`. */
+function gameDayOf(startsAt: string): { day: string; weekday: string } {
+  const at = new Date(startsAt);
+  return {
+    day: at.toLocaleDateString("en-CA", { timeZone: ZONE }),
+    weekday: at
+      .toLocaleDateString("en-CA", { weekday: "long", timeZone: ZONE })
+      .toLowerCase(),
   };
 }
 

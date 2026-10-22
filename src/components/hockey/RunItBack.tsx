@@ -23,9 +23,11 @@ import { StartNight } from "./StartNight";
 export function LastTime({
   series,
   live,
+  className = "mx-auto max-w-2xl px-5 pt-2",
 }: {
   series: SeriesView;
   live: LiveExperience;
+  className?: string;
 }) {
   const lineage = series.lastTime;
   if (!lineage) return null;
@@ -35,7 +37,7 @@ export function LastTime({
   );
 
   return (
-    <section aria-label="Last time" className="mx-auto max-w-2xl px-5 pt-2">
+    <section aria-label="Last time" className={className}>
       <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4">
         <p className="flex items-center gap-2 text-[12px] tracking-wide text-white/40 uppercase">
           <History className="h-3.5 w-3.5" />

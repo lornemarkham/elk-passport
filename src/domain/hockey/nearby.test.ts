@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DiscoveryCandidate } from "@/lib/data/types";
-import { nearbyFood, nearbyWithCurated, walkLabel } from "./nearby";
+import {
+  nearbyFood,
+  nearbyWithCurated,
+  statedHoursOn,
+  walkLabel,
+} from "./nearby";
 
 /**
  * Synthetic candidates — shapes, not places. No real Vancouver venue is
@@ -125,5 +130,180 @@ describe("curated places beside Atlas", () => {
     });
     const places = nearbyWithCurated([atlas], curated, ARENA);
     expect(places.map((p) => [p.atlasId, p.source])).toEqual([["a1", "atlas"]]);
+  });
+});
+
+describe("game-day hours, quoted from what Atlas tagged", () => {
+  const all = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+
+  it("cuts a list of days to the one that is game day", () => {
+    const listed = {
+      text: "Hours: Monday: 11am - 11pm · Tuesday: 11am - 11pm · Sunday: 9:30am - 11pm",
+      scope: "subject",
+      weekdays: all,
+    };
+    expect(statedHoursOn([listed], "sunday")).toBe("Sunday: 9:30am - 11pm");
+    expect(
+      statedHoursOn(
+        [
+          {
+            text: "Hours of Operation: SUN 7:00am — 12:00am, MON 7:00am — 12:00am, THURS 7:00am — 12:00am",
+            scope: "subject",
+            weekdays: all,
+          },
+        ],
+        "thursday",
+      ),
+    ).toBe("THURS 7:00am — 12:00am");
+  });
+
+  it("says closed when that is what was published", () => {
+    expect(
+      statedHoursOn(
+        [
+          {
+            text: "Hours: Monday: 3 PM to 10 PM; Tuesday: Closed; Wednesday: 3 PM to 10 PM",
+            scope: "subject",
+            weekdays: ["monday", "wednesday"],
+          },
+        ],
+        "tuesday",
+      ),
+    ).toBeUndefined();
+    expect(
+      statedHoursOn(
+        [
+          {
+            text: "Hours: Monday: 3 PM to 10 PM; Tuesday: Closed",
+            scope: "subject",
+            weekdays: all,
+          },
+        ],
+        "tuesday",
+      ),
+    ).toBe("Tuesday: Closed");
+  });
+
+  it("quotes a range whole rather than reading it", () => {
+    expect(
+      statedHoursOn(
+        [
+          {
+            text: "Operating Hours: Saturday & Sunday, 9AM-8PM",
+            scope: "subject",
+            weekdays: ["saturday", "sunday"],
+          },
+        ],
+        "sunday",
+      ),
+    ).toBe("Saturday & Sunday, 9AM-8PM");
+  });
+
+  it("ignores brunch, karaoke and days Atlas did not tag", () => {
+    expect(
+      statedHoursOn(
+        [
+          {
+            text: "Brunch Hours: SUN 7:00am — 2:00pm",
+            scope: "part",
+            of: "Brunch",
+            weekdays: all,
+          },
+          {
+            text: "Karaoke schedule: Sunday to Thursday - 9:30pm to 2am",
+            scope: "part",
+            of: "Karaoke",
+            weekdays: all,
+          },
+          {
+            text: "Opening hours: Tuesday - Sunday 4pm - Late",
+            scope: "subject",
+            weekdays: ["tuesday", "sunday"],
+          },
+        ],
+        "monday",
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("what a venue card may show", () => {
+  const near = (extra: Partial<DiscoveryCandidate>) =>
+    nearbyFood(
+      [candidate("x", "restaurant", [-123.1065, 49.2785], "observed", extra)],
+      ARENA,
+      { weekday: "sunday" },
+    )[0];
+
+  it("shows the place's own picture plainly", () => {
+    expect(near({ heroUrl: "https://example.test/own.jpg" }).image).toEqual({
+      url: "https://example.test/own.jpg",
+      relationship: "exact",
+    });
+  });
+
+  it("labels a picture from the business's own site", () => {
+    const place = near({
+      presentationImage: {
+        url: "https://example.test/org.jpg",
+        relationship: "organization",
+        depictsEntity: false,
+        confidence: "medium",
+        source: { host: "example.test", evidence: "unverified" },
+        attribution: "Image published on its own page; not verified.",
+      },
+    });
+    expect(place.image?.label).toBe("From example.test");
+  });
+
+  it("never offers a stock photo of the kind of thing as this place", () => {
+    const place = near({
+      presentationImage: {
+        url: "https://example.test/stock.jpg",
+        relationship: "category",
+        depictsEntity: false,
+        confidence: "low",
+        attribution: "Illustrative restaurant photo. Not a photo of it.",
+      },
+    });
+    expect(place.image).toBeUndefined();
+  });
+
+  it("carries Atlas's game-day verdict and at most two useful facts", () => {
+    const place = near({
+      schedule: {
+        stated: "stated",
+        onDate: { date: "2026-10-25", reading: "not-on", basis: "hours" },
+      },
+      knowledge: {
+        practical: [
+          { label: "Happy Hour", value: "Available" },
+          { label: "Trivia Night", value: "7.00PM EVERY WEDNESDAY" },
+          { label: "Patio", value: "Heated" },
+          { label: "Coordinates", value: "latitude: 49" },
+        ],
+      },
+    } as Partial<DiscoveryCandidate>);
+    expect(place.gameDay).toEqual({ reading: "not-on" });
+    expect(place.facts).toEqual([
+      "Happy Hour",
+      "Trivia Night: 7.00PM EVERY WEDNESDAY",
+    ]);
+  });
+
+  it("drops Atlas's own sentence when Atlas says it adds nothing", () => {
+    const place = near({
+      description: "A restaurant. It serves food.",
+      knowledge: { descriptionAddsKnowledge: false },
+    } as Partial<DiscoveryCandidate>);
+    expect(place.blurb).toBeUndefined();
   });
 });

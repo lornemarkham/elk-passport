@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -108,7 +109,9 @@ test("the host leaves picks out, three phones live with it, and the host changes
   await lorne.page.getByRole("button", { name: /Skip/ }).click();
 
   await expect(leaving(lorne.page)).toBeVisible();
+  await openTab(lorne.page, "Play");
   await expect(picks(lorne.page)).toHaveCount(0);
+  await openTab(lorne.page, "Group");
   const settings = lorne.page.getByRole("region", {
     name: "What's in tonight",
   });
@@ -127,12 +130,14 @@ test("the host leaves picks out, three phones live with it, and the host changes
   const everyone = [lorne.page, maya.page, sam.page];
 
   for (const p of everyone) {
+    await openTab(p, "Group");
     for (const name of ["Lorne", "Maya", "Sam"])
       await expect(
         p.getByText(new RegExp(`^${name}(host)?$`)).first(),
       ).toBeVisible({
         timeout: 15_000,
       });
+    await openTab(p, "Play");
     await expect(picks(p)).toHaveCount(0);
   }
 
@@ -175,15 +180,17 @@ test("the host leaves picks out, three phones live with it, and the host changes
     [sam.page, "Straight home at the horn"],
   ] as const;
   await Promise.all(
-    choices.map(([p, label]) =>
-      p
+    choices.map(async ([p, label]) => {
+      await openTab(p, "Plan");
+      await p
         .getByRole("button", { name: new RegExp(label) })
         .first()
-        .click(),
-    ),
+        .click();
+    }),
   );
   await Promise.all(
     everyone.map(async (p, i) => {
+      await openTab(p, "Chat");
       const box = p.getByPlaceholder(/Say something to the group/);
       await box.fill(`phone ${i} checking in`);
       await box.press("Enter");
@@ -208,8 +215,12 @@ test("the host leaves picks out, three phones live with it, and the host changes
   }).toPass({ timeout: 20_000 });
 
   // ------------------------------- the host changes their mind, live
+  // The guests are looking at Play when it happens.
+  await Promise.all([openTab(maya.page, "Play"), openTab(sam.page, "Play")]);
+  await openTab(lorne.page, "Group");
   await settings.getByRole("checkbox", { name: /Sealed picks/ }).click();
   await settings.getByRole("checkbox", { name: /Stupid questions/ }).click();
+  await openTab(lorne.page, "Play");
   await expect(picks(lorne.page)).toBeVisible();
   for (const p of [maya.page, sam.page]) {
     // No reload: the open page picks it up on its next look.

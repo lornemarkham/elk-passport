@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -78,6 +79,8 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     lorne.page.getByText(/A hockey night for one is a Tuesday/),
   ).toBeVisible();
 
+  // Invitations live in Group; the hero's "Invite" opens it.
+  await lorne.page.getByRole("button", { name: "Invite" }).click();
   await lorne.page.getByLabel("Who the invitation is for").fill("Maya");
   await lorne.page.getByRole("button", { name: "Make a link" }).click();
   const inviteUrl = (await lorne.page
@@ -112,6 +115,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await expect(maya.page).toHaveURL(new RegExp(`/hockey/${nightId}$`));
 
   // ------------------------------------------------ both see the same night
+  await openTab(maya.page, "Group");
   for (const p of [maya.page, lorne.page]) {
     await expect(p.getByText(/^Lorne\s*host$/)).toBeVisible({
       timeout: 15_000,
@@ -130,34 +134,39 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   expect(mayaInvites.status()).toBe(404);
 
   // ------------------------------------------------ voting, at the same time
+  await Promise.all([openTab(lorne.page, "Plan"), openTab(maya.page, "Plan")]);
+  const dinner = (p: Page) =>
+    p.getByRole("region", { name: "Where are we going before?" });
   const concourse = (p: Page) =>
-    p.getByRole("button", { name: /Just eat in the concourse/ });
+    dinner(p).getByRole("button", {
+      name: "Vote for Just eat in the concourse",
+    });
   await Promise.all([
     concourse(lorne.page).click(),
     concourse(maya.page).click(),
   ]);
 
   // Maya nominates somewhere; Lorne sees it arrive without reloading.
-  await maya.page
-    .getByRole("button", { name: "Suggest somewhere else" })
-    // Eating comes first; "Where are we meeting?" takes suggestions too.
-    .first()
-    .click();
-  await maya.page
-    .getByPlaceholder(/Nominate a real place/)
+  await dinner(maya.page)
+    .getByPlaceholder("Somewhere else? Type a name")
     .fill("Tap & Barrel Bridges");
-  await maya.page.getByRole("button", { name: "Add", exact: true }).click();
+  await dinner(maya.page)
+    .getByRole("button", { name: "Add", exact: true })
+    .click();
   await expect(lorne.page.getByText("Tap & Barrel Bridges")).toBeVisible({
     timeout: 15_000,
   });
 
   // ------------------------------------------------ a real place, from Discovery
   // Against atlas-stub.mjs: the wiring is real, the places are labelled fake.
-  await lorne.page
-    .getByRole("button", { name: "What's near the arena?" })
-    .click();
+  // Everything near the arena is offered under the vote, without asking.
   await expect(
-    lorne.page.getByText(/straight line · \d+\+ min walk \(estimate\)/).first(),
+    lorne.page.getByRole("region", { name: "More near Rogers Arena" }),
+  ).toBeVisible();
+  await expect(
+    lorne.page
+      .getByText(/\d+\+ min walk · \d+ m straight line \(estimate\)/)
+      .first(),
   ).toBeVisible();
   await expect(lorne.page.getByText("Stub Museum (synthetic)")).toHaveCount(0);
   await expect(
@@ -171,8 +180,8 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
       name: "Stub Pub (synthetic) is on the ballot",
     }),
   ).toBeVisible();
-  const stubPub = maya.page.getByRole("button", {
-    name: /Stub Pub \(synthetic\).*straight line/,
+  const stubPub = dinner(maya.page).getByRole("button", {
+    name: "Vote for Stub Pub (synthetic)",
   });
   await expect(stubPub).toBeVisible({ timeout: 15_000 });
   await stubPub.click();
@@ -200,7 +209,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     lorne.page.getByRole("button", { name: "Chambar is on the ballot" }),
   ).toBeVisible();
   await expect(
-    maya.page.getByRole("button", { name: /^Chambar.*straight line/ }),
+    dinner(maya.page).getByRole("button", { name: "Vote for Chambar" }),
   ).toBeVisible({ timeout: 15_000 });
 
   // ------------------------------------------------ where we meet
@@ -209,10 +218,13 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await Promise.all([station(lorne.page).click(), station(maya.page).click()]);
   // The plan says it back to everyone.
   await expect(
-    maya.page.getByText("Stadium–Chinatown Station · 2 votes"),
+    maya.page.getByRole("region", { name: "The plan" }).getByRole("link", {
+      name: /Meeting.*Stadium–Chinatown Station.*2 votes/,
+    }),
   ).toBeVisible({ timeout: 15_000 });
 
   // ------------------------------------------------ banter
+  await Promise.all([openTab(lorne.page, "Chat"), openTab(maya.page, "Chat")]);
   await lorne.page
     .getByPlaceholder("Say something to the group")
     .fill("Puck drops at 7. The concourse beer is $19. Plan accordingly.");
@@ -354,9 +366,13 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   // ------------------------------------------------ refresh preserves everything
   await Promise.all([lorne.page.reload(), maya.page.reload()]);
   for (const p of [lorne.page, maya.page]) {
-    await expect(p.getByText("Tap & Barrel Bridges")).toBeVisible();
+    // The page reopens in the room it was left in.
     await expect(
       p.getByText("I will be predicting a shutout and I will be right."),
+    ).toBeVisible();
+    await openTab(p, "Plan");
+    await expect(
+      dinner(p).getByRole("heading", { name: "Tap & Barrel Bridges" }),
     ).toBeVisible();
   }
 
@@ -366,7 +382,12 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await expect(lorneAgain.page).toHaveURL(/\/auth\?next=/);
   await logIn(lorneAgain.page, "lorne");
   await expect(lorneAgain.page).toHaveURL(new RegExp(`/hockey/${nightId}$`));
-  await expect(lorneAgain.page.getByText("Tap & Barrel Bridges")).toBeVisible();
+  await expect(
+    dinner(lorneAgain.page).getByRole("heading", {
+      name: "Tap & Barrel Bridges",
+    }),
+  ).toBeVisible();
+  await openTab(lorneAgain.page, "Chat");
   await expect(
     lorneAgain.page.getByText(
       "I will be predicting a shutout and I will be right.",
@@ -405,6 +426,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   expect(replay.status()).toBe(410);
 
   // ------------------------------------------------ removal
+  await openTab(lorne.page, "Group");
   await lorne.page.getByRole("button", { name: "Remove Maya" }).click();
   await lorne.page.getByRole("button", { name: "Remove", exact: true }).click();
   // Maya's open page notices on its next poll and leaves.
@@ -419,6 +441,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   expect(mayaBack?.status()).toBe(404);
   // And her contributions leave with her.
   await lorne.page.reload();
+  await openTab(lorne.page, "Chat");
   await expect(
     lorne.page.getByText("I will be predicting a shutout and I will be right."),
   ).toHaveCount(0);

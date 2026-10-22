@@ -57,7 +57,7 @@ export function ModuleToggles({
               >
                 {m.label}
               </span>
-              <span className="block text-[12px] text-white/40">
+              <span className="block text-[13.5px] text-white/60">
                 {m.detail}
               </span>
             </span>

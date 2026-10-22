@@ -115,7 +115,7 @@ export function GuestList({ night }: { night: SharedNight }) {
   );
 
   return (
-    <section aria-label="Guest list">
+    <section id="guest-list" aria-label="Guest list" className="scroll-mt-4">
       <SectionHead
         title="The guest list"
         subtitle="Only you see this. Each link lets in one person, once — send it to them, not to the group chat."
@@ -134,7 +134,7 @@ export function GuestList({ night }: { night: SharedNight }) {
             maxLength={60}
             placeholder="Who's it for? (a note for you)"
             aria-label="Who the invitation is for"
-            className="min-w-0 flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-[14px] text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none"
+            className="min-w-0 flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-[16px] text-white placeholder:text-white/45 focus:border-white/40 focus:outline-none"
           />
           <button
             type="submit"
@@ -148,7 +148,7 @@ export function GuestList({ night }: { night: SharedNight }) {
 
         {crew.length > 0 && (
           <div className="mt-3">
-            <p className="text-[12.5px] text-white/45">
+            <p className="text-[14px] text-white/65">
               Last time&apos;s crew. Tap a name, then make their link — they
               still have to say yes.
             </p>
@@ -158,7 +158,7 @@ export function GuestList({ night }: { night: SharedNight }) {
                   <button
                     type="button"
                     onClick={() => setLabel(p.name)}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/20 px-3 text-[13px] text-white/80 hover:border-white/50"
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/20 px-3 text-[14.5px] text-white/80 hover:border-white/50"
                   >
                     <Avatar person={p} size={20} />
                     {p.name}
@@ -171,14 +171,14 @@ export function GuestList({ night }: { night: SharedNight }) {
 
         {fresh && (
           <div className="mt-3 rounded-xl border border-white/20 bg-white/[0.06] p-3">
-            <p className="text-[12.5px] text-white/60">
+            <p className="text-[14px] text-white/60">
               {fresh.label ? `For ${fresh.label}. ` : ""}This is the only time
               Passport will show it. Lose it and just make another.
             </p>
             <div className="mt-2 flex items-center gap-2">
               <code
                 data-testid="invite-url"
-                className="min-w-0 flex-1 truncate rounded-lg bg-black/30 px-2.5 py-1.5 text-[12.5px] text-white/90"
+                className="min-w-0 flex-1 truncate rounded-lg bg-black/30 px-2.5 py-1.5 text-[14px] text-white/90"
               >
                 {fresh.url}
               </code>
@@ -188,7 +188,7 @@ export function GuestList({ night }: { night: SharedNight }) {
                   void navigator.clipboard?.writeText(fresh.url);
                   setCopied(true);
                 }}
-                className="inline-flex items-center gap-1 rounded-full border border-white/25 px-3 py-1.5 text-[12.5px]"
+                className="inline-flex items-center gap-1 rounded-full border border-white/25 px-3 py-1.5 text-[14px]"
               >
                 {copied ? (
                   <Check className="h-3.5 w-3.5" />
@@ -206,7 +206,7 @@ export function GuestList({ night }: { night: SharedNight }) {
             {open.map((invite) => (
               <li
                 key={invite.id}
-                className="flex items-center justify-between text-[13.5px]"
+                className="flex items-center justify-between text-[15px]"
               >
                 <span className="text-white/70">
                   {invite.label ?? "Unlabelled link"}{" "}
@@ -217,7 +217,7 @@ export function GuestList({ night }: { night: SharedNight }) {
                 <button
                   type="button"
                   onClick={() => void revoke(invite.id)}
-                  className="text-[12.5px] text-white/45 hover:text-white"
+                  className="text-[14px] text-white/65 hover:text-white"
                 >
                   Revoke
                 </button>
@@ -238,7 +238,7 @@ export function GuestList({ night }: { night: SharedNight }) {
                   {guest.name}
                 </span>
                 {confirming === guest.id ? (
-                  <span className="flex items-center gap-2 text-[12.5px]">
+                  <span className="flex items-center gap-2 text-[14px]">
                     <span className="text-white/55">
                       They lose the page now, picks and all.
                     </span>
@@ -252,7 +252,7 @@ export function GuestList({ night }: { night: SharedNight }) {
                     <button
                       type="button"
                       onClick={() => setConfirming(null)}
-                      className="text-white/45"
+                      className="text-white/65"
                     >
                       Keep
                     </button>
@@ -262,7 +262,7 @@ export function GuestList({ night }: { night: SharedNight }) {
                     type="button"
                     onClick={() => setConfirming(guest.id)}
                     aria-label={`Remove ${guest.name}`}
-                    className="inline-flex items-center gap-1 text-[12.5px] text-white/40 hover:text-white"
+                    className="inline-flex items-center gap-1 text-[14px] text-white/60 hover:text-white"
                   >
                     <UserMinus className="h-3.5 w-3.5" />
                     Remove
