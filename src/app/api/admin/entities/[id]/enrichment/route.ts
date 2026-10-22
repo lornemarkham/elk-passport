@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
-
-// Same proxy reasoning as every other /api/admin/* route — ADMIN_TOKEN
-// stays server-side.
-const ATLAS_BASE_URL = "http://localhost:3000";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 function unauthorized() {
   return NextResponse.json(
@@ -19,6 +16,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) return unauthorized();
 
@@ -39,6 +39,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) return unauthorized();
 

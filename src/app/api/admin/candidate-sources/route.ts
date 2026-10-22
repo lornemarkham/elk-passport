@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * Queue a URL for Atlas to read.
@@ -11,10 +12,12 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * Thin by design. Atlas validates and creates the `CandidateSource`; this
  * only keeps `ADMIN_TOKEN` out of the browser.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 /** Read the queue. Needed to tell "queued, unread" from "read and rejected". */
 export async function GET() {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(
@@ -39,6 +42,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

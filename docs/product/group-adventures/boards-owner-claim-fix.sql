@@ -5,6 +5,12 @@
 --
 -- Apply in the SQL editor, as one statement batch. Idempotent. Changes no
 -- rows. Needs no app deploy. Run boards-ownership-audit.sql before and after.
+-- The production execution package (preflight, verification, rollback, and
+-- what to expect) is docs/release/board-ownership-repair/README.md.
+--
+-- It waits at most 5 s for its table locks, then aborts with nothing changed
+-- (re-run later). It checks its own result before COMMIT and rolls everything
+-- back if any of the three policies or the function is not as written here.
 --
 -- WHY board_owner_id MATTERS
 --
@@ -62,6 +68,10 @@
 
 BEGIN;
 
+-- DROP/CREATE POLICY need a brief exclusive lock on each table. Never queue
+-- behind a long transaction (and block every board read behind us meanwhile).
+SET LOCAL lock_timeout = '5s';
+
 CREATE OR REPLACE FUNCTION public.passport_board_has_members(p_board_id text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   select exists (select 1 from passport_board_members where board_id = p_board_id);
@@ -93,6 +103,40 @@ CREATE POLICY "passport_board_invites_owner_writes" ON public.passport_board_inv
     public.passport_board_role(board_id, auth.uid()) = 'owner'
     AND board_owner_id = auth.uid()
     AND created_by = auth.uid());
+
+-- Self-check before COMMIT. Any failure raises, and the whole transaction,
+-- including everything above, rolls back.
+DO $check$
+DECLARE
+  v_fail text[] := '{}';
+  v_pin constant text := 'board_owner_id\s*=\s*\(?(select\s+)?auth\.uid\(\)';
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_board_members'
+                 AND policyname = 'passport_board_members_self_claim' AND cmd = 'INSERT'
+                 AND with_check ~ 'passport_board_has_members' AND with_check ~ v_pin) THEN
+    v_fail := v_fail || 'self_claim'::text;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_board_members'
+                 AND policyname = 'passport_board_members_owner_writes' AND cmd = 'ALL'
+                 AND with_check ~ v_pin) THEN
+    v_fail := v_fail || 'members_owner_writes'::text;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'passport_board_invites'
+                 AND policyname = 'passport_board_invites_owner_writes' AND cmd = 'ALL'
+                 AND with_check ~ v_pin AND with_check ~ 'created_by\s*=\s*\(?(select\s+)?auth\.uid\(\)') THEN
+    v_fail := v_fail || 'invites_owner_writes'::text;
+  END IF;
+  IF to_regprocedure('public.passport_board_has_members(text)') IS NULL
+     OR NOT (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.passport_board_has_members(text)'))
+     OR has_function_privilege('anon', 'public.passport_board_has_members(text)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.passport_board_has_members(text)', 'EXECUTE') THEN
+    v_fail := v_fail || 'passport_board_has_members'::text;
+  END IF;
+  IF cardinality(v_fail) > 0 THEN
+    RAISE EXCEPTION 'board ownership repair self-check failed: %; nothing was changed', array_to_string(v_fail, ', ');
+  END IF;
+END
+$check$;
 
 -- New function: tell PostgREST (delivered on commit).
 NOTIFY pgrst, 'reload schema';

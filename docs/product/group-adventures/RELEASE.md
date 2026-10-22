@@ -29,6 +29,10 @@ adventure API answers 503, never "you have none".
 Two holes, both live (README §6). Use the version at `ca20324` or later. **Not
 the d1ba0be file**: that version closed hole 1 only.
 
+**Production execution package:** `docs/release/board-ownership-repair/README.md`
+(read-only preflight and verification, expected results, rollback, scratch
+test). Follow it; the steps below are the short form.
+
 1. SQL editor, read-only: run `boards-ownership-audit.sql`. Keep the output.
 2. SQL editor: run `boards-owner-claim-fix.sql`. It runs as one transaction, is
    idempotent, changes no rows, and reloads PostgREST's schema.

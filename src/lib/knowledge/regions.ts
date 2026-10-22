@@ -1,5 +1,5 @@
 import "server-only";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
 
 /**
  * Regions, from the app's side.
@@ -24,8 +24,6 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * tidiness that isn't real — the same defect as a knowledge section hiding
  * a fact nobody wrote a template for.
  */
-
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 /**
  * How long an optional admin fetch may block a page render.

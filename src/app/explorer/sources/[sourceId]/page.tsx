@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
@@ -36,6 +37,9 @@ type Props = { params: Promise<{ sourceId: string }> };
  * That count alone usually settles the question.
  */
 export default async function SourceRecordPage({ params }: Props) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/explorer");
   const { sourceId } = await params;
 
   let payload;

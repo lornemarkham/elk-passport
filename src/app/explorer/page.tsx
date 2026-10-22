@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -190,6 +191,9 @@ export default async function ExplorerSearchPage({
 }: {
   searchParams: Promise<{ q?: string; kind?: string }>;
 }) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/explorer");
   const { q, kind } = await searchParams;
 
   return (

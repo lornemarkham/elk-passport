@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
-
-// Same proxy reasoning as ../relationships/route.ts — ADMIN_TOKEN stays
-// server-side, the browser only ever talks to this same-origin route.
-// `includeArchived` is passed straight through — this route's only job is
-// keeping the token off the client, not deciding what to fetch.
-const ATLAS_BASE_URL = "http://localhost:3000";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 export async function GET(request: NextRequest) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

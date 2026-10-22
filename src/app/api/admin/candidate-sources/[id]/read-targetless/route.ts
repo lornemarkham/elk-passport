@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * Read a queued source about something Atlas does not hold yet.
@@ -7,12 +8,14 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * Separate from targeted processing on purpose (ADR 031 Amendment 2) —
  * the two ask opposite questions and end in different things.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

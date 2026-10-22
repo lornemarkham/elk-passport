@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * **Abandon a candidate source.** The curator saying Atlas should not read
@@ -10,12 +11,14 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * status to `rejected` and keeps the row, so the decision is auditable and the
  * page is not rediscovered on the next sweep.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

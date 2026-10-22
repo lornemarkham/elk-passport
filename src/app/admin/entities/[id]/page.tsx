@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -39,6 +40,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * into a switch statement.
  */
 export default async function EntityWorkspacePage({ params }: Props) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const { id } = await params;
 
   const bundle = await loadWorkspaceBundle().catch(() => null);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * **Set one entity's type, as a curator's assertion.**
@@ -37,7 +38,6 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * has no single `type` field, and inventing one here would create a
  * second representation of something the domain already models per kind.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 const TYPE_FIELD: Record<string, string> = {
   Place: "placeType",
@@ -50,6 +50,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

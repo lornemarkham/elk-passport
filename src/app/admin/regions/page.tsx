@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
@@ -32,6 +33,9 @@ export const metadata: Metadata = { title: "Regions — Atlas" };
  * category completeness that answered nobody's question.
  */
 export default async function RegionsPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const { regions, unassignedIds } = await loadRegions();
 
   return (

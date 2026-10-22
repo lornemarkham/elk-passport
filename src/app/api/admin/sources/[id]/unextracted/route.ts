@@ -4,7 +4,8 @@ import type {
   UnextractedAnalysis,
   UnextractedFinding,
 } from "@/lib/knowledge/unextractedTypes";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * The first scoped AI curator action: **"What's in this source that we
@@ -47,8 +48,6 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * discard its most valuable findings. Recorded here rather than silently
  * diverging.
  */
-
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 /** Truncated because a whole official-site page can exceed the useful context window; the limit is reported to the caller so the UI never implies the whole source was analysed. */
 const MAX_CHARS = 40_000;
@@ -109,6 +108,9 @@ export async function POST(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const { id } = await context.params;
 
   const adminToken = process.env.ADMIN_TOKEN;
