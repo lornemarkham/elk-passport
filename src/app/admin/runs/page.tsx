@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, AlertTriangle, Loader2 } from "lucide-react";
@@ -47,6 +48,9 @@ export const metadata: Metadata = { title: "Mission Control — Atlas" };
 export const revalidate = 10;
 
 export default async function MissionControlPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   let runs;
   try {
     runs = await loadRuns();

@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import { permanentRedirect } from "next/navigation";
 
 type Props = { params: Promise<{ regionId: string }> };
@@ -28,6 +29,9 @@ type Props = { params: Promise<{ regionId: string }> };
  * points here. It is a migration aid, not a route.
  */
 export default async function RemovedRegionEntitiesPage({ params }: Props) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const { regionId } = await params;
   permanentRedirect(`/admin/regions/${regionId}`);
 }

@@ -1,3 +1,7 @@
+import {
+  adminVerdictForRequest,
+  requireAdminPage,
+} from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -28,6 +32,11 @@ import { PassportLens } from "@/components/explorer/PassportLens";
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // Metadata resolves alongside the page, so it must not read Atlas (or name
+  // anything from it) for someone who is not an administrator.
+  if (!(await adminVerdictForRequest()).ok) {
+    return { title: "Atlas Explorer", robots: { index: false, follow: false } };
+  }
   const { id } = await params;
   try {
     const dossier = await getEntityDossier(id);
@@ -62,6 +71,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * not Atlas truth.
  */
 export default async function ExplorerEntityPage({ params }: Props) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/explorer");
   const { id } = await params;
 
   let dossier;

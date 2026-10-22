@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import { TraceProvider } from "@/components/admin/learning-tracer/TraceContext";
 import { LearningTracerPanel } from "@/components/admin/learning-tracer/LearningTracerPanel";
 import { LearningTracerToggleButton } from "@/components/admin/learning-tracer/LearningTracerToggleButton";
@@ -44,11 +45,15 @@ import { LearningTracerToggleButton } from "@/components/admin/learning-tracer/L
  * need more width (the entity workspace, a run timeline) still declare
  * their own shell in their own segment.
  */
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // The second door, behind middleware: nothing below renders, and nothing
+  // under /admin reads Atlas with ADMIN_TOKEN, for anyone but an approved
+  // administrator. See `src/lib/admin/adminPolicy.ts`.
+  await requireAdminPage("/admin");
   return (
     <TraceProvider>
       <main className="bg-background min-h-screen">

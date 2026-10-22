@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -18,6 +19,9 @@ export const metadata: Metadata = {
 };
 
 export default async function WorkspaceIndexPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   let bundle;
   try {
     bundle = await loadWorkspaceBundle();

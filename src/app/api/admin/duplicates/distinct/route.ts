@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * **Record that a proposed duplicate is two different things.**
@@ -12,9 +13,11 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * Same proxy reasoning as every other `/api/admin/*` route: `ADMIN_TOKEN`
  * stays server-side. Atlas writes one `distinct-from` edge per pair.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(request: Request) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

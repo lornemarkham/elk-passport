@@ -9,46 +9,42 @@ import { supabaseBrowser } from "@/lib/supabase/client";
  * The navigation foundation for admin capabilities, in the GitHub/Linear/
  * Notion sense: administrators quietly gain an extra entry point, everyone
  * else's experience is completely unchanged. Mounted once, globally, in
- * the root layout — renders nothing for anyone who isn't recognized as an
- * admin, so it never touches the visitor-facing UI.
+ * the root layout — renders nothing for anyone who isn't an administrator,
+ * so it never touches the visitor-facing UI.
  *
- * Deliberately not a real permissions system: `NEXT_PUBLIC_ADMIN_EMAILS`
- * is a plain allowlist, checked client-side. That's a UX decision, not a
- * security boundary — the real access control is the ADMIN_TOKEN gate the
- * /api/admin/* proxy routes already enforce server-side, which this can't
- * bypass regardless of what it shows or hides. This is the seam a real
- * role check (a `role` column, Supabase custom claims, whatever) plugs
- * into later without moving where the nav entry lives — see
- * project-management/prompts/draft/IMP-007_... for the follow-up.
+ * **The server decides.** This used to compare the session's email with
+ * `NEXT_PUBLIC_ADMIN_EMAILS`, which published the administrators' addresses
+ * to every visitor in the JavaScript bundle. It now asks
+ * `/api/session/admin`, and the allowlist (`ADMIN_EMAILS`) never leaves the
+ * server. Showing or hiding this link is still only a convenience: the
+ * workbench enforces access itself (middleware, layouts, every handler).
  */
 export function AdminNavEntry() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean);
+    let cancelled = false;
 
-    if (adminEmails.length === 0) return;
-
-    function checkSession(email: string | undefined) {
-      setIsAdmin(!!email && adminEmails.includes(email.toLowerCase()));
+    function ask() {
+      fetch("/api/session/admin", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : { admin: false }))
+        .then((body: { admin?: boolean }) => {
+          if (!cancelled) setIsAdmin(body.admin === true);
+        })
+        .catch(() => {
+          if (!cancelled) setIsAdmin(false);
+        });
     }
 
-    supabaseBrowser()
-      .auth.getSession()
-      .then(({ data }) => {
-        checkSession(data.session?.user.email);
-      });
-
+    ask();
     const { data: subscription } = supabaseBrowser().auth.onAuthStateChange(
-      (_event, session) => {
-        checkSession(session?.user.email);
-      },
+      () => ask(),
     );
 
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
   if (!isAdmin) return null;

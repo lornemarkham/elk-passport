@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { Telescope } from "lucide-react";
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import { ExplorerSearchBar } from "@/components/explorer/ExplorerSearchBar";
 
 /**
@@ -9,21 +10,23 @@ import { ExplorerSearchBar } from "@/components/explorer/ExplorerSearchBar";
  * A sibling of `/admin` rather than a page inside it, for two reasons worth
  * writing down. The admin layout mounts the Learning Tracer provider and a
  * fixed panel over everything, which is a curator's workbench concern and
- * noise here. And every page under `/admin` reads Atlas at a hardcoded
- * `localhost:3000`, so the whole area is dark whenever Atlas runs elsewhere —
- * this tool exists to be reliable during exactly the sessions when that is
- * true.
+ * noise here. And every page under `/admin` once read Atlas at a hardcoded
+ * `localhost:3000` (now `ATLAS_API_URL`, see `atlasAuth.ts`), and this tool
+ * exists to stay reliable when the workbench is not.
  *
  * Wider than the admin measure (1100px) because a dossier is two columns of
  * genuinely different things — the record on one side, the graph and its
  * evidence on the other — and squeezing them into one column is what turns
  * an instrument into a scroll.
  */
-export default function ExplorerLayout({
+export default async function ExplorerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // The explorer reads Atlas's unfiltered inspection routes with ADMIN_TOKEN,
+  // so it is part of the workbench and shares its gate.
+  await requireAdminPage("/explorer");
   return (
     <main className="bg-background min-h-screen">
       <div className="border-border/70 sticky top-0 z-10 border-b bg-[color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur">

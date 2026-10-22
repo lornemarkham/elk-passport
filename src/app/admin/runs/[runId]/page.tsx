@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -41,6 +42,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * single invented indicator would poison all of it.
  */
 export default async function RunDetailPage({ params }: Props) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const { runId } = await params;
 
   let runs, events;

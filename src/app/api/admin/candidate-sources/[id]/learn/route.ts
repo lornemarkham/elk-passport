@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { ATLAS_BASE_URL, atlasAuthHeaders } from "@/lib/data/atlasAuth";
+import { requireAdminApi } from "@/lib/admin/requireAdmin";
 
 /**
  * **Learn it.** The only Discovery call that creates an entity.
@@ -9,12 +10,14 @@ import { atlasAuthHeaders } from "@/lib/data/atlasAuth";
  * Atlas checks it against what re-reading the evidence produces and
  * refuses on a mismatch, so this is a guard, not a content channel.
  */
-const ATLAS_BASE_URL = "http://localhost:3000";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const access = await requireAdminApi();
+  if ("response" in access) return access.response;
+
   const token = process.env.ADMIN_TOKEN;
   if (!token) {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAdminAction } from "@/lib/admin/requireAdmin";
 import {
   requestResearchMission,
   reviewResearchMission,
@@ -19,6 +20,7 @@ export async function startResearch(formData: FormData): Promise<void> {
   const entityId = String(formData.get("entityId") ?? "");
   const topic = String(formData.get("topic") ?? "");
   if (!entityId || !topic) return;
+  await requireAdminAction();
 
   await requestResearchMission(entityId, topic);
   revalidatePath(`/admin/entities/${entityId}`);
@@ -41,6 +43,7 @@ export async function decideResearch(formData: FormData): Promise<void> {
   const entityId = String(formData.get("entityId") ?? "");
   const decision = String(formData.get("decision") ?? "");
   if (!missionId || (decision !== "accept" && decision !== "reject")) return;
+  await requireAdminAction();
 
   await reviewResearchMission(missionId, decision);
   revalidatePath(`/admin/entities/${entityId}`);

@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -143,6 +144,9 @@ function currentStatus(
 }
 
 export default async function KnowledgeDomainPage({ params }: PageProps) {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   const { domain: slug } = await params;
   const domain = findDomain(slug);
   if (!domain) notFound();

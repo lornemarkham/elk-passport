@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -19,7 +20,10 @@ export const metadata: Metadata = {
 // list. `useSearchParams` requires a Suspense boundary around whatever
 // reads it; this page had none of its own dynamic data, so adding one here
 // is the entire cost of that.
-export default function ContentExplorerPage() {
+export default async function ContentExplorerPage() {
+  // Every page checks for itself: a layout is not a gate (Next may skip it on a
+  // partial render), and middleware does not run in this app.
+  await requireAdminPage("/admin");
   return (
     <>
       <Link
