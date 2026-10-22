@@ -18,6 +18,7 @@ import { clockAt, gameWhen } from "@/domain/hockey/countdown";
 import type { NearbyPlace } from "@/domain/hockey/nearby";
 import { planItems, type PlanItem } from "@/domain/hockey/plan";
 import { nextGameAfter } from "@/domain/hockey/schedule";
+import { OurSeats } from "./OurSeats";
 import { RunItBack } from "./RunItBack";
 import {
   BallotVenueCard,
@@ -29,7 +30,11 @@ import {
 import type { SharedNight } from "./useSharedNight";
 import styles from "./hockey.module.css";
 
-type Nearby = { places: NearbyPlace[]; outage?: string };
+type Nearby = {
+  places: NearbyPlace[];
+  arena?: { atlasId: string; at: [number, number] };
+  outage?: string;
+};
 
 const DINNER = "pregame-spot";
 
@@ -50,14 +55,25 @@ export function PlanTab({
   blocks: readonly Block[];
 }) {
   const { live } = night;
-  const dinner = live.prompts.find((p) => p.prompt.id === DINNER);
-  const wantsNearby = Boolean(dinner && live.me);
+  // Our seats walks from these places too, so a night without the dinner
+  // vote still asks for them.
+  const wantsNearby = Boolean(live.me);
   const nearby = useNearby(night.state.slug, wantsNearby);
   const items = planItems(live.prompts);
+  const eating = items.find((i) => i.id === DINNER);
 
   return (
     <div className="flex flex-col gap-9">
       <GroupPlan live={live} items={items} nearby={nearby.data} />
+
+      {live.me && (
+        <OurSeats
+          slug={night.state.slug}
+          nearby={nearby.data}
+          dinner={eating?.leaders.length === 1 ? eating.leaders[0] : undefined}
+          say={night.say}
+        />
+      )}
 
       {blocks.map((block) => {
         if (block.kind === "runItBack") {

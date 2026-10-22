@@ -15,6 +15,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import {
   nearbyWithCurated,
+  venueInAtlas,
   walkLabel,
   type NearbyPlace,
 } from "@/domain/hockey/nearby";
@@ -679,21 +680,29 @@ export async function act(
  * hours cover it — Discovery asks the same way for a picked day. If that read
  * fails, the plain corpus read decides whether Atlas is really out.
  */
-async function placesNear(
-  occasion: NightRows["occasion"],
-): Promise<{ places: NearbyPlace[]; outage?: string }> {
+async function placesNear(occasion: NightRows["occasion"]): Promise<Nearby> {
   const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
+  const venueName = occasion.details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue;
   const { day, weekday } = gameDayOf(occasion.starts_at);
   const { candidates, outage } = await listDiscoveryCandidates(undefined, day)
     .then((candidates) => ({ candidates, outage: undefined }))
     .catch(() => discoveryCandidates());
+  const arena = venueInAtlas(candidates, venueName, venue);
   return {
     places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
       weekday,
       limit: 24,
     }),
+    ...(arena ? { arena } : {}),
     outage,
   };
+}
+
+export interface Nearby {
+  readonly places: NearbyPlace[];
+  /** The arena as Atlas holds it, when it does: what a walk is routed to. */
+  readonly arena?: { readonly atlasId: string; readonly at: [number, number] };
+  readonly outage?: string;
 }
 
 /** Game day as Vancouver has it: `YYYY-MM-DD` and `"sunday"`. */
@@ -710,7 +719,7 @@ function gameDayOf(startsAt: string): { day: string; weekday: string } {
 export async function nearbyFor(
   user: PassportUser,
   id: string,
-): Promise<{ places: NearbyPlace[]; outage?: string }> {
+): Promise<Nearby> {
   const db = await createSupabaseServerClient();
   const rows = await rowsFor(db, id);
   if (!rows?.members.some((m) => m.user_id === user.id)) {

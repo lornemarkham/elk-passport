@@ -61,6 +61,11 @@ export interface NearbyPlace {
   /** Straight-line kilometres at 5 km/h. A floor, never a promise. */
   readonly walkMinutes: number;
   readonly basis: "straight-line";
+  /**
+   * [lat, lng] where the place was observed, for walking directions. Absent
+   * when Atlas measured a distance but sent no observed point.
+   */
+  readonly at?: readonly [number, number];
 }
 
 /**
@@ -306,6 +311,41 @@ function measured(
   return undefined;
 }
 
+/** [lat, lng] where Atlas observed the place; never a derived point. */
+function observedAt(
+  candidate: DiscoveryCandidate,
+): readonly [number, number] | undefined {
+  const geo = candidate.geography;
+  if (!geo?.coordinates || geo.coordinatesBasis !== "observed")
+    return undefined;
+  const [lng, lat] = geo.coordinates;
+  return [lat, lng];
+}
+
+/**
+ * **The venue itself, as Atlas holds it** — the same name, observed within
+ * 300 m of where Passport places it. Its Atlas id is what lets Atlas route a
+ * walk to it (Atlas routes between places it holds, by id). Not found means
+ * no routed walk, not a guessed one.
+ */
+export function venueInAtlas(
+  candidates: readonly DiscoveryCandidate[],
+  name: string,
+  venue: readonly [number, number],
+): { atlasId: string; at: [number, number] } | undefined {
+  for (const c of candidates) {
+    if (!sameName(c.name, name)) continue;
+    const at = observedAt(c);
+    if (!at) continue;
+    const km = distanceKm(
+      { latitude: venue[0], longitude: venue[1] },
+      { latitude: at[0], longitude: at[1] },
+    );
+    if (km <= 0.3) return { atlasId: c.id, at: [at[0], at[1]] };
+  }
+  return undefined;
+}
+
 export interface NearbyOptions {
   readonly withinKm?: number;
   readonly limit?: number;
@@ -326,6 +366,7 @@ export function nearbyFood(
       if (km === undefined || km > withinKm || seen.has(c.id)) return [];
       seen.add(c.id);
       const image = nearbyImage(c);
+      const at = observedAt(c);
       const gameDay = gameDayOf(c, weekday);
       const facts = usefulFacts(c.knowledge?.practical);
       return [
@@ -343,6 +384,7 @@ export function nearbyFood(
           ...(image ? { image } : {}),
           ...(gameDay ? { gameDay } : {}),
           ...(facts.length ? { facts } : {}),
+          ...(at ? { at } : {}),
           km,
           walkMinutes: walkMinutesFor(km),
           basis: "straight-line" as const,
@@ -385,6 +427,7 @@ export function nearbyWithCurated(
       walkMinutes,
       basis: "straight-line",
       source: "curated",
+      at: place.at,
     }));
   return [...atlas, ...extra].sort(byPhotoThenWalk).slice(0, limit);
 }

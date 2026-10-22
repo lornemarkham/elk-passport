@@ -7,6 +7,7 @@ import {
   photoUsable,
   secureUrl,
   statedHoursOn,
+  venueInAtlas,
   walkLabel,
 } from "./nearby";
 
@@ -393,5 +394,39 @@ describe("which pictures reach a card", () => {
       "png",
       "bare-near",
     ]);
+  });
+});
+
+describe("venueInAtlas", () => {
+  const arena = {
+    id: "atlas-arena",
+    name: "Rogers Arena",
+    geography: {
+      coordinates: [-123.10888889, 49.27777778],
+      coordinatesBasis: "observed",
+    },
+  } as unknown as DiscoveryCandidate;
+  it("finds the venue by name within 300 m of where Passport puts it", () => {
+    expect(venueInAtlas([arena], "Rogers Arena", [49.2778, -123.1088])).toEqual(
+      {
+        atlasId: "atlas-arena",
+        at: [49.27777778, -123.10888889],
+      },
+    );
+  });
+  it("not by a different name, a derived point, or somewhere else", () => {
+    expect(
+      venueInAtlas([arena], "BC Place", [49.2778, -123.1088]),
+    ).toBeUndefined();
+    const derived = {
+      ...arena,
+      geography: { ...arena.geography, coordinatesBasis: "derived" },
+    } as typeof arena;
+    expect(
+      venueInAtlas([derived], "Rogers Arena", [49.2778, -123.1088]),
+    ).toBeUndefined();
+    expect(
+      venueInAtlas([arena], "Rogers Arena", [49.29, -123.1088]),
+    ).toBeUndefined();
   });
 });
