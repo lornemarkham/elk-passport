@@ -57,7 +57,7 @@ for (const width of [320, 375, 390]) {
             continue;
           if (parseFloat(style.fontSize) < 12)
             tiny.add(
-              `${parseFloat(style.fontSize)}px "${n.textContent.trim().slice(0, 30)}"`,
+              `${parseFloat(style.fontSize)}px "${(n.textContent ?? "").trim().slice(0, 30)}"`,
             );
         }
         return {
