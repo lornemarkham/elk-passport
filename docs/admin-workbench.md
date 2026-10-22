@@ -97,11 +97,28 @@ this build. This work deliberately does not depend on it and does not move it:
 activating it would switch on behaviour nobody has tested here. Whoever owns it
 should decide whether to move it to `src/`.
 
+_Update, 2026-10-21 (admin security repair):_ the `integration/release` build
+now lists `ƒ Proxy (Middleware)` and emits `.next/server/middleware-manifest.json`,
+and production's experience domains depend on its rewrites, so the claim above
+looks out of date. Nothing here depends on it either way: every gate is in
+the page, handler or action itself.
+
 ## Also noted, deliberately unchanged
 
-- `/passport/[id]` (traveller page) and `listRegions()` (Discovery scoping) read
-  Atlas with `ADMIN_TOKEN` server-side. They are read-only and public by
-  design, not part of the workbench.
+- `listRegions()` (Discovery scoping) reads Atlas's `/admin/regions` with
+  `ADMIN_TOKEN` server-side for every visitor. It is read-only, cached, and
+  keeps only each region's id and name, which Discovery shows anyway. Note for
+  activation: setting `ADMIN_TOKEN` in production is what switches Discovery
+  scoping on (one region scopes the feed; more than one scopes nothing unless
+  `ACTIVE_REGION_ID` picks one).
+- `/passport/[id]` used to read the whole admin corpus bundle with
+  `ADMIN_TOKEN` (archived records and sources included) for anyone who added
+  `?curator=1`, and for any id Atlas could not compose. Since the admin
+  security repair (2026-10-21) the curator instruments and that bundle are for
+  administrators only (`adminVerdictForRequest`). A traveller gets the composed
+  read or the Discovery candidate, as production already does without
+  `ADMIN_TOKEN`. `adminAccess.test.ts` keeps every other `ADMIN_TOKEN` reader
+  outside the workbench behind the same gate.
 - `/conferences/[id]/admin` is a separate, conference-owner surface.
 
 ## Testing
