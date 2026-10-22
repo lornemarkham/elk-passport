@@ -132,19 +132,38 @@ export function MenuList({
         )}
       </ul>
       <p className="mt-2 text-[12px] text-white/55">
-        From the arena&apos;s{" "}
-        <a
-          href={FOOD_PAGE.url}
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          dietary guide
-        </a>{" "}
-        ({FOOD_PAGE.updated}): {menu.listedAt}. A guide, not the whole menu. No
-        prices published.
+        From the arena&apos;s dietary guide ({FOOD_PAGE.updated}):{" "}
+        {menu.listedAt}. A guide, not the whole menu. No prices published.
       </p>
+      <SourceLink
+        href={FOOD_PAGE.url}
+        className="text-[13px] font-semibold text-white/75"
+      >
+        The dietary guide ↗
+      </SourceLink>
     </div>
+  );
+}
+
+/** A source, as a link a thumb can hit: inline, but 40 px tall. */
+export function SourceLink({
+  href,
+  children,
+  className = "",
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={`inline-flex min-h-10 items-center underline ${className}`}
+    >
+      {children}
+    </a>
   );
 }
 
@@ -160,14 +179,9 @@ export function SourceLine({
   return (
     <li className="text-[14px] leading-snug">
       {text}{" "}
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        className="text-[12px] text-white/55 underline"
-      >
+      <SourceLink href={url} className="text-[12px] text-white/55">
         {source}
-      </a>
+      </SourceLink>
     </li>
   );
 }

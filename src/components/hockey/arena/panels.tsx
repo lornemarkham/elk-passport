@@ -44,7 +44,7 @@ import {
 } from "@/domain/hockey/arena-mode";
 import type { Arena } from "./useArena";
 import { hueColour } from "./ArenaMap";
-import { MenuList, PinBadge, SourceLine } from "./sheets";
+import { MenuList, PinBadge, SourceLine, SourceLink } from "./sheets";
 
 const H = ({ children }: { children: React.ReactNode }) => (
   <h2 className="text-[20px] leading-tight font-extrabold">{children}</h2>
@@ -419,17 +419,9 @@ export function EatPanel({
                 </tbody>
               </table>
               <p className="mt-2 text-[12px] text-white/55">
-                Seen by{" "}
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  {r.by}
-                </a>{" "}
-                ({r.author}, published {r.published}) at the {r.seen}. Press,
-                not official; no stand named; tonight&apos;s may differ. Run{" "}
+                Seen by <SourceLink href={r.url}>{r.by}</SourceLink> ({r.author}
+                , published {r.published}) at the {r.seen}. Press, not official;
+                no stand named; tonight&apos;s may differ. Run{" "}
                 <strong>Find the Cheapest Beer</strong> to check with your own
                 eyes.
               </p>
@@ -597,7 +589,11 @@ export function QuestsPanel({
               <StartQuest
                 kindId={starting}
                 arena={arena}
-                onDone={() => setStarting(null)}
+                // Closes only its own form: a slow answer must not shut the one
+                // somebody opened in the meantime.
+                onDone={() =>
+                  setStarting((now) => (now === starting ? null : now))
+                }
               />
             </motion.div>
           )}
@@ -993,15 +989,8 @@ export function ArenaPanel() {
         </H>
         <p className="mt-1 text-[14px] text-white/65">
           Everything here is from Rogers Arena&apos;s own pages, with links.{" "}
-          <a
-            href={SOURCES.map.url}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            The official map
-          </a>{" "}
-          is the real one; Passport&apos;s is a sketch of it.
+          <SourceLink href={SOURCES.map.url}>The official map</SourceLink> is
+          the real one; Passport&apos;s is a sketch of it.
         </p>
       </div>
 

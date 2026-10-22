@@ -15,7 +15,7 @@ import { RING, ZONES, type Spot, type ZoneId } from "./concourse";
  * `VIEW.w × VIEW.h` user units and everything returns points in them.
  */
 
-export const VIEW = { w: 360, h: 300 } as const;
+export const VIEW = { w: 400, h: 340 } as const;
 const C = { x: VIEW.w / 2, y: VIEW.h / 2 };
 
 /** A rounded-square curve: n = 2 is an ellipse; higher is boxier, like a rink. */
@@ -220,20 +220,71 @@ export function placeSpots(level: ArenaLevel, spots: readonly Spot[]) {
   for (const [zone, group] of inZone) {
     const f = anchorFraction(level, group[0].by);
     const centre = pointAt(PLAZA, f);
-    const cols = Math.min(4, Math.ceil(Math.sqrt(group.length)));
+    // A wide, shallow band: two rows at most, so it stays off the gates
+    // outside it and the concourse inside it.
+    const cols = Math.min(5, Math.ceil(group.length / 2));
     const rows = Math.ceil(group.length / cols);
     group.forEach((s, i) => {
       const cx = (i % cols) - (cols - 1) / 2;
       const cy = Math.floor(i / cols) - (rows - 1) / 2;
       placed.push({
         spot: s,
-        at: clamp({ x: centre.x + cx * 15, y: centre.y + cy * 15 }),
+        at: clamp({ x: centre.x + cx * 12.5, y: centre.y + cy * 12.5 }),
       });
     });
     void zone;
   }
-  return placed;
+  return separate(level, placed);
 }
+
+/**
+ * Pins drawn in open areas sit in a grid near where the map draws them, which
+ * can land on a gate's badge or a ring pin. Nudge only those pins — never the
+ * ring pins or the gates, whose positions mean something — until each has room.
+ */
+function separate(level: ArenaLevel, placed: PlacedSpot[]): PlacedSpot[] {
+  const gates = Object.entries(GATE_ANCHORS)
+    .filter(([, a]) => a.level === level)
+    .map(([id]) => gatePoint(id)!)
+    .filter(Boolean);
+  const out = placed.map((p) => ({ ...p, at: { ...p.at } }));
+  for (let pass = 0; pass < 120; pass++) {
+    let moved = false;
+    for (const p of out) {
+      if (!p.spot.zone) continue;
+      const others: { at: Point; room: number }[] = [
+        ...gates.map((g) => ({ at: g, room: GATE_ROOM })),
+        ...out
+          .filter((o) => o !== p)
+          .map((o) => ({ at: o.at, room: PIN_ROOM })),
+      ];
+      for (const o of others) {
+        const dx = p.at.x - o.at.x;
+        const dy = p.at.y - o.at.y;
+        const d = Math.hypot(dx, dy);
+        if (d >= o.room) continue;
+        // Push away; if exactly on top, push toward the ice.
+        const ux =
+          d > 0.01
+            ? dx / d
+            : (C.x - p.at.x) / Math.hypot(C.x - p.at.x, C.y - p.at.y);
+        const uy =
+          d > 0.01
+            ? dy / d
+            : (C.y - p.at.y) / Math.hypot(C.x - p.at.x, C.y - p.at.y);
+        const push = o.room - d + 0.2;
+        p.at = clamp({ x: p.at.x + ux * push, y: p.at.y + uy * push });
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return out;
+}
+
+/** The least distance between two pins' centres, and from a pin to a gate badge's. */
+export const PIN_ROOM = 11;
+export const GATE_ROOM = 17;
 
 /** Inside the drawing, with room for a pin. */
 function clamp(p: Point): Point {
@@ -263,7 +314,7 @@ export const GATE_ANCHORS: Readonly<
   "8": { level: "300", by: ["329", "330"] },
 };
 
-const GATE_RING: Oval = { a: 172, b: 136, n: 2.4 };
+const GATE_RING: Oval = { a: 186, b: 156, n: 2.4 };
 
 export function gatePoint(gate: string): Point | undefined {
   const a = GATE_ANCHORS[gate];

@@ -16,6 +16,8 @@ import {
 } from "./concourse";
 import {
   GATE_ANCHORS,
+  GATE_ROOM,
+  PIN_ROOM,
   VIEW,
   anchorFraction,
   gatePoint,
@@ -194,6 +196,30 @@ describe("the bowl drawing", () => {
         expect(off, `${p.spot.id} drawn by ${closest.id}`).toBeLessThanOrEqual(
           1,
         );
+      }
+    }
+  });
+
+  it("keeps every pin clear of the gate badges and of each other", () => {
+    for (const level of LEVELS) {
+      const placed = placeSpots(level, SPOTS);
+      const gates = ROGERS_ARENA_GATES.filter((g) => g.drawnOn === level).map(
+        (g) => ({ id: g.id, at: gatePoint(g.id)! }),
+      );
+      for (const p of placed) {
+        for (const g of gates) {
+          const d = Math.hypot(p.at.x - g.at.x, p.at.y - g.at.y);
+          expect(d, `${p.spot.id} on gate ${g.id}`).toBeGreaterThanOrEqual(
+            GATE_ROOM - 0.5,
+          );
+        }
+        for (const q of placed) {
+          if (q === p || (!p.spot.zone && !q.spot.zone)) continue;
+          const d = Math.hypot(p.at.x - q.at.x, p.at.y - q.at.y);
+          expect(d, `${p.spot.id} on ${q.spot.id}`).toBeGreaterThanOrEqual(
+            PIN_ROOM - 0.5,
+          );
+        }
       }
     }
   });

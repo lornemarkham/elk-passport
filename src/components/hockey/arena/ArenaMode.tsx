@@ -24,7 +24,7 @@ import styles from "../hockey.module.css";
 import { ArenaMap, FILTERS, pointOf, usePlaces, type Filter } from "./ArenaMap";
 import { useArena } from "./useArena";
 import { IncomingPings } from "./IncomingPings";
-import { CheckInSheet, PlaceSheet } from "./sheets";
+import { CheckInSheet, PlaceSheet, SourceLink } from "./sheets";
 import { ArenaPanel, EatPanel, HerdPanel, QuestsPanel } from "./panels";
 
 type Tab = "herd" | "eat" | "quests" | "arena";
@@ -295,18 +295,16 @@ export function ArenaMode({
         </section>
 
         <p className="mt-2 text-[12px] leading-snug text-white/60">
-          Schematic from the arena&apos;s{" "}
-          <a
-            href={CONCOURSE_SOURCE.url}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            directory map
-          </a>{" "}
-          (read {CONCOURSE_CHECKED}). Not to scale; no indoor routes. Dots are
+          Schematic drawn from the arena&apos;s directory map (read{" "}
+          {CONCOURSE_CHECKED}). Not to scale; no indoor routes. Dots are
           check-ins people made, not GPS.
         </p>
+        <SourceLink
+          href={CONCOURSE_SOURCE.url}
+          className="text-[13px] font-semibold text-white/80"
+        >
+          The arena&apos;s official map ↗
+        </SourceLink>
 
         {elsewhere.length > 0 && (
           <ul
@@ -451,10 +449,10 @@ export function ArenaMode({
         {(arena.error || arena.flash) && (
           <motion.div
             role={arena.error ? "alert" : "status"}
-            initial={{ y: 40, opacity: 0 }}
+            initial={{ y: -40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-            className="fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit max-w-[92vw] items-center gap-3 rounded-full bg-white px-4 py-2.5 text-[14px] font-semibold text-black shadow-lg"
+            exit={{ y: -40, opacity: 0 }}
+            className={`fixed inset-x-0 top-3 z-50 mx-auto flex w-fit ${arena.error ? "" : "pointer-events-none"} max-w-[92vw] items-center gap-3 rounded-full bg-white px-4 py-2.5 text-[14px] font-semibold text-black shadow-lg`}
           >
             {arena.error ?? arena.flash}
             {arena.error && (

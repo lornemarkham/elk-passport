@@ -332,6 +332,15 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     .locator('[data-ping="herd"]')
     .getByRole("button", { name: "On my way" })
     .click();
+  // Maya can't come: she says so, and the host hears it.
+  await maya.page
+    .locator('[data-ping="herd"]')
+    .getByRole("button", { name: "Can't" })
+    .click();
+  await expect(host.page.locator('[data-ping="cant"]')).toContainText(
+    "Maya can't make it.",
+    { timeout: 15_000 },
+  );
 
   // ---------------------------------------------------- find this legend
   await herd(sam.page, "Maya")
@@ -437,7 +446,10 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     .click();
   await expect(first).toContainText(/Vegan|Nothing listed here for that diet/);
   await host.page.getByRole("button", { name: "🍺 Drinks" }).click();
-  await expect(host.page.getByText("Molson Canadian, 12 oz")).toBeVisible();
+  await expect(
+    host.page.getByRole("cell", { name: "Molson Canadian, 12 oz" }),
+  ).toBeVisible();
+  await expect(host.page.getByRole("cell", { name: "$10.00" })).toBeVisible();
   await expect(host.page.getByText(/Press, not official/)).toBeVisible();
   await shot(host.page, "08-eat-and-drink-prices", true);
 
@@ -490,13 +502,12 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     },
   );
   expect(evil.status(), "a ping to someone not on the night").toBe(404);
-  const spam = await maya.page.request.post(
-    `/hockey/api/occasions/${nightId}/arena`,
-    {
-      data: { type: "ping", kind: "meet", to: me, place: "300:J:304" },
-    },
-  );
-  expect(spam.status(), "the same ping again within 20 s").toBe(429);
+  const ping = () =>
+    maya.page.request.post(`/hockey/api/occasions/${nightId}/arena`, {
+      data: { type: "ping", kind: "here", to: me, place: "300:J:304" },
+    });
+  expect((await ping()).status(), "one ping").toBe(200);
+  expect((await ping()).status(), "the same ping again within 20 s").toBe(429);
   // Addressed pings: Sam never sees Maya's request to Lorne.
   const samView = await (
     await sam.page.request.get(`/hockey/api/occasions/${nightId}/arena`)
@@ -525,6 +536,13 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   // ------------------------------------------------- 320 px, and motion
   await arenaTab(maya.page, "The herd").click();
   await fitsThePhone(maya.page, 320);
+  for (const t of ["Eat & drink", "Quests", "The arena"]) {
+    await arenaTab(maya.page, t).click();
+    if (t === "Eat & drink")
+      await maya.page.getByRole("button", { name: "🍺 Drinks" }).click();
+    await fitsThePhone(maya.page, 320);
+  }
+  await arenaTab(maya.page, "The herd").click();
   await shot(maya.page, "09-guest-320", true);
   await fitsThePhone(sam.page, 375);
 

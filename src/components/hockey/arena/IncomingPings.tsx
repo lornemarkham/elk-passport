@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   agoWords,
@@ -12,6 +12,10 @@ import { hueColour } from "./ArenaMap";
 
 /** A ping older than this has done its job; it stops shouting. */
 const SHOUT_FOR_MS = 15 * 60_000;
+/** "On my way" and "can't" say their piece faster. */
+const ANSWER_FOR_MS = 60_000;
+/** After this a ping shrinks to a one-line pill: it said its piece. */
+const LOUD_FOR_MS = 30_000;
 const EVENT = "arena:pings-dismissed";
 
 function subscribe(onChange: () => void) {
@@ -25,7 +29,7 @@ function subscribe(onChange: () => void) {
 
 /**
  * **Somebody wants you.** Pings addressed to me, or to everybody, from
- * somebody else — newest first, at most two at a time, each with the one
+ * somebody else — newest first, one at a time, each with the one
  * button that answers it. Dismissed ones are remembered on this phone only.
  */
 export function IncomingPings({
@@ -65,24 +69,29 @@ export function IncomingPings({
       .filter((p) => p.from === view.me && p.replyTo)
       .map((p) => p.replyTo as string),
   );
-  const shown = view.pings
-    .filter(
-      (p) =>
-        p.from !== view.me &&
-        (p.to === null || p.to === view.me) &&
-        !dismissed.has(p.id) &&
-        !answered.has(p.id) &&
-        now.getTime() - new Date(p.at).getTime() < SHOUT_FOR_MS &&
-        people.has(p.from),
-    )
-    .slice(0, 2);
+  const waiting = view.pings.filter(
+    (p) =>
+      p.from !== view.me &&
+      (p.to === null || p.to === view.me) &&
+      !dismissed.has(p.id) &&
+      !answered.has(p.id) &&
+      now.getTime() - new Date(p.at).getTime() <
+        (p.kind === "coming" || p.kind === "cant"
+          ? ANSWER_FOR_MS
+          : SHOUT_FOR_MS) &&
+      people.has(p.from),
+  );
+  const [opened, setOpened] = useState<string | null>(null);
+  const more = Math.max(0, waiting.length - 1);
+  const shown = waiting.slice(0, 1);
 
   return (
     <div
       aria-live="polite"
       // Over the page, not in it: a ping arriving must never push what
-      // somebody is about to tap out from under their thumb.
-      className="pointer-events-none fixed inset-x-0 top-2 z-40 mx-auto flex max-w-2xl flex-col gap-2 px-3 empty:hidden"
+      // somebody is about to tap out from under their thumb. At the bottom,
+      // one at a time, so it never covers Vanish at the top.
+      className="pointer-events-none fixed inset-x-0 bottom-3 z-40 mx-auto flex max-w-2xl flex-col gap-2 px-3 empty:hidden"
     >
       <AnimatePresence initial={false}>
         {shown.map((p) => {
@@ -141,6 +150,28 @@ export function IncomingPings({
                 };
             }
           })();
+          const loud =
+            opened === p.id ||
+            now.getTime() - new Date(p.at).getTime() < LOUD_FOR_MS;
+          if (!loud) {
+            return (
+              <motion.button
+                key={`${p.id}-pill`}
+                type="button"
+                data-ping={p.kind}
+                data-compact="true"
+                initial={reduced ? false : { opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setOpened(p.id)}
+                className="pointer-events-auto ml-auto inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-white px-4 text-[14px] font-bold text-[#070b14] shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
+                style={{ boxShadow: `inset 4px 0 0 ${hueColour(from.hue)}` }}
+              >
+                <span aria-hidden>{from.emoji}</span>
+                <span className="truncate">{text}</span>
+                {more > 0 && <span className="text-black/55">+{more}</span>}
+              </motion.button>
+            );
+          }
           return (
             <motion.div
               key={p.id}
@@ -161,6 +192,7 @@ export function IncomingPings({
               <p className="mt-0.5 text-[12px] text-black/55">
                 {agoWords(p.at, now)}
                 {p.note ? ` · “${p.note}”` : ""}
+                {more > 0 ? ` · ${more} more waiting` : ""}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {actions}
