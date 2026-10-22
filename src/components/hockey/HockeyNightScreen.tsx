@@ -22,6 +22,7 @@ import {
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
 import { ChatRoom } from "./ChatRoom";
 import { GameDayHero } from "./GameDayHero";
+import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { GroupTab } from "./GroupTab";
 import { NightTabs } from "./NightTabs";
 import { PlanSummary, PlanTab } from "./PlanTab";
@@ -162,6 +163,12 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
       {!showSetup && quiet && (
         <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
           <QuietMode live={live} />
+          {/* Arena Mode stays reachable in a period: the herd, the
+              washrooms and the beer line are most needed when the phone
+              is otherwise put away. */}
+          {live.me && isRogersArena(definition.kicker) && (
+            <ArenaDoor slug={night.state.slug} />
+          )}
           <PlanSummary live={live} />
         </div>
       )}

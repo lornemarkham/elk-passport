@@ -519,6 +519,22 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     ),
   ).toBe(false);
 
+  // -------------------------------------------- the door, mid-period
+  // The first period is "put your phone away": no tabs, one quiet page. The
+  // way into Arena Mode must still be there (approved 2026-10-22: reachable
+  // throughout the event).
+  await moveStart(nightId, new Date(Date.now() - 10 * 60_000));
+  await host.page.goto(`/hockey/${nightId}`);
+  await expect(host.page.getByRole("tablist")).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  await expect(host.page.getByTestId("arena-door")).toBeVisible();
+  await host.page.getByTestId("arena-door").click();
+  await expect(host.page).toHaveURL(new RegExp(`${arenaPath}$`));
+  await expect(map(host.page)).toBeVisible();
+  // Puck drop an hour away again, for the steps that follow.
+  await moveStart(nightId, new Date(Date.now() + 60 * 60_000));
+
   // ------------------------------------------------------------- vanish
   await maya.page
     .getByTestId("sharing")

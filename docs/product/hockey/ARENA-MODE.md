@@ -360,8 +360,10 @@ visible.
   after might want more, or less.
 - **Interruptions:** pings are in-page only, one at a time, loud for 30 s,
   then a pill; answers for 60 s; no push. (§15.10 stays open.)
-- **Where the door is:** the Plan tab only, which isn't shown during a
-  period (phones away). Arena Mode itself still works in a period if open.
+- **Where the door is:** the Plan tab, and — approved 2026-10-22, "accessible
+  throughout the event" — also the quiet page shown during a period
+  (`HockeyNightScreen.tsx`), covered by `arena-mode.spec.ts`. Not shown the
+  morning after (the page still opens, read-only).
 - **Who may finish a quest:** the starter or anyone on its crew. The host
   can delete any quest (database) but the screen offers no button for it.
 - **Find the herd** goes to the host's meeting point when there is one,
