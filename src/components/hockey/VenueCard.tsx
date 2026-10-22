@@ -14,7 +14,7 @@ import {
 import { Avatar } from "@/experience-lab/ui/atoms";
 import type { Participant } from "@/experience-lab/core/types";
 import { subjectHref } from "@/domain/experience/destination";
-import type { NearbyPlace } from "@/domain/hockey/nearby";
+import { photoUsable, type NearbyPlace } from "@/domain/hockey/nearby";
 import styles from "./hockey.module.css";
 
 /**
@@ -105,6 +105,10 @@ function Photo({
             title={image.attribution}
             loading={priority ? "eager" : "lazy"}
             onError={() => setBroken(true)}
+            onLoad={(event) => {
+              const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
+              if (!photoUsable(w, h)) setBroken(true);
+            }}
             className="absolute inset-0 h-full w-full object-cover"
           />
           {image.label && (
@@ -154,6 +158,36 @@ function Photo({
       />
       <div className="absolute inset-x-0 bottom-0 p-3.5">{children}</div>
     </div>
+  );
+}
+
+/**
+ * The round picture on a plan row: the leading place's photograph, or the
+ * row's own icon when it will not load or is not a photograph (a logo, an
+ * icon — `photoUsable`). Same rule as the card's, so a place never has a
+ * picture here that its card refused.
+ */
+export function PlanPhoto({
+  url,
+  fallback,
+}: {
+  url?: string;
+  fallback: React.ReactNode;
+}) {
+  const [broken, setBroken] = useState(false);
+  if (!url || broken) return <>{fallback}</>;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- Atlas-held, as the venue card
+    <img
+      src={url}
+      alt=""
+      onError={() => setBroken(true)}
+      onLoad={(event) => {
+        const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
+        if (!photoUsable(w, h)) setBroken(true);
+      }}
+      className="h-11 w-11 shrink-0 rounded-full object-cover"
+    />
   );
 }
 
@@ -364,19 +398,30 @@ export function NearbyVenueCard({
   onBallot,
   canAdd,
   onAdd,
+  wide = false,
+  priority = false,
 }: {
   place: NearbyPlace;
   onBallot: boolean;
   canAdd: boolean;
   onAdd: () => void;
+  /** Full width, for the places a group should see first. */
+  wide?: boolean;
+  priority?: boolean;
 }) {
   const kind = kindLabel(place.subtype);
   return (
     <article
       aria-label={place.name}
-      className="flex w-[78vw] max-w-[290px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] bg-[#101826] ring-1 ring-white/10"
+      className={`flex shrink-0 snap-start flex-col overflow-hidden rounded-[20px] bg-[#101826] ring-1 ring-white/10 ${
+        wide ? "w-full" : "w-[78vw] max-w-[290px]"
+      }`}
     >
-      <Photo place={place} aspect="aspect-[4/3]">
+      <Photo
+        place={place}
+        aspect={wide ? "aspect-[16/10]" : "aspect-[4/3]"}
+        priority={priority}
+      >
         {kind && (
           <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11.5px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
             {kind}

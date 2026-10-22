@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import {
+  looksLikeNotAPhoto,
   nearbyFood,
   nearbyWithCurated,
+  photoUsable,
+  secureUrl,
   statedHoursOn,
   walkLabel,
 } from "./nearby";
@@ -305,5 +308,90 @@ describe("what a venue card may show", () => {
       knowledge: { descriptionAddsKnowledge: false },
     } as Partial<DiscoveryCandidate>);
     expect(place.blurb).toBeUndefined();
+  });
+});
+
+/**
+ * Every address here is one production Atlas held on 2026-10-20 for a place
+ * within 1.6 km of Rogers Arena (`docs/product/hockey/PRESENTATION-POLISH.md`).
+ */
+describe("which pictures reach a card", () => {
+  it("asks for an http photograph over https, so an https page can show it", () => {
+    expect(
+      secureUrl("http://www.chambar.com/media/2023%20Fall_Homepage%204.png"),
+    ).toBe("https://www.chambar.com/media/2023%20Fall_Homepage%204.png");
+    expect(secureUrl("https://moxies.ca/a.jpg")).toBe(
+      "https://moxies.ca/a.jpg",
+    );
+  });
+
+  it("does not take a logo, a menu mock-up or an arrow for a photograph", () => {
+    for (const url of [
+      "https://www.patrontc.com/images/ArrowUp.png",
+      "https://images.squarespace-cdn.com/content/v1/5ca3/1554-NJMVNHJR/VenturaLogo.png?format=1500w",
+      "https://bostonpizza.com/content/dam/bostonpizza/Pizza-MenuMock-1.png",
+      "https://example.com/assets/site-icon.png",
+    ]) {
+      expect(looksLikeNotAPhoto(url), url).toBe(true);
+    }
+    for (const url of [
+      "https://www.sharkclub.com/wp-content/uploads/2018/08/Van1-1.jpg",
+      "https://www.fannybayoysters.com/uploads/images/20181015-fannybay-6035-leilakwok.jpg",
+      "https://example.com/iconic-dining-room.jpg",
+    ]) {
+      expect(looksLikeNotAPhoto(url), url).toBe(false);
+    }
+  });
+
+  it("offers the https address, and nothing at all for a logo", () => {
+    const photo = nearbyFood(
+      [
+        candidate("chambar", "Restaurant", [-123.1065, 49.2785], "observed", {
+          heroUrl: "http://www.chambar.com/media/2023%20Fall_Homepage%204.png",
+        } as Partial<DiscoveryCandidate>),
+        candidate("ventura", "Restaurant", [-123.1066, 49.2785], "observed", {
+          heroUrl: "https://example.com/VenturaLogo.png",
+        } as Partial<DiscoveryCandidate>),
+      ],
+      ARENA,
+    );
+    expect(photo.find((p) => p.atlasId === "chambar")?.image?.url).toBe(
+      "https://www.chambar.com/media/2023%20Fall_Homepage%204.png",
+    );
+    expect(photo.find((p) => p.atlasId === "ventura")?.image).toBeUndefined();
+  });
+
+  it("keeps a decoded image only if it is big and wide enough to be a photograph", () => {
+    expect(photoUsable(1366, 768)).toBe(true); // Chambar
+    expect(photoUsable(480, 483)).toBe(true); // Hoxton
+    expect(photoUsable(56, 56)).toBe(false); // Patrón's arrow
+    expect(photoUsable(300, 100)).toBe(false); // Shawarma Time's banner
+    expect(photoUsable(67, 139)).toBe(false); // Boston Pizza's menu strip
+    expect(photoUsable(1024, 1519)).toBe(false); // Meat & Bread's tall logo
+  });
+
+  it("leads with places that have a photograph, JPEGs first, nearest within each", () => {
+    const places = nearbyWithCurated(
+      [
+        candidate("bare-near", "Restaurant", [-123.1088, 49.2779]),
+        candidate("png", "Restaurant", [-123.1086, 49.2779], "observed", {
+          heroUrl: "https://example.com/room.png",
+        } as Partial<DiscoveryCandidate>),
+        candidate("jpg-far", "Restaurant", [-123.115, 49.28], "observed", {
+          heroUrl: "https://example.com/room.jpg",
+        } as Partial<DiscoveryCandidate>),
+        candidate("jpg-near", "Restaurant", [-123.1075, 49.2785], "observed", {
+          heroUrl: "https://example.com/wix/a.jpg/v1/fit/w_480",
+        } as Partial<DiscoveryCandidate>),
+      ],
+      [],
+      ARENA,
+    );
+    expect(places.map((p) => p.atlasId)).toEqual([
+      "jpg-near",
+      "jpg-far",
+      "png",
+      "bare-near",
+    ]);
   });
 });

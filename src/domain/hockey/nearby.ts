@@ -181,8 +181,60 @@ export function usefulFacts(
     .slice(0, 2);
 }
 
+/**
+ * **Atlas holds some photograph URLs as `http://`.** Chambar's is one. A page
+ * served over https will not show them (mixed content), so on production they
+ * were blank while every local test — itself plain http — drew them. Asking
+ * for the same address over https shows the picture where the host answers
+ * there; where it does not, the card's own load-failure path falls back to the
+ * designed no-photo treatment. Nothing is substituted.
+ */
+export function secureUrl(url: string): string {
+  return url.replace(/^http:\/\//i, "https://");
+}
+
+/**
+ * **A file name that says it is not a photograph.** Atlas's "exact" evidence
+ * class means the picture belongs to the place's own page, and a place's own
+ * page is full of its logo, its menu mock-up and its "back to top" arrow:
+ * `VenturaLogo.png`, `Pizza-MenuMock-1.png`, `ArrowUp.png`. On a card that
+ * sells a restaurant, those read as a broken photograph. Judged by the file's
+ * own name only; the size check at load time (`photoUsable`) catches the rest.
+ */
+export function looksLikeNotAPhoto(url: string): boolean {
+  let path = url;
+  try {
+    path = decodeURIComponent(new URL(url).pathname);
+  } catch {
+    // Not a parseable URL: judge the text as it is.
+  }
+  return /logo|favicon|sprite|wordmark|placeholder|arrow|menumock|(^|[^a-z])icons?([^a-z]|$)/i.test(
+    path,
+  );
+}
+
+/**
+ * **Is what loaded big and wide enough to be the picture on a card?**
+ * Measured from the decoded image, so it is a fact about the file, not a
+ * guess about the place: a 56 px arrow, a 300 × 100 banner or a 67 × 139 menu
+ * strip is not a photograph of a restaurant, whatever its evidence class says.
+ */
+export function photoUsable(width: number, height: number): boolean {
+  if (width < 400 || height < 240) return false;
+  const ratio = width / height;
+  return ratio >= 0.7 && ratio <= 2.6;
+}
+
 /** The picture a nearby card may carry, by Passport's own precedence. */
 export function nearbyImage(
+  candidate: DiscoveryCandidate,
+): NearbyImage | undefined {
+  const image = rawNearbyImage(candidate);
+  if (!image || looksLikeNotAPhoto(image.url)) return undefined;
+  return { ...image, url: secureUrl(image.url) };
+}
+
+function rawNearbyImage(
   candidate: DiscoveryCandidate,
 ): NearbyImage | undefined {
   if (candidate.heroUrl)
@@ -334,5 +386,23 @@ export function nearbyWithCurated(
       basis: "straight-line",
       source: "curated",
     }));
-  return [...atlas, ...extra].sort((a, b) => a.km - b.km).slice(0, limit);
+  return [...atlas, ...extra].sort(byPhotoThenWalk).slice(0, limit);
+}
+
+/**
+ * **Places Passport can show lead; the rest follow, nearest first.** A card
+ * with a real picture sells itself on a phone and a card without one is a
+ * line of text, so a group choosing where to eat meets the places that look
+ * like somewhere first. A JPEG is a photograph far more often than a PNG is
+ * (a PNG is usually a logo or a graphic), so the two are tiered — a tiebreak
+ * on a file extension, not a verdict, and nothing is dropped. Within a tier,
+ * nearest first.
+ */
+function photoTier(place: NearbyPlace): number {
+  if (!place.image) return 2;
+  return /\.jpe?g(?=$|[?/#])/i.test(place.image.url) ? 0 : 1;
+}
+
+function byPhotoThenWalk(a: NearbyPlace, b: NearbyPlace): number {
+  return photoTier(a) - photoTier(b) || a.km - b.km;
 }

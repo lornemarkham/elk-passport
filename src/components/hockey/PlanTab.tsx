@@ -22,6 +22,7 @@ import { RunItBack } from "./RunItBack";
 import {
   BallotVenueCard,
   NearbyVenueCard,
+  PlanPhoto,
   VenueSkeleton,
   VoteCount,
 } from "./VenueCard";
@@ -194,18 +195,14 @@ function PlanRow({ item, nearby }: { item: PlanItem; nearby: Nearby | null }) {
         href={`#vote-${item.id}`}
         className="flex items-center gap-3.5 px-5 py-3.5 transition hover:bg-[#0b1220]/[0.04]"
       >
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Atlas-held, as the venue card
-          <img
-            src={photo.url}
-            alt=""
-            className="h-11 w-11 shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0b1220] text-white">
-            <Icon className="h-5 w-5" />
-          </span>
-        )}
+        <PlanPhoto
+          url={photo?.url}
+          fallback={
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0b1220] text-white">
+              <Icon className="h-5 w-5" />
+            </span>
+          }
+        />
         <span className="min-w-0 flex-1">
           <span className="block text-[12px] font-bold tracking-[0.12em] text-[#0b1220]/55 uppercase">
             {item.label}
@@ -325,6 +322,36 @@ function DinnerVote({
   );
   const person = (id?: string) =>
     live.participants.find((p) => p.id === id)?.name;
+  // Real places lead. The concourse is the template's zero-effort joke, and a
+  // fine answer — it stays on the vote, below the places, as the easy way out.
+  const real = prompt.tally.filter((o) => o.optionId !== "concourse");
+  const easy = prompt.tally.filter((o) => o.optionId === "concourse");
+  const card = (option: (typeof prompt.tally)[number], i: number) => {
+    const place = placeFor(option.label, nearby.data?.places);
+    return (
+      <BallotVenueCard
+        key={option.optionId}
+        label={option.label}
+        detail={option.detail}
+        emoji={option.emoji}
+        place={place}
+        voters={option.voters}
+        share={option.share}
+        standing={
+          top > 0 && option.voters.length === top
+            ? tied
+              ? "tied"
+              : "leading"
+            : undefined
+        }
+        chosen={mine === option.optionId}
+        canVote={canVote}
+        onVote={() => night.respond(prompt.prompt.id, option.optionId)}
+        addedBy={option.addedBy ? person(option.addedBy) : undefined}
+        priority={i < 2}
+      />
+    );
+  };
 
   return (
     <section
@@ -338,39 +365,7 @@ function DinnerVote({
         subtitle="Real places a short walk from the arena. Tap to vote, add anywhere, change your mind until it closes."
       />
       <div className="flex flex-col gap-4">
-        {[...prompt.tally]
-          // The concourse is the template's zero-effort joke; real places first.
-          .sort(
-            (a, b) =>
-              Number(a.optionId === "concourse") -
-              Number(b.optionId === "concourse"),
-          )
-          .map((option, i) => {
-            const place = placeFor(option.label, nearby.data?.places);
-            return (
-              <BallotVenueCard
-                key={option.optionId}
-                label={option.label}
-                detail={option.detail}
-                emoji={option.emoji}
-                place={place}
-                voters={option.voters}
-                share={option.share}
-                standing={
-                  top > 0 && option.voters.length === top
-                    ? tied
-                      ? "tied"
-                      : "leading"
-                    : undefined
-                }
-                chosen={mine === option.optionId}
-                canVote={canVote}
-                onVote={() => night.respond(prompt.prompt.id, option.optionId)}
-                addedBy={option.addedBy ? person(option.addedBy) : undefined}
-                priority={i < 2}
-              />
-            );
-          })}
+        {real.map((option, i) => card(option, i))}
       </div>
 
       {live.me && prompt.open && (
@@ -381,7 +376,19 @@ function DinnerVote({
             void night.send({ type: "nominate", promptId: DINNER, atlasId })
           }
           venue={live.definition.kicker.split(" · ")[0]}
+          lead={real.length === 0}
         />
+      )}
+
+      {easy.length > 0 && (
+        <div className="mt-7">
+          <p className="mb-2.5 text-[14px] font-semibold tracking-[0.08em] text-white/60 uppercase">
+            Or keep it easy
+          </p>
+          <div className="flex flex-col gap-4">
+            {easy.map((option) => card(option, 99))}
+          </div>
+        </div>
       )}
 
       {canVote && prompt.prompt.openToSuggestions && (
@@ -408,11 +415,14 @@ function NearbyExplorer({
   onBallot,
   onAdd,
   venue,
+  lead,
 }: {
   nearby: ReturnType<typeof useNearby>;
   onBallot: ReadonlySet<string>;
   onAdd: (atlasId: string) => void;
   venue: string;
+  /** Nothing real is on the vote yet: open with the best places, full width. */
+  lead: boolean;
 }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   // Nearest first, and what is already on the vote after what is not.
@@ -423,17 +433,28 @@ function NearbyExplorer({
     .sort(
       (a, b) => Number(onBallot.has(a.name)) - Number(onBallot.has(b.name)),
     );
+  // The server sends places with photographs first; the first three, while the
+  // vote is empty, are the ones a group sees before anything else.
+  const featured = lead
+    ? places.filter((p) => !onBallot.has(p.name)).slice(0, 3)
+    : [];
+  const shelf = places.filter((p) => !featured.includes(p));
 
   return (
-    <div className="mt-7" aria-label={`More near ${venue}`} role="region">
+    <div
+      className="mt-7"
+      aria-label={`${lead ? "Near" : "More near"} ${venue}`}
+      role="region"
+    >
       <div className="flex items-end justify-between gap-3">
         <div>
           <h4 className={`${styles.wide} text-[20px] leading-tight text-white`}>
-            More near {venue}
+            {lead ? `Near ${venue}` : `More near ${venue}`}
           </h4>
           <p className="mt-1 text-[14px] leading-snug text-white/65">
-            What Passport and Atlas know within a short walk. Add one and
-            it&apos;s on the vote.
+            {lead
+              ? "Real places a short walk away. Add the ones you'd actually go to and the group votes."
+              : "What Passport and Atlas know within a short walk. Add one and it's on the vote."}
           </p>
         </div>
         {nearby.data && nearby.data.places.length > 0 && (
@@ -471,12 +492,25 @@ function NearbyExplorer({
           <VenueSkeleton />
         </div>
       )}
+      {nearby.state === "loading" && (
+        <p className="mt-2 text-[14px] text-white/65" role="status">
+          Asking Atlas what&apos;s near the arena — the first look can take a
+          few seconds.
+        </p>
+      )}
 
       {(nearby.state === "failed" ||
         (nearby.data?.outage && nearby.data.places.length === 0)) && (
         <p className="mt-4 rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
           Passport can&apos;t reach its map of the city right now. Type a place
-          below instead — it counts just the same.
+          below instead — it counts just the same.{" "}
+          <button
+            type="button"
+            onClick={nearby.retry}
+            className="inline-flex min-h-11 items-center font-bold text-white underline underline-offset-4"
+          >
+            Try again
+          </button>
         </p>
       )}
       {nearby.data?.outage && nearby.data.places.length > 0 && (
@@ -494,21 +528,46 @@ function NearbyExplorer({
           </p>
         )}
 
-      {places.length > 0 && (
-        <ul
-          className={`${styles.noScrollbar} -mx-4 mt-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2`}
-        >
-          {places.map((place) => (
-            <li key={place.atlasId} className="flex">
+      {featured.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-4">
+          {featured.map((place, i) => (
+            <li key={place.atlasId}>
               <NearbyVenueCard
                 place={place}
                 onBallot={onBallot.has(place.name)}
                 canAdd
                 onAdd={() => onAdd(place.atlasId)}
+                wide
+                priority={i === 0}
               />
             </li>
           ))}
         </ul>
+      )}
+      {shelf.length > 0 && (
+        <>
+          {featured.length > 0 && (
+            <h5
+              className={`${styles.wide} mt-6 text-[17px] leading-tight text-white`}
+            >
+              More near {venue}
+            </h5>
+          )}
+          <ul
+            className={`${styles.noScrollbar} -mx-4 mt-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2`}
+          >
+            {shelf.map((place) => (
+              <li key={place.atlasId} className="flex">
+                <NearbyVenueCard
+                  place={place}
+                  onBallot={onBallot.has(place.name)}
+                  canAdd
+                  onAdd={() => onAdd(place.atlasId)}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {nearby.data && nearby.data.places.length > 0 && (
         <p className="mt-2 text-[12.5px] leading-snug text-white/55">
@@ -699,18 +758,27 @@ function AddYourOwn({
 function useNearby(slug: string, enabled: boolean) {
   const [data, setData] = useState<Nearby | null>(null);
   const [failed, setFailed] = useState(false);
+  // Atlas's first corpus read after a cold start can take 8-19 s and can fail;
+  // ask again once on our own, then leave "Try again" to the person.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!enabled || data) return;
     let current = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     fetch(`/hockey/api/occasions/${slug}/nearby`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((body: Nearby) => current && setData(body))
-      .catch(() => current && setFailed(true));
+      .catch(() => {
+        if (!current) return;
+        setFailed(true);
+        if (attempt === 0) timer = setTimeout(() => setAttempt(1), 4000);
+      });
     return () => {
       current = false;
+      clearTimeout(timer);
     };
-  }, [enabled, data, slug]);
+  }, [enabled, data, slug, attempt]);
 
   const state: "idle" | "loading" | "failed" | "ready" = !enabled
     ? "idle"
@@ -719,5 +787,10 @@ function useNearby(slug: string, enabled: boolean) {
       : failed
         ? "failed"
         : "loading";
-  return { data, state };
+  const retry = () => {
+    setData(null);
+    setFailed(false);
+    setAttempt((n) => n + 1);
+  };
+  return { data, state, retry };
 }
