@@ -114,7 +114,7 @@ function Photo({
           {image.label && (
             <span
               title={image.attribution}
-              className="absolute top-2.5 right-2.5 max-w-[60%] truncate rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white uppercase"
+              className="absolute top-2.5 right-2.5 max-w-[60%] truncate rounded-full bg-black/70 px-2.5 py-1 text-[12px] font-semibold tracking-wide text-white uppercase"
             >
               {image.label}
             </span>
@@ -146,7 +146,7 @@ function Photo({
             )}
           </span>
           {place && (
-            <span className="absolute top-4 right-3.5 max-w-[55%] text-right text-[11px] leading-tight font-semibold tracking-[0.1em] text-white/60 uppercase">
+            <span className="absolute top-4 right-3.5 max-w-[55%] text-right text-[12px] leading-tight font-semibold tracking-[0.1em] text-white/60 uppercase">
               No photo Passport can vouch for yet
             </span>
           )}
@@ -307,12 +307,12 @@ export function BallotVenueCard({
       >
         <div className="flex flex-wrap items-center gap-1.5">
           {standing && (
-            <span className="rounded-full bg-[#ffd84d] px-2.5 py-0.5 text-[11.5px] font-bold tracking-wide text-[#0b1220] uppercase">
+            <span className="rounded-full bg-[#ffd84d] px-2.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
               {standing === "tied" ? "Tied for the lead" : "Leading"}
             </span>
           )}
           {kind && (
-            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11.5px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
+            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
               {kind}
             </span>
           )}
@@ -423,7 +423,7 @@ export function NearbyVenueCard({
         priority={priority}
       >
         {kind && (
-          <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11.5px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
+          <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
             {kind}
           </span>
         )}

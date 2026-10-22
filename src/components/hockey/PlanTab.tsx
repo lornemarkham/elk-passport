@@ -441,11 +441,7 @@ function NearbyExplorer({
   const shelf = places.filter((p) => !featured.includes(p));
 
   return (
-    <div
-      className="mt-7"
-      aria-label={`${lead ? "Near" : "More near"} ${venue}`}
-      role="region"
-    >
+    <div className="mt-7" aria-label={`More near ${venue}`} role="region">
       <div className="flex items-end justify-between gap-3">
         <div>
           <h4 className={`${styles.wide} text-[20px] leading-tight text-white`}>

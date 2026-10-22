@@ -355,7 +355,7 @@ function Side({
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center text-center">
-      <span className="text-[11px] font-semibold tracking-[0.18em] text-white/75 uppercase">
+      <span className="text-[12px] font-semibold tracking-[0.18em] text-white/75 uppercase">
         {label}
       </span>
       <span
@@ -400,7 +400,7 @@ function PuckDrop({ anchor, now }: { anchor: Date; now: Date }) {
             >
               {u.value}
             </span>
-            <span className="mt-0.5 text-[11px] font-semibold tracking-wider text-white/60 uppercase">
+            <span className="mt-0.5 text-[12px] font-semibold tracking-wider text-white/60 uppercase">
               {u.unit}
             </span>
           </span>

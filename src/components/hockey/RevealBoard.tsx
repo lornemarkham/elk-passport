@@ -187,7 +187,7 @@ function FlipCard({
           </span>
           {v && (
             <span
-              className={`mt-1 w-fit rounded-full px-2 py-0.5 text-[11.5px] font-bold ${v.className}`}
+              className={`mt-1 w-fit rounded-full px-2 py-0.5 text-[12px] font-bold ${v.className}`}
             >
               {v.label}
               {earned ? ` +${earned}` : ""}

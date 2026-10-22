@@ -90,7 +90,7 @@ export function CupRoll({ cup, currentId }: { cup: Cup; currentId?: string }) {
           </li>
         ))}
       </ol>
-      <p className="mt-2 text-[11.5px] text-white/30">
+      <p className="mt-2 text-[12px] text-white/55">
         Points reset every night. The Cup does not. You only see nights you were
         at.
       </p>

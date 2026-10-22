@@ -66,7 +66,7 @@ export function NightTabs({
                 {badge > 0 && (
                   <span
                     aria-hidden
-                    className="absolute -top-1.5 -right-3 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ff4646] px-1 text-[11px] leading-none font-bold text-white"
+                    className="absolute -top-1.5 -right-3 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ff4646] px-1 text-[12px] leading-none font-bold text-white"
                   >
                     {badge > 9 ? "9+" : badge}
                   </span>

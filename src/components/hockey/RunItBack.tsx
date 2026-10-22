@@ -65,7 +65,7 @@ export function LastTime({
             ))}
           </ul>
         )}
-        <p className="mt-3 text-[11.5px] text-white/30">
+        <p className="mt-3 text-[12px] text-white/55">
           Carried over from the last one. Points were not.
         </p>
       </div>

@@ -35,8 +35,10 @@ const CHAMBAR = "4dbd1e2f-04aa-428f-a39e-8472998b23ca";
 const SHARK_CLUB = "f2903da3-8aaa-463f-ae6e-31f490e71b2d";
 const BOSTON_PIZZA = "2ac1da68-96f4-414b-9e8f-d0e86347758a";
 
+// WIDTH=390 for an iPhone 14 / Pixel-class phone; 375 is the default.
+const WIDTH = Number(process.env.WIDTH ?? 375);
 const PHONE = {
-  viewport: { width: 375, height: 812 },
+  viewport: { width: WIDTH, height: 812 },
   deviceScaleFactor: 2,
   isMobile: true,
   hasTouch: true,

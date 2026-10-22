@@ -145,7 +145,7 @@ export function PicksDeck({
                   onClick={() => go(i)}
                   aria-label={`${p.prompt.question}${mine ? " — sealed" : ""}`}
                   aria-current={here ? "step" : undefined}
-                  className={`flex h-9 w-full items-center justify-center rounded-full text-[12px] font-bold transition ${
+                  className={`flex h-10 w-full items-center justify-center rounded-full text-[13px] font-bold transition ${
                     mine
                       ? "bg-[#ffd84d] text-[#0b1220]"
                       : "bg-white/[0.08] text-white/70 ring-1 ring-white/20"

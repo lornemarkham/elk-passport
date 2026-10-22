@@ -51,7 +51,7 @@ export function GroupTab({ night }: { night: SharedNight }) {
                 <p className="flex items-center text-[16px] font-bold text-white">
                   <span className="truncate">{person.name}</span>
                   {person.id === hostId && (
-                    <span className="ml-1.5 shrink-0 rounded-full bg-[#ffd84d] px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide text-[#0b1220] uppercase">
+                    <span className="ml-1.5 shrink-0 rounded-full bg-[#ffd84d] px-1.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
                       host
                     </span>
                   )}
