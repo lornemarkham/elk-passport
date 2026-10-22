@@ -40,6 +40,13 @@ vi.mock("@/lib/knowledge/workspaceData", () => ({
   loadWorkspaceBundle: () => loadWorkspaceBundle(),
 }));
 vi.mock("@/lib/auth/currentUser", () => ({ currentUser: async () => null }));
+let admin = false;
+vi.mock("@/lib/admin/requireAdmin", () => ({
+  adminVerdictForRequest: async () =>
+    admin
+      ? { ok: true, email: "curator@example.com" }
+      : { ok: false, reason: "not-approved" },
+}));
 
 const { default: PassportPage } = await import("./page");
 
@@ -64,6 +71,7 @@ beforeEach(() => {
   listDiscoveryCandidates.mockReset().mockResolvedValue(corpus);
   // The admin bundle is unreadable without an admin token, as on production.
   loadWorkspaceBundle.mockReset().mockRejectedValue(new Error("401"));
+  admin = false;
 });
 
 describe("/passport/[id]", () => {
@@ -118,6 +126,7 @@ describe("/passport/[id]", () => {
   });
 
   it("keeps a curator on this page for a Place, with the curator bar", async () => {
+    admin = true;
     render(
       await open("f54d6acc-91f7-4558-a2ad-6565f318f978", { curator: "1" }),
     );
@@ -128,12 +137,40 @@ describe("/passport/[id]", () => {
   });
 
   it("shows a curator an Activity even without the admin bundle", async () => {
+    admin = true;
     render(
       await open("59b5ed9c-b075-4d21-9e84-a608d1aaa12d", { curator: "1" }),
     );
     expect(
       screen.getByRole("heading", { name: "U-Pick Apple Orchard Tours" }),
     ).toBeTruthy();
+  });
+
+  it("treats ?curator=1 from anyone but an administrator as the traveller's page", async () => {
+    const digest = await digestOf(
+      open("f54d6acc-91f7-4558-a2ad-6565f318f978", { curator: "1" }),
+    );
+    expect(digest).toMatch(/^NEXT_REDIRECT/);
+    render(
+      await open("59b5ed9c-b075-4d21-9e84-a608d1aaa12d", { curator: "1" }),
+    );
+    expect(screen.queryByRole("link", { name: "Evidence" })).toBeNull();
+    expect(loadWorkspaceBundle).not.toHaveBeenCalled();
+  });
+
+  it("never spends ADMIN_TOKEN on the corpus bundle for a non-administrator", async () => {
+    loadWorkspaceBundle.mockResolvedValue({
+      entities: [{ id: "00000000-0000-0000-0000-00000000a1d0" }],
+      relationships: [],
+      sources: [],
+    });
+    for (const query of [{}, { curator: "1" }] as Record<string, string>[]) {
+      const digest = await digestOf(
+        open("00000000-0000-0000-0000-00000000a1d0", query),
+      );
+      expect(digest).toMatch(/NOT_FOUND|404/);
+    }
+    expect(loadWorkspaceBundle).not.toHaveBeenCalled();
   });
 
   it("is a 404 only when nothing knows the id", async () => {

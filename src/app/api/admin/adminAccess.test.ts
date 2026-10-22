@@ -212,6 +212,21 @@ describe("structure", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("a page outside the workbench reaches an ADMIN_TOKEN reader only past the gate", () => {
+    // These modules attach ADMIN_TOKEN themselves; /passport/[id] once read
+    // the whole corpus with it for anybody who typed ?curator=1.
+    const readers =
+      /@\/lib\/(knowledge\/(workspaceData|adminSummary|domainWork|regions|runData|researchMissions)|data\/explorer-dossier-repo|explorer\/passportView)["']/;
+    const offenders = files
+      .filter((f) => /^src\/app\/.*(page|layout|route)\.tsx?$/.test(f))
+      .filter((f) => !/^src\/app\/(admin|explorer|api\/admin)\//.test(f))
+      .filter((f) => readers.test(read(f)))
+      .filter(
+        (f) => !/adminVerdictForRequest|requireAdmin(Page|Api)/.test(read(f)),
+      );
+    expect(offenders).toEqual([]);
+  });
+
   it("every server action is gated", () => {
     const offenders = files
       .filter((f) => /^\s*["']use server["']/.test(read(f)))

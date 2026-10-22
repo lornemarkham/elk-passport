@@ -28,6 +28,7 @@ import { curationFor } from "@/lib/passport/curation/october2026";
 import { isOctoberSubject } from "@/domain/passport/octoberContext";
 import type { SubjectPageView } from "@/lib/passport/subjectPage";
 import { currentUser } from "@/lib/auth/currentUser";
+import { adminVerdictForRequest } from "@/lib/admin/requireAdmin";
 import { safeNext } from "@/lib/auth/safeNext";
 import {
   OctoberProvenance,
@@ -152,13 +153,16 @@ const KINDS = Object.values(COMPOSED_READS);
  * *Research the menu*, *Find more images* — and a traveller reading about a
  * haunted house should not be handed them. They are not deleted: `?curator=1`
  * restores every one of them, which is also how the Knowledge workspace
- * should link here.
+ * should link here — **for an administrator**. Anyone else gets the
+ * traveller's page: the corpus bundle below is read with `ADMIN_TOKEN`, so
+ * the query string alone must not be what spends it.
  */
 export default async function PassportPage({ params, searchParams }: Props) {
   const { id } = await params;
   const query = await searchParams;
   const on = typeof query.on === "string" ? query.on : undefined;
-  const curator = query.curator === "1";
+  // Asked only when requested, so a traveller's page costs no auth round trip.
+  const curator = query.curator === "1" && (await adminVerdictForRequest()).ok;
   // Carried through from Discovery so the plan is about the day and the person
   // somebody actually chose. Never defaulted — an absent age means Atlas was
   // not asked about anybody, which is a different answer from "a child".
@@ -330,7 +334,9 @@ export default async function PassportPage({ params, searchParams }: Props) {
     );
   }
 
-  const bundle = await loadWorkspaceBundle().catch(() => null);
+  // The whole corpus, archived records and sources included, read with
+  // ADMIN_TOKEN: a curator's instrument, never a stranger's fallback.
+  const bundle = curator ? await loadWorkspaceBundle().catch(() => null) : null;
   const entity = (
     bundle?.entities as unknown as EntityKnowledge[] | undefined
   )?.find((e) => e.id === id);
