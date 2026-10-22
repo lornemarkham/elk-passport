@@ -302,39 +302,39 @@ export function OurSeats({
                         No seat yet
                       </span>
                     )}
-                  </span>
-                  {canEdit && (
-                    <span className="flex shrink-0 flex-col items-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(person.id)}
-                        aria-label={
-                          mine
-                            ? seat
-                              ? "Edit my seat"
-                              : "Add my seat"
-                            : `${seat ? "Edit" : "Add"} ${person.name}'s seat`
-                        }
-                        className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        {seat ? "Edit" : "Add"}
-                      </button>
-                      {mine && seat && (
+                    {canEdit && (
+                      <span className="mt-2 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            say(
-                              `🎟️ I'm in ${seatLine(seat)}${seat.gate ? `, coming in at Gate ${seat.gate}` : ""}.`,
-                            )
+                          onClick={() => setEditing(person.id)}
+                          aria-label={
+                            mine
+                              ? seat
+                                ? "Edit my seat"
+                                : "Add my seat"
+                              : `${seat ? "Edit" : "Add"} ${person.name}'s seat`
                           }
                           className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
                         >
-                          <Send className="h-4 w-4" /> Chat it
+                          <Pencil className="h-4 w-4" />
+                          {seat ? "Edit" : "Add"}
                         </button>
-                      )}
-                    </span>
-                  )}
+                        {mine && seat && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              say(
+                                `🎟️ I'm in ${seatLine(seat)}${seat.gate ? `, coming in at Gate ${seat.gate}` : ""}.`,
+                              )
+                            }
+                            className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
+                          >
+                            <Send className="h-4 w-4" /> Chat it
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </span>
                 </li>
               );
             })}
@@ -953,22 +953,24 @@ function GettingThere({
 function InsideNote({ seat }: { seat?: Seat }) {
   const level = seat ? readSection(seat.section).levelName : undefined;
   return (
-    <p className="mt-2 text-[13.5px] leading-snug text-[#0b1220]/65">
-      <span className="font-bold text-[#0b1220]">Inside: </span>
-      {seat && level
-        ? `Section ${seat.section} is on ${level}, by the arena's map. `
-        : ""}
-      Passport has no indoor directions — the arena&apos;s map and the ushers
-      do.{" "}
+    <>
+      <p className="mt-2 text-[13.5px] leading-snug text-[#0b1220]/65">
+        <span className="font-bold text-[#0b1220]">Inside: </span>
+        {seat && level
+          ? `Section ${seat.section} is on ${level}, by the arena's map. `
+          : ""}
+        Passport has no indoor directions — the arena&apos;s map and the ushers
+        do.
+      </p>
       <a
         href={SOURCES.map.url}
         target="_blank"
         rel="noreferrer"
-        className="font-bold underline"
+        className={`${tap} mt-2 bg-white text-[#0b1220]`}
       >
-        Arena map
+        <MapPin className="h-4 w-4" /> The arena&apos;s map
       </a>
-    </p>
+    </>
   );
 }
 
@@ -1051,23 +1053,24 @@ function ArenaGuide() {
           ))}
         </ul>
         <p className="mt-3 text-[13px] text-[#0b1220]/60">
-          From the arena&apos;s own pages, checked {ARENA_CHECKED}:{" "}
-          {Object.values(SOURCES).map((s, i) => (
-            <span key={s.url}>
-              {i > 0 && " · "}
+          The arena doesn&apos;t publish which gate serves which section, so
+          Passport never picks one for you. From the arena&apos;s own pages,
+          checked {ARENA_CHECKED}:
+        </p>
+        <ul className="mt-1 flex flex-col">
+          {Object.values(SOURCES).map((s) => (
+            <li key={s.url}>
               <a
                 href={s.url}
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold underline"
+                className="flex min-h-10 items-center text-[14px] font-semibold underline"
               >
                 {s.label.replace(/ \(.*\)$/, "")}
               </a>
-            </span>
+            </li>
           ))}
-          . The arena doesn&apos;t publish which gate serves which section, so
-          Passport never picks one for you.
-        </p>
+        </ul>
       </div>
     </details>
   );

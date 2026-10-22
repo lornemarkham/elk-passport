@@ -38,6 +38,9 @@ type Nearby = {
 
 const DINNER = "pregame-spot";
 
+/** Phases after the night is over, when Run it back leads Plan. */
+const AFTER_THE_NIGHT = new Set(["morning", "again"]);
+
 /**
  * **Plan: what we're doing, then the votes that decide it.**
  *
@@ -66,7 +69,9 @@ export function PlanTab({
     <div className="flex flex-col gap-9">
       <GroupPlan live={live} items={items} nearby={nearby.data} />
 
-      {live.me && (
+      {/* The morning after, the seats are history and Run it back leads.
+          (Shown then, its late-loading height pushed Run it back off screen.) */}
+      {live.me && !AFTER_THE_NIGHT.has(live.phase.id) && (
         <OurSeats
           slug={night.state.slug}
           nearby={nearby.data}
