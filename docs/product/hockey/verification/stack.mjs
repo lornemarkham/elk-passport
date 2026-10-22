@@ -288,6 +288,13 @@ async function start() {
       fs.readFileSync(path.join(here, "..", "seats-migration.sql"), "utf8"),
     );
   }
+  // Arena Mode (2026-10-22). HOCKEY_ARENA=0 starts without it, to see Arena
+  // Mode as production would before that migration is applied.
+  if (process.env.HOCKEY_ARENA !== "0") {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "arena-migration.sql"), "utf8"),
+    );
+  }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,
