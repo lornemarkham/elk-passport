@@ -193,14 +193,14 @@ Rollback order is the reverse: Instant Rollback → `disable.sql` → (only if r
 
 ### 5.1 Environment variables (production, Vercel project `elk-passport`)
 
-| Variable                                                                           | Needed for Hockey?  | Must be                                                                                                                           |
-| ---------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                                                         | **yes**             | The **same project the migration was applied to.** Inlined at build → set before the build.                                       |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                                    | **yes**             | That project's **anon** key. Inlined at build. **Never** put the service-role key here; Hockey never uses it.                     |
-| `ATLAS_API_URL`                                                                    | for the food picker | `https://elk-atlas.vercel.app` — no trailing slash, **no `/api`** (RELEASE.md gotcha). Default `localhost:3000` is wrong in prod. |
-| `ATLAS_SERVICE_TOKEN`                                                              | for the food picker | Already set for October; unchanged. If Atlas is down the picker says so (`outage`) and the night works.                           |
-| `OPENAI_API_KEY`, `ADMIN_TOKEN`, `NEXT_PUBLIC_GOOGLE_SSO_ENABLED`, weather, region | no                  | Not used by Hockey. Leave as they are.                                                                                            |
-| `DATABASE_URL`                                                                     | no                  | Hockey uses Supabase REST only.                                                                                                   |
+| Variable                                                                           | Needed for Hockey?  | Must be                                                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`                                                         | **yes**             | The **same project the migration was applied to.** Inlined at build → set before the build.                                                                       |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                                    | **yes**             | That project's **anon** key. Inlined at build. **Never** put the service-role key here; Hockey never uses it.                                                     |
+| `ATLAS_API_URL`                                                                    | for the food picker | `https://elk-atlas.vercel.app` — no trailing slash, **no `/api`** (RELEASE.md gotcha). Default `localhost:3000` is wrong in prod.                                 |
+| `ATLAS_SERVICE_TOKEN`                                                              | for the food picker | Already set for October; unchanged. If Atlas is down the picker says so (`outage`) and the night works.                                                           |
+| `OPENAI_API_KEY`, `ADMIN_TOKEN`, `NEXT_PUBLIC_GOOGLE_SSO_ENABLED`, weather, region | no                  | Not used by Hockey. Leave as they are. **Do not add `ADMIN_TOKEN` for this release:** it switches Discovery region scoping on (`RELEASE-GATES-2026-10-22.md` §3). |
+| `DATABASE_URL`                                                                     | no                  | Hockey uses Supabase REST only.                                                                                                                                   |
 
 No new variable is introduced by this release.
 
