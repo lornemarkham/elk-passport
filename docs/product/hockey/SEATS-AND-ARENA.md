@@ -136,12 +136,12 @@ contract this lane doesn't change):
 
 | What                                                                                                                     | Result                                      |
 | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| `src/domain/hockey/{seats,arena,directions,nearby}.test.ts`                                                              | see RESULTS below                           |
+| `src/domain/hockey/{seats,arena,directions,nearby}.test.ts`                                                              | **pass** (hockey domain 112/112)            |
 | `verification/seats-attack.mjs`: 35 attacks over PostgREST with real GoTrue sessions                                     | **35/35**                                   |
 | `verification/rls-attack.mjs` (existing, with the seats table present)                                                   | **53/53**                                   |
 | Seats migration applied twice                                                                                            | no change (4 policies, RLS on, rows intact) |
 | `seats-preflight.sql` on the stack                                                                                       | runs; correctly says STOP once applied      |
-| `verification/seats.spec.ts`: host 390 px + guest 320 px + stranger, real sign-up, Atlas stand-in `atlas-seats-stub.mjs` | see RESULTS below                           |
+| `verification/seats.spec.ts`: host 390 px + guest 320 px + stranger, real sign-up, Atlas stand-in `atlas-seats-stub.mjs` | **passes**                                  |
 
 **seats.spec.ts covers:** the host adds the block and their own seat, edits it,
 and both survive a reload. The host sets a meeting point. A guest joins on a
@@ -158,7 +158,39 @@ say why they aren't the destination. The arena guide opens. At 390 and 320:
 no sideways scroll, no tap under 40 px, no text under 12 px. Play, Group and
 the dinner vote still render. Clear works.
 
-Screenshots: `seats/seats-390-host.png`, `seats/seats-320-guest.png`.
+Screenshots: `seats/seats-390-host.png`, `seats/seats-320-guest.png`. The
+tab bar across the middle is the page's fixed bar caught by an element
+screenshot; it isn't part of the section.
+
+### The rest of Hockey Night, unchanged
+
+All ten Hockey specs pass on the build with seats: acceptance (on its own
+`atlas-stub.mjs`), mobile 320/375/390, modules, multi-night,
+plan-and-results, polish, redesign and seats. Voting, nominations, picks,
+reveal, chat, invitations, removal, Run it back and the Cup are all covered
+by those.
+
+**One regression found and fixed on the way:** redesign.spec's "Now go have
+another." scrolls to Run it back. Our Seats finished loading above it and
+pushed it off screen. Our Seats is now not shown in the `morning` and
+`again` phases, when the game is over and Run it back leads Plan.
+
+### Repository gates (2026-10-22, at this branch)
+
+`tsc` clean · `eslint` 0 errors (40 pre-existing warnings, none in Hockey) ·
+`prettier --check` clean · `vitest` 3527 pass / 30 skipped · `next build` ok ·
+full `playwright test` (placeholder Supabase, critic Atlas fixture,
+`E2E_ATLAS=1`): **250 pass / 4 fail / 5 skipped**. The four are the recorded
+baseline: core-loop:26, october:554, october:570, conference-mobile:23.
+
+### Before the migration, and the rollback
+
+On a stack with the table dropped: the section says _"Seats aren't switched
+on for this night yet. Everything else works."_ Getting there, the arena
+guide, the dinner vote and the meeting point all work. A seat write answers
+**503** with that sentence. `seats-rollback.sql` refuses while a seat
+exists (_"Refusing: 1 seat row(s) exist"_), and drops the table when
+confirmed.
 
 ### How to run
 

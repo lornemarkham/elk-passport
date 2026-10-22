@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-22 — Our Seats & arena navigation: [`SEATS-AND-ARENA.md`](SEATS-AND-ARENA.md)** (seats, who's sitting together, a meeting point, walking directions to Rogers Arena from the arena's own gate list; needs `seats-migration.sql`).
+
 **2026-10-22 — coworker polish: [`PRESENTATION-POLISH.md`](PRESENTATION-POLISH.md)** (why photos were missing, real places lead the vote, mobile 390, test results).
 
 **2026-10-21 (evening) — visual overhaul:
