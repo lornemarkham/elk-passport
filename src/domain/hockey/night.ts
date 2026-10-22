@@ -4,6 +4,7 @@ import { hockeyNight } from "@/experience-lab/fixtures/hockeyNight";
 import { curatedNear } from "@/domain/collections/places";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import { walkLabel } from "./nearby";
+import { modulesOf, promptIsOn, storedModules, type ModuleId } from "./modules";
 import type {
   Brief,
   Edge,
@@ -72,8 +73,12 @@ export interface OccasionRow {
   readonly title: string;
   readonly starts_at: string;
   readonly host_id: string;
-  /** Template parameters, plus which run of nights this one belongs to. */
-  readonly details: Partial<NightDetails> & SeriesDetails;
+  /**
+   * Template parameters, which run of nights this one belongs to, and which
+   * modules the host left on (`modules.ts`; absent means all of them).
+   */
+  readonly details: Partial<NightDetails> &
+    SeriesDetails & { readonly modules?: readonly string[] };
   readonly brief: Brief | null;
 }
 
@@ -382,8 +387,14 @@ function startersFor(
 export function composeNight(
   rows: NightRows,
   meId: string,
-): { definition: ExperienceDefinition; state: ExperienceState } {
+): {
+  definition: ExperienceDefinition;
+  state: ExperienceState;
+  modules: ModuleId[];
+} {
   const { occasion } = rows;
+  const on = modulesOf(occasion.details);
+  const games = on.has("games");
   const details: NightDetails = {
     ...SYCLE_HOCKEY_NIGHT.details,
     ...occasion.details,
@@ -422,16 +433,20 @@ export function composeNight(
     host?.name ?? "the host",
     participants,
   )
-    // A template question exists on this night only if its rule row does.
-    .filter((p) =>
-      rows.prompts.some((r) => r.prompt_id === p.id && r.content === null),
+    // A template question exists on this night only if its rule row does,
+    // and shows only while the host has its module on.
+    .filter(
+      (p) =>
+        promptIsOn(p.id, on) &&
+        rows.prompts.some((r) => r.prompt_id === p.id && r.content === null),
     )
     .map((p) =>
       resolutions.has(p.id) ? { ...p, resolution: resolutions.get(p.id) } : p,
     );
 
+  // Everything a member asked comes from the toy box, which is the games module.
   const addedPrompts: Prompt[] = rows.prompts
-    .filter((r) => r.content !== null && isMember(r.asked_by))
+    .filter((r) => games && r.content !== null && isMember(r.asked_by))
     .map((r) => ({
       ...(r.content as Prompt),
       id: r.prompt_id,
@@ -452,6 +467,15 @@ export function composeNight(
                 id === "pregame-spot" ? [id, MEET_PROMPT_ID] : [id],
               ),
           }
+        : b,
+    )
+    // No toy box, no "Ask the group something stupid".
+    .map((b) => (games ? b : { ...b, inviteOwnPrompt: undefined }))
+    // Without picks, that block is only somewhere to ask the group, and must
+    // not promise anything sealed.
+    .map((b) =>
+      b.id === "picks" && !on.has("picks")
+        ? { ...b, title: "Ask the group", subtitle: undefined }
         : b,
     )
     .map((b) => (b.kind === "recap" ? { ...b, title: occasion.title } : b))
@@ -577,7 +601,7 @@ export function composeNight(
     nowOverride: null,
   };
 
-  return { definition, state };
+  return { definition, state, modules: storedModules(on) };
 }
 
 function weekday(iso: string): string {

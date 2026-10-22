@@ -8,6 +8,17 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-21 (evening) — visual overhaul:
+[`VISUAL-OVERHAUL.md`](VISUAL-OVERHAUL.md).** The night as a game-day page:
+matchup and countdown, Plan / Play / Chat / Group, real Atlas places as
+photographs, picks by thumb with a reveal. No schema or contract change.
+
+**2026-10-21 — release candidate for Friday 23 October:
+[`RELEASE-2026-10-23.md`](RELEASE-2026-10-23.md)** (inventory, what changed,
+exact steps, production checklist). New since then: the host chooses what's
+in a night (five modules, `src/domain/hockey/modules.ts`), and the morning
+after leads with "Now go have another."
+
 **2026-10-16 — more than one night.** A host now picks the game (any home
 opponent, any date) and can start as many nights as they like; the shelf
 splits coming up from already happened; **Run it back** (the lab's round-2

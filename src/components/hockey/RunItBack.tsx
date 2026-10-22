@@ -6,6 +6,7 @@ import { History, Repeat } from "lucide-react";
 import { Surface } from "@/experience-lab/ui/atoms";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import { editionLabel } from "@/domain/hockey/edition";
+import type { ModuleId } from "@/domain/hockey/modules";
 import type { GameChoice } from "@/domain/hockey/schedule";
 import type { SeriesView } from "@/domain/hockey/series";
 import { CupRoll } from "./CupRoll";
@@ -22,9 +23,11 @@ import { StartNight } from "./StartNight";
 export function LastTime({
   series,
   live,
+  className = "mx-auto max-w-2xl px-5 pt-2",
 }: {
   series: SeriesView;
   live: LiveExperience;
+  className?: string;
 }) {
   const lineage = series.lastTime;
   if (!lineage) return null;
@@ -34,7 +37,7 @@ export function LastTime({
   );
 
   return (
-    <section aria-label="Last time" className="mx-auto max-w-2xl px-5 pt-2">
+    <section aria-label="Last time" className={className}>
       <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4">
         <p className="flex items-center gap-2 text-[12px] tracking-wide text-white/40 uppercase">
           <History className="h-3.5 w-3.5" />
@@ -82,10 +85,13 @@ export function RunItBack({
   live,
   series,
   suggestion,
+  modules,
 }: {
   live: LiveExperience;
   series: SeriesView;
   suggestion: GameChoice;
+  /** What this night had in it; the next one starts the same. */
+  modules: readonly ModuleId[];
 }) {
   const [open, setOpen] = useState(false);
   const champion = live.settled ? live.standings[0] : undefined;
@@ -94,7 +100,7 @@ export function RunItBack({
   return (
     <Surface>
       <p className="font-heading text-xl font-semibold text-white">
-        {live.definition.emoji} Run it back?
+        {live.definition.emoji} Now go have another.
       </p>
       <p className="mt-1 text-[14px] text-white/60">
         There is a next one. There is always a next one.
@@ -120,6 +126,7 @@ export function RunItBack({
             suggestion={suggestion}
             name={me.name}
             after={live.definition.slug}
+            modules={modules}
             cta={`Start ${editionLabel(series.edition + 1)}`}
           />
           <p className="mt-2 text-[12px] text-white/35">
@@ -139,6 +146,17 @@ export function RunItBack({
           </button>
         )
       )}
+
+      <p className="mt-3 text-[13px] text-white/45">
+        Or not hockey at all:{" "}
+        <Link
+          href="/discovery"
+          className="inline-flex min-h-8 items-center text-white/75 underline underline-offset-4 hover:text-white"
+        >
+          go have a day
+        </Link>
+        .
+      </p>
 
       {series.cup.nights.length > 0 && (
         <div className="mt-5">

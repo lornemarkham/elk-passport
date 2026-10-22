@@ -7,7 +7,10 @@ import type {
   ExperienceState,
 } from "@/experience-lab/core/types";
 import type { PassportUser } from "@/lib/auth/currentUser";
-import { discoveryCandidates } from "@/lib/data/atlas-repo";
+import {
+  discoveryCandidates,
+  listDiscoveryCandidates,
+} from "@/lib/data/atlas-repo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import {
@@ -16,9 +19,19 @@ import {
   type NearbyPlace,
 } from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
+import {
+  modulesOf,
+  storedModules,
+  type ModuleId,
+} from "@/domain/hockey/modules";
 import { cleanName, defaultLook } from "@/domain/hockey/identity";
 import { editionOf, seriesOf } from "@/domain/hockey/edition";
-import { chooseGame, isOver, type GameRequest } from "@/domain/hockey/schedule";
+import {
+  ZONE,
+  chooseGame,
+  isOver,
+  type GameRequest,
+} from "@/domain/hockey/schedule";
 import {
   lastTime,
   sycleCup,
@@ -52,6 +65,8 @@ export interface NightSnapshot {
   readonly definition: ExperienceDefinition;
   readonly state: ExperienceState;
   readonly role: "host" | "guest";
+  /** Which modules the host has on (`domain/hockey/modules.ts`). */
+  readonly modules: ModuleId[];
 }
 
 export class NightError extends Error {
@@ -223,11 +238,13 @@ async function seriesNights(
     wanted.map(async (n) => {
       const rows = await rowsFor(db, n.id);
       if (!rows?.members.some((m) => m.user_id === user.id)) return null;
+      const { definition, state } = composeNight(rows, user.id);
       return {
         id: n.id,
         edition: n.edition,
         startsAt: n.startsAt,
-        ...composeNight(rows, user.id),
+        definition,
+        state,
       } satisfies SeriesNight;
     }),
   );
@@ -296,6 +313,8 @@ export interface StartRequest {
   readonly game?: GameRequest;
   /** "Run it back": the night this one follows. */
   readonly after?: string;
+  /** Absent: everything on, or — running it back — whatever last time had. */
+  readonly modules?: readonly string[];
 }
 
 /**
@@ -341,7 +360,16 @@ export async function createSycleNight(
       Math.max(
         ...mine.filter((n) => n.series === last.series).map((n) => n.edition),
       ) + 1;
-    details = { ...details, series: last.series, edition };
+    details = {
+      ...details,
+      series: last.series,
+      edition,
+      // Same night again means the same modules, unless the starter said.
+      modules: request.modules ? undefined : previous.modules,
+    };
+  }
+  if (request.modules) {
+    details = { ...details, modules: storedModules(request.modules) };
   }
 
   const look = defaultLook(user.id);
@@ -462,6 +490,9 @@ export async function act(
 
     case "addToy": {
       const { input, family } = action;
+      if (!modulesOf(rows.occasion.details).has("games")) {
+        throw new NightError("The host left the games out tonight.", 422);
+      }
       if (
         input.targetId &&
         !live.participants.some((p) => p.id === input.targetId)
@@ -575,6 +606,22 @@ export async function act(
       break;
     }
 
+    case "setModules": {
+      if (me.role !== "host")
+        throw new NightError("The host decides what's in tonight.", 403);
+      const { error } = await db
+        .from("passport_occasions")
+        .update({
+          details: {
+            ...rows.occasion.details,
+            modules: storedModules(action.modules),
+          },
+        })
+        .eq("id", id);
+      fail(error, "changing what's in tonight");
+      break;
+    }
+
     case "setMyEdge":
     case "setMe": {
       const patch: Partial<MemberRow> =
@@ -627,15 +674,36 @@ export async function act(
  * curated downtown list where Atlas has nothing. `outage` says Atlas could
  * not be asked — different from "nothing nearby"; the curated places still
  * come back, so an Atlas outage no longer empties the picker.
+ *
+ * Asked **for game day** (`?on=`), so Atlas can say whether a place's stated
+ * hours cover it — Discovery asks the same way for a picked day. If that read
+ * fails, the plain corpus read decides whether Atlas is really out.
  */
 async function placesNear(
   occasion: NightRows["occasion"],
 ): Promise<{ places: NearbyPlace[]; outage?: string }> {
   const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
-  const { candidates, outage } = await discoveryCandidates();
+  const { day, weekday } = gameDayOf(occasion.starts_at);
+  const { candidates, outage } = await listDiscoveryCandidates(undefined, day)
+    .then((candidates) => ({ candidates, outage: undefined }))
+    .catch(() => discoveryCandidates());
   return {
-    places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue),
+    places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
+      weekday,
+      limit: 24,
+    }),
     outage,
+  };
+}
+
+/** Game day as Vancouver has it: `YYYY-MM-DD` and `"sunday"`. */
+function gameDayOf(startsAt: string): { day: string; weekday: string } {
+  const at = new Date(startsAt);
+  return {
+    day: at.toLocaleDateString("en-CA", { timeZone: ZONE }),
+    weekday: at
+      .toLocaleDateString("en-CA", { weekday: "long", timeZone: ZONE })
+      .toLowerCase(),
   };
 }
 

@@ -1,5 +1,8 @@
 # Hockey Night — handoff to the Passport release agent (mission 289)
 
+> **Superseded by [`RELEASE-2026-10-23.md`](RELEASE-2026-10-23.md)** for the
+> Friday 23 October release. Kept as the record of the 2026-10-13 pass.
+
 Integration branch: `feature/hockey` (merge of `integration/release` e6d0b65,
 which already carries Go Have a Day, Conference and durable Arrivals).
 Verified 2026-10-13 on that merge: `tsc` clean, eslint 0 errors, vitest

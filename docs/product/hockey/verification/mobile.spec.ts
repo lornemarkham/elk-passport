@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -86,6 +87,11 @@ for (const width of [320, 375]) {
       }
     });
     await audit("night, scrolled");
+    // Every room of the night, at this width.
+    for (const name of ["Play", "Chat", "Group", "Plan"] as const) {
+      await openTab(page, name);
+      await audit(`night, ${name}`);
+    }
     console.log(report.join("\n"));
     await context.close();
   });

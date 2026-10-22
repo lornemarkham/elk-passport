@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -96,6 +97,7 @@ async function startNight(
 }
 
 async function invite(page: Page, label: string): Promise<string> {
+  await openTab(page, "Group");
   await page.getByLabel("Who the invitation is for").fill(label);
   await page.getByRole("button", { name: "Make a link" }).click();
   return new URL((await page.getByTestId("invite-url").textContent())!.trim())
@@ -268,8 +270,10 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
     maya.page.getByRole("navigation", { name: "The night" }),
   ).toContainText("The morning after");
   await shot(maya.page, "2-kraken-morning-after-phone");
+  // The morning after opens on the results; the hero's way out is the next one.
+  await maya.page.getByRole("button", { name: "Now go have another." }).click();
   const runItBack = maya.page.getByRole("region", { name: "Run it back" });
-  await expect(runItBack.getByText("Run it back?")).toBeVisible();
+  await expect(runItBack.getByText("Now go have another.")).toBeVisible();
   await runItBack.getByRole("button", { name: "Start the next one" }).click();
   await maya.page.setViewportSize({ width: 320, height: 700 });
   await noSidewaysScroll(maya.page);
@@ -286,12 +290,14 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   // She hosts it, so she gets the curator's four taps.
   await maya.page.getByRole("button", { name: /Skip/ }).click();
   await expect(maya.page.getByText("Rogers Arena · No. 2")).toBeVisible();
+  await openTab(maya.page, "Play");
   const lastTime = maya.page.getByRole("region", { name: "Last time" });
   await expect(lastTime).toContainText("No. 1 · Canucks vs Kraken");
   await expect(lastTime).toContainText(/Maya is defending the Sycle Cup/);
   await expect(lastTime).toContainText(/Points were not/);
 
   // Last time's crew, one tap from a labelled link.
+  await openTab(maya.page, "Group");
   const guestList = maya.page.getByRole("region", { name: "Guest list" });
   await guestList.getByRole("button", { name: /Lorne/ }).click();
   await expect(guestList.getByLabel("Who the invitation is for")).toHaveValue(
@@ -312,6 +318,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   await lorne.page.goto(forLorne);
   await lorne.page.getByRole("button", { name: "I'm in" }).click();
   await expect(lorne.page).toHaveURL(new RegExp(`/hockey/${flames}$`));
+  await openTab(lorne.page, "Play");
   await expect(
     lorne.page.getByRole("region", { name: "Last time" }),
   ).toContainText(/Maya is defending the Sycle Cup/);

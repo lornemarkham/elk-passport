@@ -71,6 +71,7 @@ async function hostWithInvite(browser: Browser, hostName: string) {
   await expect(host.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = host.page.url().split("/").pop()!;
   await host.page.getByRole("button", { name: /Skip/ }).click();
+  await host.page.getByRole("button", { name: "Invite" }).click();
   await host.page.getByLabel("Who the invitation is for").fill("Maya");
   await host.page.getByRole("button", { name: "Make a link" }).click();
   const invitePath = new URL(

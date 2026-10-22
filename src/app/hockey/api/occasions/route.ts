@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { modulesValue } from "@/domain/hockey/actions";
 import { asMember } from "../../_server/respond";
 import { NightError, createSycleNight, myNights } from "../../_server/night";
 
@@ -18,6 +19,7 @@ const StartSchema = z.object({
     })
     .optional(),
   after: z.string().uuid().optional(),
+  modules: modulesValue.optional(),
 });
 
 /** Start a Sycle Hockey Night — a new one, or the next one. Whoever starts it hosts it. */
