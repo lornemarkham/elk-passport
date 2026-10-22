@@ -586,23 +586,21 @@ export function QuestsPanel({
               </button>
             ))}
           </div>
-          <AnimatePresence>
-            {starting && (
-              <motion.div
-                key={starting}
-                initial={reduced ? false : { opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <StartQuest
-                  kindId={starting}
-                  arena={arena}
-                  onDone={() => setStarting(null)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Enter-only: with an exit animation, opening a second quest
+              while the first form was still leaving removed the new one. */}
+          {starting && (
+            <motion.div
+              key={starting}
+              initial={reduced ? false : { opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <StartQuest
+                kindId={starting}
+                arena={arena}
+                onDone={() => setStarting(null)}
+              />
+            </motion.div>
+          )}
         </>
       )}
       {!live && open.length === 0 && (
@@ -818,7 +816,8 @@ function QuestCard({
           <div className="mt-1 flex flex-wrap gap-2">
             {suggestions.map(({ spot, apart }) => (
               <Btn key={spot.id} onClick={() => onShow(spot.id)}>
-                {spot.name} · {apart === 0 ? "right there" : `${apart} along`}
+                {spot.name} by {spot.by.join("–")} ·{" "}
+                {apart === 0 ? "right there" : `${apart} along`}
               </Btn>
             ))}
           </div>

@@ -78,7 +78,12 @@ export function IncomingPings({
     .slice(0, 2);
 
   return (
-    <div aria-live="polite" className="mt-3 flex flex-col gap-2 empty:hidden">
+    <div
+      aria-live="polite"
+      // Over the page, not in it: a ping arriving must never push what
+      // somebody is about to tap out from under their thumb.
+      className="pointer-events-none fixed inset-x-0 top-2 z-40 mx-auto flex max-w-2xl flex-col gap-2 px-3 empty:hidden"
+    >
       <AnimatePresence initial={false}>
         {shown.map((p) => {
           const from = people.get(p.from)!;
@@ -144,7 +149,7 @@ export function IncomingPings({
               initial={reduced ? false : { opacity: 0, y: -16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reduced ? { opacity: 0 } : { opacity: 0, x: 80 }}
-              className="rounded-2xl border-l-4 bg-white px-4 py-3 text-[#070b14] shadow-lg"
+              className="pointer-events-auto rounded-2xl border-l-4 bg-white px-4 py-3 text-[#070b14] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
               style={{ borderColor: hueColour(from.hue) }}
             >
               <p className="text-[15px] leading-snug font-semibold">

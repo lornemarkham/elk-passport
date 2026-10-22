@@ -415,7 +415,9 @@ export function ArenaMode({
         </div>
       </div>
 
-      <AnimatePresence>
+      {/* One sheet at a time, each waiting for the last to leave: with
+          overlapping exits, a quick second tap lost its sheet. */}
+      <AnimatePresence mode="wait">
         {selected && !picking && (
           <PlaceSheet
             key={selected}
@@ -425,6 +427,8 @@ export function ArenaMode({
             onClose={() => setSelected(null)}
           />
         )}
+      </AnimatePresence>
+      <AnimatePresence mode="wait">
         {checkInOpen && (
           <CheckInSheet
             key="checkin"
