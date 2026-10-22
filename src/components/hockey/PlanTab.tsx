@@ -19,6 +19,7 @@ import type { NearbyPlace } from "@/domain/hockey/nearby";
 import { planItems, type PlanItem } from "@/domain/hockey/plan";
 import { nextGameAfter } from "@/domain/hockey/schedule";
 import { OurSeats } from "./OurSeats";
+import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { RunItBack } from "./RunItBack";
 import {
   BallotVenueCard,
@@ -71,6 +72,12 @@ export function PlanTab({
 
       {/* The morning after, the seats are history and Run it back leads.
           (Shown then, its late-loading height pushed Run it back off screen.) */}
+      {live.me &&
+        !AFTER_THE_NIGHT.has(live.phase.id) &&
+        isRogersArena(live.definition.kicker) && (
+          <ArenaDoor slug={night.state.slug} />
+        )}
+
       {live.me && !AFTER_THE_NIGHT.has(live.phase.id) && (
         <OurSeats
           slug={night.state.slug}

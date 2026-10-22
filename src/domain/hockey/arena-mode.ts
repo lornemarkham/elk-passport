@@ -410,6 +410,8 @@ export interface ArenaView {
   readonly me: string;
   readonly role: "host" | "guest";
   readonly people: readonly ArenaPerson[];
+  /** The section of the seats the host bought for the group, if entered. */
+  readonly block?: string;
   readonly meetup?: MeetupLike & { readonly time?: string };
   readonly checkins: readonly CheckIn[];
   readonly pings: readonly Ping[];

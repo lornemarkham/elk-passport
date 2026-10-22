@@ -31,6 +31,9 @@ export const SEATS_OUT: Oval = { a: 124, b: 84, n: 3 };
 /** The middle of the concourse, where spots sit. */
 export const CONCOURSE: Oval = { a: 140, b: 100, n: 2.8 };
 export const CONCOURSE_EDGE: Oval = { a: 156, b: 116, n: 2.6 };
+/** The least room between two pins on the concourse, as a fraction of the way round. */
+const MIN_GAP = 0.0135;
+
 /** Open areas off the ring. */
 const PLAZA: Oval = { a: 166, b: 132, n: 2.4 };
 
@@ -183,13 +186,36 @@ export function placeSpots(level: ArenaLevel, spots: readonly Spot[]) {
     }
   }
   const placed: PlacedSpot[] = [];
-  const step = 0.0125;
-  for (const group of onRing.values()) {
+  // Every ring spot starts at its sections' middle; neighbours too close
+  // together are then pushed apart round the ring until each has room,
+  // staying as near their section as the crowd allows.
+  const ring = [...onRing.values()].flatMap((group) => {
     const f = anchorFraction(level, group[0].by);
-    group.forEach((s, i) => {
-      const offset = (i - (group.length - 1) / 2) * step;
-      placed.push({ spot: s, at: pointAt(CONCOURSE, f + offset) });
-    });
+    return group.map((spot, i) => ({
+      spot,
+      f: f + (i - (group.length - 1) / 2) * 0.001,
+    }));
+  });
+  ring.sort((a, b) => a.f - b.f);
+  const gap = Math.min(MIN_GAP, 1 / Math.max(ring.length, 1));
+  for (let pass = 0; pass < 200; pass++) {
+    let moved = false;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i];
+      const b = ring[(i + 1) % ring.length];
+      let d = b.f - a.f;
+      if (i === ring.length - 1) d += 1;
+      if (d < gap - 1e-6) {
+        const push = (gap - d) / 2;
+        a.f -= push;
+        b.f += push;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  for (const { spot, f } of ring) {
+    placed.push({ spot, at: pointAt(CONCOURSE, f) });
   }
   for (const [zone, group] of inZone) {
     const f = anchorFraction(level, group[0].by);

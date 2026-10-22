@@ -1,0 +1,194 @@
+"use client";
+
+import { useMemo, useSyncExternalStore } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  agoWords,
+  placeOf,
+  type ArenaView,
+  type Ping,
+} from "@/domain/hockey/arena-mode";
+import { hueColour } from "./ArenaMap";
+
+/** A ping older than this has done its job; it stops shouting. */
+const SHOUT_FOR_MS = 15 * 60_000;
+const EVENT = "arena:pings-dismissed";
+
+function subscribe(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(EVENT, onChange);
+  };
+}
+
+/**
+ * **Somebody wants you.** Pings addressed to me, or to everybody, from
+ * somebody else — newest first, at most two at a time, each with the one
+ * button that answers it. Dismissed ones are remembered on this phone only.
+ */
+export function IncomingPings({
+  view,
+  now,
+  onShow,
+  onCheckIn,
+  onReply,
+}: {
+  view: ArenaView;
+  now: Date;
+  onShow: (placeId: string) => void;
+  onCheckIn: () => void;
+  onReply: (ping: Ping, kind: "coming" | "cant") => void;
+}) {
+  const reduced = useReducedMotion() ?? false;
+  const key = `arena:${view.nightId}:dismissed`;
+  const stored = useSyncExternalStore(
+    subscribe,
+    () => window.localStorage.getItem(key) ?? "",
+    () => "",
+  );
+  const dismissed = useMemo(
+    () => new Set(stored.split(",").filter(Boolean)),
+    [stored],
+  );
+
+  const dismiss = (id: string) => {
+    const next = new Set(dismissed).add(id);
+    window.localStorage.setItem(key, [...next].slice(-80).join(","));
+    window.dispatchEvent(new Event(EVENT));
+  };
+
+  const people = new Map(view.people.map((p) => [p.id, p]));
+  const answered = new Set(
+    view.pings
+      .filter((p) => p.from === view.me && p.replyTo)
+      .map((p) => p.replyTo as string),
+  );
+  const shown = view.pings
+    .filter(
+      (p) =>
+        p.from !== view.me &&
+        (p.to === null || p.to === view.me) &&
+        !dismissed.has(p.id) &&
+        !answered.has(p.id) &&
+        now.getTime() - new Date(p.at).getTime() < SHOUT_FOR_MS &&
+        people.has(p.from),
+    )
+    .slice(0, 2);
+
+  return (
+    <div aria-live="polite" className="mt-3 flex flex-col gap-2 empty:hidden">
+      <AnimatePresence initial={false}>
+        {shown.map((p) => {
+          const from = people.get(p.from)!;
+          const place = p.place ? placeOf(p.place, view.meetup) : undefined;
+          const { text, actions } = (() => {
+            switch (p.kind) {
+              case "where":
+                return {
+                  text: `${from.name} is looking for you, legend. Where you at?`,
+                  actions: (
+                    <Act onClick={() => (onCheckIn(), dismiss(p.id))}>
+                      📍 Check in
+                    </Act>
+                  ),
+                };
+              case "here":
+                return {
+                  text: `${from.name}: “I'm over here, genius” — ${place?.label ?? "somewhere"}`,
+                  actions: place && (
+                    <Act onClick={() => (onShow(place.id), dismiss(p.id))}>
+                      Show me
+                    </Act>
+                  ),
+                };
+              case "herd":
+              case "meet":
+                return {
+                  text:
+                    p.kind === "herd"
+                      ? `🐃 ${from.name} is rounding up the herd at ${place?.label ?? "the meeting point"}`
+                      : `🤝 ${from.name} wants to meet ${p.to ? "you" : "everyone"} at ${place?.label ?? "a spot"}`,
+                  actions: (
+                    <>
+                      <Act onClick={() => onReply(p, "coming")}>On my way</Act>
+                      <Act ghost onClick={() => onReply(p, "cant")}>
+                        Can&apos;t
+                      </Act>
+                      {place && !place.offMap && (
+                        <Act ghost onClick={() => onShow(place.id)}>
+                          Where?
+                        </Act>
+                      )}
+                    </>
+                  ),
+                };
+              case "coming":
+                return {
+                  text: `✅ ${from.name} is on the way.`,
+                  actions: null,
+                };
+              case "cant":
+                return {
+                  text: `🙅 ${from.name} can't make it.`,
+                  actions: null,
+                };
+            }
+          })();
+          return (
+            <motion.div
+              key={p.id}
+              data-ping={p.kind}
+              layout={!reduced}
+              initial={reduced ? false : { opacity: 0, y: -16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduced ? { opacity: 0 } : { opacity: 0, x: 80 }}
+              className="rounded-2xl border-l-4 bg-white px-4 py-3 text-[#070b14] shadow-lg"
+              style={{ borderColor: hueColour(from.hue) }}
+            >
+              <p className="text-[15px] leading-snug font-semibold">
+                <span aria-hidden className="mr-1">
+                  {from.emoji}
+                </span>
+                {text}
+              </p>
+              <p className="mt-0.5 text-[12px] text-black/55">
+                {agoWords(p.at, now)}
+                {p.note ? ` · “${p.note}”` : ""}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {actions}
+                <Act ghost onClick={() => dismiss(p.id)}>
+                  Dismiss
+                </Act>
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Act({
+  children,
+  onClick,
+  ghost,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  ghost?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-10 rounded-full px-3.5 text-[14px] font-bold ${
+        ghost ? "bg-black/6 text-black/75" : "bg-[#00843d] text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
