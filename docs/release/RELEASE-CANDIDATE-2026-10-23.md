@@ -1,5 +1,7 @@
 # Release candidate — 2026-10-23 (Operation Ship It)
 
+> **Superseded by the final integration:** Conference Together `3de2b72` is now merged. See `PRODUCTION-RUNBOOK-2026-10-23.md` for the candidate, gates, migration order and env. The "Conference together: out" row below is historical (`a62c35d` was a mid-flight checkpoint).
+
 **Candidate:** `integration/release` @ `f9c97dd` plus this document (`ee30857` Hockey + `8a7a6b0` October on top of `d8a1c0a`).
 **Status:** assembled and gated on Metatron. **Not pushed, not migrated, not deployed.**
 No production access (Vercel, Supabase) exists from this checkout.
