@@ -40,7 +40,11 @@ export function DetailsForm({
     accent: initial?.branding.accent ?? "#1f6feb",
     modules: new Set<ModuleId>(
       initial?.modules ??
-        MODULES.filter((m) => m.status === "built").map((m) => m.id),
+        // Every built module, except chat: VISION §7 leans "optional and off
+        // by default" until a person decides otherwise. One tick turns it on.
+        MODULES.filter((m) => m.status === "built" && m.id !== "community").map(
+          (m) => m.id,
+        ),
     ),
   });
   const [busy, setBusy] = useState(false);

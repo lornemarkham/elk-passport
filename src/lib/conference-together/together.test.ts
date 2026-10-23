@@ -521,6 +521,39 @@ describe("memories", () => {
   });
 });
 
+describe("private plan photos", () => {
+  it("keeps a private plan's photos to the people in it, organisers included", async () => {
+    const w = world();
+    const id = await conference(w);
+    const ben = await memberOf(w, id, BEN);
+    const made = await plans.createPlan(w.plans(), ANA, id, {
+      kind: "dinner",
+      title: "Just us",
+      days: ["2026-10-27"],
+      time: "19:00",
+      audience: "selected",
+      invited: [ben],
+    });
+    const planId = made.ok ? made.planId : "";
+    const added = await mem.addPhoto(w.memories(), BEN, id, {
+      data: JPEG,
+      planId,
+    });
+    const photoId = added.ok ? added.id : "";
+    expect((await mem.readAlbum(w.memories(), ORG, id))!.photos).toEqual([]);
+    expect(await mem.photoBytes(w.memories(), ORG, id, photoId)).toBeNull();
+    expect(
+      await mem.reactToPhoto(w.memories(), ORG, id, photoId, "❤️"),
+    ).toMatchObject({ error: "not-found" });
+    expect(await mem.removePhoto(w.memories(), ORG, id, photoId)).toMatchObject(
+      { error: "not-found" },
+    );
+    expect((await mem.readAlbum(w.memories(), ANA, id))!.photos).toHaveLength(
+      1,
+    );
+  });
+});
+
 describe("leaving", () => {
   it("forgets a person's plans, answers, messages, position and photos", async () => {
     const w = world();

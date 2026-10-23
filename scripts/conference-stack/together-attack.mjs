@@ -142,65 +142,142 @@ await see(bob, C.id, "Bob");
 console.log("plans");
 const P = token(12);
 let r = await rest(bob, "POST", "/passport_conference_plans", {
-  id: P, conference_id: C.id, organiser_id: bobM, kind: "morning-walk",
-  title: "Walk", audience: "everyone",
+  id: P,
+  conference_id: C.id,
+  organiser_id: bobM,
+  kind: "morning-walk",
+  title: "Walk",
+  audience: "everyone",
 });
 check(r.status < 300, "a member makes a plan as themselves");
 r = await rest(bob, "POST", "/passport_conference_plans", {
-  id: token(12), conference_id: C.id, organiser_id: carolM, kind: "lunch",
-  title: "In Carol's name", audience: "everyone",
+  id: token(12),
+  conference_id: C.id,
+  organiser_id: carolM,
+  kind: "lunch",
+  title: "In Carol's name",
+  audience: "everyone",
 });
 check(r.status >= 400, "…but not in somebody else's name");
 r = await rest(mallory, "POST", "/passport_conference_plans", {
-  id: token(12), conference_id: C.id, organiser_id: token(9), kind: "lunch",
-  title: "Gatecrash", audience: "everyone",
+  id: token(12),
+  conference_id: C.id,
+  organiser_id: token(9),
+  kind: "lunch",
+  title: "Gatecrash",
+  audience: "everyone",
 });
 check(r.status >= 400, "an outsider cannot make a plan in it");
-check((await count(mallory, "passport_conference_plans", `conference_id=eq.${C.id}`)) === 0, "an outsider reads no plans");
-check((await count(null, "passport_conference_plans", `conference_id=eq.${C.id}`)) === 0, "signed out reads no plans");
-check((await count(eve, "passport_conference_plans", `conference_id=eq.${C.id}`)) === 0, "another conference's organiser reads none");
+check(
+  (await count(
+    mallory,
+    "passport_conference_plans",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "an outsider reads no plans",
+);
+check(
+  (await count(
+    null,
+    "passport_conference_plans",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "signed out reads no plans",
+);
+check(
+  (await count(
+    eve,
+    "passport_conference_plans",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "another conference's organiser reads none",
+);
 
 const S = token(12);
 r = await rest(bob, "POST", "/passport_conference_plans", {
-  id: S, conference_id: C.id, organiser_id: bobM, kind: "lunch",
-  title: "Just Bob and Alice", audience: "selected",
+  id: S,
+  conference_id: C.id,
+  organiser_id: bobM,
+  kind: "lunch",
+  title: "Just Bob and Alice",
+  audience: "selected",
 });
 r = await rest(bob, "POST", "/passport_conference_plan_invites", {
-  plan_id: S, conference_id: C.id, member_id: aliceM,
+  plan_id: S,
+  conference_id: C.id,
+  member_id: aliceM,
 });
 check(r.status < 300, "the organiser of a plan invites a coworker");
-check((await count(alice, "passport_conference_plans", `id=eq.${S}`)) === 1, "the invitee sees the private plan");
-check((await count(carol, "passport_conference_plans", `id=eq.${S}`)) === 0, "a member not invited does not");
+check(
+  (await count(alice, "passport_conference_plans", `id=eq.${S}`)) === 1,
+  "the invitee sees the private plan",
+);
+check(
+  (await count(carol, "passport_conference_plans", `id=eq.${S}`)) === 0,
+  "a member not invited does not",
+);
 r = await rest(carol, "POST", "/passport_conference_plan_invites", {
-  plan_id: S, conference_id: C.id, member_id: carolM,
+  plan_id: S,
+  conference_id: C.id,
+  member_id: carolM,
 });
 check(r.status >= 400, "…and cannot invite herself");
 r = await rest(bob, "POST", "/passport_conference_plan_invites", {
-  plan_id: S, conference_id: O.id, member_id: O.member,
+  plan_id: S,
+  conference_id: O.id,
+  member_id: O.member,
 });
 check(r.status >= 400, "a plan cannot invite someone from another conference");
 
-r = await rest(carol, "PATCH", `/passport_conference_plans?id=eq.${P}`, { title: "Hijacked" });
+r = await rest(carol, "PATCH", `/passport_conference_plans?id=eq.${P}`, {
+  title: "Hijacked",
+});
 check(denied(r), "a member cannot edit somebody else's plan");
-r = await rest(alice, "PATCH", `/passport_conference_plans?id=eq.${P}`, { title: "Walk (moved)" });
+r = await rest(alice, "PATCH", `/passport_conference_plans?id=eq.${P}`, {
+  title: "Walk (moved)",
+});
 check(rows(r).length === 1, "a conference organiser can");
-r = await rest(bob, "PATCH", `/passport_conference_plans?id=eq.${P}`, { organiser_user: carol.id });
-check(r.status >= 400, "nobody can hand a plan to someone else by writing its owner");
+r = await rest(bob, "PATCH", `/passport_conference_plans?id=eq.${P}`, {
+  organiser_user: carol.id,
+});
+check(
+  r.status >= 400,
+  "nobody can hand a plan to someone else by writing its owner",
+);
 r = await rest(carol, "DELETE", `/passport_conference_plans?id=eq.${P}`);
 check(denied(r), "a member cannot cancel somebody else's plan");
 
 const occP = token(9);
 const occS = token(9);
-r = await rest(bob, "POST", "/passport_conference_plan_occurrences", { id: occP, plan_id: P, conference_id: C.id, starts_at: soon(600) });
+r = await rest(bob, "POST", "/passport_conference_plan_occurrences", {
+  id: occP,
+  plan_id: P,
+  conference_id: C.id,
+  starts_at: soon(600),
+});
 check(r.status < 300, "the organiser adds an occurrence");
-await rest(bob, "POST", "/passport_conference_plan_occurrences", { id: occS, plan_id: S, conference_id: C.id, starts_at: soon(700) });
-r = await rest(carol, "POST", "/passport_conference_plan_occurrences", { id: token(9), plan_id: P, conference_id: C.id, starts_at: soon(800) });
+await rest(bob, "POST", "/passport_conference_plan_occurrences", {
+  id: occS,
+  plan_id: S,
+  conference_id: C.id,
+  starts_at: soon(700),
+});
+r = await rest(carol, "POST", "/passport_conference_plan_occurrences", {
+  id: token(9),
+  plan_id: P,
+  conference_id: C.id,
+  starts_at: soon(800),
+});
 check(r.status >= 400, "a member cannot add days to somebody else's plan");
 
 console.log("rsvps");
 const rsvp = (who, member, occ, plan, answer = "in", conf = C.id) =>
   rest(who, "POST", "/passport_conference_rsvps", {
-    occurrence_id: occ, plan_id: plan, conference_id: conf, member_id: member, answer,
+    occurrence_id: occ,
+    plan_id: plan,
+    conference_id: conf,
+    member_id: member,
+    answer,
   });
 r = await rsvp(carol, carolM, occP, P);
 check(r.status < 300, "a hidden member answers for herself");
@@ -213,32 +290,98 @@ check(r.status >= 400, "…nor with another plan's occurrence");
 r = await rsvp(mallory, token(9), occP, P);
 check(r.status >= 400, "an outsider cannot answer");
 r = await rsvp(bob, bobM, occP, P);
-r = await rest(carol, "PATCH", `/passport_conference_rsvps?occurrence_id=eq.${occP}&user_id=eq.${bob.id}`, { answer: "out" });
+r = await rest(
+  carol,
+  "PATCH",
+  `/passport_conference_rsvps?occurrence_id=eq.${occP}&user_id=eq.${bob.id}`,
+  { answer: "out" },
+);
 check(denied(r), "nobody changes somebody else's answer");
-r = await rest(carol, "PATCH", `/passport_conference_rsvps?occurrence_id=eq.${occP}&user_id=eq.${carol.id}`, { member_id: bobM });
-check(r.status >= 400 || rows(r).length === 0, "…or passes their answer off as somebody else's");
-r = await rest(carol, "DELETE", `/passport_conference_rsvps?occurrence_id=eq.${occP}&user_id=eq.${bob.id}`);
+r = await rest(
+  carol,
+  "PATCH",
+  `/passport_conference_rsvps?occurrence_id=eq.${occP}&user_id=eq.${carol.id}`,
+  { member_id: bobM },
+);
+check(
+  r.status >= 400 || rows(r).length === 0,
+  "…or passes their answer off as somebody else's",
+);
+r = await rest(
+  carol,
+  "DELETE",
+  `/passport_conference_rsvps?occurrence_id=eq.${occP}&user_id=eq.${bob.id}`,
+);
 check(denied(r), "…or deletes it");
-check((await count(carol, "passport_conference_rsvps", `occurrence_id=eq.${occS}`)) === 0, "answers on a private plan are private");
+check(
+  (await count(
+    carol,
+    "passport_conference_rsvps",
+    `occurrence_id=eq.${occS}`,
+  )) === 0,
+  "answers on a private plan are private",
+);
 
 console.log("votes");
 const optP = token(9);
 const optS = token(9);
-r = await rest(carol, "POST", "/passport_conference_plan_options", { id: optP, plan_id: P, conference_id: C.id, member_id: carolM, place_id: "curated:vancouver:chambar", name: "Chambar" });
+r = await rest(carol, "POST", "/passport_conference_plan_options", {
+  id: optP,
+  plan_id: P,
+  conference_id: C.id,
+  member_id: carolM,
+  place_id: "curated:vancouver:chambar",
+  name: "Chambar",
+});
 check(r.status < 300, "a member suggests a place");
-await rest(bob, "POST", "/passport_conference_plan_options", { id: optS, plan_id: S, conference_id: C.id, member_id: bobM, place_id: "curated:vancouver:miku", name: "Miku" });
-r = await rest(carol, "POST", "/passport_conference_plan_options", { id: token(9), plan_id: S, conference_id: C.id, member_id: carolM, place_id: "x", name: "x" });
+await rest(bob, "POST", "/passport_conference_plan_options", {
+  id: optS,
+  plan_id: S,
+  conference_id: C.id,
+  member_id: bobM,
+  place_id: "curated:vancouver:miku",
+  name: "Miku",
+});
+r = await rest(carol, "POST", "/passport_conference_plan_options", {
+  id: token(9),
+  plan_id: S,
+  conference_id: C.id,
+  member_id: carolM,
+  place_id: "x",
+  name: "x",
+});
 check(r.status >= 400, "…not on a plan she can't see");
-r = await rest(carol, "POST", "/passport_conference_plan_votes", { plan_id: P, option_id: optP, conference_id: C.id, member_id: carolM });
+r = await rest(carol, "POST", "/passport_conference_plan_votes", {
+  plan_id: P,
+  option_id: optP,
+  conference_id: C.id,
+  member_id: carolM,
+});
 check(r.status < 300, "a member votes");
-r = await rest(bob, "POST", "/passport_conference_plan_votes", { plan_id: P, option_id: optS, conference_id: C.id, member_id: bobM });
+r = await rest(bob, "POST", "/passport_conference_plan_votes", {
+  plan_id: P,
+  option_id: optS,
+  conference_id: C.id,
+  member_id: bobM,
+});
 check(r.status >= 400, "a vote must be for one of the plan's own places");
-r = await rest(carol, "POST", "/passport_conference_plan_votes", { plan_id: P, option_id: optP, conference_id: C.id, member_id: carolM });
+r = await rest(carol, "POST", "/passport_conference_plan_votes", {
+  plan_id: P,
+  option_id: optP,
+  conference_id: C.id,
+  member_id: carolM,
+});
 check(r.status >= 400, "one vote per person per plan");
 
 console.log("chat");
 const say = (who, member, body, plan = null, id = token(9)) =>
-  rest(who, "POST", "/passport_conference_messages", { id, conference_id: C.id, member_id: member, plan_id: plan, body });
+  rest(who, "POST", "/passport_conference_messages", {
+    id,
+    conference_id: C.id,
+    member_id: member,
+    plan_id: plan,
+    body,
+  });
 r = await say(carol, carolM, "psst");
 check(r.status >= 400, "a hidden member cannot post");
 const m1 = token(9);
@@ -249,22 +392,54 @@ check(r.status >= 400, "…but not as someone else");
 const mS = token(9);
 r = await say(bob, bobM, "Table for two", S, mS);
 check(r.status < 300, "the plan's thread takes its members' messages");
-check((await count(carol, "passport_conference_messages", `id=eq.${mS}`)) === 0, "a private plan's thread is unreadable to others");
-check((await count(carol, "passport_conference_messages", `id=eq.${m1}`)) === 1, "the room is readable to every member, hidden too");
-check((await count(mallory, "passport_conference_messages", `conference_id=eq.${C.id}`)) === 0, "an outsider reads no chat");
-r = await rest(carol, "POST", "/passport_conference_message_reactions", { message_id: mS, conference_id: C.id, member_id: carolM, emoji: "🔥" });
+check(
+  (await count(carol, "passport_conference_messages", `id=eq.${mS}`)) === 0,
+  "a private plan's thread is unreadable to others",
+);
+check(
+  (await count(carol, "passport_conference_messages", `id=eq.${m1}`)) === 1,
+  "the room is readable to every member, hidden too",
+);
+check(
+  (await count(
+    mallory,
+    "passport_conference_messages",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "an outsider reads no chat",
+);
+r = await rest(carol, "POST", "/passport_conference_message_reactions", {
+  message_id: mS,
+  conference_id: C.id,
+  member_id: carolM,
+  emoji: "🔥",
+});
 check(r.status >= 400, "no reacting to a thread you can't read");
-r = await rest(eve, "POST", "/passport_conference_message_reactions", { message_id: m1, conference_id: O.id, member_id: O.member, emoji: "🔥" });
+r = await rest(eve, "POST", "/passport_conference_message_reactions", {
+  message_id: m1,
+  conference_id: O.id,
+  member_id: O.member,
+  emoji: "🔥",
+});
 check(r.status >= 400, "no reacting across conferences");
-r = await rest(carol, "POST", "/passport_conference_message_reactions", { message_id: m1, conference_id: C.id, member_id: carolM, emoji: "💩" });
+r = await rest(carol, "POST", "/passport_conference_message_reactions", {
+  message_id: m1,
+  conference_id: C.id,
+  member_id: carolM,
+  emoji: "💩",
+});
 check(r.status >= 400, "only the offered reactions");
 r = await rest(carol, "DELETE", `/passport_conference_messages?id=eq.${m1}`);
 check(denied(r), "a member cannot delete somebody else's message");
 // A plan only Bob is in: the conference organiser is not invited.
 const S2 = token(12);
 await rest(bob, "POST", "/passport_conference_plans", {
-  id: S2, conference_id: C.id, organiser_id: bobM, kind: "custom",
-  title: "Bob alone", audience: "selected",
+  id: S2,
+  conference_id: C.id,
+  organiser_id: bobM,
+  kind: "custom",
+  title: "Bob alone",
+  audience: "selected",
 });
 const mS2 = token(9);
 await say(bob, bobM, "note to self", S2, mS2);
@@ -277,7 +452,14 @@ check(rows(r).length === 1, "…but moderates the room");
 
 console.log("find my people");
 const share = (who, member, expires, extra = {}) =>
-  rest(who, "POST", "/passport_conference_locations", { conference_id: C.id, member_id: member, lat: 49.2888, lon: -123.1166, expires_at: expires, ...extra });
+  rest(who, "POST", "/passport_conference_locations", {
+    conference_id: C.id,
+    member_id: member,
+    lat: 49.2888,
+    lon: -123.1166,
+    expires_at: expires,
+    ...extra,
+  });
 r = await share(carol, carolM, soon(30));
 check(r.status >= 400, "a hidden member cannot share where she is");
 r = await share(bob, bobM, soon(5 * 60));
@@ -288,30 +470,95 @@ r = await share(bob, aliceM, soon(30));
 check(r.status >= 400, "no sharing as somebody else");
 r = await share(bob, bobM, soon(30));
 check(r.status < 300, "a seen member shares for 30 minutes");
-check((await count(alice, "passport_conference_locations", `conference_id=eq.${C.id}`)) === 1, "coworkers see it");
-check((await count(mallory, "passport_conference_locations", `conference_id=eq.${C.id}`)) === 0, "outsiders do not");
-check((await count(null, "passport_conference_locations", `conference_id=eq.${C.id}`)) === 0, "signed out does not");
-r = await rest(bob, "PATCH", `/passport_conference_locations?user_id=eq.${bob.id}`, { expires_at: soon(10 * 60) });
-check(r.status >= 400 || rows(r).length === 0, "a share cannot be stretched past four hours");
-r = await rest(carol, "DELETE", `/passport_conference_locations?user_id=eq.${bob.id}`);
+check(
+  (await count(
+    alice,
+    "passport_conference_locations",
+    `conference_id=eq.${C.id}`,
+  )) === 1,
+  "coworkers see it",
+);
+check(
+  (await count(
+    mallory,
+    "passport_conference_locations",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "outsiders do not",
+);
+check(
+  (await count(
+    null,
+    "passport_conference_locations",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "signed out does not",
+);
+r = await rest(
+  bob,
+  "PATCH",
+  `/passport_conference_locations?user_id=eq.${bob.id}`,
+  { expires_at: soon(10 * 60) },
+);
+check(
+  r.status >= 400 || rows(r).length === 0,
+  "a share cannot be stretched past four hours",
+);
+r = await rest(
+  carol,
+  "DELETE",
+  `/passport_conference_locations?user_id=eq.${bob.id}`,
+);
 check(denied(r), "nobody else can stop (or erase) your share");
 await see(bob, C.id, null);
-check((await count(alice, "passport_conference_locations", `conference_id=eq.${C.id}`)) === 0, "going hidden takes you off the map at once");
+check(
+  (await count(
+    alice,
+    "passport_conference_locations",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "going hidden takes you off the map at once",
+);
 await see(bob, C.id, "Bob");
-r = await rest(bob, "DELETE", `/passport_conference_locations?user_id=eq.${bob.id}`);
+r = await rest(
+  bob,
+  "DELETE",
+  `/passport_conference_locations?user_id=eq.${bob.id}`,
+);
 check(rows(r).length === 1, "stopping deletes the row");
 r = await share(bob, bobM, soon(0.03));
 await new Promise((res) => setTimeout(res, 2500));
-check((await count(alice, "passport_conference_locations", `conference_id=eq.${C.id}`)) === 0, "an expired share is unreadable");
+check(
+  (await count(
+    alice,
+    "passport_conference_locations",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "an expired share is unreadable",
+);
 r = await rpc(alice, "passport_conference_locations_purge", {});
 check(r.status < 300, "anyone signed in can sweep expired shares");
-check((await count(bob, "passport_conference_locations", `user_id=eq.${bob.id}`)) === 0, "…and they are gone, even for their owner");
+check(
+  (await count(
+    bob,
+    "passport_conference_locations",
+    `user_id=eq.${bob.id}`,
+  )) === 0,
+  "…and they are gone, even for their owner",
+);
 r = await rpc(null, "passport_conference_locations_purge", {});
 check(r.status >= 400, "signed out cannot call it");
 
 console.log("memories");
 const photo = (who, member, plan = null, id = token(9)) =>
-  rest(who, "POST", "/passport_conference_photos", { id, conference_id: C.id, member_id: member, plan_id: plan, caption: "x", data: JPEG });
+  rest(who, "POST", "/passport_conference_photos", {
+    id,
+    conference_id: C.id,
+    member_id: member,
+    plan_id: plan,
+    caption: "x",
+    data: JPEG,
+  });
 r = await photo(carol, carolM);
 check(r.status >= 400, "a hidden member cannot add photos");
 const ph = token(9);
@@ -320,29 +567,87 @@ check(r.status < 300, "a seen member adds one");
 const phS = token(9);
 r = await photo(bob, bobM, S, phS);
 check(r.status < 300, "…and one from the private lunch");
-check((await count(carol, "passport_conference_photos", `id=eq.${ph}`)) === 1, "the album is every member's");
-check((await count(carol, "passport_conference_photos", `id=eq.${phS}`)) === 0, "a private plan's photo is only for its people");
-check((await count(mallory, "passport_conference_photos", `conference_id=eq.${C.id}`)) === 0, "outsiders see no photos");
-r = await rest(carol, "POST", "/passport_conference_photo_reactions", { photo_id: phS, conference_id: C.id, member_id: carolM, emoji: "❤️" });
+check(
+  (await count(carol, "passport_conference_photos", `id=eq.${ph}`)) === 1,
+  "the album is every member's",
+);
+check(
+  (await count(carol, "passport_conference_photos", `id=eq.${phS}`)) === 0,
+  "a private plan's photo is only for its people",
+);
+check(
+  (await count(
+    mallory,
+    "passport_conference_photos",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "outsiders see no photos",
+);
+r = await rest(carol, "POST", "/passport_conference_photo_reactions", {
+  photo_id: phS,
+  conference_id: C.id,
+  member_id: carolM,
+  emoji: "❤️",
+});
 check(r.status >= 400, "no reacting to a photo you can't see");
 r = await rest(carol, "DELETE", `/passport_conference_photos?id=eq.${ph}`);
 check(denied(r), "a member cannot delete somebody else's photo");
-r = await rest(bob, "PATCH", `/passport_conference_photos?id=eq.${ph}`, { caption: "edited" });
-check(r.status >= 400 || rows(r).length === 0, "photos aren't rewritten after the fact");
+r = await rest(bob, "PATCH", `/passport_conference_photos?id=eq.${ph}`, {
+  caption: "edited",
+});
+check(
+  r.status >= 400 || rows(r).length === 0,
+  "photos aren't rewritten after the fact",
+);
 const phS2 = token(9);
 await photo(bob, bobM, S2, phS2);
 r = await rest(alice, "DELETE", `/passport_conference_photos?id=eq.${phS2}`);
-check(rows(r).length === 0, "an organiser can't take down a photo she can't see");
+check(
+  rows(r).length === 0,
+  "an organiser can't take down a photo she can't see",
+);
 r = await rest(alice, "DELETE", `/passport_conference_photos?id=eq.${ph}`);
 check(rows(r).length === 1, "…but can take down one in the album");
 
 console.log("leaving");
-r = await rest(bob, "DELETE", `/passport_conference_members?conference_id=eq.${C.id}&user_id=eq.${bob.id}`);
+r = await rest(
+  bob,
+  "DELETE",
+  `/passport_conference_members?conference_id=eq.${C.id}&user_id=eq.${bob.id}`,
+);
 check(rows(r).length === 1, "Bob leaves");
-check((await count(alice, "passport_conference_plans", `conference_id=eq.${C.id}`)) === 0, "his plans go with him");
-check((await count(alice, "passport_conference_messages", `conference_id=eq.${C.id}`)) === 0, "…his messages");
-check((await count(alice, "passport_conference_photos", `conference_id=eq.${C.id}`)) === 0, "…his photos");
-check((await count(carol, "passport_conference_rsvps", `conference_id=eq.${C.id}`)) === 0, "…and every answer to his plans");
+check(
+  (await count(
+    alice,
+    "passport_conference_plans",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "his plans go with him",
+);
+check(
+  (await count(
+    alice,
+    "passport_conference_messages",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "…his messages",
+);
+check(
+  (await count(
+    alice,
+    "passport_conference_photos",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "…his photos",
+);
+check(
+  (await count(
+    carol,
+    "passport_conference_rsvps",
+    `conference_id=eq.${C.id}`,
+  )) === 0,
+  "…and every answer to his plans",
+);
 
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures ? 1 : 0);

@@ -174,6 +174,9 @@ export async function removePhoto(
     (p) => p.id === photoId,
   );
   if (!photo) return { ok: false, error: "not-found" };
+  // A private plan's photo is invisible to anyone not in it, organisers too.
+  if (photo.planId && !(await visiblePlans(d, home)).has(photo.planId))
+    return { ok: false, error: "not-found" };
   if (photo.memberId !== home.you.memberId && home.you.role !== "organiser")
     return { ok: false, error: "forbidden" };
   await d.store.remove(conferenceId, photoId);
@@ -195,6 +198,9 @@ export async function reactToPhoto(
     (p) => p.id === photoId,
   );
   if (!photo) return { ok: false, error: "not-found" };
+  // A private plan's photo is invisible to anyone not in it, organisers too.
+  if (photo.planId && !(await visiblePlans(d, home)).has(photo.planId))
+    return { ok: false, error: "not-found" };
   const r = {
     photoId,
     memberId: home.you.memberId,

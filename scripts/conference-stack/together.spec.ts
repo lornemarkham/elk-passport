@@ -149,7 +149,6 @@ test("a conference day, together", async ({ browser }) => {
   await olivia.page.getByLabel("Ends").fill(ymd(3));
   for (const m of [
     "Plans",
-    "Chat",
     "Find my people",
     "Explore",
     "Memories",
@@ -158,6 +157,10 @@ test("a conference day, together", async ({ browser }) => {
     await expect(
       olivia.page.getByRole("checkbox", { name: new RegExp(`^${m}`) }),
     ).toBeChecked();
+  // Chat starts off (VISION §7's standing lean); the organiser switches it on.
+  const chat = olivia.page.getByRole("checkbox", { name: /^Chat/ });
+  await expect(chat).not.toBeChecked();
+  await chat.check();
   await olivia.page.getByRole("button", { name: "Create it" }).click();
   await expect(
     olivia.page.getByRole("heading", { name: "Organiser settings" }),
