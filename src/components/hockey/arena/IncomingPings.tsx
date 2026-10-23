@@ -91,7 +91,7 @@ export function IncomingPings({
       // Over the page, not in it: a ping arriving must never push what
       // somebody is about to tap out from under their thumb. At the bottom,
       // one at a time, so it never covers Vanish at the top.
-      className="pointer-events-none fixed inset-x-0 bottom-3 z-40 mx-auto flex max-w-2xl flex-col gap-2 px-3 empty:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(74px+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-2xl flex-col gap-2 px-3 empty:hidden"
     >
       <AnimatePresence initial={false}>
         {shown.map((p) => {

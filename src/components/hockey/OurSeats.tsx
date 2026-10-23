@@ -50,10 +50,9 @@ import type { Leg } from "@/lib/routing/legs";
 import { useTravelLegs } from "@/lib/routing/useTravelLegs";
 import { distanceKm } from "@/lib/environment/geo";
 import { walkMinutesFor } from "@/domain/collections/places";
-import styles from "./hockey.module.css";
 
 /** What `GET /seats` answers (`_server/seats.ts`, `SeatsView`). */
-interface SeatsView {
+export interface SeatsView {
   readonly available: boolean;
   readonly role: "host" | "guest";
   readonly me: string;
@@ -71,47 +70,38 @@ export interface ArenaNearby {
 const tap =
   "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-[14px] font-bold transition";
 
+/** Everything `useSeats` gives the Plan tab's two seat-backed decisions. */
+export type SeatsState = ReturnType<typeof useSeats>;
+
 /**
- * **Our seats — and how to get from dinner to them.**
- *
- * Near the top of Plan, because the walk from the restaurant to the right
- * door is the one part of the night everybody has to get right and nobody
- * wants to look up. Every seat is what somebody typed; every gate is from the
- * arena's own map, chosen by the person, never guessed from a section; every
- * walk is handed to the map app the phone already has.
+ * **Our seats.** Plan's "Our seats" decision opened: the host's block for
+ * everybody, then every member's own seat, then who's sitting together.
+ * Every seat is what somebody typed; every gate is from the arena's own map,
+ * chosen by the person, never guessed from a section.
  */
-export function OurSeats({
-  slug,
-  nearby,
-  dinner,
+export function SeatsEditor({
+  seats,
   say,
 }: {
-  slug: string;
-  nearby: ArenaNearby | null;
-  /** The dinner vote's single leader, if there is one. */
-  dinner?: string;
+  seats: SeatsState;
   /** Post a line to the night's chat. */
   say: (text: string) => void;
 }) {
-  const { view, error, save, clear, saveMeetup, clearMeetup } = useSeats(slug);
+  const { view, error, save, clear } = seats;
   const [editing, setEditing] = useState<string | null>(null);
 
   if (!view) {
     return (
-      <section
-        aria-labelledby="seats-title"
-        className="rounded-[24px] bg-[#f4f8fc] p-5 text-[#0b1220]"
-      >
-        <h2
-          id="seats-title"
-          className={`${styles.display} text-[28px] leading-none`}
-        >
-          Our seats
-        </h2>
-        <p className="mt-2 text-[15px] text-[#0b1220]/60">
-          {error ?? "Finding everybody's seats…"}
-        </p>
-      </section>
+      <p className="px-5 pb-4 text-[15px] text-[#0b1220]/60">
+        {error ?? "Finding everybody's seats…"}
+      </p>
+    );
+  }
+  if (!view.available) {
+    return (
+      <p className="px-5 pb-4 text-[15px] text-[#0b1220]/70">
+        Seats aren&apos;t switched on for this night yet. Everything else works.
+      </p>
     );
   }
 
@@ -123,246 +113,286 @@ export function OurSeats({
   const picture = seatingPicture(view.seats, people);
 
   return (
-    <section
-      id="our-seats"
-      aria-labelledby="seats-title"
-      className="scroll-mt-4 overflow-hidden rounded-[24px] bg-[#f4f8fc] text-[#0b1220] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]"
-    >
-      <div className="flex items-baseline justify-between gap-3 px-5 pt-4 pb-1">
-        <h2
-          id="seats-title"
-          className={`${styles.display} text-[28px] leading-none`}
+    <div id="our-seats">
+      {error && (
+        <p
+          role="alert"
+          className="mx-5 mb-2 rounded-xl bg-[#c2410c]/10 px-3 py-2 text-[14px] font-semibold text-[#9a3412]"
         >
-          Our seats
-        </h2>
-        <span className="text-[13px] font-semibold text-[#0b1220]/60">
-          {view.venue.name}
-        </span>
-      </div>
-
-      {!view.available ? (
-        <p className="px-5 pt-1 pb-5 text-[15px] text-[#0b1220]/70">
-          Seats aren&apos;t switched on for this night yet. Everything else
-          works.
+          {error}
         </p>
-      ) : (
-        <>
-          {error && (
-            <p
-              role="alert"
-              className="mx-5 mt-2 rounded-xl bg-[#c2410c]/10 px-3 py-2 text-[14px] font-semibold text-[#9a3412]"
-            >
-              {error}
-            </p>
-          )}
+      )}
 
-          {/* The group block: the host's seats for everybody. */}
-          {(block || host) && (
-            <div className="px-5 pt-3">
-              {editing === "group" ? (
-                <SeatForm
-                  title="The group's seats"
-                  initial={block}
-                  onCancel={() => setEditing(null)}
-                  onClear={
-                    block
-                      ? () => void clear("group").then(() => setEditing(null))
-                      : undefined
-                  }
-                  onSave={async (seat) => {
-                    if (await save({ ...seat, for: "group" })) setEditing(null);
-                  }}
-                  showShare={false}
-                />
-              ) : block ? (
-                <div className="rounded-2xl bg-[#0b1220] p-4 text-white">
-                  <p className="text-[12px] font-bold tracking-[0.12em] text-[#ffd84d] uppercase">
-                    The group&apos;s block
-                  </p>
-                  <p className="mt-1 text-[19px] leading-snug font-bold">
-                    {seatLine(block)}
-                  </p>
-                  <SeatTags seat={block} dark />
-                  {block.note && (
-                    <p className="mt-1.5 text-[14px] text-white/75">
-                      {block.note}
-                    </p>
-                  )}
-                  {host && (
-                    <button
-                      type="button"
-                      onClick={() => setEditing("group")}
-                      className={`${tap} mt-3 bg-white/10 text-white hover:bg-white/20`}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit the block
-                    </button>
-                  )}
-                </div>
-              ) : (
+      {/* The group block: the host's seats for everybody. */}
+      {(block || host) && (
+        <div className="px-5">
+          {editing === "group" ? (
+            <SeatForm
+              title="The group's seats"
+              initial={block}
+              onCancel={() => setEditing(null)}
+              onClear={
+                block
+                  ? () => void clear("group").then(() => setEditing(null))
+                  : undefined
+              }
+              onSave={async (seat) => {
+                if (await save({ ...seat, for: "group" })) setEditing(null);
+              }}
+              showShare={false}
+            />
+          ) : block ? (
+            <div className="rounded-2xl bg-[#0b1220] p-4 text-white">
+              <p className="text-[12px] font-bold tracking-[0.12em] text-[#ffd84d] uppercase">
+                The group&apos;s block
+              </p>
+              <p className="mt-1 text-[19px] leading-snug font-bold">
+                {seatLine(block)}
+              </p>
+              <SeatTags seat={block} dark />
+              {block.note && (
+                <p className="mt-1.5 text-[14px] text-white/75">{block.note}</p>
+              )}
+              {host && (
                 <button
                   type="button"
                   onClick={() => setEditing("group")}
-                  className={`${tap} w-full bg-[#0b1220] text-white`}
+                  className={`${tap} mt-3 bg-white/10 text-white hover:bg-white/20`}
                 >
-                  <Ticket className="h-4 w-4" /> Add the group&apos;s seats
+                  <Pencil className="h-4 w-4" /> Edit the block
                 </button>
               )}
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing("group")}
+              className={`${tap} w-full bg-[#0b1220] text-white`}
+            >
+              <Ticket className="h-4 w-4" /> Add the group&apos;s seats
+            </button>
           )}
-
-          {/* Me first: the one row everybody can fill in. */}
-          {!mySeat && editing !== view.me && (
-            <div className="px-5 pt-3">
-              <button
-                type="button"
-                onClick={() => setEditing(view.me)}
-                className={`${tap} w-full bg-[#ffd84d] text-[#0b1220]`}
-              >
-                <Ticket className="h-4 w-4" /> Add my seat
-              </button>
-            </div>
-          )}
-
-          <ul
-            aria-label="Who's sitting where"
-            className="mt-3 divide-y divide-[#0b1220]/10 border-t border-[#0b1220]/10"
-          >
-            {people.map((person) => {
-              const seat = view.seats.find((s) => s.userId === person.id);
-              const mine = person.id === view.me;
-              const canEdit = mine || host;
-              if (editing === person.id) {
-                return (
-                  <li key={person.id} className="px-5 py-4">
-                    <SeatForm
-                      title={mine ? "My seat" : `${person.name}'s seat`}
-                      initial={seat}
-                      sectionHint={block?.section}
-                      onCancel={() => setEditing(null)}
-                      onClear={
-                        seat
-                          ? () =>
-                              void clear(person.id).then(() => setEditing(null))
-                          : undefined
-                      }
-                      onSave={async (s) => {
-                        if (await save({ ...s, for: person.id }))
-                          setEditing(null);
-                      }}
-                      showShare
-                    />
-                  </li>
-                );
-              }
-              return (
-                <li
-                  key={person.id}
-                  aria-label={`${person.name}${mine ? " (you)" : ""}`}
-                  className="flex items-start gap-3 px-5 py-3"
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0b1220]/[0.07] text-[20px]"
-                  >
-                    {person.emoji}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-bold tracking-[0.06em] text-[#0b1220]/60 uppercase">
-                      {person.name}
-                      {mine && " · you"}
-                      {person.role === "host" && " · host"}
-                    </span>
-                    {seat ? (
-                      <>
-                        <span className="block text-[17px] leading-snug font-bold [overflow-wrap:anywhere]">
-                          {seatLine(seat)}
-                        </span>
-                        <SeatTags seat={seat} />
-                        {seat.note && (
-                          <span className="mt-1 block text-[14px] text-[#0b1220]/70">
-                            {seat.note}
-                          </span>
-                        )}
-                        {!seat.shared && (
-                          <span className="mt-1 block text-[13px] font-semibold text-[#0b1220]/55">
-                            Only {mine ? "you" : person.name} and the host can
-                            see this.
-                          </span>
-                        )}
-                        {seat.updatedBy &&
-                          seat.updatedBy !== person.id &&
-                          nameOf(seat.updatedBy) && (
-                            <span className="mt-1 block text-[13px] text-[#0b1220]/55">
-                              Entered by {nameOf(seat.updatedBy)}
-                            </span>
-                          )}
-                      </>
-                    ) : (
-                      <span className="block text-[16px] font-semibold text-[#0b1220]/45">
-                        No seat yet
-                      </span>
-                    )}
-                    {canEdit && (
-                      <span className="mt-2 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditing(person.id)}
-                          aria-label={
-                            mine
-                              ? seat
-                                ? "Edit my seat"
-                                : "Add my seat"
-                              : `${seat ? "Edit" : "Add"} ${person.name}'s seat`
-                          }
-                          className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          {seat ? "Edit" : "Add"}
-                        </button>
-                        {mine && seat && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              say(
-                                `🎟️ I'm in ${seatLine(seat)}${seat.gate ? `, coming in at Gate ${seat.gate}` : ""}.`,
-                              )
-                            }
-                            className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
-                          >
-                            <Send className="h-4 w-4" /> Chat it
-                          </button>
-                        )}
-                      </span>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-
-          <Together picture={picture} />
-        </>
+        </div>
       )}
 
+      {/* Me first: the one row everybody can fill in. */}
+      {!mySeat && editing !== view.me && (
+        <div className="px-5 pt-3">
+          <button
+            type="button"
+            onClick={() => setEditing(view.me)}
+            className={`${tap} w-full bg-[#ffd84d] text-[#0b1220]`}
+          >
+            <Ticket className="h-4 w-4" /> Add my seat
+          </button>
+        </div>
+      )}
+
+      <ul
+        aria-label="Who's sitting where"
+        className="mt-3 divide-y divide-[#0b1220]/10 border-t border-[#0b1220]/10"
+      >
+        {people.map((person) => {
+          const seat = view.seats.find((s) => s.userId === person.id);
+          const mine = person.id === view.me;
+          const canEdit = mine || host;
+          if (editing === person.id) {
+            return (
+              <li key={person.id} className="px-5 py-4">
+                <SeatForm
+                  title={mine ? "My seat" : `${person.name}'s seat`}
+                  initial={seat}
+                  sectionHint={block?.section}
+                  onCancel={() => setEditing(null)}
+                  onClear={
+                    seat
+                      ? () => void clear(person.id).then(() => setEditing(null))
+                      : undefined
+                  }
+                  onSave={async (s) => {
+                    if (await save({ ...s, for: person.id })) setEditing(null);
+                  }}
+                  showShare
+                />
+              </li>
+            );
+          }
+          return (
+            <li
+              key={person.id}
+              aria-label={`${person.name}${mine ? " (you)" : ""}`}
+              className="flex items-start gap-3 px-5 py-3"
+            >
+              <span
+                aria-hidden
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0b1220]/[0.07] text-[20px]"
+              >
+                {person.emoji}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-bold tracking-[0.06em] text-[#0b1220]/60 uppercase">
+                  {person.name}
+                  {mine && " · you"}
+                  {person.role === "host" && " · host"}
+                </span>
+                {seat ? (
+                  <>
+                    <span className="block text-[17px] leading-snug font-bold [overflow-wrap:anywhere]">
+                      {seatLine(seat)}
+                    </span>
+                    <SeatTags seat={seat} />
+                    {seat.note && (
+                      <span className="mt-1 block text-[14px] text-[#0b1220]/70">
+                        {seat.note}
+                      </span>
+                    )}
+                    {!seat.shared && (
+                      <span className="mt-1 block text-[13px] font-semibold text-[#0b1220]/55">
+                        Only {mine ? "you" : person.name} and the host can see
+                        this.
+                      </span>
+                    )}
+                    {seat.updatedBy &&
+                      seat.updatedBy !== person.id &&
+                      nameOf(seat.updatedBy) && (
+                        <span className="mt-1 block text-[13px] text-[#0b1220]/55">
+                          Entered by {nameOf(seat.updatedBy)}
+                        </span>
+                      )}
+                  </>
+                ) : (
+                  <span className="block text-[16px] font-semibold text-[#0b1220]/45">
+                    No seat yet
+                  </span>
+                )}
+                {canEdit && (
+                  <span className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(person.id)}
+                      aria-label={
+                        mine
+                          ? seat
+                            ? "Edit my seat"
+                            : "Add my seat"
+                          : `${seat ? "Edit" : "Add"} ${person.name}'s seat`
+                      }
+                      className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      {seat ? "Edit" : "Add"}
+                    </button>
+                    {mine && seat && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          say(
+                            `🎟️ I'm in ${seatLine(seat)}${seat.gate ? `, coming in at Gate ${seat.gate}` : ""}.`,
+                          )
+                        }
+                        className={`${tap} bg-[#0b1220]/[0.07] px-3 text-[#0b1220] hover:bg-[#0b1220]/[0.12]`}
+                      >
+                        <Send className="h-4 w-4" /> Chat it
+                      </button>
+                    )}
+                  </span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <Together picture={picture} />
+    </div>
+  );
+}
+
+/**
+ * **Getting there.** Plan's "Getting there" decision opened: the host's time
+ * and place at the arena, the walk from dinner to the right door handed to the
+ * map app the phone already has, and the arena's own guide to getting in.
+ */
+export function GettingThereEditor({
+  seats,
+  nearby,
+  dinner,
+}: {
+  seats: SeatsState;
+  nearby: ArenaNearby | null;
+  /** The dinner vote's single leader, if there is one. */
+  dinner?: string;
+}) {
+  const { view, error, saveMeetup, clearMeetup } = seats;
+  if (!view) {
+    return (
+      <p className="px-5 pb-4 text-[15px] text-[#0b1220]/60">
+        {error ?? "Working out the walk…"}
+      </p>
+    );
+  }
+  const mySeat = view.seats.find((s) => s.userId === view.me);
+  const block = view.seats.find((s) => s.userId === null);
+  return (
+    <div>
       <MeetAtTheArena
         meetup={view.meetup}
-        host={host}
-        setBy={nameOf(view.meetup?.setBy)}
+        host={view.role === "host"}
+        setBy={view.people.find((p) => p.id === view.meetup?.setBy)?.name}
         venue={view.venue}
         onSave={saveMeetup}
         onClear={clearMeetup}
       />
-
       <GettingThere
         venue={view.venue}
         nearby={nearby}
         dinner={dinner}
         mySeat={mySeat ?? block}
       />
-
       <ArenaGuide />
-    </section>
+    </div>
   );
+}
+
+/** "Our seats" in one line, and whether this person still has to add theirs. */
+export function seatsSummary(view: SeatsView | null): {
+  value: string;
+  needsMe: boolean;
+} {
+  if (!view) return { value: "Finding everybody's seats…", needsMe: false };
+  if (!view.available)
+    return { value: "Not switched on for this night", needsMe: false };
+  const mine = view.seats.find((s) => s.userId === view.me);
+  const block = view.seats.find((s) => s.userId === null);
+  const seat = mine ?? block;
+  return {
+    value: seat ? seatLine(seat) : "No seats yet",
+    needsMe: !mine,
+  };
+}
+
+/**
+ * "Getting there" in one line: the host's time and gate if there is one, and
+ * whether this person is the host who still has to set it.
+ */
+export function gettingThereSummary(view: SeatsView | null): {
+  value: string;
+  needsMe: boolean;
+} {
+  if (!view) return { value: "Working out the walk…", needsMe: false };
+  const m = view.meetup;
+  if (m) {
+    const where = gateById(m.gate)?.name ?? m.spot;
+    return {
+      value: [m.time && `${clockLabel(m.time)} at the arena`, where]
+        .filter(Boolean)
+        .join(" · "),
+      needsMe: false,
+    };
+  }
+  return view.role === "host"
+    ? { value: "Set a time and gate", needsMe: true }
+    : { value: "Walking directions", needsMe: false };
 }
 
 // ------------------------------------------------------------- the seats
@@ -1078,7 +1108,8 @@ function ArenaGuide() {
 
 // ------------------------------------------------------------- the data
 
-function useSeats(slug: string) {
+/** The night's seats and meeting point, kept fresh while the page is looked at. */
+export function useSeats(slug: string, enabled = true) {
   const [view, setView] = useState<SeatsView | null>(null);
   const [error, setError] = useState<string>();
   const url = `/hockey/api/occasions/${slug}/seats`;
@@ -1093,6 +1124,7 @@ function useSeats(slug: string) {
   );
 
   useEffect(() => {
+    if (!enabled) return;
     let current = true;
     fetch(url, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
@@ -1106,7 +1138,7 @@ function useSeats(slug: string) {
       current = false;
       clearInterval(timer);
     };
-  }, [url, load]);
+  }, [url, load, enabled]);
 
   const send = async (
     method: "PUT" | "DELETE",

@@ -170,9 +170,12 @@ function Photo({
 export function PlanPhoto({
   url,
   fallback,
+  className = "h-11 w-11 rounded-full",
 }: {
   url?: string;
   fallback: React.ReactNode;
+  /** Size and shape; a round 44 px by default. */
+  className?: string;
 }) {
   const [broken, setBroken] = useState(false);
   if (!url || broken) return <>{fallback}</>;
@@ -186,7 +189,7 @@ export function PlanPhoto({
         const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
         if (!photoUsable(w, h)) setBroken(true);
       }}
-      className="h-11 w-11 shrink-0 rounded-full object-cover"
+      className={`${className} shrink-0 object-cover`}
     />
   );
 }
@@ -217,53 +220,14 @@ function GameDay({ place }: { place: NearbyPlace }) {
   ) : null;
 }
 
-function Details({ place }: { place: NearbyPlace }) {
-  const href =
-    place.source !== "curated" && place.kind
-      ? subjectHref(place.kind, place.atlasId)
-      : undefined;
-  return (
-    <div className="flex flex-col gap-2">
-      <GameDay place={place} />
-      {place.facts && place.facts.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5">
-          {place.facts.map((fact) => (
-            <li
-              key={fact}
-              className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[12.5px] font-medium text-white/85"
-            >
-              {fact}
-            </li>
-          ))}
-        </ul>
-      )}
-      {place.blurb && (
-        <p className="line-clamp-2 text-[14px] leading-snug text-white/70">
-          {place.blurb}
-        </p>
-      )}
-      {!place.blurb && place.address && (
-        <p className="text-[14px] text-white/70">{place.address}</p>
-      )}
-      {href && (
-        <Link
-          href={href}
-          className="inline-flex min-h-10 w-fit items-center gap-1 text-[14px] font-semibold text-white underline-offset-4 hover:underline"
-        >
-          More about {place.name} in Passport
-          <ArrowUpRight className="h-4 w-4" />
-        </Link>
-      )}
-    </div>
-  );
-}
-
 /**
- * One option on the "where are we eating" vote. `place` is the Atlas place
+ * One option on the "where are we eating" vote, as one compact row: the
+ * place's own photograph small (or the option's emoji), what it is and how
+ * far, who's for it, and the whole row is the vote. `place` is the Atlas place
  * the option was nominated as, when Passport could match it by name; without
- * it (somebody typed a name, or it's the concourse) the card still votes.
+ * it (somebody typed a name, or it's the concourse) the row still votes.
  */
-export function BallotVenueCard({
+export function BallotRow({
   label,
   detail,
   emoji,
@@ -275,7 +239,6 @@ export function BallotVenueCard({
   canVote,
   onVote,
   addedBy,
-  priority,
 }: {
   label: string;
   detail?: string;
@@ -289,91 +252,103 @@ export function BallotVenueCard({
   canVote: boolean;
   onVote: () => void;
   addedBy?: string;
-  priority?: boolean;
 }) {
   const kind = kindLabel(place?.subtype);
+  const href =
+    place && place.source !== "curated" && place.kind
+      ? subjectHref(place.kind, place.atlasId)
+      : undefined;
+  const Icon = isDrink(place?.subtype) ? Beer : UtensilsCrossed;
+  const sub = place
+    ? [`${place.walkMinutes}+ min walk`, kind].filter(Boolean).join(" · ")
+    : detail;
   return (
-    <article
-      aria-label={label}
-      className={`overflow-hidden rounded-[22px] bg-[#101826] ring-1 transition ${
-        chosen ? "ring-2 ring-[#ffd84d]" : "ring-white/10"
+    <div
+      data-option={label}
+      className={`relative overflow-hidden rounded-2xl transition ${
+        chosen
+          ? "bg-[#1a2234] ring-2 ring-[#ffd84d]"
+          : "bg-[#101826] ring-1 ring-white/10"
       }`}
     >
-      <Photo
-        place={place}
-        emoji={place ? undefined : (emoji ?? "🍽️")}
-        aspect={place?.image ? "aspect-[16/10]" : "aspect-[16/7]"}
-        priority={priority}
-      >
-        <div className="flex flex-wrap items-center gap-1.5">
-          {standing && (
-            <span className="rounded-full bg-[#ffd84d] px-2.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
-              {standing === "tied" ? "Tied for the lead" : "Leading"}
-            </span>
-          )}
-          {kind && (
-            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
-              {kind}
-            </span>
-          )}
-        </div>
-        <h4
-          className={`${styles.wide} mt-1.5 text-[24px] leading-[1.05] [overflow-wrap:anywhere] text-white`}
-        >
-          {label}
-        </h4>
-        {place ? (
-          <WalkLine place={place} className="mt-1 text-[14px] text-white" />
-        ) : (
-          detail && <p className="mt-1 text-[14px] text-white/85">{detail}</p>
-        )}
-      </Photo>
-
-      <div className="flex flex-col gap-3 p-3.5">
-        {place && <Details place={place} />}
-        {addedBy && (
-          <p className="text-[12.5px] text-white/55">
-            {addedBy} put this on the vote
-          </p>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={!canVote}
-            aria-pressed={chosen}
-            aria-label={`Vote for ${label}`}
-            onClick={onVote}
-            className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-bold transition active:scale-[0.98] disabled:cursor-default ${
-              chosen
-                ? "bg-[#ffd84d] text-[#0b1220]"
-                : "bg-white/[0.08] text-white ring-1 ring-white/20 hover:bg-white/[0.14] disabled:opacity-60"
-            }`}
-          >
-            {chosen ? (
-              <>
-                <Check className="h-5 w-5" strokeWidth={3} />
-                Your vote
-              </>
-            ) : canVote ? (
-              `Vote for ${label.length > 18 ? "this" : label}`
-            ) : (
-              "Voting's closed"
-            )}
-          </button>
-          <VoteCount voters={voters} />
-        </div>
-        <div
-          className="h-1.5 overflow-hidden rounded-full bg-white/10"
+      {share > 0 && (
+        <span
           aria-hidden
+          className="absolute inset-y-0 left-0 bg-white/[0.06] transition-[width] duration-500"
+          style={{ width: `${Math.round(share * 100)}%` }}
+        />
+      )}
+      <div className="relative flex items-center gap-2 py-2 pr-2 pl-2">
+        <button
+          type="button"
+          disabled={!canVote}
+          aria-pressed={chosen}
+          aria-label={`Vote for ${label}`}
+          onClick={onVote}
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition active:scale-[0.99] disabled:cursor-default"
         >
-          <div
-            className="h-full rounded-full bg-[#ffd84d] transition-[width] duration-500"
-            style={{ width: `${Math.round(share * 100)}%` }}
+          <PlanPhoto
+            url={place?.image?.url}
+            className="h-14 w-14 rounded-xl"
+            fallback={
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-[24px] text-white/90">
+                {emoji ? (
+                  <span aria-hidden>{emoji}</span>
+                ) : (
+                  <Icon className="h-6 w-6" aria-hidden />
+                )}
+              </span>
+            }
           />
-        </div>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 text-[16px] leading-snug font-bold [overflow-wrap:anywhere] text-white">
+              {label}
+              {chosen && (
+                <Check
+                  className="h-4 w-4 shrink-0 text-[#ffd84d]"
+                  strokeWidth={3}
+                  aria-label="your vote"
+                />
+              )}
+            </span>
+            {sub && (
+              <span className="block text-[13px] leading-snug text-white/65">
+                {sub}
+              </span>
+            )}
+            {(standing || addedBy) && (
+              <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] text-white/55">
+                {standing && (
+                  <span className="rounded-full bg-[#ffd84d] px-2 py-px text-[11.5px] font-bold tracking-wide text-[#0b1220] uppercase">
+                    {standing === "tied" ? "Tied" : "Leading"}
+                  </span>
+                )}
+                {addedBy && <span>Added by {addedBy}</span>}
+              </span>
+            )}
+          </span>
+        </button>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <span className="flex -space-x-1.5">
+            {voters.slice(0, 3).map((p) => (
+              <Avatar key={p.id} person={p} size={22} />
+            ))}
+          </span>
+          <span className="text-[13px] font-semibold text-white/80 tabular-nums">
+            {voters.length} {voters.length === 1 ? "vote" : "votes"}
+          </span>
+        </span>
+        {href && (
+          <Link
+            href={href}
+            aria-label={`More about ${label} in Passport`}
+            className="inline-flex min-h-11 min-w-9 shrink-0 items-center justify-center rounded-full text-white/70 hover:text-white"
+          >
+            <ArrowUpRight className="h-5 w-5" />
+          </Link>
+        )}
       </div>
-    </article>
+    </div>
   );
 }
 

@@ -44,9 +44,10 @@ import styles from "./hockey.module.css";
  * - **The game first.** The matchup in both teams' colours, the clock to puck
  *   drop (then the period, then the final), who's in, and Passport's one line
  *   for right now (`GameDayHero`).
- * - **Four rooms.** Plan, Play, Chat, Group (`domain/hockey/tabs.ts`). Every
- *   block the phase puts on the page is in exactly one of them; the group's
- *   plan leads the first.
+ * - **Four rooms and the arena.** Plan, Play, Chat, Group
+ *   (`domain/hockey/tabs.ts`), with Arena Mode in the middle of the bar.
+ *   Every block the phase puts on the page is in exactly one room; Plan is
+ *   the group's five decisions.
  * - **Real places.** The dinner vote is photographs of Atlas's places near the
  *   arena, by Passport's own picture rule (`VenueCard`).
  * - **Phones away.** In a period the page is still only "put your phone away"
@@ -211,6 +212,11 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
             current={tab}
             onChange={(t) => choose(t)}
             badges={badges}
+            arenaHref={
+              live.me && isRogersArena(definition.kicker)
+                ? `/hockey/${night.state.slug}/arena`
+                : undefined
+            }
           />
         </>
       )}

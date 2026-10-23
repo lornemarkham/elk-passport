@@ -21,6 +21,7 @@ import {
   windowState,
 } from "@/domain/hockey/arena-mode";
 import styles from "../hockey.module.css";
+import { ArenaNav } from "../NightTabs";
 import { ArenaMap, FILTERS, pointOf, usePlaces, type Filter } from "./ArenaMap";
 import { useArena } from "./useArena";
 import { IncomingPings } from "./IncomingPings";
@@ -155,7 +156,7 @@ export function ArenaMode({
 
   return (
     <main
-      className={`${styles.page} min-h-dvh pb-24 text-white`}
+      className={`${styles.page} min-h-dvh pb-36 text-white`}
       style={
         { "--home": "#00205b", "--away": "#00843d" } as React.CSSProperties
       }
@@ -468,6 +469,7 @@ export function ArenaMode({
           </motion.div>
         )}
       </AnimatePresence>
+      <ArenaNav nightId={view.nightId} />
     </main>
   );
 }

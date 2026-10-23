@@ -96,6 +96,8 @@ export interface PlanItem {
   /** Everybody who has voted on it at all. */
   readonly voters: number;
   readonly locked: boolean;
+  /** Still taking votes right now. */
+  readonly open: boolean;
   /** What I voted for, if I did. */
   readonly mine?: string;
 }
@@ -111,6 +113,7 @@ export function planItems(
   prompts: readonly {
     readonly prompt: Pick<Prompt, "id" | "reveal">;
     readonly locked: boolean;
+    readonly open?: boolean;
     readonly myResponse?: { readonly value: unknown };
     readonly tally: readonly {
       readonly optionId: string;
@@ -136,9 +139,72 @@ export function planItems(
         votes: top,
         voters: live.tally.reduce((n, o) => n + o.voters.length, 0),
         locked: live.locked,
+        open: live.open ?? !live.locked,
         mine: live.tally.find((o) => o.optionId === live.myResponse?.value)
           ?.label,
       },
     ];
   });
 }
+
+/**
+ * **Five decisions, not a corridor of forms** (Hockey Night small release 1,
+ * 2026-10-22).
+ *
+ * Plan opens on the five things a group actually has to settle, each with
+ * where it stands and one tap to change it. The votes, the seats and the walk
+ * behind them are unchanged; this only says which of them answers which
+ * decision:
+ *
+ * - **Before the game** — the dinner vote (`pregame-spot`).
+ * - **Getting there** — the host's time and gate at the arena, and the walk
+ *   there (Our Seats' meeting point and directions; no vote).
+ * - **Meeting point** — the "where are we meeting" vote (`meet-spot`).
+ * - **Our seats** — the group's block and everybody's seat.
+ * - **After the game** — "when are you leaving" until the game is over, then
+ *   "where are we going" (`hard-out`, `postgame`).
+ */
+export type DecisionId =
+  "before" | "getting-there" | "meeting" | "seats" | "after";
+
+export const DECISIONS: readonly {
+  readonly id: DecisionId;
+  readonly label: string;
+  /** The votes behind it, most relevant first. None: not a vote. */
+  readonly promptIds: readonly string[];
+}[] = [
+  { id: "before", label: "Before the game", promptIds: ["pregame-spot"] },
+  { id: "getting-there", label: "Getting there", promptIds: [] },
+  { id: "meeting", label: "Meeting point", promptIds: ["meet-spot"] },
+  { id: "seats", label: "Our seats", promptIds: [] },
+  { id: "after", label: "After the game", promptIds: ["hard-out", "postgame"] },
+];
+
+/**
+ * The vote that speaks for a decision right now: for "After the game", how
+ * people are leaving until the game is over, then where we go next.
+ */
+export function decisionVote(
+  id: DecisionId,
+  items: readonly PlanItem[],
+  gameOver: boolean,
+): PlanItem | undefined {
+  const ids = DECISIONS.find((d) => d.id === id)?.promptIds ?? [];
+  const order = id === "after" && gameOver ? [...ids].reverse() : ids;
+  for (const promptId of order) {
+    const item = items.find((i) => i.id === promptId);
+    if (item) return item;
+  }
+  return undefined;
+}
+
+/** A vote's standing in words: the leader, a tie as a tie, or nobody. */
+export function voteValue(item: PlanItem): string {
+  if (item.leaders.length === 0) return "Nobody's voted yet";
+  if (item.leaders.length === 1) return item.leaders[0];
+  return `Tied: ${item.leaders.join(" / ")}`;
+}
+
+/** Still open, and I haven't said. */
+export const needsMyVote = (item: PlanItem): boolean =>
+  item.open && !item.locked && item.mine === undefined;
