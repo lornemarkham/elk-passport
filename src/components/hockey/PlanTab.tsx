@@ -410,6 +410,23 @@ function goTo(id: DecisionId) {
   if (!el) return;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  // The places near the arena and the seats arrive late and grow the page
+  // above; for a moment, follow the part if that moves it — unless the person
+  // has started scrolling themselves.
+  let first = true;
+  const follow = new ResizeObserver(() => {
+    if (first) first = false;
+    else el.scrollIntoView({ block: "start" });
+  });
+  const stop = () => {
+    follow.disconnect();
+    window.removeEventListener("wheel", stop);
+    window.removeEventListener("touchstart", stop);
+  };
+  follow.observe(document.body);
+  window.addEventListener("wheel", stop, { passive: true });
+  window.addEventListener("touchstart", stop, { passive: true });
+  setTimeout(stop, 2500);
 }
 
 /**

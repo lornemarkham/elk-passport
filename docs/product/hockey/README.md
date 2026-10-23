@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-22 — recover the experience: [`RECOVERY.md`](RECOVERY.md)** (forensics of every Hockey version; Plan is the night card by card again: photographic vote cards, every part open under the plan, Arena door on Plan, with everything from Seats, Arena, Release 1 and 2 kept; before/after pictures in `recovery/`; code only, awaiting owner approval).
+
 **2026-10-22 — UX small release 2, restore discovery: [`RELEASE-2-DISCOVERY.md`](RELEASE-2-DISCOVERY.md)** (three venue cards the moment Before the game opens, meeting places as cards with a host's pick, a compact game-day header; code only, no migration).
 
 **2026-10-22 — UX cleanup, small release 1: [`RELEASE-1-UX.md`](RELEASE-1-UX.md)** (Plan as five decisions that open in place, three places at a time behind "Explore places & vote", a compact concourse row, Arena in the bottom bar; code only, no migration).
