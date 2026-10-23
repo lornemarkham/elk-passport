@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { inkOn, safeAccent } from "@/domain/conference/branding";
 import { conferenceContext } from "@/lib/conference/request";
 import { arrivalsEnabled } from "@/lib/conference-arrivals/enabled";
+import { togetherEnabled } from "@/lib/conference-together/enabled";
 import { ArrivalsBoard } from "@/components/conference-arrivals/ArrivalsBoard";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +53,7 @@ export default async function ArrivalsModule({
       timeZone={c.timeZone}
       accent={accent}
       ink={inkOn(accent)}
+      plansOn={c.modules.includes("plans") && togetherEnabled()}
     />
   );
 }

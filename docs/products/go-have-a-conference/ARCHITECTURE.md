@@ -220,13 +220,15 @@ missing feature.
 
 `src/domain/conference/modules.ts`:
 
-| id          | Workstream           | Status today                                           |
-| ----------- | -------------------- | ------------------------------------------------------ |
-| `discover`  | `passport-discovery` | **built**: doors into `/go` from the conference town   |
-| `arrivals`  | `passport-flights`   | **built**: live ADS-B map ([ARRIVALS.md](ARRIVALS.md)) |
-| `schedule`  | `passport-events`    | proposed (prototype: `lane/boards` hockey)             |
-| `community` | `passport-social`    | proposed                                               |
-| `plans`     | `passport-groups`    | proposed (prototype: `lane/boards` interest)           |
+| id          | Workstream           | Status today                                                |
+| ----------- | -------------------- | ----------------------------------------------------------- |
+| `discover`  | `passport-discovery` | **built**: doors into `/go` from the conference town        |
+| `arrivals`  | `passport-flights`   | **built**: live ADS-B map ([ARRIVALS.md](ARRIVALS.md))      |
+| `schedule`  | `passport-events`    | proposed (prototype: `lane/boards` hockey)                  |
+| `community` | `passport-social`    | **built**: group chat ([TOGETHER.md](TOGETHER.md))          |
+| `plans`     | `passport-groups`    | **built**: plans, RSVPs, votes ([TOGETHER.md](TOGETHER.md)) |
+| `people`    | `passport-social`    | **built**: find my people (ADR 011)                         |
+| `memories`  | `passport-social`    | **built**: shared album ([TOGETHER.md](TOGETHER.md))        |
 
 An organiser chooses which modules their conference shows. A proposed module
 can be switched on to preview it, and its page says plainly that it isn't

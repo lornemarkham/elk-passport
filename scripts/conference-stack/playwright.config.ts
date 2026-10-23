@@ -10,10 +10,10 @@ const PORT = Number(process.env.E2E_PORT ?? 3150);
 
 export default defineConfig({
   testDir: ".",
-  testMatch: /acceptance\.spec\.ts$/,
+  testMatch: /(acceptance|together)\.spec\.ts$/,
   reporter: "list",
   workers: 1,
-  outputDir: "/tmp/conference-playwright",
+  outputDir: process.env.PW_OUT ?? "/tmp/conference-playwright",
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",

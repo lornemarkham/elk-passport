@@ -290,6 +290,9 @@ build.**
 - **Not a tracking product.** It handles flights between airports, never a
   person's location. Once you land, you are "in Vancouver", and nothing more
   precise than that.
+  _Narrowed 2026-10-23 by the owner's brief:_ members may choose to share
+  where they are with each other, for up to four hours at a time, revocable
+  at once ([ADR 011](../../architecture/decisions/011-find-my-people.md)).
 - **Not a roster.** Being in a conference is not consent to be listed in it.
 - **Not Sycle's app.** Sycle is the first conference. The thing being built
   is for everybody.

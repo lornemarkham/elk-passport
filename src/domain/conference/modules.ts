@@ -27,11 +27,10 @@ export interface ConferenceModule {
 
 export const MODULES: readonly ConferenceModule[] = [
   {
-    id: "discover",
-    label: "Free time",
-    promise:
-      "Something great to do between sessions, from right where you are.",
-    workstream: "passport-discovery",
+    id: "plans",
+    label: "Plans",
+    promise: "Morning walks, lunch, dinner, drinks. Make one or join one.",
+    workstream: "passport-groups",
     status: "built",
   },
   {
@@ -43,27 +42,40 @@ export const MODULES: readonly ConferenceModule[] = [
     prototype: "/sycle arrival board (branch sycle-prototype)",
   },
   {
+    id: "community",
+    label: "Chat",
+    promise: "The group's conversation, and a thread for every plan.",
+    workstream: "passport-social",
+    status: "built",
+  },
+  {
+    id: "people",
+    label: "Find my people",
+    promise: "Share where you are for a while. Stop whenever you like.",
+    workstream: "passport-social",
+    status: "built",
+  },
+  {
+    id: "discover",
+    label: "Explore",
+    promise: "Real places near the venue, ready to turn into a plan.",
+    workstream: "passport-discovery",
+    status: "built",
+  },
+  {
+    id: "memories",
+    label: "Memories",
+    promise: "The group's photos, kept together.",
+    workstream: "passport-social",
+    status: "built",
+  },
+  {
     id: "schedule",
     label: "Schedule",
     promise: "What's on, and the thing everyone's talking about.",
     workstream: "passport-events",
     status: "proposed",
     prototype: "lane/boards gathering: the hockey game, awaiting confirmation",
-  },
-  {
-    id: "community",
-    label: "Community",
-    promise: "Ask the group. Where's good for dinner? Who's going tonight?",
-    workstream: "passport-social",
-    status: "proposed",
-  },
-  {
-    id: "plans",
-    label: "Plans",
-    promise: "“I'm going there at 7. Anyone coming?”",
-    workstream: "passport-groups",
-    status: "proposed",
-    prototype: "lane/boards interest marks",
   },
 ];
 
