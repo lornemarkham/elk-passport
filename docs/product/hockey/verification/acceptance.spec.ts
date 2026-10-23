@@ -185,11 +185,11 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     lorne.page.getByText("Stub Faraway Cafe (synthetic)"),
   ).toHaveCount(0);
   await lorne.page
-    .getByRole("button", { name: "Nominate Stub Pub (synthetic)" })
+    .getByRole("button", { name: "Add Stub Pub (synthetic) and vote" })
     .click();
   await expect(
     lorne.page.getByRole("button", {
-      name: "Stub Pub (synthetic) is on the ballot",
+      name: "Stub Pub (synthetic) is your vote",
     }),
   ).toBeVisible();
   const stubPub = dinner(maya.page).getByRole("button", {
@@ -216,9 +216,11 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await expect(
     lorne.page.getByText("568 Beatty Street, Downtown"),
   ).toBeVisible();
-  await lorne.page.getByRole("button", { name: "Nominate Chambar" }).click();
+  await lorne.page
+    .getByRole("button", { name: "Add Chambar and vote" })
+    .click();
   await expect(
-    lorne.page.getByRole("button", { name: "Chambar is on the ballot" }),
+    lorne.page.getByRole("button", { name: "Chambar is your vote" }),
   ).toBeVisible();
   await expect(
     dinner(maya.page).getByRole("button", { name: "Vote for Chambar" }),
@@ -226,7 +228,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
 
   // ------------------------------------------------ where we meet
   const station = (p: Page) =>
-    p.getByRole("button", { name: /Stadium–Chinatown Station/ });
+    p.getByRole("button", { name: "Back Stadium–Chinatown Station" });
   await Promise.all([
     openDecision(lorne.page, "Meeting point"),
     openDecision(maya.page, "Meeting point"),
@@ -298,16 +300,18 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
     expect(pub.detail).toMatch(
       /^\d+ m straight line · \d+\+ min walk \(estimate\)$/,
     );
-    // Maya moved her vote to the pub; Lorne's stayed on the concourse.
+    // Maya moved her vote to the pub. Lorne's last card was Chambar, and
+    // "Add & vote" backs the place it adds, so his vote is there now.
+    const chambar = options.find(
+      (o: { label: string }) => o.label === "Chambar",
+    );
     const byPerson = Object.fromEntries(
       votes.map((v: { participantId: string; value: string }) => [
         v.participantId,
         v.value,
       ]),
     );
-    expect(Object.values(byPerson).sort()).toEqual(
-      ["concourse", pub.id].sort(),
-    );
+    expect(Object.values(byPerson).sort()).toEqual([chambar.id, pub.id].sort());
   }
   // Attribution survives: each note is by the person who wrote it.
   const people = Object.fromEntries(

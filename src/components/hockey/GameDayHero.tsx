@@ -78,7 +78,7 @@ export function GameDayHero({
           live={act.id === "during"}
         />
       )}
-      <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pt-2">
+      <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pt-1">
         <Link
           href="/hockey"
           className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-1 text-[14px] text-white/75 transition hover:text-white"
@@ -93,15 +93,10 @@ export function GameDayHero({
       </div>
 
       <div className="mx-auto max-w-2xl px-4">
-        <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold tracking-[0.14em] text-white/80 uppercase">
-          <span aria-hidden>🏒</span>
-          {definition.title}
-        </p>
-
-        {/* The two sides. */}
+        {/* The two sides: one short card, the game the poster. */}
         <div
           ref={matchup}
-          className={`${styles.matchup} mt-2 rounded-[26px] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]`}
+          className={`${styles.matchup} rounded-[22px] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]`}
           style={
             {
               "--home": homeKit.primary,
@@ -109,13 +104,17 @@ export function GameDayHero({
             } as React.CSSProperties
           }
         >
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-3 pt-4 pb-3.5">
+          <p className="flex items-center justify-center gap-1.5 truncate px-3 pt-2.5 text-[12px] font-semibold tracking-[0.14em] text-white/80 uppercase">
+            <span aria-hidden>🏒</span>
+            {definition.title}
+          </p>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-3 pt-1 pb-2.5">
             <Side name={home} kit={homeKit} label="Home" />
             <div
-              className={`${styles.puck} flex h-12 w-12 items-center justify-center rounded-full`}
+              className={`${styles.puck} flex h-10 w-10 items-center justify-center rounded-full`}
               aria-hidden
             >
-              <span className={`${styles.display} text-[18px] text-white/90`}>
+              <span className={`${styles.display} text-[16px] text-white/90`}>
                 vs
               </span>
             </div>
@@ -123,7 +122,7 @@ export function GameDayHero({
           </div>
           <p className="sr-only">{definition.subtitle}</p>
           <div
-            className="flex items-center justify-center gap-1.5 border-t border-white/15 bg-black/30 px-4 py-2 text-[14px] font-medium text-white"
+            className="flex items-center justify-center gap-1.5 border-t border-white/15 bg-black/30 px-4 py-1.5 text-[13.5px] font-medium text-white"
             title={venue}
           >
             <MapPin className="h-4 w-4 shrink-0 opacity-80" />
@@ -133,52 +132,39 @@ export function GameDayHero({
           </div>
         </div>
 
-        {/* The board over centre ice. */}
-        <div className="mt-3">
-          {act.id === "before" && <PuckDrop anchor={anchor} now={now} />}
-          {act.id === "during" && <InGame live={live} anchor={anchor} />}
-          {act.id === "after" && (
-            <Final
-              score={finalScore}
-              home={homeKit.abbr}
-              away={awayKit.abbr}
-              phaseLabel={live.phase.label}
-              onGoAgain={
-                live.phase.id === "morning" || live.phase.id === "again"
-                  ? onGoAgain
-                  : undefined
-              }
-            />
-          )}
-        </div>
-
-        {/* Who's coming, and where I am in it. */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex items-center gap-2.5">
-            <span className="flex -space-x-1.5">
-              {live.participants.slice(0, 6).map((p) => (
-                <Avatar
-                  key={p.id}
-                  person={p}
-                  size={30}
-                  ring={p.id === live.me?.id}
+        {/* The board over centre ice, and who's coming, on one line before the game. */}
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          {act.id === "before" ? (
+            <>
+              <Who live={live} myPicks={myPicks} />
+              <PuckDrop anchor={anchor} now={now} />
+            </>
+          ) : (
+            <div className="w-full">
+              {act.id === "during" && <InGame live={live} anchor={anchor} />}
+              {act.id === "after" && (
+                <Final
+                  score={finalScore}
+                  home={homeKit.abbr}
+                  away={awayKit.abbr}
+                  phaseLabel={live.phase.label}
+                  onGoAgain={
+                    live.phase.id === "morning" || live.phase.id === "again"
+                      ? onGoAgain
+                      : undefined
+                  }
                 />
-              ))}
-            </span>
-            <span className="text-[15px] font-semibold text-white">
-              {live.participants.length} in
-              {live.participants.length > 6 &&
-                ` · +${live.participants.length - 6}`}
-            </span>
-          </div>
-          {myPicks && myPicks.total > 0 && act.id === "before" && (
-            <span className="rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium text-white/85">
-              Your picks: {myPicks.mine}/{myPicks.total} sealed
-            </span>
+              )}
+            </div>
           )}
         </div>
+        {act.id !== "before" && (
+          <div className="mt-2.5">
+            <Who live={live} />
+          </div>
+        )}
         {alone && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/[0.07] px-4 py-3">
+          <div className="mt-2.5 flex items-center justify-between gap-3 rounded-2xl bg-white/[0.07] px-4 py-2.5">
             <p className="text-[14px] leading-snug text-white/85">
               {role === "host"
                 ? "Just you so far. A hockey night for one is a Tuesday."
@@ -197,18 +183,18 @@ export function GameDayHero({
           </div>
         )}
 
-        {/* Passport's one line for right now. */}
+        {/* Passport's one line for right now: the hockey personality. */}
         <p
-          className={`${styles.wide} mt-4 text-[20px] leading-[1.15] text-balance text-white`}
+          className={`${styles.wide} mt-3 text-[18px] leading-[1.15] text-balance text-white`}
         >
           {live.phase.headline}
         </p>
         {live.commentary.length > 0 && (
-          <ul className="mt-2 flex flex-col gap-1" aria-label="Passport says">
-            {live.commentary.slice(0, 2).map((line) => (
+          <ul className="mt-1.5 flex flex-col gap-1" aria-label="Passport says">
+            {live.commentary.slice(0, 1).map((line) => (
               <li
                 key={line}
-                className="flex gap-2 text-[14.5px] leading-snug text-white/80"
+                className="flex gap-2 text-[14px] leading-snug text-white/80"
               >
                 <span aria-hidden>📣</span>
                 {line}
@@ -217,7 +203,7 @@ export function GameDayHero({
           </ul>
         )}
 
-        <nav aria-label="The night" className="mt-4">
+        <nav aria-label="The night" className="mt-3">
           <ol className="grid grid-cols-3 gap-1.5">
             {ACTS.map((a) => {
               const current = a.id === act.id;
@@ -226,7 +212,7 @@ export function GameDayHero({
                 <li
                   key={a.id}
                   aria-current={current ? "step" : undefined}
-                  className="flex flex-col gap-1.5"
+                  className="flex flex-col gap-1"
                 >
                   <span
                     className={`h-1.5 rounded-full ${
@@ -252,7 +238,7 @@ export function GameDayHero({
             })}
           </ol>
           {next && (
-            <p className="mt-2 text-[13px] text-white/60">
+            <p className="mt-1.5 hidden text-[13px] text-white/60 sm:block">
               Now: {live.phase.label}. Next: {next.label}{" "}
               {relativeTime(nextAt(anchor, next.offsetMinutes), live.now)}.
             </p>
@@ -260,6 +246,34 @@ export function GameDayHero({
         </nav>
       </div>
     </header>
+  );
+}
+
+/** Who's coming: the faces and the count. */
+function Who({
+  live,
+  myPicks,
+}: {
+  live: LiveExperience;
+  myPicks?: { mine: number; total: number };
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="flex -space-x-1.5">
+        {live.participants.slice(0, 5).map((p) => (
+          <Avatar key={p.id} person={p} size={28} ring={p.id === live.me?.id} />
+        ))}
+      </span>
+      <span className="text-[15px] font-semibold text-white">
+        {live.participants.length} in
+        {live.participants.length > 5 && ` · +${live.participants.length - 5}`}
+        {myPicks && myPicks.total > 0 && (
+          <span className="block text-[12.5px] font-medium text-white/70">
+            Your picks: {myPicks.mine}/{myPicks.total} sealed
+          </span>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -359,17 +373,17 @@ function Side({
         {label}
       </span>
       <span
-        className={`${styles.display} mt-0.5 text-[50px] leading-[0.9] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]`}
+        className={`${styles.display} text-[38px] leading-[0.9] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]`}
         style={{ color: kit.ink === "#111111" ? "#111" : "#fff" }}
       >
         {kit.abbr}
       </span>
       <span
-        className="mt-1.5 h-1 w-10 rounded-full"
+        className="mt-1 h-1 w-10 rounded-full"
         style={{ background: kit.secondary }}
         aria-hidden
       />
-      <span className="mt-1.5 max-w-full truncate text-[15px] font-semibold text-white">
+      <span className="mt-1 max-w-full truncate text-[14px] font-semibold text-white">
         {name}
       </span>
     </div>
@@ -383,24 +397,26 @@ function PuckDrop({ anchor, now }: { anchor: Date; now: Date }) {
       suppressHydrationWarning
       role="timer"
       aria-label={`Puck drop in ${c.units.map((u) => `${Number(u.value)} ${u.unit}`).join(" ")}`}
-      className="flex items-end justify-between gap-3"
+      className="flex items-center gap-2"
     >
-      <span className="text-[13px] font-semibold tracking-[0.14em] text-white/75 uppercase">
-        Puck drop in
+      <span className="text-[12px] leading-tight font-semibold tracking-[0.12em] text-white/75 uppercase">
+        Puck drop
+        <br />
+        in
       </span>
-      <span className="flex gap-1.5" aria-hidden>
+      <span className="flex gap-1" aria-hidden>
         {c.units.map((u) => (
           <span
             key={u.unit}
-            className={`${styles.digit} flex min-w-[64px] flex-col items-center rounded-xl px-2 pt-1.5 pb-1`}
+            className={`${styles.digit} flex min-w-[48px] flex-col items-center rounded-lg px-1.5 pt-1 pb-0.5`}
           >
             <span
               suppressHydrationWarning
-              className={`${styles.display} text-[34px] leading-none text-[#ffd84d] tabular-nums`}
+              className={`${styles.display} text-[24px] leading-none text-[#ffd84d] tabular-nums`}
             >
               {u.value}
             </span>
-            <span className="mt-0.5 text-[12px] font-semibold tracking-wider text-white/60 uppercase">
+            <span className="text-[12px] font-semibold tracking-wider text-white/60 uppercase">
               {u.unit}
             </span>
           </span>

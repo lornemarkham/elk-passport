@@ -449,3 +449,42 @@ function photoTier(place: NearbyPlace): number {
 function byPhotoThenWalk(a: NearbyPlace, b: NearbyPlace): number {
   return photoTier(a) - photoTier(b) || a.km - b.km;
 }
+
+/**
+ * **Somewhere to meet before the game, with a photograph where Atlas has one.**
+ *
+ * The meeting places are the shared curated list's (`kind: "meeting"`,
+ * the same places the "Where are we meeting?" vote offers). Where Atlas holds
+ * the same place by name, its photograph, hours and facts come with it — under
+ * the same picture rule as the restaurants (`nearbyImage`). Where it does not,
+ * the place is stated as the curated list states it, with no picture:
+ * nothing is borrowed from a place that merely looks similar.
+ */
+export function nearbyMeetingSpots(
+  candidates: readonly DiscoveryCandidate[],
+  curated: readonly CuratedPlace[],
+  venue: readonly [number, number],
+  { withinKm = 1, weekday }: NearbyOptions = {},
+): NearbyPlace[] {
+  return curatedNear(curated, venue, { kinds: ["meeting"], withinKm })
+    .map(({ place, km, walkMinutes }): NearbyPlace => {
+      const held = candidates.find((c) => sameName(c.name, place.name));
+      const image = held ? nearbyImage(held) : undefined;
+      const gameDay = held ? gameDayOf(held, weekday) : undefined;
+      return {
+        atlasId: place.id,
+        name: place.name,
+        subtype: "Meeting place",
+        blurb: place.blurb,
+        address: `${place.address}, ${place.neighbourhood}`,
+        ...(image ? { image } : {}),
+        ...(gameDay ? { gameDay } : {}),
+        km,
+        walkMinutes,
+        basis: "straight-line",
+        source: "curated",
+        at: place.at,
+      };
+    })
+    .sort(byPhotoThenWalk);
+}

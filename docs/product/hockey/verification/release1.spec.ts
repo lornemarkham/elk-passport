@@ -158,7 +158,7 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
   // Nominate the first place and vote for it; the row follows.
   const first = near.getByRole("article").first();
   const place = (await first.getAttribute("aria-label"))!;
-  await first.getByRole("button", { name: `Nominate ${place}` }).click();
+  await first.getByRole("button", { name: `Add ${place} and vote` }).click();
   const vote = decision(host.page, "Before the game").getByRole("button", {
     name: `Vote for ${place}`,
   });
@@ -173,7 +173,7 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
     .getByLabel("Somewhere else? Type a name")
     .fill("Dave's basement");
   await decision(host.page, "Before the game")
-    .getByRole("button", { name: "Add" })
+    .getByRole("button", { name: "Add", exact: true })
     .click();
   await expect(
     decision(host.page, "Before the game").getByRole("button", {
@@ -311,13 +311,14 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
 
   // She votes the other way: a tie, said as a tie, on both phones.
   await open(guest.page, "Before the game");
-  // Something real is on the vote, so the places wait behind Explore.
-  await expect(
-    guest.page.getByRole("region", { name: "Places near Rogers Arena" }),
-  ).toHaveCount(0);
-  await expect(
-    guest.page.getByRole("button", { name: /Explore places & vote/ }),
-  ).toHaveAttribute("aria-expanded", "false");
+  // Release 2: the three recommendations are there the moment the row opens,
+  // even with something already on the vote.
+  const guestNear = guest.page.getByRole("region", {
+    name: "Places near Rogers Arena",
+  });
+  await expect(guestNear.getByRole("article")).toHaveCount(3, {
+    timeout: 30_000,
+  });
   await decision(guest.page, "Before the game")
     .getByRole("button", { name: "Vote for Just eat in the concourse" })
     .click();
@@ -327,14 +328,7 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
   await expect(toggle(host.page, "Before the game")).toContainText("Tied:", {
     timeout: 20_000,
   });
-  await guest.page
-    .getByRole("button", { name: /Explore places & vote/ })
-    .click();
-  await expect(
-    guest.page
-      .getByRole("region", { name: "Places near Rogers Arena" })
-      .getByRole("article"),
-  ).toHaveCount(3, { timeout: 30_000 });
+  await expect(guestNear.getByRole("article")).toHaveCount(3);
   await shot(guest.page, "06-guest-explore-320", true);
   await fitsThePhone(guest.page, 320);
 

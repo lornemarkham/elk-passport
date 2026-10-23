@@ -84,7 +84,7 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   }
 
   // Adding a place puts it on the vote, above the concourse.
-  await near.getByRole("button", { name: "Nominate Shark Club" }).click();
+  await near.getByRole("button", { name: "Add Shark Club and vote" }).click();
   const dinner = page.getByRole("region", {
     name: "Where are we going before?",
   });

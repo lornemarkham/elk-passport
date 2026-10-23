@@ -3,6 +3,7 @@ import type { DiscoveryCandidate } from "@/lib/data/types";
 import {
   looksLikeNotAPhoto,
   nearbyFood,
+  nearbyMeetingSpots,
   nearbyWithCurated,
   photoUsable,
   secureUrl,
@@ -428,5 +429,73 @@ describe("venueInAtlas", () => {
     expect(
       venueInAtlas([arena], "Rogers Arena", [49.29, -123.1088]),
     ).toBeUndefined();
+  });
+});
+
+describe("meeting places near the arena", () => {
+  const curated = [
+    {
+      id: "curated:test:station",
+      name: "Test Station",
+      kind: "meeting",
+      address: "1 Test St",
+      neighbourhood: "Downtown",
+      at: [49.2794, -123.1093],
+      blurb: "A stop across the street.",
+      source: { osm: "node/1", checked: "2026-10-01" },
+    },
+    {
+      id: "curated:test:plaza",
+      name: "Test Plaza",
+      kind: "meeting",
+      address: "2 Test St",
+      neighbourhood: "Downtown",
+      at: [49.2779, -123.1139],
+      blurb: "A plaza.",
+      source: { osm: "node/2", checked: "2026-10-01" },
+    },
+    {
+      id: "curated:test:far",
+      name: "Far Away",
+      kind: "meeting",
+      address: "3 Test St",
+      neighbourhood: "Elsewhere",
+      at: [49.4, -123.3],
+      blurb: "Too far.",
+      source: { osm: "node/3", checked: "2026-10-01" },
+    },
+    {
+      id: "curated:test:pub",
+      name: "Test Pub",
+      kind: "bar",
+      address: "4 Test St",
+      neighbourhood: "Downtown",
+      at: [49.2779, -123.1089],
+      blurb: "A pub.",
+      source: { osm: "node/4", checked: "2026-10-01" },
+    },
+  ] as unknown as Parameters<typeof nearbyMeetingSpots>[1];
+
+  it("offers only meeting places within a short walk, nearest first when no photo", () => {
+    const spots = nearbyMeetingSpots([], curated, ARENA);
+    expect(spots.map((p) => p.name)).toEqual(["Test Station", "Test Plaza"]);
+    expect(spots[0]).toMatchObject({
+      source: "curated",
+      basis: "straight-line",
+      blurb: "A stop across the street.",
+    });
+    expect(spots.every((p) => p.image === undefined)).toBe(true);
+  });
+
+  it("brings Atlas's photograph when it holds the same place, and leads with it", () => {
+    const held = candidate("plaza", "Plaza", [-123.1139, 49.2779], "observed", {
+      name: "Test Plaza",
+      heroUrl: "https://example.test/plaza.jpg",
+    });
+    const spots = nearbyMeetingSpots([held], curated, ARENA);
+    expect(spots[0].name).toBe("Test Plaza");
+    expect(spots[0].image?.url).toBe("https://example.test/plaza.jpg");
+    // Never borrowed from a differently named record.
+    expect(spots[1].image).toBeUndefined();
   });
 });

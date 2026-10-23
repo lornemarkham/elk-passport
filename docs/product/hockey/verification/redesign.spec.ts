@@ -170,10 +170,10 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
   // Maya puts Chambar on the vote from the shelf; it arrives on Lorne's
   // phone as a photograph, and his vote moves Maya's plan, with no reload.
   await near(maya.page)
-    .getByRole("button", { name: "Nominate Chambar" })
+    .getByRole("button", { name: "Add Chambar and vote" })
     .click();
   await expect(
-    near(maya.page).getByRole("button", { name: "Chambar is on the ballot" }),
+    near(maya.page).getByRole("button", { name: "Chambar is your vote" }),
   ).toBeVisible();
   const dinner = (p: Page) =>
     p.getByRole("region", { name: "Where are we going before?" });

@@ -8,6 +8,7 @@ import {
   Check,
   Clock,
   Footprints,
+  MapPin,
   Plus,
   UtensilsCrossed,
 } from "lucide-react";
@@ -35,6 +36,8 @@ import styles from "./hockey.module.css";
 
 const isDrink = (subtype?: string) =>
   /bar|pub|lounge|brew|tap|tavern|saloon|wine|cocktail/i.test(subtype ?? "");
+
+const isMeeting = (subtype?: string) => subtype === "Meeting place";
 
 const kindLabel = (subtype?: string) =>
   subtype && subtype.toLowerCase() !== "unknown"
@@ -87,7 +90,11 @@ function Photo({
 }) {
   const [broken, setBroken] = useState(false);
   const image = place?.image && !broken ? place.image : undefined;
-  const Icon = isDrink(place?.subtype) ? Beer : UtensilsCrossed;
+  const Icon = isMeeting(place?.subtype)
+    ? MapPin
+    : isDrink(place?.subtype)
+      ? Beer
+      : UtensilsCrossed;
 
   return (
     <div
@@ -367,19 +374,96 @@ export function VoteCount({ voters }: { voters: readonly Participant[] }) {
   );
 }
 
-/** A place near the arena that is not on the vote yet. */
+/** The pill a card's action sits in: one tap, one thing. */
+export function CardButton({
+  children,
+  onClick,
+  disabled = false,
+  pressed,
+  label,
+  tone = "light",
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  pressed?: boolean;
+  label: string;
+  tone?: "light" | "gold";
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={pressed}
+      aria-label={label}
+      onClick={onClick}
+      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[14px] font-bold text-[#0b1220] transition active:scale-[0.97] disabled:bg-white/10 disabled:text-white/60 ${
+        tone === "gold" ? "bg-[#ffd84d]" : "bg-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** "Add & vote", "Vote", "Your vote": what a place's card offers this person. */
+export function VoteButton({
+  place,
+  status,
+  canVote,
+  onVote,
+}: {
+  place: Pick<NearbyPlace, "name">;
+  status: "new" | "on-ballot" | "mine" | "pending";
+  canVote: boolean;
+  onVote: () => void;
+}) {
+  const label =
+    status === "new" ? `Add ${place.name} and vote` : `Back ${place.name}`;
+  if (status === "mine")
+    return (
+      <CardButton
+        label={`${place.name} is your vote`}
+        pressed
+        disabled
+        onClick={onVote}
+      >
+        <Check className="h-4 w-4" /> Your vote
+      </CardButton>
+    );
+  if (status === "pending")
+    return (
+      <CardButton label={label} disabled onClick={onVote}>
+        Adding…
+      </CardButton>
+    );
+  return (
+    <CardButton label={label} tone="gold" disabled={!canVote} onClick={onVote}>
+      <Plus className="h-4 w-4" />
+      {status === "new" ? "Add & vote" : "Vote"}
+    </CardButton>
+  );
+}
+
+/**
+ * **A place near the arena, as a card worth a look.** The photograph leads,
+ * then the name, what Atlas says it is, the walk, what is distinctive about
+ * it for a group, and one action (`actions`) — a vote, or the host's pick.
+ */
 export function NearbyVenueCard({
   place,
-  onBallot,
-  canAdd,
-  onAdd,
+  actions,
+  badge,
+  votes,
   wide = false,
   priority = false,
 }: {
   place: NearbyPlace;
-  onBallot: boolean;
-  canAdd: boolean;
-  onAdd: () => void;
+  actions?: React.ReactNode;
+  /** A quiet pill under the name: "Host's pick". */
+  badge?: string;
+  /** Votes it has so far; shown only when there are some. */
+  votes?: number;
   /** Full width, for the places a group should see first. */
   wide?: boolean;
   priority?: boolean;
@@ -397,11 +481,18 @@ export function NearbyVenueCard({
         aspect={wide ? "aspect-[16/10]" : "aspect-[4/3]"}
         priority={priority}
       >
-        {kind && (
-          <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
-            {kind}
-          </span>
-        )}
+        <span className="flex flex-wrap items-center gap-1.5">
+          {kind && (
+            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
+              {kind}
+            </span>
+          )}
+          {badge && (
+            <span className="rounded-full bg-[#ffd84d] px-2.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
+              {badge}
+            </span>
+          )}
+        </span>
         <h4
           className={`${styles.wide} mt-1 line-clamp-2 text-[19px] leading-[1.05] text-white`}
         >
@@ -409,6 +500,11 @@ export function NearbyVenueCard({
         </h4>
       </Photo>
       <div className="flex flex-1 flex-col gap-2 p-3">
+        {place.blurb && (
+          <p className="line-clamp-3 text-[14px] leading-snug text-white/85">
+            {place.blurb}
+          </p>
+        )}
         <WalkLine place={place} className="text-[13.5px] text-white/90" />
         {place.source === "curated" && place.address && (
           <p className="text-[13px] text-white/65">{place.address}</p>
@@ -417,40 +513,25 @@ export function NearbyVenueCard({
         {place.facts?.[0] && (
           <p className="text-[13px] text-white/70">{place.facts[0]}</p>
         )}
-        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          {place.source !== "curated" && place.kind ? (
-            <Link
-              href={subjectHref(place.kind, place.atlasId)}
-              aria-label={`More about ${place.name} in Passport`}
-              className="inline-flex min-h-11 items-center gap-1 text-[13.5px] font-semibold text-white/80 hover:text-white"
-            >
-              Details
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <span />
-          )}
-          <button
-            type="button"
-            disabled={onBallot || !canAdd}
-            onClick={onAdd}
-            aria-label={
-              onBallot
-                ? `${place.name} is on the ballot`
-                : `Nominate ${place.name}`
-            }
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white px-4 text-[14px] font-bold text-[#0b1220] transition active:scale-[0.97] disabled:bg-white/10 disabled:text-white/60"
-          >
-            {onBallot ? (
-              <>
-                <Check className="h-4 w-4" /> On the vote
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" /> Add to vote
-              </>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1">
+          <span className="flex items-center gap-3">
+            {place.source !== "curated" && place.kind && (
+              <Link
+                href={subjectHref(place.kind, place.atlasId)}
+                aria-label={`More about ${place.name} in Passport`}
+                className="inline-flex min-h-11 items-center gap-1 text-[13.5px] font-semibold text-white/80 hover:text-white"
+              >
+                Details
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
             )}
-          </button>
+            {votes ? (
+              <span className="text-[13px] font-semibold whitespace-nowrap text-white/80 tabular-nums">
+                {votes} {votes === 1 ? "vote" : "votes"}
+              </span>
+            ) : null}
+          </span>
+          {actions}
         </div>
       </div>
     </article>

@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-22 — UX small release 2, restore discovery: [`RELEASE-2-DISCOVERY.md`](RELEASE-2-DISCOVERY.md)** (three venue cards the moment Before the game opens, meeting places as cards with a host's pick, a compact game-day header; code only, no migration).
+
 **2026-10-22 — UX cleanup, small release 1: [`RELEASE-1-UX.md`](RELEASE-1-UX.md)** (Plan as five decisions that open in place, three places at a time behind "Explore places & vote", a compact concourse row, Arena in the bottom bar; code only, no migration).
 
 **2026-10-22 — Arena Mode: [`ARENA-MODE.md`](ARENA-MODE.md)** (a schematic Rogers Arena from the arena's own map, check-ins instead of tracking, pings, side quests, the dietary guide and dated prices; branch `feature/hockey-arena`, a separate release from Our Seats; needs `arena-migration.sql`).

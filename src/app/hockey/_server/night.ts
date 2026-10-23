@@ -14,6 +14,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import {
+  nearbyMeetingSpots,
   nearbyWithCurated,
   venueInAtlas,
   walkLabel,
@@ -693,6 +694,9 @@ async function placesNear(occasion: NightRows["occasion"]): Promise<Nearby> {
       weekday,
       limit: 24,
     }),
+    meeting: nearbyMeetingSpots(candidates, VANCOUVER_PLACES, venue, {
+      weekday,
+    }),
     ...(arena ? { arena } : {}),
     outage,
   };
@@ -700,6 +704,8 @@ async function placesNear(occasion: NightRows["occasion"]): Promise<Nearby> {
 
 export interface Nearby {
   readonly places: NearbyPlace[];
+  /** Places to meet near the arena, with Atlas's photograph where it holds one. */
+  readonly meeting?: NearbyPlace[];
   /** The arena as Atlas holds it, when it does: what a walk is routed to. */
   readonly arena?: { readonly atlasId: string; readonly at: [number, number] };
   readonly outage?: string;
