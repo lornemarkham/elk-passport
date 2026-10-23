@@ -16,6 +16,7 @@ import type { GameView } from "@/app/hockey/_server/game";
 import { CallIt } from "./CallIt";
 import { Memories } from "./Memories";
 import { PicksDeck } from "./PicksDeck";
+import { RecapShare } from "./RecapShare";
 import { RevealBoard } from "./RevealBoard";
 import { LastTime } from "./RunItBack";
 import type { SharedNight } from "./useSharedNight";
@@ -243,6 +244,8 @@ export function PlayTab({
           morning={live.phase.id === "morning" || live.phase.id === "again"}
         />
       )}
+
+      {act === "after" && <RecapShare night={night} nhl={nhl} />}
 
       {act !== "after" && <Memories night={night} />}
 
