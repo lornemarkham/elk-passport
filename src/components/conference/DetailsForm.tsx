@@ -38,7 +38,10 @@ export function DetailsForm({
     startsOn: initial?.startsOn ?? "",
     endsOn: initial?.endsOn ?? "",
     accent: initial?.branding.accent ?? "#1f6feb",
-    modules: new Set<ModuleId>(initial?.modules ?? ["discover"]),
+    modules: new Set<ModuleId>(
+      initial?.modules ??
+        MODULES.filter((m) => m.status === "built").map((m) => m.id),
+    ),
   });
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
