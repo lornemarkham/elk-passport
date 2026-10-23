@@ -248,12 +248,15 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   // The plan outlives the vote: it is still on the page at the final horn.
   for (const p of [lorne.page, maya.page]) {
     await openTab(p, "Plan");
-    // Nothing left to vote on, so the row is a statement, not a button.
-    await expect(
-      p
-        .getByRole("region", { name: "The plan" })
-        .getByRole("region", { name: "Before the game", exact: true }),
-    ).toContainText(/Just eat in the concourse\s*Locked in · 2 votes/);
+    // Nothing left to vote on, so the line is a statement, not a button.
+    const line = p
+      .getByRole("region", { name: "The plan" })
+      .getByRole("listitem")
+      .filter({ hasText: "Before the game" });
+    await expect(line).toContainText(
+      /Just eat in the concourse\s*Locked in · 2 votes/,
+    );
+    await expect(line.getByRole("button")).toHaveCount(0);
   }
 
   // Locked picks are now everyone's to see.

@@ -7,7 +7,8 @@ import { TEST_PASSWORD } from "./test-credentials";
  *
  * Needs the local stack (stack.mjs start, with seats and arena) and
  * `atlas-seats-stub.mjs` serving the real candidates body as ATLAS_API_URL.
- * Proves what `RELEASE-1-UX.md` changed:
+ * Proves what `RELEASE-1-UX.md` changed, as it stands since the recovery
+ * (`RECOVERY.md`: every part open under the plan, no accordion):
  *
  *   Plan opens on five rows (before, getting there, meeting point, seats,
  *   after), each with its state and one tap to open → the dinner vote shows
@@ -46,17 +47,18 @@ async function shot(page: Page, name: string, full = false) {
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: full });
 }
 
+// Since the recovery (RECOVERY.md) a decision is its line on the plan card
+// (`toggle`, which goes to it) and its part of the page under the plan
+// (`decision`, always open). Release 1 and 2 opened one row at a time.
 const plan = (p: Page) => p.getByRole("region", { name: "The plan" });
 const decision = (p: Page, label: string) =>
-  plan(p).getByRole("region", { name: label, exact: true });
+  p.getByRole("region", { name: label, exact: true });
 const toggle = (p: Page, label: string) =>
-  decision(p, label).getByRole("button", { name: new RegExp(`^${label}`) });
+  plan(p).getByRole("button", { name: new RegExp(`^${label}`) });
 
 async function open(p: Page, label: string) {
-  const button = toggle(p, label);
-  if ((await button.getAttribute("aria-expanded")) !== "true")
-    await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await toggle(p, label).click();
+  await expect(decision(p, label)).toBeInViewport();
 }
 
 /** No sideways scroll, and nothing to tap in the plan is under 40 px. */
@@ -85,7 +87,7 @@ async function fitsThePhone(page: Page, width: number) {
   expect(report.tiny, "text under 12px").toEqual([]);
 }
 
-test("five decisions, three places, Arena in the bar — host and guest", async ({
+test("five decisions, the night card by card, Arena in the bar — host and guest", async ({
   browser,
 }) => {
   test.setTimeout(300_000);
@@ -115,16 +117,20 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
     labels.map(async (l) => (await toggle(host.page, l).boundingBox())!.y),
   );
   expect([...ys].sort((a, b) => a - b)).toEqual(ys);
-  // Nothing is open, so nothing below the plan but Run it back's absence:
-  // the whole of Plan is about a phone screen and a half.
-  await expect(plan(host.page).locator("[aria-expanded=true]")).toHaveCount(0);
-  const tall = await host.page.evaluate(
-    () => document.documentElement.scrollHeight,
+  // Recovery: every part of the night is open under the plan, in the same
+  // order — nothing to unfold, no accordion.
+  const parts = await Promise.all(
+    labels.map(async (l) => {
+      await expect(decision(host.page, l)).toBeAttached();
+      return (await decision(host.page, l).boundingBox())!.y;
+    }),
   );
-  expect(tall, "Plan, closed, is short").toBeLessThan(844 * 2);
-  await expect(toggle(host.page, "Before the game")).toContainText("Vote");
-  await expect(toggle(host.page, "Our seats")).toContainText("Add yours");
-  await expect(toggle(host.page, "Getting there")).toContainText("Set");
+  expect([...parts].sort((a, b) => a - b)).toEqual(parts);
+  await expect(plan(host.page).locator("[aria-expanded]")).toHaveCount(0);
+  // What is waiting on you, said on the plan.
+  await expect(toggle(host.page, "Before the game")).toContainText("yours?");
+  await expect(toggle(host.page, "Our seats")).toContainText("add yours");
+  await expect(toggle(host.page, "Getting there")).toContainText("set it");
   await shot(host.page, "01-plan-host-390");
   await fitsThePhone(host.page, 390);
 
@@ -181,12 +187,13 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
     }),
   ).toBeVisible();
 
-  // One open at a time.
+  // Going to the meeting point leaves the dinner vote where it is: open.
   await open(host.page, "Meeting point");
-  await expect(toggle(host.page, "Before the game")).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  await expect(
+    decision(host.page, "Before the game").getByRole("button", {
+      name: `Vote for ${place}`,
+    }),
+  ).toBeAttached();
   await decision(host.page, "Meeting point")
     .getByRole("button", { name: /Just meet at our seats/ })
     .click();
@@ -209,7 +216,7 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
   await expect(toggle(host.page, "Our seats")).toContainText(
     "Section 309 · Row 12 · Seats 1–2",
   );
-  await expect(toggle(host.page, "Our seats")).toContainText("Edit");
+  await expect(toggle(host.page, "Our seats")).not.toContainText("add yours");
 
   await open(host.page, "Getting there");
   await decision(host.page, "Getting there")
@@ -301,11 +308,11 @@ test("five decisions, three places, Arena in the bar — host and guest", async 
 
   // The guest sees the host's plan, and what is waiting on her.
   await expect(toggle(guest.page, "Before the game")).toContainText(place);
-  await expect(toggle(guest.page, "Before the game")).toContainText("Vote");
+  await expect(toggle(guest.page, "Before the game")).toContainText("yours?");
   await expect(toggle(guest.page, "Getting there")).toContainText(
     "6:15pm at the arena · Gate 10",
   );
-  await expect(toggle(guest.page, "Our seats")).toContainText("Add yours");
+  await expect(toggle(guest.page, "Our seats")).toContainText("add yours");
   await shot(guest.page, "05-plan-guest-320");
   await fitsThePhone(guest.page, 320);
 

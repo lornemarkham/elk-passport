@@ -227,6 +227,170 @@ function GameDay({ place }: { place: NearbyPlace }) {
   ) : null;
 }
 
+function Details({ place }: { place: NearbyPlace }) {
+  const href =
+    place.source !== "curated" && place.kind
+      ? subjectHref(place.kind, place.atlasId)
+      : undefined;
+  return (
+    <div className="flex flex-col gap-2">
+      <GameDay place={place} />
+      {place.facts && place.facts.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5">
+          {place.facts.map((fact) => (
+            <li
+              key={fact}
+              className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[12.5px] font-medium text-white/85"
+            >
+              {fact}
+            </li>
+          ))}
+        </ul>
+      )}
+      {place.blurb && (
+        <p className="line-clamp-2 text-[14px] leading-snug text-white/70">
+          {place.blurb}
+        </p>
+      )}
+      {!place.blurb && place.address && (
+        <p className="text-[14px] text-white/70">{place.address}</p>
+      )}
+      {href && (
+        <Link
+          href={href}
+          className="inline-flex min-h-10 w-fit items-center gap-1 text-[14px] font-semibold text-white underline-offset-4 hover:underline"
+        >
+          More about {place.name} in Passport
+          <ArrowUpRight className="h-4 w-4" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One option on the "where are we eating" vote, as the photograph it is: the
+ * place's own picture, who put it there, who's backing it and a race bar. The
+ * vote is the card, so the argument looks like a night out rather than a
+ * form. `place` is the Atlas place the option was nominated as, when Passport
+ * could match it by name; without it (somebody typed a name) the card still
+ * votes. (Release 1 turned these into rows; the recovery brings them back.)
+ */
+export function BallotVenueCard({
+  label,
+  detail,
+  emoji,
+  place,
+  voters,
+  share,
+  standing,
+  chosen,
+  canVote,
+  onVote,
+  addedBy,
+  priority,
+}: {
+  label: string;
+  detail?: string;
+  emoji?: string;
+  place?: NearbyPlace;
+  voters: readonly Participant[];
+  share: number;
+  /** Out in front of the vote, or level with somebody else. */
+  standing?: "leading" | "tied";
+  chosen: boolean;
+  canVote: boolean;
+  onVote: () => void;
+  addedBy?: string;
+  priority?: boolean;
+}) {
+  const kind = kindLabel(place?.subtype);
+  return (
+    <article
+      aria-label={label}
+      data-option={label}
+      className={`overflow-hidden rounded-[22px] bg-[#101826] ring-1 transition ${
+        chosen ? "ring-2 ring-[#ffd84d]" : "ring-white/10"
+      }`}
+    >
+      <Photo
+        place={place}
+        emoji={place ? undefined : (emoji ?? "🍽️")}
+        aspect={place?.image ? "aspect-[16/10]" : "aspect-[16/7]"}
+        priority={priority}
+      >
+        <div className="flex flex-wrap items-center gap-1.5">
+          {standing && (
+            <span className="rounded-full bg-[#ffd84d] px-2.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
+              {standing === "tied" ? "Tied for the lead" : "Leading"}
+            </span>
+          )}
+          {kind && (
+            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
+              {kind}
+            </span>
+          )}
+        </div>
+        <h4
+          className={`${styles.wide} mt-1.5 text-[24px] leading-[1.05] [overflow-wrap:anywhere] text-white`}
+        >
+          {label}
+        </h4>
+        {place ? (
+          <WalkLine place={place} className="mt-1 text-[14px] text-white" />
+        ) : (
+          detail && <p className="mt-1 text-[14px] text-white/85">{detail}</p>
+        )}
+      </Photo>
+
+      <div className="flex flex-col gap-3 p-3.5">
+        {place && <Details place={place} />}
+        {addedBy && (
+          <p className="text-[12.5px] text-white/55">
+            {addedBy} put this on the vote
+          </p>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={!canVote}
+            aria-pressed={chosen}
+            aria-label={`Vote for ${label}`}
+            onClick={onVote}
+            className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-bold transition active:scale-[0.98] disabled:cursor-default ${
+              chosen
+                ? "bg-[#ffd84d] text-[#0b1220]"
+                : "bg-white/[0.08] text-white ring-1 ring-white/20 hover:bg-white/[0.14] disabled:opacity-60"
+            }`}
+          >
+            {chosen ? (
+              <>
+                <Check className="h-5 w-5" strokeWidth={3} />
+                Your vote
+              </>
+            ) : canVote ? (
+              `Vote for ${label.length > 18 ? "this" : label}`
+            ) : (
+              "Voting's closed"
+            )}
+          </button>
+          <VoteCount voters={voters} />
+        </div>
+        <div
+          className="h-1.5 overflow-hidden rounded-full bg-white/10"
+          aria-hidden
+        >
+          <div
+            className="h-full rounded-full bg-[#ffd84d] transition-[width] duration-500"
+            style={{ width: `${Math.round(share * 100)}%` }}
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
 /**
  * One option on the "where are we eating" vote, as one compact row: the
  * place's own photograph small (or the option's emoji), what it is and how
