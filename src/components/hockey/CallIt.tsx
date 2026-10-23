@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SectionHead, Surface } from "@/experience-lab/ui/atoms";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { ResponseValue } from "@/experience-lab/core/types";
+import type { GameView } from "@/app/hockey/_server/game";
 import type { SharedNight } from "./useSharedNight";
 
 /**
@@ -16,10 +17,21 @@ import type { SharedNight } from "./useSharedNight";
  * entry. A result can be corrected; standings are derived, so nothing else has
  * to change.
  *
+ * When the NHL's own record of a finished game matches this night, the host
+ * can start from it with one tap ("Use the NHL's numbers"). That fills in
+ * only what the record settles (score, overtime, first goal, total goals),
+ * still as the host's own call, and everything stays editable afterwards.
+ *
  * Only shown once the picks are locked: before then, a result is a spoiler at
  * best and a thumb on the scale at worst.
  */
-export function CallIt({ night }: { night: SharedNight }) {
+export function CallIt({
+  night,
+  nhl,
+}: {
+  night: SharedNight;
+  nhl?: GameView | null;
+}) {
   const { live, role, state, definition } = night;
   const me = state.meId;
   // The engine withholds a called result until its moment (a first goal
@@ -39,9 +51,10 @@ export function CallIt({ night }: { night: SharedNight }) {
       (role === "host" || p.prompt.askedBy === me),
   );
   if (callable.length === 0) return null;
+  const suggested = callable.filter((p) => nhl?.suggestions?.[p.prompt.id]);
 
   return (
-    <section>
+    <section aria-label="Call it">
       <SectionHead
         title="Call it"
         subtitle={
@@ -51,6 +64,32 @@ export function CallIt({ night }: { night: SharedNight }) {
         }
       />
       <Surface>
+        {role === "host" && suggested.length > 0 && nhl?.suggestions && (
+          <div className="mb-4 rounded-2xl bg-[#ffd84d]/10 p-3">
+            <p className="text-[14px] text-white/85">
+              The NHL has this one on record:{" "}
+              {suggested
+                .map((p) => nhl.suggestions?.[p.prompt.id]?.words)
+                .join(" · ")}
+              .
+            </p>
+            <button
+              type="button"
+              className="mt-2 min-h-11 rounded-full bg-[#ffd84d] px-4 text-[14px] font-semibold text-[#0b1220]"
+              onClick={() => {
+                for (const p of suggested) {
+                  void night.send({
+                    type: "callIt",
+                    promptId: p.prompt.id,
+                    value: nhl.suggestions?.[p.prompt.id]?.value as never,
+                  });
+                }
+              }}
+            >
+              Use the NHL&apos;s numbers
+            </button>
+          </div>
+        )}
         <ul className="flex flex-col gap-4">
           {callable.map((p) => (
             <Caller

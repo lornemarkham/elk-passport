@@ -832,6 +832,69 @@ export async function removeMember(
   if (!data?.length) throw new NightError("Not found.", 404);
 }
 
+/**
+ * **The host changes the game** — who, or when. Allowed only while the game is
+ * still ahead (a result is not rescheduled), and only the host's own update
+ * touches the row: the database's host policy decides, and an empty result
+ * means "not yours" or "not there". Every lock follows the new puck drop.
+ */
+export async function changeGame(
+  user: PassportUser,
+  id: string,
+  request: GameRequest,
+): Promise<void> {
+  const db = await createSupabaseServerClient();
+  const night = await loadNight(user, id);
+  if (!night) throw new NightError("Not found.", 404);
+  if (night.role !== "host")
+    throw new NightError("Only the host can change the game.", 403);
+  const now = new Date();
+  if (new Date(night.definition.anchorAt).getTime() <= now.getTime())
+    throw new NightError("That game has already started.", 422);
+  const chosen = chooseGame(request, now);
+  if (!chosen.ok) throw new NightError(chosen.problem, 422);
+
+  const { data: current, error: readError } = await db
+    .from("passport_occasions")
+    .select("details")
+    .eq("id", id)
+    .maybeSingle();
+  fail(readError, "reading the night");
+  const { data, error } = await db
+    .from("passport_occasions")
+    .update({
+      starts_at: chosen.startsAt,
+      details: {
+        ...((current?.details as Record<string, unknown> | null) ?? {}),
+        opponent: chosen.details.opponent,
+        opponentEmoji: chosen.details.opponentEmoji,
+      },
+    })
+    .eq("id", id)
+    .select("id");
+  fail(error, "changing the game");
+  if (!data?.length) throw new NightError("Not found.", 404);
+}
+
+/** **The host cancels the night**: everything on it goes with it. */
+export async function cancelNight(
+  user: PassportUser,
+  id: string,
+): Promise<void> {
+  const db = await createSupabaseServerClient();
+  const night = await loadNight(user, id);
+  if (!night) throw new NightError("Not found.", 404);
+  if (night.role !== "host")
+    throw new NightError("Only the host can cancel the night.", 403);
+  const { data, error } = await db
+    .from("passport_occasions")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  fail(error, "cancelling the night");
+  if (!data?.length) throw new NightError("Not found.", 404);
+}
+
 export function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }

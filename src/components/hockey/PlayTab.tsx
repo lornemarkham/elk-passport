@@ -12,7 +12,9 @@ import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Block } from "@/experience-lab/core/types";
 import { actOf } from "@/domain/hockey/acts";
 import { clockAt } from "@/domain/hockey/countdown";
+import type { GameView } from "@/app/hockey/_server/game";
 import { CallIt } from "./CallIt";
+import { Memories } from "./Memories";
 import { PicksDeck } from "./PicksDeck";
 import { RevealBoard } from "./RevealBoard";
 import { LastTime } from "./RunItBack";
@@ -63,10 +65,12 @@ export function PlayTab({
   night,
   blocks,
   onOpenToyBox,
+  nhl,
 }: {
   night: SharedNight;
   blocks: readonly Block[];
   onOpenToyBox: () => void;
+  nhl?: GameView | null;
 }) {
   const { live, definition } = night;
   const act = actOf(live.phase.id).id;
@@ -88,7 +92,9 @@ export function PlayTab({
         <LastTime series={night.series} live={live} className="" />
       )}
 
-      <CallIt night={night} />
+      <CallIt night={night} nhl={nhl} />
+
+      {act === "after" && <Memories night={night} />}
 
       {blocks.map((block) => {
         if (block.kind === "leaderboard") {
@@ -237,6 +243,8 @@ export function PlayTab({
           morning={live.phase.id === "morning" || live.phase.id === "again"}
         />
       )}
+
+      {act !== "after" && <Memories night={night} />}
 
       {act === "before" && picks.length === 0 && blocks.length === 0 && (
         <p className="rounded-2xl bg-white/[0.06] px-4 py-4 text-[15px] text-white/75">

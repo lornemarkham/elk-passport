@@ -10,6 +10,8 @@ import { ACTS, actOf, nextPhase } from "@/domain/hockey/acts";
 import { countdown, gameWhen } from "@/domain/hockey/countdown";
 import { answerText } from "@/domain/hockey/reveal";
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
+import type { GameView } from "@/app/hockey/_server/game";
+import { NhlBoard } from "./NhlBoard";
 import styles from "./hockey.module.css";
 
 /**
@@ -30,6 +32,7 @@ export function GameDayHero({
   live,
   role,
   myPicks,
+  nhl,
   onInvite,
   onGoAgain,
 }: {
@@ -37,6 +40,8 @@ export function GameDayHero({
   role: "host" | "guest";
   /** How many of my sealed picks are in, out of how many. */
   myPicks?: { mine: number; total: number };
+  /** What the league says about this game, when it has been asked. */
+  nhl?: GameView | null;
   onInvite?: () => void;
   onGoAgain?: () => void;
 }) {
@@ -131,6 +136,12 @@ export function GameDayHero({
             </span>
           </div>
         </div>
+
+        {/* Once the host has called the final, the Final row below says it;
+            the league's board is for the live game and the wait for the call. */}
+        {nhl?.game && !(nhl.game.state === "final" && finalScore) && (
+          <NhlBoard game={nhl.game} home={homeKit.abbr} away={awayKit.abbr} />
+        )}
 
         {/* The board over centre ice, and who's coming, on one line before the game. */}
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">

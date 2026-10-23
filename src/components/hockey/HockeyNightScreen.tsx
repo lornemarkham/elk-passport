@@ -24,9 +24,11 @@ import { ChatRoom } from "./ChatRoom";
 import { GameDayHero } from "./GameDayHero";
 import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { GroupTab } from "./GroupTab";
+import { Memories } from "./Memories";
 import { NightTabs } from "./NightTabs";
 import { PlanSummary, PlanTab } from "./PlanTab";
 import { PlayTab, promptsOf } from "./PlayTab";
+import { useNhlGame } from "./useNhlGame";
 import { useSharedNight, type NightSnapshot } from "./useSharedNight";
 import styles from "./hockey.module.css";
 
@@ -55,6 +57,7 @@ import styles from "./hockey.module.css";
  */
 export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
   const night = useSharedNight(initial);
+  const nhl = useNhlGame(initial.state.slug);
   const { live, definition, state, role } = night;
   const [toyBoxOpen, setToyBoxOpen] = useState(false);
   const [tab, setTab] = useTabs(live.phase.id);
@@ -140,6 +143,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
         live={live}
         role={role}
         myPicks={myPicks}
+        nhl={nhl}
         onInvite={() => choose("group", "guest-list")}
         onGoAgain={() => choose("plan", "run-it-back")}
       />
@@ -171,6 +175,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
             <ArenaDoor slug={night.state.slug} />
           )}
           <PlanSummary live={live} />
+          <Memories night={night} />
         </div>
       )}
 
@@ -188,6 +193,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               <PlayTab
                 night={night}
                 blocks={byTab.play}
+                nhl={nhl}
                 onOpenToyBox={() => setToyBoxOpen(true)}
               />
             )}
