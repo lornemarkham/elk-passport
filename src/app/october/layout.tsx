@@ -1,8 +1,24 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { currentUser } from "@/lib/auth/currentUser";
 import { EXPERIENCE_PATH_HEADER } from "@/lib/domains/experience-domains";
 import { OctoberNav } from "@/components/october/shell/OctoberNav";
+
+/**
+ * **What a pasted link looks like.** Every October address is shared by hand —
+ * a join code, the store, the door — and with no Open Graph tags at all a
+ * message app showed the bare URL. Words only, and the room's own words: no
+ * picture is invented, and nothing here gives a room's secret away.
+ */
+export const metadata: Metadata = {
+  openGraph: {
+    siteName: "October",
+    type: "website",
+    title: "October",
+    description: "Here is October.",
+  },
+};
 
 /**
  * **The October product shell.**

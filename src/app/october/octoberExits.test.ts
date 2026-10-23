@@ -53,3 +53,15 @@ describe("the way out of an October room", () => {
     ).toContain("back to October");
   });
 });
+
+describe("the top of Witching Hour on a phone", () => {
+  it("keeps the fixture readout clear of the always-present leave link", () => {
+    // Both sit at the top; on a 412px phone the readout wraps to two lines and
+    // ran under "leave" until it was given a right edge of its own.
+    const scene = source(WITCHING_HOUR);
+    const readout = scene
+      .split("\n")
+      .find((l) => l.includes("absolute top-5") && l.includes("left-5"));
+    expect(readout).toContain("right-16");
+  });
+});
