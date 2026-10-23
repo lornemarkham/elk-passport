@@ -191,7 +191,7 @@ export function GameDayHero({
         </p>
         {live.commentary.length > 0 && (
           <ul className="mt-1.5 flex flex-col gap-1" aria-label="Passport says">
-            {live.commentary.slice(0, 1).map((line) => (
+            {live.commentary.slice(0, 2).map((line) => (
               <li
                 key={line}
                 className="flex gap-2 text-[14px] leading-snug text-white/80"

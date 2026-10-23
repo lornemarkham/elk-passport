@@ -14,10 +14,12 @@ export async function openTab(
 }
 
 /**
- * Open one of Plan's five decisions (`DECISIONS` in
+ * Go to one of Plan's five decisions (`DECISIONS` in
  * `src/domain/hockey/plan.ts`) — "Before the game", "Getting there",
- * "Meeting point", "Our seats", "After the game" — and return it. One is open
- * at a time, so opening one closes the last.
+ * "Meeting point", "Our seats", "After the game" — and return its part of the
+ * page. Since the recovery (`docs/product/hockey/RECOVERY.md`) every part is
+ * open, one after another, so this is the plan's line for it, tapped: the page
+ * goes there. (Release 1 and 2 opened one row of an accordion at a time.)
  */
 export async function openDecision(
   page: Page,
@@ -28,12 +30,11 @@ export async function openDecision(
     | "Our seats"
     | "After the game",
 ) {
-  const region = page
+  const region = page.getByRole("region", { name: label, exact: true });
+  await page
     .getByRole("region", { name: "The plan" })
-    .getByRole("region", { name: label, exact: true });
-  const button = region.getByRole("button", { name: new RegExp(`^${label}`) });
-  if ((await button.getAttribute("aria-expanded")) !== "true")
-    await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
+    .getByRole("button", { name: new RegExp(`^${label}`) })
+    .click();
+  await expect(region).toBeInViewport();
   return region;
 }

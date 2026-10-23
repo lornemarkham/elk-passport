@@ -6,7 +6,8 @@ import { TEST_PASSWORD } from "./test-credentials";
  * **Release 2: restore discovery inside the compact Plan.**
  *
  * Needs the same stack and `atlas-seats-stub.mjs` as `release1.spec.ts`.
- * Proves what `RELEASE-2-DISCOVERY.md` changed:
+ * Proves what `RELEASE-2-DISCOVERY.md` changed, as it stands since the
+ * recovery (`RECOVERY.md`: every part open under the plan, no accordion):
  *
  *   the hero is short, with teams, date, venue, countdown and the headline
  *   → the plan starts well up the first phone screen → opening Before the
@@ -44,17 +45,18 @@ async function shot(page: Page, name: string, full = false) {
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: full });
 }
 
+// Since the recovery (RECOVERY.md) a decision is its line on the plan card
+// (`toggle`, which goes to it) and its part of the page under the plan
+// (`decision`, always open). Release 1 and 2 opened one row at a time.
 const plan = (p: Page) => p.getByRole("region", { name: "The plan" });
 const decision = (p: Page, label: string) =>
-  plan(p).getByRole("region", { name: label, exact: true });
+  p.getByRole("region", { name: label, exact: true });
 const toggle = (p: Page, label: string) =>
-  decision(p, label).getByRole("button", { name: new RegExp(`^${label}`) });
+  plan(p).getByRole("button", { name: new RegExp(`^${label}`) });
 
 async function open(p: Page, label: string) {
-  const button = toggle(p, label);
-  if ((await button.getAttribute("aria-expanded")) !== "true")
-    await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await toggle(p, label).click();
+  await expect(decision(p, label)).toBeInViewport();
 }
 
 async function noSideways(page: Page, width: number) {

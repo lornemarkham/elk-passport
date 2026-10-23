@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  ArrowDown,
   Check,
-  ChevronDown,
   Footprints,
   Lock,
   MapPin,
@@ -35,10 +35,12 @@ import {
   seatsSummary,
   useSeats,
 } from "./OurSeats";
+import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { RunItBack } from "./RunItBack";
 import { MeetingSpots } from "./MeetingSpots";
 import {
   BallotRow,
+  BallotVenueCard,
   NearbyVenueCard,
   PlanPhoto,
   VenueSkeleton,
@@ -69,7 +71,7 @@ const ICON: Record<DecisionId, typeof MapPin> = {
   after: Moon,
 };
 
-/** One of the five decisions, as its row says it. */
+/** One of the five decisions: its line on the plan, and its part of the night. */
 interface Decision {
   readonly id: DecisionId;
   readonly label: string;
@@ -79,24 +81,29 @@ interface Decision {
   /** A line under the value: votes so far, locked. */
   readonly meta?: string;
   readonly photo?: string;
-  /** What this person can do about it, if anything. */
-  readonly action?: { readonly label: string; readonly urgent: boolean };
+  /** What is waiting on this person, said the way a friend would. */
+  readonly nudge?: string;
   readonly locked?: boolean;
-  /** What opens under the row; none, and the row is only a statement. */
+  /** Its part of the page; none, and the line on the plan is all there is. */
   readonly body?: ReactNode;
-  /** The body is a vote (dark), not a light panel. */
-  readonly dark?: boolean;
+  /** A heading for a part that is not a vote (a vote asks its own question). */
+  readonly title?: string;
+  /** The part is a light panel (seats, the walk), not a dark vote. */
+  readonly light?: boolean;
 }
 
 /**
- * **Plan: five decisions, each one tap from changing it.**
+ * **Plan: the night, card by card.**
  *
- * Before the game, getting there, the meeting point, our seats, after the
- * game (`DECISIONS`): each a row saying where it stands — the leader of its
- * vote, a tie as a tie, nobody yet — and what is waiting on you. Tap a row
- * and its vote, its seats or its walk opens under it; one at a time, so the
- * page stays a phone screen or two rather than eight. Every vote, seat and
- * nomination is the same one as before; only the layout moved.
+ * The plan leads — five lines, each where its decision stands (the leader of
+ * its vote, a tie as a tie, nobody yet) and a nudge where it is waiting on
+ * you; tap one and the page goes to it. Under it, the night in the order it
+ * happens, every part open: where we eat as photographs of real places the
+ * group argues over, getting there, where we meet as cards, our seats, Arena
+ * Mode's door, and after the game. Every vote, seat and nomination is the
+ * same data through the same endpoints as Release 2; the recovery is the
+ * presentation the overhaul (f3b1aa3) and the coworker polish (b5eb736) had,
+ * with everything since kept (see `docs/product/hockey/RECOVERY.md`).
  */
 export function PlanTab({
   night,
@@ -114,7 +121,6 @@ export function PlanTab({
   const seats = useSeats(night.state.slug, ahead);
   const items = planItems(live.prompts);
   const eating = items.find((i) => i.id === DINNER);
-  const [open, setOpen] = useState<DecisionId | null>(null);
 
   // Only the questions this phase puts on the page take votes.
   const onPage = new Set(
@@ -156,7 +162,7 @@ export function PlanTab({
         : (DECISIONS.find((d) => d.id === id)?.promptIds ?? []);
     const votes = order.map(vote).filter(Boolean);
     return votes.length > 0 ? (
-      <div className="flex flex-col gap-7">{votes}</div>
+      <div className="flex flex-col gap-10">{votes}</div>
     ) : undefined;
   });
 
@@ -167,11 +173,11 @@ export function PlanTab({
       {
         id: "getting-there",
         label: "Getting there",
+        title: "Meet at the arena, walk in together",
         value: walk.value,
         muted: !seats.view?.meetup,
-        action: walk.needsMe
-          ? { label: "Set", urgent: true }
-          : { label: "Open", urgent: false },
+        nudge: walk.needsMe ? "set it" : undefined,
+        light: true,
         body: (
           <GettingThereEditor
             seats={seats}
@@ -185,25 +191,38 @@ export function PlanTab({
       {
         id: "seats",
         label: "Our seats",
+        title: "Who's sitting where",
         value: seat.value,
         muted: seat.needsMe && !seats.view?.seats.length,
-        action:
-          seat.needsMe && seats.view?.available
-            ? { label: "Add yours", urgent: true }
-            : { label: "Edit", urgent: false },
+        nudge: seat.needsMe && seats.view?.available ? "add yours" : undefined,
+        light: true,
         body: <SeatsEditor seats={seats} say={night.say} />,
       },
     );
   }
 
+  const order = DECISIONS.map((d) => d.id);
+  const sorted = [...rows].sort(
+    (a, b) => order.indexOf(a.id) - order.indexOf(b.id),
+  );
+  const door = ahead && isRogersArena(live.definition.kicker);
+
   return (
-    <div className="flex flex-col gap-6">
-      <PlanCard
-        live={live}
-        rows={rows}
-        open={open}
-        onToggle={(id) => setOpen((now) => (now === id ? null : id))}
-      />
+    <div className="flex flex-col gap-10">
+      <PlanCard live={live} rows={sorted} />
+
+      {sorted.map((row) =>
+        row.body ? (
+          <DecisionSection key={row.id} row={row}>
+            {/* Arena Mode's door sits with the seats: once you're in, it's the building. */}
+            {row.id === "seats" && door && (
+              <div className="mt-4">
+                <ArenaDoor slug={night.state.slug} />
+              </div>
+            )}
+          </DecisionSection>
+        ) : null,
+      )}
 
       {blocks.map((block) =>
         block.kind === "runItBack" && night.series ? (
@@ -231,7 +250,7 @@ export function PlanTab({
 /** The plan on its own, for the periods, when the page is otherwise asleep. */
 export function PlanSummary({ live }: { live: LiveExperience }) {
   const rows = voteDecisions(live, planItems(live.prompts), null, () => null);
-  return <PlanCard live={live} rows={rows} open={null} onToggle={() => {}} />;
+  return <PlanCard live={live} rows={rows} />;
 }
 
 function gameIsOver(live: LiveExperience): boolean {
@@ -239,7 +258,7 @@ function gameIsOver(live: LiveExperience): boolean {
   return after >= 0 && live.phaseNumber >= after;
 }
 
-/** The three decisions a vote settles, as rows, each with its vote to open. */
+/** The three decisions a vote settles, each with its votes as its part. */
 function voteDecisions(
   live: LiveExperience,
   items: readonly PlanItem[],
@@ -269,13 +288,8 @@ function voteDecisions(
             ? placeFor(leader, nearby?.places)?.image?.url
             : undefined,
         locked: item.locked,
-        action: body
-          ? needsMyVote(item)
-            ? { label: "Vote", urgent: true }
-            : { label: "Change", urgent: false }
-          : undefined,
+        nudge: body && needsMyVote(item) ? "yours?" : undefined,
         body,
-        dark: true,
       },
     ];
   });
@@ -284,13 +298,9 @@ function voteDecisions(
 function PlanCard({
   live,
   rows,
-  open,
-  onToggle,
 }: {
   live: LiveExperience;
   rows: readonly Decision[];
-  open: DecisionId | null;
-  onToggle: (id: DecisionId) => void;
 }) {
   const anchor = new Date(live.definition.anchorAt);
   const next = whatsNext(live, anchor);
@@ -304,22 +314,20 @@ function PlanCard({
       aria-labelledby="plan-title"
       className="overflow-hidden rounded-[24px] bg-[#f4f8fc] text-[#0b1220] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]"
     >
-      <div className="flex items-baseline justify-between gap-3 px-5 pt-4 pb-3">
+      <div className="flex items-baseline justify-between gap-3 px-5 pt-4 pb-2">
         <h2
           id="plan-title"
-          className={`${styles.display} text-[26px] leading-none`}
+          className={`${styles.display} text-[28px] leading-none`}
         >
           The plan
         </h2>
+        <span className="text-[13px] font-semibold text-[#0b1220]/60">
+          So far · by vote
+        </span>
       </div>
-      <ul className="divide-y divide-[#0b1220]/10 border-t border-[#0b1220]/10">
+      <ul className="divide-y divide-[#0b1220]/10">
         {sorted.map((row) => (
-          <DecisionRow
-            key={row.id}
-            row={row}
-            open={open === row.id}
-            onToggle={() => onToggle(row.id)}
-          />
+          <PlanLine key={row.id} row={row} />
         ))}
       </ul>
       {next && (
@@ -332,35 +340,12 @@ function PlanCard({
   );
 }
 
-function DecisionRow({
-  row,
-  open,
-  onToggle,
-}: {
-  row: Decision;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const ref = useRef<HTMLLIElement>(null);
+/**
+ * One line of the plan. Where its part is on the page, the line goes there;
+ * where it isn't (a closed vote, the periods), it is only a statement.
+ */
+function PlanLine({ row }: { row: Decision }) {
   const Icon = ICON[row.id];
-  const expandable = Boolean(row.body);
-
-  // Opening a row (and closing the one above it) moves things; bring the
-  // opened row's top back to where the eye is, under the sticky game bar.
-  useEffect(() => {
-    if (!open || !ref.current) return;
-    const top = ref.current.getBoundingClientRect().top;
-    if (top < 72 || top > window.innerHeight * 0.55) {
-      const reduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-      window.scrollTo({
-        top: window.scrollY + top - 80,
-        behavior: reduced ? "auto" : "smooth",
-      });
-    }
-  }, [open]);
-
   const face = (
     <>
       <PlanPhoto
@@ -372,10 +357,7 @@ function DecisionRow({
         }
       />
       <span className="min-w-0 flex-1">
-        <span
-          id={`decision-${row.id}-label`}
-          className="block text-[12px] font-bold tracking-[0.12em] text-[#0b1220]/55 uppercase"
-        >
+        <span className="block text-[12px] font-bold tracking-[0.12em] text-[#0b1220]/55 uppercase">
           {row.label}
         </span>
         <span
@@ -392,62 +374,85 @@ function DecisionRow({
           </span>
         )}
       </span>
-      {row.action && (
-        <span
-          className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold ${
-            row.action.urgent
-              ? "bg-[#ffd84d] text-[#0b1220]"
-              : "bg-[#0b1220]/[0.07] text-[#0b1220]/75"
-          }`}
-        >
-          {row.action.label}
+      {row.nudge && (
+        <span className="shrink-0 text-[13px] font-bold text-[#c2410c]">
+          {row.nudge}
         </span>
       )}
-      {expandable && (
-        <ChevronDown
-          aria-hidden
-          className={`h-5 w-5 shrink-0 text-[#0b1220]/45 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
+      {row.body && (
+        <ArrowDown aria-hidden className="h-4 w-4 shrink-0 text-[#0b1220]/40" />
       )}
     </>
   );
 
   return (
-    <li ref={ref} id={`decision-${row.id}`} className="scroll-mt-20">
-      <section aria-labelledby={`decision-${row.id}-label`}>
-        {expandable ? (
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={`decision-${row.id}-body`}
-            onClick={onToggle}
-            className={`flex min-h-[68px] w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-[#0b1220]/[0.04] ${
-              open ? "bg-[#0b1220]/[0.04]" : ""
-            }`}
-          >
-            {face}
-          </button>
-        ) : (
-          <div className="flex min-h-[68px] items-center gap-3 px-5 py-3">
-            {face}
-          </div>
-        )}
-        {open && row.body && (
-          <div
-            id={`decision-${row.id}-body`}
-            className={
-              row.dark
-                ? "mx-3 mb-3 rounded-[20px] bg-[#0b1220] p-4 text-white"
-                : "pb-2"
-            }
-          >
-            {row.body}
-          </div>
-        )}
-      </section>
+    <li>
+      {row.body ? (
+        <button
+          type="button"
+          onClick={() => goTo(row.id)}
+          className="flex min-h-[68px] w-full items-center gap-3.5 px-5 py-3 text-left transition hover:bg-[#0b1220]/[0.04]"
+        >
+          {face}
+        </button>
+      ) : (
+        <div className="flex min-h-[68px] items-center gap-3.5 px-5 py-3">
+          {face}
+        </div>
+      )}
     </li>
+  );
+}
+
+/** Scroll a decision's part of the page to just under the sticky game bar. */
+function goTo(id: DecisionId) {
+  const el = document.getElementById(`decision-${id}`);
+  if (!el) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+}
+
+/**
+ * A decision's part of the night, always open: its name as a kicker, then
+ * the vote's own question and cards, or a heading over the light panel.
+ */
+function DecisionSection({
+  row,
+  children,
+}: {
+  row: Decision;
+  children?: ReactNode;
+}) {
+  const Icon = ICON[row.id];
+  return (
+    <section
+      id={`decision-${row.id}`}
+      aria-labelledby={`decision-${row.id}-label`}
+      className="scroll-mt-20"
+    >
+      <p
+        id={`decision-${row.id}-label`}
+        className="mb-2 flex items-center gap-2 text-[13px] font-bold tracking-[0.14em] text-[#ffd84d] uppercase"
+      >
+        <Icon className="h-4 w-4" aria-hidden />
+        {row.label}
+      </p>
+      {row.title && (
+        <h3
+          className={`${styles.wide} mb-4 text-[26px] leading-[1.05] text-balance text-white`}
+        >
+          {row.title}
+        </h3>
+      )}
+      {row.light ? (
+        <div className="overflow-hidden rounded-[24px] bg-[#f4f8fc] pt-4 pb-2 text-[#0b1220] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
+          {row.body}
+        </div>
+      ) : (
+        row.body
+      )}
+      {children}
+    </section>
   );
 }
 
@@ -498,14 +503,14 @@ function VoteHead({
   );
   const anchor = new Date(live.definition.anchorAt);
   return (
-    <div className="mb-3">
+    <div className="mb-4">
       <h3
         id={`vote-${prompt.prompt.id}-title`}
-        className={`${styles.wide} text-[20px] leading-[1.1] text-balance text-white`}
+        className={`${styles.wide} text-[26px] leading-[1.05] text-balance text-white`}
       >
         {prompt.prompt.question}
       </h3>
-      <p className="mt-1 text-[14px] leading-snug text-white/70">
+      <p className="mt-1.5 text-[15px] leading-snug text-white/70">
         {prompt.locked
           ? "Voting's closed. This is what the group decided."
           : (subtitle ?? prompt.prompt.hint)}
@@ -540,13 +545,17 @@ function DinnerVote({
   );
   const person = (id?: string) =>
     live.participants.find((p) => p.id === id)?.name;
-  // Real places lead. The concourse is the template's zero-effort answer, and
-  // a fine one — one row at the bottom, the easy way out.
-  const ballot = [
-    ...prompt.tally.filter((o) => o.optionId !== "concourse"),
-    ...prompt.tally.filter((o) => o.optionId === "concourse"),
-  ];
+  // Real places lead, as photographs. The concourse is the template's
+  // zero-effort answer, and a fine one — one row under them, the easy way out.
+  const real = prompt.tally.filter((o) => o.optionId !== "concourse");
+  const easy = prompt.tally.filter((o) => o.optionId === "concourse");
   const venue = live.definition.kicker.split(" · ")[0];
+  const standing = (option: (typeof prompt.tally)[number]) =>
+    top > 0 && option.voters.length === top
+      ? tied
+        ? ("tied" as const)
+        : ("leading" as const)
+      : undefined;
 
   // A card's "Add & vote" is two writes: put the place on the ballot (the
   // same nominate as ever), then, once the ballot has it, vote for it. The
@@ -587,8 +596,31 @@ function DinnerVote({
       <VoteHead
         prompt={prompt}
         live={live}
-        subtitle="Tap a place to vote. Change your mind until it closes."
+        subtitle="Real places a short walk from the arena. Tap to vote, add anywhere, change your mind until it closes."
       />
+
+      {real.length > 0 && (
+        <ul className="flex flex-col gap-4" aria-label="On the vote">
+          {real.map((option, i) => (
+            <li key={option.optionId}>
+              <BallotVenueCard
+                label={option.label}
+                detail={option.detail}
+                emoji={option.emoji}
+                place={placeFor(option.label, nearby.data?.places)}
+                voters={option.voters}
+                share={option.share}
+                standing={standing(option)}
+                chosen={mine === option.optionId}
+                canVote={canVote}
+                onVote={() => night.respond(prompt.prompt.id, option.optionId)}
+                addedBy={option.addedBy ? person(option.addedBy) : undefined}
+                priority={i < 2}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
 
       {live.me && prompt.open && (
         <PlacesExplorer
@@ -602,37 +634,36 @@ function DinnerVote({
             else addAndVote(place);
           }}
           venue={venue}
+          lead={real.length === 0}
         />
       )}
 
-      <h4 className="mt-5 mb-2 text-[12px] font-bold tracking-[0.12em] text-white/60 uppercase">
-        On the vote
-      </h4>
-      <ul className="flex flex-col gap-2">
-        {ballot.map((option) => (
-          <li key={option.optionId}>
-            <BallotRow
-              label={option.label}
-              detail={option.detail}
-              emoji={option.emoji}
-              place={placeFor(option.label, nearby.data?.places)}
-              voters={option.voters}
-              share={option.share}
-              standing={
-                top > 0 && option.voters.length === top
-                  ? tied
-                    ? "tied"
-                    : "leading"
-                  : undefined
-              }
-              chosen={mine === option.optionId}
-              canVote={canVote}
-              onVote={() => night.respond(prompt.prompt.id, option.optionId)}
-              addedBy={option.addedBy ? person(option.addedBy) : undefined}
-            />
-          </li>
-        ))}
-      </ul>
+      {easy.length > 0 && (
+        <div className="mt-7">
+          <p className="mb-2.5 text-[13px] font-semibold tracking-[0.08em] text-white/60 uppercase">
+            Or keep it easy
+          </p>
+          <ul className="flex flex-col gap-2">
+            {easy.map((option) => (
+              <li key={option.optionId}>
+                <BallotRow
+                  label={option.label}
+                  detail={option.detail}
+                  emoji={option.emoji}
+                  voters={option.voters}
+                  share={option.share}
+                  standing={standing(option)}
+                  chosen={mine === option.optionId}
+                  canVote={canVote}
+                  onVote={() =>
+                    night.respond(prompt.prompt.id, option.optionId)
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {canVote && prompt.prompt.openToSuggestions && (
         <AddYourOwn
@@ -657,12 +688,13 @@ const drinks = (p: NearbyPlace) =>
 const FIRST_LOOK = 3;
 
 /**
- * **Places near the arena: three to look at the moment the row opens.**
- * The three a group should see first — not on the vote yet, not closed on
- * game day by Atlas's own hours, photographs first then the shortest walk
- * (the server's order) — as cards with the place's own photograph, what Atlas
- * says it is, the walk and one tap to vote. Everything else Passport and
- * Atlas know is one tap further, with the filters.
+ * **Places near the arena, sold rather than listed.** The three a group
+ * should see first — not on the vote yet, not closed on game day by Atlas's
+ * own hours, photographs first then the shortest walk (the server's order).
+ * While nothing real is on the vote they lead, full width, so a new night
+ * opens on photographs; once the vote has places, they are a shelf to swipe
+ * under it. Everything else Passport and Atlas know is one tap further, with
+ * the filters, and every card is one tap to put it on the vote and back it.
  */
 function PlacesExplorer({
   nearby,
@@ -671,6 +703,7 @@ function PlacesExplorer({
   adding,
   onVote,
   venue,
+  lead,
 }: {
   nearby: ReturnType<typeof useNearby>;
   onBallot: ReadonlyMap<
@@ -681,6 +714,8 @@ function PlacesExplorer({
   adding: readonly string[];
   onVote: (place: NearbyPlace) => void;
   venue: string;
+  /** Nothing real is on the vote yet: open with the best places, full width. */
+  lead: boolean;
 }) {
   const [all, setAll] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
@@ -698,6 +733,7 @@ function PlacesExplorer({
           (a, b) => Number(onBallot.has(a.name)) - Number(onBallot.has(b.name)),
         )
     : bets;
+  const wide = lead && !all;
   const statusOf = (place: NearbyPlace) => {
     const option = onBallot.get(place.name);
     if (option) return mine === option.optionId ? "mine" : "on-ballot";
@@ -705,11 +741,37 @@ function PlacesExplorer({
   };
 
   return (
-    <div aria-label={`Places near ${venue}`} role="region">
+    <div
+      aria-label={`Places near ${venue}`}
+      role="region"
+      className={lead ? "" : "mt-8"}
+    >
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h4 className={`${styles.wide} text-[20px] leading-tight text-white`}>
+            {lead ? `Near ${venue}` : `More near ${venue}`}
+          </h4>
+          <p className="mt-1 text-[14px] leading-snug text-white/65">
+            {all
+              ? `Everything within a short walk of ${venue}.`
+              : lead
+                ? "Real places a short walk away. Add the ones you'd actually go to and the group votes."
+                : bets.length > 0
+                  ? "Good bets a short walk away. Add one and it's on the vote with yours."
+                  : "Everything nearby is already on the vote."}
+          </p>
+        </div>
+        {everything.length > 0 && (
+          <span className="shrink-0 text-[13px] font-semibold text-white/60">
+            {everything.length} places
+          </span>
+        )}
+      </div>
+
       {nearby.state === "loading" && (
         <>
           <div
-            className={`${styles.noScrollbar} -mx-4 flex gap-3 overflow-hidden px-4`}
+            className={`${styles.noScrollbar} -mx-4 mt-4 flex gap-3 overflow-hidden px-4`}
           >
             <VenueSkeleton />
             <VenueSkeleton />
@@ -723,7 +785,7 @@ function PlacesExplorer({
 
       {(nearby.state === "failed" ||
         (nearby.data?.outage && everything.length === 0)) && (
-        <p className="rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
+        <p className="mt-4 rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
           Passport can&apos;t reach its map of the city right now. Type a place
           below instead — it counts just the same.{" "}
           <button
@@ -736,93 +798,83 @@ function PlacesExplorer({
         </p>
       )}
       {nearby.data?.outage && everything.length > 0 && (
-        <p className="mb-3 text-[14px] text-white/70">
+        <p className="mt-4 text-[14px] text-white/70">
           Passport&apos;s full map isn&apos;t answering, so this is the short
           list it keeps itself.
         </p>
       )}
       {nearby.data && !nearby.data.outage && everything.length === 0 && (
-        <p className="rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
+        <p className="mt-4 rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
           Passport doesn&apos;t know anywhere within a short walk yet. Type one
           below — you know more than it does.
         </p>
       )}
 
-      {everything.length > 0 && (
-        <>
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-[14px] leading-snug text-white/70">
-              {all
-                ? `Everything within a short walk of ${venue}.`
-                : bets.length > 0
-                  ? "Good bets a short walk away. Tap one to put it on the vote and back it."
-                  : "Everything nearby is already on the vote."}
-            </p>
-            {all && (
-              <span className="shrink-0 text-[13px] font-semibold text-white/60">
-                {everything.length} places
-              </span>
-            )}
-          </div>
-          {all && (
-            <div className="mt-3 flex gap-2" role="group" aria-label="Show">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  aria-pressed={filter === f.id}
-                  onClick={() => setFilter(f.id)}
-                  className={`min-h-10 rounded-full px-3.5 text-[14px] font-semibold whitespace-nowrap transition ${
-                    filter === f.id
-                      ? "bg-white text-[#0b1220]"
-                      : "bg-white/[0.08] text-white/85 hover:bg-white/[0.14]"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {places.length > 0 && (
-            <ul
-              className={`${styles.noScrollbar} -mx-4 mt-3 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2`}
-            >
-              {places.map((place, i) => (
-                <li key={place.atlasId} className="flex">
-                  <NearbyVenueCard
-                    place={place}
-                    votes={onBallot.get(place.name)?.voters.length}
-                    priority={i === 0}
-                    actions={
-                      <VoteButton
-                        place={place}
-                        status={statusOf(place)}
-                        canVote
-                        onVote={() => onVote(place)}
-                      />
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-          {everything.length > (all ? 0 : bets.length) && (
+      {all && (
+        <div className="mt-3 flex gap-2" role="group" aria-label="Show">
+          {FILTERS.map((f) => (
             <button
+              key={f.id}
               type="button"
-              aria-expanded={all}
-              onClick={() => setAll((now) => !now)}
-              className="mt-1 inline-flex min-h-11 items-center text-[14.5px] font-semibold text-white underline underline-offset-4"
+              aria-pressed={filter === f.id}
+              onClick={() => setFilter(f.id)}
+              className={`min-h-10 rounded-full px-3.5 text-[14px] font-semibold whitespace-nowrap transition ${
+                filter === f.id
+                  ? "bg-white text-[#0b1220]"
+                  : "bg-white/[0.08] text-white/85 hover:bg-white/[0.14]"
+              }`}
             >
-              {all
-                ? "Show just the good bets"
-                : `See all ${everything.length} places`}
+              {f.label}
             </button>
-          )}
-          <p className="mt-1 text-[12.5px] leading-snug text-white/55">
-            Walks are straight lines at a walking pace, so the real one is
-            longer. Photos are the places&apos; own, via Atlas.
-          </p>
-        </>
+          ))}
+        </div>
+      )}
+
+      {places.length > 0 && (
+        <ul
+          className={
+            wide
+              ? "mt-4 flex flex-col gap-4"
+              : `${styles.noScrollbar} -mx-4 mt-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2`
+          }
+        >
+          {places.map((place, i) => (
+            <li key={place.atlasId} className="flex">
+              <NearbyVenueCard
+                place={place}
+                votes={onBallot.get(place.name)?.voters.length}
+                wide={wide}
+                priority={i === 0}
+                actions={
+                  <VoteButton
+                    place={place}
+                    status={statusOf(place)}
+                    canVote
+                    onVote={() => onVote(place)}
+                  />
+                }
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+      {everything.length > (all ? 0 : bets.length) && (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => setAll((now) => !now)}
+          className="mt-2 inline-flex min-h-11 items-center text-[14.5px] font-semibold text-white underline underline-offset-4"
+        >
+          {all
+            ? "Show just the good bets"
+            : `See all ${everything.length} places`}
+        </button>
+      )}
+      {everything.length > 0 && (
+        <p className="mt-1 text-[12.5px] leading-snug text-white/55">
+          Walks are straight lines at a walking pace, so the real one is longer.
+          Photos are the places&apos; own, via Atlas.
+        </p>
       )}
     </div>
   );
