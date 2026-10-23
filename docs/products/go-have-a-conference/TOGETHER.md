@@ -180,7 +180,7 @@ needs a server without `CONFERENCE_ARRIVALS=on`.
 - **Not built:** per-occurrence times (one time for all days), waitlists or
   capacity, plan comments other than its thread, cross-conference memories,
   guest (no-account) participation on the durable store.
-- **Repo-wide Playwright** (memory mode, critic Atlas mock): 249 passed, 5 failed, 5 skipped. All five fail on the base commit too: core-loop:26, october:554, october:570 (the long-standing baseline), conference-mobile:23 (`/labs` has no Conference link) and discovery-natural:102.
+- **Repo-wide Playwright** (memory mode, critic Atlas mock): 249 passed, 5 failed, 5 skipped. All five are on failure lists recorded by earlier missions (not re-run on d8a1c0a here): core-loop:26, october:554, october:570 (the long-standing baseline), conference-mobile:23 (`/labs` has no Conference link) and discovery-natural:102.
 
 ## 7. Doctrine and earlier documents — named, not resolved
 
