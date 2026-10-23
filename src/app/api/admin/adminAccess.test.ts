@@ -51,6 +51,8 @@ const handlers = Object.entries(routes).flatMap(([file, mod]) =>
 
 let fetchMock: ReturnType<typeof vi.fn>;
 const ENV = { ...process.env };
+// A stand-in, never a real credential; the leak checks look for this string.
+const fakeAdminToken = "fake-admin-token";
 
 beforeEach(() => {
   user = null;
@@ -62,7 +64,7 @@ beforeEach(() => {
       }),
   );
   vi.stubGlobal("fetch", fetchMock);
-  process.env.ADMIN_TOKEN = "secret-admin-token";
+  process.env.ADMIN_TOKEN = fakeAdminToken;
   process.env.ADMIN_EMAILS = "curator@example.com";
 });
 
@@ -82,9 +84,7 @@ describe.each(handlers)("$label", ({ run }) => {
     const response = await run();
     expect(response.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(JSON.stringify(await response.json())).not.toContain(
-      "secret-admin-token",
-    );
+    expect(JSON.stringify(await response.json())).not.toContain(fakeAdminToken);
   });
 
   it("answers a signed-in non-administrator 403 and never reaches Atlas", async () => {
@@ -129,7 +129,7 @@ describe("an approved administrator", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toMatch(/\/admin\/merge$/);
     expect((init.headers as Record<string, string>)["x-admin-token"]).toBe(
-      "secret-admin-token",
+      fakeAdminToken,
     );
   });
 
