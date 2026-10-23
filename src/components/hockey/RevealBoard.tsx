@@ -6,6 +6,7 @@ import { Avatar } from "@/experience-lab/ui/atoms";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant } from "@/experience-lab/core/types";
 import { answerText, verdictFor, type Verdict } from "@/domain/hockey/reveal";
+import { FanTag } from "./FanTag";
 import styles from "./hockey.module.css";
 
 /**
@@ -165,8 +166,9 @@ function FlipCard({
         >
           <Avatar person={person} size={32} />
           <span className="min-w-0">
-            <span className="block truncate text-[15px] font-semibold text-white">
-              {person.name}
+            <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-white">
+              <span className="truncate">{person.name}</span>
+              <FanTag personId={person.id} />
             </span>
             <span className="block text-[12.5px] font-semibold tracking-wide text-white/55 uppercase">
               Tap to reveal
@@ -179,6 +181,7 @@ function FlipCard({
           <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[#0b1220]/65">
             <Avatar person={person} size={18} />
             <span className="truncate">{person.name}</span>
+            <FanTag personId={person.id} onDark={false} />
           </span>
           <span
             className={`${styles.display} mt-0.5 truncate text-[26px] leading-none`}

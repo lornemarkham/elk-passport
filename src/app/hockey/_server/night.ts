@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import { after } from "next/server";
 import { liveExperience } from "@/experience-lab/core/engine";
 import { TOYS } from "@/experience-lab/core/toybox";
 import type {
@@ -21,6 +22,16 @@ import {
   type NearbyPlace,
 } from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
+import { isTeamAbbr } from "@/domain/hockey/fans";
+import {
+  chirpOnArrival,
+  chirpOnLook,
+  chirpOnSay,
+  chirpOnTeam,
+  chirpRoomOf,
+  chirpsAbout,
+  type ChirpRoom,
+} from "./chirp";
 import {
   modulesOf,
   storedModules,
@@ -69,6 +80,8 @@ export interface NightSnapshot {
   readonly role: "host" | "guest";
   /** Which modules the host has on (`domain/hockey/modules.ts`). */
   readonly modules: ModuleId[];
+  /** Everybody's team and Chirp Bot's lines (`_server/chirp.ts`). */
+  readonly chirp: ChirpRoom;
 }
 
 export class NightError extends Error {
@@ -82,7 +95,40 @@ export class NightError extends Error {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function rowsFor(db: Db, id: string): Promise<NightRows | null> {
+/**
+ * Postgres's "no such column" (42703) or PostgREST's (PGRST204): the
+ * database has not had chirp-migration.sql yet. The night then loads
+ * exactly as before, without teams or Chirp Bot.
+ */
+const missingColumn = (error: { code?: string; message: string } | null) =>
+  Boolean(
+    error &&
+    (error.code === "42703" ||
+      error.code === "PGRST204" ||
+      /column .* does not exist/i.test(error.message)),
+  );
+
+const MEMBER_COLUMNS =
+  "user_id, role, display_name, emoji, hue, vibe, edge, joined_at";
+const MOMENT_COLUMNS = "id, actor_id, kind, text, emoji, at";
+
+type Rows = NightRows & {
+  /** chirp-migration.sql is applied (`nhl_team`, `bot_*` columns exist). */
+  readonly chirpAvailable: boolean;
+};
+
+async function rowsFor(db: Db, id: string): Promise<Rows | null> {
+  const withChirp = await rowsWith(db, id, true);
+  if (withChirp !== "missing") return withChirp;
+  const without = await rowsWith(db, id, false);
+  return without === "missing" ? null : without;
+}
+
+async function rowsWith(
+  db: Db,
+  id: string,
+  chirp: boolean,
+): Promise<Rows | null | "missing"> {
   if (!UUID.test(id)) return null;
   const { data: occasion, error } = await db
     .from("passport_occasions")
@@ -107,7 +153,7 @@ async function rowsFor(db: Db, id: string): Promise<NightRows | null> {
   ] = await Promise.all([
     of(
       "passport_occasion_members",
-      "user_id, role, display_name, emoji, hue, vibe, edge, joined_at",
+      chirp ? `${MEMBER_COLUMNS}, nhl_team` : MEMBER_COLUMNS,
     ),
     of(
       "passport_occasion_prompts",
@@ -118,7 +164,10 @@ async function rowsFor(db: Db, id: string): Promise<NightRows | null> {
       "id, prompt_id, label, detail, added_by",
     ).order("created_at"),
     of("passport_occasion_responses", "prompt_id, user_id, value, answered_at"),
-    of("passport_occasion_moments", "id, actor_id, kind, text, emoji, at")
+    of(
+      "passport_occasion_moments",
+      chirp ? `${MOMENT_COLUMNS}, bot_key, bot_line, bot_sig` : MOMENT_COLUMNS,
+    )
       .order("at", { ascending: false })
       .limit(200),
     of("passport_occasion_reactions", "moment_id, emoji, user_id"),
@@ -135,10 +184,12 @@ async function rowsFor(db: Db, id: string): Promise<NightRows | null> {
     cues,
     consents,
   ]) {
+    if (chirp && missingColumn(r.error)) return "missing";
     if (r.error) throw new NightError(r.error.message, 500);
   }
 
   return {
+    chirpAvailable: chirp,
     occasion: occasion as unknown as NightRows["occasion"],
     members: members.data as unknown as NightRows["members"],
     prompts: prompts.data as unknown as NightRows["prompts"],
@@ -161,7 +212,11 @@ export async function loadNight(
   if (!rows) return null;
   const me = rows.members.find((m) => m.user_id === user.id);
   if (!me) return null;
-  return { ...composeNight(rows, user.id), role: me.role };
+  return {
+    ...composeNight(rows, user.id),
+    role: me.role,
+    chirp: chirpRoomOf(rows, rows.chirpAvailable),
+  };
 }
 
 export interface NightSummary {
@@ -391,7 +446,53 @@ export async function createSycleNight(
   if (error || typeof data !== "string") {
     throw new NightError(error?.message ?? "Could not start the night.", 500);
   }
+  await bringTeam(db, user.id, data);
   return data;
+}
+
+/**
+ * A person's team follows them into a new night: copied from any night they
+ * are already in (`setTeam` keeps them all the same). Quietly nothing before
+ * chirp-migration.sql, or for somebody who never picked.
+ */
+async function bringTeam(
+  db: Db,
+  userId: string,
+  occasionId: string,
+): Promise<void> {
+  const { data, error } = await db
+    .from("passport_occasion_members")
+    .select("nhl_team")
+    .eq("user_id", userId)
+    .not("nhl_team", "is", null)
+    .limit(1);
+  if (error || !data?.length) return;
+  const team = (data[0] as { nhl_team: string | null }).nhl_team;
+  if (!isTeamAbbr(team)) return;
+  await db
+    .from("passport_occasion_members")
+    .update({ nhl_team: team })
+    .eq("occasion_id", occasionId)
+    .eq("user_id", userId);
+}
+
+/** Three chirps about another member, to choose from. Posts nothing. */
+export async function chirpsFor(
+  user: PassportUser,
+  id: string,
+  targetId: string,
+): Promise<{ chirps: string[]; by: "model" | "library" }> {
+  const db = await createSupabaseServerClient();
+  const rows = await rowsFor(db, id);
+  if (!rows || !rows.members.some((m) => m.user_id === user.id))
+    throw new NightError("Not found.", 404);
+  if (!rows.chirpAvailable || rows.occasion.details.chirp === false)
+    throw new NightError("Chirp Bot is off tonight.", 409);
+  if (targetId === user.id)
+    throw new NightError("Chirping yourself is just a cry for help.", 422);
+  const chirps = await chirpsAbout(rows, user.id, targetId);
+  if (!chirps) throw new NightError("They're not on this night.", 404);
+  return chirps;
 }
 
 // ------------------------------------------------------------- actions
@@ -440,13 +541,62 @@ export async function act(
     }
 
     case "say": {
-      const { error } = await db.from("passport_occasion_moments").insert({
-        occasion_id: id,
-        actor_id: user.id,
-        kind: "note",
-        text: action.text,
-      });
+      const { data, error } = await db
+        .from("passport_occasion_moments")
+        .insert({
+          occasion_id: id,
+          actor_id: user.id,
+          kind: "note",
+          text: action.text,
+        })
+        .select("id")
+        .single();
       fail(error, "posting");
+      // Chirp Bot decides after the answer has gone back, so a model being
+      // slow never makes anybody's own message slow. Its line, if any,
+      // arrives with the next poll.
+      if (rows.chirpAvailable && data?.id) {
+        const momentId = data.id as string;
+        after(() => chirpOnSay(db, rows, user.id, action.text, momentId));
+      }
+      break;
+    }
+
+    case "setTeam": {
+      if (!rows.chirpAvailable)
+        throw new NightError("Teams aren't switched on here yet.", 409);
+      if (action.team !== null && !isTeamAbbr(action.team))
+        throw new NightError("That isn't an NHL team.", 422);
+      const previous = isTeamAbbr(me.nhl_team) ? me.nhl_team : null;
+      // One allegiance per person: every night they are in says the same.
+      // The member policy lets a person update only their own rows.
+      const { error } = await db
+        .from("passport_occasion_members")
+        .update({ nhl_team: action.team })
+        .eq("user_id", user.id);
+      fail(error, "picking a team");
+      if (action.team && action.team !== previous) {
+        const team = action.team;
+        after(() => chirpOnTeam(db, rows, user.id, team, previous));
+      }
+      break;
+    }
+
+    case "chirpLook": {
+      if (rows.chirpAvailable) after(() => chirpOnLook(db, rows, user.id));
+      break;
+    }
+
+    case "setChirp": {
+      if (me.role !== "host")
+        throw new NightError("The host decides who's in the chat.", 403);
+      const { chirp: _old, ...rest } = rows.occasion.details;
+      void _old;
+      const { error } = await db
+        .from("passport_occasions")
+        .update({ details: action.on ? rest : { ...rest, chirp: false } })
+        .eq("id", id);
+      fail(error, "switching Chirp Bot");
       break;
     }
 
@@ -925,5 +1075,13 @@ export async function redeemInvite(
     p_hue: look.hue,
   });
   if (error) throw new NightError(error.message, 500);
-  return typeof data === "string" ? data : null;
+  if (typeof data !== "string") return null;
+  await bringTeam(db, user.id, data);
+  // Chirp Bot says hello (or asks who they bleed for) once the join is done.
+  const joined = data;
+  after(async () => {
+    const rows = await rowsFor(db, joined).catch(() => null);
+    if (rows?.chirpAvailable) await chirpOnArrival(db, rows, user.id);
+  });
+  return joined;
 }

@@ -1,0 +1,651 @@
+import {
+  ARRIVALS,
+  BOLD_LINES,
+  CHALLENGE_LINES,
+  CHIRPS,
+  GENERIC_CHIRPS,
+  GENERIC_WELCOMES,
+  LAST_CALL,
+  LIBRARY,
+  LINE_STORYLINE,
+  NO_TEAM_CHIRPS,
+  PROMPTS,
+  PROMPT_BY_ID,
+  RIVAL_CHIRPS,
+  RIVALRY_LINES,
+  STORYLINE_BY_ID,
+  SWITCHES,
+  WELCOMES,
+  currentStorylines,
+  type LibraryLine,
+} from "./chirp-library";
+import { pairKey, rivalry, teamByAbbr, teamsMentioned } from "./fans";
+
+/**
+ * **Chirp Bot — the chat's heckler, in the night's own conversation.**
+ *
+ * Not a second chat. Chirp Bot's lines are rows in the same
+ * `passport_occasion_moments` table, of kind `chirp`, read and reacted to
+ * like anybody's, and seen only by members of the night. This file is the
+ * pure half: when it speaks, what it says, how often, and how a stored line
+ * becomes the words on the page. The server half (`_server/chirp.ts`)
+ * reads and writes.
+ *
+ * ## When it speaks — and when it does not
+ *
+ * Only after a person does something: declares a team, arrives, says a
+ * thing worth heckling (a bet, a bold call, a rival fan), or opens the chat
+ * before the game when a fresh question is due. Never because of another
+ * Chirp Bot line, so it cannot talk to itself. Every line has a `bot_key`
+ * that the database keeps unique per night, so two phones doing the same
+ * thing at the same second produce one line, not two.
+ *
+ * ## Whose line it is
+ *
+ * The database cannot tell this server from a member holding their own
+ * session (every write runs as the person, never the service role). So a
+ * line counts as Chirp Bot's only if the server can prove it wrote it:
+ * a library line is stored as its id and re-rendered here on every read (a
+ * forged row can only say something already in the library); a model's line
+ * carries an HMAC the server checks. Anything else is not shown at all.
+ */
+
+export const CHIRP_BOT = { name: "Chirp Bot", emoji: "🎙️" } as const;
+
+export type BotKind =
+  | "welcome"
+  | "arrival"
+  | "challenge"
+  | "bold"
+  | "rivalry"
+  | "prompt"
+  | "lastcall";
+
+export interface BotFact {
+  readonly text: string;
+  readonly source: string;
+  readonly url: string;
+  readonly verifiedOn: string;
+}
+
+/** A Chirp Bot line as the page draws it. */
+export interface BotLine {
+  readonly id: string;
+  readonly at: string;
+  readonly kind: BotKind;
+  readonly text: string;
+  /** Jokes are satire; questions are opinion. A fact, when there is one, is separate. */
+  readonly tone: "satire" | "opinion";
+  readonly fact?: BotFact;
+  /** Who it is about, when it is about somebody. */
+  readonly about?: string;
+  readonly reactions: Readonly<Record<string, readonly string[]>>;
+}
+
+/** What the chat gets besides the lab's moments. */
+export interface ChirpRoom {
+  /** chirp-migration.sql is applied: teams and Chirp Bot can be stored. */
+  readonly available: boolean;
+  /** The host has not switched Chirp Bot off. */
+  readonly on: boolean;
+  /** Member id → team code, for everybody who has declared. */
+  readonly fans: Readonly<Record<string, string>>;
+  readonly lines: readonly BotLine[];
+  /** A model is configured; otherwise Chirp Bot uses its own library. */
+  readonly model: boolean;
+}
+
+/** The columns of a stored line that matter here. */
+export interface BotRow {
+  readonly id: string;
+  readonly actor_id: string;
+  readonly text: string | null;
+  readonly at: string;
+  readonly bot_key: string | null;
+  readonly bot_line: string | null;
+  readonly bot_sig: string | null;
+}
+
+/** A line to post: a library id, or a model's text. */
+export interface BotPlan {
+  readonly key: string;
+  readonly line: string;
+  readonly text?: string;
+}
+
+export interface Fan {
+  readonly id: string;
+  readonly name: string;
+  readonly team: string | null;
+}
+
+// ------------------------------------------------------------- keys
+
+/**
+ * Which kind of line a key is, from its prefix:
+ *
+ *   team:<user>:<ABBR>       welcome (or a switch) when someone declares
+ *   arrive:<user>            someone joined without a team
+ *   challenge:<moment>       a bet in the chat
+ *   bold:<moment>            a bold call in the chat
+ *   rivalry:<A-B>:<date>     rival fans, once per pair per day
+ *   prompt:<start>:<slot>    a pregame question, once per six hours
+ *   lastcall:<start>         picks lock soon, once per game time
+ */
+export function kindOfKey(key: string): BotKind | null {
+  const prefix = key.split(":", 1)[0];
+  switch (prefix) {
+    case "team":
+      return "welcome";
+    case "arrive":
+      return "arrival";
+    case "challenge":
+    case "bold":
+    case "rivalry":
+    case "prompt":
+    case "lastcall":
+      return prefix;
+    default:
+      return null;
+  }
+}
+
+/** Library prefixes each kind may use — a forged row cannot cross them. */
+const LINES_FOR: Readonly<Record<BotKind, readonly string[]>> = {
+  welcome: ["w.", "g.w.", "s."],
+  arrival: ["a."],
+  challenge: ["o.ch."],
+  bold: ["o.bd."],
+  rivalry: ["o.rv."],
+  prompt: ["p."],
+  lastcall: ["l."],
+};
+
+const ORGANIC: ReadonlySet<BotKind> = new Set(["challenge", "bold", "rivalry"]);
+
+// ----------------------------------------------------------- render
+
+export function fill(
+  template: string,
+  vars: Readonly<Record<string, string>>,
+): string {
+  return template.replace(/\{(\w+)\}/g, (all, name: string) =>
+    name in vars ? vars[name] : all,
+  );
+}
+
+function storylineCurrent(lineId: string, today: string): boolean {
+  const id = LINE_STORYLINE[lineId];
+  if (!id) return true;
+  const story = STORYLINE_BY_ID.get(id);
+  return Boolean(story && today <= story.until);
+}
+
+/**
+ * A stored row as Chirp Bot's line, or null when it is not provably one —
+ * an unknown line, a line of the wrong kind for its key, a key about
+ * somebody other than who wrote it, or a model's line whose signature does
+ * not check.
+ */
+export function renderBotRow(
+  row: BotRow,
+  ctx: {
+    readonly fans: ReadonlyMap<string, Fan>;
+    readonly verify: (row: BotRow) => boolean;
+    readonly reactions?: Readonly<Record<string, readonly string[]>>;
+  },
+): BotLine | null {
+  if (!row.bot_key || !row.bot_line) return null;
+  const kind = kindOfKey(row.bot_key);
+  if (!kind) return null;
+  const parts = row.bot_key.split(":");
+  const actor = ctx.fans.get(row.actor_id);
+  const reactions = ctx.reactions ?? {};
+
+  // Keys that name a person must name the one who caused the line.
+  if ((kind === "welcome" || kind === "arrival") && parts[1] !== row.actor_id)
+    return null;
+  const about =
+    kind === "welcome" ||
+    kind === "arrival" ||
+    kind === "challenge" ||
+    kind === "bold"
+      ? row.actor_id
+      : undefined;
+
+  if (row.bot_line === "ai") {
+    if (!row.text || !ctx.verify(row)) return null;
+    return {
+      id: row.id,
+      at: row.at,
+      kind,
+      text: row.text,
+      tone: "satire",
+      about,
+      reactions,
+    };
+  }
+
+  if (!LINES_FOR[kind].some((prefix) => row.bot_line!.startsWith(prefix)))
+    return null;
+  const line = LIBRARY.get(row.bot_line);
+  if (!line) return null;
+
+  const vars: Record<string, string> = { name: actor?.name ?? "Someone" };
+  if (kind === "welcome") {
+    const team = teamByAbbr(parts[2]);
+    if (!team) return null;
+    vars.team = team.name;
+    vars.full = `${team.city} ${team.name}`;
+  }
+  if (kind === "rivalry") {
+    const [a, b] = (parts[1] ?? "").split("-");
+    const ta = teamByAbbr(a);
+    const tb = teamByAbbr(b);
+    const why = ta && tb ? rivalry(ta.abbr, tb.abbr) : null;
+    if (!ta || !tb || !why) return null;
+    vars.a = ta.name;
+    vars.b = tb.name;
+    vars.rival = why;
+  }
+
+  let fact: BotFact | undefined;
+  if (kind === "prompt") {
+    const story = PROMPT_BY_ID.get(line.id)?.storyline;
+    const s = story ? STORYLINE_BY_ID.get(story) : undefined;
+    if (s)
+      fact = {
+        text: s.fact,
+        source: s.source,
+        url: s.url,
+        verifiedOn: s.verifiedOn,
+      };
+  }
+
+  return {
+    id: row.id,
+    at: row.at,
+    kind,
+    text: fill(line.text, vars),
+    tone: kind === "prompt" ? "opinion" : "satire",
+    fact,
+    about,
+    reactions,
+  };
+}
+
+// --------------------------------------------------------- choosing
+
+/** A small deterministic PRNG, so tests can say what "random" picked. */
+export function seeded(seed: number): () => number {
+  let a = seed >>> 0 || 1;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled<T>(items: readonly T[], seed: number): T[] {
+  const random = seeded(seed);
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * The first line from `pools`, in order of preference, that this night has
+ * not heard yet — shuffled within each pool so two nights do not hear the
+ * same jokes in the same order. When everything has been said, the least
+ * recently said line of the first pool, rather than silence.
+ */
+export function chooseLine(
+  pools: readonly (readonly LibraryLine[])[],
+  used: readonly string[],
+  seed: number,
+  today: string,
+): LibraryLine | null {
+  const heard = new Set(used);
+  const usable = pools.map((pool) =>
+    pool.filter((line) => storylineCurrent(line.id, today)),
+  );
+  for (const [i, pool] of usable.entries()) {
+    const fresh = shuffled(pool, seed + i).find((l) => !heard.has(l.id));
+    if (fresh) return fresh;
+  }
+  const first = usable.find((pool) => pool.length > 0);
+  if (!first) return null;
+  // Oldest first in `used`, so the earliest index is the longest ago.
+  return [...first].sort((a, b) => used.indexOf(a.id) - used.indexOf(b.id))[0];
+}
+
+/** Library ids this night has already used, oldest first. */
+export function usedLines(rows: readonly BotRow[]): string[] {
+  return [...rows]
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .map((r) => r.bot_line)
+    .filter((id): id is string => Boolean(id) && id !== "ai");
+}
+
+/** How many team lines one person may cause in one night: a declaration and two changes of heart. */
+export const MAX_TEAM_LINES = 3;
+
+/** The line for someone declaring (or changing) their team, or null if it is already said. */
+export function welcomePlan(input: {
+  readonly userId: string;
+  readonly team: string;
+  readonly previous: string | null;
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+  readonly today: string;
+}): BotPlan | null {
+  if (!teamByAbbr(input.team)) return null;
+  const key = `team:${input.userId}:${input.team}`;
+  const keys = input.rows.map((r) => r.bot_key);
+  if (keys.includes(key)) return null;
+  if (
+    keys.filter((k) => k?.startsWith(`team:${input.userId}:`)).length >=
+    MAX_TEAM_LINES
+  )
+    return null;
+  const pools =
+    input.previous && input.previous !== input.team
+      ? [SWITCHES, GENERIC_WELCOMES]
+      : [WELCOMES[input.team] ?? [], GENERIC_WELCOMES];
+  const line = chooseLine(
+    pools,
+    usedLines(input.rows),
+    input.seed,
+    input.today,
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+/** Someone joined with no team: Chirp Bot asks, once. */
+export function arrivalPlan(input: {
+  readonly userId: string;
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+  readonly today: string;
+}): BotPlan | null {
+  const key = `arrive:${input.userId}`;
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const line = chooseLine(
+    [ARRIVALS],
+    usedLines(input.rows),
+    input.seed,
+    input.today,
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+// ------------------------------------------------------------ chatter
+
+export type Chatter =
+  | { readonly kind: "challenge" }
+  | { readonly kind: "bold" }
+  | { readonly kind: "rivalry"; readonly pair: string };
+
+const CHALLENGE =
+  /\b(bet|bets|betting|wager|loser buys|winner buys|you'?re on|dare you|i dare|double or nothing|put your money)\b/i;
+const BOLD =
+  /\b(\d{1,2}\s*[-–]\s*\d{1,2}|sweep|guarantee[ds]?|lock it in|easy win|no chance|blow ?out|hat ?trick|shut ?out|calling it|mark my words|not even close)\b/i;
+
+/**
+ * Is this message worth a heckle, and what kind? A bet beats a rivalry beats
+ * a bold call. A rivalry is two *people* in this night whose teams have a
+ * real feud, triggered when one of them names the other's team (or their
+ * own, at the other) — not just any mention of a team.
+ */
+export function readChatter(
+  text: string,
+  speaker: Fan,
+  others: readonly Fan[],
+): Chatter | null {
+  if (CHALLENGE.test(text)) return { kind: "challenge" };
+  if (speaker.team) {
+    const named = teamsMentioned(text).map((t) => t.abbr);
+    for (const other of others) {
+      if (other.id === speaker.id || !other.team) continue;
+      if (!rivalry(speaker.team, other.team)) continue;
+      if (named.includes(other.team) || named.includes(speaker.team))
+        return { kind: "rivalry", pair: pairKey(speaker.team, other.team) };
+    }
+  }
+  if (BOLD.test(text)) return { kind: "bold" };
+  return null;
+}
+
+/** Quiet time between heckles, and the most heckles in a day. */
+export const ORGANIC_COOLDOWN_MS = 10 * 60_000;
+export const ORGANIC_PER_DAY = 8;
+
+/**
+ * May Chirp Bot heckle right now? Not within ten minutes of its last heckle,
+ * not more than eight times in a day, and never twice in a row: if the
+ * newest thing in the chat is already Chirp Bot, it waits for a person.
+ */
+export function organicAllowed(
+  rows: readonly BotRow[],
+  newestIsBot: boolean,
+  now: Date,
+): boolean {
+  if (newestIsBot) return false;
+  const organic = rows
+    .filter((r) => {
+      const kind = r.bot_key ? kindOfKey(r.bot_key) : null;
+      return kind !== null && ORGANIC.has(kind);
+    })
+    .map((r) => Date.parse(r.at));
+  const t = now.getTime();
+  if (organic.some((at) => t - at < ORGANIC_COOLDOWN_MS)) return false;
+  return organic.filter((at) => t - at < 86_400_000).length < ORGANIC_PER_DAY;
+}
+
+export function organicPlan(input: {
+  readonly chatter: Chatter;
+  readonly momentId: string;
+  readonly rows: readonly BotRow[];
+  readonly now: Date;
+  readonly seed: number;
+}): BotPlan | null {
+  const today = input.now.toISOString().slice(0, 10);
+  const { chatter } = input;
+  const key =
+    chatter.kind === "rivalry"
+      ? `rivalry:${chatter.pair}:${today}`
+      : `${chatter.kind}:${input.momentId}`;
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const pool =
+    chatter.kind === "challenge"
+      ? CHALLENGE_LINES
+      : chatter.kind === "bold"
+        ? BOLD_LINES
+        : RIVALRY_LINES;
+  const line = chooseLine([pool], usedLines(input.rows), input.seed, today);
+  return line ? { key, line: line.id } : null;
+}
+
+// ------------------------------------------------------------ pregame
+
+const HOUR = 3_600_000;
+/** Questions start three days out, one per six hours, until puck drop. */
+export const PROMPT_WINDOW_HOURS = 72;
+export const PROMPT_EVERY_HOURS = 6;
+
+/** Which six-hour slot before puck drop `now` is in, or null outside the window. */
+export function promptSlot(now: Date, startsAt: string): number | null {
+  const before = (Date.parse(startsAt) - now.getTime()) / HOUR;
+  if (!(before > 0) || before > PROMPT_WINDOW_HOURS) return null;
+  return Math.floor(before / PROMPT_EVERY_HOURS);
+}
+
+/**
+ * A fresh question to argue about, if one is due: before the game, with at
+ * least two people in, at most one per slot, and only once somebody has
+ * said something since the last one — Chirp Bot does not ask an empty room
+ * a second question. Questions about teams somebody here cheers for (or
+ * that are playing) come first; a question whose fact has gone stale is
+ * never asked; a question is never asked twice in one night.
+ */
+export function promptPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly members: number;
+  readonly rows: readonly BotRow[];
+  /** When people (not Chirp Bot) last said something. */
+  readonly lastHumanNoteAt: string | null;
+  readonly teams: readonly string[];
+  readonly seed: number;
+}): BotPlan | null {
+  if (input.members < 2) return null;
+  const slot = promptSlot(input.now, input.startsAt);
+  if (slot === null) return null;
+  const key = `prompt:${input.startsAt.slice(0, 16)}:${slot}`;
+  const prompts = input.rows.filter((r) => r.bot_key?.startsWith("prompt:"));
+  if (prompts.some((r) => r.bot_key === key)) return null;
+  const latest = prompts
+    .map((r) => r.at)
+    .sort()
+    .at(-1);
+  if (latest && !(input.lastHumanNoteAt && input.lastHumanNoteAt > latest))
+    return null;
+
+  const today = input.now.toISOString().slice(0, 10);
+  const current = new Set(currentStorylines(today).map((s) => s.id));
+  const asked = new Set(usedLines(input.rows));
+  const usable = PROMPTS.filter(
+    (p) => !asked.has(p.id) && (!p.storyline || current.has(p.storyline)),
+  );
+  const here = new Set(input.teams);
+  const relevant = usable.filter((p) => p.teams?.some((t) => here.has(t)));
+  const general = usable.filter((p) => !p.teams);
+  const pick =
+    shuffled(relevant, input.seed)[0] ?? shuffled(general, input.seed)[0];
+  return pick ? { key, line: pick.id } : null;
+}
+
+/** Ninety minutes before puck drop, once: picks lock soon. */
+export function lastCallPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly members: number;
+  readonly picksOn: boolean;
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+}): BotPlan | null {
+  if (!input.picksOn || input.members < 2) return null;
+  const before = (Date.parse(input.startsAt) - input.now.getTime()) / HOUR;
+  if (!(before > 0) || before > 1.5) return null;
+  const key = `lastcall:${input.startsAt.slice(0, 16)}`;
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const line = chooseLine(
+    [LAST_CALL],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+// ------------------------------------------------------ chirp someone
+
+/**
+ * Three chirps about `target` from Chirp Bot's own material: a rivalry line
+ * if the sender's team has a real feud with the target's, then the target
+ * team's own lines, then lines for any team. Never the same line twice.
+ */
+export function libraryChirps(input: {
+  readonly sender: Fan;
+  readonly target: Fan;
+  readonly seed: number;
+  readonly today: string;
+}): string[] {
+  const { sender, target, today } = input;
+  const team = teamByAbbr(target.team);
+  const vars: Record<string, string> = { target: target.name };
+  if (!team) {
+    return shuffled(NO_TEAM_CHIRPS, input.seed)
+      .slice(0, 3)
+      .map((l) => fill(l.text, vars));
+  }
+  vars.team = team.name;
+  const why = sender.team ? rivalry(sender.team, team.abbr) : null;
+  if (why) vars.rival = why;
+
+  const own = shuffled(
+    (CHIRPS[team.abbr] ?? []).filter((l) => storylineCurrent(l.id, today)),
+    input.seed,
+  );
+  const picked: LibraryLine[] = [];
+  if (why) picked.push(shuffled(RIVAL_CHIRPS, input.seed)[0]);
+  for (const line of [...own, ...shuffled(GENERIC_CHIRPS, input.seed + 1)]) {
+    if (picked.length >= 3) break;
+    picked.push(line);
+  }
+  return picked.slice(0, 3).map((l) => fill(l.text, vars));
+}
+
+// -------------------------------------------------------------- safety
+
+/**
+ * Words a chirp about a hockey team never needs. A coarse net, not a
+ * moderator: it catches a model wandering from the team to the person
+ * (bodies, identity, health, self-harm, slurs). A caught line is dropped and
+ * replaced from the library, never edited.
+ */
+const OFF_LIMITS =
+  /\b(fat|obese|ugly|bald|skinny|wrinkl\w*|old (?:man|woman|lady)|virgin|divorc\w*|unemploy\w*|gay|lesbian|trans|transgender|queer|fag\w*|retard\w*|autis\w*|spaz|cripple\w*|midget|racis\w*|black people|white people|asian|jews?|jewish|muslims?|hindus?|immigrants?|terroris\w*|nazi\w*|hitler|rape\w*|kill (?:yourself|urself)|kys|suicid\w*|cancer|wife|husband|girlfriend|boyfriend|mom|mother|sex|sexy|whore|slut|bitch\w*|cunt|nigg\w*|chink|spic|kike|tranny)\b/i;
+
+/** Is this a chirp Chirp Bot may offer? Length, one line, nothing off limits. */
+export function acceptableChirp(text: unknown): text is string {
+  if (typeof text !== "string") return false;
+  const t = text.trim();
+  return (
+    t.length >= 8 &&
+    t.length <= 240 &&
+    !/[\n\r]/.test(t) &&
+    !/https?:\/\//i.test(t) &&
+    !OFF_LIMITS.test(t)
+  );
+}
+
+// ------------------------------------------------------------ limits
+
+/**
+ * **A sliding-window limiter**, for what costs money: asking a model. Pure
+ * apart from the clock it is given. Per server instance, so it bounds cost
+ * per instance rather than globally — the persistent limits on what Chirp
+ * Bot *posts* live in the database (`organicAllowed`, unique keys).
+ */
+export class Limiter {
+  private readonly hits = new Map<string, number[]>();
+
+  constructor(
+    private readonly windowMs: number,
+    private readonly max: number,
+  ) {}
+
+  /** Records a hit and says whether it was within the limit. */
+  take(key: string, now: number): boolean {
+    const recent = (this.hits.get(key) ?? []).filter(
+      (t) => now - t < this.windowMs,
+    );
+    if (recent.length >= this.max) {
+      this.hits.set(key, recent);
+      return false;
+    }
+    recent.push(now);
+    this.hits.set(key, recent);
+    if (this.hits.size > 5000) {
+      for (const [k, v] of this.hits)
+        if (v.every((t) => now - t >= this.windowMs)) this.hits.delete(k);
+    }
+    return true;
+  }
+}

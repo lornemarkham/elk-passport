@@ -20,7 +20,10 @@ import {
   type TabId,
 } from "@/domain/hockey/tabs";
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
+import { BleedPrompt } from "./BleedPrompt";
 import { ChatRoom } from "./ChatRoom";
+import { FansProvider } from "./FanTag";
+import { TeamPicker } from "./TeamPicker";
 import { GameDayHero } from "./GameDayHero";
 import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { GroupTab } from "./GroupTab";
@@ -60,6 +63,11 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
   const nhl = useNhlGame(initial.state.slug);
   const { live, definition, state, role } = night;
   const [toyBoxOpen, setToyBoxOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const { chirp } = night;
+  const myTeam = live.me ? (chirp.fans[live.me.id] ?? null) : null;
+  // Anyone on the night without a team is asked — never made to answer.
+  const askTeam = Boolean(live.me && chirp.available && !myTeam);
   const [tab, setTab] = useTabs(live.phase.id);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -130,134 +138,179 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
   };
 
   return (
-    <main
-      className={`${styles.page} min-h-dvh pb-32 text-white`}
-      style={
-        {
-          "--home": teamColours(home).primary,
-          "--away": teamColours(away).primary,
-        } as React.CSSProperties
-      }
-    >
-      <GameDayHero
-        live={live}
-        role={role}
-        myPicks={myPicks}
-        nhl={nhl}
-        onInvite={() => choose("group", "guest-list")}
-        onGoAgain={() => choose("plan", "run-it-back")}
-      />
+    <FansProvider value={chirp.fans}>
+      <main
+        className={`${styles.page} min-h-dvh pb-32 text-white`}
+        style={
+          {
+            "--home": teamColours(home).primary,
+            "--away": teamColours(away).primary,
+          } as React.CSSProperties
+        }
+      >
+        <GameDayHero
+          live={live}
+          role={role}
+          myPicks={myPicks}
+          nhl={nhl}
+          onInvite={() => choose("group", "guest-list")}
+          onGoAgain={() => choose("plan", "run-it-back")}
+        />
 
-      {showSetup && (
-        <div className="mx-auto max-w-2xl px-4 pt-6">
-          <CuratorSetup
-            title={definition.title}
-            onDone={night.setBrief}
-            onSkip={() =>
-              night.setBrief({
-                audience: "Coworkers",
-                vibe: "Social",
-                edge: 1,
-                appetite: "some",
-              })
-            }
-          />
-        </div>
-      )}
+        {showSetup && (
+          <div className="mx-auto max-w-2xl px-4 pt-6">
+            <CuratorSetup
+              title={definition.title}
+              onDone={night.setBrief}
+              onSkip={() =>
+                night.setBrief({
+                  audience: "Coworkers",
+                  vibe: "Social",
+                  edge: 1,
+                  appetite: "some",
+                })
+              }
+            />
+          </div>
+        )}
 
-      {!showSetup && quiet && (
-        <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
-          <QuietMode live={live} />
-          {/* Arena Mode stays reachable in a period: the herd, the
+        {!showSetup && quiet && (
+          <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
+            <QuietMode live={live} />
+            {/* Arena Mode stays reachable in a period: the herd, the
               washrooms and the beer line are most needed when the phone
               is otherwise put away. */}
-          {live.me && isRogersArena(definition.kicker) && (
-            <ArenaDoor slug={night.state.slug} />
-          )}
-          <PlanSummary live={live} />
-          <Memories night={night} />
-        </div>
-      )}
+            {live.me && isRogersArena(definition.kicker) && (
+              <ArenaDoor slug={night.state.slug} />
+            )}
+            <PlanSummary live={live} />
+            <Memories night={night} />
+          </div>
+        )}
 
-      {!showSetup && !quiet && (
-        <>
-          <div
-            ref={panel}
-            id={`panel-${tab}`}
-            role="tabpanel"
-            aria-labelledby={`tab-${tab}`}
-            className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
-          >
-            {tab === "plan" && <PlanTab night={night} blocks={byTab.plan} />}
-            {tab === "play" && (
-              <PlayTab
-                night={night}
-                blocks={byTab.play}
-                nhl={nhl}
-                onOpenToyBox={() => setToyBoxOpen(true)}
+        {!showSetup && !quiet && (
+          <>
+            <div
+              ref={panel}
+              id={`panel-${tab}`}
+              role="tabpanel"
+              aria-labelledby={`tab-${tab}`}
+              className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
+            >
+              {tab === "plan" && <PlanTab night={night} blocks={byTab.plan} />}
+              {tab === "play" && (
+                <PlayTab
+                  night={night}
+                  blocks={byTab.play}
+                  nhl={nhl}
+                  onOpenToyBox={() => setToyBoxOpen(true)}
+                />
+              )}
+              {tab === "chat" && (
+                <section aria-labelledby="chat-title">
+                  <h2
+                    id="chat-title"
+                    className={`${styles.wide} text-[28px] leading-none text-white`}
+                  >
+                    {byTab.chat[0]?.title ?? "The night"}
+                  </h2>
+                  <p className="mt-2 mb-4 text-[15px] text-white/70">
+                    Everyone on this night, and nobody else.
+                  </p>
+                  {askTeam && (
+                    <div className="mb-5">
+                      <BleedPrompt
+                        slug={state.slug}
+                        onOpen={() => setPicking(true)}
+                      />
+                    </div>
+                  )}
+                  <ChatRoom
+                    live={live}
+                    onSay={night.say}
+                    onReact={night.react}
+                    slug={state.slug}
+                    chirp={chirp}
+                    isHost={role === "host"}
+                    onLook={night.chirpLook}
+                    onSetChirp={night.setChirp}
+                  />
+                </section>
+              )}
+              {tab === "group" && (
+                <GroupTab
+                  night={night}
+                  onPickTeam={
+                    chirp.available ? () => setPicking(true) : undefined
+                  }
+                />
+              )}
+            </div>
+
+            {askTeam && tab !== "chat" && (
+              <BleedPrompt
+                strip
+                slug={state.slug}
+                onOpen={() => setPicking(true)}
               />
             )}
-            {tab === "chat" && (
-              <section aria-labelledby="chat-title">
-                <h2
-                  id="chat-title"
-                  className={`${styles.wide} text-[28px] leading-none text-white`}
-                >
-                  {byTab.chat[0]?.title ?? "The night"}
-                </h2>
-                <p className="mt-2 mb-4 text-[15px] text-white/70">
-                  Everyone on this night, and nobody else.
-                </p>
-                <ChatRoom live={live} onSay={night.say} onReact={night.react} />
-              </section>
-            )}
-            {tab === "group" && <GroupTab night={night} />}
-          </div>
 
-          <NightTabs
-            current={tab}
-            onChange={(t) => choose(t)}
-            badges={badges}
-            arenaHref={
-              live.me && isRogersArena(definition.kicker)
-                ? `/hockey/${night.state.slug}/arena`
-                : undefined
-            }
+            <NightTabs
+              current={tab}
+              onChange={(t) => choose(t)}
+              badges={badges}
+              arenaHref={
+                live.me && isRogersArena(definition.kicker)
+                  ? `/hockey/${night.state.slug}/arena`
+                  : undefined
+              }
+            />
+          </>
+        )}
+
+        {toyBoxOpen && live.me && (
+          <ToyBox
+            definition={definition}
+            edge={live.edge}
+            appetite={state.brief?.appetite ?? "some"}
+            people={live.participants}
+            me={live.me}
+            phaseId={live.phase.id}
+            lockPhaseId={nextPhaseId}
+            onAdd={night.addToy}
+            onClose={() => setToyBoxOpen(false)}
           />
-        </>
-      )}
+        )}
 
-      {toyBoxOpen && live.me && (
-        <ToyBox
-          definition={definition}
-          edge={live.edge}
-          appetite={state.brief?.appetite ?? "some"}
-          people={live.participants}
-          me={live.me}
-          phaseId={live.phase.id}
-          lockPhaseId={nextPhaseId}
-          onAdd={night.addToy}
-          onClose={() => setToyBoxOpen(false)}
-        />
-      )}
+        {picking && live.me && (
+          <TeamPicker
+            current={myTeam}
+            onPick={(team) => {
+              night.setTeam(team);
+              setPicking(false);
+            }}
+            onClose={() => setPicking(false)}
+          />
+        )}
 
-      {night.error && (
-        <div
-          role="alert"
-          className="fixed inset-x-0 bottom-24 z-50 mx-auto w-fit max-w-[90vw] rounded-full bg-white px-4 py-2.5 text-[14px] text-black shadow-lg"
-        >
-          {night.error}
-          <button
-            type="button"
-            className="ml-3 min-h-8 text-black/60"
-            onClick={night.clearError}
-            aria-label="Dismiss"
+        {night.error && (
+          <div
+            role="alert"
+            className="fixed inset-x-0 bottom-24 z-50 mx-auto w-fit max-w-[90vw] rounded-full bg-white px-4 py-2.5 text-[14px] text-black shadow-lg"
           >
-            ✕
-          </button>
-        </div>
-      )}
-    </main>
+            {night.error}
+            <button
+              type="button"
+              className="ml-3 min-h-8 text-black/60"
+              onClick={night.clearError}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </main>
+    </FansProvider>
   );
 }
 

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant, ResponseValue } from "@/experience-lab/core/types";
 import { MODULE_IDS, type ModuleId } from "./modules";
+import { TEAM_ABBRS } from "./fans";
 
 /**
  * **Everything a member can do to a night, as data.**
@@ -113,6 +114,15 @@ export const ActionSchema = z.discriminatedUnion("type", [
     value: responseValue.nullable(),
   }),
   z.object({ type: z.literal("setModules"), modules: modulesValue }),
+  /** Who I bleed for (`fans.ts`), or null for nobody. Not tonight's teams. */
+  z.object({
+    type: z.literal("setTeam"),
+    team: z.enum(TEAM_ABBRS).nullable(),
+  }),
+  /** I opened the chat: Chirp Bot may have a pregame question due. */
+  z.object({ type: z.literal("chirpLook") }),
+  /** Host: Chirp Bot on or off for this night. */
+  z.object({ type: z.literal("setChirp"), on: z.boolean() }),
 ]);
 
 export type Action = z.infer<typeof ActionSchema>;
