@@ -471,6 +471,26 @@ export function nearbyWithCurated(
 }
 
 /**
+ * **A place already on the vote keeps its card.** The offered window is cut
+ * from what Atlas holds today, and Atlas changes: a place nominated on
+ * Tuesday can fall outside Friday's window, and its ballot card (matched by
+ * name) would lose its photograph and its walk. Everything still near and
+ * still on the ballot follows the window, so the card stays whole.
+ */
+export function keepOnBallot(
+  window: readonly NearbyPlace[],
+  everything: readonly NearbyPlace[],
+  onBallot: readonly string[],
+): NearbyPlace[] {
+  const extra = everything.filter(
+    (p) =>
+      !window.some((w) => w.atlasId === p.atlasId) &&
+      onBallot.some((label) => label === p.name || sameName(label, p.name)),
+  );
+  return [...window, ...extra];
+}
+
+/**
  * **Places Passport can show lead; the rest follow, nearest first.** A card
  * with a real picture sells itself on a phone and a card without one is a
  * line of text, so a group choosing where to eat meets the places that look

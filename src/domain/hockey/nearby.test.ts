@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import {
+  keepOnBallot,
   looksLikeNotAPhoto,
   nearbyFood,
   nearbyMeetingSpots,
@@ -10,6 +11,7 @@ import {
   statedHoursOn,
   venueInAtlas,
   walkLabel,
+  type NearbyPlace,
 } from "./nearby";
 
 /**
@@ -581,5 +583,30 @@ describe("somewhere an ordinary group could eat before the game", () => {
     expect(
       ids(nearbyFood(list, ARENA, { limit: 2, photographedFirst: true })),
     ).toHaveLength(2);
+  });
+});
+
+describe("a place already on the vote", () => {
+  const place = (atlasId: string, name: string): NearbyPlace => ({
+    atlasId,
+    name,
+    km: 0.5,
+    walkMinutes: 7,
+    basis: "straight-line",
+    source: "atlas",
+    image: { url: `https://x.example/${atlasId}.jpg`, relationship: "exact" },
+  });
+  const window = [place("a", "Alpha"), place("b", "Bravo")];
+  const everything = [...window, place("c", "Charlie's"), place("d", "Delta")];
+
+  it("keeps its card when today's window no longer offers it", () => {
+    expect(
+      keepOnBallot(window, everything, ["The Charlie's"]).map((p) => p.atlasId),
+    ).toEqual(["a", "b", "c"]);
+  });
+
+  it("adds nothing that is not on the ballot, and nothing twice", () => {
+    expect(keepOnBallot(window, everything, ["Alpha"])).toEqual(window);
+    expect(keepOnBallot(window, everything, [])).toEqual(window);
   });
 });

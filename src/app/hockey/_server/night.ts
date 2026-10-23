@@ -15,6 +15,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import {
+  keepOnBallot,
   nearbyMeetingSpots,
   nearbyWithCurated,
   venueInAtlas,
@@ -831,7 +832,10 @@ export async function act(
  * hours cover it — Discovery asks the same way for a picked day. If that read
  * fails, the plain corpus read decides whether Atlas is really out.
  */
-async function placesNear(occasion: NightRows["occasion"]): Promise<Nearby> {
+async function placesNear(
+  occasion: NightRows["occasion"],
+  onBallot: readonly string[] = [],
+): Promise<Nearby> {
   const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
   const venueName = occasion.details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue;
   const { day, weekday } = gameDayOf(occasion.starts_at);
@@ -840,11 +844,20 @@ async function placesNear(occasion: NightRows["occasion"]): Promise<Nearby> {
     .catch(() => discoveryCandidates());
   const arena = venueInAtlas(candidates, venueName, venue);
   return {
-    places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
-      weekday,
-      limit: 24,
-      photographedFirst: true,
-    }),
+    places: keepOnBallot(
+      nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
+        weekday,
+        limit: 24,
+        photographedFirst: true,
+      }),
+      onBallot.length
+        ? nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
+            weekday,
+            limit: Infinity,
+          })
+        : [],
+      onBallot,
+    ),
     meeting: nearbyMeetingSpots(candidates, VANCOUVER_PLACES, venue, {
       weekday,
     }),
@@ -882,7 +895,12 @@ export async function nearbyFor(
   if (!rows?.members.some((m) => m.user_id === user.id)) {
     throw new NightError("Not found.", 404);
   }
-  return placesNear(rows.occasion);
+  return placesNear(
+    rows.occasion,
+    rows.options
+      .filter((o) => o.prompt_id === "pregame-spot")
+      .map((o) => o.label),
+  );
 }
 
 // ------------------------------------------------------- invitations

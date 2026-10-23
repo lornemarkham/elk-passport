@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-23 — final verification: [`FINAL-VERIFICATION.md`](FINAL-VERIFICATION.md)** (RC `d8a1c0a` verified feature by feature on today's production Atlas data; all Hockey specs pass; fixed: a place already on the dinner vote lost its photo when Atlas changed; four migrations still to apply).
+
 **2026-10-23 — declare your team + the Chirp Room: [`CHIRP-ROOM.md`](CHIRP-ROOM.md)** (WHO DO YOU BLEED FOR? — all 32 NHL teams, one allegiance per person, shown beside names; Chirp Bot heckles in the existing chat — welcomes, rival fans, bets, pregame controversies with sourced facts — and 🔥 Chirp Someone writes three chirps you may send; OpenAI when configured, a curated library otherwise; needs `chirp-migration.sql`).
 
 **2026-10-23 — finish the experience: [`FINISH.md`](FINISH.md)** (audit of all eight areas; new: Memories photo album, live NHL score and one-tap call from the league's record, host can change the game or cancel the night, Run it back opens on a future date; needs `memories-migration.sql` for photos only).
