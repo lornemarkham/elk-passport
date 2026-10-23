@@ -1,6 +1,7 @@
 import { normaliseSubtype } from "@/domain/discovery/defaultFeed";
 import { intentByKey } from "@/domain/discovery/intents";
 import { distanceKm } from "@/lib/environment/geo";
+import { notForPregame, sameVenue } from "./pregame";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import {
   curatedNear,
@@ -351,20 +352,34 @@ export interface NearbyOptions {
   readonly limit?: number;
   /** Game day's weekday in the venue's time zone, e.g. `"sunday"`. */
   readonly weekday?: string;
+  /**
+   * Fill the list with places that have a picture before places that do not,
+   * nearest first within each. A card with a real photograph sells itself and
+   * the others are a line of text, so the window is cut after that choice, not
+   * before it. Places with no picture still follow if the window is not full.
+   */
+  readonly photographedFirst?: boolean;
 }
 
 export function nearbyFood(
   candidates: readonly DiscoveryCandidate[],
   venue: readonly [number, number],
-  { withinKm = 1.6, limit = 12, weekday }: NearbyOptions = {},
+  {
+    withinKm = 1.6,
+    limit = 12,
+    weekday,
+    photographedFirst = false,
+  }: NearbyOptions = {},
 ): NearbyPlace[] {
   const seen = new Set<string>();
-  return candidates
+  const near = candidates
     .filter((c) => EAT.has(normaliseSubtype(c.subtype)))
     .flatMap((c) => {
       const km = measured(c, venue);
       if (km === undefined || km > withinKm || seen.has(c.id)) return [];
       seen.add(c.id);
+      // Somewhere an ordinary group could eat before the game, or not at all.
+      if (notForPregame(c)) return [];
       const image = nearbyImage(c);
       const at = observedAt(c);
       const gameDay = gameDayOf(c, weekday);
@@ -392,8 +407,21 @@ export function nearbyFood(
         },
       ];
     })
-    .sort((a, b) => a.km - b.km)
-    .slice(0, limit);
+    .sort((a, b) => a.km - b.km);
+  // One venue held under two names is one card — the one that has the picture.
+  const venues = near.filter(
+    (p, i) =>
+      !near.some(
+        (q, j) =>
+          j !== i &&
+          sameVenue(p, q) &&
+          (q.image && !p.image ? true : !!q.image === !!p.image && j < i),
+      ),
+  );
+  const window = photographedFirst
+    ? [...venues.filter((p) => p.image), ...venues.filter((p) => !p.image)]
+    : venues;
+  return window.slice(0, limit).sort((a, b) => a.km - b.km);
 }
 
 /**
@@ -404,9 +432,19 @@ export function nearbyWithCurated(
   candidates: readonly DiscoveryCandidate[],
   curated: readonly CuratedPlace[],
   venue: readonly [number, number],
-  { withinKm = 1.6, limit = 16, weekday }: NearbyOptions = {},
+  {
+    withinKm = 1.6,
+    limit = 16,
+    weekday,
+    photographedFirst,
+  }: NearbyOptions = {},
 ): NearbyPlace[] {
-  const atlas = nearbyFood(candidates, venue, { withinKm, limit, weekday });
+  const atlas = nearbyFood(candidates, venue, {
+    withinKm,
+    limit,
+    weekday,
+    photographedFirst,
+  });
   const extra = curatedNear(curated, venue, {
     kinds: ["restaurant", "bar"],
     withinKm,

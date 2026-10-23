@@ -286,7 +286,7 @@ describe("what a venue card may show", () => {
     const place = near({
       schedule: {
         stated: "stated",
-        onDate: { date: "2026-10-25", reading: "not-on", basis: "hours" },
+        onDate: { date: "2026-10-25", reading: "on", basis: "hours" },
       },
       knowledge: {
         practical: [
@@ -297,7 +297,7 @@ describe("what a venue card may show", () => {
         ],
       },
     } as Partial<DiscoveryCandidate>);
-    expect(place.gameDay).toEqual({ reading: "not-on" });
+    expect(place.gameDay).toEqual({ reading: "on" });
     expect(place.facts).toEqual([
       "Happy Hour",
       "Trivia Night: 7.00PM EVERY WEDNESDAY",
@@ -497,5 +497,89 @@ describe("meeting places near the arena", () => {
     expect(spots[0].image?.url).toBe("https://example.test/plaza.jpg");
     // Never borrowed from a differently named record.
     expect(spots[1].image).toBeUndefined();
+  });
+});
+
+describe("somewhere an ordinary group could eat before the game", () => {
+  const at: [number, number] = [-123.1065, 49.2785];
+  const named = (
+    id: string,
+    name: string,
+    extra: Partial<DiscoveryCandidate> = {},
+  ) =>
+    candidate(id, "restaurant", at, "observed", {
+      name,
+      ...extra,
+    } as Partial<DiscoveryCandidate>);
+  const ids = (list: readonly { atlasId: string }[]) =>
+    list.map((p) => p.atlasId);
+
+  it("never offers a place whose stated hours do not cover game day", () => {
+    const closed = named("closed", "Closed That Day", {
+      schedule: {
+        stated: "stated",
+        onDate: { date: "2026-10-25", reading: "not-on", basis: "hours" },
+      },
+    } as Partial<DiscoveryCandidate>);
+    expect(ids(nearbyFood([closed, named("open", "Open")], ARENA))).toEqual([
+      "open",
+    ]);
+  });
+
+  it("never offers an arena lounge sold with a ticket or a membership", () => {
+    const lounge = named(
+      "3cd02b08-7743-47de-a027-dcba3ee853d0",
+      "A Premium Club",
+    );
+    expect(
+      ids(nearbyFood([lounge, named("ordinary", "Ordinary")], ARENA)),
+    ).toEqual(["ordinary"]);
+  });
+
+  it("does not take a coffee counter for a pregame meal", () => {
+    const counter = candidate("counter", "cafe", at);
+    expect(nearbyFood([counter], ARENA)).toEqual([]);
+  });
+
+  it("shows one card for a venue held under two names, the one with the picture", () => {
+    const photo = {
+      url: "https://x.example/room.jpg",
+      relationship: "exact",
+    } as const;
+    const plain = named("plain", "Some Place");
+    const twin = named("twin", "Some Place Stadium District", {
+      presentationImage: { ...photo, imageClass: "verified-photo" },
+    } as unknown as Partial<DiscoveryCandidate>);
+    expect(ids(nearbyFood([plain, twin], ARENA))).toEqual(["twin"]);
+    const far = named("far", "Some Place Elsewhere");
+    (far.geography as { coordinates: number[] }).coordinates = [-123.12, 49.29];
+    expect(ids(nearbyFood([plain, far], ARENA)).sort()).toEqual([
+      "far",
+      "plain",
+    ]);
+  });
+
+  it("fills the window with photographed places first when asked", () => {
+    const photo = {
+      presentationImage: {
+        url: "https://x.example/a.jpg",
+        relationship: "exact",
+        imageClass: "verified-photo",
+      },
+    } as unknown as Partial<DiscoveryCandidate>;
+    const list = [
+      named("near-bare", "Near Bare"),
+      candidate("mid-photo", "restaurant", [-123.104, 49.279], "observed", {
+        name: "Mid Photo",
+        ...photo,
+      } as Partial<DiscoveryCandidate>),
+    ];
+    expect(ids(nearbyFood(list, ARENA, { limit: 1 }))).toEqual(["near-bare"]);
+    expect(
+      ids(nearbyFood(list, ARENA, { limit: 1, photographedFirst: true })),
+    ).toEqual(["mid-photo"]);
+    expect(
+      ids(nearbyFood(list, ARENA, { limit: 2, photographedFirst: true })),
+    ).toHaveLength(2);
   });
 });

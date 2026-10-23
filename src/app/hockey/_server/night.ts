@@ -843,6 +843,7 @@ async function placesNear(occasion: NightRows["occasion"]): Promise<Nearby> {
     places: nearbyWithCurated(candidates, VANCOUVER_PLACES, venue, {
       weekday,
       limit: 24,
+      photographedFirst: true,
     }),
     meeting: nearbyMeetingSpots(candidates, VANCOUVER_PLACES, venue, {
       weekday,
