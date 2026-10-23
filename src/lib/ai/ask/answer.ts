@@ -32,6 +32,7 @@ import {
   type ActivityTag,
 } from "@/domain/discovery/activities";
 import { driveSpan, type DiscoveryAsk } from "./read";
+import { memoizeByObject } from "@/lib/memoizeByObject";
 
 /**
  * **An answer to a question, made only of things Atlas states.**
@@ -178,14 +179,14 @@ const hoursPhrase = (hours: number): string => {
   return `${word ?? hours} hours`;
 };
 
-const verbsOf = (experience: Experience): readonly string[] => {
+const verbsOf = memoizeByObject((experience: Experience): readonly string[] => {
   const seen = new Map<string, string>();
   for (const { name } of experience.knowledge?.affordances ?? []) {
     const key = name?.trim().toLowerCase();
     if (key && !seen.has(key)) seen.set(key, name.trim());
   }
   return [...seen.values()];
-};
+});
 
 const kindOf = (experience: Experience): string =>
   (experience.subtype ?? experience.kind).trim().toLowerCase();
@@ -200,13 +201,14 @@ const UNSAID = new Set(["unknown", "place", "organization", "activity"]);
  * park in Metro Vancouver". Counting by family can only make a claim rarer
  * to earn, never easier.
  */
-const familyOf = (experience: Experience): string =>
+const familyOf = memoizeByObject((experience: Experience): string =>
   (kindOf(experience).split("/").pop() ?? "")
     .replace(/[_-]+/g, " ")
     .trim()
     .split(/\s+/)
     .pop()!
-    .replace(/(?<!s)s$/, "");
+    .replace(/(?<!s)s$/, ""),
+);
 
 /**
  * Listed "affordances" that are not something you do. Every one is in the
@@ -981,7 +983,7 @@ const sameSpot = (a: Experience, b: Experience): boolean => {
   return Math.abs(p.lat - q.lat) < 0.002 && Math.abs(p.lng - q.lng) < 0.003;
 };
 
-const titleKey = (experience: Experience): string =>
+const titleKey = memoizeByObject((experience: Experience): string =>
   experience.title
     .toLowerCase()
     .replace(/\b(the|and|society|association|inc|ltd)\b/g, "")
@@ -989,7 +991,8 @@ const titleKey = (experience: Experience): string =>
     .trim()
     .split(" ")
     .slice(0, 2)
-    .join(" ");
+    .join(" "),
+);
 
 /**
  * **One at a time, each paying for what it repeats.**

@@ -1,5 +1,5 @@
 import type { CandidateDistance } from "@/lib/data/types";
-import { AREA_POINT_NOTE } from "@/lib/domains/travel/contracts";
+import { AREA_POINT_NOTE } from "@/lib/domains/travel/areaPointNote";
 
 /**
  * **How far, measured how, and on whose word** — Passport's side of Atlas ADR
