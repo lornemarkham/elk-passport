@@ -70,8 +70,9 @@ async function noSideways(page: Page, width: number) {
 async function heroAndPlan(page: Page) {
   return page.evaluate(() => {
     const header = document.querySelector("main header")!;
+    // Where we eat leads the page; the plan card sits under it.
     const planTop = document
-      .querySelector('[aria-labelledby="plan-title"]')!
+      .querySelector("#decision-before")!
       .getBoundingClientRect().top;
     return {
       hero: Math.round(header.getBoundingClientRect().height),
@@ -105,9 +106,21 @@ test("compact hero, three venue cards, meeting spots, host's pick", async ({
   const m390 = await heroAndPlan(host.page);
   expect(m390.hero, "hero height at 390").toBeLessThan(500);
   // (The host is alone here, so the invite card is in the hero too.)
-  expect(m390.planTop, "plan starts in the first phone screen").toBeLessThan(
+  expect(m390.planTop, "dinner starts in the first phone screen").toBeLessThan(
     560,
   );
+  // Restaurant cards are visible immediately: with nothing scrolled, the
+  // first photograph is on the first screen, above the tab bar (~70 px).
+  const lead = host.page
+    .getByRole("region", { name: "Places near Rogers Arena" })
+    .getByRole("article")
+    .first();
+  await expect(lead).toBeVisible({ timeout: 30_000 });
+  const leadBox = await lead.boundingBox();
+  expect(
+    leadBox!.y,
+    "first card is on the first screen, unscrolled",
+  ).toBeLessThan(844 - 150);
   await shot(host.page, "01-compact-hero-390");
 
   // --------------------------------------- Before the game: cards at once
