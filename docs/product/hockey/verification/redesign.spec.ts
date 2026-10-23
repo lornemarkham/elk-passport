@@ -149,15 +149,13 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
     "src",
     /chambar\.com/,
   );
-  // A photograph from the business's own site, said to be that.
-  await expect(card(maya.page, "Moxies West Georgia")).toContainText(
-    /From moxies\.ca/i,
-  );
-  // Atlas only has a stock "restaurant" picture: no picture, said plainly.
-  await expect(card(maya.page, "Tokyo In April").locator("img")).toHaveCount(0);
-  await expect(card(maya.page, "Tokyo In April")).toContainText(
-    /No photo Passport can vouch for yet/i,
-  );
+  // Atlas now holds a curated photograph for Moxies (the venue's own, approved).
+  await expect(
+    card(maya.page, "Moxies West Georgia").locator("img"),
+  ).toHaveAttribute("src", /moxies\.ca/);
+  // A place with no photograph Atlas can vouch for is not on the vote at all
+  // while there are photographed places to fill it (`photographedFirst`).
+  await expect(card(maya.page, "Tokyo In April")).toHaveCount(0);
   // Atlas's stated hours for game day, quoted.
   await expect(card(maya.page, "Shark Club")).toContainText(
     /Game day:\s*\w+day: \d/,

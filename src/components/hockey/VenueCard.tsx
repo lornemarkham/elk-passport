@@ -111,6 +111,9 @@ function Photo({
             }
             title={image.attribution}
             loading={priority ? "eager" : "lazy"}
+            // A business's site may refuse a picture whose page is not its own
+            // (hotlink protection reads the Referer); ask without one.
+            referrerPolicy="no-referrer"
             onError={() => setBroken(true)}
             onLoad={(event) => {
               const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
@@ -191,6 +194,7 @@ export function PlanPhoto({
     <img
       src={url}
       alt=""
+      referrerPolicy="no-referrer"
       onError={() => setBroken(true)}
       onLoad={(event) => {
         const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
