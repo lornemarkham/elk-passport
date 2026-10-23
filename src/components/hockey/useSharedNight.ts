@@ -12,6 +12,7 @@ import type {
   ToyFamily,
 } from "@/experience-lab/core/types";
 import type { Action } from "@/domain/hockey/actions";
+import type { ChirpRoom } from "@/domain/hockey/chirp";
 import type { ModuleId } from "@/domain/hockey/modules";
 import type { SeriesView } from "@/domain/hockey/series";
 
@@ -21,6 +22,8 @@ export interface NightSnapshot {
   readonly role: "host" | "guest";
   /** Which modules the host has on (`domain/hockey/modules.ts`). */
   readonly modules: ModuleId[];
+  /** Everybody's team and Chirp Bot's lines in the chat. */
+  readonly chirp: ChirpRoom;
   /**
    * The rest of this night's run. Sent with the page, not with every poll:
    * last time does not change while you are looking at this time, and
@@ -156,6 +159,7 @@ export function useSharedNight(initial: NightSnapshot) {
     definition,
     role,
     modules: snapshot.modules,
+    chirp: snapshot.chirp,
     series: snapshot.series,
     error,
     clearError: () => setError(null),
@@ -228,6 +232,28 @@ export function useSharedNight(initial: NightSnapshot) {
     setModules: (modules: ModuleId[]) => {
       setSnapshot((prev) => ({ ...prev, modules }));
       void send({ type: "setModules", modules });
+    },
+
+    // Who I bleed for. The chip moves at once; Chirp Bot's welcome, if it
+    // has one, arrives with a later poll.
+    setTeam: (team: string | null) => {
+      const me = state.meId;
+      setSnapshot((prev) => {
+        if (!me) return prev;
+        const fans = { ...prev.chirp.fans };
+        if (team) fans[me] = team;
+        else delete fans[me];
+        return { ...prev, chirp: { ...prev.chirp, fans } };
+      });
+      void send({ type: "setTeam", team });
+    },
+
+    /** Opened the chat: Chirp Bot may have a pregame question due. */
+    chirpLook: () => void send({ type: "chirpLook" }),
+
+    setChirp: (on: boolean) => {
+      setSnapshot((prev) => ({ ...prev, chirp: { ...prev.chirp, on } }));
+      void send({ type: "setChirp", on });
     },
 
     setMyEdge: (edge: Edge | null) =>

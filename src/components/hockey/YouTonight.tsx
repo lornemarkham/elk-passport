@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Avatar } from "@/experience-lab/ui/atoms";
 import { EMOJI } from "@/domain/hockey/identity";
+import { FanTag, useFan } from "./FanTag";
 import type { SharedNight } from "./useSharedNight";
 
 /**
@@ -13,8 +14,15 @@ import type { SharedNight } from "./useSharedNight";
  * any avatar. Real people get to write their own. Collapsed by default: it is
  * a thing you do once, not a thing that should sit on the page.
  */
-export function YouTonight({ night }: { night: SharedNight }) {
+export function YouTonight({
+  night,
+  onPickTeam,
+}: {
+  night: SharedNight;
+  onPickTeam?: () => void;
+}) {
   const me = night.live.me;
+  const team = useFan(me?.id);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(me?.name ?? "");
   const [emoji, setEmoji] = useState(me?.emoji ?? "🙂");
@@ -23,21 +31,45 @@ export function YouTonight({ night }: { night: SharedNight }) {
 
   if (!me) return null;
 
-  if (!open) {
-    return (
+  // Your team sits outside the collapsed form: it is the one thing here
+  // people change on a whim (and Chirp Bot is watching when they do).
+  const teamRow = onPickTeam && (
+    <div className="flex flex-wrap items-center gap-2 text-[14.5px] text-white/70">
+      {team ? (
+        <>
+          You bleed for <FanTag personId={me.id} full />
+        </>
+      ) : (
+        "No team yet."
+      )}
       <button
         type="button"
-        onClick={() => {
-          setName(me.name);
-          setEmoji(me.emoji);
-          setVibe(me.vibe ?? "");
-          setOpen(true);
-        }}
-        className="flex min-h-10 items-center gap-2 self-start text-[14.5px] text-white/65 hover:text-white"
+        onClick={onPickTeam}
+        className="min-h-10 rounded-full px-3 text-white/85 ring-1 ring-white/20"
       >
-        <Avatar person={me} size={22} />
-        {me.vibe ? `“${me.vibe}”` : "Tell the group who you are tonight"}
+        {team ? "Change team" : "Who do you bleed for?"}
       </button>
+    </div>
+  );
+
+  if (!open) {
+    return (
+      <div className="flex flex-col gap-1">
+        {teamRow}
+        <button
+          type="button"
+          onClick={() => {
+            setName(me.name);
+            setEmoji(me.emoji);
+            setVibe(me.vibe ?? "");
+            setOpen(true);
+          }}
+          className="flex min-h-10 items-center gap-2 self-start text-[14.5px] text-white/65 hover:text-white"
+        >
+          <Avatar person={me} size={22} />
+          {me.vibe ? `“${me.vibe}”` : "Tell the group who you are tonight"}
+        </button>
+      </div>
     );
   }
 

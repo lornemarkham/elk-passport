@@ -2,6 +2,7 @@
 
 import { Avatar } from "@/experience-lab/ui/atoms";
 import { MyLimit } from "@/experience-lab/ui/CuratorSetup";
+import { FanTag } from "./FanTag";
 import { HostGame } from "./HostGame";
 import { GuestList } from "./GuestList";
 import { TonightSettings } from "./Modules";
@@ -17,7 +18,14 @@ import styles from "./hockey.module.css";
  * Moved out of the night's main column, where it read as account settings
  * at the bottom of a game.
  */
-export function GroupTab({ night }: { night: SharedNight }) {
+export function GroupTab({
+  night,
+  onPickTeam,
+}: {
+  night: SharedNight;
+  /** Opens "Who do you bleed for?"; absent until teams are switched on. */
+  onPickTeam?: () => void;
+}) {
   const { live, state, role, definition } = night;
   const hostId = definition.hostId;
 
@@ -51,6 +59,9 @@ export function GroupTab({ night }: { night: SharedNight }) {
               <span className="min-w-0">
                 <p className="flex items-center text-[16px] font-bold text-white">
                   <span className="truncate">{person.name}</span>
+                  <span className="ml-1.5">
+                    <FanTag personId={person.id} />
+                  </span>
                   {person.id === hostId && (
                     <span className="ml-1.5 shrink-0 rounded-full bg-[#ffd84d] px-1.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
                       host
@@ -71,7 +82,7 @@ export function GroupTab({ night }: { night: SharedNight }) {
         </ul>
       </section>
 
-      <YouTonight night={night} />
+      <YouTonight night={night} onPickTeam={onPickTeam} />
 
       {live.me && (
         <section aria-labelledby="my-limit">

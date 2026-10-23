@@ -303,6 +303,14 @@ async function start() {
     );
   }
 
+  // Declare your team + the Chirp Room (2026-10-23). HOCKEY_CHIRP=0 starts
+  // without it, to see the night as production has it before it is applied.
+  if (process.env.HOCKEY_CHIRP !== "0") {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "chirp-migration.sql"), "utf8"),
+    );
+  }
+
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,
     PGRST_DB_SCHEMAS: "public",

@@ -78,7 +78,11 @@ export interface OccasionRow {
    * modules the host left on (`modules.ts`; absent means all of them).
    */
   readonly details: Partial<NightDetails> &
-    SeriesDetails & { readonly modules?: readonly string[] };
+    SeriesDetails & {
+      readonly modules?: readonly string[];
+      /** Chirp Bot in the chat (`chirp.ts`); absent means on. */
+      readonly chirp?: boolean;
+    };
   readonly brief: Brief | null;
 }
 
@@ -91,6 +95,8 @@ export interface MemberRow {
   readonly vibe: string | null;
   readonly edge: number | null;
   readonly joined_at: string;
+  /** Who they bleed for (`fans.ts`), when chirp-migration.sql is applied. */
+  readonly nhl_team?: string | null;
 }
 
 export interface PromptRow {
@@ -122,10 +128,14 @@ export interface ResponseRow {
 export interface MomentRow {
   readonly id: string;
   readonly actor_id: string;
-  readonly kind: "note" | "join" | "photo";
+  readonly kind: "note" | "join" | "photo" | "chirp";
   readonly text: string | null;
   readonly emoji: string | null;
   readonly at: string;
+  /** Chirp Bot's lines only (`chirp.ts`): what it is, which line, its signature. */
+  readonly bot_key?: string | null;
+  readonly bot_line?: string | null;
+  readonly bot_sig?: string | null;
 }
 
 export interface ReactionRow {
@@ -542,12 +552,14 @@ export function composeNight(
     text: "🔓 Opened.",
   }));
 
+  // Chirp Bot's lines are the chat's, not the night's: they never reach the
+  // lab's feed, receipts, awards or recap (`chirp.ts` draws them).
   const moments: Moment[] = rows.moments
-    .filter((m) => isMember(m.actor_id))
+    .filter((m) => m.kind !== "chirp" && isMember(m.actor_id))
     .map((m) => ({
       id: m.id,
       at: m.at,
-      kind: m.kind,
+      kind: m.kind as Exclude<MomentRow["kind"], "chirp">,
       by: m.actor_id,
       text: m.text ?? undefined,
       emoji: m.emoji ?? undefined,
