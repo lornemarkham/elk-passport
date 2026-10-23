@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openTab } from "./night-tabs";
+import { openDecision, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -135,6 +135,11 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
 
   // ------------------------------------------------ voting, at the same time
   await Promise.all([openTab(lorne.page, "Plan"), openTab(maya.page, "Plan")]);
+  // The dinner vote is Plan's first decision.
+  await Promise.all([
+    openDecision(lorne.page, "Before the game"),
+    openDecision(maya.page, "Before the game"),
+  ]);
   const dinner = (p: Page) =>
     p.getByRole("region", { name: "Where are we going before?" });
   const concourse = (p: Page) =>
@@ -159,10 +164,17 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
 
   // ------------------------------------------------ a real place, from Discovery
   // Against atlas-stub.mjs: the wiring is real, the places are labelled fake.
-  // Everything near the arena is offered under the vote, without asking.
-  await expect(
-    lorne.page.getByRole("region", { name: "More near Rogers Arena" }),
-  ).toBeVisible();
+  // With nothing real on the vote when it opened, the places near the arena
+  // are offered under it, without asking: a few, then all of them.
+  const near = lorne.page.getByRole("region", {
+    name: "Places near Rogers Arena",
+  });
+  await expect(near).toBeVisible();
+  await expect(near.getByRole("article").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const all = near.getByRole("button", { name: /^See all \d+ places$/ });
+  if (await all.count()) await all.click();
   await expect(
     lorne.page
       .getByText(/\d+\+ min walk · \d+ m straight line \(estimate\)/)
@@ -215,11 +227,15 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   // ------------------------------------------------ where we meet
   const station = (p: Page) =>
     p.getByRole("button", { name: /Stadium–Chinatown Station/ });
+  await Promise.all([
+    openDecision(lorne.page, "Meeting point"),
+    openDecision(maya.page, "Meeting point"),
+  ]);
   await Promise.all([station(lorne.page).click(), station(maya.page).click()]);
   // The plan says it back to everyone.
   await expect(
-    maya.page.getByRole("region", { name: "The plan" }).getByRole("link", {
-      name: /Meeting.*Stadium–Chinatown Station.*2 votes/,
+    maya.page.getByRole("region", { name: "The plan" }).getByRole("button", {
+      name: /^Meeting point.*Stadium–Chinatown Station.*2 votes/,
     }),
   ).toBeVisible({ timeout: 15_000 });
 
@@ -371,8 +387,9 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
       p.getByText("I will be predicting a shutout and I will be right."),
     ).toBeVisible();
     await openTab(p, "Plan");
+    await openDecision(p, "Before the game");
     await expect(
-      dinner(p).getByRole("heading", { name: "Tap & Barrel Bridges" }),
+      dinner(p).locator('[data-option="Tap & Barrel Bridges"]'),
     ).toBeVisible();
   }
 
@@ -382,10 +399,9 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await expect(lorneAgain.page).toHaveURL(/\/auth\?next=/);
   await logIn(lorneAgain.page, "lorne");
   await expect(lorneAgain.page).toHaveURL(new RegExp(`/hockey/${nightId}$`));
+  await openDecision(lorneAgain.page, "Before the game");
   await expect(
-    dinner(lorneAgain.page).getByRole("heading", {
-      name: "Tap & Barrel Bridges",
-    }),
+    dinner(lorneAgain.page).locator('[data-option="Tap & Barrel Bridges"]'),
   ).toBeVisible();
   await openTab(lorneAgain.page, "Chat");
   await expect(

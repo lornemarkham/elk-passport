@@ -894,7 +894,7 @@ function GettingThere({
       className="border-t border-[#0b1220]/10 bg-[#e8eff7] px-5 py-4"
     >
       <p className="flex items-center gap-2 text-[12px] font-bold tracking-[0.12em] text-[#0b1220]/55 uppercase">
-        <Footprints className="h-4 w-4" /> Getting there
+        <Footprints className="h-4 w-4" /> The walk
       </p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <label className="block text-[13px] font-bold text-[#0b1220]/70">

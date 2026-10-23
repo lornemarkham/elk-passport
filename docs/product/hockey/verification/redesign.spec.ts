@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openTab } from "./night-tabs";
+import { openDecision, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -133,9 +133,16 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
   // ---------------------------------------------- real places, real photos
   await openTab(lorne.page, "Plan");
   const near = (p: Page) =>
-    p.getByRole("region", { name: "More near Rogers Arena" });
+    p.getByRole("region", { name: "Places near Rogers Arena" });
   const card = (p: Page, name: string) =>
     near(p).getByRole("article", { name, exact: true });
+  // Plan's first decision; three places first, every place one tap further.
+  for (const p of [maya.page, lorne.page]) {
+    await openDecision(p, "Before the game");
+    await near(p)
+      .getByRole("button", { name: /^See all \d+ places$/ })
+      .click({ timeout: 30_000 });
+  }
 
   // The place's own photograph, shown plainly.
   await expect(card(maya.page, "Chambar").locator("img")).toHaveAttribute(
@@ -170,12 +177,12 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
   ).toBeVisible();
   const dinner = (p: Page) =>
     p.getByRole("region", { name: "Where are we going before?" });
-  const ballotChambar = dinner(lorne.page).getByRole("article", {
-    name: "Chambar",
-    exact: true,
-  });
+  const ballotChambar = dinner(lorne.page).locator('[data-option="Chambar"]');
   await expect(ballotChambar).toBeVisible({ timeout: 15_000 });
-  await expect(ballotChambar.locator("[data-photo=exact]")).toBeVisible();
+  await expect(ballotChambar.locator("img")).toHaveAttribute(
+    "src",
+    /chambar\.com/,
+  );
   await ballotChambar.getByRole("button", { name: "Vote for Chambar" }).click();
   await expect(
     ballotChambar.getByRole("button", { name: "Vote for Chambar" }),
@@ -183,7 +190,7 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
   await expect(
     maya.page
       .getByRole("region", { name: "The plan" })
-      .getByRole("link", { name: /^Eating/ }),
+      .getByRole("button", { name: /^Before the game/ }),
   ).toHaveAccessibleName(/Chambar\s*1 vote/, { timeout: 15_000 });
 
   // ------------------------------------------------- picks, by thumb

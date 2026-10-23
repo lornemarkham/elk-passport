@@ -17,7 +17,7 @@ import { Avatar } from "@/experience-lab/ui/atoms";
 import type { LiveExperience, LivePrompt } from "@/experience-lab/core/engine";
 import type { Block } from "@/experience-lab/core/types";
 import { sameName } from "@/domain/collections/places";
-import { clockAt, gameWhen } from "@/domain/hockey/countdown";
+import { clockAt } from "@/domain/hockey/countdown";
 import type { NearbyPlace } from "@/domain/hockey/nearby";
 import {
   DECISIONS,
@@ -275,7 +275,6 @@ function PlanCard({
   onToggle: (id: DecisionId) => void;
 }) {
   const anchor = new Date(live.definition.anchorAt);
-  const puck = gameWhen(anchor).split(" · ")[1];
   const next = whatsNext(live, anchor);
   const order = DECISIONS.map((d) => d.id);
   const sorted = [...rows].sort(
@@ -294,11 +293,6 @@ function PlanCard({
         >
           The plan
         </h2>
-        {!gameIsOver(live) && puck && (
-          <span className="text-[13px] font-semibold text-[#0b1220]/60">
-            Puck drop {puck}
-          </span>
-        )}
       </div>
       <ul className="divide-y divide-[#0b1220]/10 border-t border-[#0b1220]/10">
         {sorted.map((row) => (

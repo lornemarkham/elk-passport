@@ -158,6 +158,36 @@ describe("the group's plan, live", () => {
     expect(items[0].voters).toBe(3);
   });
 
+  it("says which vote answers each decision, and what's waiting on me", async () => {
+    const { decisionVote, needsMyVote, voteValue } = await import("./plan");
+    const items = planItems([
+      vote("pregame-spot", [["Chambar", 1]], "chambar"),
+      vote("hard-out", [
+        ["One", 1],
+        ["Close", 1],
+      ]),
+      vote("postgame", [["Keep going", 2]]),
+    ]);
+    expect(decisionVote("before", items, false)?.id).toBe("pregame-spot");
+    expect(decisionVote("meeting", items, false)).toBeUndefined();
+    expect(decisionVote("seats", items, false)).toBeUndefined();
+    // How people are leaving until the game is over, then where we go next.
+    expect(decisionVote("after", items, false)?.id).toBe("hard-out");
+    expect(decisionVote("after", items, true)?.id).toBe("postgame");
+
+    expect(items.map(voteValue)).toEqual([
+      "Chambar",
+      "Tied: One / Close",
+      "Keep going",
+    ]);
+    expect(voteValue(planItems([vote("meet-spot", [["Station", 0]])])[0])).toBe(
+      "No votes yet",
+    );
+    expect(items.map(needsMyVote)).toEqual([false, true, true]);
+    expect(needsMyVote({ ...items[1], locked: true })).toBe(false);
+    expect(needsMyVote({ ...items[1], open: false })).toBe(false);
+  });
+
   it("never reads a sealed question into the plan", () => {
     expect(
       planItems([vote("pregame-spot", [["Secret", 3]], undefined, "onLock")]),

@@ -162,8 +162,11 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   const arenaPath = `/hockey/${nightId}/arena`;
   await host.page.getByRole("button", { name: /Skip/ }).click();
 
-  // The door is on Plan, with Our Seats still there under it.
-  const door = host.page.getByTestId("arena-door");
+  // Arena is in the night's bar (small release 1), with Our Seats still on
+  // Plan.
+  const door = host.page
+    .getByRole("navigation", { name: "Hockey Night sections" })
+    .getByRole("link", { name: "Arena" });
   await expect(door).toBeVisible();
   await expect(
     host.page.getByRole("region", { name: "Our seats" }),

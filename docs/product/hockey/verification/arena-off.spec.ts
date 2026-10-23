@@ -76,7 +76,10 @@ test("before the migration: the map works, check-ins say they're off", async ({
 
   await page.reload();
   await expect(page.getByRole("region", { name: "Our seats" })).toBeVisible();
-  await page.getByTestId("arena-door").click();
+  await page
+    .getByRole("navigation", { name: "Hockey Night sections" })
+    .getByRole("link", { name: "Arena" })
+    .click();
   await expect(
     page.getByText(/isn't switched on for this night yet/),
   ).toBeVisible();

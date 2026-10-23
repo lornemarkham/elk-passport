@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openTab } from "./night-tabs";
+import { openDecision, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -108,6 +108,7 @@ test("the host leaves picks out, three phones live with it, and the host changes
   const nightId = lorne.page.url().split("/").pop()!;
   await lorne.page.getByRole("button", { name: /Skip/ }).click();
 
+  await openDecision(lorne.page, "After the game");
   await expect(leaving(lorne.page)).toBeVisible();
   await openTab(lorne.page, "Play");
   await expect(picks(lorne.page)).toHaveCount(0);
@@ -182,7 +183,9 @@ test("the host leaves picks out, three phones live with it, and the host changes
   await Promise.all(
     choices.map(async ([p, label]) => {
       await openTab(p, "Plan");
-      await p
+      await (
+        await openDecision(p, "After the game")
+      )
         .getByRole("button", { name: new RegExp(label) })
         .first()
         .click();

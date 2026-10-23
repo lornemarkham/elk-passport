@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openTab } from "./night-tabs";
+import { openDecision, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -9,6 +9,8 @@ import { TEST_PASSWORD } from "./test-credentials";
  * default) and `atlas-seats-stub.mjs` serving the real candidates body as
  * ATLAS_API_URL (its /travel/legs is a labelled stub). Proves:
  *
+ *   (Since small release 1 the seats are Plan's "Our seats" decision and the
+ *   meeting point and walk are its "Getting there"; each opens in place.)
  *   the host adds the group block and their own seat, edits it, and it
  *   survives a reload → sets a meeting point → a guest joins on a 320 px
  *   phone, adds their own seat with no gate and is told the entrance is
@@ -49,7 +51,11 @@ async function signUp(page: Page, who: string) {
   await page.getByRole("button", { name: "Create account" }).click();
 }
 
-const seats = (page: Page) => page.getByRole("region", { name: "Our seats" });
+/** Plan's "Our seats", opened (`openDecision`): the block and everybody's seat. */
+const seats = (page: Page) => page.locator("#our-seats");
+/** Plan's "Getting there": the meeting point at the arena, the walk, the guide. */
+const there = (page: Page) =>
+  page.getByRole("region", { name: "Getting there", exact: true });
 const row = (page: Page, name: string) =>
   seats(page).getByRole("listitem", { name: new RegExp(`^${name}`) });
 
@@ -124,13 +130,8 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   const nightId = nightPath.split("/").pop()!;
   await host.page.getByRole("button", { name: /Skip/ }).click();
 
-  // Near the top of Plan: right under the plan, above the dinner vote.
-  await expect(seats(host.page)).toBeVisible();
-  const [seatsBox, dinnerBox] = await Promise.all([
-    seats(host.page).boundingBox(),
-    host.page.locator("#vote-pregame-spot").boundingBox(),
-  ]);
-  expect(seatsBox!.y).toBeLessThan(dinnerBox!.y);
+  // One of Plan's five decisions; it opens in place.
+  await openDecision(host.page, "Our seats");
 
   // The group block.
   await seats(host.page)
@@ -175,8 +176,9 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
     row(host.page, "Lorne").getByText("Section 309 · Row 12 · Seats 1–2"),
   ).toBeVisible();
 
-  // The meeting point.
-  await seats(host.page)
+  // The meeting point, under "Getting there".
+  await openDecision(host.page, "Getting there");
+  await there(host.page)
     .getByRole("button", { name: "Set a meeting point" })
     .click();
   const meet = host.page.getByRole("form", { name: "Meeting point" });
@@ -185,19 +187,21 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await meet.getByLabel("Time").fill("18:15");
   await meet.getByRole("button", { name: "Save" }).click();
   await expect(
-    seats(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    there(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
   ).toBeVisible();
 
   // It survives a reload.
   await host.page.reload();
+  await openDecision(host.page, "Our seats");
   await expect(
     row(host.page, "Lorne").getByText("Section 309 · Row 12 · Seats 1–2"),
   ).toBeVisible();
   await expect(
     seats(host.page).getByText("Section 309 · Row 12 · Seats 1–8"),
   ).toBeVisible();
+  await openDecision(host.page, "Getting there");
   await expect(
-    seats(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    there(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
   ).toBeVisible();
 
   // -------------------------------------------------- invite the guest
@@ -218,6 +222,7 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await expect(guest.page).toHaveURL(new RegExp(`${nightPath}$`));
 
   // The guest sees what the host entered, and cannot edit it.
+  await openDecision(guest.page, "Our seats");
   await expect(
     seats(guest.page).getByText("Section 309 · Row 12 · Seats 1–8"),
   ).toBeVisible();
@@ -225,17 +230,19 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
     row(guest.page, "Lorne").getByText("Section 309 · Row 12 · Seats 1–2"),
   ).toBeVisible();
   await expect(
-    seats(guest.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
-  ).toBeVisible();
-  await expect(
     seats(guest.page).getByRole("button", { name: /Lorne's seat/ }),
   ).toHaveCount(0);
   await expect(
     seats(guest.page).getByRole("button", { name: "Edit the block" }),
   ).toHaveCount(0);
+  await openDecision(guest.page, "Getting there");
   await expect(
-    seats(guest.page).getByRole("button", { name: "Change it" }),
+    there(guest.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+  ).toBeVisible();
+  await expect(
+    there(guest.page).getByRole("button", { name: "Change it" }),
   ).toHaveCount(0);
+  await openDecision(guest.page, "Our seats");
 
   // Her own seat, entrance not known.
   await seats(guest.page)
@@ -250,11 +257,13 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await expect(
     row(guest.page, "Maya").getByText("Entrance not known"),
   ).toBeVisible();
+  await openDecision(guest.page, "Getting there");
   await expect(
-    seats(guest.page).getByText(
+    there(guest.page).getByText(
       /Entrance not chosen — directions end at Rogers Arena/,
     ),
   ).toBeVisible();
+  await openDecision(guest.page, "Our seats");
 
   // Who's sitting together: 1–2 and 3 in one row is side by side.
   await expect(
@@ -307,11 +316,13 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await host.page.reload();
   // The invite left the host's page on Group, and the tab is remembered.
   await openTab(host.page, "Plan");
+  await openDecision(host.page, "Our seats");
   await row(host.page, "Maya")
     .getByRole("button", { name: "Edit Maya's seat" })
     .click();
   await fillSeat(host.page, "Maya's seat", { seats: "4" });
   await guest.page.reload();
+  await openDecision(guest.page, "Our seats");
   await expect(
     row(guest.page, "Maya").getByText("Section 309 · Row 12 · Seat 4"),
   ).toBeVisible();
@@ -329,6 +340,7 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
     .uncheck();
   await fillSeat(guest.page, "My seat", {});
   await host.page.reload();
+  await openDecision(host.page, "Our seats");
   await expect(
     row(host.page, "Maya").getByText("Only Maya and the host can see this."),
   ).toBeVisible();
@@ -346,26 +358,27 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await openTab(host.page, "Plan");
 
   // ------------------------------------------------------- directions
-  const there = seats(host.page).locator("#getting-there");
-  const google = there.getByRole("link", { name: "Google Maps" });
-  const apple = there.getByRole("link", { name: "Apple Maps" });
+  await openDecision(host.page, "Getting there");
+  const walk = host.page.locator("#getting-there");
+  const google = walk.getByRole("link", { name: "Google Maps" });
+  const apple = walk.getByRole("link", { name: "Apple Maps" });
   // From here, to the gate on my seat — which ends at the arena, and says why.
   let href = new URL((await google.getAttribute("href"))!);
   expect(href.searchParams.get("travelmode")).toBe("walking");
   expect(href.searchParams.get("destination")).toBe("49.277800,-123.108800");
   expect(href.searchParams.has("origin")).toBe(false);
   await expect(
-    there.getByText(
+    walk.getByText(
       /no verified location for Gate 10, so directions end at Rogers Arena/,
     ),
   ).toBeVisible();
   await expect(
-    there.getByText(/Passport has no indoor directions/),
+    walk.getByText(/Passport has no indoor directions/),
   ).toBeVisible();
 
   // From a restaurant near the arena: Atlas routes it (the stub, labelled).
   // Labels wrap their selects, so option text ("across from…") joins the name.
-  const from = there.locator("select").nth(0);
+  const from = walk.locator("select").nth(0);
   await expect(from.locator("option")).not.toHaveCount(1, { timeout: 30_000 });
   await from.selectOption({ index: 1 });
   const fromName = (await from.locator("option:checked").textContent())!.trim();
@@ -377,11 +390,11 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   expect(appleHref.searchParams.get("saddr")).toBe(
     href.searchParams.get("origin"),
   );
-  await expect(there.getByText(/min walk/).first()).toBeVisible({
+  await expect(walk.getByText(/min walk/).first()).toBeVisible({
     timeout: 20_000,
   });
   await expect(
-    there.getByText(/routed by Atlas|straight line/).first(),
+    walk.getByText(/routed by Atlas|straight line/).first(),
   ).toBeVisible();
 
   // A link opens the map app in a new tab, with the walk in it.
@@ -394,28 +407,30 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await popup.close();
 
   // To another gate: still the arena, still said.
-  await there.locator("select").nth(1).selectOption("16");
+  await walk.locator("select").nth(1).selectOption("16");
   await expect(
-    there.getByText(/no verified location for Gate 16/),
+    walk.getByText(/no verified location for Gate 16/),
   ).toBeVisible();
   console.log(
-    `walk from ${fromName}: ${await there.locator("p").nth(1).textContent()}`,
+    `walk from ${fromName}: ${await walk.locator("p").nth(1).textContent()}`,
   );
 
   // The arena guide, from the arena's own pages.
-  await seats(host.page).getByText("Gates, getting in, accessibility").click();
+  await there(host.page).getByText("Gates, getting in, accessibility").click();
   await expect(
-    seats(host.page).getByText(
+    there(host.page).getByText(
       "Every entrance is accessible except Gates 3 and 7.",
     ),
   ).toBeVisible();
   await expect(
-    seats(host.page).getByText(/never picks one for you/),
+    there(host.page).getByText(/never picks one for you/),
   ).toBeVisible();
 
   // ------------------------------------------------------------ phones
+  await openDecision(host.page, "Our seats");
   await fitsThePhone(host.page, 390);
   await guest.page.reload();
+  await openDecision(guest.page, "Our seats");
   await expect(row(guest.page, "Maya")).toBeVisible();
   await fitsThePhone(guest.page, 320);
   if (SHOTS) {
@@ -429,7 +444,9 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await openTab(guest.page, "Play");
   await openTab(guest.page, "Group");
   await openTab(guest.page, "Plan");
+  await openDecision(guest.page, "Before the game");
   await expect(guest.page.locator("#vote-pregame-spot")).toBeVisible();
+  await openDecision(guest.page, "Our seats");
 
   // Clearing my seat.
   await row(guest.page, "Maya")

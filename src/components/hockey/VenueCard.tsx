@@ -319,7 +319,7 @@ export function BallotRow({
             {(standing || addedBy) && (
               <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] text-white/55">
                 {standing && (
-                  <span className="rounded-full bg-[#ffd84d] px-2 py-px text-[11.5px] font-bold tracking-wide text-[#0b1220] uppercase">
+                  <span className="rounded-full bg-[#ffd84d] px-2 py-px text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
                     {standing === "tied" ? "Tied" : "Leading"}
                   </span>
                 )}
@@ -331,7 +331,7 @@ export function BallotRow({
         <span className="flex shrink-0 flex-col items-end gap-1">
           <span className="flex -space-x-1.5">
             {voters.slice(0, 3).map((p) => (
-              <Avatar key={p.id} person={p} size={22} />
+              <Avatar key={p.id} person={p} size={24} />
             ))}
           </span>
           <span className="text-[13px] font-semibold text-white/80 tabular-nums">

@@ -200,7 +200,7 @@ export function decisionVote(
 
 /** A vote's standing in words: the leader, a tie as a tie, or nobody. */
 export function voteValue(item: PlanItem): string {
-  if (item.leaders.length === 0) return "Nobody's voted yet";
+  if (item.leaders.length === 0) return "No votes yet";
   if (item.leaders.length === 1) return item.leaders[0];
   return `Tied: ${item.leaders.join(" / ")}`;
 }

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openDecision } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -9,7 +10,9 @@ import { TEST_PASSWORD } from "./test-credentials";
  * modes"). Proves what `PRESENTATION-POLISH.md` changed:
  *
  *   real, photographed places lead and the concourse is the alternative under
- *   them → an `http://` photograph is asked for over https → nothing on a card
+ *   them (since small release 1: the concourse is the last, compact row of
+ *   the vote, and the places are three at a time under "Explore places &
+ *   vote") → an `http://` photograph is asked for over https → nothing on a card
  *   is a logo, an icon or a banner → a place added to the vote moves above the
  *   concourse.
  */
@@ -35,24 +38,20 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   await page.getByRole("button", { name: /Skip/ }).click();
 
-  const near = page.getByRole("region", { name: "More near Rogers Arena" });
+  await openDecision(page, "Before the game");
+  const near = page.getByRole("region", { name: "Places near Rogers Arena" });
   const cards = near.getByRole("article");
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  await expect(cards).toHaveCount(3);
 
-  // The concourse is below the places, as an alternative.
-  const concourse = page.getByRole("article", {
-    name: "Just eat in the concourse",
-  });
-  await concourse.scrollIntoViewIfNeeded();
-  const [nearBox, concourseBox] = await Promise.all([
-    near.boundingBox(),
-    concourse.boundingBox(),
-  ]);
-  expect(concourseBox!.y).toBeGreaterThan(nearBox!.y);
-  await expect(page.getByText("Or keep it easy")).toBeVisible();
+  // The concourse is one compact row, the easy way out.
+  const concourse = page.locator('[data-option="Just eat in the concourse"]');
+  expect((await concourse.boundingBox())!.height).toBeLessThan(110);
   await expect(
     concourse.getByRole("button", { name: /Vote for/ }),
   ).toBeEnabled();
+  // Every place, for judging the pictures.
+  await near.getByRole("button", { name: /^See all \d+ places$/ }).click();
 
   // Let the pictures settle, then judge every one that is still on a card.
   await page.waitForTimeout(6_000);
@@ -89,10 +88,7 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   const dinner = page.getByRole("region", {
     name: "Where are we going before?",
   });
-  const shark = dinner.getByRole("article", {
-    name: "Shark Club",
-    exact: true,
-  });
+  const shark = dinner.locator('[data-option="Shark Club"]');
   await expect(shark).toBeVisible({ timeout: 15_000 });
   const [sharkBox, easyBox] = await Promise.all([
     shark.boundingBox(),

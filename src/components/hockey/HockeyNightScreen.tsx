@@ -181,7 +181,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
             id={`panel-${tab}`}
             role="tabpanel"
             aria-labelledby={`tab-${tab}`}
-            className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-7"
+            className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
           >
             {tab === "plan" && <PlanTab night={night} blocks={byTab.plan} />}
             {tab === "play" && (

@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openTab } from "./night-tabs";
+import { openDecision, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -121,13 +121,15 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   const eating = (p: Page) =>
     p
       .getByRole("region", { name: "The plan" })
-      .getByRole("link", { name: /^Eating/ });
+      .getByRole("button", { name: /^Before the game/ });
   const dinner = (p: Page) =>
     p.getByRole("region", { name: "Where are we going before?" });
 
   // ------------------------------------------- nobody has voted: nobody
   for (const p of [lorne.page, maya.page]) {
-    await expect(eating(p)).toHaveAccessibleName(/Nobody's voted yet/);
+    await expect(eating(p)).toHaveAccessibleName(/No votes yet/);
+    // Plan's first decision opens to its vote.
+    await openDecision(p, "Before the game");
   }
 
   // -------------------------------------------------------- one vote: a plan
@@ -153,7 +155,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
     .click();
   // A tie is said as a tie, not broken.
   await expect(eating(lorne.page)).toHaveAccessibleName(
-    /Tied: .*Tap & Barrel Bridges.*1 vote|Tied: .*Just eat in the concourse.*1 vote/,
+    /Tied: .*(Tap & Barrel Bridges|Just eat in the concourse).*2 votes/,
     { timeout: 15_000 },
   );
 
@@ -246,9 +248,12 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   // The plan outlives the vote: it is still on the page at the final horn.
   for (const p of [lorne.page, maya.page]) {
     await openTab(p, "Plan");
-    await expect(eating(p)).toHaveAccessibleName(
-      /locked in.*Just eat in the concourse\s*2 votes/,
-    );
+    // Nothing left to vote on, so the row is a statement, not a button.
+    await expect(
+      p
+        .getByRole("region", { name: "The plan" })
+        .getByRole("region", { name: "Before the game", exact: true }),
+    ).toContainText(/Just eat in the concourse\s*Locked in · 2 votes/);
   }
 
   // Locked picks are now everyone's to see.
