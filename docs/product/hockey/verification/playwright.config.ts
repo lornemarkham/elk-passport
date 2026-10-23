@@ -14,7 +14,7 @@ const PORT = Number(process.env.E2E_PORT ?? 3130);
 export default defineConfig({
   testDir: ".",
   testMatch:
-    /(acceptance|email-confirmation|plan-and-results|mobile|multi-night|modules|redesign|polish|seats|arena-mode|arena-off|release1|release2|restaurant-photos)\.spec\.ts$/,
+    /(acceptance|email-confirmation|plan-and-results|mobile|multi-night|modules|redesign|polish|seats|arena-mode|arena-off|release1|release2|restaurant-photos|finish|finish-off|finish-play)\.spec\.ts$/,
   reporter: "list",
   workers: 1,
   outputDir: process.env.PW_OUT ?? "/tmp/hockey-playwright",

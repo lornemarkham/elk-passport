@@ -13,6 +13,17 @@ import {
 
 const NOW = new Date("2026-10-16T18:00:00Z");
 
+describe("run it back when the fortnight has gone by", () => {
+  it("opens the form a week from today, same time of day", () => {
+    const g = nextGameAfter(
+      "2026-10-26T02:00:00.000Z",
+      new Date("2026-12-01T20:00:00.000Z"),
+    );
+    expect(g.date).toBe("2026-12-08");
+    expect(g.time).toBe("19:00");
+  });
+});
+
 describe("arena time", () => {
   it("7pm on 25 October is 02:00Z, the M216 instant", () => {
     expect(vancouverInstant("2026-10-25", "19:00")?.toISOString()).toBe(

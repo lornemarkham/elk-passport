@@ -2,6 +2,7 @@
 
 import { Avatar } from "@/experience-lab/ui/atoms";
 import { MyLimit } from "@/experience-lab/ui/CuratorSetup";
+import { HostGame } from "./HostGame";
 import { GuestList } from "./GuestList";
 import { TonightSettings } from "./Modules";
 import { YouTonight } from "./YouTonight";
@@ -90,6 +91,8 @@ export function GroupTab({ night }: { night: SharedNight }) {
           />
         </section>
       )}
+
+      {role === "host" && <HostGame night={night} />}
 
       {role === "host" && <GuestList night={night} />}
 

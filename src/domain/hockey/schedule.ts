@@ -200,11 +200,20 @@ export function suggestedGame(now: Date): GameChoice {
  * same people, nothing yet decided"_ — at the same time of day. Nobody knows
  * the opponent yet, so it does not pretend to.
  */
-export function nextGameAfter(startsAt: string): GameChoice {
+export function nextGameAfter(
+  startsAt: string,
+  now: Date = new Date(0),
+): GameChoice {
   const { time } = vancouverWallClock(startsAt);
-  const { date } = vancouverWallClock(
-    new Date(new Date(startsAt).getTime() + 14 * 86_400_000).toISOString(),
-  );
+  // A fortnight on — or, when that has already gone by (the night is being
+  // run back weeks later), a week from today, because a game that is over
+  // cannot be started and the form should open on one that can.
+  const fortnight = new Date(new Date(startsAt).getTime() + 14 * 86_400_000);
+  const base =
+    fortnight.getTime() > now.getTime()
+      ? fortnight
+      : new Date(now.getTime() + 7 * 86_400_000);
+  const { date } = vancouverWallClock(base.toISOString());
   return { opponent: "", date, time };
 }
 

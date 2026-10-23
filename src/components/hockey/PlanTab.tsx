@@ -242,7 +242,7 @@ export function PlanTab({
             <RunItBack
               live={live}
               series={night.series}
-              suggestion={nextGameAfter(live.definition.anchorAt)}
+              suggestion={nextGameAfter(live.definition.anchorAt, live.now)}
               modules={night.modules}
             />
           </section>
