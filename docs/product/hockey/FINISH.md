@@ -118,3 +118,27 @@ not show it to them); no other member's payload contains it.
   may change. All of it degrades to "no board".
 - Doctrine: §14 lists "elaborate social games" as not-now — unchanged from the
   earlier note; §15.12 (group experiences) stays open and is not answered here.
+
+## 6. Second pass (2026-10-22): what was still missing
+
+The audit above held: the eight areas were already built. Two real gaps
+remained and are closed here, code only, no migration.
+
+- **Recap you can send.** The after act ends with the recap as text — winner
+  (or "leads, with a few calls still open" until every scored call is made;
+  the old "settled" rule hid the recap from any night where the beer or the
+  refs were never called), the league's final score, the table, the playful
+  titles, the night's private link — and a **Share the recap** button (share
+  sheet on a phone, clipboard elsewhere). `src/domain/hockey/recap.ts`,
+  `RecapShare.tsx`; unit tests in `recap.test.ts`; asserted in `finish.spec.ts`
+  (picture: `finish/shots/09b-recap-share.png`).
+- **Game events.** The league board lists the last four goals (scorer, period,
+  clock, side) instead of only the latest one.
+
+Run on the local stack at 390px: `finish`, `finish-play`, `mobile`,
+`plan-and-results`, `modules`, `release1`, `release2` (with the Atlas stub),
+`seats` pass. `polish` and `redesign` fail in this setup (they expect their own
+Atlas stand-in; they exercise Plan and venue cards, which this change does not
+touch) — **not confirmed against the previous commit**. `finish-off` skipped
+(needs the `HOCKEY_MEMORIES=0` stack). Not run: `arena-*`, `email-confirmation`,
+repo-wide Playwright, `npm run build` gates beyond a successful build.

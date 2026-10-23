@@ -27,7 +27,6 @@ export function NhlBoard({
       : game.state === "intermission"
         ? `After the ${game.period ?? "period"}`
         : `${game.period ?? ""}${game.clock ? ` · ${game.clock}` : ""}`.trim();
-  const last = game.goals[game.goals.length - 1];
   return (
     <section
       aria-label="The NHL scoreboard"
@@ -54,12 +53,32 @@ export function NhlBoard({
           <span className="text-[14px] text-white/70">{away}</span>
         </span>
       </div>
-      <p className="mt-1.5 text-[12.5px] text-white/60">
-        {last
-          ? `Last goal: ${last.scorer}, ${last.period} ${last.time}. `
-          : "No goals yet. "}
-        From the NHL.
-      </p>
+      {game.goals.length > 0 ? (
+        <ol aria-label="Goals" className="mt-2 flex flex-col gap-1">
+          {game.goals
+            .slice(-4)
+            .reverse()
+            .map((g, i) => (
+              <li
+                key={`${g.period}${g.time}${g.scorer}`}
+                className={`flex items-baseline gap-2 text-[13px] ${
+                  i === 0 ? "text-white" : "text-white/55"
+                }`}
+              >
+                <span className="w-16 shrink-0 text-white/50 tabular-nums">
+                  {g.period} {g.time}
+                </span>
+                <span className="font-semibold">🚨 {g.scorer}</span>
+                <span className="text-white/50">
+                  {g.side === "home" ? home : away}
+                </span>
+              </li>
+            ))}
+        </ol>
+      ) : (
+        <p className="mt-1.5 text-[12.5px] text-white/60">No goals yet.</p>
+      )}
+      <p className="mt-1.5 text-[12px] text-white/45">From the NHL.</p>
     </section>
   );
 }

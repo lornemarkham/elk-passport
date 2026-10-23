@@ -417,6 +417,16 @@ test("create, invite, join, vote, predict, share, game, recap, run it back", asy
   await maya.page.reload();
   await openTab(maya.page, "Play");
   await shot(maya.page, "09-guest-play-after");
+  // The recap is ready to paste: winner, the league's score, and a way to send.
+  const recap = maya.page.getByRole("region", { name: "Share the recap" });
+  await expect(recap).toBeVisible();
+  await expect(recap).toContainText(/won|share|leads|lead /);
+  await expect(recap).toContainText("🏒");
+  await expect(
+    recap.getByRole("button", { name: "Share the recap" }),
+  ).toBeVisible();
+  await recap.scrollIntoViewIfNeeded();
+  await shot(maya.page, "09b-recap-share");
   await noSidewaysScroll(maya.page);
   // The smallest phones: the album, the board and the host's switches fit.
   for (const width of [320, 375]) {
