@@ -207,22 +207,29 @@ export function PlanTab({
   );
   const door = ahead && isRogersArena(live.definition.kicker);
 
+  // Where we eat leads: the photographs are the experience. The plan card is
+  // the quiet "so far" under it, and its lines still go to every part.
+  const section = (row: Decision) =>
+    row.body ? (
+      <DecisionSection key={row.id} row={row}>
+        {/* Arena Mode's door sits with the seats: once you're in, it's the building. */}
+        {row.id === "seats" && door && (
+          <div className="mt-4">
+            <ArenaDoor slug={night.state.slug} />
+          </div>
+        )}
+      </DecisionSection>
+    ) : null;
+  const lead = sorted.find((r) => r.id === "before" && r.body);
+  const rest = sorted.filter((r) => r !== lead);
+
   return (
     <div className="flex flex-col gap-10">
+      {lead && section(lead)}
+
       <PlanCard live={live} rows={sorted} />
 
-      {sorted.map((row) =>
-        row.body ? (
-          <DecisionSection key={row.id} row={row}>
-            {/* Arena Mode's door sits with the seats: once you're in, it's the building. */}
-            {row.id === "seats" && door && (
-              <div className="mt-4">
-                <ArenaDoor slug={night.state.slug} />
-              </div>
-            )}
-          </DecisionSection>
-        ) : null,
-      )}
+      {rest.map(section)}
 
       {blocks.map((block) =>
         block.kind === "runItBack" && night.series ? (
@@ -520,14 +527,14 @@ function VoteHead({
   );
   const anchor = new Date(live.definition.anchorAt);
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       <h3
         id={`vote-${prompt.prompt.id}-title`}
-        className={`${styles.wide} text-[26px] leading-[1.05] text-balance text-white`}
+        className={`${styles.wide} text-[24px] leading-[1.05] text-balance text-white`}
       >
         {prompt.prompt.question}
       </h3>
-      <p className="mt-1.5 text-[15px] leading-snug text-white/70">
+      <p className="mt-1 text-[14px] leading-snug text-white/70">
         {prompt.locked
           ? "Voting's closed. This is what the group decided."
           : (subtitle ?? prompt.prompt.hint)}
@@ -613,7 +620,7 @@ function DinnerVote({
       <VoteHead
         prompt={prompt}
         live={live}
-        subtitle="Real places a short walk from the arena. Tap to vote, add anywhere, change your mind until it closes."
+        subtitle="Real places a short walk from the arena. Tap to vote, or add your own."
       />
 
       {real.length > 0 && (
@@ -763,27 +770,30 @@ function PlacesExplorer({
       role="region"
       className={lead ? "" : "mt-8"}
     >
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h4 className={`${styles.wide} text-[20px] leading-tight text-white`}>
-            {lead ? `Near ${venue}` : `More near ${venue}`}
-          </h4>
-          <p className="mt-1 text-[14px] leading-snug text-white/65">
-            {all
-              ? `Everything within a short walk of ${venue}.`
-              : lead
-                ? "Real places a short walk away. Add the ones you'd actually go to and the group votes."
+      {/* Leading a fresh night, the vote's own head says it; the photographs start at once. */}
+      {(!lead || all) && (
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h4
+              className={`${styles.wide} text-[20px] leading-tight text-white`}
+            >
+              {lead ? `Near ${venue}` : `More near ${venue}`}
+            </h4>
+            <p className="mt-1 text-[14px] leading-snug text-white/65">
+              {all
+                ? `Everything within a short walk of ${venue}.`
                 : bets.length > 0
                   ? "Good bets a short walk away. Add one and it's on the vote with yours."
                   : "Everything nearby is already on the vote."}
-          </p>
+            </p>
+          </div>
+          {everything.length > 0 && (
+            <span className="shrink-0 text-[13px] font-semibold text-white/60">
+              {everything.length} places
+            </span>
+          )}
         </div>
-        {everything.length > 0 && (
-          <span className="shrink-0 text-[13px] font-semibold text-white/60">
-            {everything.length} places
-          </span>
-        )}
-      </div>
+      )}
 
       {nearby.state === "loading" && (
         <>
