@@ -121,12 +121,27 @@ const WALKABLE = set([
   "nature reserve",
 ]);
 
+/**
+ * Atlas states parks in many words ("public park", "urban park", "heritage
+ * garden"). A place is a walk when Atlas's own subtype carries one of these
+ * words (ADR 007: membership by a word Atlas listed) — and not when the word
+ * is part of something nobody strolls through.
+ */
+const WALK_WORD =
+  /\b(park|garden|beach|trail|seawall|viewpoint|marina|island|promenade|waterfront)\b/;
+const NOT_A_WALK =
+  /\b(amusement|theme|water|rv|trailer|car|parking|skate|business|industrial|ball|bike)\b/;
+
 export function shelfOf(c: DiscoveryCandidate): ExploreShelf | null {
   const s = normaliseSubtype(c.subtype);
   if (COFFEE.has(s)) return "coffee";
   if (DRINKS.has(s)) return "drinks";
   if (EAT.has(s)) return "restaurants";
-  if (OUTSIDE.has(s) && WALKABLE.has(s)) return "waterfront";
+  if (
+    (OUTSIDE.has(s) && WALKABLE.has(s)) ||
+    (WALK_WORD.test(s) && !NOT_A_WALK.test(s))
+  )
+    return "waterfront";
   if (CULTURE.has(s)) return "sights";
   if (c.kind === "Activity" || c.kind === "Experience") return "together";
   return null;
@@ -185,6 +200,13 @@ export interface ExploreOptions {
 }
 
 /**
+ * How far each shelf reaches. A coffee is a block away; a walk is somewhere
+ * you walk *to*, and Stanley Park is not 2.5 km from the convention centre.
+ * Every card still says its own straight-line distance.
+ */
+const REACH: Partial<Record<ExploreShelf, number>> = { waterfront: 5 };
+
+/**
  * Every shelf near `anchor`, photographed places first and nearest first
  * within that, a handful each. A curated place Atlas already holds (by id or
  * by name) is shown once, as Atlas's.
@@ -210,7 +232,7 @@ export function explore(
     const at = observedAt(c);
     if (!shelf || !at || seen.has(c.id)) continue;
     const km = distanceKm(from, { latitude: at[0], longitude: at[1] });
-    if (km > withinKm) continue;
+    if (km > (REACH[shelf] ?? withinKm)) continue;
     seen.add(c.id);
     const photo = nearbyImage(c);
     out[shelf].push({
@@ -224,10 +246,10 @@ export function explore(
     });
   }
   for (const { place, km, walkMinutes } of curatedNear(curated, anchor, {
-    withinKm,
+    withinKm: Math.max(withinKm, ...Object.values(REACH)),
   })) {
     const shelf = CURATED_SHELF[place.kind];
-    if (!shelf) continue;
+    if (!shelf || km > (REACH[shelf] ?? withinKm)) continue;
     const held = out[shelf].some(
       (a) => a.id === place.atlasId || sameName(a.name, place.name),
     );

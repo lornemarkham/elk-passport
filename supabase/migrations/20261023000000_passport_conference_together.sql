@@ -159,6 +159,14 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, p
                         and i.member_id = passport_conference_member_id(p.conference_id))));
 $$;
 
+-- Is the caller invited to this plan? (Definer: past the invites policy.)
+CREATE OR REPLACE FUNCTION public.passport_conference_is_invited(p_plan text, p_conference text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  select exists (select 1 from passport_conference_plan_invites
+                 where plan_id = p_plan
+                   and member_id = passport_conference_member_id(p_conference));
+$$;
+
 CREATE OR REPLACE FUNCTION public.passport_conference_manages_plan(p_plan text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   select exists (
@@ -297,8 +305,15 @@ ALTER TABLE public.passport_conference_photo_reactions ENABLE ROW LEVEL SECURITY
 do $$ begin
   -- plans
   if not exists (select 1 from pg_policies where policyname = 'passport_conference_plans_read') then
+    -- Judged on the row's own columns, not by re-reading the plan: a definer
+    -- lookup can't see a row its own INSERT is still returning, so
+    -- `insert … returning` (PostgREST's return=representation) was refused.
     create policy passport_conference_plans_read on public.passport_conference_plans
-      for select to authenticated using (passport_conference_can_see_plan(id));
+      for select to authenticated
+      using (passport_conference_is_member(conference_id)
+             and (audience = 'everyone'
+                  or organiser_user = auth.uid()
+                  or passport_conference_is_invited(id, conference_id)));
   end if;
   if not exists (select 1 from pg_policies where policyname = 'passport_conference_plans_create') then
     create policy passport_conference_plans_create on public.passport_conference_plans
@@ -442,9 +457,12 @@ do $$ begin
                            and conference_id = passport_conference_plan_conference(plan_id))));
   end if;
   if not exists (select 1 from pg_policies where policyname = 'passport_conference_messages_unsay') then
+    -- Organisers moderate what they can see; a private plan's thread is its own.
     create policy passport_conference_messages_unsay on public.passport_conference_messages
       for delete to authenticated
-      using (user_id = auth.uid() or passport_conference_is_organiser(conference_id));
+      using (user_id = auth.uid()
+             or (passport_conference_is_organiser(conference_id)
+                 and (plan_id is null or passport_conference_can_see_plan(plan_id))));
   end if;
   if not exists (select 1 from pg_policies where policyname = 'passport_conference_message_reactions_read') then
     create policy passport_conference_message_reactions_read on public.passport_conference_message_reactions
@@ -518,7 +536,9 @@ do $$ begin
   if not exists (select 1 from pg_policies where policyname = 'passport_conference_photos_remove') then
     create policy passport_conference_photos_remove on public.passport_conference_photos
       for delete to authenticated
-      using (user_id = auth.uid() or passport_conference_is_organiser(conference_id));
+      using (user_id = auth.uid()
+             or (passport_conference_is_organiser(conference_id)
+                 and (plan_id is null or passport_conference_can_see_plan(plan_id))));
   end if;
   if not exists (select 1 from pg_policies where policyname = 'passport_conference_photo_reactions_read') then
     create policy passport_conference_photo_reactions_read on public.passport_conference_photo_reactions
@@ -582,6 +602,7 @@ REVOKE ALL ON FUNCTION public.passport_conference_member_id(text),
   public.passport_conference_user_seen(text, uuid),
   public.passport_conference_plan_conference(text),
   public.passport_conference_can_see_plan(text),
+  public.passport_conference_is_invited(text, text),
   public.passport_conference_manages_plan(text),
   public.passport_conference_occurrence_in(text, text),
   public.passport_conference_option_in(text, text),
@@ -593,6 +614,7 @@ GRANT EXECUTE ON FUNCTION public.passport_conference_member_id(text),
   public.passport_conference_user_seen(text, uuid),
   public.passport_conference_plan_conference(text),
   public.passport_conference_can_see_plan(text),
+  public.passport_conference_is_invited(text, text),
   public.passport_conference_manages_plan(text),
   public.passport_conference_occurrence_in(text, text),
   public.passport_conference_option_in(text, text),

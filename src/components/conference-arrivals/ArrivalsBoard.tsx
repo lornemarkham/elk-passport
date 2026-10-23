@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { digest } from "@/domain/conference-arrivals/digest";
+import { Coordination } from "./Coordination";
 import { useCallback, useEffect, useState } from "react";
 import type { ArrivalRow } from "@/domain/conference-arrivals/board";
 import { distanceKm } from "@/domain/conference-arrivals/geo";
@@ -49,7 +51,10 @@ export function ArrivalsBoard({
   timeZone,
   accent,
   ink,
+  plansOn = false,
 }: {
+  /** Whether "Meet at arrivals" can open a plan. */
+  plansOn?: boolean;
   conferenceId: string;
   name: string;
   kind: ConferenceKind;
@@ -208,6 +213,13 @@ export function ArrivalsBoard({
             </div>
 
             <div className="rounded-t-3xl bg-white px-5 pt-2 pb-10 text-black lg:rounded-none">
+              <Coordination
+                conferenceId={conferenceId}
+                digest={digest(board, now, timeZone)}
+                timeZone={timeZone}
+                now={now}
+                plansOn={plansOn}
+              />
               <Section title="Your flight">
                 {view ? (
                   <MyFlight

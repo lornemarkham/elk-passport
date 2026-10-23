@@ -81,6 +81,11 @@ export async function readArrivals(
   d: ArrivalsDeps,
   identity: IdentityKey,
   conferenceId: string,
+  /**
+   * `false`: answer from what's stored, without asking ADS-B — for summaries
+   * (the conference home) that shouldn't spend the provider's rate limit.
+   */
+  refresh = true,
 ): Promise<ArrivalsView | null> {
   const home = await membership(d, identity, conferenceId);
   if (!home) return null;
@@ -92,7 +97,7 @@ export async function readArrivals(
     seen: home.you.visibility === "members",
   };
   let records = await d.store.list(conferenceId);
-  if (arrival) {
+  if (arrival && refresh) {
     await refreshDue(d.store, d.adsb, records, arrival, now, d.budgetMs);
     records = await d.store.list(conferenceId);
   }
