@@ -135,7 +135,7 @@ test("a realistic conference: every screen, every link, the day's journeys", asy
 
   // Every tab is there and goes somewhere real.
   const tabs = p.getByRole("navigation", { name: "Conference" });
-  for (const t of ["Home", "Arrivals", "Agenda", "Explore", "People"])
+  for (const t of ["Home", "Agenda", "Arrivals", "Explore", "People"])
     await expect(tabs.getByRole("link", { name: t })).toBeVisible();
 
   for (const screen of screens) {
@@ -150,7 +150,7 @@ test("a realistic conference: every screen, every link, the day's journeys", asy
   await expect(day1).toContainText("Opening keynote");
   await expect(day1).toContainText("Team dinner after the customer panel");
   await expect(day1.locator('[data-entry="plan"]')).toHaveCount(1);
-  await p.getByRole("link", { name: /Day 2/ }).click();
+  await p.locator('nav[aria-label="Days"] a').nth(1).click();
   await expect(p.getByTestId("agenda")).toContainText("Staff hockey game");
   await expect(p.getByTestId("agenda")).toContainText("Featured");
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  AGENDA_KINDS,
   CONFERENCE_KINDS,
   MODULE_IDS,
   type ConferenceDetails,
@@ -63,6 +64,16 @@ const agendaItemSchema = z
       .boolean()
       .optional()
       .transform((b) => (b ? true : undefined)),
+    kind: z
+      .enum(AGENDA_KINDS)
+      .optional()
+      .transform((k) => (k && k !== "session" ? k : undefined)),
+    topics: z
+      .array(z.string().trim().min(1).max(120))
+      .max(8, "At most 8 topics.")
+      .optional()
+      .transform((t) => (t?.length ? t : undefined)),
+    aside: optionalText(120),
   })
   .refine((i) => !i.end || i.end > i.start, {
     message: "It can't end before it starts.",
@@ -108,6 +119,26 @@ export const detailsSchema = z
               )
           : undefined,
       ),
+    objectives: z
+      .array(
+        z.object({
+          title: z.string().trim().min(1).max(24),
+          line: optionalText(140),
+        }),
+      )
+      .max(6, "At most 6 objectives.")
+      .optional()
+      .transform((o) => (o?.length ? o : undefined)),
+    dayTitles: z
+      .array(
+        z.object({
+          day: z.string().refine(realDay, "Not a date."),
+          title: z.string().trim().min(1).max(80),
+        }),
+      )
+      .max(31)
+      .optional()
+      .transform((t) => (t?.length ? t : undefined)),
     timeZone: z.string().refine(realZone, "Not a time zone."),
     startsOn: z.string().refine(realDay, "Not a date."),
     endsOn: z

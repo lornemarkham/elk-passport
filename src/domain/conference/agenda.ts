@@ -1,7 +1,7 @@
 import { utcToZoned, zonedToUtc } from "@/domain/conference-plans/time";
 import type { PlanView } from "@/domain/conference-plans/views";
 import { countdown, todayIn } from "./countdown";
-import type { AgendaItem, ConferenceDetails } from "./types";
+import type { AgendaItem, AgendaKind, ConferenceDetails } from "./types";
 
 /**
  * **The day, read as a participant asks it: what's on now, what's next, and
@@ -29,6 +29,10 @@ export interface DayEntry {
   readonly where: string | null;
   readonly note: string | null;
   readonly featured: boolean;
+  /** For published lines: what sort of line (absent reads as a session). */
+  readonly kind?: AgendaKind;
+  readonly topics?: readonly string[];
+  readonly aside?: string;
   /** For plans: who's coming, as the plan view counts it. */
   readonly going?: number;
   /** For plans: your answer for this occurrence. */
@@ -99,8 +103,18 @@ export function agendaEntry(item: AgendaItem, timeZone: string): DayEntry {
     where: item.where ?? null,
     note: item.note ?? null,
     featured: item.featured === true,
+    kind: item.kind ?? "session",
+    ...(item.topics?.length ? { topics: item.topics } : {}),
+    ...(item.aside ? { aside: item.aside } : {}),
   };
 }
+
+/** The agenda's own heading for a day, when it gives one. */
+export const dayTitleFor = (
+  details: Pick<ConferenceDetails, "dayTitles">,
+  ymd: string,
+): string | null =>
+  details.dayTitles?.find((t) => t.day === ymd)?.title ?? null;
 
 /** One day's entries, agenda and plans together, in time order. */
 export function dayEntries(

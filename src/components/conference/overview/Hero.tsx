@@ -42,12 +42,15 @@ export function OverviewHero({
   participants,
   organiser,
   aside,
+  moment,
 }: {
   c: ConferenceSummary;
   now: Date;
   participants: number;
   organiser: boolean;
   aside?: ReactNode;
+  /** One line of personality (`momentFor`), or nothing. */
+  moment?: string | null;
 }) {
   const status = statusWords(c, now);
   const words = KIND_WORDS[c.kind];
@@ -110,6 +113,14 @@ export function OverviewHero({
             className="mt-3 block h-[2px] w-12 rounded-full sm:mt-6 sm:w-14"
             style={{ background: c.branding.accent }}
           />
+          {moment ? (
+            <p
+              className="cf-serif text-cf-graphite mt-4 text-[18px] leading-snug italic sm:text-[22px]"
+              data-testid="moment"
+            >
+              {moment}
+            </p>
+          ) : null}
           {c.tagline ? (
             <p className="text-cf-slate mt-3 max-w-[52ch] text-[15px] leading-relaxed sm:mt-5 sm:text-[18px]">
               {c.tagline}

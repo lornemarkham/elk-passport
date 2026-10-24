@@ -3,11 +3,18 @@ import { notFound } from "next/navigation";
 import {
   agendaDays,
   dayEntries,
+  dayTitleFor,
   journeyPhase,
   nowAndNext,
   planEntries,
   today as todayOf,
 } from "@/domain/conference/agenda";
+import { countdown } from "@/domain/conference/countdown";
+import {
+  firstProgrammeDay,
+  greeting,
+  momentFor,
+} from "@/domain/conference/moments";
 import { digest } from "@/domain/conference-arrivals/digest";
 import { arrivalsEnabled } from "@/lib/conference-arrivals/enabled";
 import { readArrivals } from "@/lib/conference-arrivals/service";
@@ -33,6 +40,8 @@ import { PanelHead, Panel, wrap } from "@/components/conference/kit";
 import { VenueMap } from "@/components/conference/VenueMap";
 import { OverviewHero } from "@/components/conference/overview/Hero";
 import { NowCard } from "@/components/conference/overview/NowCard";
+import { Objectives } from "@/components/conference/overview/Objectives";
+import { TodayCompanion } from "@/components/conference/overview/TodayCompanion";
 import { setupSteps } from "@/components/conference/overview/setup";
 import {
   AgendaGlance,
@@ -143,6 +152,26 @@ export default async function ConferenceOverview({
   const admin = `${base}/admin`;
   const hasAgenda = (c.agenda ?? []).length > 0;
 
+  const allDays = agendaDays(c);
+  const moment = momentFor({
+    kind: c.kind,
+    details: c,
+    today: todayEntries,
+    firstProgrammeDay: firstProgrammeDay(
+      allDays.map((d) => ({ ymd: d, entries: dayEntries(c, d) })),
+    ),
+    ymd,
+    now,
+  });
+  const cd = countdown(c, now);
+  const totalDays = allDays.length;
+  const dayLong = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(now);
+
   const setupLeft = organiser
     ? setupSteps(c, people.total).filter((x) => !x.done).length
     : 0;
@@ -213,13 +242,38 @@ export default async function ConferenceOverview({
   return (
     <>
       <LiveRefresh everySeconds={20} />
-      <OverviewHero
-        c={c}
-        now={now}
-        participants={people.total}
-        organiser={organiser}
-        aside={nowCard}
-      />
+      {phase === "during" ? (
+        <TodayCompanion
+          conferenceId={c.id}
+          conferenceName={c.name}
+          dayOf={
+            cd.phase === "during" && totalDays > 1
+              ? `Day ${cd.day} of ${totalDays}`
+              : "Today"
+          }
+          timeZone={tz}
+          serverNow={now.toISOString()}
+          greeting={greeting(c.place.label, tz, now)}
+          dayLong={dayLong}
+          dayTitle={dayTitleFor(c, ymd)}
+          moment={moment}
+          entries={todayEntries}
+          hasAgenda={hasAgenda}
+          organiser={organiser}
+          exploreOn={on("discover")}
+          city={c.place.label}
+          bingoHref={c.modules.includes("bingo") ? `${base}/bingo` : null}
+        />
+      ) : (
+        <OverviewHero
+          c={c}
+          now={now}
+          participants={people.total}
+          organiser={organiser}
+          aside={nowCard}
+          moment={moment}
+        />
+      )}
 
       <div className={`${wrap} pb-16`}>
         {board ? <Reminders conferenceId={c.id} controls={false} /> : null}
@@ -242,7 +296,10 @@ export default async function ConferenceOverview({
             ) : null}
 
             {c.welcome ? (
-              <p className="cf-serif text-cf-graphite order-6 max-w-[62ch] text-[17px] leading-relaxed whitespace-pre-line sm:text-[20px]">
+              <p
+                className={`cf-serif text-cf-graphite max-w-[62ch] text-[17px] leading-relaxed whitespace-pre-line sm:text-[20px] ${phase === "before" || phase === "arrival" ? "order-1" : "order-6"}`}
+                data-testid="welcome"
+              >
                 {c.welcome}
               </p>
             ) : null}
@@ -251,13 +308,11 @@ export default async function ConferenceOverview({
               <div className="order-1">{memoriesPanel}</div>
             ) : null}
 
-            {on("schedule") && phase === "during" ? (
-              <div className="order-3">
-                <AgendaGlance
-                  eyebrow="What's next"
-                  title="Later today"
-                  entries={glance(nn.later)}
-                  href={`${base}/schedule`}
+            {c.objectives?.length ? (
+              <div className={phase === "during" ? "order-6" : "order-3"}>
+                <Objectives
+                  objectives={c.objectives}
+                  after={phase === "after"}
                 />
               </div>
             ) : null}

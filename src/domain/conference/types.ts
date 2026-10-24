@@ -39,6 +39,7 @@ export const MODULE_IDS = [
   "plans",
   "people",
   "memories",
+  "bingo",
 ] as const;
 export type ModuleId = (typeof MODULE_IDS)[number];
 
@@ -80,6 +81,23 @@ export interface ConferenceVenue {
 }
 
 /**
+ * What sort of line it is, as the organiser's agenda says — which decides how
+ * it looks (a break is small, a meal warm, the celebration special) and
+ * whether a reminder is worth it. Never inferred from a title: a line with no
+ * kind is a session.
+ */
+export const AGENDA_KINDS = [
+  "session",
+  "skills",
+  "break",
+  "meal",
+  "social",
+  "celebration",
+  "travel",
+] as const;
+export type AgendaKind = (typeof AGENDA_KINDS)[number];
+
+/**
  * One line of the published agenda: what, when, where. Typed by an organiser
  * and shown as theirs. Times are wall-clock in the conference's own zone.
  * `featured` is the one thing everybody is talking about (VISION §5.2): the
@@ -97,6 +115,27 @@ export interface AgendaItem {
   readonly where?: string;
   readonly note?: string;
   readonly featured?: boolean;
+  /** Absent reads as `session`. */
+  readonly kind?: AgendaKind;
+  /** What a session covers, in the agenda's own words, in its order. */
+  readonly topics?: readonly string[];
+  /** One line of the organiser's personality ("History is being made."). */
+  readonly aside?: string;
+}
+
+/** A day's own heading in the agenda ("Welcome to Vancouver!"). */
+export interface AgendaDayTitle {
+  readonly day: string;
+  readonly title: string;
+}
+
+/**
+ * One of the reasons the organiser gives for gathering ("Align — around
+ * next year's goals"). Shown as theirs; never invented.
+ */
+export interface ConferenceObjective {
+  readonly title: string;
+  readonly line?: string;
 }
 
 export interface ConferenceBranding {
@@ -114,6 +153,10 @@ export interface ConferenceDetails {
   readonly venue?: ConferenceVenue;
   /** The organiser's published agenda, in time order. Empty or absent: none yet. */
   readonly agenda?: readonly AgendaItem[];
+  /** Why we're gathering, in the organiser's words and order. */
+  readonly objectives?: readonly ConferenceObjective[];
+  /** Headings the agenda gives some days. */
+  readonly dayTitles?: readonly AgendaDayTitle[];
   /** IANA zone the dates are in, e.g. `America/Vancouver`. */
   readonly timeZone: string;
   /** `YYYY-MM-DD`, in `timeZone`. */
