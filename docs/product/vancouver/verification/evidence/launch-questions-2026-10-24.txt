@@ -1,0 +1,144 @@
+pool 4915 · area 3928 · 2026-10-26
+
+## "What's good near my hotel?"
+   read: close by  [lens -] {"said":"What's good near my hotel?","near":true}
+   Here's where I'd start — Picked from what fits your answers, each for a reason you can check.
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — opera, musical performances, Broadway shows | Under 1 km away
+   • KHANH EXPRESS [Organization/restaurant] 0.2km 📷 — Under 1 km away
+   • BC Place Stadium [Place/Arena/Stadium] 0.3km 📷 — Under 1 km away
+   • The Post at 750 [Place/arts centre] 0.5km 📷 — Under 1 km away
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — Under 1 km away
+   • Canyon Frights [Event/seasonal event] 7.6km 📷 — On until Nov 1 | ≈ 8 km away
+
+## "Where should we grab dinner?"
+   read: restaurants  [lens -] {"said":"Where should we grab dinner?","partOfDay":"evening","doing":"restaurants"}
+   Restaurants, from where you are — Picked from what fits your answers, each for a reason you can check.
+   • KHANH EXPRESS [Organization/restaurant] 0.2km 📷 — A restaurant | Under 1 km away
+   • JINMI [Organization/restaurant] 0.4km 📷 — A restaurant | Under 1 km away
+   • Banter Room [Organization/restaurant] 0.5km 📷 — A restaurant | Under 1 km away
+   • Chambar [Organization/restaurant] 0.7km 📷 — A restaurant | Under 1 km away
+   • Zab Zaab [Organization/restaurant] 0.7km 📷 — A restaurant | Under 1 km away
+
+## "We have 45 minutes before our next session."
+   read: 45 minutes  [lens time] {"said":"We have 45 minutes before our next session.","hours":0.75,"window":"an-hour","lens":"time"}
+   45 minutes, close to you — Close by — inside 2 km in a straight line, a walk — and different from each other. How long each usually takes is Atlas's reading where it has one, and anything it says runs longer than 45 minutes is left out. Make a day of it for an order and a printable plan.
+   • KHANH EXPRESS [Organization/restaurant] 0.2km 📷 — Usually 15 min–2 h, going by what we know | Under 1 km away
+   • BC Sports Hall of Fame [Organization/museum] 0.3km 📷 — Usually 45 min–3 h, going by what we know | Under 1 km away
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — Usually 15 min–2 h, going by what we know | Under 1 km away
+
+## "Show me cool bars within walking distance."
+   read: bars & pubs · walking distance  [lens -] {"said":"Show me cool bars within walking distance.","near":true,"withinKm":2,"doing":"bars"}
+   Bars & pubs, from where you are — Picked from what fits your answers, each for a reason you can check.
+   • Shark Club [Organization/Bar] 0.5km 📷 — A bar | Under 1 km away
+   • The Magnet [Organization/Pub] 0.9km 📷 — A pub | Under 1 km away
+   • Funky Winker Beans [Organization/Bar] 1km 📷 — A bar | ≈ 1 km away
+   • London Pub [Organization/pub] 1.1km 📷 — A pub | ≈ 1 km away
+   • Fox Cabaret [Place/Bar/Lounge/Cabaret] 1.5km 📷 — A bar and lounge and cabaret | ≈ 2 km away
+   • Prophecy Cocktail Bar [Organization/bar] 1.1km 📷 — A bar | ≈ 1 km away
+
+## "What can five coworkers do tonight?"
+   read: with friends · tonight  [lens group] {"said":"What can five coworkers do tonight?","company":"group","on":"2026-10-26","partOfDay":"evening","lens":"group"}
+   With friends — Places with several things to do, what's on, and anywhere described as suiting all ages or beginners come first. Atlas doesn't say what suits a group — that ordering is Passport's.
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — musical performances, as Atlas lists it | Under 1 km away  ⚠ No hours published — check before you go
+   • Gastown [Place/neighbourhood] 1.1km 📷 — Music Venues, as Atlas lists it | ≈ 1 km away  ⚠ No hours published — check before you go
+   • Shark Club [Organization/Bar] 0.5km 📷 — A bar | Under 1 km away  ⚠ No hours published — check before you go
+   • London Pub [Organization/pub] 1.1km 📷 — A pub | ≈ 1 km away  ⚠ No hours published — check before you go
+   • Batch Vancouver [Place/plaza] 0.2km 📷 — Live music, as Atlas lists it | Under 1 km away  ⚠ No hours published — check before you go
+   • Commodore Ballroom [Place/concert venue] 0.8km 📷 — A concert venue | Under 1 km away  ⚠ No hours published — check before you go
+
+## "Something fun after dinner."
+   read: surprise me  [lens surprise] {"said":"Something fun after dinner.","partOfDay":"evening","lens":"surprise"}
+   A few ideas, close to you — A spread of real places and things on, each different from the last — tap one, or tell me more and it'll sharpen.
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — opera, musical performances, Broadway shows | Under 1 km away
+   • Bar Gobo [Organization/bar] 1.2km 📷 — ≈ 1 km away
+   • Library Square Public House [Organization/Pub] 0.6km 📷 — Under 1 km away
+   • BC Place Stadium [Place/Arena/Stadium] 0.3km 📷 — Under 1 km away
+   • Dr. Sun Yat-Sen Classical Chinese Garden [Place/museum] 1.2km 📷 — Tea Ceremony | ≈ 1 km away
+   • Commodore Ballroom [Place/concert venue] 0.8km 📷 — Under 1 km away
+
+## "Plan an amazing Saturday in Vancouver."
+   read: Saturday  [lens -] {"said":"Plan an amazing Saturday in Vancouver.","on":"2026-10-31","townId":"vancouver"}
+   Here's where I'd start — Picked from what fits your answers, each for a reason you can check.
+   • Canyon Frights [Event/seasonal event] 7.6km 📷 — Ends tomorrow | ≈ 8 km away
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — opera, musical performances, Broadway shows | Under 1 km away  ⚠ No hours published — check before you go
+   • KHANH EXPRESS [Organization/restaurant] 0.2km 📷 — Under 1 km away  ⚠ No hours published — check before you go
+   • BC Place Stadium [Place/Arena/Stadium] 0.3km 📷 — Under 1 km away  ⚠ No hours published — check before you go
+   • Funky Winker Beans [Organization/Bar] 1km 📷 — Karaoke | ≈ 1 km away  ⚠ No hours published — check before you go
+   • The Post at 750 [Place/arts centre] 0.5km 📷 — Under 1 km away  ⚠ No hours published — check before you go
+
+## "Find somewhere for coffee and a walk."
+   read: coffee & cafés  [lens -] {"said":"Find somewhere for coffee and a walk.","doing":"coffee"}
+   Coffee & cafés, from where you are — Picked from what fits your answers, each for a reason you can check.
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — A cafe | Under 1 km away
+   • Deville Coffee [Organization/coffee shop] 1.2km 📷 — A coffee shop | ≈ 1 km away
+   • Little Pisces Cafe [Organization/cafe] 0.6km 📷 — A cafe | Under 1 km away
+   • Ciclo Espresso The Post [Organization/cafe] 0.7km 📷 — A cafe | Under 1 km away
+   • JJ Bean [Organization/cafe] 0.7km 📷 — A cafe | Under 1 km away
+   • Honest to Pete Roasters [Organization/cafe] 0.9km 📷 — A cafe | Under 1 km away
+
+## "Great coffee near JW Marriott Parq"
+   read: coffee & cafés  [lens -] {"said":"Great coffee near JW Marriott Parq","townId":"jw-marriott-parq","doing":"coffee"}
+   Coffee & cafés, from where you are — Picked from what fits your answers, each for a reason you can check.
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — A cafe | Under 1 km away
+   • Deville Coffee [Organization/coffee shop] 1.2km 📷 — A coffee shop | ≈ 1 km away
+   • Little Pisces Cafe [Organization/cafe] 0.6km 📷 — A cafe | Under 1 km away
+   • Ciclo Espresso The Post [Organization/cafe] 0.7km 📷 — A cafe | Under 1 km away
+   • JJ Bean [Organization/cafe] 0.7km 📷 — A cafe | Under 1 km away
+   • Honest to Pete Roasters [Organization/cafe] 0.9km 📷 — A cafe | Under 1 km away
+
+## "A good restaurant for five coworkers tonight"
+   read: restaurants · with friends · tonight  [lens group] {"said":"A good restaurant for five coworkers tonight","company":"group","on":"2026-10-26","partOfDay":"evening","doing":"restaurants","lens":"group"}
+   With friends — Places with several things to do, what's on, and anywhere described as suiting all ages or beginners come first. Atlas doesn't say what suits a group — that ordering is Passport's.
+   • KHANH EXPRESS [Organization/restaurant] 0.2km 📷 — A restaurant | Under 1 km away  ⚠ No hours published — check before you go
+   • JINMI [Organization/restaurant] 0.4km 📷 — A restaurant | Under 1 km away  ⚠ No hours published — check before you go
+   • Banter Room [Organization/restaurant] 0.5km 📷 — A restaurant | Under 1 km away  ⚠ No hours published — check before you go
+   • Zab Zaab [Organization/restaurant] 0.7km 📷 — A restaurant | Under 1 km away  ⚠ No hours published — check before you go
+
+## "Something fun within a 20-minute walk"
+   read: surprise me · within 1.7 km  [lens surprise] {"said":"Something fun within a 20-minute walk","withinKm":1.7,"lens":"surprise"}
+   A few ideas, close to you — A spread of real places and things on, each different from the last — tap one, or tell me more and it'll sharpen.
+   • BC Place Stadium [Place/Arena/Stadium] 0.3km 📷 — Under 1 km away
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — opera, musical performances, Broadway shows | Under 1 km away
+   • Fanny Bay Oyster Bar & Shellfish Market [Organization/restaurant] 0.4km 📷 — Under 1 km away
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — Under 1 km away
+   • Science World [Place/science centre] 0.7km 📷 — Interactive presentations in classrooms, Science-themed shows in schools and communities, After-school programs in underserved schools | Under 1 km away
+   • Dr. Sun Yat-Sen Classical Chinese Garden [Place/museum] 1.2km 📷 — Tea Ceremony | ≈ 1 km away
+
+## "What's good near the venue?"
+   read: close by  [lens -] {"said":"What's good near the venue?","near":true}
+   Here's where I'd start — Picked from what fits your answers, each for a reason you can check.
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — opera, musical performances, Broadway shows | Under 1 km away
+   • KHANH EXPRESS [Organization/restaurant] 0.2km 📷 — Under 1 km away
+   • BC Place Stadium [Place/Arena/Stadium] 0.3km 📷 — Under 1 km away
+   • The Post at 750 [Place/arts centre] 0.5km 📷 — Under 1 km away
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — Under 1 km away
+   • Canyon Frights [Event/seasonal event] 7.6km 📷 — On until Nov 1 | ≈ 8 km away
+
+## "Coffee within a 10-minute walk"
+   read: coffee & cafés · within 0.8 km  [lens -] {"said":"Coffee within a 10-minute walk","withinKm":0.8,"doing":"coffee"}
+   Coffee & cafés, from where you are — Picked from what fits your answers, each for a reason you can check.
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — A cafe | Under 1 km away
+   • Little Pisces Cafe [Organization/cafe] 0.6km 📷 — A cafe | Under 1 km away
+   • Ciclo Espresso The Post [Organization/cafe] 0.7km 📷 — A cafe | Under 1 km away
+   • JJ Bean [Organization/cafe] 0.7km 📷 — A cafe | Under 1 km away
+   • Belgian Chocolate Cafe [Organization/cafe] 0km 📷 — A cafe | Under 1 km away
+
+## "Something fun after the sessions, within walking distance"
+   read: surprise me · walking distance  [lens surprise] {"said":"Something fun after the sessions, within walking distance","partOfDay":"evening","near":true,"withinKm":2,"lens":"surprise"}
+   A few ideas, close to you — A spread of real places and things on, each different from the last — tap one, or tell me more and it'll sharpen.
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — opera, musical performances, Broadway shows | Under 1 km away
+   • Library Square Public House [Organization/Pub] 0.6km 📷 — Under 1 km away
+   • Bar Gobo [Organization/bar] 1.2km 📷 — ≈ 1 km away
+   • BC Place Stadium [Place/Arena/Stadium] 0.3km 📷 — Under 1 km away
+   • Moving Coffee Bar [Organization/cafe] 0.5km 📷 — Under 1 km away
+   • Commodore Ballroom [Place/concert venue] 0.8km 📷 — Under 1 km away
+
+## "Where can our group go tonight?"
+   read: with friends · tonight  [lens group] {"said":"Where can our group go tonight?","company":"group","on":"2026-10-26","partOfDay":"evening","lens":"group"}
+   With friends — Places with several things to do, what's on, and anywhere described as suiting all ages or beginners come first. Atlas doesn't say what suits a group — that ordering is Passport's.
+   • Queen Elizabeth Theatre [Place/theatre] 0.7km 📷 — musical performances, as Atlas lists it | Under 1 km away  ⚠ No hours published — check before you go
+   • Gastown [Place/neighbourhood] 1.1km 📷 — Music Venues, as Atlas lists it | ≈ 1 km away  ⚠ No hours published — check before you go
+   • Shark Club [Organization/Bar] 0.5km 📷 — A bar | Under 1 km away  ⚠ No hours published — check before you go
+   • London Pub [Organization/pub] 1.1km 📷 — A pub | ≈ 1 km away  ⚠ No hours published — check before you go
+   • Batch Vancouver [Place/plaza] 0.2km 📷 — Live music, as Atlas lists it | Under 1 km away  ⚠ No hours published — check before you go
+   • Commodore Ballroom [Place/concert venue] 0.8km 📷 — A concert venue | Under 1 km away  ⚠ No hours published — check before you go

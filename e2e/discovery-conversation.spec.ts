@@ -131,7 +131,9 @@ test.describe("desktop", () => {
       .first();
     const title = (await first.getAttribute("aria-label")) ?? "";
     await first.click();
-    await page.waitForURL(/\/places\//);
+    // A place opens /places/, anything else Atlas holds (a bar, a show)
+    // /passport/ — the evening lifts both since the Vancouver launch.
+    await page.waitForURL(/\/(places|passport)\//);
     expect(title.length).toBeGreaterThan(0);
     await page.goBack();
     // The way back re-reads Atlas for the chosen day (`on=`), which is a
