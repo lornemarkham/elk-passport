@@ -578,6 +578,38 @@ test("a conference day, together", async ({ browser }) => {
   await shot(ana.page, "08-phone-home");
   await shot(ben.page, "09-desktop-home");
 
+  // ── Ana on her phone: five tabs along the bottom, at three phone widths ──
+  // Go Have a Day's own bar steps aside inside a conference on a phone.
+  await expect(
+    ana.page.getByRole("link", { name: "Discover", exact: true }),
+  ).toBeHidden();
+  const tabs = ana.page.getByRole("navigation", {
+    name: "Conference sections",
+  });
+  for (const width of [320, 375, 390]) {
+    await ana.page.setViewportSize({ width, height: 760 });
+    for (const [label, rest] of [
+      ["Arrivals", "/arrivals"],
+      ["Agenda", "/schedule"],
+      ["Explore", "/discover"],
+      ["People", "/people"],
+      ["Home", ""],
+    ] as const) {
+      const tab = tabs.getByRole("link", { name: label });
+      await tab.click();
+      await ana.page.waitForURL(new RegExp(`/conferences/${id}${rest}$`));
+      await expect(tab).toHaveAttribute("aria-current", "page");
+      const box = (await tab.boundingBox())!;
+      expect(
+        box.height,
+        `${label} tab is a thumb-sized target`,
+      ).toBeGreaterThanOrEqual(44);
+      await noSidewaysScroll(ana.page, `${label} at ${width} px`);
+      await shot(ana.page, `10-phone-${width}-${label.toLowerCase()}`);
+    }
+  }
+  await ana.page.setViewportSize({ width: 390, height: 844 });
+
   // ── Ana takes her photo down; Ben leaves, and everything he wrote goes ──
   await ana.page.goto(`/conferences/${id}/memories`);
   await ana.page.getByRole("button", { name: /Photo by You/ }).click();

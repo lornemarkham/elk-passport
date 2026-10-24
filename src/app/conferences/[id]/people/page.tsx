@@ -166,7 +166,7 @@ export default async function PeoplePage({
                         <Pill
                           tone={s.tone}
                           dot={s.tone === "live"}
-                          className="shrink-0"
+                          className="shrink-0 max-[369px]:hidden"
                         >
                           {s.label}
                         </Pill>
@@ -186,6 +186,16 @@ export default async function PeoplePage({
                           : "No flight shared"}
                       </p>
                     )}
+                    {s ? (
+                      // On the narrowest phones the name keeps the line.
+                      <Pill
+                        tone={s.tone}
+                        dot={s.tone === "live"}
+                        className="mt-1 min-[370px]:hidden"
+                      >
+                        {s.label}
+                      </Pill>
+                    ) : null}
                     {here.has(p.memberId) ? (
                       <p className="text-cf-sage text-[12px] font-semibold">
                         Sharing location

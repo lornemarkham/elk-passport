@@ -1,5 +1,10 @@
 # Conference — the executive overhaul (2026-10-23)
 
+> **Superseded in part by [MOBILE.md](MOBILE.md) (2026-10-24):** the
+> overview is now **Home**, the organiser's checklist lives on Organiser
+> settings (Home keeps one line), and every tab was reworked for phones
+> first. The journey-phase logic below is unchanged.
+
 > **Status:** built on `feature/conference-executive` (from
 > `feature/conference-adventure` 3de2b72). **Not merged, not deployed.** No
 > database migration: the agenda and venue live in the conference's existing
