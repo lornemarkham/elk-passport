@@ -169,7 +169,7 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     .getByRole("link", { name: "Arena" });
   await expect(door).toBeVisible();
   await expect(
-    host.page.getByRole("region", { name: "Our seats" }),
+    host.page.getByRole("region", { name: "Game time", exact: true }),
   ).toBeVisible();
   await shot(host.page, "00-door-on-plan");
   await door.click();

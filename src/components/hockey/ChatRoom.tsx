@@ -2,12 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, Send, SmilePlus } from "lucide-react";
-import { Avatar, personColor } from "@/experience-lab/ui/atoms";
+import { personColor } from "@/experience-lab/ui/atoms";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import type { Moment, Participant } from "@/experience-lab/core/types";
-import { CHIRP_BOT, type BotLine, type ChirpRoom } from "@/domain/hockey/chirp";
+import {
+  CHIRP_BOT,
+  CHIRP_LEVELS,
+  type BotLine,
+  type ChirpLevel,
+  type ChirpRoom,
+} from "@/domain/hockey/chirp";
 import { ChirpSomeone } from "./ChirpSomeone";
-import { FanTag } from "./FanTag";
+import { FanAvatar as Avatar, FanTag } from "./FanTag";
+import styles from "./hockey.module.css";
 
 /** The lab's five, with the goal horn first. */
 const REACTIONS = ["🚨", "😂", "🔥", "🙅", "❤️"];
@@ -41,7 +48,7 @@ export function ChatRoom({
   isHost?: boolean;
   /** Opened the chat — Chirp Bot may have a pregame question due. */
   onLook?: () => void;
-  onSetChirp?: (on: boolean) => void;
+  onSetChirp?: (on: boolean, level?: ChirpLevel) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [chirping, setChirping] = useState(false);
@@ -167,18 +174,48 @@ export function ChatRoom({
       </ul>
 
       {isHost && chirp?.available && onSetChirp && (
-        <p className="flex flex-wrap items-center gap-2 text-[13.5px] text-white/55">
-          {chirp.on
-            ? "Chirp Bot is in the chat."
-            : "Chirp Bot is out of the chat tonight."}
-          <button
-            type="button"
-            onClick={() => onSetChirp(!chirp.on)}
-            className="min-h-11 rounded-full px-4 text-white/80 ring-1 ring-white/20"
-          >
-            {chirp.on ? "Kick Chirp Bot out" : "Let Chirp Bot back in"}
-          </button>
-        </p>
+        <div className="flex flex-col gap-2 text-[13.5px] text-white/55">
+          <p className="flex flex-wrap items-center gap-2">
+            {chirp.on
+              ? "Chirp Bot is in the chat."
+              : "Chirp Bot is out of the chat tonight."}
+            <button
+              type="button"
+              onClick={() => onSetChirp(!chirp.on)}
+              className="min-h-11 rounded-full px-4 text-white/80 ring-1 ring-white/20"
+            >
+              {chirp.on ? "Kick Chirp Bot out" : "Let Chirp Bot back in"}
+            </button>
+          </p>
+          {chirp.on && (
+            <div
+              role="group"
+              aria-label="How much Chirp Bot talks"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              <span className="mr-1">How much it talks:</span>
+              {CHIRP_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  aria-pressed={(chirp.level ?? "normal") === level}
+                  onClick={() => onSetChirp(true, level)}
+                  title={LEVEL_HINT[level]}
+                  className={`min-h-10 rounded-full px-3.5 font-semibold capitalize transition ${
+                    (chirp.level ?? "normal") === level
+                      ? "bg-[#ffd84d] text-[#0b1220]"
+                      : "text-white/80 ring-1 ring-white/20"
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+              <span className="basis-full text-[12.5px] text-white/45">
+                {LEVEL_HINT[chirp.level ?? "normal"]}
+              </span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -202,7 +239,7 @@ function BotLineView({
   onReact: (momentId: string, emoji: string) => void;
 }) {
   return (
-    <li className="flex gap-3" data-chirp-bot={line.kind}>
+    <li className={`${styles.pop} flex gap-3`} data-chirp-bot={line.kind}>
       <span
         aria-hidden
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[repeating-linear-gradient(135deg,#ffd84d_0_5px,#0b1220_5px_10px)] text-[17px] ring-2 ring-[#ffd84d]"
@@ -424,3 +461,9 @@ function Reactions({
     </>
   );
 }
+
+const LEVEL_HINT: Readonly<Record<ChirpLevel, string>> = {
+  quiet: "Only the big moments: welcomes, picks sealed, the final verdict.",
+  normal: "The moments, plus a heckle now and then and a pregame question.",
+  rowdy: "Heckles every few minutes. You asked for this.",
+};

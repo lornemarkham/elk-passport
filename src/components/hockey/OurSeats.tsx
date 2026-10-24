@@ -82,10 +82,13 @@ export type SeatsState = ReturnType<typeof useSeats>;
 export function SeatsEditor({
   seats,
   say,
+  away,
 }: {
   seats: SeatsState;
   /** Post a line to the night's chat. */
   say: (text: string) => void;
+  /** People watching from the couch: no seat to ask them for. */
+  away?: ReadonlySet<string>;
 }) {
   const { view, error, save, clear } = seats;
   const [editing, setEditing] = useState<string | null>(null);
@@ -106,7 +109,7 @@ export function SeatsEditor({
   }
 
   const host = view.role === "host";
-  const people = view.people;
+  const people = view.people.filter((p) => !away?.has(p.id));
   const nameOf = (id?: string) => people.find((p) => p.id === id)?.name;
   const mySeat = view.seats.find((s) => s.userId === view.me);
   const block = view.seats.find((s) => s.userId === null);
@@ -309,21 +312,41 @@ export function SeatsEditor({
 }
 
 /**
- * **Getting there.** Plan's "Getting there" decision opened: the host's time
- * and place at the arena, the walk from dinner to the right door handed to the
- * map app the phone already has, and the arena's own guide to getting in.
+ * **The host's official meeting point** — time, gate and spot at the arena —
+ * on its own, for the Game Plan's "Meet up" stop. Guests see it once it's
+ * set; the host sets or changes it. The same form as Getting there's.
  */
-export function GettingThereEditor({
+export function OfficialMeetup({ seats }: { seats: SeatsState }) {
+  const { view, saveMeetup, clearMeetup } = seats;
+  if (!view) return null;
+  return (
+    <MeetAtTheArena
+      meetup={view.meetup}
+      host={view.role === "host"}
+      setBy={view.people.find((p) => p.id === view.meetup?.setBy)?.name}
+      venue={view.venue}
+      onSave={saveMeetup}
+      onClear={clearMeetup}
+    />
+  );
+}
+
+/**
+ * **Directions only**: the walk to the right door handed to the phone's own
+ * map app, then the arena's guide to getting in. Opened from "Game time"
+ * when somebody asks for it, not laid out permanently.
+ */
+export function Directions({
   seats,
   nearby,
-  dinner,
+  from,
 }: {
   seats: SeatsState;
   nearby: ArenaNearby | null;
-  /** The dinner vote's single leader, if there is one. */
-  dinner?: string;
+  /** Where the group will be walking from: the meeting point or dinner. */
+  from?: string;
 }) {
-  const { view, error, saveMeetup, clearMeetup } = seats;
+  const { view, error } = seats;
   if (!view) {
     return (
       <p className="px-5 pb-4 text-[15px] text-[#0b1220]/60">
@@ -335,18 +358,10 @@ export function GettingThereEditor({
   const block = view.seats.find((s) => s.userId === null);
   return (
     <div>
-      <MeetAtTheArena
-        meetup={view.meetup}
-        host={view.role === "host"}
-        setBy={view.people.find((p) => p.id === view.meetup?.setBy)?.name}
-        venue={view.venue}
-        onSave={saveMeetup}
-        onClear={clearMeetup}
-      />
       <GettingThere
         venue={view.venue}
         nearby={nearby}
-        dinner={dinner}
+        dinner={from}
         mySeat={mySeat ?? block}
       />
       <ArenaGuide />

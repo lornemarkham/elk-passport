@@ -12,7 +12,8 @@ import type {
   ToyFamily,
 } from "@/experience-lab/core/types";
 import type { Action } from "@/domain/hockey/actions";
-import type { ChirpRoom } from "@/domain/hockey/chirp";
+import type { ChirpLevel, ChirpRoom } from "@/domain/hockey/chirp";
+import type { Crowd, Watching } from "@/domain/hockey/crowd";
 import type { ModuleId } from "@/domain/hockey/modules";
 import type { SeriesView } from "@/domain/hockey/series";
 
@@ -24,6 +25,8 @@ export interface NightSnapshot {
   readonly modules: ModuleId[];
   /** Everybody's team and Chirp Bot's lines in the chat. */
   readonly chirp: ChirpRoom;
+  /** Who's at the arena and who's on the couch. Older servers send none. */
+  readonly crowd?: Crowd;
   /**
    * The rest of this night's run. Sent with the page, not with every poll:
    * last time does not change while you are looking at this time, and
@@ -160,6 +163,7 @@ export function useSharedNight(initial: NightSnapshot) {
     role,
     modules: snapshot.modules,
     chirp: snapshot.chirp,
+    crowd: snapshot.crowd,
     series: snapshot.series,
     error,
     clearError: () => setError(null),
@@ -251,9 +255,25 @@ export function useSharedNight(initial: NightSnapshot) {
     /** Opened the chat: Chirp Bot may have a pregame question due. */
     chirpLook: () => void send({ type: "chirpLook" }),
 
-    setChirp: (on: boolean) => {
-      setSnapshot((prev) => ({ ...prev, chirp: { ...prev.chirp, on } }));
-      void send({ type: "setChirp", on });
+    setChirp: (on: boolean, level?: ChirpLevel) => {
+      setSnapshot((prev) => ({
+        ...prev,
+        chirp: { ...prev.chirp, on, level: level ?? prev.chirp.level },
+      }));
+      void send({ type: "setChirp", on, level });
+    },
+
+    /** At the arena or on the couch. Moves at once; Chirp Bot may notice. */
+    setWatching: (where: Watching) => {
+      const me = state.meId;
+      setSnapshot((prev) => {
+        if (!me || !prev.crowd) return prev;
+        return {
+          ...prev,
+          crowd: { ...prev.crowd, where: { ...prev.crowd.where, [me]: where } },
+        };
+      });
+      void send({ type: "setWatching", where });
     },
 
     setMyEdge: (edge: Edge | null) =>

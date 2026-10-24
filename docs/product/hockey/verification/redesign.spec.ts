@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openDecision, openTab } from "./night-tabs";
+import { openDecision, openExplore, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -132,17 +132,12 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
 
   // ---------------------------------------------- real places, real photos
   await openTab(lorne.page, "Plan");
-  const near = (p: Page) =>
-    p.getByRole("region", { name: "Places near Rogers Arena" });
+  const near = (p: Page) => p.getByRole("dialog", { name: /^Near / });
   const card = (p: Page, name: string) =>
     near(p).getByRole("article", { name, exact: true });
-  // Plan's first decision; three places first, every place one tap further.
-  for (const p of [maya.page, lorne.page]) {
-    await openDecision(p, "Before the game");
-    await near(p)
-      .getByRole("button", { name: /^See all \d+ places$/ })
-      .click({ timeout: 30_000 });
-  }
+  // Every place near the arena is one tap away in Explore, as Passport's cards.
+  await openExplore(maya.page);
+  await expect(card(maya.page, "Chambar")).toBeVisible({ timeout: 30_000 });
 
   // The place's own photograph, shown plainly.
   await expect(card(maya.page, "Chambar").locator("img")).toHaveAttribute(
@@ -171,8 +166,12 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
     .getByRole("button", { name: "Add Chambar and vote" })
     .click();
   await expect(
-    near(maya.page).getByRole("button", { name: "Chambar is your vote" }),
-  ).toBeVisible();
+    near(maya.page)
+      .getByRole("region", { name: "On the vote" })
+      .getByRole("button", { name: "Vote for Chambar" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await near(maya.page).getByRole("button", { name: "Close explore" }).click();
+  await openDecision(lorne.page, "Pregame");
   const dinner = (p: Page) =>
     p.getByRole("region", { name: "Where are we going before?" });
   const ballotChambar = dinner(lorne.page).locator('[data-option="Chambar"]');
@@ -186,10 +185,8 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
     ballotChambar.getByRole("button", { name: "Vote for Chambar" }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    maya.page
-      .getByRole("region", { name: "The plan" })
-      .getByRole("button", { name: /^Before the game/ }),
-  ).toHaveAccessibleName(/Chambar\s*1 vote/, { timeout: 15_000 });
+    maya.page.getByRole("region", { name: "Pregame", exact: true }),
+  ).toContainText(/Chambar\s*\d votes?/, { timeout: 15_000 });
 
   // ------------------------------------------------- picks, by thumb
   await openTab(maya.page, "Play");

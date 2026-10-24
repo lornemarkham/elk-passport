@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openDecision, openTab } from "./night-tabs";
+import { openDecision, openExplore, openTab } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -164,34 +164,24 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
 
   // ------------------------------------------------ a real place, from Discovery
   // Against atlas-stub.mjs: the wiring is real, the places are labelled fake.
-  // With nothing real on the vote when it opened, the places near the arena
-  // are offered under it, without asking: a few, then all of them.
-  const near = lorne.page.getByRole("region", {
-    name: "Places near Rogers Arena",
-  });
-  await expect(near).toBeVisible();
+  // Every place near the arena is in Explore, as Passport's cards.
+  const near = await openExplore(lorne.page);
   await expect(near.getByRole("article").first()).toBeVisible({
     timeout: 30_000,
   });
-  const all = near.getByRole("button", { name: /^See all \d+ places$/ });
-  if (await all.count()) await all.click();
   await expect(
-    lorne.page
-      .getByText(/\d+\+ min walk · \d+ m straight line \(estimate\)/)
-      .first(),
+    near.getByText(/\d+\+ min walk · \d+ m straight line \(estimate\)/).first(),
   ).toBeVisible();
-  await expect(lorne.page.getByText("Stub Museum (synthetic)")).toHaveCount(0);
-  await expect(
-    lorne.page.getByText("Stub Faraway Cafe (synthetic)"),
-  ).toHaveCount(0);
-  await lorne.page
+  await expect(near.getByText("Stub Museum (synthetic)")).toHaveCount(0);
+  await expect(near.getByText("Stub Faraway Cafe (synthetic)")).toHaveCount(0);
+  await near
     .getByRole("button", { name: "Add Stub Pub (synthetic) and vote" })
     .click();
   await expect(
-    lorne.page.getByRole("button", {
-      name: "Stub Pub (synthetic) is your vote",
-    }),
-  ).toBeVisible();
+    near
+      .getByRole("region", { name: "On the vote" })
+      .getByRole("button", { name: "Vote for Stub Pub (synthetic)" }),
+  ).toHaveAttribute("aria-pressed", "true");
   const stubPub = dinner(maya.page).getByRole("button", {
     name: "Vote for Stub Pub (synthetic)",
   });
@@ -213,33 +203,34 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   // ------------------------------------------------ the curated list, beside Atlas
   // Real places Passport keeps itself (collections/vancouver.ts), with an
   // address, and nominated through the same server lookup.
+  await expect(near.getByText("568 Beatty Street, Downtown")).toBeVisible();
+  await near.getByRole("button", { name: "Add Chambar and vote" }).click();
   await expect(
-    lorne.page.getByText("568 Beatty Street, Downtown"),
-  ).toBeVisible();
-  await lorne.page
-    .getByRole("button", { name: "Add Chambar and vote" })
-    .click();
-  await expect(
-    lorne.page.getByRole("button", { name: "Chambar is your vote" }),
-  ).toBeVisible();
+    near
+      .getByRole("region", { name: "On the vote" })
+      .getByRole("button", { name: "Vote for Chambar" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await near.getByRole("button", { name: "Close explore" }).click();
   await expect(
     dinner(maya.page).getByRole("button", { name: "Vote for Chambar" }),
   ).toBeVisible({ timeout: 15_000 });
 
   // ------------------------------------------------ where we meet
   const station = (p: Page) =>
-    p.getByRole("button", { name: "Back Stadium–Chinatown Station" });
+    p
+      .getByRole("region", { name: "Meet up", exact: true })
+      .getByRole("button", { name: /^Stadium–Chinatown Station/ });
   await Promise.all([
     openDecision(lorne.page, "Meeting point"),
     openDecision(maya.page, "Meeting point"),
   ]);
   await Promise.all([station(lorne.page).click(), station(maya.page).click()]);
-  // The plan says it back to everyone.
+  // The plan says it back to everyone: one meeting point, and who decided.
   await expect(
-    maya.page.getByRole("region", { name: "The plan" }).getByRole("button", {
-      name: /^Meeting point.*Stadium–Chinatown Station.*2 votes/,
-    }),
-  ).toBeVisible({ timeout: 15_000 });
+    maya.page.getByRole("region", { name: "Meet up", exact: true }),
+  ).toContainText(/Stadium–Chinatown Station\s*The group's vote/, {
+    timeout: 15_000,
+  });
 
   // ------------------------------------------------ banter
   await Promise.all([openTab(lorne.page, "Chat"), openTab(maya.page, "Chat")]);

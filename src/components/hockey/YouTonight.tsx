@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Avatar } from "@/experience-lab/ui/atoms";
 import { EMOJI } from "@/domain/hockey/identity";
-import { FanTag, useFan } from "./FanTag";
+import { FanAvatar as Avatar, FanTag, useFan } from "./FanTag";
 import type { SharedNight } from "./useSharedNight";
 
 /**

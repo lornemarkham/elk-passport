@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openDecision } from "./night-tabs";
+import { openExplore } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -45,14 +45,11 @@ for (const [label, viewport, mobile] of [
     await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
     await page.getByRole("button", { name: /Skip/ }).click();
 
-    await openDecision(page, "Before the game");
-    const near = page.getByRole("region", { name: "Places near Rogers Arena" });
+    // Every place near the arena, as Passport's cards, in Explore.
+    const near = await openExplore(page);
     await expect(near.getByRole("article").first()).toBeVisible({
       timeout: 60_000,
     });
-    await near
-      .getByRole("button", { name: /^See all \d+ places$/ })
-      .click({ timeout: 30_000 });
     // Cards load their pictures lazily as they scroll into view.
     await near.getByRole("article").last().scrollIntoViewIfNeeded();
     for (const article of await near.getByRole("article").all()) {
@@ -116,7 +113,9 @@ for (const [label, viewport, mobile] of [
       .getByRole("button", { name: /^(Add .* and vote|Back .*)$/ })
       .click();
     await expect(
-      page.getByRole("button", { name: /is your vote$|Your vote/ }).first(),
+      near
+        .getByRole("region", { name: "On the vote" })
+        .getByRole("button", { pressed: true }),
     ).toBeVisible({ timeout: 20_000 });
     await context.close();
   });

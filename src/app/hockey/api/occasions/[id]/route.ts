@@ -15,7 +15,8 @@ export async function GET(
 ) {
   const { id } = await params;
   return asMember(async (user) => {
-    const night = await loadNight(user, id);
+    // The page's poll: whoever asks may set off Chirp Bot's timed moments.
+    const night = await loadNight(user, id, { tick: true });
     if (!night) throw new NightError("Not found.", 404);
     return night;
   });

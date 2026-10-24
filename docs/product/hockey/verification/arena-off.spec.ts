@@ -75,7 +75,9 @@ test("before the migration: the map works, check-ins say they're off", async ({
   expect(moved.ok).toBe(true);
 
   await page.reload();
-  await expect(page.getByRole("region", { name: "Our seats" })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Game time", exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("navigation", { name: "Hockey Night sections" })
     .getByRole("link", { name: "Arena" })

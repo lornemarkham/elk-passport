@@ -121,8 +121,17 @@ export const ActionSchema = z.discriminatedUnion("type", [
   }),
   /** I opened the chat: Chirp Bot may have a pregame question due. */
   z.object({ type: z.literal("chirpLook") }),
-  /** Host: Chirp Bot on or off for this night. */
-  z.object({ type: z.literal("setChirp"), on: z.boolean() }),
+  /** Host: Chirp Bot on or off for this night, and how much it talks. */
+  z.object({
+    type: z.literal("setChirp"),
+    on: z.boolean(),
+    level: z.enum(["quiet", "normal", "rowdy"]).optional(),
+  }),
+  /** At the arena or watching from the couch, on this night (`crowd.ts`). */
+  z.object({
+    type: z.literal("setWatching"),
+    where: z.enum(["arena", "couch"]),
+  }),
 ]);
 
 export type Action = z.infer<typeof ActionSchema>;

@@ -14,6 +14,7 @@ import { actOf } from "@/domain/hockey/acts";
 import { clockAt } from "@/domain/hockey/countdown";
 import type { GameView } from "@/app/hockey/_server/game";
 import { CallIt } from "./CallIt";
+import { CupChampion, HowToWin } from "./Cup";
 import { Memories } from "./Memories";
 import { PicksDeck } from "./PicksDeck";
 import { RecapShare } from "./RecapShare";
@@ -93,6 +94,8 @@ export function PlayTab({
         <LastTime series={night.series} live={live} className="" />
       )}
 
+      {act === "after" && <CupChampion live={live} />}
+
       <CallIt night={night} nhl={nhl} />
 
       {act === "after" && <Memories night={night} />}
@@ -114,6 +117,9 @@ export function PlayTab({
                 </p>
               )}
               <div className="mt-4">
+                <HowToWin live={live} />
+              </div>
+              <div className="mt-3">
                 <ObligationsBlock live={live} />
               </div>
               <div className="mt-3">
@@ -236,6 +242,11 @@ export function PlayTab({
           </section>
         );
       })}
+
+      {/* Before the standings exist, how they will be won. */}
+      {!blocks.some((b) => b.kind === "leaderboard") && (
+        <HowToWin live={live} />
+      )}
 
       {act !== "before" && revealed.length > 0 && (
         <RevealBoard

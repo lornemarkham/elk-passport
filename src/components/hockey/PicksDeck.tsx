@@ -9,7 +9,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import { Avatar } from "@/experience-lab/ui/atoms";
+import { FanAvatar as Avatar } from "./FanTag";
 import { PromptCard } from "@/experience-lab/ui/PromptCard";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant, ResponseValue } from "@/experience-lab/core/types";

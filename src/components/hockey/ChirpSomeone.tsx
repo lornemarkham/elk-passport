@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
-import { Avatar } from "@/experience-lab/ui/atoms";
 import type { Participant } from "@/experience-lab/core/types";
-import { FanTag, useFan } from "./FanTag";
+import { FanAvatar as Avatar, FanTag, useFan } from "./FanTag";
 import styles from "./hockey.module.css";
 
 /**

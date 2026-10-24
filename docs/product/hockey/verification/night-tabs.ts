@@ -14,12 +14,19 @@ export async function openTab(
 }
 
 /**
- * Go to one of Plan's five decisions (`DECISIONS` in
- * `src/domain/hockey/plan.ts`) — "Before the game", "Getting there",
- * "Meeting point", "Our seats", "After the game" — and return its part of the
- * page. Since the recovery (`docs/product/hockey/RECOVERY.md`) every part is
- * open, one after another, so this is the plan's line for it, tapped: the page
- * goes there. (Release 1 and 2 opened one row of an accordion at a time.)
+ * Open the part of the night a spec is about, and return it.
+ *
+ * Since "make the night come alive" (`docs/product/hockey/ALIVE.md`) Plan is
+ * one game plan of four stops — Pregame, Meet up, Game time, After — each one
+ * line that opens in place. The older decisions live in these stops:
+ *
+ *   Before the game  → Pregame    (the one dinner vote)
+ *   Meeting point    → Meet up    (the meet-spot vote and the host's meetup)
+ *   Getting there    → Game time  (directions open with the seats)
+ *   Our seats        → Game time
+ *   After the game   → After / What's next
+ *
+ * Opens the stop if it's closed (its first button with aria-expanded).
  */
 export async function openDecision(
   page: Page,
@@ -28,13 +35,40 @@ export async function openDecision(
     | "Getting there"
     | "Meeting point"
     | "Our seats"
-    | "After the game",
+    | "After the game"
+    | "Pregame"
+    | "Meet up"
+    | "Game time"
+    | "After",
 ) {
-  const region = page.getByRole("region", { name: label, exact: true });
-  await page
-    .getByRole("region", { name: "The plan" })
-    .getByRole("button", { name: new RegExp(`^${label}`) })
-    .click();
-  await expect(region).toBeInViewport();
+  const stop =
+    {
+      "Before the game": "Pregame",
+      "Meeting point": "Meet up",
+      "Getting there": "Game time",
+      "Our seats": "Game time",
+      "After the game": "After",
+    }[label as string] ?? label;
+  let region = page.getByRole("region", { name: stop, exact: true });
+  if (stop === "After" && (await region.count()) === 0)
+    region = page.getByRole("region", { name: "What's next", exact: true });
+  await expect(region).toBeVisible();
+  const toggle = region.locator("button[aria-expanded]").first();
+  if ((await toggle.getAttribute("aria-expanded")) === "false")
+    await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
   return region;
+}
+
+/**
+ * Open Explore — Passport's venue cards for the places near the arena — from
+ * the Pregame stop, and return the sheet. Every card is an `article`; the
+ * places already on the vote are under "On the vote".
+ */
+export async function openExplore(page: Page) {
+  const stop = await openDecision(page, "Pregame");
+  await stop.getByRole("button", { name: "Explore", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: /^Near / });
+  await expect(sheet).toBeVisible();
+  return sheet;
 }

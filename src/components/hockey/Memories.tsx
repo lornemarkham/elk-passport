@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, X } from "lucide-react";
-import { Avatar } from "@/experience-lab/ui/atoms";
+import { FanAvatar as Avatar } from "./FanTag";
 import {
   PHOTO_EDGE_PX,
   photoPrompts,

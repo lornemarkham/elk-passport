@@ -39,10 +39,12 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   await page.getByRole("button", { name: /Skip/ }).click();
 
   await openDecision(page, "Before the game");
-  const near = page.getByRole("region", { name: "Places near Rogers Arena" });
-  const cards = near.getByRole("article");
-  await expect(cards.first()).toBeVisible({ timeout: 30_000 });
-  await expect(cards).toHaveCount(3);
+  // Nothing on the vote yet: three good bets, each one tap to add and vote.
+  const bets = page
+    .getByRole("list", { name: "Good bets nearby" })
+    .getByRole("listitem");
+  await expect(bets.first()).toBeVisible({ timeout: 30_000 });
+  await expect(bets).toHaveCount(3);
 
   // The concourse is one compact row, the easy way out.
   const concourse = page.locator('[data-option="Just eat in the concourse"]');
@@ -50,8 +52,13 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   await expect(
     concourse.getByRole("button", { name: /Vote for/ }),
   ).toBeEnabled();
-  // Every place, for judging the pictures.
-  await near.getByRole("button", { name: /^See all \d+ places$/ }).click();
+  // Every place, as Passport's cards, for judging the pictures.
+  await page
+    .getByRole("region", { name: "Pregame", exact: true })
+    .getByRole("button", { name: "Explore", exact: true })
+    .click();
+  const near = page.getByRole("dialog", { name: "Near Rogers Arena" });
+  await expect(near.getByRole("article").first()).toBeVisible();
 
   // Let the pictures settle, then judge every one that is still on a card.
   await page.waitForTimeout(6_000);
@@ -85,6 +92,12 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
 
   // Adding a place puts it on the vote, above the concourse.
   await near.getByRole("button", { name: "Add Shark Club and vote" }).click();
+  await expect(
+    near
+      .getByRole("region", { name: "On the vote" })
+      .getByRole("button", { name: "Vote for Shark Club" }),
+  ).toBeVisible({ timeout: 15_000 });
+  await near.getByRole("button", { name: "Close explore" }).click();
   const dinner = page.getByRole("region", {
     name: "Where are we going before?",
   });

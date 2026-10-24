@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { Eye } from "lucide-react";
-import { Avatar } from "@/experience-lab/ui/atoms";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant } from "@/experience-lab/core/types";
 import { answerText, verdictFor, type Verdict } from "@/domain/hockey/reveal";
-import { FanTag } from "./FanTag";
+import { FanAvatar as Avatar, FanTag } from "./FanTag";
 import styles from "./hockey.module.css";
 
 /**

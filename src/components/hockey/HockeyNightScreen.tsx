@@ -20,8 +20,10 @@ import {
   type TabId,
 } from "@/domain/hockey/tabs";
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
-import { BleedPrompt } from "./BleedPrompt";
+import { teamByAbbr } from "@/domain/hockey/fans";
+import { gameWhen } from "@/domain/hockey/countdown";
 import { ChatRoom } from "./ChatRoom";
+import { TeamMoment, WelcomeCard, useWelcomeDismissed } from "./Identity";
 import { FansProvider } from "./FanTag";
 import { TeamPicker } from "./TeamPicker";
 import { GameDayHero } from "./GameDayHero";
@@ -66,14 +68,30 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
   const [picking, setPicking] = useState(false);
   const { chirp } = night;
   const myTeam = live.me ? (chirp.fans[live.me.id] ?? null) : null;
-  // Anyone on the night without a team is asked — never made to answer.
-  const askTeam = Boolean(live.me && chirp.available && !myTeam);
-  const [tab, setTab] = useTabs(live.phase.id);
+  const crowd = night.crowd;
+  const watching = live.me ? (crowd?.where[live.me.id] ?? null) : null;
+  const couch = watching === "couch";
+  // A team just declared: the moment, over the page, for two seconds.
+  const [moment, setMoment] = useState<string | null>(null);
+  // Anyone on the night who hasn't said who they bleed for or where they're
+  // watching is welcomed with both — never made to answer either.
+  const [welcomed, dismissWelcome] = useWelcomeDismissed(state.slug);
+  const unsettled =
+    (chirp.available && !myTeam) || (Boolean(crowd?.available) && !watching);
+  const periods = live.attention === "quiet";
+  // On the couch, the chat *is* the game: periods open on it.
+  const [tab, setTab] = useTabs(
+    live.phase.id,
+    couch && periods ? "chat" : undefined,
+  );
+  // At the arena, a period is "phones away" — unless you ask for the chat at
+  // a whistle, for this period only.
+  const [peeking, setPeeking] = useState<string | null>(null);
   const panel = useRef<HTMLDivElement>(null);
 
   const showSetup =
     role === "host" && state.brief === null && live.phaseNumber === 0;
-  const quiet = live.attention === "quiet";
+  const quiet = periods && !couch && peeking !== live.phase.id;
 
   // Setup is a long form; once it's done, land on the night, not halfway down it.
   const wasSetup = useRef(showSetup);
@@ -177,13 +195,30 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
         {!showSetup && quiet && (
           <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
             <QuietMode live={live} />
+            {live.me && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPeeking(live.phase.id);
+                  setTab("chat");
+                }}
+                className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-5 text-[15px] font-bold text-white ring-1 ring-white/15"
+              >
+                At a whistle? Open the chat
+                {unread > 0 && (
+                  <span className="rounded-full bg-[#ffd84d] px-2 text-[13px] text-[#0b1220]">
+                    {unread}
+                  </span>
+                )}
+              </button>
+            )}
             {/* Arena Mode stays reachable in a period: the herd, the
               washrooms and the beer line are most needed when the phone
               is otherwise put away. */}
-            {live.me && isRogersArena(definition.kicker) && (
+            {live.me && !couch && isRogersArena(definition.kicker) && (
               <ArenaDoor slug={night.state.slug} />
             )}
-            <PlanSummary live={live} />
+            <PlanSummary night={night} couch={couch} />
             <Memories night={night} />
           </div>
         )}
@@ -197,7 +232,32 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               aria-labelledby={`tab-${tab}`}
               className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
             >
-              {tab === "plan" && <PlanTab night={night} blocks={byTab.plan} />}
+              {live.me && unsettled && !welcomed && (
+                <div className="mb-6">
+                  <WelcomeCard
+                    me={live.me}
+                    people={live.participants}
+                    matchup={`${away} at ${home}`}
+                    when={gameWhen(new Date(definition.anchorAt))}
+                    venue={definition.kicker.split(" · ")[0]}
+                    team={myTeam}
+                    watching={watching}
+                    teamsOn={chirp.available}
+                    couchOn={Boolean(crowd?.available)}
+                    onPickTeam={() => setPicking(true)}
+                    onWatching={night.setWatching}
+                    onDismiss={dismissWelcome}
+                  />
+                </div>
+              )}
+              {tab === "plan" && (
+                <PlanTab
+                  night={night}
+                  blocks={byTab.plan}
+                  couch={couch}
+                  onImGoing={() => night.setWatching("arena")}
+                />
+              )}
               {tab === "play" && (
                 <PlayTab
                   night={night}
@@ -217,14 +277,6 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                   <p className="mt-2 mb-4 text-[15px] text-white/70">
                     Everyone on this night, and nobody else.
                   </p>
-                  {askTeam && (
-                    <div className="mb-5">
-                      <BleedPrompt
-                        slug={state.slug}
-                        onOpen={() => setPicking(true)}
-                      />
-                    </div>
-                  )}
                   <ChatRoom
                     live={live}
                     onSay={night.say}
@@ -247,20 +299,12 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               )}
             </div>
 
-            {askTeam && tab !== "chat" && (
-              <BleedPrompt
-                strip
-                slug={state.slug}
-                onOpen={() => setPicking(true)}
-              />
-            )}
-
             <NightTabs
               current={tab}
               onChange={(t) => choose(t)}
               badges={badges}
               arenaHref={
-                live.me && isRogersArena(definition.kicker)
+                live.me && !couch && isRogersArena(definition.kicker)
                   ? `/hockey/${night.state.slug}/arena`
                   : undefined
               }
@@ -288,8 +332,17 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
             onPick={(team) => {
               night.setTeam(team);
               setPicking(false);
+              if (team && team !== myTeam) setMoment(team);
             }}
             onClose={() => setPicking(false)}
+          />
+        )}
+
+        {moment && live.me && teamByAbbr(moment) && (
+          <TeamMoment
+            team={teamByAbbr(moment)!}
+            person={live.me}
+            onDone={() => setMoment(null)}
           />
         )}
 
@@ -320,7 +373,10 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
  * same room), else the room the phase opens in. When the night moves to a
  * new phase, a choice made in the old one gives way to the new default.
  */
-function useTabs(phaseId: string): [TabId, (tab: TabId) => void] {
+function useTabs(
+  phaseId: string,
+  preferred?: TabId,
+): [TabId, (tab: TabId) => void] {
   const [chosen, setChosen] = useState<{ tab: TabId; phaseId: string } | null>(
     null,
   );
@@ -335,7 +391,7 @@ function useTabs(phaseId: string): [TabId, (tab: TabId) => void] {
       ? chosen.tab
       : !chosen && isTabId(hash)
         ? hash
-        : defaultTab(phaseId);
+        : (preferred ?? defaultTab(phaseId));
   const set = (next: TabId) => {
     setChosen({ tab: next, phaseId });
     window.history.replaceState(null, "", `#${next}`);

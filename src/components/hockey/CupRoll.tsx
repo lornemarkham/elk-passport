@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Avatar } from "@/experience-lab/ui/atoms";
+import { FanAvatar as Avatar } from "./FanTag";
 import { editionLabel } from "@/domain/hockey/edition";
 import type { Cup, CupResult } from "@/domain/hockey/series";
 

@@ -53,9 +53,12 @@ async function signUp(page: Page, who: string) {
 
 /** Plan's "Our seats", opened (`openDecision`): the block and everybody's seat. */
 const seats = (page: Page) => page.locator("#our-seats");
-/** Plan's "Getting there": the meeting point at the arena, the walk, the guide. */
+/** The game plan's "Meet up": the host's meeting point at the arena. */
+const meetUp = (page: Page) =>
+  page.getByRole("region", { name: "Meet up", exact: true });
+/** "Game time": seats, then the walk and the arena's guide, on demand. */
 const there = (page: Page) =>
-  page.getByRole("region", { name: "Getting there", exact: true });
+  page.getByRole("region", { name: "Game time", exact: true });
 const row = (page: Page, name: string) =>
   seats(page).getByRole("listitem", { name: new RegExp(`^${name}`) });
 
@@ -176,9 +179,9 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
     row(host.page, "Lorne").getByText("Section 309 · Row 12 · Seats 1–2"),
   ).toBeVisible();
 
-  // The meeting point, under "Getting there".
-  await openDecision(host.page, "Getting there");
-  await there(host.page)
+  // The meeting point, under "Meet up".
+  await openDecision(host.page, "Meeting point");
+  await meetUp(host.page)
     .getByRole("button", { name: "Set a meeting point" })
     .click();
   const meet = host.page.getByRole("form", { name: "Meeting point" });
@@ -187,7 +190,7 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await meet.getByLabel("Time").fill("18:15");
   await meet.getByRole("button", { name: "Save" }).click();
   await expect(
-    there(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    meetUp(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
   ).toBeVisible();
 
   // It survives a reload.
@@ -199,9 +202,9 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await expect(
     seats(host.page).getByText("Section 309 · Row 12 · Seats 1–8"),
   ).toBeVisible();
-  await openDecision(host.page, "Getting there");
+  await openDecision(host.page, "Meeting point");
   await expect(
-    there(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    meetUp(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
   ).toBeVisible();
 
   // -------------------------------------------------- invite the guest
@@ -235,12 +238,12 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await expect(
     seats(guest.page).getByRole("button", { name: "Edit the block" }),
   ).toHaveCount(0);
-  await openDecision(guest.page, "Getting there");
+  await openDecision(guest.page, "Meeting point");
   await expect(
-    there(guest.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    meetUp(guest.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
   ).toBeVisible();
   await expect(
-    there(guest.page).getByRole("button", { name: "Change it" }),
+    meetUp(guest.page).getByRole("button", { name: "Change it" }),
   ).toHaveCount(0);
   await openDecision(guest.page, "Our seats");
 

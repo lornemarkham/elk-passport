@@ -24,14 +24,19 @@ import {
 } from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
 import { isTeamAbbr } from "@/domain/hockey/fans";
+import { NO_CROWD, isWatching, type Crowd } from "@/domain/hockey/crowd";
 import {
   chirpOnArrival,
+  chirpOnCouch,
   chirpOnLook,
   chirpOnSay,
+  chirpOnSwitch,
   chirpOnTeam,
   chirpRoomOf,
+  chirpTick,
   chirpsAbout,
   type ChirpRoom,
+  type NightFacts,
 } from "./chirp";
 import {
   modulesOf,
@@ -83,6 +88,8 @@ export interface NightSnapshot {
   readonly modules: ModuleId[];
   /** Everybody's team and Chirp Bot's lines (`_server/chirp.ts`). */
   readonly chirp: ChirpRoom;
+  /** Who's at the arena and who's on the couch (`domain/hockey/crowd.ts`). */
+  readonly crowd: Crowd;
 }
 
 export class NightError extends Error {
@@ -116,19 +123,29 @@ const MOMENT_COLUMNS = "id, actor_id, kind, text, emoji, at";
 type Rows = NightRows & {
   /** chirp-migration.sql is applied (`nhl_team`, `bot_*` columns exist). */
   readonly chirpAvailable: boolean;
+  /** alive-migration.sql is applied (`watching` exists). */
+  readonly watchingAvailable: boolean;
 };
 
+/**
+ * The night's rows, reading every column the database has: with
+ * alive-migration.sql's `watching`, else with chirp-migration.sql's, else the
+ * original columns. A database missing a migration gets the night without
+ * that migration's features, never an error.
+ */
 async function rowsFor(db: Db, id: string): Promise<Rows | null> {
-  const withChirp = await rowsWith(db, id, true);
-  if (withChirp !== "missing") return withChirp;
-  const without = await rowsWith(db, id, false);
-  return without === "missing" ? null : without;
+  for (const level of ["alive", "chirp", "none"] as const) {
+    const rows = await rowsWith(db, id, level !== "none", level === "alive");
+    if (rows !== "missing") return rows;
+  }
+  return null;
 }
 
 async function rowsWith(
   db: Db,
   id: string,
   chirp: boolean,
+  watching = false,
 ): Promise<Rows | null | "missing"> {
   if (!UUID.test(id)) return null;
   const { data: occasion, error } = await db
@@ -154,7 +171,9 @@ async function rowsWith(
   ] = await Promise.all([
     of(
       "passport_occasion_members",
-      chirp ? `${MEMBER_COLUMNS}, nhl_team` : MEMBER_COLUMNS,
+      chirp
+        ? `${MEMBER_COLUMNS}, nhl_team${watching ? ", watching" : ""}`
+        : MEMBER_COLUMNS,
     ),
     of(
       "passport_occasion_prompts",
@@ -185,12 +204,13 @@ async function rowsWith(
     cues,
     consents,
   ]) {
-    if (chirp && missingColumn(r.error)) return "missing";
+    if ((chirp || watching) && missingColumn(r.error)) return "missing";
     if (r.error) throw new NightError(r.error.message, 500);
   }
 
   return {
     chirpAvailable: chirp,
+    watchingAvailable: watching,
     occasion: occasion as unknown as NightRows["occasion"],
     members: members.data as unknown as NightRows["members"],
     prompts: prompts.data as unknown as NightRows["prompts"],
@@ -207,16 +227,57 @@ async function rowsWith(
 export async function loadNight(
   user: PassportUser,
   id: string,
+  options: { tick?: boolean } = {},
 ): Promise<NightSnapshot | null> {
   const db = await createSupabaseServerClient();
   const rows = await rowsFor(db, id);
   if (!rows) return null;
   const me = rows.members.find((m) => m.user_id === user.id);
   if (!me) return null;
+  const composed = composeNight(rows, user.id);
+  const facts = nightFacts(composed.definition, composed.state);
+  // Chirp Bot's moments that come with time rather than with somebody's
+  // action — picks sealed at puck drop, the final verdict — are noticed by
+  // whichever phone asks next, after the answer has gone back.
+  if (rows.chirpAvailable && (options.tick ?? false))
+    after(() => chirpTick(db, rows, user.id, facts));
   return {
-    ...composeNight(rows, user.id),
+    ...composed,
     role: me.role,
-    chirp: chirpRoomOf(rows, rows.chirpAvailable),
+    chirp: chirpRoomOf(rows, rows.chirpAvailable, facts),
+    crowd: crowdOf(rows),
+  };
+}
+
+function crowdOf(rows: Rows): Crowd {
+  if (!rows.watchingAvailable) return NO_CROWD;
+  const where: Crowd["where"] = Object.fromEntries(
+    rows.members.flatMap((m) =>
+      isWatching(m.watching) ? [[m.user_id, m.watching]] : [],
+    ),
+  );
+  return { available: true, where };
+}
+
+/**
+ * What Chirp Bot needs to know about the game as it stands, from the same
+ * engine the page runs: is it over, has anything been called, who leads.
+ */
+function nightFacts(
+  definition: ExperienceDefinition,
+  state: ExperienceState,
+): NightFacts {
+  const live = liveExperience(definition, state, new Date());
+  const after = definition.phases.findIndex((p) => p.id === "after");
+  const top = live.standings[0];
+  const outright =
+    top && top.points > 0 && live.standings[1]?.points !== top.points;
+  return {
+    gameOver: after >= 0 && live.phaseNumber >= after,
+    called:
+      live.prompts.find((p) => p.prompt.id === "final-score")?.prompt
+        .resolution !== undefined,
+    leader: outright ? { id: top.participant.id, points: top.points } : null,
   };
 }
 
@@ -527,6 +588,14 @@ export async function act(
       const prompt = live.prompts.find((p) => p.prompt.id === action.promptId);
       const problem = answerProblem(prompt, action.value, live.participants);
       if (problem) throw new NightError(problem, 422);
+      // A vote built from people's own submissions (the vault) names each
+      // option by its author: nobody gets to back their own.
+      if (
+        prompt?.prompt.optionsFrom?.as === "submissions" &&
+        action.value === user.id
+      )
+        throw new NightError("Nice try. You can't vote for your own.", 422);
+      const before = prompt?.myResponse?.value;
       const { error } = await db.from("passport_occasion_responses").upsert(
         {
           occasion_id: id,
@@ -538,6 +607,36 @@ export async function act(
         { onConflict: "occasion_id,prompt_id,user_id" },
       );
       fail(error, "answering that");
+      // Moving the dinner vote is the kind of thing a group notices.
+      if (
+        rows.chirpAvailable &&
+        action.promptId === "pregame-spot" &&
+        typeof before === "string" &&
+        typeof action.value === "string" &&
+        before !== action.value
+      ) {
+        const [from, to] = [before, action.value];
+        after(() => chirpOnSwitch(db, rows, user.id, from, to));
+      }
+      break;
+    }
+
+    case "setWatching": {
+      if (!rows.watchingAvailable)
+        throw new NightError("The couch isn't switched on here yet.", 409);
+      // Per night: you can be at this game and on the couch for the next.
+      const { error } = await db
+        .from("passport_occasion_members")
+        .update({ watching: action.where })
+        .eq("occasion_id", id)
+        .eq("user_id", user.id);
+      fail(error, "saying where you'll watch");
+      if (
+        action.where === "couch" &&
+        me.watching !== "couch" &&
+        rows.chirpAvailable
+      )
+        after(() => chirpOnCouch(db, rows, user.id));
       break;
     }
 
@@ -591,11 +690,20 @@ export async function act(
     case "setChirp": {
       if (me.role !== "host")
         throw new NightError("The host decides who's in the chat.", 403);
-      const { chirp: _old, ...rest } = rows.occasion.details;
+      const {
+        chirp: _old,
+        chirpLevel: _level,
+        ...rest
+      } = rows.occasion.details as Record<string, unknown>;
       void _old;
+      const level = action.level ?? _level;
+      const kept =
+        level === "quiet" || level === "rowdy"
+          ? { ...rest, chirpLevel: level }
+          : rest;
       const { error } = await db
         .from("passport_occasions")
-        .update({ details: action.on ? rest : { ...rest, chirp: false } })
+        .update({ details: action.on ? kept : { ...kept, chirp: false } })
         .eq("id", id);
       fail(error, "switching Chirp Bot");
       break;

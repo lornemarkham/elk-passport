@@ -311,6 +311,15 @@ async function start() {
     );
   }
 
+  // Make the night come alive (2026-10-23): where people watch, and the
+  // widened self-keyed Chirp Bot rule. Needs chirp. HOCKEY_ALIVE=0 starts
+  // without it, to see the night as production has it before it is applied.
+  if (process.env.HOCKEY_CHIRP !== "0" && process.env.HOCKEY_ALIVE !== "0") {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "alive-migration.sql"), "utf8"),
+    );
+  }
+
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,
     PGRST_DB_SCHEMAS: "public",

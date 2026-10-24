@@ -123,7 +123,12 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   await signUp(lorne.page, "lorne");
   await lorne.page.getByLabel("Your name").fill("Lorne");
   await lorne.page.getByLabel("Opponent").fill("Wild");
-  const in2 = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+  // Two days from now on Vancouver's calendar (a UTC date is a day ahead
+  // every evening, which put the game outside Chirp Bot's 72-hour window).
+  const in2 = new Date(Date.now() + 2 * 86_400_000).toLocaleDateString(
+    "en-CA",
+    { timeZone: "America/Vancouver" },
+  );
   await lorne.page.getByLabel("Game date").fill(in2);
   await lorne.page.getByLabel("Puck drop time").fill("19:00");
   await lorne.page.getByRole("button", { name: "Start it" }).click();
@@ -132,17 +137,13 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   await lorne.page.getByRole("button", { name: /Skip/ }).click();
 
   // ------------------------------------------- WHO DO YOU BLEED FOR? (host)
-  // On Plan it is a slim bar above the tabs — dinner keeps the top of the
-  // page — and in Chat a card.
-  const ask = lorne.page.getByRole("complementary", {
-    name: "Who do you bleed for?",
-  });
+  // Since "make the night come alive" it's part of the welcome: one card at
+  // the top of every room, in the page (never over it), until answered.
+  const ask = lorne.page.getByRole("region", { name: /game night/ });
   await expect(ask).toBeVisible();
+  await expect(ask).toContainText("Who do you bleed for?");
   await openTab(lorne.page, "Chat");
-  await expect(ask).toBeHidden();
-  await expect(
-    lorne.page.getByRole("region", { name: "WHO DO YOU BLEED FOR?" }),
-  ).toBeVisible();
+  await expect(ask).toBeVisible();
   await openTab(lorne.page, "Plan");
   await shot(lorne.page, "01-bleed-prompt");
   await ask.getByRole("button", { name: "Pick my team" }).click();
@@ -155,6 +156,12 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   await shot(lorne.page, "02-team-picker");
   await picker.getByRole("radio", { name: "Calgary Flames" }).click();
   await expect(picker).toBeHidden();
+  // The declaration is a moment; then the welcome wears the team.
+  await lorne.page.getByRole("button", { name: "Let's go" }).click();
+  await expect(
+    ask.getByRole("button", { name: /Your team: Calgary Flames/ }),
+  ).toBeVisible();
+  await ask.getByRole("button", { name: "At the arena", exact: true }).click();
   await expect(ask).toBeHidden();
 
   // The roster wears it.
@@ -179,21 +186,17 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   await sam.page.getByRole("button", { name: "I'm in" }).click();
   await expect(sam.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
 
-  // Nonblocking: the night is usable with the ask on screen, and "Not now" puts it away.
-  const samAsk = sam.page.getByRole("complementary", {
-    name: "Who do you bleed for?",
-  });
+  // Nonblocking: the night is usable with the welcome on screen, and ✕ puts it away.
+  const samAsk = sam.page.getByRole("region", { name: /game night/ });
   await expect(samAsk).toBeVisible();
   await openTab(sam.page, "Play");
-  await samAsk.getByRole("button", { name: "Not now" }).click();
+  await samAsk.getByRole("button", { name: "Put this away" }).click();
   await expect(samAsk).toBeHidden();
   await sam.page.reload();
   await expect(sam.page.getByRole("tab", { name: /^Play/ })).toBeVisible();
   await expect(samAsk).toBeHidden();
   await openTab(sam.page, "Chat");
-  await expect(
-    sam.page.getByRole("region", { name: "WHO DO YOU BLEED FOR?" }),
-  ).toBeHidden();
+  await expect(samAsk).toBeHidden();
 
   // ...and the team is still one tap away, later, from Group.
   await openTab(sam.page, "Group");
@@ -202,6 +205,7 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
     .getByRole("dialog", { name: "WHO DO YOU BLEED FOR?" })
     .getByRole("radio", { name: "Vancouver Canucks" })
     .click();
+  await sam.page.getByRole("button", { name: "Let's go" }).click();
   await expect(
     sam.page.getByLabel("Vancouver Canucks fan").first(),
   ).toBeVisible();
@@ -210,14 +214,15 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   const samId = (await snapshot(sam.page, night)).state.meId;
 
   // ------------------------------------------------------- the Chirp Room
-  // Welcomes for both declarations and the arrival ask, clearly Chirp Bot's.
+  // Welcomes for both declarations, clearly Chirp Bot's. No separate
+  // "declare a team" heckle on arrival: the page's welcome already asks.
   await openTab(lorne.page, "Chat");
   await expect(async () => {
     await lorne.page.reload();
     await openTab(lorne.page, "Chat");
     await expect(bot(lorne.page, "welcome")).toHaveCount(2, { timeout: 1000 });
   }).toPass({ timeout: 30_000 });
-  await expect(bot(lorne.page, "arrival")).toHaveCount(1);
+  await expect(bot(lorne.page, "arrival")).toHaveCount(0);
   const welcome = bot(lorne.page, "welcome").last();
   await expect(welcome).toContainText("Chirp Bot");
   await expect(welcome).toContainText("BOT");

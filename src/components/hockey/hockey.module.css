@@ -214,12 +214,108 @@
   display: none;
 }
 
+/* The game plan: where the night is now, and a stop opening in place. */
+.nowDot {
+  animation: now 2.2s ease-in-out infinite;
+}
+
+@keyframes now {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 216, 77, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 216, 77, 0);
+  }
+}
+
+.unfold {
+  animation: rise 260ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.sheet {
+  animation: sheet 300ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes sheet {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Declaring a team: the crest lands, the colours burst. */
+.crest {
+  animation: crest 620ms cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+@keyframes crest {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-14deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.confetti {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti 1300ms cubic-bezier(0.15, 0.7, 0.35, 1) forwards;
+}
+
+@keyframes confetti {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--spin));
+  }
+}
+
+/* A bot line or a celebration arriving in the chat. */
+.pop {
+  animation: pop 380ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stamp,
   .rise,
   .liveDot,
-  .shimmer {
+  .shimmer,
+  .nowDot,
+  .unfold,
+  .sheet,
+  .crest,
+  .pop {
     animation: none;
+  }
+  .confetti {
+    display: none;
   }
   .flipInner {
     transition: none;

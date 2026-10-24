@@ -117,17 +117,16 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   });
   await Promise.all([openTab(lorne.page, "Plan"), openTab(maya.page, "Plan")]);
 
-  // The plan leads Plan from the start, and says what it does not know yet.
+  // The game plan leads Plan from the start, and says what it does not know
+  // yet. Its first stop is where we eat.
   const eating = (p: Page) =>
-    p
-      .getByRole("region", { name: "The plan" })
-      .getByRole("button", { name: /^Before the game/ });
+    p.getByRole("region", { name: "Pregame", exact: true });
   const dinner = (p: Page) =>
     p.getByRole("region", { name: "Where are we going before?" });
 
   // ------------------------------------------- nobody has voted: nobody
   for (const p of [lorne.page, maya.page]) {
-    await expect(eating(p)).toHaveAccessibleName(/No votes yet/);
+    await expect(eating(p)).toContainText(/No votes yet/);
     // Plan's first decision opens to its vote.
     await openDecision(p, "Before the game");
   }
@@ -137,7 +136,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
     .getByRole("button", { name: "Vote for Just eat in the concourse" })
     .click();
   for (const p of [lorne.page, maya.page]) {
-    await expect(eating(p)).toHaveAccessibleName(
+    await expect(eating(p)).toContainText(
       /Just eat in the concourse\s*1 vote/,
       { timeout: 15_000 },
     );
@@ -154,7 +153,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
     .getByRole("button", { name: "Vote for Tap & Barrel Bridges" })
     .click();
   // A tie is said as a tie, not broken.
-  await expect(eating(lorne.page)).toHaveAccessibleName(
+  await expect(eating(lorne.page)).toContainText(
     /Tied: .*(Tap & Barrel Bridges|Just eat in the concourse).*2 votes/,
     { timeout: 15_000 },
   );
@@ -164,7 +163,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
     .getByRole("button", { name: "Vote for Just eat in the concourse" })
     .click();
   for (const p of [lorne.page, maya.page]) {
-    await expect(eating(p)).toHaveAccessibleName(
+    await expect(eating(p)).toContainText(
       /Just eat in the concourse\s*2 votes/,
       { timeout: 15_000 },
     );
@@ -230,7 +229,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
     ).ok(),
   ).toBe(true);
   // The Plan carries only what is public: no pick leaks into the panel.
-  const plan = lorne.page.getByRole("region", { name: "The plan" });
+  const plan = lorne.page.getByRole("region", { name: "Our game plan" });
   await expect(plan).toBeVisible();
   await expect(plan).not.toContainText(/3–2|Canucks|Wild/);
 
@@ -249,12 +248,9 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   for (const p of [lorne.page, maya.page]) {
     await openTab(p, "Plan");
     // Nothing left to vote on, so the line is a statement, not a button.
-    const line = p
-      .getByRole("region", { name: "The plan" })
-      .getByRole("listitem")
-      .filter({ hasText: "Before the game" });
+    const line = p.getByRole("region", { name: "Pregame", exact: true });
     await expect(line).toContainText(
-      /Just eat in the concourse\s*Locked in · 2 votes/,
+      /Just eat in the concourse\s*2 votes · locked in/,
     );
     await expect(line.getByRole("button")).toHaveCount(0);
   }

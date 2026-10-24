@@ -97,6 +97,8 @@ export interface MemberRow {
   readonly joined_at: string;
   /** Who they bleed for (`fans.ts`), when chirp-migration.sql is applied. */
   readonly nhl_team?: string | null;
+  /** At the arena or on the couch (`crowd.ts`), when alive-migration.sql is applied. */
+  readonly watching?: string | null;
 }
 
 export interface PromptRow {

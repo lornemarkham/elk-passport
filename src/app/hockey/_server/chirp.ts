@@ -2,8 +2,12 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  arrivalPlan,
+  chirpLevelOf,
+  couchPlan,
+  finalPlan,
   lastCallPlan,
+  picksPlan,
+  switchPlan,
   libraryChirps,
   organicAllowed,
   organicPlan,
@@ -14,8 +18,10 @@ import {
   type BotLine,
   type BotPlan,
   type ChirpRoom,
+  type BotKind,
   type BotRow,
   type Fan,
+  type ScorePick,
 } from "@/domain/hockey/chirp";
 import {
   chirpsRequest,
@@ -28,7 +34,11 @@ import {
 import { isTeamAbbr, teamByName } from "@/domain/hockey/fans";
 import { modulesOf } from "@/domain/hockey/modules";
 import { matchupOf } from "@/domain/hockey/teams";
-import type { NightRows } from "@/domain/hockey/night";
+import {
+  SYCLE_HOCKEY_NIGHT,
+  templatePrompts,
+  type NightRows,
+} from "@/domain/hockey/night";
 import { askModel, modelConfigured } from "./chirp-ai";
 
 /**
@@ -114,14 +124,80 @@ export function fansOf(rows: NightRows): Fan[] {
 }
 
 const chirpOn = (rows: NightRows) => rows.occasion.details.chirp !== false;
+const levelOf = (rows: NightRows) =>
+  chirpLevelOf(rows.occasion.details as { chirpLevel?: unknown });
+
+/** What the game has come to, as the night's own engine reads it. */
+export interface NightFacts {
+  readonly gameOver: boolean;
+  /** The host has called the final score. */
+  readonly called: boolean;
+  /** The outright Cup leader, with points. */
+  readonly leader: { readonly id: string; readonly points: number } | null;
+}
+
+const NO_FACTS: NightFacts = { gameOver: false, called: false, leader: null };
+
+/** The sealed final-score picks this member can read (all of them once locked). */
+function scorePicks(
+  rows: NightRows,
+  members: ReadonlySet<string>,
+): ScorePick[] {
+  return rows.responses.flatMap((r) => {
+    if (r.prompt_id !== "final-score" || !members.has(r.user_id)) return [];
+    const v = r.value;
+    return Array.isArray(v) &&
+      v.length === 2 &&
+      Number.isInteger(v[0]) &&
+      Number.isInteger(v[1])
+      ? [{ userId: r.user_id, home: v[0] as number, away: v[1] as number }]
+      : [];
+  });
+}
+
+/** A dinner option's label, from the template or what a member added. */
+function dinnerLabel(
+  rows: NightRows,
+): (optionId: string) => string | undefined {
+  const labels = new Map<string, string>();
+  const details = rows.occasion.details;
+  for (const p of templatePrompts(
+    { ...SYCLE_HOCKEY_NIGHT.details, ...details },
+    "",
+    [],
+  ).filter((p) => p.id === "pregame-spot"))
+    for (const o of p.options ?? []) labels.set(o.id, o.label);
+  for (const o of rows.options)
+    if (o.prompt_id === "pregame-spot") labels.set(o.id, o.label);
+  return (id) => labels.get(id);
+}
 
 /** The chat's Chirp Bot lines and everybody's team, as this member may see them. */
-export function chirpRoomOf(rows: NightRows, available: boolean): ChirpRoom {
+export function chirpRoomOf(
+  rows: NightRows,
+  available: boolean,
+  facts: NightFacts = NO_FACTS,
+): ChirpRoom {
   if (!available) return NO_CHIRP_ROOM;
   const fans = fansOf(rows);
   const byId = new Map(fans.map((f) => [f.id, f]));
   const verify = verifier(rows.occasion.id);
   const members = new Set(fans.map((f) => f.id));
+  const picks = scorePicks(rows, members);
+  const optionLabel = dinnerLabel(rows);
+  // A line that quotes somebody's pick or crowns somebody shows only while
+  // that is true of the record this member can read.
+  const claimHolds = (kind: BotKind, parts: readonly string[]): boolean => {
+    if (kind === "picks")
+      return picks.some(
+        (p) => p.userId === parts[2] && `${p.home}-${p.away}` === parts[3],
+      );
+    if (kind === "final")
+      return facts.leader !== null && facts.leader.id === parts[2];
+    return false;
+  };
+  const pointsOf = (id: string) =>
+    facts.leader?.id === id ? facts.leader.points : undefined;
 
   const reactions: Record<string, Record<string, string[]>> = {};
   for (const r of rows.reactions) {
@@ -140,6 +216,9 @@ export function chirpRoomOf(rows: NightRows, available: boolean): ChirpRoom {
             fans: byId,
             verify,
             reactions: reactions[row.id],
+            optionLabel,
+            claimHolds,
+            pointsOf,
           }),
         )
         .filter((line): line is BotLine => line !== null)
@@ -153,6 +232,7 @@ export function chirpRoomOf(rows: NightRows, available: boolean): ChirpRoom {
     ),
     lines,
     model: modelConfigured(),
+    level: levelOf(rows),
   };
 }
 
@@ -250,7 +330,13 @@ export async function chirpOnTeam(
   }
 }
 
-/** Someone arrived: welcome their team if they brought one, else ask for it. */
+/**
+ * Someone arrived: welcome their team if they brought one from another night.
+ * Somebody without a team is asked by the page's welcome, so Chirp Bot does
+ * not also ask in the chat — a heckle seconds before their welcome line was
+ * two lines where one does the job (2026-10-23: four people joining made
+ * eight Chirp Bot lines against three people's).
+ */
 export async function chirpOnArrival(
   db: Db,
   rows: NightRows,
@@ -260,15 +346,7 @@ export async function chirpOnArrival(
   try {
     if (!chirpOn(rows)) return;
     const fan = fansOf(rows).find((f) => f.id === userId);
-    if (!fan) return;
-    if (fan.team) return chirpOnTeam(db, rows, userId, fan.team, null, now);
-    const plan = arrivalPlan({
-      userId,
-      rows: botRowsOf(rows),
-      seed: seed(),
-      today: now.toISOString().slice(0, 10),
-    });
-    if (plan) await post(db, rows.occasion.id, userId, plan);
+    if (fan?.team) return chirpOnTeam(db, rows, userId, fan.team, null, now);
   } catch (error) {
     console.warn("[hockey] chirp bot (arrival):", error);
   }
@@ -292,7 +370,7 @@ export async function chirpOnSay(
     if (!chatter) return;
     const bots = botRowsOf(rows);
     // A person just spoke, so the newest line is theirs, not Chirp Bot's.
-    if (!organicAllowed(bots, false, now)) return;
+    if (!organicAllowed(bots, false, now, levelOf(rows))) return;
     const plan = organicPlan({
       chatter,
       momentId,
@@ -355,6 +433,8 @@ export async function chirpOnLook(
       seed: seed(),
     });
     if (last) return post(db, rows.occasion.id, userId, last);
+    // Quiet: the moments only, no questions.
+    if (levelOf(rows) === "quiet") return;
 
     const lastHumanNoteAt =
       rows.moments
@@ -414,4 +494,99 @@ export async function chirpsAbout(
     if (!chirps.includes(line)) chirps.push(line);
   }
   return { chirps, by: "model" };
+}
+
+/** Someone said they're watching from the couch. */
+export async function chirpOnCouch(
+  db: Db,
+  rows: NightRows,
+  userId: string,
+  now = new Date(),
+): Promise<void> {
+  try {
+    if (!chirpOn(rows)) return;
+    const plan = couchPlan({
+      userId,
+      rows: botRowsOf(rows),
+      seed: seed(),
+      today: now.toISOString().slice(0, 10),
+    });
+    if (plan) await post(db, rows.occasion.id, userId, plan);
+  } catch (error) {
+    console.warn("[hockey] chirp bot (couch):", error);
+  }
+}
+
+/** Somebody moved their dinner vote. A heckle, so rate-limited like one. */
+export async function chirpOnSwitch(
+  db: Db,
+  rows: NightRows,
+  userId: string,
+  from: string,
+  to: string,
+  now = new Date(),
+): Promise<void> {
+  try {
+    if (!chirpOn(rows)) return;
+    const label = dinnerLabel(rows);
+    if (!label(from) || !label(to)) return;
+    const newest = [...rows.moments].sort((a, b) =>
+      b.at.localeCompare(a.at),
+    )[0];
+    const plan = switchPlan({
+      userId,
+      from,
+      to,
+      rows: botRowsOf(rows),
+      newestIsBot: newest?.kind === "chirp",
+      now,
+      level: levelOf(rows),
+      seed: seed(),
+    });
+    if (plan) await post(db, rows.occasion.id, userId, plan);
+  } catch (error) {
+    console.warn("[hockey] chirp bot (switch):", error);
+  }
+}
+
+/**
+ * The moments that arrive with the clock: picks sealed at puck drop, and
+ * the final verdict once the game is over and called. Asked on every read
+ * of the night, so whoever looks first sets it off; the per-night key keeps
+ * it to one line however many phones ask at once. Library only.
+ */
+export async function chirpTick(
+  db: Db,
+  rows: NightRows,
+  userId: string,
+  facts: NightFacts,
+  now = new Date(),
+): Promise<void> {
+  try {
+    if (!chirpOn(rows)) return;
+    const bots = botRowsOf(rows);
+    const members = new Set(rows.members.map((m) => m.user_id));
+    const startsAt = rows.occasion.starts_at;
+    const picks = picksPlan({
+      now,
+      startsAt,
+      members: members.size,
+      picks: scorePicks(rows, members),
+      rows: bots,
+      seed: seed(),
+    });
+    if (picks) await post(db, rows.occasion.id, userId, picks);
+    const verdict = finalPlan({
+      now,
+      startsAt,
+      gameOver: facts.gameOver,
+      called: facts.called,
+      leader: facts.leader,
+      rows: bots,
+      seed: seed(),
+    });
+    if (verdict) await post(db, rows.occasion.id, userId, verdict);
+  } catch (error) {
+    console.warn("[hockey] chirp bot (tick):", error);
+  }
 }

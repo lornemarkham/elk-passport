@@ -3,18 +3,22 @@ import {
   BOLD_LINES,
   CHALLENGE_LINES,
   CHIRPS,
+  COUCH_LINES,
   GENERIC_CHIRPS,
   GENERIC_WELCOMES,
   LAST_CALL,
   LIBRARY,
   LINE_STORYLINE,
   NO_TEAM_CHIRPS,
+  PICKS_LINES,
   PROMPTS,
   PROMPT_BY_ID,
   RIVAL_CHIRPS,
   RIVALRY_LINES,
   STORYLINE_BY_ID,
   SWITCHES,
+  SWITCH_LINES,
+  VERDICT_LINES,
   WELCOMES,
   currentStorylines,
   type LibraryLine,
@@ -59,7 +63,31 @@ export type BotKind =
   | "bold"
   | "rivalry"
   | "prompt"
-  | "lastcall";
+  | "lastcall"
+  | "couch"
+  | "picks"
+  | "final"
+  | "switch";
+
+/**
+ * **How much Chirp Bot talks**, the host's call (`details.chirpLevel`).
+ *
+ * - `quiet` — only the moments: welcomes, couch fans, picks sealed, the
+ *   final verdict. No heckling the chat, no pregame questions.
+ * - `normal` — that, plus a heckle at most every ten minutes and eight a
+ *   day, and a pregame question every six hours.
+ * - `rowdy` — heckles every four minutes, fourteen a day.
+ *
+ * Whatever the level, Chirp Bot never speaks twice in a row.
+ */
+export type ChirpLevel = "quiet" | "normal" | "rowdy";
+
+export const CHIRP_LEVELS: readonly ChirpLevel[] = ["quiet", "normal", "rowdy"];
+
+export function chirpLevelOf(details: { chirpLevel?: unknown }): ChirpLevel {
+  const level = details.chirpLevel;
+  return level === "quiet" || level === "rowdy" ? level : "normal";
+}
 
 export interface BotFact {
   readonly text: string;
@@ -93,6 +121,8 @@ export interface ChirpRoom {
   readonly lines: readonly BotLine[];
   /** A model is configured; otherwise Chirp Bot uses its own library. */
   readonly model: boolean;
+  /** How much it talks (the host's setting). */
+  readonly level?: ChirpLevel;
 }
 
 /** The columns of a stored line that matter here. */
@@ -131,6 +161,11 @@ export interface Fan {
  *   rivalry:<A-B>:<date>     rival fans, once per pair per day
  *   prompt:<start>:<slot>    a pregame question, once per six hours
  *   lastcall:<start>         picks lock soon, once per game time
+ *   couch:<user>             someone is watching from home
+ *   picks:<stamp>:<user>:<a>-<b>    picks sealed: the boldest score call
+ *   final:<stamp>:<user>            the game is over: the Cup's leader
+ *                                   (<stamp> is `gameStamp`: no colons)
+ *   switch:<user>:<from>:<to>       someone moved their dinner vote
  */
 export function kindOfKey(key: string): BotKind | null {
   const prefix = key.split(":", 1)[0];
@@ -144,6 +179,10 @@ export function kindOfKey(key: string): BotKind | null {
     case "rivalry":
     case "prompt":
     case "lastcall":
+    case "couch":
+    case "picks":
+    case "final":
+    case "switch":
       return prefix;
     default:
       return null;
@@ -159,9 +198,26 @@ const LINES_FOR: Readonly<Record<BotKind, readonly string[]>> = {
   rivalry: ["o.rv."],
   prompt: ["p."],
   lastcall: ["l."],
+  couch: ["cw."],
+  picks: ["pk."],
+  final: ["fv."],
+  switch: ["o.sw."],
 };
 
-const ORGANIC: ReadonlySet<BotKind> = new Set(["challenge", "bold", "rivalry"]);
+const ORGANIC: ReadonlySet<BotKind> = new Set([
+  "challenge",
+  "bold",
+  "rivalry",
+  "switch",
+]);
+
+/** Kinds whose key names the person who must have caused the line. */
+const SELF_KEYED: ReadonlySet<BotKind> = new Set([
+  "welcome",
+  "arrival",
+  "couch",
+  "switch",
+]);
 
 // ----------------------------------------------------------- render
 
@@ -193,6 +249,16 @@ export function renderBotRow(
     readonly fans: ReadonlyMap<string, Fan>;
     readonly verify: (row: BotRow) => boolean;
     readonly reactions?: Readonly<Record<string, readonly string[]>>;
+    /** A dinner option's label, for a vote switch. */
+    readonly optionLabel?: (optionId: string) => string | undefined;
+    /**
+     * Is what a key claims still true — this person's sealed pick really was
+     * that score, this person really leads the Cup? A line whose claim does
+     * not check is not shown, so a forged row cannot put words in the record.
+     */
+    readonly claimHolds?: (kind: BotKind, parts: readonly string[]) => boolean;
+    /** A person's points as the standings have them now (the verdict says it). */
+    readonly pointsOf?: (userId: string) => number | undefined;
   },
 ): BotLine | null {
   if (!row.bot_key || !row.bot_line) return null;
@@ -203,15 +269,20 @@ export function renderBotRow(
   const reactions = ctx.reactions ?? {};
 
   // Keys that name a person must name the one who caused the line.
-  if ((kind === "welcome" || kind === "arrival") && parts[1] !== row.actor_id)
+  if (SELF_KEYED.has(kind) && parts[1] !== row.actor_id) return null;
+  if ((kind === "picks" || kind === "final") && !ctx.claimHolds?.(kind, parts))
     return null;
   const about =
-    kind === "welcome" ||
-    kind === "arrival" ||
-    kind === "challenge" ||
-    kind === "bold"
-      ? row.actor_id
-      : undefined;
+    kind === "picks" || kind === "final"
+      ? parts[2]
+      : kind === "welcome" ||
+          kind === "arrival" ||
+          kind === "challenge" ||
+          kind === "bold" ||
+          kind === "couch" ||
+          kind === "switch"
+        ? row.actor_id
+        : undefined;
 
   if (row.bot_line === "ai") {
     if (!row.text || !ctx.verify(row)) return null;
@@ -231,7 +302,27 @@ export function renderBotRow(
   const line = LIBRARY.get(row.bot_line);
   if (!line) return null;
 
-  const vars: Record<string, string> = { name: actor?.name ?? "Someone" };
+  const subject =
+    kind === "picks" || kind === "final" ? ctx.fans.get(parts[2]) : actor;
+  if ((kind === "picks" || kind === "final") && !subject) return null;
+  const vars: Record<string, string> = { name: subject?.name ?? "Someone" };
+  if (kind === "picks") {
+    const score = /^(\d{1,2})-(\d{1,2})$/.exec(parts[3] ?? "");
+    if (!score) return null;
+    vars.pick = `${score[1]}–${score[2]}`;
+  }
+  if (kind === "final") {
+    const points = ctx.pointsOf?.(parts[2]);
+    if (points === undefined) return null;
+    vars.points = String(points);
+  }
+  if (kind === "switch") {
+    const from = ctx.optionLabel?.(parts[2] ?? "");
+    const to = ctx.optionLabel?.(parts[3] ?? "");
+    if (!from || !to) return null;
+    vars.from = from;
+    vars.to = to;
+  }
   if (kind === "welcome") {
     const team = teamByAbbr(parts[2]);
     if (!team) return null;
@@ -424,6 +515,8 @@ export function readChatter(
 /** Quiet time between heckles, and the most heckles in a day. */
 export const ORGANIC_COOLDOWN_MS = 10 * 60_000;
 export const ORGANIC_PER_DAY = 8;
+export const ROWDY_COOLDOWN_MS = 4 * 60_000;
+export const ROWDY_PER_DAY = 14;
 
 /**
  * May Chirp Bot heckle right now? Not within ten minutes of its last heckle,
@@ -434,8 +527,11 @@ export function organicAllowed(
   rows: readonly BotRow[],
   newestIsBot: boolean,
   now: Date,
+  level: ChirpLevel = "normal",
 ): boolean {
-  if (newestIsBot) return false;
+  if (newestIsBot || level === "quiet") return false;
+  const cooldown = level === "rowdy" ? ROWDY_COOLDOWN_MS : ORGANIC_COOLDOWN_MS;
+  const perDay = level === "rowdy" ? ROWDY_PER_DAY : ORGANIC_PER_DAY;
   const organic = rows
     .filter((r) => {
       const kind = r.bot_key ? kindOfKey(r.bot_key) : null;
@@ -443,8 +539,8 @@ export function organicAllowed(
     })
     .map((r) => Date.parse(r.at));
   const t = now.getTime();
-  if (organic.some((at) => t - at < ORGANIC_COOLDOWN_MS)) return false;
-  return organic.filter((at) => t - at < 86_400_000).length < ORGANIC_PER_DAY;
+  if (organic.some((at) => t - at < cooldown)) return false;
+  return organic.filter((at) => t - at < 86_400_000).length < perDay;
 }
 
 export function organicPlan(input: {
@@ -648,4 +744,150 @@ export class Limiter {
     }
     return true;
   }
+}
+
+// ------------------------------------------------ the rest of the night
+
+/**
+ * The game time inside a key, without colons — keys are split on ":" to
+ * read who and what they are about ("2026-10-25T19:00" → "2026-10-25T1900").
+ */
+export function gameStamp(startsAt: string): string {
+  return startsAt.slice(0, 16).replace(":", "");
+}
+
+/** Someone said they're watching from home: once per person per night. */
+export function couchPlan(input: {
+  readonly userId: string;
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+  readonly today: string;
+}): BotPlan | null {
+  const key = `couch:${input.userId}`;
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const line = chooseLine(
+    [COUCH_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.today,
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+/** A sealed final-score pick, as the database has it once picks lock. */
+export interface ScorePick {
+  readonly userId: string;
+  readonly home: number;
+  readonly away: number;
+}
+
+/**
+ * The boldest score call: the biggest margin, then the most goals, then the
+ * earliest member — so every phone that asks picks the same one and the
+ * database keeps one line.
+ */
+export function boldestPick(picks: readonly ScorePick[]): ScorePick | null {
+  const sorted = [...picks].sort(
+    (a, b) =>
+      Math.abs(b.home - b.away) - Math.abs(a.home - a.away) ||
+      b.home + b.away - (a.home + a.away) ||
+      a.userId.localeCompare(b.userId),
+  );
+  return sorted[0] ?? null;
+}
+
+/**
+ * Puck drop: picks are sealed and now visible to everybody, so Chirp Bot
+ * reads out the boldest score call. Once per game time, within three hours
+ * of puck drop, and only with two or more people in (a call is only bold
+ * next to somebody else's).
+ */
+export function picksPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly members: number;
+  readonly picks: readonly ScorePick[];
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+}): BotPlan | null {
+  if (input.members < 2 || input.picks.length === 0) return null;
+  const since = (input.now.getTime() - Date.parse(input.startsAt)) / HOUR;
+  if (!(since >= 0) || since > 3) return null;
+  const start = gameStamp(input.startsAt);
+  if (input.rows.some((r) => r.bot_key?.startsWith(`picks:${start}:`)))
+    return null;
+  const pick = boldestPick(input.picks);
+  if (!pick) return null;
+  const line = chooseLine(
+    [PICKS_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line
+    ? {
+        key: `picks:${start}:${pick.userId}:${pick.home}-${pick.away}`,
+        line: line.id,
+      }
+    : null;
+}
+
+/**
+ * The horn has gone and the final score is called: Chirp Bot crowns the
+ * leader. Only an outright leader with points (a tie is the page's to show,
+ * not Chirp Bot's to break). The line names the person, not the points — it
+ * says their points as they stand whenever it's read — and it shows only
+ * while they lead, so a later call that changes the lead hides it and lets
+ * the new leader have theirs: at most one verdict per person per game.
+ */
+export function finalPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly gameOver: boolean;
+  readonly called: boolean;
+  readonly leader: { readonly id: string; readonly points: number } | null;
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+}): BotPlan | null {
+  if (!input.gameOver || !input.called || !input.leader) return null;
+  if (input.leader.points <= 0) return null;
+  const key = `final:${gameStamp(input.startsAt)}:${input.leader.id}`;
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const line = chooseLine(
+    [VERDICT_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+/**
+ * Somebody moved their dinner vote from one place to another. A heckle like
+ * any other (cooldown, daily cap, never twice in a row, nothing when the
+ * host has Chirp Bot quiet), and once per person per pair of places.
+ */
+export function switchPlan(input: {
+  readonly userId: string;
+  readonly from: string;
+  readonly to: string;
+  readonly rows: readonly BotRow[];
+  readonly newestIsBot: boolean;
+  readonly now: Date;
+  readonly level: ChirpLevel;
+  readonly seed: number;
+}): BotPlan | null {
+  if (input.from === input.to) return null;
+  if (!organicAllowed(input.rows, input.newestIsBot, input.now, input.level))
+    return null;
+  const key = `switch:${input.userId}:${input.from}:${input.to}`;
+  if (key.length > 160 || input.rows.some((r) => r.bot_key === key))
+    return null;
+  const line = chooseLine(
+    [SWITCH_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line ? { key, line: line.id } : null;
 }

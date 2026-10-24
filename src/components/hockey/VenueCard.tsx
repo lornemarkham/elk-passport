@@ -12,7 +12,7 @@ import {
   Plus,
   UtensilsCrossed,
 } from "lucide-react";
-import { Avatar } from "@/experience-lab/ui/atoms";
+import { FanAvatar as Avatar } from "./FanTag";
 import type { Participant } from "@/experience-lab/core/types";
 import { subjectHref } from "@/domain/experience/destination";
 import { photoUsable, type NearbyPlace } from "@/domain/hockey/nearby";
@@ -414,6 +414,7 @@ export function BallotRow({
   canVote,
   onVote,
   addedBy,
+  voteLabel,
 }: {
   label: string;
   detail?: string;
@@ -421,6 +422,8 @@ export function BallotRow({
   place?: NearbyPlace;
   voters: readonly Participant[];
   share: number;
+  /** What tapping the row does, said for a screen reader: "Vote for X" unless told. */
+  voteLabel?: string;
   /** Out in front of the vote, or level with somebody else. */
   standing?: "leading" | "tied";
   chosen: boolean;
@@ -458,7 +461,7 @@ export function BallotRow({
           type="button"
           disabled={!canVote}
           aria-pressed={chosen}
-          aria-label={`Vote for ${label}`}
+          aria-label={voteLabel ?? `Vote for ${label}`}
           onClick={onVote}
           className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition active:scale-[0.99] disabled:cursor-default"
         >

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Lock, MapPin, UserPlus } from "lucide-react";
-import { Avatar } from "@/experience-lab/ui/atoms";
+import { FanAvatar as Avatar } from "./FanTag";
 import { relativeTime } from "@/experience-lab/core/phase";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import { ACTS, actOf, nextPhase } from "@/domain/hockey/acts";

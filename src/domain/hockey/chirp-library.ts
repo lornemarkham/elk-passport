@@ -497,6 +497,36 @@ export const LAST_CALL = lines("l", [
   "Puck drop soon. If you haven't made your picks, you're either confident or lazy. The recap will decide.",
 ]);
 
+// ------------------------------------------------- the rest of the night
+
+/** Someone says they're watching from home. `{name}`. */
+export const COUCH_LINES = lines("cw", [
+  "{name} is joining from the couch. Best seat in the house: no line for the washroom, no $19 beer.",
+  "The peanut gallery is open. {name} is heckling from home and Chirp Bot respects the commitment.",
+  "{name} is watching from the couch. Remote chirping is still chirping. The Cup counts it.",
+]);
+
+/** Picks just locked: the boldest score call. `{name}`, `{pick}` ("7–1"). */
+export const PICKS_LINES = lines("pk", [
+  "Picks are sealed. {name} called it {pick}. Chirp Bot has notified the authorities.",
+  "Puck drop. Picks are locked. Special mention to {name}, who went with {pick} and is either a prophet or a menace.",
+  "And they're sealed. {name}: {pick}. Bold. Chirp Bot will read this out at the recap either way.",
+]);
+
+/** The game is over and the Cup has a leader. `{name}`, `{points}`. */
+export const VERDICT_LINES = lines("fv", [
+  "Final verdict: {name} takes the Sycle Cup with {points} points. Worth nothing. Contested bitterly. Engraving pending.",
+  "The horn has gone and so has everyone's dignity except {name}'s. Sycle Cup champion, {points} points.",
+  "Chirp Bot has reviewed the tape. {name} wins the night with {points} points. Appeals will be heard never.",
+]);
+
+/** Somebody moved their dinner vote. `{name}`, `{from}`, `{to}`. */
+export const SWITCH_LINES = lines("o.sw", [
+  "{name} has abandoned {from} for {to}. Loyalty is dead. Long live loyalty.",
+  "Breaking: {name} flips from {from} to {to}. Chirp Bot smells a backroom deal.",
+  "{name} was {from} five minutes ago. Now it's {to}. Somebody check on {from}.",
+]);
+
 // -------------------------------------------------------------- prompts
 
 export interface ControversyPrompt extends LibraryLine {
@@ -605,6 +635,10 @@ const ALL: LibraryLine[] = [
   ...BOLD_LINES,
   ...RIVALRY_LINES,
   ...LAST_CALL,
+  ...COUCH_LINES,
+  ...PICKS_LINES,
+  ...VERDICT_LINES,
+  ...SWITCH_LINES,
   ...PROMPTS,
 ];
 
