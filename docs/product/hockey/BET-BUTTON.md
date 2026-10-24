@@ -120,8 +120,18 @@ the same screen. It now matches the badge exactly. (Not caused by this fix.)
 
 ## 4. Gates
 
-See the release note at the foot of this file for the run on the integrated
-commit.
+Run on the integrated tree (this branch merged with GitHub main `d5ceea8`,
+Conference executive; the merge was clean):
+
+- `tsc --noEmit` clean; `eslint .` 0 errors (40 pre-existing warnings);
+  `prettier --check` clean on every changed file; `vitest run` 3763 passed /
+  30 skipped; `npm run build` OK.
+- Hockey specs on the local stack, all with real GoTrue accounts:
+  `bet-button` (8), `mayhem`, `chirp`, `alive`, `finish-play`, `polish`,
+  `redesign`, `modules`, `plan-and-results` — 16 passed. `mayhem-attack.mjs`
+  and `rls-attack.mjs`: all checks passed. `grants-check.sql`: 4/4 OK.
+- Not run: the root `npx playwright test` suite and the migration-absent
+  variants (`mayhem-off` etc. — no SQL changed).
 
 ## 5. For the owner — what I could not check
 
