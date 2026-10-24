@@ -11,11 +11,12 @@ import { FanAvatar } from "../FanTag";
 import styles from "../hockey.module.css";
 
 /** Chirp Bot's lines that belong in PLAY's story, not just the chat's. */
+// (A verdict is already a drama item, with its points; Chirp Bot's version
+// of it stays in the chat rather than saying it twice here.)
 const PLAY_KINDS = new Set([
   "chal",
   "took",
   "oracle",
-  "ruled",
   "worst",
   "welcome",
   "lead",

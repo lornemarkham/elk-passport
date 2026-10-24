@@ -286,7 +286,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   // Standings follow from the calls, on both screens, with no reload:
   // Lorne: exact score 5 + first goal 3 = 8. Maya: total goals 3.
   for (const p of [lorne.page, maya.page]) {
-    const cup = p.locator("section", { hasText: "The Sycle Cup" }).last();
+    const cup = p.getByRole("region", { name: "The Sycle Cup" });
     await expect(cup.getByText("8", { exact: true })).toBeVisible({
       timeout: 15_000,
     });
