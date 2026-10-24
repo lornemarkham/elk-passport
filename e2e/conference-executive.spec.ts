@@ -135,7 +135,7 @@ test("a realistic conference: every screen, every link, the day's journeys", asy
 
   // Every tab is there and goes somewhere real.
   const tabs = p.getByRole("navigation", { name: "Conference" });
-  for (const t of ["Overview", "Arrivals", "Agenda", "Explore", "People"])
+  for (const t of ["Home", "Arrivals", "Agenda", "Explore", "People"])
     await expect(tabs.getByRole("link", { name: t })).toBeVisible();
 
   for (const screen of screens) {
@@ -215,7 +215,7 @@ test("a realistic conference: every screen, every link, the day's journeys", asy
   // ── Maya, the organiser: settings are behind her profile, and work ──
   const maya = await as(browser, baseURL!, s.people.organiser!);
   await maya.page.goto(base);
-  await expect(maya.page.getByTestId("organiser-setup")).toHaveCount(0); // all set up
+  await expect(maya.page.getByTestId("organiser-nudge")).toHaveCount(0); // all set up
   await maya.page
     .getByRole("button", { name: "Your profile and settings" })
     .click();
@@ -269,7 +269,7 @@ test("a realistic conference: every screen, every link, the day's journeys", asy
     ["Arrivals", "/arrivals"],
     ["Explore", "/discover"],
     ["People", "/people"],
-    ["Overview", ""],
+    ["Home", ""],
   ] as const) {
     await bar.getByRole("link", { name: label }).click();
     await priya.page.waitForURL(new RegExp(`${base}${path}$`));
@@ -317,9 +317,16 @@ test("empty: one organiser, a conference called “test”", async ({
     "The agenda hasn't been published yet",
   );
   await expect(page.getByText("It's just you in here so far.")).toBeVisible();
+  // Home carries one line for the organiser; the checklist itself lives on
+  // Organiser settings, so it never crowds what attendees see first.
+  const nudge = page.getByTestId("organiser-nudge").filter({ visible: true });
+  await expect(nudge).toContainText("4 things left to set up");
+  await expect(page.getByTestId("organiser-setup")).toHaveCount(0);
+  await linksAllWork(page, "empty overview");
+  await nudge.click();
+  await page.waitForURL(`**${base}/admin`);
   const setup = page.getByTestId("organiser-setup");
   await expect(setup).toContainText("4 things left to set up");
-  await linksAllWork(page, "empty overview");
 
   // Each next step goes to the place that finishes it.
   await setup.getByRole("link", { name: /Publish the agenda/ }).click();
@@ -332,9 +339,9 @@ test("empty: one organiser, a conference called “test”", async ({
   await page.getByRole("button", { name: "New link" }).click();
   await expect(page.getByTestId("invite-link")).toHaveCount(1);
   await page.goto(base);
-  await expect(page.getByTestId("organiser-setup")).toContainText(
-    "3 things left to set up",
-  );
+  await expect(
+    page.getByTestId("organiser-nudge").filter({ visible: true }),
+  ).toContainText("3 things left to set up");
   await expect(page.getByTestId("now-card")).toContainText("Opening keynote");
   await ctx.close();
 });

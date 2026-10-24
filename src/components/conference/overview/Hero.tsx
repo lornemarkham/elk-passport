@@ -61,7 +61,7 @@ export function OverviewHero({
         <>
           {c.venue.name}
           {c.venue.address ? (
-            <span className="text-cf-mist block text-[13px] font-normal">
+            <span className="text-cf-mist hidden text-[13px] font-normal sm:block">
               {c.venue.address}
             </span>
           ) : null}
@@ -87,9 +87,9 @@ export function OverviewHero({
 
   return (
     <header className="border-cf-line border-b bg-[linear-gradient(180deg,#fbfaf7_0%,#f7f5f0_100%)]">
-      <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pt-10 pb-10 sm:px-8 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-end lg:gap-14">
+      <div className="mx-auto grid max-w-[1180px] gap-5 px-4 pt-5 pb-6 sm:gap-10 sm:px-8 sm:pt-14 sm:pb-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-end lg:gap-14">
         <div className="cf-rise min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Eyebrow>{words.noun}</Eyebrow>
             <Pill
               tone={status.tone}
@@ -100,26 +100,26 @@ export function OverviewHero({
             </Pill>
           </div>
           <h1
-            className="cf-display text-cf-ink mt-4 text-[42px] leading-[0.98] break-words sm:text-[64px]"
+            className="cf-display text-cf-ink mt-3 text-[32px] leading-[1.02] break-words sm:mt-4 sm:text-[64px] sm:leading-[0.98]"
             data-testid="conference-name"
           >
             {c.name}
           </h1>
           <span
             aria-hidden="true"
-            className="mt-6 block h-[2px] w-14 rounded-full"
+            className="mt-3 block h-[2px] w-12 rounded-full sm:mt-6 sm:w-14"
             style={{ background: c.branding.accent }}
           />
           {c.tagline ? (
-            <p className="text-cf-slate mt-5 max-w-[52ch] text-[18px] leading-relaxed">
+            <p className="text-cf-slate mt-3 max-w-[52ch] text-[15px] leading-relaxed sm:mt-5 sm:text-[18px]">
               {c.tagline}
             </p>
           ) : null}
-          <dl className="border-cf-line mt-8 grid grid-cols-2 gap-x-6 gap-y-5 border-t pt-6 sm:grid-cols-4">
+          <dl className="border-cf-line mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 sm:mt-8 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-5 sm:pt-6">
             {facts.map((f) => (
               <div key={f.k} className="min-w-0" data-testid={f.testid}>
                 <dt className="cf-eyebrow text-cf-mist">{f.k}</dt>
-                <dd className="text-cf-ink mt-1.5 text-[15px] leading-snug font-semibold">
+                <dd className="text-cf-ink mt-1 text-[14px] leading-snug font-semibold sm:mt-1.5 sm:text-[15px]">
                   {f.v}
                 </dd>
               </div>

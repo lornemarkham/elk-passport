@@ -81,7 +81,7 @@ export function PlansBoard({
   const past = board.plans.filter((p) => !p.next);
 
   return (
-    <div className="mx-auto max-w-[1180px] px-5 pb-16 *:max-w-[820px] sm:px-8">
+    <div className="mx-auto max-w-[1180px] px-4 pb-16 *:max-w-[820px] sm:px-8">
       {!making && !editing ? (
         <button
           type="button"

@@ -22,7 +22,7 @@ export function ModuleTop({
 /** A module that can't open here yet, said plainly. */
 export function NotOpen({ what }: { what: string }) {
   return (
-    <p className="text-cf-slate mx-auto mt-6 max-w-[1180px] px-5 sm:px-8">
+    <p className="text-cf-slate mx-auto mt-6 max-w-[1180px] px-4 sm:px-8">
       {what} isn&apos;t open yet. The organiser has to switch it on first.
     </p>
   );

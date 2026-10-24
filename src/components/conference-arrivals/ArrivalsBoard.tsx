@@ -9,7 +9,6 @@ import { distanceKm } from "@/domain/conference-arrivals/geo";
 import type { ConferenceKind } from "@/domain/conference/types";
 import type { ArrivalsView } from "@/lib/conference-arrivals/service";
 import { inkOn } from "@/domain/conference/branding";
-import { Section } from "@/components/conference/ui";
 import { Avatar, Eyebrow } from "@/components/conference/kit";
 import { ArrivalsTimeline } from "./ArrivalsTimeline";
 import { MyFlight } from "./MyFlight";
@@ -115,35 +114,40 @@ export function ArrivalsBoard({
   const chosen = rows.find((r) => r.memberId === selected) ?? null;
   const dig = board ? digest(board, now, timeZone) : null;
 
+  // On a phone the page is one column in the order a traveller asks: how's
+  // everyone doing, your own flight (sharing it is a choice), who can share
+  // a ride, then the live board and map. Wide screens keep the board up top.
   return (
-    <>
-      <header className="border-cf-line border-b">
-        <div className="mx-auto max-w-[1180px] px-5 pt-8 pb-8 sm:px-8 sm:pt-12">
+    <div className="flex flex-col lg:block">
+      <header className="border-cf-line order-1 border-b">
+        <div className="mx-auto max-w-[1180px] px-4 pt-5 pb-6 sm:px-8 sm:pt-12 sm:pb-8">
           <Eyebrow>
             Arrivals
             {board ? ` · ${board.arrival.iata ?? board.arrival.icao}` : ""}
           </Eyebrow>
           <h1
-            className="cf-display text-cf-ink mt-2 text-[34px] leading-[1.02] sm:text-[46px]"
+            className="cf-display text-cf-ink mt-1.5 text-[28px] leading-[1.05] sm:mt-2 sm:text-[46px] sm:leading-[1.02]"
             data-testid="arrivals-headline"
           >
             {words.big}
           </h1>
           {words.small ? (
-            <p className="text-cf-slate mt-3 max-w-[60ch] text-[16px]">
+            <p className="text-cf-slate mt-2 max-w-[60ch] text-[14px] sm:mt-3 sm:text-[16px]">
               {words.small}
             </p>
           ) : null}
           {board && board.counts.total ? (
-            <dl className="border-cf-line mt-7 grid max-w-[640px] grid-cols-3 gap-4 border-t pt-5">
+            <dl className="border-cf-line mt-4 grid max-w-[640px] grid-cols-3 gap-3 border-t pt-4 sm:mt-7 sm:gap-4 sm:pt-5">
               {[
                 ["In the air", board.counts.airborne],
                 ["Landed", board.counts.landed],
-                ["Sharing a flight", board.counts.total],
+                ["Sharing", board.counts.total],
               ].map(([k, v]) => (
                 <div key={k}>
-                  <dt className="cf-eyebrow text-cf-mist">{k}</dt>
-                  <dd className="cf-serif text-cf-ink mt-1 text-[28px] tabular-nums">
+                  <dt className="cf-eyebrow text-cf-mist !tracking-[0.1em] sm:!tracking-[0.16em]">
+                    {k}
+                  </dt>
+                  <dd className="cf-serif text-cf-ink mt-1 text-[24px] tabular-nums sm:text-[28px]">
                     {v}
                   </dd>
                 </div>
@@ -151,7 +155,7 @@ export function ArrivalsBoard({
             </dl>
           ) : null}
           {board && dig && dig.timeline.length ? (
-            <div className="border-cf-line mt-8 rounded-2xl border bg-white px-5 py-5 sm:px-6">
+            <div className="border-cf-line mt-5 rounded-2xl border bg-white px-4 py-4 sm:mt-8 sm:px-6 sm:py-5">
               <ArrivalsTimeline
                 timeline={dig.timeline}
                 timeZone={timeZone}
@@ -165,7 +169,7 @@ export function ArrivalsBoard({
 
       {!view && !failed ? (
         <div
-          className="mx-auto max-w-[1180px] px-5 pt-8 sm:px-8"
+          className="order-2 mx-auto w-full max-w-[1180px] px-4 pt-8 sm:px-8"
           aria-busy="true"
           aria-label="Loading the arrivals board"
         >
@@ -174,13 +178,13 @@ export function ArrivalsBoard({
       ) : null}
 
       {failed && !view ? (
-        <p className="mx-auto max-w-[760px] px-5 pt-6 text-black/60">
+        <p className="order-2 mx-auto max-w-[760px] px-4 pt-6 text-black/60 sm:px-5">
           Couldn&apos;t reach Passport. Are you online?
         </p>
       ) : null}
 
       {view && !board ? (
-        <p className="mx-auto max-w-[760px] px-5 pt-6 text-black/60">
+        <p className="order-2 mx-auto max-w-[760px] px-4 pt-6 text-black/60 sm:px-5">
           Passport can&apos;t tell which airport {view.place} flies into, so
           there&apos;s nothing to track yet. An organiser can pick a town
           Passport knows in Organiser settings.
@@ -188,7 +192,10 @@ export function ArrivalsBoard({
       ) : null}
 
       {board ? (
-        <div className="bg-[#070b12] lg:grid lg:grid-cols-[minmax(0,1fr)_440px]">
+        <div
+          className="order-5 mt-10 bg-[#070b12] lg:mt-0 lg:grid lg:grid-cols-[minmax(0,1fr)_440px]"
+          data-testid="arrivals-live"
+        >
           <div className="lg:h-[680px]">
             <ArrivalsMap
               rows={rows}
@@ -200,7 +207,7 @@ export function ArrivalsBoard({
             />
           </div>
           <div className="text-white lg:h-[680px] lg:overflow-y-auto lg:border-l lg:border-white/10">
-            <div className="px-5 pt-6 pb-8">
+            <div className="px-4 pt-5 pb-8 sm:px-5 sm:pt-6">
               {chosen ? (
                 <Details
                   row={chosen}
@@ -246,8 +253,8 @@ export function ArrivalsBoard({
       ) : null}
 
       {board ? (
-        <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pt-10 pb-16 sm:px-8 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="min-w-0">
+        <div className="contents lg:mx-auto lg:grid lg:max-w-[1180px] lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-10 lg:px-8 lg:pt-10 lg:pb-16">
+          <div className="order-4 mx-auto w-full max-w-[1180px] min-w-0 px-4 pt-8 sm:px-8 lg:px-0 lg:pt-0">
             <Coordination
               conferenceId={conferenceId}
               digest={dig!}
@@ -256,23 +263,35 @@ export function ArrivalsBoard({
               plansOn={plansOn}
             />
           </div>
-          <div className="min-w-0">
-            <Section title="Your flight">
-              {view ? (
-                <div className="border-cf-line rounded-2xl border bg-white p-5">
-                  <MyFlight
-                    conferenceId={conferenceId}
-                    place={view.place}
-                    airport={board.arrival.iata ?? board.arrival.icao}
-                    conferenceName={name}
-                    you={view.you}
-                    mine={view.mine}
-                    onSaved={load}
-                  />
-                </div>
-              ) : null}
-            </Section>
-            <p className="text-cf-mist mt-8 text-[12px] leading-relaxed">
+          <div
+            className="order-3 mx-auto w-full max-w-[1180px] min-w-0 px-4 pt-6 sm:px-8 lg:px-0 lg:pt-0"
+            data-testid="your-flight"
+          >
+            <section>
+              <h2 className="cf-serif text-cf-ink text-[21px] leading-tight">
+                Your flight
+              </h2>
+              <p className="text-cf-slate mt-1 text-[13px]">
+                Optional. Shared only with people in this {kind}; remove it any
+                time.
+              </p>
+              <div className="mt-3">
+                {view ? (
+                  <div className="border-cf-line rounded-2xl border bg-white p-4 sm:p-5">
+                    <MyFlight
+                      conferenceId={conferenceId}
+                      place={view.place}
+                      airport={board.arrival.iata ?? board.arrival.icao}
+                      conferenceName={name}
+                      you={view.you}
+                      mine={view.mine}
+                      onSaved={load}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </section>
+            <p className="text-cf-mist mt-8 hidden text-[12px] leading-relaxed lg:block">
               Positions are real ADS-B reports from volunteer receivers via
               ADSB.lol (ODbL), checked against your flight before anyone&apos;s
               name goes on a plane. Over oceans and remote land the receivers
@@ -284,7 +303,15 @@ export function ArrivalsBoard({
           </div>
         </div>
       ) : null}
-    </>
+      {board ? (
+        <p className="text-cf-mist order-6 mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-[12px] leading-relaxed sm:px-8 lg:hidden">
+          Positions are real ADS-B reports from volunteer receivers via ADSB.lol
+          (ODbL), checked against your flight before anyone&apos;s name goes on
+          a plane. It never guesses a position. Scheduled times are what each
+          person typed from their booking.
+        </p>
+      ) : null}
+    </div>
   );
 }
 

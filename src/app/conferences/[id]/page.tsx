@@ -33,12 +33,13 @@ import { PanelHead, Panel, wrap } from "@/components/conference/kit";
 import { VenueMap } from "@/components/conference/VenueMap";
 import { OverviewHero } from "@/components/conference/overview/Hero";
 import { NowCard } from "@/components/conference/overview/NowCard";
+import { setupSteps } from "@/components/conference/overview/setup";
 import {
   AgendaGlance,
   ArrivalsPanel,
   MemoriesPanel,
   MessagesPanel,
-  OrganiserSetup,
+  OrganiserNudge,
   PeoplePanel,
   SoloInvite,
 } from "@/components/conference/overview/Panels";
@@ -142,32 +143,9 @@ export default async function ConferenceOverview({
   const admin = `${base}/admin`;
   const hasAgenda = (c.agenda ?? []).length > 0;
 
-  const steps = [
-    {
-      done: !!c.venue,
-      label: "Add the venue",
-      hint: "So everyone knows where to be, and Explore measures walks from it.",
-      href: `${admin}#details`,
-    },
-    {
-      done: hasAgenda || !c.modules.includes("schedule"),
-      label: "Publish the agenda",
-      hint: "Sessions, breaks and the evening. The overview answers “what’s next?” from it.",
-      href: `${admin}#agenda`,
-    },
-    {
-      done: people.total > 1,
-      label: "Invite people",
-      hint: "A link or a code. Nobody needs an account to join.",
-      href: `${admin}#access`,
-    },
-    {
-      done: !!c.tagline,
-      label: "Write a line of welcome",
-      hint: "One sentence under the name, in your own words.",
-      href: `${admin}#details`,
-    },
-  ];
+  const setupLeft = organiser
+    ? setupSteps(c, people.total).filter((x) => !x.done).length
+    : 0;
 
   const glance = (list: readonly (typeof todayEntries)[number][]) =>
     list.slice(0, 7).map((e) => ({
@@ -245,52 +223,70 @@ export default async function ConferenceOverview({
 
       <div className={`${wrap} pb-16`}>
         {board ? <Reminders conferenceId={c.id} controls={false} /> : null}
-        {c.welcome ? (
-          <p className="cf-serif text-cf-graphite mt-10 max-w-[62ch] text-[20px] leading-relaxed whitespace-pre-line">
-            {c.welcome}
-          </p>
-        ) : null}
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
-          <div className="min-w-0 space-y-12">
+        {/* One column on a phone, in the order an attendee asks: what's on
+            (the Now card, above), who's here, what's next, what we're doing
+            together, where to go. On a wide screen the side column returns;
+            `contents` lets the phone order reach across both columns. */}
+        <div className="mt-5 flex flex-col gap-8 sm:mt-10 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
+          <div className="contents min-w-0 lg:block lg:space-y-12">
+            {organiser && setupLeft ? (
+              <div className="order-1 lg:hidden">
+                <OrganiserNudge left={setupLeft} href={admin} />
+              </div>
+            ) : null}
             {organiser && people.total === 1 ? (
-              <SoloInvite href={`${admin}#access`} />
+              <div className="order-1">
+                <SoloInvite href={`${admin}#access`} />
+              </div>
             ) : null}
 
-            {phase === "after" && memoriesPanel ? memoriesPanel : null}
+            {c.welcome ? (
+              <p className="cf-serif text-cf-graphite order-6 max-w-[62ch] text-[17px] leading-relaxed whitespace-pre-line sm:text-[20px]">
+                {c.welcome}
+              </p>
+            ) : null}
+
+            {phase === "after" && memoriesPanel ? (
+              <div className="order-1">{memoriesPanel}</div>
+            ) : null}
 
             {on("schedule") && phase === "during" ? (
-              <AgendaGlance
-                eyebrow="Agenda"
-                title="Later today"
-                entries={glance(nn.later)}
-                href={`${base}/schedule`}
-              />
+              <div className="order-3">
+                <AgendaGlance
+                  eyebrow="What's next"
+                  title="Later today"
+                  entries={glance(nn.later)}
+                  href={`${base}/schedule`}
+                />
+              </div>
             ) : null}
             {on("schedule") && (phase === "before" || phase === "arrival") ? (
-              <AgendaGlance
-                eyebrow="Agenda"
-                title="Day one at a glance"
-                entries={glance(firstDay)}
-                href={`${base}/schedule`}
-              />
+              <div className="order-3">
+                <AgendaGlance
+                  eyebrow="Agenda"
+                  title="Day one at a glance"
+                  entries={glance(firstDay)}
+                  href={`${base}/schedule`}
+                />
+              </div>
             ) : null}
 
             {board ? (
-              <section>
+              <section className="order-4">
                 <PanelHead
-                  eyebrow="Shared plans"
+                  eyebrow="Together"
                   title="With colleagues"
                   action={{ href: `${base}/plans`, label: "All plans" }}
                 />
-                <div className="mt-5">
+                <div className="mt-4 sm:mt-5">
                   <UpNext conferenceId={c.id} initial={board} />
                 </div>
               </section>
             ) : null}
 
             {on("discover") ? (
-              <section>
+              <section className="order-5 min-w-0">
                 <PanelHead
                   eyebrow={`Explore ${c.place.label}`}
                   title={
@@ -298,54 +294,70 @@ export default async function ConferenceOverview({
                   }
                   action={{ href: `${base}/discover`, label: "Explore" }}
                 />
-                <div className="mt-5">
+                <div className="mt-4 sm:mt-5">
                   <ExplorePicks conferenceId={c.id} />
                 </div>
               </section>
             ) : null}
           </div>
 
-          <aside className="min-w-0 space-y-5">
-            {organiser ? <OrganiserSetup steps={steps} /> : null}
-            {phase === "arrival" || phase === "before" ? arrivalsPanel : null}
-            {venue ? (
-              <Panel className="overflow-hidden" data-testid="venue-panel">
-                <VenueMap venue={{ name: venue.name, at: venue.at }} />
-                <div className="p-5">
-                  <PanelHead eyebrow="Venue" title={c.venue!.name} />
-                  {c.venue!.address ? (
-                    <p className="text-cf-slate mt-1 text-[13px]">
-                      {c.venue!.address}
-                    </p>
-                  ) : null}
-                  <div className="mt-4">
-                    <Directions name={venue.name} at={venue.at} />
-                  </div>
-                </div>
-              </Panel>
+          <aside className="contents min-w-0 lg:block lg:space-y-5">
+            {organiser && setupLeft ? (
+              <div className="hidden lg:block">
+                <OrganiserNudge left={setupLeft} href={admin} />
+              </div>
             ) : null}
-            {phase === "during" || phase === "after" ? arrivalsPanel : null}
-            <PeoplePanel
-              names={named}
-              total={people.total}
-              href={`${base}/people`}
-              sharing={(sharing?.people ?? [])
-                .filter((p) => !p.you)
-                .map((p) => p.name)}
-            />
-            {room ? (
-              <MessagesPanel
-                href={`${base}/chat`}
-                messages={room.messages.slice(-3).map((m) => ({
-                  id: m.id,
-                  name: m.by.name,
-                  body: m.body,
-                  you: m.by.you,
-                }))}
+            <div className="order-2">
+              <PeoplePanel
+                names={named}
+                total={people.total}
+                href={`${base}/people`}
+                sharing={(sharing?.people ?? [])
+                  .filter((p) => !p.you)
+                  .map((p) => p.name)}
               />
+            </div>
+            {phase === "arrival" || phase === "before" ? (
+              <div className="order-2">{arrivalsPanel}</div>
             ) : null}
-            {phase !== "after" ? memoriesPanel : null}
-            <p className="text-cf-mist px-1 text-[12px] leading-relaxed">
+            {venue ? (
+              <div className="order-6">
+                <Panel className="overflow-hidden" data-testid="venue-panel">
+                  <VenueMap venue={{ name: venue.name, at: venue.at }} />
+                  <div className="p-5">
+                    <PanelHead eyebrow="Where to go" title={c.venue!.name} />
+                    {c.venue!.address ? (
+                      <p className="text-cf-slate mt-1 text-[13px]">
+                        {c.venue!.address}
+                      </p>
+                    ) : null}
+                    <div className="mt-4">
+                      <Directions name={venue.name} at={venue.at} />
+                    </div>
+                  </div>
+                </Panel>
+              </div>
+            ) : null}
+            {phase === "during" || phase === "after" ? (
+              <div className="order-7">{arrivalsPanel}</div>
+            ) : null}
+            {room ? (
+              <div className="order-7">
+                <MessagesPanel
+                  href={`${base}/chat`}
+                  messages={room.messages.slice(-3).map((m) => ({
+                    id: m.id,
+                    name: m.by.name,
+                    body: m.body,
+                    you: m.by.you,
+                  }))}
+                />
+              </div>
+            ) : null}
+            {phase !== "after" && memoriesPanel ? (
+              <div className="order-8">{memoriesPanel}</div>
+            ) : null}
+            <p className="text-cf-mist order-9 px-1 text-[12px] leading-relaxed">
               Private to the people in this {c.kind}. You appear only where you
               choose to —{" "}
               <Link

@@ -11,7 +11,7 @@ import {
 /**
  * **One conference, one frame.** Every screen inside a conference shares
  * this bar: the conference's name, the five places a participant goes
- * (Overview · Arrivals · Agenda · Explore · People), messages, and a profile
+ * (Home · Arrivals · Agenda · Explore · People), messages, and a profile
  * menu where settings live. Plans and memories are reached from where they
  * matter — the agenda, the overview, a place in Explore — not as tabs.
  *
@@ -34,7 +34,7 @@ export default async function ConferenceFrame({
   const base = `/conferences/${c.id}`;
 
   const tabs: BarLink[] = [
-    { href: base, label: "Overview", icon: "overview", exact: true },
+    { href: base, label: "Home", icon: "home", exact: true },
     ...(has("arrivals") && arrivalsEnabled()
       ? [
           {
@@ -82,10 +82,15 @@ export default async function ConferenceFrame({
         ]
       : []),
     { href: "/conferences", label: "All your conferences", icon: "back" },
+    // Go Have a Day's own bar is hidden on a phone inside a conference.
+    { href: "/", label: "Go Have a Day", icon: "ghad", phoneOnly: true },
   ];
 
   return (
-    <div className="cf-root bg-cf-paper text-cf-ink min-h-screen">
+    <div
+      className="cf-root bg-cf-paper text-cf-ink min-h-screen"
+      data-cf-frame=""
+    >
       <ConferenceBar
         home={base}
         name={c.name}

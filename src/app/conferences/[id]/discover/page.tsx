@@ -55,9 +55,9 @@ export default async function DiscoverModule({
         conferenceName={c.name}
         eyebrow="Explore"
         title={`${c.place.label}, a short walk away`}
-        lede="Real places from Passport’s Atlas, measured from where you are. Find one, then make it a plan so it actually happens."
+        lede="Real places from Passport’s Atlas, near where you are. Plan one and colleagues can join."
       />
-      <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-8">
         {doors.length ? (
           <Explore conferenceId={c.id} plans={plans} plansOn={plansOn} />
         ) : (

@@ -46,7 +46,7 @@ export function ExplorePicks({ conferenceId }: { conferenceId: string }) {
   if ((picks && !picks.length) || (shown && !shown.length)) return null;
   return (
     <ul
-      className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:grid-rows-2 sm:overflow-visible sm:px-0"
+      className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:grid-rows-2 sm:overflow-visible sm:px-0"
       data-testid="explore-picks"
     >
       {(shown ?? []).map((p, i) => (

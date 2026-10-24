@@ -177,12 +177,12 @@ export function AvatarStack({
           name={n}
           size={size}
           ring
-          className={i ? "-ml-2" : ""}
+          className={i ? "-ml-1.5" : ""}
         />
       ))}
       {rest > 0 ? (
         <span
-          className={`bg-cf-sand text-cf-slate inline-flex items-center justify-center rounded-full font-semibold ring-2 ring-white ${shown.length ? "-ml-2" : ""}`}
+          className={`bg-cf-sand text-cf-slate inline-flex items-center justify-center rounded-full font-semibold ring-2 ring-white ${shown.length ? "-ml-1.5" : ""}`}
           style={{
             width: size,
             height: size,
@@ -281,13 +281,13 @@ export function PageHead({
   children?: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[1180px] px-5 pt-8 pb-2 sm:px-8 sm:pt-12">
+    <div className="mx-auto max-w-[1180px] px-4 pt-5 pb-1 sm:px-8 sm:pt-12 sm:pb-2">
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h1 className="cf-display text-cf-ink mt-2 text-[34px] leading-[1.02] sm:text-[44px]">
+      <h1 className="cf-display text-cf-ink mt-1.5 text-[28px] leading-[1.05] sm:mt-2 sm:text-[44px] sm:leading-[1.02]">
         {title}
       </h1>
       {lede ? (
-        <p className="text-cf-slate mt-3 max-w-[60ch] text-[16px] leading-relaxed">
+        <p className="text-cf-slate mt-2 max-w-[60ch] text-[14px] leading-relaxed sm:mt-3 sm:text-[16px]">
           {lede}
         </p>
       ) : null}
@@ -296,4 +296,4 @@ export function PageHead({
   );
 }
 
-export const wrap = "mx-auto max-w-[1180px] px-5 sm:px-8";
+export const wrap = "mx-auto max-w-[1180px] px-4 sm:px-8";

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MapPin, MessageSquare, PlaneLanding } from "lucide-react";
 import { FindMyPeople } from "@/components/conference-together/FindMyPeople";
 import {
   Avatar,
@@ -29,6 +31,9 @@ import { peopleDeps, plansDeps } from "@/lib/conference-together/request";
 
 export const dynamic = "force-dynamic";
 
+const chip =
+  "border-cf-line text-cf-ink hover:border-cf-ink/30 inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border bg-white px-3.5 text-[13px] font-semibold whitespace-nowrap transition";
+
 /**
  * **People: who's here, and finding them.** Everyone who chose to be seen,
  * with what they chose to share — a flight on the board, where they are
@@ -53,9 +58,12 @@ export default async function PeoplePage({
   const words = KIND_WORDS[c.kind];
   const together = togetherEnabled();
   const findOn = c.modules.includes("people") && together;
+  const arrivalsOn = c.modules.includes("arrivals") && arrivalsEnabled();
+  const chatOn = c.modules.includes("community") && together;
+  const base = `/conferences/${c.id}`;
 
   const [arrivals, sharing, board] = await Promise.all([
-    c.modules.includes("arrivals") && arrivalsEnabled()
+    arrivalsOn
       ? readArrivals(arrivalsDeps(), identity, c.id, false).catch(() => null)
       : null,
     findOn ? readPeople(peopleDeps(), identity, c.id).catch(() => null) : null,
@@ -86,65 +94,109 @@ export default async function PeoplePage({
       <PageHead
         eyebrow="People"
         title={`Who's here · ${people.total}`}
-        lede={`Everyone in ${c.name} who chose to be seen. Nobody is listed, located or shown on the board unless they decided to be.`}
+        lede="Only people who chose to be seen are listed, located or shown on the board."
       />
-      <div className={`${wrap} pt-6 pb-16`}>
-        <ul
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-          data-testid="people-directory"
-        >
-          {listed.map((p) => {
-            const row = rows.find((r) => r.memberId === p.memberId);
-            const t = row ? timeCell(row, c.timeZone) : null;
-            const s = row ? arrivalStatus(row, now, c.timeZone) : null;
-            const from = row?.from?.city ?? row?.from?.name;
-            return (
-              <li key={p.memberId}>
-                <Panel as="div" className="flex h-full items-start gap-4 p-5">
-                  <Avatar
-                    name={p.you ? (you.displayName ?? "You") : p.name}
-                    you={p.you}
-                    size={44}
-                  />
+      <div className={`${wrap} pt-4 pb-16 sm:pt-6`}>
+        {chatOn || findOn || arrivalsOn ? (
+          <nav
+            aria-label="Get together"
+            className="cf-shelf -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0"
+            data-testid="people-actions"
+          >
+            {chatOn ? (
+              <Link href={`${base}/chat`} className={chip}>
+                <MessageSquare className="h-4 w-4" strokeWidth={1.8} />
+                Message the group
+              </Link>
+            ) : null}
+            {findOn && sharing ? (
+              <a href="#find" className={chip}>
+                <MapPin className="h-4 w-4" strokeWidth={1.8} />
+                Find my people
+              </a>
+            ) : null}
+            {arrivalsOn ? (
+              <Link href={`${base}/arrivals`} className={chip}>
+                <PlaneLanding className="h-4 w-4" strokeWidth={1.8} />
+                Meet at arrivals
+              </Link>
+            ) : null}
+          </nav>
+        ) : null}
+        <Panel as="div" className="mt-4 overflow-hidden">
+          <ul
+            className="divide-cf-line grid grid-cols-1 divide-y lg:grid-cols-2 lg:divide-y-0"
+            data-testid="people-directory"
+          >
+            {listed.map((p) => {
+              const row = rows.find((r) => r.memberId === p.memberId);
+              const t = row ? timeCell(row, c.timeZone) : null;
+              const s = row ? arrivalStatus(row, now, c.timeZone) : null;
+              const from = row?.from?.city ?? row?.from?.name;
+              return (
+                <li
+                  key={p.memberId}
+                  className="lg:border-cf-line flex min-h-16 min-w-0 items-center gap-3 px-4 py-3 sm:px-5 lg:border-b lg:last:border-b-0 lg:odd:border-r lg:[&:nth-last-child(2):nth-child(odd)]:border-b-0"
+                >
+                  <span className="relative shrink-0">
+                    <Avatar
+                      name={p.you ? (you.displayName ?? "You") : p.name}
+                      you={p.you}
+                      size={40}
+                    />
+                    {here.has(p.memberId) ? (
+                      <span
+                        aria-hidden="true"
+                        className="bg-cf-sage absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full ring-2 ring-white"
+                      />
+                    ) : null}
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-cf-ink truncate text-[16px] font-semibold">
-                      {p.name}
-                      {p.you ? (
-                        <span className="text-cf-mist font-normal"> · you</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="text-cf-ink min-w-0 flex-1 truncate text-[15px] font-semibold">
+                        {p.name}
+                        {p.you ? (
+                          <span className="text-cf-mist font-normal">
+                            {" "}
+                            · you
+                          </span>
+                        ) : null}
+                      </p>
+                      {s ? (
+                        <Pill
+                          tone={s.tone}
+                          dot={s.tone === "live"}
+                          className="shrink-0"
+                        >
+                          {s.label}
+                        </Pill>
                       ) : null}
-                    </p>
+                    </div>
                     {row && t && s ? (
-                      <p className="text-cf-slate mt-1 text-[13px]">
+                      <p className="text-cf-slate truncate text-[13px]">
                         {row.flight}
                         {from ? ` from ${from}` : ""} ·{" "}
                         {t.tag.toLowerCase() === "leaves" ? "leaves" : "lands"}{" "}
                         {arrivalClock(row, now, c.timeZone, t.time)}
                       </p>
                     ) : (
-                      <p className="text-cf-mist mt-1 text-[13px]">
+                      <p className="text-cf-mist truncate text-[13px]">
                         {p.you && !you.displayName
                           ? "Not seen by others yet"
                           : "No flight shared"}
                       </p>
                     )}
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {s ? (
-                        <Pill tone={s.tone} dot={s.tone === "live"}>
-                          {s.label}
-                        </Pill>
-                      ) : null}
-                      {here.has(p.memberId) ? (
-                        <Pill tone="live" dot>
-                          Sharing location
-                        </Pill>
-                      ) : null}
-                    </div>
+                    {here.has(p.memberId) ? (
+                      <p className="text-cf-sage text-[12px] font-semibold">
+                        Sharing location
+                      </p>
+                    ) : null}
                   </div>
-                </Panel>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
         <p className="text-cf-mist mt-4 text-[13px]">
           {quiet > 0
             ? `${quiet === 1 ? "One more person is" : `${quiet} more people are`} in this ${words.noun} without being listed. Organisers can see who has joined; nobody else can.`
@@ -155,7 +207,7 @@ export default async function PeoplePage({
         </p>
 
         {findOn && sharing ? (
-          <section id="find" className="mt-14 scroll-mt-24">
+          <section id="find" className="mt-10 scroll-mt-24 sm:mt-14">
             <PanelHead
               eyebrow="Find my people"
               title="Meet up without a group text"
@@ -165,7 +217,7 @@ export default async function PeoplePage({
               you are for a while, see who else is, and walk over. It stops on
               its own, or the moment you say so.
             </p>
-            <div className="-mx-5 sm:-mx-8">
+            <div className="-mx-4 sm:-mx-8">
               <FindMyPeople
                 conferenceId={c.id}
                 initial={sharing}

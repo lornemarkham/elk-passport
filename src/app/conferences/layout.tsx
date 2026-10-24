@@ -25,7 +25,11 @@ export default async function ConferencesLayout({
   const user = await currentUser();
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
+      {/* Hidden on a phone inside a conference, whose own bars take over
+          (see `.cf-global-nav` in globals.css). */}
+      <div className="cf-global-nav contents">
+        <PassportNav displayName={user?.displayName ?? null} />
+      </div>
       <main className="bg-cf-paper text-cf-ink min-h-screen pb-24">
         {children}
       </main>

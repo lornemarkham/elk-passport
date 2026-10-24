@@ -395,13 +395,13 @@ export function ArrivalsMap({
     <div className="relative lg:h-full">
       <div
         ref={box}
-        className="h-[56vh] min-h-[340px] w-full bg-[#0a0f17] lg:h-full"
+        className="h-[300px] w-full bg-[#0a0f17] sm:h-[56vh] sm:min-h-[340px] lg:h-full"
         data-testid="arrivals-map"
       />
       <button
         type="button"
         onClick={fitEveryone}
-        className="absolute top-3 left-3 rounded-full bg-[#0a0f17]/85 px-3 py-2 text-[13px] font-bold text-white shadow ring-1 ring-white/15 backdrop-blur"
+        className="absolute top-3 left-3 min-h-10 rounded-full bg-[#0a0f17]/85 px-3 py-2 text-[13px] font-bold text-white shadow ring-1 ring-white/15 backdrop-blur"
       >
         Show everyone
       </button>
