@@ -167,7 +167,7 @@ export function ChallengeCard({
       {mineThrown && c.status === "open" && (
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-[13.5px] text-white/60">
-            Waiting on {target.name}.
+            Waiting on {target.name} to accept or pass.
           </p>
           <button
             type="button"
@@ -297,6 +297,11 @@ export function ChallengeCard({
 
       {c.kind === "bet" && s.state === "on" && c.market && (
         <p className="mt-3 text-[13.5px] text-white/60">
+          {me === c.challenger_id
+            ? `${target.name} accepted. `
+            : me === c.target_id
+              ? "You accepted. "
+              : ""}
           It&apos;s on. Settles when the host calls{" "}
           {MARKET_LABEL[c.market].toLowerCase()}.
         </p>
@@ -310,7 +315,7 @@ function Status({ s }: { s: Settled }) {
     s.state === "waiting"
       ? "Waiting"
       : s.state === "on"
-        ? "It's on"
+        ? "Accepted"
         : s.state === "awaiting-entry"
           ? "Accepted"
           : s.state === "jury"

@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-10-24 — The Bet button: [`BET-BUTTON.md`](BET-BUTTON.md)** (the Bet sheet no longer steals focus on every poll, closes from the backdrop only when the press began there, says a refusal inside the sheet, cannot send twice, confirms "Thrown at …", and the sender's card reads Waiting → Accepted / Passed; two-account + RLS spec `verification/bet-button.spec.ts`; no SQL change).
+
 **2026-10-23 — Operation Mayhem, PLAY rebuilt around people: [`MAYHEM.md`](MAYHEM.md)** (enemy territory from real allegiances; challenges — bets settled by the host's call, defend / commentate / hot take judged by a jury of the others, prophecies — accepted or passed privately across accounts; picks as game cards and a vault instead of padlocks; a drawn Sycle Cup, identical on every phone, with a verified-only champion; secret missions confirmed by their mastermind through a shared ledger; Chirp Bot on challenges thrown, taken and decided; needs `mayhem-migration.sql` after night; screens in `mayhem/`).
 
 **2026-10-23 — make the night come alive: [`ALIVE.md`](ALIVE.md)** (Plan is one game plan of four stops — Pregame, Meet up, Game time, After — with one dinner vote and Passport's venue cards in Explore; declaring a team is a moment and every avatar wears it; the peanut gallery watches from the couch; Chirp Bot reads out the boldest pick at puck drop, crowns the Cup winner, heckles a jumped vote, and the host sets how much it talks; the Cup says how to win it and crowns its champion; needs `alive-migration.sql` for the couch only; screens in `alive/`).

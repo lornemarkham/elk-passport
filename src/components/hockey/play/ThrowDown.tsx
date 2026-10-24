@@ -60,7 +60,6 @@ export function ThrowDown({
   game,
   promptIds,
   beforeStart,
-  error,
   onSend,
   onClose,
 }: {
@@ -72,9 +71,12 @@ export function ThrowDown({
   /** Template questions on tonight (a bet rides on one). */
   promptIds: readonly string[];
   beforeStart: boolean;
-  error: string | null;
-  onSend: (input: IssueInput) => Promise<boolean>;
-  onClose: () => void;
+  /** What the server said: `error` is its own words, shown inside this sheet. */
+  onSend: (
+    input: IssueInput,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** `thrown` is true when the challenge went out (the page says so). */
+  onClose: (thrown?: boolean) => void;
 }) {
   const [kind, setKind] = useState<ChallengeKind>(draft.kind);
   const others = people.filter((p) => p.id !== me.id);
@@ -92,14 +94,25 @@ export function ThrowDown({
   const [taunt, setTaunt] = useState("");
   const [entry, setEntry] = useState("");
   const [sending, setSending] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  /** A second tap in the same frame must not be a second bet (state is async). */
+  const inFlight = useRef(false);
+  /** Where the press began: only a press that began on the backdrop closes it. */
+  const pressedBackdrop = useRef(false);
+  // The page re-renders every poll and hands a fresh `onClose` each time; the
+  // sheet must not re-run its focus on that, or the keyboard drops mid-word.
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  });
 
   useEffect(() => {
     dialog.current?.focus();
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && close.current();
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
-  }, [onClose]);
+  }, []);
 
   const who =
     kind === "prophecy"
@@ -126,29 +139,47 @@ export function ThrowDown({
     (!needsEntry || entry.trim().length > 0);
 
   const send = async () => {
-    if (!who || !ready || sending) return;
+    if (!who || !ready || inFlight.current) return;
+    inFlight.current = true;
     setSending(true);
-    const ok = await onSend({
+    setRefused(null);
+    const result = await onSend({
       kind,
       targetId: who,
       ...(kind === "bet" ? { market, side } : {}),
       ...(taunt.trim() && !self ? { taunt: taunt.trim() } : {}),
       ...(needsEntry ? { entry: entry.trim() } : {}),
     });
+    if (result.ok) {
+      // Leave `inFlight` set: the sheet is going away, and nothing may fire again.
+      onClose(true);
+      return;
+    }
+    inFlight.current = false;
     setSending(false);
-    if (ok) onClose();
+    setRefused(result.error);
   };
 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 sm:items-center"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        pressedBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        // The keyboard dropping moves the sheet under a thumb mid-tap; a click
+        // that lands on the backdrop but began on the sheet is not "close".
+        if (pressedBackdrop.current && e.target === e.currentTarget && !sending)
+          onClose();
+        pressedBackdrop.current = false;
+      }}
     >
       <div
         ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby="throw-title"
+        aria-busy={sending}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={`${styles.sheet} flex max-h-[92dvh] w-full max-w-lg flex-col overflow-y-auto rounded-t-3xl bg-[#0b1220] px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-white ring-1 ring-white/15 outline-none sm:rounded-3xl`}
@@ -162,7 +193,7 @@ export function ThrowDown({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose()}
             aria-label="Close"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/70 ring-1 ring-white/15"
           >
@@ -363,12 +394,12 @@ export function ThrowDown({
           </label>
         )}
 
-        {error && (
+        {refused && (
           <p
             role="alert"
             className="mt-3 rounded-xl bg-[#c8102e]/20 px-3 py-2 text-[14px] text-white"
           >
-            {error}
+            {refused}
           </p>
         )}
 
@@ -386,10 +417,19 @@ export function ThrowDown({
                 : "Put it on the record"
               : `Throw it at ${person?.name ?? "them"}`}
         </button>
-        <p className="mt-2 text-center text-[12.5px] text-white/50">
-          {self
-            ? "Everybody on this night sees it. The jury is everybody else."
-            : `${person?.name ?? "They"} can accept or pass. A pass is private — nobody else is told.`}
+        <p
+          className="mt-2 text-center text-[12.5px] text-white/50"
+          aria-live="polite"
+        >
+          {!ready && !sending
+            ? kind === "bet" && !side
+              ? "Pick your side to throw it."
+              : needsEntry
+                ? "Write it first — going first is the point."
+                : "Pick who it's for."
+            : self
+              ? "Everybody on this night sees it. The jury is everybody else."
+              : `${person?.name ?? "They"} can accept or pass. A pass is private — nobody else is told.`}
         </p>
       </div>
     </div>

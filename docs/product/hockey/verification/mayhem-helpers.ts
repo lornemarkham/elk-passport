@@ -52,6 +52,9 @@ export interface Snapshot {
       status: string;
       challenger_id: string;
       target_id: string;
+      market: string | null;
+      side: string | null;
+      taunt: string | null;
     }[];
     ledger: { earner: string }[];
   };
@@ -154,13 +157,10 @@ export async function botLine(
   return found!;
 }
 
-export async function moveStart(startsAt: Date) {
-  const res = await rest(
-    "lorne",
-    "PATCH",
-    `passport_occasions?id=eq.${night}`,
-    { starts_at: startsAt.toISOString() },
-  );
+export async function moveStart(startsAt: Date, host = "lorne") {
+  const res = await rest(host, "PATCH", `passport_occasions?id=eq.${night}`, {
+    starts_at: startsAt.toISOString(),
+  });
   expect(res.status, JSON.stringify(res.json)).toBe(200);
 }
 
