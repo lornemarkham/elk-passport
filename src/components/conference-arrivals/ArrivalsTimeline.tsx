@@ -66,12 +66,61 @@ export function ArrivalsTimeline({
               </p>
             </div>
             {timed.length ? (
-              <div className="relative mx-4 mt-4 h-[120px] select-none">
+              <ul className="mt-3 sm:hidden" data-testid="arrival-list-phone">
+                {timed.map((e, i) => {
+                  const at = Date.parse(e.at!);
+                  const prev = i ? Date.parse(timed[i - 1]!.at!) : -Infinity;
+                  const nowHere =
+                    nowIn && now.getTime() > prev && now.getTime() <= at;
+                  const who = e.you ? "You" : e.name;
+                  return (
+                    <li key={e.memberId}>
+                      {nowHere ? (
+                        <NowRule label={clock(now, timeZone)} />
+                      ) : null}
+                      <div className="flex min-h-12 items-center gap-3 py-1.5">
+                        <span className="text-cf-ink w-[68px] shrink-0 text-[13px] font-semibold whitespace-nowrap tabular-nums">
+                          {e.kind === "estimated" ? "~" : ""}
+                          {clock(new Date(e.at!), timeZone)}
+                        </span>
+                        <Avatar name={who} you={e.you} size={28} />
+                        <span className="min-w-0 flex-1">
+                          <span className="text-cf-ink block truncate text-[14px] font-semibold">
+                            {who}
+                          </span>
+                          <span className="text-cf-mist block truncate text-[12px]">
+                            {e.flight}
+                          </span>
+                        </span>
+                        <span
+                          className={`shrink-0 text-[11px] font-semibold ${
+                            e.kind === "landed"
+                              ? "text-cf-sage"
+                              : e.kind === "estimated"
+                                ? "text-[#a8741a]"
+                                : "text-cf-mist"
+                          }`}
+                        >
+                          {tag(e)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+                {nowIn && now.getTime() > Date.parse(timed.at(-1)!.at!) ? (
+                  <li>
+                    <NowRule label={clock(now, timeZone)} />
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
+            {timed.length ? (
+              <div className="relative mx-4 mt-4 hidden h-[120px] select-none sm:block">
                 <div className="bg-cf-line absolute inset-x-0 top-[58px] h-px" />
                 {ticks.map((h) => (
                   <span
                     key={h}
-                    className="text-cf-mist absolute top-[100px] -translate-x-1/2 text-[11px] tabular-nums"
+                    className="text-cf-mist absolute top-[100px] -translate-x-1/2 text-[11px] whitespace-nowrap tabular-nums"
                     style={{ left: `${pos(h)}%` }}
                   >
                     {clock(new Date(h), timeZone).replace(":00", "")}
@@ -129,5 +178,19 @@ export function ArrivalsTimeline({
         );
       })}
     </ol>
+  );
+}
+
+/** "Now" across the phone's list, between the last time passed and the next. */
+function NowRule({ label }: { label: string }) {
+  return (
+    <div
+      className="text-cf-sage flex items-center gap-2 py-1"
+      aria-label={`Now, ${label}`}
+    >
+      <span className="cf-eyebrow">Now</span>
+      <span className="bg-cf-sage h-px flex-1" />
+      <span className="text-[11px] font-semibold tabular-nums">{label}</span>
+    </div>
   );
 }

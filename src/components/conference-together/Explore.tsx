@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Footprints, UsersRound } from "lucide-react";
 import { btn } from "@/components/conference/kit";
 import { useUsableImages } from "@/components/conference/usableImages";
 import { Problem } from "@/components/conference/ui";
@@ -124,7 +125,7 @@ export function Explore({
 
       <nav
         aria-label="Kinds of place"
-        className="-mx-5 mt-4 overflow-x-auto px-5"
+        className="cf-shelf -mx-4 mt-4 overflow-x-auto px-4 sm:-mx-8 sm:px-8"
       >
         <ul className="flex gap-2">
           {SHELVES.map((s) => (
@@ -133,7 +134,7 @@ export function Explore({
                 type="button"
                 aria-pressed={shelf === s.id}
                 onClick={() => setShelf(s.id)}
-                className={`min-h-10 rounded-full border px-4 text-[14px] font-semibold transition ${
+                className={`min-h-10 rounded-full border px-4 text-[14px] font-semibold whitespace-nowrap transition ${
                   shelf === s.id
                     ? "border-cf-ink bg-cf-ink text-white"
                     : "border-cf-line text-cf-slate hover:text-cf-ink bg-white"
@@ -163,7 +164,7 @@ export function Explore({
         </p>
       ) : (
         <ul
-          className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-4 grid gap-4 sm:mt-6 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3"
           data-testid="explore-places"
         >
           {places.map((p) => (
@@ -215,7 +216,7 @@ function PlaceCard({
       className="group border-cf-line flex flex-col overflow-hidden rounded-2xl border bg-white transition hover:shadow-[0_18px_40px_-24px_rgba(23,24,27,0.35)]"
       data-testid="explore-place"
     >
-      <div className="bg-cf-sand relative aspect-[4/3] w-full overflow-hidden">
+      <div className="bg-cf-sand relative aspect-[16/10] w-full overflow-hidden sm:aspect-[4/3]">
         <PlanPhoto
           url={p.photo?.url}
           className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
@@ -232,13 +233,18 @@ function PlaceCard({
             </span>
           }
         />
+        <span className="text-cf-ink absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[12px] font-semibold shadow-sm backdrop-blur">
+          <Footprints aria-hidden="true" className="h-3.5 w-3.5" />
+          {p.walkMinutes}+ min
+          <span className="sr-only"> walk</span>
+        </span>
         {p.photo?.label ? (
           <span className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">
             {p.photo.label}
           </span>
         ) : null}
       </div>
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
         <p className="cf-eyebrow text-cf-mist">
           {[p.subtype, p.area, p.from === "curated" ? "Passport's list" : null]
             .filter(Boolean)
@@ -246,19 +252,23 @@ function PlaceCard({
         </p>
         <p
           data-testid="place-name"
-          className="cf-serif text-cf-ink mt-1.5 text-[20px] leading-snug"
+          className="cf-serif text-cf-ink mt-1 text-[19px] leading-snug sm:mt-1.5 sm:text-[20px]"
         >
           {p.name}
         </p>
         {p.blurb ? (
-          <p className="text-cf-slate mt-2 line-clamp-2 text-[14px] leading-relaxed">
+          <p className="text-cf-slate mt-1.5 line-clamp-2 text-[14px] leading-relaxed sm:mt-2">
             {p.blurb}
           </p>
         ) : null}
-        <p className="text-cf-mist mt-3 text-[12px]">{walkLabel(p)}</p>
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+        <p className="text-cf-mist mt-2 text-[12px] sm:mt-3">{walkLabel(p)}</p>
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-3 sm:pt-4">
           {plansOn ? (
-            <Link href={planHref} className={btn.primary}>
+            <Link
+              href={planHref}
+              className={`${btn.primary} flex-1 sm:flex-none`}
+            >
+              <UsersRound aria-hidden="true" className="h-4 w-4" />
               Plan this
             </Link>
           ) : null}
@@ -267,7 +277,7 @@ function PlaceCard({
               type="button"
               onClick={() => onAdding(!adding)}
               aria-expanded={adding}
-              className={btn.secondary}
+              className={`${btn.secondary} flex-1 sm:flex-none`}
             >
               Add to a plan
             </button>

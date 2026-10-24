@@ -50,7 +50,7 @@ export default async function PlansPage({
         title="Plans"
         lede="Somebody says “coffee at 8?” and three people turn up. That's the whole idea."
       />
-      <div className="mx-auto max-w-[1180px] px-5 *:max-w-[820px] sm:px-8">
+      <div className="mx-auto max-w-[1180px] px-4 *:max-w-[820px] sm:px-8">
         <Reminders conferenceId={c.id} />
       </div>
       <PlansBoard

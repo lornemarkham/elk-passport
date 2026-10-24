@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import {
   agendaDays,
   dayEntries,
@@ -8,7 +9,7 @@ import {
   today as todayOf,
   type DayEntry,
 } from "@/domain/conference/agenda";
-import { clock } from "@/domain/conference-plans/time";
+import { clock, untilWords } from "@/domain/conference-plans/time";
 import { conferenceSetup } from "@/lib/conference/config";
 import { conferenceContext, readIdentity } from "@/lib/conference/request";
 import { readPlans } from "@/lib/conference-plans/service";
@@ -28,6 +29,9 @@ import { Directions } from "@/components/conference-together/Directions";
 import { venueAnchor } from "@/lib/conference-explore/places";
 
 export const dynamic = "force-dynamic";
+
+const fold =
+  "border-cf-line text-cf-slate peer-focus-visible:ring-cf-ink/40 flex min-h-11 cursor-pointer items-center justify-between rounded-xl border border-dashed px-4 text-[13px] font-semibold peer-focus-visible:ring-2";
 
 const dayTab = (ymd: string) => {
   const d = new Date(`${ymd}T12:00:00Z`);
@@ -88,6 +92,12 @@ export default async function AgendaPage({
   const published = (c.agenda ?? []).length > 0;
   const t = (iso: string) => clock(new Date(iso), tz);
   const venue = venueAnchor(c);
+  const isDone = (e: DayEntry) =>
+    effectiveEnd(e, entries).getTime() <= now.getTime();
+  const earlier = isToday ? entries.filter(isDone).length : 0;
+  const upNext = isToday
+    ? (entries.find((e) => Date.parse(e.startsAt) > now.getTime()) ?? null)
+    : null;
 
   return (
     <>
@@ -113,18 +123,18 @@ export default async function AgendaPage({
       <div className={`${wrap} pb-16`}>
         <nav
           aria-label="Days"
-          className="-mx-5 mt-6 overflow-x-auto px-5 sm:mx-0 sm:px-0"
+          className="cf-shelf -mx-4 mt-4 overflow-x-auto px-4 sm:mx-0 sm:mt-6 sm:px-0"
         >
           <ul className="flex gap-2">
             {days.map((d, i) => {
               const tab = dayTab(d);
               const on = d === day;
               return (
-                <li key={d}>
+                <li key={d} className="min-w-[88px] flex-1 sm:flex-none">
                   <Link
                     href={`${base}/schedule?day=${d}`}
                     aria-current={on ? "page" : undefined}
-                    className={`flex min-w-[92px] flex-col rounded-xl border px-4 py-2.5 transition ${
+                    className={`flex min-h-12 flex-col rounded-xl border px-3 py-2 transition sm:min-w-[92px] sm:px-4 sm:py-2.5 ${
                       on
                         ? "border-cf-ink bg-cf-ink text-white"
                         : "border-cf-line text-cf-ink hover:border-cf-ink/30 bg-white"
@@ -135,7 +145,7 @@ export default async function AgendaPage({
                     >
                       {d === ymdNow ? "Today" : `Day ${i + 1}`}
                     </span>
-                    <span className="mt-0.5 text-[14px] font-semibold">
+                    <span className="mt-0.5 text-[13px] font-semibold whitespace-nowrap sm:text-[14px]">
                       {tab.weekday} {tab.date}
                     </span>
                   </Link>
@@ -145,8 +155,51 @@ export default async function AgendaPage({
           </ul>
         </nav>
 
-        <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="min-w-0">
+        {c.venue ? (
+          <div
+            className="border-cf-line mt-4 flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 lg:hidden"
+            data-testid="agenda-venue"
+          >
+            <MapPin
+              className="text-cf-slate h-4 w-4 shrink-0"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="text-cf-ink min-w-0 flex-1 truncate text-[14px] font-semibold">
+              {c.venue.name}
+            </span>
+            {venue ? (
+              <Directions name={venue.name} at={venue.at} compact />
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="mt-5 grid gap-10 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="cf-agenda-day min-w-0">
+            {earlier ? (
+              // On a phone, what's finished folds away so today opens on now.
+              <div className="mb-3 sm:hidden">
+                <input
+                  type="checkbox"
+                  id="cf-earlier"
+                  className="peer sr-only"
+                />
+                <label
+                  htmlFor="cf-earlier"
+                  className={`${fold} peer-checked:hidden`}
+                >
+                  Show {earlier} earlier today
+                  <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                </label>
+                <label
+                  htmlFor="cf-earlier"
+                  className={`${fold} hidden peer-checked:flex`}
+                >
+                  Hide earlier sessions
+                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                </label>
+              </div>
+            ) : null}
             {!entries.length ? (
               published ? (
                 <EmptyNote title="Nothing on the agenda this day.">
@@ -186,7 +239,7 @@ export default async function AgendaPage({
               <ol className="relative" data-testid="agenda">
                 <span
                   aria-hidden="true"
-                  className="bg-cf-line absolute top-2 bottom-2 left-[92px] w-px sm:left-[116px]"
+                  className="bg-cf-line absolute top-2 bottom-2 left-[74px] w-px sm:left-[116px]"
                 />
                 {entries.map((e) => {
                   const start = Date.parse(e.startsAt);
@@ -194,23 +247,31 @@ export default async function AgendaPage({
                   const live =
                     isToday && start <= now.getTime() && end > now.getTime();
                   const done = isToday && end <= now.getTime();
+                  const next = e === upNext;
                   const plan = e.source === "plan";
                   const body = (
                     <div
-                      className={`rounded-2xl px-5 py-4 transition ${
+                      className={`rounded-2xl px-4 py-3 transition sm:px-5 sm:py-4 ${
                         live
                           ? "bg-cf-ink text-white shadow-[0_16px_40px_-20px_rgba(23,24,27,0.6)]"
                           : plan
                             ? "border-cf-line hover:border-cf-ink/25 border border-dashed bg-white/70"
                             : e.featured
                               ? "border-cf-brass/40 border bg-[#fbf7ef]"
-                              : "border-cf-line border bg-white"
+                              : next
+                                ? "border-cf-ink/40 border bg-white shadow-[0_8px_24px_-16px_rgba(23,24,27,0.5)]"
+                                : "border-cf-line border bg-white"
                       }`}
                     >
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 empty:hidden">
                         {live ? (
                           <Pill tone="live" dot>
                             Now
+                          </Pill>
+                        ) : null}
+                        {next ? (
+                          <Pill tone="neutral" data-testid="agenda-next">
+                            Next · {untilWords(new Date(e.startsAt), now)}
                           </Pill>
                         ) : null}
                         {e.featured ? (
@@ -230,23 +291,32 @@ export default async function AgendaPage({
                         ) : null}
                       </div>
                       <p
-                        className={`cf-serif mt-1 text-[19px] leading-snug ${live ? "text-white" : "text-cf-ink"}`}
+                        className={`cf-serif mt-1 text-[17px] leading-snug sm:text-[19px] ${live ? "text-white" : "text-cf-ink"}`}
                       >
                         {e.title}
                       </p>
                       <p
-                        className={`mt-1 text-[14px] ${live ? "text-white/65" : "text-cf-slate"}`}
+                        className={`mt-1 flex items-start gap-1.5 text-[13px] sm:text-[14px] ${live ? "text-white/65" : "text-cf-slate"}`}
                       >
-                        {e.where ??
-                          (plan ? "Place to be decided" : "Location not given")}
-                        {plan ? ` · ${e.going ?? 0} going` : ""}
-                        {plan && e.mine
-                          ? ` · you: ${e.mine === "in" ? "I'm in" : e.mine === "maybe" ? "maybe" : "can't make it"}`
-                          : ""}
+                        <MapPin
+                          aria-hidden="true"
+                          className="mt-[3px] h-3.5 w-3.5 shrink-0"
+                          strokeWidth={1.8}
+                        />
+                        <span className="min-w-0">
+                          {e.where ??
+                            (plan
+                              ? "Place to be decided"
+                              : "Location not given")}
+                          {plan ? ` · ${e.going ?? 0} going` : ""}
+                          {plan && e.mine
+                            ? ` · you: ${e.mine === "in" ? "I'm in" : e.mine === "maybe" ? "maybe" : "can't make it"}`
+                            : ""}
+                        </span>
                       </p>
                       {e.note ? (
                         <p
-                          className={`mt-2 text-[14px] leading-relaxed ${live ? "text-white/75" : "text-cf-slate"}`}
+                          className={`mt-1.5 text-[13px] leading-relaxed sm:mt-2 sm:text-[14px] ${live ? "text-white/75" : "text-cf-slate"}`}
                         >
                           {e.note}
                         </p>
@@ -256,23 +326,25 @@ export default async function AgendaPage({
                   return (
                     <li
                       key={`${e.source}-${e.id}-${e.occurrenceId ?? ""}`}
-                      className={`relative grid grid-cols-[80px_minmax(0,1fr)] gap-6 pb-4 sm:grid-cols-[100px_minmax(0,1fr)] sm:gap-8 ${done ? "opacity-55" : ""}`}
+                      id={live ? "now" : undefined}
+                      className={`relative grid scroll-mt-24 grid-cols-[64px_minmax(0,1fr)] gap-5 pb-3 sm:grid-cols-[100px_minmax(0,1fr)] sm:gap-8 sm:pb-4 ${done ? "opacity-55" : ""}`}
                       data-entry={e.source}
                       data-live={live ? "true" : undefined}
+                      data-done={done ? "" : undefined}
                     >
-                      <div className="pt-4 text-right">
-                        <p className="text-cf-ink text-[15px] font-semibold tabular-nums">
+                      <div className="pt-3 text-right sm:pt-4">
+                        <p className="text-cf-ink text-[13px] font-semibold whitespace-nowrap tabular-nums sm:text-[15px]">
                           {t(e.startsAt)}
                         </p>
                         {e.endsAt ? (
-                          <p className="text-cf-mist text-[12px] tabular-nums">
+                          <p className="text-cf-mist text-[11px] whitespace-nowrap tabular-nums sm:text-[12px]">
                             – {t(e.endsAt)}
                           </p>
                         ) : null}
                       </div>
                       <span
                         aria-hidden="true"
-                        className={`ring-cf-paper absolute top-[22px] left-[88px] h-[9px] w-[9px] rounded-full ring-4 sm:left-[112px] ${
+                        className={`ring-cf-paper absolute top-[18px] left-[70px] h-[9px] w-[9px] rounded-full ring-4 sm:top-[22px] sm:left-[112px] ${
                           live
                             ? "bg-cf-sage"
                             : plan
@@ -311,7 +383,7 @@ export default async function AgendaPage({
               </p>
             ) : null}
           </div>
-          <aside className="min-w-0 space-y-5 lg:sticky lg:top-20 lg:self-start">
+          <aside className="hidden min-w-0 space-y-5 lg:sticky lg:top-20 lg:block lg:self-start">
             {venue ? (
               <Panel className="overflow-hidden">
                 <VenueMap

@@ -312,8 +312,9 @@ export function MemoriesPanel({
 
 /**
  * **For the organiser only, and only until it's done:** the few things that
- * make the overview useful to everyone else. Each line goes straight to the
- * setting that finishes it.
+ * make Home useful to everyone else. Each line goes straight to the setting
+ * that finishes it. It lives on Organiser settings; Home carries one line
+ * (`OrganiserNudge`), so setup never crowds what attendees came for.
  */
 export function OrganiserSetup({
   steps,
@@ -368,6 +369,38 @@ export function OrganiserSetup({
         ))}
       </ol>
     </Panel>
+  );
+}
+
+/** Home's one line for an organiser with setup still to do. */
+export function OrganiserNudge({ left, href }: { left: number; href: string }) {
+  if (!left) return null;
+  return (
+    <Link
+      href={href}
+      data-testid="organiser-nudge"
+      className="border-cf-line hover:border-cf-ink/30 flex min-h-12 items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition"
+    >
+      <span
+        aria-hidden="true"
+        className="bg-cf-brass h-2 w-2 shrink-0 rounded-full"
+      />
+      <span className="min-w-0 flex-1 text-[14px] leading-snug">
+        <span className="text-cf-ink font-semibold">
+          {left === 1
+            ? "One thing left to set up"
+            : `${left} things left to set up`}
+        </span>
+        <span className="text-cf-slate hidden sm:inline">
+          {" "}
+          · only you see this
+        </span>
+      </span>
+      <span className="text-cf-slate shrink-0 text-[13px] font-semibold">
+        <span className="sm:hidden">Settings →</span>
+        <span className="hidden sm:inline">Organiser settings →</span>
+      </span>
+    </Link>
   );
 }
 

@@ -8,7 +8,7 @@ import {
   CalendarDays,
   Camera,
   Compass,
-  LayoutGrid,
+  House,
   MessageSquare,
   PlaneLanding,
   Settings,
@@ -19,7 +19,7 @@ import {
 import { Avatar } from "../kit";
 
 const ICONS = {
-  overview: LayoutGrid,
+  home: House,
   arrivals: PlaneLanding,
   agenda: CalendarDays,
   explore: Compass,
@@ -29,20 +29,25 @@ const ICONS = {
   memories: Camera,
   settings: Settings,
   back: ArrowLeft,
+  ghad: Compass,
 } as const;
 
 export interface BarLink {
   readonly href: string;
   readonly label: string;
   readonly icon: keyof typeof ICONS;
-  /** Active only on this exact path (the overview), not its children. */
+  /** Active only on this exact path (Home), not its children. */
   readonly exact?: boolean;
+  /** Only in the phone's menu (where Go Have a Day's bar is hidden). */
+  readonly phoneOnly?: boolean;
 }
 
 /**
  * The conference bar. On a wide screen: name, tabs, messages, profile. On a
- * phone: name, messages and profile on top, the tabs as a bar along the
- * bottom edge where a thumb is.
+ * phone: name, messages and profile on top, the five tabs as a bar along the
+ * bottom edge where a thumb is — each a full fifth of the width and 64 px
+ * tall, the current one lit by a pill behind its icon (as Hockey Night's
+ * bar is lit by its marker), clear of the home indicator.
  */
 export function ConferenceBar({
   home,
@@ -74,11 +79,11 @@ export function ConferenceBar({
   return (
     <>
       <div className="border-cf-line bg-cf-paper/90 supports-[backdrop-filter]:bg-cf-paper/75 sticky top-0 z-30 border-b backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1180px] items-center gap-4 px-5 sm:px-8">
+        <div className="mx-auto flex h-14 max-w-[1180px] items-center gap-3 px-4 sm:gap-4 sm:px-8">
           <Link
             href={home}
             className="flex min-w-0 items-center gap-2.5"
-            aria-label={`${name}, overview`}
+            aria-label={`${name}, home`}
           >
             <span
               aria-hidden="true"
@@ -139,10 +144,10 @@ export function ConferenceBar({
 
       <nav
         aria-label="Conference sections"
-        className="border-cf-line fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="border-cf-line bg-cf-card/95 fixed inset-x-0 bottom-0 z-30 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
         <ul
-          className="mx-auto grid max-w-[560px]"
+          className="mx-auto grid max-w-[560px] px-1"
           style={{
             gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
           }}
@@ -155,11 +160,21 @@ export function ConferenceBar({
                 <Link
                   href={t.href}
                   aria-current={on ? "page" : undefined}
-                  className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
+                  className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-semibold tracking-[0.01em] transition active:scale-[0.96] ${
                     on ? "text-cf-ink" : "text-cf-mist"
                   }`}
                 >
-                  <Icon className="h-5 w-5" strokeWidth={on ? 2.1 : 1.7} />
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${
+                      on ? "bg-cf-sand" : ""
+                    }`}
+                  >
+                    <Icon
+                      className="h-[22px] w-[22px]"
+                      strokeWidth={on ? 2.2 : 1.7}
+                    />
+                  </span>
                   {t.label}
                 </Link>
               </li>
@@ -227,7 +242,9 @@ function ProfileMenu({
                 href={m.href}
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="text-cf-ink hover:bg-cf-paper flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium"
+                className={`text-cf-ink hover:bg-cf-paper flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium ${
+                  m.phoneOnly ? "md:hidden" : ""
+                }`}
               >
                 <Icon className="text-cf-slate h-4 w-4" strokeWidth={1.8} />
                 {m.label}

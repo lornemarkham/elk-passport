@@ -55,9 +55,12 @@ export function ChatRoom({
   };
 
   return (
-    <div className="mx-auto max-w-[1180px] px-5 pb-40 *:max-w-[820px] sm:px-8">
+    <div className="mx-auto max-w-[1180px] px-4 pb-40 *:max-w-[820px] sm:px-8">
       {rooms.length > 1 ? (
-        <nav aria-label="Rooms" className="-mx-5 mt-4 overflow-x-auto px-5">
+        <nav
+          aria-label="Rooms"
+          className="-mx-4 mt-4 overflow-x-auto px-4 sm:-mx-8 sm:px-8"
+        >
           <ul className="flex gap-2">
             {rooms.map((r) => {
               const here = r.id === room.room;

@@ -390,3 +390,29 @@
     animation: none;
   }
 }
+/* Inside a conference on a phone, the conference's own bars are the
+   navigation (top: name, messages, you; bottom: the five tabs), so Go Have
+   a Day's bar steps aside — it is one item in the profile menu instead.
+   Two stacked top bars left a phone ~150 px of chrome before any content. */
+@media (max-width: 767px) {
+  body:has([data-cf-frame]) .cf-global-nav {
+    display: none;
+  }
+}
+/* Today's agenda on a phone opens on now: finished sessions fold away
+   behind "Show n earlier today" (a checkbox, so it works without script). */
+@media (max-width: 639px) {
+  .cf-agenda-day li[data-done] {
+    display: none;
+  }
+  .cf-agenda-day:has(#cf-earlier:checked) li[data-done] {
+    display: grid;
+  }
+}
+/* Horizontal shelves on a phone: swipe, no scrollbar drawn. */
+.cf-shelf {
+  scrollbar-width: none;
+}
+.cf-shelf::-webkit-scrollbar {
+  display: none;
+}

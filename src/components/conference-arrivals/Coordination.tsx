@@ -3,7 +3,7 @@ import type {
   ArrivalsDigest,
   DigestEntry,
 } from "@/domain/conference-arrivals/digest";
-import { clock, dayWords } from "@/domain/conference-plans/time";
+import { clock, dayWords, utcToZoned } from "@/domain/conference-plans/time";
 import {
   Avatar,
   AvatarStack,
@@ -44,7 +44,10 @@ export function Coordination({
   now: Date;
   plansOn: boolean;
 }) {
-  const meetHref = (g: ArrivalsDigest["together"][number]) => {
+  const meetHref = (
+    g: { to: string; day: string },
+    title = `Ride in from ${d.airport} together`,
+  ) => {
     const last = new Date(Date.parse(g.to) + 15 * 60_000);
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone,
@@ -54,14 +57,28 @@ export function Coordination({
     }).format(last);
     return `/conferences/${conferenceId}/plans?${new URLSearchParams({
       kind: "custom",
-      title: `Ride in from ${d.airport} together`,
+      title,
       meeting: `${d.airport} arrivals hall`,
       day: g.day,
       time: parts,
     })}`;
   };
+  // Your own landing still to come, and nobody near it: offer a ride anyway.
+  const yours = d.timeline
+    .flatMap((t) => t.entries)
+    .find((e) => e.you && e.at && e.kind !== "landed");
+  const offer =
+    plansOn &&
+    yours &&
+    Date.parse(yours.at!) > now.getTime() &&
+    !d.together.some((g) => g.people.some((p) => p.you))
+      ? { to: yours.at!, day: utcToZoned(new Date(yours.at!), timeZone).ymd }
+      : null;
   return (
-    <div data-testid="arrivals-coordination" className="space-y-10">
+    <div
+      data-testid="arrivals-coordination"
+      className="space-y-8 sm:space-y-10"
+    >
       <section>
         <PanelHead eyebrow="Who's here" title={`${d.landed.length} landed`} />
         {d.landed.length ? (
@@ -101,6 +118,22 @@ export function Coordination({
         )}
       </section>
 
+      {offer ? (
+        <section data-testid="offer-ride">
+          <PanelHead eyebrow="Getting in" title="Share the ride in" />
+          <p className="text-cf-slate mt-1 text-[14px] leading-relaxed">
+            Nobody else lands close to you yet. Offer a ride from {d.airport}
+            {" — "}it becomes a plan colleagues can join, with its own thread.
+          </p>
+          <Link
+            href={meetHref(offer, `Ride in from ${d.airport}`)}
+            className={`${btn.secondary} mt-4`}
+          >
+            Offer a ride from {d.airport}
+          </Link>
+        </section>
+      ) : null}
+
       {d.together.length ? (
         <section>
           <PanelHead eyebrow="Landing together" title="Share the ride in" />
@@ -114,7 +147,7 @@ export function Coordination({
             {d.together.map((g) => (
               <li
                 key={g.from}
-                className="border-cf-line rounded-2xl border bg-white p-5"
+                className="border-cf-line rounded-2xl border bg-white p-4 sm:p-5"
               >
                 <div className="flex items-center gap-3">
                   <AvatarStack

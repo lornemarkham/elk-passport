@@ -140,7 +140,7 @@ export function FindMyPeople({
     : 0;
 
   return (
-    <div className="mx-auto max-w-[1180px] px-5 pb-16 *:max-w-[820px] sm:px-8">
+    <div className="mx-auto max-w-[1180px] px-4 pb-16 *:max-w-[820px] sm:px-8">
       {centre ? (
         <div className="mt-6">
           <PeopleMap

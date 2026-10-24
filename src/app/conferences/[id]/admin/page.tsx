@@ -11,6 +11,8 @@ import { AgendaEditor } from "@/components/conference/AgendaEditor";
 import { Closed } from "@/components/conference/Closed";
 import { DetailsForm } from "@/components/conference/DetailsForm";
 import { PageHead, Panel, PanelHead, wrap } from "@/components/conference/kit";
+import { OrganiserSetup } from "@/components/conference/overview/Panels";
+import { setupSteps } from "@/components/conference/overview/setup";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +24,9 @@ const SECTIONS = [
 ] as const;
 
 /**
- * **The organiser's settings.** Ways in first, because a new conference has
- * none; then the agenda, the details (venue included) and the people. It is
+ * **The organiser's settings.** What's left to set up first (moved here from
+ * Home, so attendees' Home leads with the conference), then ways in, because
+ * a new conference has none; then the agenda, the details (venue included) and the people. It is
  * the only place administrative forms live — the overview has none.
  */
 export default async function AdminPage({
@@ -66,6 +69,9 @@ export default async function AdminPage({
       </PageHead>
       <div className={wrap}>
         <div className="max-w-[880px] space-y-6 pt-6 pb-20">
+          <OrganiserSetup
+            steps={setupSteps(view.conference, view.people.total)}
+          />
           <Panel className="p-5 sm:p-7">
             <div id="access" className="scroll-mt-24" />
             <PanelHead eyebrow="Ways in" title="Invite people" />
