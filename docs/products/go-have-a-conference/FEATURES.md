@@ -21,8 +21,8 @@
 | 3   | Private membership and invitations           | **Built:** 404 for non-members, hidden by default. Per-person invitations are proposed                                                                                     | conference           | Must    |
 | 4   | Shareable links and access codes             | **Built:** expiring, use-limited and revocable links; rotatable, switch-off-able codes; a brake on wrong guesses                                                           | conference           | Must    |
 | 5   | Branding and customization                   | **Partial:** accent colour (with readable ink), tagline, welcome. Cover image proposed                                                                                     | conference           | Must    |
-| 6   | Schedules and organized activities           | **Proposed.** Module slot and placeholder route exist                                                                                                                      | events               | Must    |
-| 7   | Staff hockey game as featured activity       | **Prototype:** `lane/boards` `62e9900` (_Awaiting confirmation_), Sycle-in-code                                                                                            | events               | Must    |
+| 6   | Schedules and organized activities           | **Built (2026-10-23, [EXECUTIVE.md](EXECUTIVE.md)):** the organiser publishes the agenda; _Agenda_ tab and the overview's now / next / where                               | events               | Must    |
+| 7   | Staff hockey game as featured activity       | **Partial:** any agenda line can be _Featured_; the `lane/boards` _Awaiting confirmation_ treatment is not carried over                                                    | events               | Must    |
 | 8   | Flight number entry and arrival dates        | **Built:** `arrivals` module, flight number + date + optional departure, opt-in sharing ([`ARRIVALS.md`](ARRIVALS.md))                                                     | flights              | Must    |
 | 9   | Shared world map of incoming flights         | **Built:** MapLibre on OpenFreeMap, centred on the conference's airport, members only                                                                                      | flights              | Must*   |
 | 10  | Live positions where provider permits        | **Built:** ADSB.lol, matched to a flight only on evidence; stale positions labelled. No ocean coverage; scheduled times need D5                                            | flights              | Later   |
@@ -45,6 +45,11 @@
 | 27  | Reusable for retreats, weddings, etc.        | **Partial:** `kind` (6 kinds) changes wording only; Sycle is a config fixture, not code                                                                                    | conference           | Must    |
 
 \* Cut line 2 in the roadmap: the map goes before the arrivals list does.
+
+**2026-10-23 — Executive overhaul:** one conference bar (Overview · Arrivals ·
+Agenda · Explore · People), an overview led by the participant's journey, the
+agenda, an arrivals timeline, a people directory, venue, and settings behind
+the profile and organiser menu. See [EXECUTIVE.md](EXECUTIVE.md).
 
 **2026-10-23 — Conference, together:** plans (recurring, invitations,
 RSVPs, venue votes), chat, find my people, memories, reminders, Explore and a

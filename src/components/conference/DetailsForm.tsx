@@ -34,6 +34,8 @@ export function DetailsForm({
     welcome: initial?.welcome ?? "",
     placeLabel: initial?.place.label ?? "",
     townId: initial?.place.townId ?? "",
+    venueName: initial?.venue?.name ?? "",
+    venueAddress: initial?.venue?.address ?? "",
     timeZone: initial?.timeZone ?? "America/Vancouver",
     startsOn: initial?.startsOn ?? "",
     endsOn: initial?.endsOn ?? "",
@@ -69,7 +71,7 @@ export function DetailsForm({
         {issues[path]}
       </span>
     ) : null;
-  const label = "block text-[14px] font-semibold text-black/70";
+  const label = "block text-[13px] font-semibold text-cf-slate";
 
   return (
     <form
@@ -85,6 +87,7 @@ export function DetailsForm({
           tagline: d.tagline,
           welcome: d.welcome,
           place: { label: d.placeLabel, townId: d.townId },
+          venue: { name: d.venueName, address: d.venueAddress },
           timeZone: d.timeZone,
           startsOn: d.startsOn,
           endsOn: d.endsOn,
@@ -180,6 +183,31 @@ export function DetailsForm({
         </label>
       </div>
 
+      <div className="grid gap-5 sm:grid-cols-2">
+        <label className={label}>
+          Venue <span className="text-cf-mist font-normal">(if you know)</span>
+          <input
+            className={`${field} mt-1`}
+            value={d.venueName}
+            onChange={(e) => set("venueName", e.target.value)}
+            placeholder="Vancouver Convention Centre West"
+            maxLength={80}
+          />
+          {issue("venue.name")}
+        </label>
+        <label className={label}>
+          Venue address{" "}
+          <span className="text-cf-mist font-normal">(optional)</span>
+          <input
+            className={`${field} mt-1`}
+            value={d.venueAddress}
+            onChange={(e) => set("venueAddress", e.target.value)}
+            placeholder="1055 Canada Place"
+            maxLength={120}
+          />
+        </label>
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-3">
         <label className={label}>
           Starts
@@ -192,7 +220,7 @@ export function DetailsForm({
           {issue("startsOn")}
         </label>
         <label className={label}>
-          Ends <span className="font-normal text-black/45">(if you know)</span>
+          Ends <span className="text-cf-mist font-normal">(if you know)</span>
           <input
             type="date"
             className={`${field} mt-1`}
@@ -221,7 +249,7 @@ export function DetailsForm({
 
       <label className={label}>
         One line about it{" "}
-        <span className="font-normal text-black/45">(optional)</span>
+        <span className="text-cf-mist font-normal">(optional)</span>
         <input
           className={`${field} mt-1`}
           value={d.tagline}
@@ -233,7 +261,7 @@ export function DetailsForm({
 
       <label className={label}>
         A welcome, in your words{" "}
-        <span className="font-normal text-black/45">(optional)</span>
+        <span className="text-cf-mist font-normal">(optional)</span>
         <textarea
           className={`${field} mt-1 min-h-[96px]`}
           value={d.welcome}
@@ -246,7 +274,7 @@ export function DetailsForm({
         Your colour
         <input
           type="color"
-          className="h-11 w-16 cursor-pointer rounded-lg border border-black/15"
+          className="border-cf-line h-11 w-16 cursor-pointer rounded-lg border"
           value={d.accent}
           onChange={(e) => set("accent", e.target.value)}
         />
@@ -258,11 +286,11 @@ export function DetailsForm({
           {MODULES.map((m) => (
             <label
               key={m.id}
-              className="flex items-start gap-3 rounded-xl border border-black/10 p-3"
+              className="border-cf-line flex items-start gap-3 rounded-xl border bg-white p-3"
             >
               <input
                 type="checkbox"
-                className="mt-1 h-5 w-5"
+                className="mt-1 h-4 w-4 accent-[#17181b]"
                 checked={d.modules.has(m.id)}
                 onChange={(e) => {
                   const next = new Set(d.modules);
@@ -274,11 +302,11 @@ export function DetailsForm({
               <span>
                 <span className="font-semibold">{m.label}</span>
                 {m.status === "proposed" ? (
-                  <span className="ml-2 rounded-full bg-black/5 px-2 py-0.5 text-[12px] text-black/55">
+                  <span className="bg-cf-sand text-cf-slate ml-2 rounded-full px-2 py-0.5 text-[12px]">
                     not built yet
                   </span>
                 ) : null}
-                <span className="block text-[14px] text-black/55">
+                <span className="text-cf-slate block text-[14px]">
                   {m.promise}
                 </span>
               </span>
@@ -292,7 +320,7 @@ export function DetailsForm({
           {conferenceId ? "Save" : "Create it"}
         </button>
         {saved ? (
-          <span className="ml-3 text-[14px] text-black/55">Saved.</span>
+          <span className="text-cf-slate ml-3 text-[14px]">Saved.</span>
         ) : null}
         <Problem>{problem}</Problem>
       </div>

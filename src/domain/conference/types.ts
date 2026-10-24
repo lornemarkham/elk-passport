@@ -68,6 +68,37 @@ export interface ConferencePlace {
   readonly townId?: string;
 }
 
+/**
+ * Where the conference actually happens, in the organiser's words: "Vancouver
+ * Convention Centre West", "1055 Canada Place". Absent until they say. Explore
+ * measures walks from it only when it matches a place Passport knows; the
+ * words alone never become coordinates.
+ */
+export interface ConferenceVenue {
+  readonly name: string;
+  readonly address?: string;
+}
+
+/**
+ * One line of the published agenda: what, when, where. Typed by an organiser
+ * and shown as theirs. Times are wall-clock in the conference's own zone.
+ * `featured` is the one thing everybody is talking about (VISION §5.2): the
+ * hockey game, the ceremony.
+ */
+export interface AgendaItem {
+  readonly id: string;
+  /** `YYYY-MM-DD`, in the conference's zone. */
+  readonly day: string;
+  /** `HH:mm`. */
+  readonly start: string;
+  /** `HH:mm`, after `start`. Absent when it simply runs until the next thing. */
+  readonly end?: string;
+  readonly title: string;
+  readonly where?: string;
+  readonly note?: string;
+  readonly featured?: boolean;
+}
+
 export interface ConferenceBranding {
   /** `#rrggbb`. Validated, because it is written into a style attribute. */
   readonly accent: string;
@@ -80,6 +111,9 @@ export interface ConferenceDetails {
   readonly tagline?: string;
   readonly welcome?: string;
   readonly place: ConferencePlace;
+  readonly venue?: ConferenceVenue;
+  /** The organiser's published agenda, in time order. Empty or absent: none yet. */
+  readonly agenda?: readonly AgendaItem[];
   /** IANA zone the dates are in, e.g. `America/Vancouver`. */
   readonly timeZone: string;
   /** `YYYY-MM-DD`, in `timeZone`. */

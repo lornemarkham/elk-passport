@@ -140,7 +140,7 @@ export function FindMyPeople({
     : 0;
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 pb-16">
+    <div className="mx-auto max-w-[1180px] px-5 pb-16 *:max-w-[820px] sm:px-8">
       {centre ? (
         <div className="mt-6">
           <PeopleMap
@@ -153,15 +153,15 @@ export function FindMyPeople({
       ) : null}
 
       <section
-        className="mt-5 rounded-3xl border-2 border-black p-5"
+        className="border-cf-line mt-5 rounded-2xl border bg-white p-5 shadow-[0_1px_2px_rgba(23,24,27,0.04)]"
         aria-label="Your location"
       >
         {view.you.sharing ? (
           <>
-            <p className="text-[18px] font-black" data-testid="sharing">
+            <p className="text-[18px] font-semibold" data-testid="sharing">
               📡 You&apos;re sharing where you are
             </p>
-            <p className="mt-1 text-[15px] text-black/65">
+            <p className="text-cf-slate mt-1 text-[15px]">
               For {left} more minute{left === 1 ? "" : "s"}, with people in this
               conference. It stops by itself, or now:
             </p>
@@ -169,15 +169,15 @@ export function FindMyPeople({
               type="button"
               onClick={stop}
               disabled={busy}
-              className="mt-3 min-h-12 w-full rounded-xl bg-[#b42318] px-5 text-[17px] font-black text-white"
+              className="mt-3 min-h-12 w-full rounded-xl bg-[#b42318] px-5 text-[17px] font-semibold text-white"
             >
               Stop sharing now
             </button>
           </>
         ) : view.you.canShare ? (
           <>
-            <p className="text-[18px] font-black">Share where you are</p>
-            <p className="mt-1 text-[15px] text-black/65">
+            <p className="text-[18px] font-semibold">Share where you are</p>
+            <p className="text-cf-slate mt-1 text-[15px]">
               Coworkers in this conference see you on this map until the time
               runs out or you stop. Nobody else ever does.
             </p>
@@ -194,8 +194,8 @@ export function FindMyPeople({
                   onClick={() => setMinutes(m)}
                   className={`min-h-11 rounded-full border px-3 text-[15px] ${
                     minutes === m
-                      ? "border-black bg-black font-bold text-white"
-                      : "border-black/15"
+                      ? "border-cf-ink bg-cf-ink font-bold text-white"
+                      : "border-cf-line"
                   }`}
                 >
                   {LENGTH[m]}
@@ -209,7 +209,7 @@ export function FindMyPeople({
                 maxLength={60}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="By the big blue heron"
-                className="mt-1 w-full rounded-xl border border-black/15 px-4 py-3 text-[16px] font-normal"
+                className="border-cf-line mt-1 w-full rounded-xl border px-4 py-3 text-[16px] font-normal"
               />
             </label>
             <button
@@ -222,7 +222,7 @@ export function FindMyPeople({
             </button>
           </>
         ) : (
-          <p className="text-[15px] text-black/65">
+          <p className="text-cf-slate text-[15px]">
             To share where you are, first choose a name and to be seen on the{" "}
             <Link
               href={`/conferences/${conferenceId}#you`}
@@ -237,7 +237,7 @@ export function FindMyPeople({
       </section>
 
       <section className="mt-8" aria-label="Who's sharing">
-        <h2 className="text-[13px] font-bold tracking-[0.14em] text-black/50 uppercase">
+        <h2 className="text-cf-mist text-[13px] font-bold tracking-[0.14em] uppercase">
           Sharing now · {others.length}
         </h2>
         {others.length ? (
@@ -245,11 +245,11 @@ export function FindMyPeople({
             {others.map((p) => (
               <li
                 key={p.memberId}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 p-3"
+                className="border-cf-line flex items-center justify-between gap-3 rounded-2xl border p-3"
               >
                 <span className="min-w-0">
                   <span className="block text-[17px] font-bold">{p.name}</span>
-                  <span className="text-[13px] text-black/55">
+                  <span className="text-cf-mist text-[13px]">
                     {p.kmFromYou !== null
                       ? `${p.kmFromYou < 1 ? `${Math.round((p.kmFromYou * 1000) / 10) * 10} m` : `${p.kmFromYou.toFixed(1)} km`} away (straight line) · `
                       : ""}
@@ -265,14 +265,12 @@ export function FindMyPeople({
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-[15px] text-black/55">
+          <p className="text-cf-mist mt-3 text-[15px]">
             Nobody&apos;s sharing right now.
           </p>
         )}
       </section>
-      <p
-        className={`${secondary} mt-8 border-0 px-0 text-[13px] text-black/45`}
-      >
+      <p className={`${secondary} text-cf-mist mt-8 border-0 px-0 text-[13px]`}>
         Positions are rounded to about 10 metres, kept only until each share
         ends, and deleted when you stop. Map © OpenStreetMap contributors,
         OpenFreeMap.

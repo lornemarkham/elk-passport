@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ANSWER_WORDS, type Answer } from "@/domain/conference-plans/types";
 import { clock, dayWords } from "@/domain/conference-plans/time";
 import type { PlansBoard } from "@/lib/conference-plans/service";
+import { AvatarStack, EmptyNote, Pill } from "@/components/conference/kit";
 import { send, usePoll } from "./usePoll";
 
 /**
@@ -56,64 +57,69 @@ export function UpNext({
 
   if (!next.length)
     return (
-      <div className="rounded-2xl bg-black/[0.04] p-5">
-        <p className="text-[17px] font-bold">Nothing planned yet.</p>
-        <p className="mt-1 text-[15px] text-black/60">
-          A walk before the first session, lunch away from the venue, a drink
-          after. Somebody has to go first.
-        </p>
-        <Link
-          href={`/conferences/${conferenceId}/plans?kind=coffee`}
-          className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-black px-4 text-[15px] font-bold text-white"
-        >
-          + Make a plan
-        </Link>
-      </div>
+      <EmptyNote
+        title="No plans with colleagues yet."
+        action={{
+          href: `/conferences/${conferenceId}/plans?kind=dinner`,
+          label: "Suggest a dinner",
+        }}
+      >
+        A walk before the first session, lunch away from the venue, a drink
+        after. Somebody has to go first.
+      </EmptyNote>
     );
 
   return (
-    <ul className="flex flex-col gap-3" data-testid="up-next">
+    <ul className="grid gap-3 sm:grid-cols-2" data-testid="up-next">
       {next.map((p) => {
         const o = p.next!;
         const at = new Date(o.startsAt);
         const where = p.meeting?.label ?? p.venue?.name;
+        const names = o.going.map((g) => (g.you ? "You" : g.name));
         return (
           <li
             key={p.id}
-            className="rounded-2xl border border-black/10 p-4"
+            className="border-cf-line hover:border-cf-ink/20 flex flex-col rounded-2xl border bg-white p-5 transition"
             data-plan={p.title}
           >
             <Link
               href={`/conferences/${conferenceId}/plans#plan-${p.id}`}
-              className="block"
+              className="block flex-1"
             >
-              <span className="text-[13px] font-bold tracking-[0.1em] text-black/50 uppercase">
-                {p.emoji} {dayWords(at, tz, now)} · {clock(at, tz)}
-                {o.status === "soon"
-                  ? " · soon"
-                  : o.status === "now"
-                    ? " · now"
-                    : ""}
+              <span className="cf-eyebrow text-cf-mist flex items-center gap-2">
+                {p.kindLabel} · {dayWords(at, tz, now)} · {clock(at, tz)}
+                {o.status === "soon" || o.status === "now" ? (
+                  <Pill tone="live" dot>
+                    {o.status === "now" ? "Now" : "Soon"}
+                  </Pill>
+                ) : null}
+              </span>
+              <span className="cf-serif text-cf-ink mt-2 block text-[19px] leading-snug">
+                {p.title}
+              </span>
+              <span className="text-cf-slate mt-1 block text-[13px]">
+                {where ? where : "Place to be decided"}
                 {p.occurrences.length > 1
                   ? ` · ${p.occurrences.length} days`
                   : ""}
-              </span>
-              <span className="mt-0.5 block text-[19px] leading-tight font-black">
-                {p.title}
-              </span>
-              <span className="mt-0.5 block text-[14px] text-black/60">
-                {where ? `📍 ${where} · ` : ""}
-                {o.counts.in} going
-                {o.going.length
-                  ? ` — ${o.going
-                      .slice(0, 3)
-                      .map((g) => (g.you ? "you" : g.name))
-                      .join(", ")}${o.counts.in > 3 ? "…" : ""}`
+                {p.votes && !p.venue && p.options.length
+                  ? ` · ${p.options.length} ${p.options.length === 1 ? "place" : "places"} suggested`
                   : ""}
+              </span>
+              <span className="text-cf-slate mt-3 flex items-center gap-2 text-[13px]">
+                {names.length ? (
+                  <AvatarStack
+                    names={names}
+                    more={o.unnamed}
+                    size={24}
+                    max={4}
+                  />
+                ) : null}
+                {o.counts.in} going
               </span>
             </Link>
             <div
-              className="mt-3 grid grid-cols-3 gap-2"
+              className="bg-cf-paper mt-4 grid grid-cols-[1fr_1fr_1.35fr] gap-1 rounded-full p-1"
               role="group"
               aria-label={`Your answer for ${p.title}`}
             >
@@ -123,12 +129,12 @@ export function UpNext({
                   type="button"
                   aria-pressed={o.mine === a}
                   onClick={() => answer(p.id, o.id, o.mine === a ? null : a)}
-                  className={`min-h-11 rounded-xl border px-2 text-[14px] font-bold ${
+                  className={`min-h-9 rounded-full px-1.5 text-[13px] font-semibold whitespace-nowrap transition ${
                     o.mine === a
                       ? a === "in"
-                        ? "border-black bg-black text-white"
-                        : "border-black bg-black/10"
-                      : "border-black/15"
+                        ? "bg-cf-ink text-white shadow-sm"
+                        : "text-cf-ink bg-white shadow-sm"
+                      : "text-cf-slate hover:text-cf-ink"
                   }`}
                 >
                   {ANSWER_WORDS[a]}

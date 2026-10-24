@@ -16,10 +16,10 @@ export default async function NewConferencePage() {
 
   return (
     <div className="mx-auto max-w-[760px] px-5 pt-10">
-      <h1 className="text-[36px] leading-none font-black tracking-[-0.03em]">
+      <h1 className="text-[36px] leading-none font-semibold tracking-[-0.03em]">
         Start a conference
       </h1>
-      <p className="mt-3 mb-8 text-black/60">
+      <p className="text-cf-slate mt-3 mb-8">
         Nobody can get in until you turn on a code or make a link. You can
         change everything later.
       </p>

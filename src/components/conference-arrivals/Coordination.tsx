@@ -4,7 +4,12 @@ import type {
   DigestEntry,
 } from "@/domain/conference-arrivals/digest";
 import { clock, dayWords } from "@/domain/conference-plans/time";
-import { Section } from "@/components/conference/ui";
+import {
+  Avatar,
+  AvatarStack,
+  btn,
+  PanelHead,
+} from "@/components/conference/kit";
 
 const when = (e: DigestEntry, timeZone: string) =>
   e.at
@@ -56,94 +61,84 @@ export function Coordination({
     })}`;
   };
   return (
-    <div data-testid="arrivals-coordination">
-      <Section title={`Who's here · ${d.landed.length}`}>
+    <div data-testid="arrivals-coordination" className="space-y-10">
+      <section>
+        <PanelHead eyebrow="Who's here" title={`${d.landed.length} landed`} />
         {d.landed.length ? (
-          <ul className="flex flex-wrap gap-2" data-testid="landed">
+          <ul className="mt-4 flex flex-wrap gap-2" data-testid="landed">
             {d.landed.map((e) => (
               <li
                 key={e.memberId}
-                className="rounded-full bg-black/5 px-3 py-1.5 text-[15px]"
+                className="border-cf-line flex items-center gap-2 rounded-full border bg-white py-1 pr-3 pl-1 text-[14px]"
               >
-                ✅ {e.name}{" "}
-                <span className="text-black/50">· {when(e, timeZone)}</span>
+                <Avatar name={e.name} you={e.you} size={26} />
+                <span className="text-cf-ink font-semibold">{e.name}</span>
+                <span className="text-cf-mist">{when(e, timeZone)}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-[15px] text-black/55">Nobody has landed yet.</p>
+          <p className="text-cf-slate mt-3 text-[14px]">
+            Nobody has landed yet.
+          </p>
         )}
-      </Section>
+      </section>
 
-      <Section title="Arriving next">
+      <section data-testid="arriving-next">
+        <PanelHead
+          eyebrow="Arriving next"
+          title={d.next ? d.next.name : "No times shared yet"}
+        />
         {d.next ? (
-          <p className="text-[18px] font-bold" data-testid="arriving-next">
-            ✈️ {d.next.name} · {d.next.flight} ·{" "}
-            {dayWords(new Date(d.next.at!), timeZone, now)}{" "}
+          <p className="text-cf-slate mt-2 text-[15px]">
+            {d.next.flight} · {dayWords(new Date(d.next.at!), timeZone, now)}{" "}
             {when(d.next, timeZone)}
           </p>
         ) : (
-          <p className="text-[15px] text-black/55">
-            No arrival times shared yet.
+          <p className="text-cf-slate mt-2 text-[14px]">
+            Arrival times appear when people add them from their bookings.
           </p>
         )}
-      </Section>
+      </section>
 
       {d.together.length ? (
-        <Section
-          title="Landing together"
-          hint="Close enough to wait for each other and share a ride."
-        >
-          <ul className="flex flex-col gap-2" data-testid="landing-together">
+        <section>
+          <PanelHead eyebrow="Landing together" title="Share the ride in" />
+          <p className="text-cf-slate mt-1 text-[14px]">
+            Close enough to wait for each other at {d.airport}.
+          </p>
+          <ul
+            className="mt-4 grid gap-3 sm:grid-cols-2"
+            data-testid="landing-together"
+          >
             {d.together.map((g) => (
               <li
                 key={g.from}
-                className="rounded-2xl border border-black/10 p-4"
+                className="border-cf-line rounded-2xl border bg-white p-5"
               >
-                <p className="text-[16px] font-bold">
-                  {g.people.map((p) => p.name).join(", ")}
-                </p>
-                <p className="text-[14px] text-black/60">
+                <div className="flex items-center gap-3">
+                  <AvatarStack
+                    names={g.people.map((p) => (p.you ? "You" : p.name))}
+                    size={28}
+                  />
+                  <p className="text-cf-ink text-[15px] font-semibold">
+                    {g.people.map((p) => (p.you ? "You" : p.name)).join(", ")}
+                  </p>
+                </div>
+                <p className="text-cf-slate mt-2 text-[13px]">
                   {dayWords(new Date(g.from), timeZone, now)},{" "}
                   {clock(new Date(g.from), timeZone)}–
                   {clock(new Date(g.to), timeZone)} at {d.airport}
                 </p>
                 {plansOn ? (
-                  <Link
-                    href={meetHref(g)}
-                    className="mt-2 inline-flex min-h-11 items-center rounded-xl bg-black px-3 text-[14px] font-bold text-white"
-                  >
+                  <Link href={meetHref(g)} className={`${btn.primary} mt-4`}>
                     Meet at arrivals
                   </Link>
                 ) : null}
               </li>
             ))}
           </ul>
-        </Section>
-      ) : null}
-
-      {d.timeline.length ? (
-        <Section title="Arrival timeline">
-          <ol className="flex flex-col gap-4" data-testid="arrival-timeline">
-            {d.timeline.map((t) => (
-              <li key={t.day}>
-                <p className="text-[15px] font-black">
-                  {dayWords(new Date(`${t.day}T20:00:00Z`), timeZone, now)}
-                </p>
-                <ol className="mt-1 border-l-2 border-black/15 pl-3">
-                  {t.entries.map((e) => (
-                    <li key={e.memberId} className="py-1 text-[15px]">
-                      <span className="font-semibold">{when(e, timeZone)}</span>{" "}
-                      · {e.name} ·{" "}
-                      <span className="text-black/55">{e.flight}</span>
-                      {e.kind === "landed" ? " ✅" : ""}
-                    </li>
-                  ))}
-                </ol>
-              </li>
-            ))}
-          </ol>
-        </Section>
+        </section>
       ) : null}
     </div>
   );

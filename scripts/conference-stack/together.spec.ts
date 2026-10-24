@@ -78,6 +78,8 @@ async function joinByCode(page: Page, who: string, code: string, id: string) {
 }
 
 async function beSeen(page: Page, name: string) {
+  // How you appear lives on your profile, not on the overview.
+  await page.goto(page.url().replace(/(\/conferences\/[^/?#]+).*/, "$1/you"));
   await page.getByLabel("Your name here").fill(name);
   await page.getByLabel(/Show my name to other/).check();
   await page.getByRole("button", { name: "Save" }).click();
@@ -334,8 +336,9 @@ test("a conference day, together", async ({ browser }) => {
     timeout: 15_000,
   });
   await lunch.getByRole("button", { name: `Choose ${second}` }).click();
-  await expect(lunch).toContainText(`Going to: ${second}`);
-  await expect(anaLunch).toContainText(`Going to: ${second}`, {
+  // Choosing the place makes it where we meet: one line, not two.
+  await expect(lunch).toContainText(`Meet at: ${second}`);
+  await expect(anaLunch).toContainText(`Meet at: ${second}`, {
     timeout: 20_000,
   });
   await expect(
@@ -477,8 +480,7 @@ test("a conference day, together", async ({ browser }) => {
   await ana.page.getByRole("button", { name: /^Restaurants/ }).click();
   const placeCard = ana.page.getByTestId("explore-place").first();
   const placeName = (await placeCard
-    .locator("p")
-    .first()
+    .getByTestId("place-name")
     .textContent())!.trim();
   await noSidewaysScroll(ana.page, "explore");
   await shot(ana.page, "06-phone-explore");
@@ -605,6 +607,9 @@ test("a conference day, together", async ({ browser }) => {
     "/memories",
     "/discover",
     "/arrivals",
+    "/schedule",
+    "/you",
+    "/admin",
   ])
     expect(
       (await eve.page.goto(`/conferences/${id}${p}`))?.status(),
