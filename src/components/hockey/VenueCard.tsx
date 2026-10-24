@@ -293,6 +293,11 @@ export function BallotVenueCard({
   onVote,
   addedBy,
   priority,
+  reason,
+  newToBallot = false,
+  adding = false,
+  badge,
+  hero = false,
 }: {
   label: string;
   detail?: string;
@@ -307,6 +312,16 @@ export function BallotVenueCard({
   onVote: () => void;
   addedBy?: string;
   priority?: boolean;
+  /** Why go: one playful line made of Atlas's facts (`reasons.ts`). */
+  reason?: string;
+  /** Not on the vote yet: the button adds it and backs it in one tap. */
+  newToBallot?: boolean;
+  /** …and the add is in flight. */
+  adding?: boolean;
+  /** A pill on the photograph: "Locked in". */
+  badge?: string;
+  /** The winner, shown larger. */
+  hero?: boolean;
 }) {
   const kind = kindLabel(place?.subtype);
   return (
@@ -320,10 +335,21 @@ export function BallotVenueCard({
       <Photo
         place={place}
         emoji={place ? undefined : (emoji ?? "🍽️")}
-        aspect={place?.image ? "aspect-[16/10]" : "aspect-[16/7]"}
+        aspect={
+          place?.image
+            ? hero
+              ? "aspect-[4/3] sm:aspect-[16/9]"
+              : "aspect-[16/10]"
+            : "aspect-[16/7]"
+        }
         priority={priority}
       >
         <div className="flex flex-wrap items-center gap-1.5">
+          {badge && (
+            <span className="rounded-full bg-white px-2.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
+              {badge}
+            </span>
+          )}
           {standing && (
             <span className="rounded-full bg-[#ffd84d] px-2.5 py-0.5 text-[12px] font-bold tracking-wide text-[#0b1220] uppercase">
               {standing === "tied" ? "Tied for the lead" : "Leading"}
@@ -348,6 +374,11 @@ export function BallotVenueCard({
       </Photo>
 
       <div className="flex flex-col gap-3 p-3.5">
+        {reason && (
+          <p className="rounded-xl bg-[#ffd84d]/12 px-3 py-2 text-[14.5px] leading-snug font-semibold text-[#ffe88a]">
+            {reason}
+          </p>
+        )}
         {place && <Details place={place} />}
         {addedBy && (
           <p className="text-[12.5px] text-white/55">
@@ -358,9 +389,11 @@ export function BallotVenueCard({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            disabled={!canVote}
+            disabled={!canVote || adding}
             aria-pressed={chosen}
-            aria-label={`Vote for ${label}`}
+            aria-label={
+              newToBallot ? `Add ${label} and vote` : `Vote for ${label}`
+            }
             onClick={onVote}
             className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-bold transition active:scale-[0.98] disabled:cursor-default ${
               chosen
@@ -373,8 +406,14 @@ export function BallotVenueCard({
                 <Check className="h-5 w-5" strokeWidth={3} />
                 Your vote
               </>
+            ) : adding ? (
+              "Adding…"
             ) : canVote ? (
-              `Vote for ${label.length > 18 ? "this" : label}`
+              newToBallot ? (
+                "Add & vote"
+              ) : (
+                `Vote for ${label.length > 18 ? "this" : label}`
+              )
             ) : (
               "Voting's closed"
             )}

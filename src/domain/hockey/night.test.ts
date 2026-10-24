@@ -121,11 +121,30 @@ describe("the real night carries no invented facts", () => {
       expect(o.detail).toMatch(
         /straight line .* min walk \(estimate\) to Rogers Arena\.$/,
       );
+    // Still defined, so an earlier night's answers are read, but no longer
+    // asked: the pregame winner is where the group meets.
+    const pregame = definition.blocks.find((b) => b.id === "pregame");
+    expect(pregame?.promptIds).not.toContain("meet-spot");
+  });
+
+  it("asks who is coming to the pregame instead, answers visible and changeable until puck drop", () => {
+    const plans = definition.prompts.find((p) => p.id === "pregame-plans");
+    expect(plans).toMatchObject({
+      reveal: "immediate",
+      locksAtPhaseId: "live",
+    });
+    expect(plans?.options?.map((o) => o.label)).toEqual([
+      "Joining pregame",
+      "Meeting at the arena",
+      "Not sure yet",
+    ]);
     const pregame = definition.blocks.find((b) => b.id === "pregame");
     expect(pregame?.promptIds?.slice(0, 2)).toEqual([
       "pregame-spot",
-      "meet-spot",
+      "pregame-plans",
     ]);
+    // …and the after-party is planned with the rest of the night.
+    expect(pregame?.promptIds).toContain("postgame");
   });
 
   it("asks no meeting question at a venue the curated list knows nothing near", () => {

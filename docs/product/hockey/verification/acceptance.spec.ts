@@ -216,21 +216,21 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   ).toBeVisible({ timeout: 15_000 });
 
   // ------------------------------------------------ where we meet
-  const station = (p: Page) =>
-    p
-      .getByRole("region", { name: "Meet up", exact: true })
-      .getByRole("button", { name: /^Stadium–Chinatown Station/ });
+  // Nobody is asked to vote on it: the pregame is the meeting point. Lorne is
+  // behind Chambar and Maya behind Stub Pub, so it is a tie, and until one
+  // wins the arena is where everyone is told to find each other.
   await Promise.all([
-    openDecision(lorne.page, "Meeting point"),
-    openDecision(maya.page, "Meeting point"),
+    openDecision(lorne.page, "Meet up"),
+    openDecision(maya.page, "Meet up"),
   ]);
-  await Promise.all([station(lorne.page).click(), station(maya.page).click()]);
-  // The plan says it back to everyone: one meeting point, and who decided.
   await expect(
     maya.page.getByRole("region", { name: "Meet up", exact: true }),
-  ).toContainText(/Stadium–Chinatown Station\s*The group's vote/, {
+  ).toContainText(/Outside Rogers Arena[\s\S]*Pregame is tied/, {
     timeout: 15_000,
   });
+  await expect(
+    maya.page.getByRole("region", { name: "Where are we meeting?" }),
+  ).toHaveCount(0);
 
   // ------------------------------------------------ banter
   await Promise.all([openTab(lorne.page, "Chat"), openTab(maya.page, "Chat")]);
@@ -277,13 +277,12 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
       "Stub Pub (synthetic)",
       "Chambar",
     ]);
-    // Both meeting votes landed on the meeting question, not the food one.
+    // Nobody was asked to vote on where to meet: the pregame decides it.
     expect(
       s.state.responses.filter(
-        (r: { promptId: string; value: string }) =>
-          r.promptId === "meet-spot" && r.value === "stadium-chinatown-station",
+        (r: { promptId: string }) => r.promptId === "meet-spot",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(0);
     // The distance the server measured travels with the nomination, labelled.
     const pub = options.find(
       (o: { label: string }) => o.label === "Stub Pub (synthetic)",

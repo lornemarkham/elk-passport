@@ -301,9 +301,45 @@ export function templatePrompts(
     })
     .flatMap((prompt) =>
       prompt.id === "pregame-spot"
-        ? [prompt, ...meetingPrompt(details)]
+        ? [prompt, plansPrompt(), ...meetingPrompt(details)]
         : [prompt],
     );
+}
+
+/**
+ * **Who is coming to the pregame?** — the question that replaces asking
+ * everyone where to meet (2026-10-24). The pregame restaurant is where the
+ * group meets; this says who is joining it, who will find the group at the
+ * arena instead, and who doesn't know yet. Answers reveal as they happen and
+ * stay changeable until puck drop.
+ *
+ * Like every template question it exists on a night only if the night has its
+ * rule row: nights started before `plan-migration.sql` don't, and the page
+ * leaves the question out rather than pretend (`PlanBoards`).
+ */
+export const PLANS_PROMPT_ID = "pregame-plans";
+
+export const PLANS_OPTIONS = {
+  join: "Joining pregame",
+  arena: "Meeting at the arena",
+  unsure: "Not sure yet",
+} as const;
+
+function plansPrompt(): Prompt {
+  return {
+    id: PLANS_PROMPT_ID,
+    question: "Are you joining the pregame?",
+    kind: "choice",
+    phaseId: "before",
+    locksAtPhaseId: "live",
+    reveal: "immediate",
+    hint: "So everyone knows where to find you.",
+    options: [
+      { id: "join", label: PLANS_OPTIONS.join, emoji: "🍻" },
+      { id: "arena", label: PLANS_OPTIONS.arena, emoji: "🏟️" },
+      { id: "unsure", label: PLANS_OPTIONS.unsure, emoji: "🤷" },
+    ],
+  };
 }
 
 /**
@@ -505,10 +541,15 @@ export function composeNight(
             promptIds: b.promptIds
               .filter((id) => !NOT_YET.has(id))
               .map((id) => (id === "lorne-beer" ? "host-beer" : id))
-              // Where we meet sits right after where we eat.
+              // Who is coming sits right after where we eat. The pregame
+              // winner is where we meet, so "where are we meeting?"
+              // (`MEET_PROMPT_ID`) is no longer asked.
               .flatMap((id) =>
-                id === "pregame-spot" ? [id, MEET_PROMPT_ID] : [id],
-              ),
+                id === "pregame-spot" ? [id, PLANS_PROMPT_ID] : [id],
+              )
+              // Where we go after is decided with the rest of the plan, not
+              // outside the doors at the horn.
+              .concat(b.id === "pregame" ? ["postgame"] : []),
           }
         : b,
     )
