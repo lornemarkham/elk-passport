@@ -641,7 +641,9 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
   const champion = lorne.page.getByRole("region", {
     name: "Lorne",
   });
-  await expect(lorne.page.getByText("Sycle Cup champion")).toBeVisible();
+  await expect(
+    lorne.page.getByText("Sycle Cup champion", { exact: true }),
+  ).toBeVisible();
   await expect(champion).toContainText("points");
   await noSidewaysScroll(lorne.page);
   await shot(lorne.page, "40-after-champion");

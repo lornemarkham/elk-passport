@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { ObligationsBlock, RecapBlock } from "@/experience-lab/ui/blocks";
 import { PromptCard } from "@/experience-lab/ui/PromptCard";
@@ -96,6 +96,14 @@ export function PlayTab({
   const play = usePlay(night);
   const [draft, setDraft] = useState<Draft | null>(null);
   const me = live.me;
+  // "Thrown at …": said once, where the person is looking when the sheet goes.
+  const [notice, setNotice] = useState<string | null>(null);
+  const thrownAt = useRef<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const gone = window.setTimeout(() => setNotice(null), 7000);
+    return () => window.clearTimeout(gone);
+  }, [notice]);
   const { home, away } = matchupOf(definition.subtitle);
 
   // Every sealed pick on this night: the template's and the ones people asked
@@ -332,6 +340,14 @@ export function PlayTab({
 
   return (
     <div className="flex flex-col gap-10">
+      {notice && (
+        <p
+          role="status"
+          className="-mb-4 rounded-2xl bg-[#ffd84d] px-4 py-3 text-[15px] font-bold text-[#0b1220]"
+        >
+          {notice}
+        </p>
+      )}
       {act === "after" && cup}
       {wrong && (
         <section
@@ -413,13 +429,26 @@ export function PlayTab({
           game={play.game}
           promptIds={definition.prompts.map((p) => p.id)}
           beforeStart={play.beforeStart}
-          error={night.error}
           onSend={async (input) => {
             night.clearError();
-            return night.issueChallenge(input);
+            const result = await night.issueChallenge(input);
+            if (result.ok)
+              thrownAt.current =
+                input.targetId === me.id
+                  ? null
+                  : (live.participants.find((p) => p.id === input.targetId)
+                      ?.name ?? null);
+            return result;
           }}
-          onClose={() => {
+          onClose={(thrown) => {
             night.clearError();
+            if (thrown)
+              setNotice(
+                thrownAt.current
+                  ? `Thrown at ${thrownAt.current}. They can accept or pass — you'll see which, right here.`
+                  : "It's on the record. Everybody on this night can see it.",
+              );
+            thrownAt.current = null;
             setDraft(null);
           }}
         />

@@ -114,39 +114,60 @@ export function useSharedNight(initial: NightSnapshot) {
     };
   }, [refresh]);
 
-  const send = useCallback(
+  /**
+   * Do something to the night and say what came of it: `error` is the
+   * server's own words, so the screen that asked can show them where the
+   * person is looking (the shared `error` below is cleared by the next write
+   * from anywhere, and is drawn behind sheets).
+   */
+  const post = useCallback(
     async (
       action: Action,
       optimistic?: (s: ExperienceState) => ExperienceState,
-    ): Promise<boolean> => {
+    ): Promise<{ ok: true } | { ok: false; error: string }> => {
       generation.current += 1;
       const mine = generation.current;
       setError(null);
       if (optimistic) {
         setSnapshot((prev) => ({ ...prev, state: optimistic(prev.state) }));
       }
+      const failed = async (message: string) => {
+        setError(message);
+        await refresh();
+        return { ok: false as const, error: message };
+      };
       try {
         const res = await fetch(`/hockey/api/occasions/${id}/actions`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(action),
         });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(body.error ?? "That didn't work.");
-          await refresh();
-          return false;
-        }
+        const body = await res.json().catch(() => null);
+        if (!res.ok)
+          return await failed(
+            (typeof body?.error === "string" && body.error) ||
+              "That didn't work.",
+          );
+        // A 200 that is not a night (a login page, a proxy's error) is not a success.
+        if (!body || typeof body !== "object" || !("definition" in body))
+          return await failed("Passport sent back something unexpected.");
         if (generation.current === mine)
           setSnapshot(keepSeries(body as NightSnapshot));
-        return true;
+        else void refresh();
+        return { ok: true as const };
       } catch {
-        setError("Couldn't reach Passport. Try again in a second.");
-        await refresh();
-        return false;
+        return await failed("Couldn't reach Passport. Try again in a second.");
       }
     },
     [id, refresh, keepSeries],
+  );
+
+  const send = useCallback(
+    async (
+      action: Action,
+      optimistic?: (s: ExperienceState) => ExperienceState,
+    ): Promise<boolean> => (await post(action, optimistic)).ok,
+    [post],
   );
 
   const { state, role } = snapshot;
@@ -289,7 +310,7 @@ export function useSharedNight(initial: NightSnapshot) {
     // ---- PLAY's challenges. Each waits for the server: what a challenge
     // is worth and who may do what is the database's call, not this page's.
     issueChallenge: (input: IssueInput) =>
-      send({ type: "issueChallenge", ...input }),
+      post({ type: "issueChallenge", ...input }),
     answerChallenge: (
       challengeId: string,
       answer: "accept" | "decline" | "withdraw",
