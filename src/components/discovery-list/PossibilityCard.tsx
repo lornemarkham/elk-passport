@@ -14,6 +14,7 @@ import {
 } from "@/domain/discovery/compose";
 import { isIllustrative } from "@/domain/discovery/illustrations";
 import { presentedLabel } from "@/lib/media/cardPicture";
+import { CARD_SIZES, sizedImage } from "@/lib/media/sizedImage";
 import { distanceText } from "@/domain/discovery/proximity";
 import { describeJourney, routedShort } from "@/lib/routing/journey";
 import { ageLine } from "@/domain/discovery/suitability";
@@ -273,7 +274,9 @@ export function PossibilityCard({
         <div className="aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
           {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
           <img
-            src={picture}
+            {...sizedImage(picture)}
+            sizes={CARD_SIZES}
+            decoding="async"
             alt=""
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
@@ -289,7 +292,9 @@ export function PossibilityCard({
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
           {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
           <img
-            src={presented.url}
+            {...sizedImage(presented.url)}
+            sizes={CARD_SIZES}
+            decoding="async"
             alt={
               presented.relationship === "exact" ? "" : presented.attribution
             }
@@ -314,7 +319,9 @@ export function PossibilityCard({
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/[0.04]">
           {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
           <img
-            src={venuePicture.heroUrl}
+            {...sizedImage(venuePicture.heroUrl)}
+            sizes={CARD_SIZES}
+            decoding="async"
             alt={`${venuePicture.via.name}, where this happens`}
             loading={priority ? "eager" : "lazy"}
             onError={() => fail(venuePicture.heroUrl)}

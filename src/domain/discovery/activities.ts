@@ -1235,6 +1235,29 @@ export function activityEvidence(
   experience: Experience,
   activity: Activity,
 ): readonly string[] {
+  let byActivity = evidenceFor.get(experience);
+  if (!byActivity) {
+    byActivity = new Map();
+    evidenceFor.set(experience, byActivity);
+  }
+  const kept = byActivity.get(activity);
+  if (kept) return kept;
+  const found = readEvidence(experience, activity);
+  byActivity.set(activity, found);
+  return found;
+}
+
+/**
+ * What each activity found for one subject, remembered while the subject
+ * lives: Discovery asks the same ~3,400 immutable subjects about the same
+ * activities on every sentence somebody types (see `memoizeByObject`).
+ */
+const evidenceFor = new WeakMap<Experience, Map<Activity, readonly string[]>>();
+
+function readEvidence(
+  experience: Experience,
+  activity: Activity,
+): readonly string[] {
   const { affordances, subtype, features } = wordsOf(experience);
   const out: string[] = [];
   for (const name of affordances)

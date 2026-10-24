@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bookmark, Check } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
+import { sizedImage } from "@/lib/media/sizedImage";
 import {
   inspirationShelves,
   type Shelf,
@@ -155,10 +156,12 @@ function InspirationCard({
           // URLs are arbitrary remote hosts; next/image would need every one
           // allow-listed in next.config, which is a separate decision.
           <img
-            src={experience.heroMedia.src}
+            {...sizedImage(experience.heroMedia.src)}
+            sizes="(min-width: 640px) 400px, 100vw"
             alt=""
             className="h-full w-full object-cover"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="flex h-full items-center justify-center px-4 text-center">

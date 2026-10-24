@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, ChevronRight, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import { destinationFor } from "@/domain/experience/destination";
+import { THUMB_WIDTHS, sizedImage } from "@/lib/media/sizedImage";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 
 interface ExperienceListRowProps {
@@ -88,7 +89,10 @@ export function ExperienceListRow({
         {experience.heroMedia?.src ? (
           // eslint-disable-next-line @next/next/no-img-element -- external Atlas-hosted images, not part of the Next image pipeline
           <img
-            src={experience.heroMedia.src}
+            {...sizedImage(experience.heroMedia.src, THUMB_WIDTHS)}
+            sizes="64px"
+            loading="lazy"
+            decoding="async"
             alt=""
             className="h-full w-full object-cover"
           />
