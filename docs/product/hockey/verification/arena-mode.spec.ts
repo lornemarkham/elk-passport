@@ -102,6 +102,13 @@ async function shot(page: Page, name: string, full = false) {
 
 const map = (page: Page) => page.locator("svg[data-level]");
 const herd = (page: Page, who: string) => page.getByTestId(`herd-${who}`);
+/** A friend's sheet, opened from the crew strip. */
+async function openPerson(page: Page, who: string) {
+  await page.getByTestId(`crew-${who}`).click();
+  const sheet = page.getByRole("dialog", { name: who });
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
 const dialog = (page: Page, name: string) => page.getByRole("dialog", { name });
 const arenaTab = (page: Page, name: string) =>
   page
@@ -204,7 +211,7 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   expect(seat.ok()).toBe(true);
   await moveStart(nightId, new Date(Date.now() + 60 * 60_000));
   await host.page.reload();
-  await expect(host.page.getByTestId("sharing")).toContainText("You're hidden");
+  await expect(host.page.getByTestId("sharing")).toContainText("Not sharing");
   // The host's seat puts them on Level 300, in their section.
   await expect(level(host.page, "Level 300")).toHaveAttribute(
     "aria-selected",
@@ -254,14 +261,14 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   const samId = await ids(sam.page);
 
   // -------------------------------- Maya checks in by tapping the map
-  await expect(maya.page.getByTestId("sharing")).toContainText("You're hidden");
+  await expect(maya.page.getByTestId("sharing")).toContainText("Not sharing");
   await level(maya.page, "Level 300").click();
   await maya.page
     .getByRole("button", { name: "📍 I'm here", exact: true })
     .click();
   const sheet = dialog(maya.page, "Where are you?");
   await expect(sheet).toContainText("Only the 2 other people on this night");
-  await expect(sheet).toContainText("never GPS");
+  await expect(sheet).toContainText("never as a GPS dot");
   await sheet.getByRole("button", { name: "In line. Pray for me." }).click();
   await shot(maya.page, "02-guest-check-in-sheet-320");
   await sheet.getByRole("button", { name: /Pick it on the map/ }).click();
@@ -277,8 +284,10 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     { timeout: 15_000 },
   );
   await expect(herd(host.page, "Maya")).toContainText("Hot Dogs (J)");
-  await expect(herd(host.page, "Maya")).toContainText("In line. Pray for me.");
   await expect(herd(host.page, "Maya")).toContainText(/just now|min ago/);
+  const mayaSheet = await openPerson(host.page, "Maya");
+  await expect(mayaSheet).toContainText("In line. Pray for me.");
+  await mayaSheet.getByRole("button", { name: "Close" }).click();
   await shot(host.page, "03-host-sees-maya");
 
   // ------------------------------------------- "Where you at, Sam?"
@@ -295,13 +304,15 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   await dialog(sam.page, "Where are you?")
     .getByRole("button", { name: /Outside the arena/ })
     .click();
-  await expect(herd(host.page, "Sam")).toContainText("Outside the arena", {
+  await expect(herd(host.page, "Sam")).toContainText(/outside/, {
     timeout: 15_000,
   });
 
   // ------------------------------- a one-tap meetup request, answered
-  await arenaTab(maya.page, "The herd").click();
-  await herd(maya.page, "Lorne")
+  await arenaTab(maya.page, "Find friends").click();
+  await (
+    await openPerson(maya.page, "Lorne")
+  )
     .getByRole("button", { name: "🤝 Meet me" })
     .click();
   const meet = host.page.locator('[data-ping="meet"]');
@@ -316,37 +327,47 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
     maya.page.getByRole("region", { name: "What you sent" }),
   ).toContainText("✅ Lorne", { timeout: 15_000 });
 
-  // ------------------------------------------------------- find the herd
-  await host.page.getByRole("button", { name: "🐃 Find the herd" }).click();
-  // Not checked in and no meeting point: Passport asks where first.
+  // ---------------------------------------------- summon the squad
+  await host.page
+    .getByRole("button", { name: "📍 I'm here", exact: true })
+    .click();
   await dialog(host.page, "Where are you?")
     .getByRole("button", { name: /In my seat — Section 309/ })
     .click();
   await expect(host.page.getByTestId("sharing")).toContainText("Section 309");
-  await host.page.getByRole("button", { name: "🐃 Find the herd" }).click();
+  await host.page.getByRole("button", { name: "📣 Summon the squad" }).click();
+  await dialog(host.page, "Summon the squad")
+    .getByRole("button", { name: /Where I am — Section 309/ })
+    .click();
   await expect(
-    host.page.getByText("Herd summoned to Section 309."),
+    host.page.getByText("Squad summoned to Section 309."),
   ).toBeVisible();
-  await expect(sam.page.locator('[data-ping="herd"]')).toContainText(
-    "Lorne is rounding up the herd at Section 309",
+  await expect(sam.page.getByTestId("incoming-summons")).toContainText(
+    "Lorne summons the squad",
     { timeout: 15_000 },
   );
   await sam.page
-    .locator('[data-ping="herd"]')
-    .getByRole("button", { name: "On my way" })
+    .getByTestId("incoming-summons")
+    .getByRole("button", { name: /On my way/ })
     .click();
-  // Maya can't come: she says so, and the host hears it.
+  // Maya can't come: she says so, and the host sees who is coming.
   await maya.page
-    .locator('[data-ping="herd"]')
-    .getByRole("button", { name: "Can't" })
+    .getByTestId("incoming-summons")
+    .getByRole("button", { name: /Busy/ })
     .click();
-  await expect(host.page.locator('[data-ping="cant"]')).toContainText(
-    "Maya can't make it.",
-    { timeout: 15_000 },
-  );
+  await arenaTab(host.page, "Squad").click();
+  await expect(host.page.getByTestId("tally-coming")).toContainText("Sam", {
+    timeout: 15_000,
+  });
+  await expect(host.page.getByTestId("tally-busy")).toContainText("Maya", {
+    timeout: 15_000,
+  });
+  await arenaTab(host.page, "Find friends").click();
 
   // ---------------------------------------------------- find this legend
-  await herd(sam.page, "Maya")
+  await (
+    await openPerson(sam.page, "Maya")
+  )
     .getByRole("button", { name: "🔦 Find this legend" })
     .click();
   await expect(map(sam.page)).toHaveAttribute("data-level", "300");
@@ -539,13 +560,10 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   await moveStart(nightId, new Date(Date.now() + 60 * 60_000));
 
   // ------------------------------------------------------------- vanish
-  await maya.page
-    .getByTestId("sharing")
-    .getByRole("button", { name: /Vanish/ })
-    .click();
-  await expect(maya.page.getByTestId("sharing")).toContainText("You're hidden");
-  await arenaTab(host.page, "The herd").click();
-  await expect(herd(host.page, "Maya")).toContainText("Hasn't checked in", {
+  await maya.page.getByTestId("stop-sharing").click();
+  await expect(maya.page.getByTestId("sharing")).toContainText("Not sharing");
+  await arenaTab(host.page, "Find friends").click();
+  await expect(herd(host.page, "Maya")).toContainText("Where you at, Maya", {
     timeout: 15_000,
   });
   await expect(map(host.page).locator(`[data-person="${mayaId}"]`)).toHaveCount(
@@ -553,15 +571,21 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   );
 
   // ------------------------------------------------- 320 px, and motion
-  await arenaTab(maya.page, "The herd").click();
+  await arenaTab(maya.page, "Find friends").click();
   await fitsThePhone(maya.page, 320);
-  for (const t of ["Eat & drink", "Quests", "The arena"]) {
+  for (const t of [
+    "Squad",
+    "Snack run",
+    "Eat & drink",
+    "Quests",
+    "The arena",
+  ]) {
     await arenaTab(maya.page, t).click();
     if (t === "Eat & drink")
       await maya.page.getByRole("button", { name: "🍺 Drinks" }).click();
     await fitsThePhone(maya.page, 320);
   }
-  await arenaTab(maya.page, "The herd").click();
+  await arenaTab(maya.page, "Find friends").click();
   await shot(maya.page, "09-guest-320", true);
   await fitsThePhone(sam.page, 375);
 

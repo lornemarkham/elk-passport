@@ -29,7 +29,7 @@ import {
 import type { Arena } from "./useArena";
 import { hueColour, pinGlyph, pinStyle } from "./ArenaMap";
 
-function Sheet({
+export function Sheet({
   title,
   onClose,
   children,
@@ -376,8 +376,8 @@ export function CheckInSheet({
       <p className="mt-2 rounded-2xl bg-white/8 px-4 py-3 text-[13px] leading-snug text-white/80">
         Only the {others === 1 ? "one other person" : `${others} other people`}{" "}
         on this night will see it — as a place you picked and how long ago,
-        never GPS. It disappears when the night ends, and{" "}
-        <strong>Vanish</strong> removes it any time.
+        never as a GPS dot. It disappears when the night ends, and{" "}
+        <strong>Stop sharing</strong> removes it any time.
       </p>
 
       <fieldset className="mt-4">

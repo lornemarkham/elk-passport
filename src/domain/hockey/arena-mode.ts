@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { gateById, type ArenaLevel } from "./arena";
+import { CrewActionSchemas, NO_CREW, type CrewView } from "./crew";
 import {
   LEVELS,
   LEVEL_NAME,
@@ -336,6 +337,7 @@ export const ArenaActionSchema = z.discriminatedUnion("type", [
     priceCents: z.number().int().min(1).max(10_000).optional(),
   }),
   z.object({ type: z.literal("questLeave"), quest: z.string().uuid() }),
+  ...CrewActionSchemas,
   z.object({
     type: z.literal("questClose"),
     quest: z.string().uuid(),
@@ -416,6 +418,8 @@ export interface ArenaView {
   readonly checkins: readonly CheckIn[];
   readonly pings: readonly Ping[];
   readonly quests: readonly Quest[];
+  /** GPS hints, squad summons and snack runs (`crew.ts`). */
+  readonly crew: CrewView;
   readonly now: string;
 }
 
@@ -425,5 +429,7 @@ export function lowestReport(q: Quest): QuestCrew | undefined {
     .filter((c) => c.priceCents !== null)
     .sort((a, b) => (a.priceCents ?? 0) - (b.priceCents ?? 0))[0];
 }
+
+export { NO_CREW };
 
 export const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
