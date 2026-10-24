@@ -951,6 +951,12 @@ certainty. Do not invent an answer here to make the document feel finished.
     overview leads with what matters at this point of the trip — before,
     arrival day, during, after — from the organiser's published agenda and
     the plans colleagues made, kept visibly apart. Still one composition.
+    _Informed again 2026-10-24 by Sycle Summit_
+    (`docs/products/go-have-a-conference/SUMMIT.md`, ADR 013): during a
+    conference Home is a companion that counts down to what's next; a
+    person's own schedule is a convenience on their device, never a gate to
+    knowing where to be; a programme is the organiser's data, imported,
+    never code. Still one composition.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

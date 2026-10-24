@@ -1,3 +1,4 @@
+import { agendaEntry } from "@/domain/conference/agenda";
 import { safeAccent } from "@/domain/conference/branding";
 import { dateRange } from "@/domain/conference/countdown";
 import { conferenceContext } from "@/lib/conference/request";
@@ -7,11 +8,12 @@ import {
   ConferenceBar,
   type BarLink,
 } from "@/components/conference/shell/ConferenceBar";
+import { SessionReminders } from "@/components/conference/schedule/SessionReminders";
 
 /**
  * **One conference, one frame.** Every screen inside a conference shares
  * this bar: the conference's name, the five places a participant goes
- * (Home · Arrivals · Agenda · Explore · People), messages, and a profile
+ * (Home · Agenda · Arrivals · Explore · People), messages, and a profile
  * menu where settings live. Plans and memories are reached from where they
  * matter — the agenda, the overview, a place in Explore — not as tabs.
  *
@@ -27,7 +29,7 @@ export default async function ConferenceFrame({
 }) {
   const ctx = await conferenceContext((await params).id);
   if (!ctx) return <>{children}</>;
-  const { conference: c, viewer } = ctx;
+  const { conference: c, viewer, now } = ctx;
   const organiser = viewer.role === "organiser";
   const together = togetherEnabled();
   const has = (m: (typeof c.modules)[number]) => c.modules.includes(m);
@@ -35,6 +37,9 @@ export default async function ConferenceFrame({
 
   const tabs: BarLink[] = [
     { href: base, label: "Home", icon: "home", exact: true },
+    ...(has("schedule")
+      ? [{ href: `${base}/schedule`, label: "Agenda", icon: "agenda" as const }]
+      : []),
     ...(has("arrivals") && arrivalsEnabled()
       ? [
           {
@@ -43,9 +48,6 @@ export default async function ConferenceFrame({
             icon: "arrivals" as const,
           },
         ]
-      : []),
-    ...(has("schedule")
-      ? [{ href: `${base}/schedule`, label: "Agenda", icon: "agenda" as const }]
       : []),
     ...(has("discover")
       ? [
@@ -102,6 +104,21 @@ export default async function ConferenceFrame({
         you={viewer.displayName ?? "You"}
         organiser={organiser}
       />
+      {has("schedule") && c.agenda?.length ? (
+        <SessionReminders
+          conferenceId={c.id}
+          timeZone={c.timeZone}
+          serverNow={now.toISOString()}
+          items={c.agenda.map((i) => ({
+            id: i.id,
+            day: i.day,
+            title: i.title,
+            where: i.where,
+            kind: i.kind,
+            startsAt: agendaEntry(i, c.timeZone).startsAt,
+          }))}
+        />
+      ) : null}
       {children}
     </div>
   );

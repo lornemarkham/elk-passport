@@ -3,6 +3,8 @@ import { Doors } from "@/components/conference/Doors";
 import { Explore } from "@/components/conference-together/Explore";
 import { ModuleTop } from "@/components/conference-together/ModuleTop";
 import { askDoorsFor, doorsFor } from "@/domain/conference/modules";
+import { dayEntries, today as todayOf } from "@/domain/conference/agenda";
+import { FreeTimePicks } from "@/components/conference/overview/FreeTimePicks";
 import { conferenceContext, readIdentity } from "@/lib/conference/request";
 import { conferenceSetup } from "@/lib/conference/config";
 import { readPlans } from "@/lib/conference-plans/service";
@@ -31,7 +33,10 @@ export default async function DiscoverModule({
 }) {
   const ctx = await conferenceContext((await params).id);
   if (!ctx) notFound();
-  const { conference: c } = ctx;
+  const { conference: c, now } = ctx;
+  const todayEntries = c.modules.includes("schedule")
+    ? dayEntries(c, todayOf(c, now)).filter((e) => e.source === "agenda")
+    : [];
   if (!c.modules.includes("discover") && ctx.viewer.role !== "organiser")
     notFound();
   const doors = doorsFor(c);
@@ -59,6 +64,18 @@ export default async function DiscoverModule({
         lede="Real places from Passport’s Atlas, near where you are. Plan one and colleagues can join."
       />
       <div className="mx-auto max-w-[1180px] px-4 sm:px-8">
+        {doors.length && todayEntries.length ? (
+          // When the agenda leaves a gap, lead with what fits in it.
+          <div className="mt-4 max-w-[560px]">
+            <FreeTimePicks
+              conferenceId={c.id}
+              entries={todayEntries}
+              timeZone={c.timeZone}
+              now={now}
+              city={c.place.label}
+            />
+          </div>
+        ) : null}
         {doors.length ? (
           <Explore conferenceId={c.id} plans={plans} plansOn={plansOn} />
         ) : (

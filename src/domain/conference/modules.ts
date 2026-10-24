@@ -71,6 +71,14 @@ export const MODULES: readonly ConferenceModule[] = [
     status: "built",
   },
   {
+    id: "bingo",
+    label: "Get-to-know-you Bingo",
+    promise:
+      "A light game on your own phone: nine ways to meet someone new. Not scored, not ranked.",
+    workstream: "passport-social",
+    status: "built",
+  },
+  {
     id: "schedule",
     label: "Agenda",
     promise: "What's on today, what's next, and where to be.",

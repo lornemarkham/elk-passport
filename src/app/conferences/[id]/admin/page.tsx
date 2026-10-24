@@ -8,6 +8,7 @@ import {
   MembersPanel,
 } from "@/components/conference/AdminPanels";
 import { AgendaEditor } from "@/components/conference/AgendaEditor";
+import { AgendaImport } from "@/components/conference/AgendaImport";
 import { Closed } from "@/components/conference/Closed";
 import { DetailsForm } from "@/components/conference/DetailsForm";
 import { PageHead, Panel, PanelHead, wrap } from "@/components/conference/kit";
@@ -44,6 +45,17 @@ export default async function AdminPage({
     redirect(`/conferences/${id}`);
   if (!result.ok) notFound();
   const { view } = result;
+  const c = view.conference;
+  const agendaKey = (c.agenda ?? [])
+    .map((i) => `${i.id}@${i.day}T${i.start}`)
+    .join("|");
+  const detailsKey = [
+    c.startsOn,
+    c.endsOn,
+    c.timeZone,
+    c.venue?.name,
+    c.welcome?.length,
+  ].join("|");
 
   return (
     <>
@@ -84,13 +96,25 @@ export default async function AdminPage({
               Times are in {view.conference.timeZone.replace(/_/g, " ")}.
               Everyone sees changes straight away.
             </p>
-            <AgendaEditor conferenceId={id} details={view.conference} />
+            <div className="mb-6">
+              <AgendaImport conferenceId={id} details={view.conference} />
+            </div>
+            {/* Keyed by what's published, so an import shows at once. */}
+            <AgendaEditor
+              key={agendaKey}
+              conferenceId={id}
+              details={view.conference}
+            />
           </Panel>
           <Panel className="p-5 sm:p-7">
             <div id="details" className="scroll-mt-24" />
             <PanelHead eyebrow="Details" title="The conference" />
             <div className="mt-5">
-              <DetailsForm conferenceId={id} initial={view.conference} />
+              <DetailsForm
+                key={detailsKey}
+                conferenceId={id}
+                initial={view.conference}
+              />
             </div>
           </Panel>
           <Panel className="p-5 sm:p-7">

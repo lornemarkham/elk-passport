@@ -416,3 +416,72 @@
 .cf-shelf::-webkit-scrollbar {
   display: none;
 }
+/* "Show n earlier today" — the fold above today's agenda. */
+.cf-fold {
+  display: flex;
+  min-height: 2.75rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0.75rem;
+  border: 1px dashed var(--color-cf-line);
+  padding: 0 1rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-cf-slate);
+}
+/* An agenda line opens in place; the browser's own triangle is replaced. */
+.cf-details > summary::-webkit-details-marker {
+  display: none;
+}
+.cf-details > summary::marker {
+  content: "";
+}
+/* The celebration: the one evening of the week dressed for it — charcoal,
+   a brass glow, a fine gold rule. Still light on motion: one slow shimmer
+   along the rule, off for reduced motion. */
+.cf-gala {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 90% at 100% 0%,
+      rgba(165, 129, 74, 0.38),
+      transparent 60%
+    ),
+    radial-gradient(
+      80% 70% at 0% 100%,
+      rgba(165, 129, 74, 0.16),
+      transparent 70%
+    ),
+    linear-gradient(160deg, #1d1c1a, #121214);
+  box-shadow: 0 22px 50px -24px rgba(23, 24, 27, 0.75);
+}
+.cf-gala::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(226, 204, 159, 0.9),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: cf-shimmer 6s ease-in-out infinite;
+}
+@keyframes cf-shimmer {
+  0%,
+  100% {
+    background-position: 100% 0;
+  }
+  50% {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-gala::before {
+    animation: none;
+  }
+}

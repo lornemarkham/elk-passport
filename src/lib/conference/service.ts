@@ -160,10 +160,19 @@ export async function updateConference(
   const access = await asOrganiser(deps, conferenceId, identity);
   if (!access.ok) return fail(access.error);
   // The agenda has its own editor. A details form that doesn't mention it
-  // leaves it as it is; `agenda: []` is how it is cleared.
+  // (or the agenda's day headings, or the objectives — both set by an
+  // import) leaves it as it is; `agenda: []` is how it is cleared.
+  const stored = access.conference.details;
   const merged =
-    input && typeof input === "object" && !("agenda" in input)
-      ? { ...input, agenda: access.conference.details.agenda }
+    input && typeof input === "object"
+      ? {
+          ...(!("agenda" in input) ? { agenda: stored.agenda } : {}),
+          ...(!("dayTitles" in input) ? { dayTitles: stored.dayTitles } : {}),
+          ...(!("objectives" in input)
+            ? { objectives: stored.objectives }
+            : {}),
+          ...input,
+        }
       : input;
   const parsed = parseDetails(merged);
   if (!parsed.ok) return fail("invalid", parsed.issues);

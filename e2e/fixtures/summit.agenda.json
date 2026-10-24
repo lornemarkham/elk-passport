@@ -1,0 +1,150 @@
+{
+  "format": "passport-conference-agenda/1",
+  "conference": {
+    "startsOn": "2026-10-26",
+    "endsOn": "2026-10-29",
+    "timeZone": "America/Vancouver",
+    "venue": {
+      "name": "Harbour Hotel",
+      "address": "1 Quay Street"
+    }
+  },
+  "dayTitles": [
+    {
+      "day": "2026-10-26",
+      "title": "Welcome to town!"
+    }
+  ],
+  "agenda": [
+    {
+      "id": "mon-mixer",
+      "day": "2026-10-26",
+      "start": "17:30",
+      "end": "20:30",
+      "title": "Welcome Mixer",
+      "kind": "social",
+      "note": "Say hello."
+    },
+    {
+      "id": "tue-breakfast",
+      "day": "2026-10-27",
+      "start": "07:00",
+      "end": "08:30",
+      "title": "Breakfast",
+      "where": "Room 4-5",
+      "kind": "meal"
+    },
+    {
+      "id": "tue-general",
+      "day": "2026-10-27",
+      "start": "08:30",
+      "title": "General Session",
+      "where": "Grand Ballroom",
+      "topics": [
+        "Welcome; the year ahead",
+        "Values, with a comma",
+        "Panel — Q&A"
+      ]
+    },
+    {
+      "id": "tue-games",
+      "day": "2026-10-27",
+      "start": "10:00",
+      "title": "Break and Icebreaker Game",
+      "kind": "social"
+    },
+    {
+      "id": "tue-general-2",
+      "day": "2026-10-27",
+      "start": "10:30",
+      "title": "General Session",
+      "where": "Grand Ballroom"
+    },
+    {
+      "id": "tue-lunch",
+      "day": "2026-10-27",
+      "start": "12:00",
+      "title": "Lunch",
+      "where": "Room 4-5",
+      "kind": "meal"
+    },
+    {
+      "id": "tue-skills",
+      "day": "2026-10-27",
+      "start": "13:30",
+      "title": "Skills Session",
+      "where": "Grand Ballroom",
+      "kind": "skills"
+    },
+    {
+      "id": "tue-break",
+      "day": "2026-10-27",
+      "start": "14:30",
+      "title": "Break",
+      "kind": "break"
+    },
+    {
+      "id": "tue-wrap",
+      "day": "2026-10-27",
+      "start": "15:00",
+      "title": "Wrap-up",
+      "where": "Grand Ballroom"
+    },
+    {
+      "id": "tue-dinner",
+      "day": "2026-10-27",
+      "start": "18:00",
+      "title": "Group Dinners",
+      "kind": "meal",
+      "note": "Location: shared on-site."
+    },
+    {
+      "id": "wed-breakfast",
+      "day": "2026-10-28",
+      "start": "07:00",
+      "end": "08:30",
+      "title": "Breakfast",
+      "where": "Room 4-5",
+      "kind": "meal"
+    },
+    {
+      "id": "wed-session",
+      "day": "2026-10-28",
+      "start": "08:30",
+      "title": "Morning Session",
+      "where": "Grand Ballroom"
+    },
+    {
+      "id": "wed-wrap",
+      "day": "2026-10-28",
+      "start": "17:00",
+      "title": "Wrap-up",
+      "where": "Grand Ballroom"
+    },
+    {
+      "id": "wed-gala",
+      "day": "2026-10-28",
+      "start": "18:30",
+      "title": "Celebration Dinner",
+      "where": "Grand Ballroom",
+      "kind": "celebration",
+      "featured": true
+    },
+    {
+      "id": "thu-club",
+      "day": "2026-10-29",
+      "start": "10:15",
+      "title": "Hangout: Tea Club",
+      "where": "Grand Ballroom",
+      "kind": "social",
+      "aside": "History is being made."
+    },
+    {
+      "id": "thu-travel",
+      "day": "2026-10-29",
+      "start": "13:00",
+      "title": "Travel Home",
+      "kind": "travel"
+    }
+  ]
+}

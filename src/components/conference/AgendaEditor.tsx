@@ -4,11 +4,30 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { agendaDays } from "@/domain/conference/agenda";
 import { AGENDA_MAX } from "@/domain/conference/details";
-import type { AgendaItem, ConferenceDetails } from "@/domain/conference/types";
+import {
+  AGENDA_KINDS,
+  type AgendaItem,
+  type AgendaKind,
+  type ConferenceDetails,
+} from "@/domain/conference/types";
 import { call } from "./api";
 import { field, primary, Problem, secondary } from "./ui";
 
-type Draft = Omit<AgendaItem, "id"> & { id?: string };
+type Draft = Omit<AgendaItem, "id" | "topics"> & {
+  id?: string;
+  /** One topic per line, as typed. */
+  topicsText?: string;
+};
+
+const KIND_WORDS: Record<AgendaKind, string> = {
+  session: "Session",
+  skills: "Skills session",
+  break: "Break",
+  meal: "Meal",
+  social: "Social",
+  celebration: "Celebration",
+  travel: "Travel",
+};
 
 const blank = (day: string): Draft => ({
   day,
@@ -18,6 +37,9 @@ const blank = (day: string): Draft => ({
   where: "",
   note: "",
   featured: false,
+  kind: "session",
+  topicsText: "",
+  aside: "",
 });
 
 const dayWords = (ymd: string) =>
@@ -79,16 +101,25 @@ export function AgendaEditor({
     return true;
   };
 
-  const clean = (x: Draft, id: string): AgendaItem => ({
-    id,
-    day: x.day,
-    start: x.start,
-    ...(x.end ? { end: x.end } : {}),
-    title: x.title.trim(),
-    ...(x.where?.trim() ? { where: x.where.trim() } : {}),
-    ...(x.note?.trim() ? { note: x.note.trim() } : {}),
-    ...(x.featured ? { featured: true } : {}),
-  });
+  const clean = (x: Draft, id: string): AgendaItem => {
+    const topics = (x.topicsText ?? "")
+      .split("\n")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return {
+      id,
+      day: x.day,
+      start: x.start,
+      ...(x.end ? { end: x.end } : {}),
+      title: x.title.trim(),
+      ...(x.where?.trim() ? { where: x.where.trim() } : {}),
+      ...(x.note?.trim() ? { note: x.note.trim() } : {}),
+      ...(x.featured ? { featured: true } : {}),
+      ...(x.kind && x.kind !== "session" ? { kind: x.kind } : {}),
+      ...(topics.length ? { topics } : {}),
+      ...(x.aside?.trim() ? { aside: x.aside.trim() } : {}),
+    };
+  };
 
   const submit = async () => {
     if (!draft.title.trim()) return setProblem("Say what it is.");
@@ -133,11 +164,17 @@ export function AgendaEditor({
                           </span>
                         ) : null}
                       </span>
-                      {i.where ? (
-                        <span className="text-cf-slate block text-[13px]">
-                          {i.where}
-                        </span>
-                      ) : null}
+                      <span className="text-cf-slate block text-[13px]">
+                        {[
+                          i.kind && i.kind !== "session"
+                            ? KIND_WORDS[i.kind]
+                            : null,
+                          i.where,
+                          i.topics?.length ? `${i.topics.length} topics` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
                     </span>
                     <span className="flex shrink-0 gap-3 text-[13px]">
                       <button
@@ -150,6 +187,9 @@ export function AgendaEditor({
                             end: i.end ?? "",
                             where: i.where ?? "",
                             note: i.note ?? "",
+                            kind: i.kind ?? "session",
+                            topicsText: (i.topics ?? []).join("\n"),
+                            aside: i.aside ?? "",
                           });
                         }}
                         aria-label={`Edit ${i.title}`}
@@ -247,6 +287,49 @@ export function AgendaEditor({
             />
           </label>
         </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_2fr]">
+          <label className="text-cf-slate text-[13px] font-semibold">
+            Kind
+            <select
+              className={`${field} mt-1`}
+              value={draft.kind ?? "session"}
+              onChange={(e) =>
+                setDraft({ ...draft, kind: e.target.value as AgendaKind })
+              }
+              data-testid="agenda-kind"
+            >
+              {AGENDA_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {KIND_WORDS[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-cf-slate text-[13px] font-semibold">
+            Topics{" "}
+            <span className="text-cf-mist font-normal">
+              (optional, one per line)
+            </span>
+            <textarea
+              className={`${field} mt-1 h-[52px] min-h-[52px]`}
+              value={draft.topicsText ?? ""}
+              onChange={(e) =>
+                setDraft({ ...draft, topicsText: e.target.value })
+              }
+            />
+          </label>
+        </div>
+        <label className="text-cf-slate mt-3 block text-[13px] font-semibold">
+          A line of personality{" "}
+          <span className="text-cf-mist font-normal">(optional)</span>
+          <input
+            className={`${field} mt-1`}
+            value={draft.aside ?? ""}
+            maxLength={120}
+            placeholder="History is being made."
+            onChange={(e) => setDraft({ ...draft, aside: e.target.value })}
+          />
+        </label>
         <label className="text-cf-slate mt-3 block text-[13px] font-semibold">
           A note <span className="text-cf-mist font-normal">(optional)</span>
           <input

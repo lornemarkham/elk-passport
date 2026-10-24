@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MapPin, MessageSquare, PlaneLanding } from "lucide-react";
+import {
+  Coffee,
+  Footprints,
+  Grid3x3,
+  MapPin,
+  MessageSquare,
+  PlaneLanding,
+  UtensilsCrossed,
+} from "lucide-react";
+import { agendaEntry } from "@/domain/conference/agenda";
 import { FindMyPeople } from "@/components/conference-together/FindMyPeople";
 import {
   Avatar,
@@ -80,6 +89,53 @@ export default async function PeoplePage({
       .map((p) => ({ memberId: p.memberId, name: p.displayName!, you: false })),
   ];
   const quiet = people.total - listed.length;
+  const plansOn = c.modules.includes("plans") && together;
+  const bingoOn = c.modules.includes("bingo");
+  // Walk & talk is offered at the next published break — the agenda's own
+  // free minutes, not a time Passport made up.
+  const nextBreak = (c.agenda ?? [])
+    .filter(
+      (i) =>
+        i.kind === "break" &&
+        Date.parse(agendaEntry(i, c.timeZone).startsAt) > now.getTime(),
+    )
+    .sort((a, b) =>
+      `${a.day}${a.start}`.localeCompare(`${b.day}${b.start}`),
+    )[0];
+  const plansHref = (q: Record<string, string>) =>
+    `${base}/plans?${new URLSearchParams(q)}`;
+  const together4 = [
+    {
+      title: "Coffee crew",
+      line: "Say when; whoever's around comes along.",
+      Icon: Coffee,
+      href: plansHref({ kind: "coffee", title: "Coffee crew" }),
+    },
+    {
+      title: "Walk & talk",
+      line: nextBreak
+        ? `At the next break, ${nextBreak.start}. A lap outside and back.`
+        : "A lap outside and back, between sessions.",
+      Icon: Footprints,
+      href: plansHref({
+        kind: "morning-walk",
+        title: "Walk & talk",
+        ...(nextBreak
+          ? {
+              day: nextBreak.day,
+              time: nextBreak.start,
+              meeting: "Hotel lobby",
+            }
+          : {}),
+      }),
+    },
+    {
+      title: "Dinner plans",
+      line: "Suggest a place, vote, go together.",
+      Icon: UtensilsCrossed,
+      href: plansHref({ kind: "dinner", title: "Dinner together" }),
+    },
+  ];
   const anchor = anchorsFor(c)[0];
   const pins = (board?.plans ?? [])
     .filter((p) => p.next && p.meeting?.place?.at)
@@ -122,6 +178,59 @@ export default async function PeoplePage({
               </Link>
             ) : null}
           </nav>
+        ) : null}
+        {plansOn || bingoOn ? (
+          <section className="mt-5" data-testid="get-together">
+            <p className="cf-eyebrow text-cf-mist">Meet someone new</p>
+            <ul className="cf-shelf -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0">
+              {bingoOn ? (
+                <li className="w-[200px] shrink-0 snap-start sm:w-auto">
+                  <Link
+                    href={`${base}/bingo`}
+                    className="bg-cf-sage flex h-full min-h-[124px] flex-col rounded-2xl p-4 text-white"
+                    data-testid="bingo-link"
+                  >
+                    <Grid3x3
+                      aria-hidden="true"
+                      className="h-5 w-5"
+                      strokeWidth={1.8}
+                    />
+                    <span className="cf-serif mt-3 text-[18px] leading-tight">
+                      Get-to-know-you Bingo
+                    </span>
+                    <span className="mt-1 text-[13px] text-white/80">
+                      Nine ways to meet someone. Just for fun.
+                    </span>
+                  </Link>
+                </li>
+              ) : null}
+              {plansOn
+                ? together4.map((t) => (
+                    <li
+                      key={t.title}
+                      className="w-[200px] shrink-0 snap-start sm:w-auto"
+                    >
+                      <Link
+                        href={t.href}
+                        className="border-cf-line hover:border-cf-ink/30 flex h-full min-h-[124px] flex-col rounded-2xl border bg-white p-4"
+                      >
+                        <t.Icon
+                          aria-hidden="true"
+                          className="text-cf-brass h-5 w-5"
+                          strokeWidth={1.8}
+                        />
+                        <span className="cf-serif text-cf-ink mt-3 text-[18px] leading-tight">
+                          {t.title}
+                        </span>
+                        <span className="text-cf-slate mt-1 text-[13px]">
+                          {t.line}
+                        </span>
+                      </Link>
+                    </li>
+                  ))
+                : null}
+            </ul>
+          </section>
         ) : null}
         <Panel as="div" className="mt-4 overflow-hidden">
           <ul
