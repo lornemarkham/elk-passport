@@ -1371,7 +1371,7 @@ function framing(
       };
     case "group":
       return {
-        heading: "With friends",
+        heading: "For a group",
         note: "Places with several things to do, what's on, and anywhere described as suiting all ages or beginners come first. Atlas doesn't say what suits a group — that ordering is Passport's.",
       };
     default:

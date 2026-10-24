@@ -1,3 +1,4 @@
+import { townIn } from "@/domain/day/intent";
 import { townById } from "@/domain/discovery/towns";
 import type { ConferenceDetails, ModuleId } from "./types";
 
@@ -124,6 +125,61 @@ export function doorsFor(details: Pick<ConferenceDetails, "place">): Door[] {
       title: "A whole free day",
       blurb: "Leave in the morning. Come back with a story.",
       href: go({ mode: "whole-day" }),
+    },
+  ];
+}
+
+/**
+ * **Where Discovery should measure from for this conference** — the venue,
+ * where Passport knows it by name ("JW Marriott Parq"), else the
+ * conference's town. Never geocoded from the organiser's words: a venue
+ * Passport doesn't know falls back to the town, and a town it doesn't know
+ * gives nothing.
+ */
+export function discoveryOriginFor(
+  details: Pick<ConferenceDetails, "place"> &
+    Partial<Pick<ConferenceDetails, "venue">>,
+): string | undefined {
+  const town = townById(details.place.townId);
+  if (!town) return undefined;
+  const venue = details.venue?.name ? townIn(details.venue.name) : undefined;
+  return venue && venue.area === town.area ? venue.id : town.id;
+}
+
+/**
+ * **Questions to ask Go Have A Day from the venue** (Vancouver launch,
+ * 2026-10-24): the moments a conference actually has free — a break, the
+ * evening, the group. Each is a sentence handed to Discovery's own reader,
+ * measured from the venue; nothing here names a place.
+ */
+export function askDoorsFor(
+  details: Pick<ConferenceDetails, "place"> &
+    Partial<Pick<ConferenceDetails, "venue">>,
+): Door[] {
+  const at = discoveryOriginFor(details);
+  if (!at) return [];
+  const ask = (say: string) =>
+    `/discovery?${new URLSearchParams({ at, ask: say })}`;
+  return [
+    {
+      title: "Explore near the venue",
+      blurb: "What's good a few blocks away.",
+      href: ask("What's good near the venue?"),
+    },
+    {
+      title: "Coffee on your break",
+      blurb: "Within a ten-minute walk, there and back in time.",
+      href: ask("Coffee within a 10-minute walk"),
+    },
+    {
+      title: "After the sessions",
+      blurb: "Something fun for the evening, close by.",
+      href: ask("Something fun after the sessions, within walking distance"),
+    },
+    {
+      title: "Where should our group go tonight?",
+      blurb: "Somewhere a table of colleagues can go together.",
+      href: ask("Where can our group go tonight?"),
     },
   ];
 }

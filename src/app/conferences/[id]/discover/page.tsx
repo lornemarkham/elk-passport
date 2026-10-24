@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Doors } from "@/components/conference/Doors";
 import { Explore } from "@/components/conference-together/Explore";
 import { ModuleTop } from "@/components/conference-together/ModuleTop";
-import { doorsFor } from "@/domain/conference/modules";
+import { askDoorsFor, doorsFor } from "@/domain/conference/modules";
 import { conferenceContext, readIdentity } from "@/lib/conference/request";
 import { conferenceSetup } from "@/lib/conference/config";
 import { readPlans } from "@/lib/conference-plans/service";
@@ -35,6 +35,7 @@ export default async function DiscoverModule({
   if (!c.modules.includes("discover") && ctx.viewer.role !== "organiser")
     notFound();
   const doors = doorsFor(c);
+  const asks = askDoorsFor(c);
   const plansOn = c.modules.includes("plans") && togetherEnabled();
   let plans: { id: string; title: string; votes: boolean }[] = [];
   if (plansOn) {
@@ -69,6 +70,17 @@ export default async function DiscoverModule({
               : ""}
           </p>
         )}
+        {asks.length ? (
+          <>
+            <h2 className="cf-serif text-cf-ink mt-16 text-[24px] leading-tight">
+              Ask Go Have A Day
+            </h2>
+            <p className="text-cf-slate mt-2 mb-5">
+              A break, the evening, the group — measured from the venue.
+            </p>
+            <Doors doors={asks} />
+          </>
+        ) : null}
         {doors.length ? (
           <>
             <h2 className="cf-serif text-cf-ink mt-16 text-[24px] leading-tight">

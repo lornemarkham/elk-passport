@@ -98,7 +98,7 @@ export async function generateMetadata({
   return {
     // The uuid stays as the fallback rather than a cheerful invention: a
     // subject Atlas cannot compose has no name to print.
-    title: named ? `${named} — October` : `Passport — ${id.slice(0, 8)}`,
+    title: named ? `${named} — Go Have A Day` : `Passport — ${id.slice(0, 8)}`,
     robots: { index: false, follow: false },
   };
 }

@@ -4,7 +4,13 @@ import { inkOn, safeAccent } from "./branding";
 import { countdown, dateRange } from "./countdown";
 import { parseDetails, retainUntilFor } from "./details";
 import { SYCLE_VANCOUVER_2026 } from "./fixtures";
-import { doorsFor, enabledModules, MODULES } from "./modules";
+import {
+  askDoorsFor,
+  discoveryOriginFor,
+  doorsFor,
+  enabledModules,
+  MODULES,
+} from "./modules";
 import type { ConferenceDetails, Invite } from "./types";
 
 const sycle = (() => {
@@ -136,5 +142,30 @@ describe("modules", () => {
       ),
     ).toBe(true);
     expect(doorsFor({ place: { label: "Atlantis" } })).toEqual([]);
+  });
+
+  it("ask Discovery from the venue where Passport knows it, else the town", () => {
+    const place = { label: "Vancouver", townId: "vancouver" };
+    expect(
+      discoveryOriginFor({
+        place,
+        venue: { name: "JW Marriott Parq Vancouver" },
+      }),
+    ).toBe("jw-marriott-parq");
+    expect(discoveryOriginFor({ place, venue: { name: "The Big Hall" } })).toBe(
+      "vancouver",
+    );
+    const doors = askDoorsFor({
+      place,
+      venue: { name: "JW Marriott Parq" },
+    });
+    expect(doors).toHaveLength(4);
+    for (const d of doors) {
+      const q = new URL(d.href, "http://x");
+      expect(q.pathname).toBe("/discovery");
+      expect(q.searchParams.get("at")).toBe("jw-marriott-parq");
+      expect(q.searchParams.get("ask")).toBeTruthy();
+    }
+    expect(askDoorsFor({ place: { label: "Atlantis" } })).toEqual([]);
   });
 });

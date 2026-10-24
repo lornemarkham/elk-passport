@@ -32,6 +32,11 @@ export const VANCOUVER_QUESTIONS = [
   "Great coffee near JW Marriott Parq",
   "A good restaurant for five coworkers tonight",
   "Something fun within a 20-minute walk",
+  // The conference's own doors into Discovery (askDoorsFor).
+  "What's good near the venue?",
+  "Coffee within a 10-minute walk",
+  "Something fun after the sessions, within walking distance",
+  "Where can our group go tonight?",
 ];
 
 describe.skipIf(!POOL)("a Vancouver visitor asking", () => {

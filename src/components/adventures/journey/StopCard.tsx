@@ -257,7 +257,7 @@ export function StopCard({
             >
               More
             </summary>
-            <div className="absolute left-0 z-20 mt-2 flex w-60 flex-col items-stretch gap-1 rounded-2xl border border-[var(--gh-line)] bg-white p-2 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.45)] [&>*]:justify-start">
+            <div className="absolute right-0 z-20 mt-2 flex w-60 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-1 rounded-2xl border border-[var(--gh-line)] bg-white p-2 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.45)] [&>*]:justify-start">
               {isOwner && (
                 <>
                   <button

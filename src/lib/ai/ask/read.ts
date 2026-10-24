@@ -641,7 +641,7 @@ export function readBack(
         : "with a kid",
     );
   if (ask.pair) out.push("the two of you");
-  if (ask.company === "group") out.push("with friends");
+  if (ask.company === "group") out.push("a group");
   if (ask.company === "alone") out.push("on your own");
   if (ask.on) {
     const part = ask.partOfDay

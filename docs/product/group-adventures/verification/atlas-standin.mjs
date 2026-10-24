@@ -51,6 +51,42 @@ createServer(async (req, res) => {
   const parts = url.pathname.split("/").filter(Boolean);
 
   if (url.pathname === "/discovery/candidates") {
+    // **Asked how far, from a point** (ADR 094): straight-line km from the
+    // coordinates each row states, as Atlas measures; rows it cannot place
+    // are left out of the reading. Added for the Vancouver run (2026-10-24),
+    // where every answer near the Parq depends on it.
+    const lat = Number(url.searchParams.get("lat"));
+    const lng = Number(url.searchParams.get("lng"));
+    if (url.searchParams.has("lat") && Number.isFinite(lat + lng)) {
+      const within = Number(url.searchParams.get("withinKm") ?? 50);
+      const rad = (d) => (d * Math.PI) / 180;
+      const km = ([lng2, lat2]) => {
+        const h =
+          Math.sin(rad(lat2 - lat) / 2) ** 2 +
+          Math.cos(rad(lat)) *
+            Math.cos(rad(lat2)) *
+            Math.sin(rad(lng2 - lng) / 2) ** 2;
+        return 2 * 6371 * Math.asin(Math.sqrt(h));
+      };
+      const measured = body.flatMap((c) => {
+        const point = c.geography?.coordinates;
+        if (!point) return [];
+        const d = Math.round(km(point) * 10) / 10;
+        return [
+          {
+            id: c.id,
+            distance: {
+              state: "measured",
+              km: d,
+              basis: "coordinates",
+              within: d <= within,
+            },
+          },
+        ];
+      });
+      send(res, 200, { candidates: measured });
+      return;
+    }
     const on = url.searchParams.get("on");
     const age = url.searchParams.get("childAge");
     const candidates = body.map((c) => {
