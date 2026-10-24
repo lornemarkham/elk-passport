@@ -87,3 +87,20 @@ vercel ls elk-passport                                           # newest produc
   ("Production smoke"). Then check that an account with older saved places
   still sees them under _Places you've saved_.
 - Hockey: `MAYHEM.md` §10 step 6. Conference: the runbook of mission 443.
+
+## 6. Re-verification (mission 449, same day)
+
+- GitHub `main` had moved to `d5ceea8` (merge of Conference Executive onto
+  Mayhem `36dba1d`). Its tree is identical to this candidate's `ff5b06c`, so
+  this `main` merged `origin/main` (no content change): **the push is now a
+  fast-forward**, and it still carries Adventures and Discovery speed that
+  `d5ceea8` lacks.
+- Live `gohaveaday.com` (probed read-only): `/` is Discovery, bar is
+  Discover · Places · Saved · Experiences, but `/adventures` is still the old
+  page ("Do things with people") and `/saved` lacks _Where to next?_ and
+  _Create an adventure_. The Adventures transformation is **not live**.
+- Re-run: tsc clean, eslint 0 errors, prettier clean, vitest 3785, build ok,
+  Playwright 249 passed / 5 failed (the recorded baseline, same five),
+  adventures stack suite 12/12 (journey, acceptance, extraordinary).
+- Screenshots (desktop and phone, signed out on the `gohaveaday.com` host and
+  signed in on the stack): `~/scratch/shots-m449` on Metatron.
