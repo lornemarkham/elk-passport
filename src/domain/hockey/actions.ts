@@ -3,6 +3,7 @@ import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant, ResponseValue } from "@/experience-lab/core/types";
 import { MODULE_IDS, type ModuleId } from "./modules";
 import { TEAM_ABBRS } from "./fans";
+import { CHALLENGE_KINDS, MARKETS, SIDES, TEAM_REACTIONS } from "./challenges";
 
 /**
  * **Everything a member can do to a night, as data.**
@@ -126,6 +127,40 @@ export const ActionSchema = z.discriminatedUnion("type", [
     type: z.literal("setChirp"),
     on: z.boolean(),
     level: z.enum(["quiet", "normal", "rowdy"]).optional(),
+  }),
+  /** Call somebody out (`challenges.ts`). Who issues it comes from the session. */
+  z.object({
+    type: z.literal("issueChallenge"),
+    kind: z.enum(CHALLENGE_KINDS),
+    targetId: z.string().uuid(),
+    market: z.enum(MARKETS).optional(),
+    side: z.enum(SIDES).optional(),
+    taunt: z.string().trim().max(140).optional(),
+    entry: z.string().trim().max(280).optional(),
+  }),
+  /** The target accepts or declines; the challenger withdraws. */
+  z.object({
+    type: z.literal("answerChallenge"),
+    challengeId: z.string().uuid(),
+    answer: z.enum(["accept", "decline", "withdraw"]),
+  }),
+  /** The target's performance, once. */
+  z.object({
+    type: z.literal("performChallenge"),
+    challengeId: z.string().uuid(),
+    entry: short(280),
+  }),
+  /** A juror's ruling. */
+  z.object({
+    type: z.literal("voteChallenge"),
+    challengeId: z.string().uuid(),
+    verdict: z.boolean(),
+  }),
+  /** 🫡 🤡 🧂 🔥 🪦 at somebody's team, or null to take it back. */
+  z.object({
+    type: z.literal("reactTeam"),
+    targetId: z.string().uuid(),
+    emoji: z.enum(TEAM_REACTIONS).nullable(),
   }),
   /** At the arena or watching from the couch, on this night (`crowd.ts`). */
   z.object({

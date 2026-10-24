@@ -95,6 +95,15 @@ export type LineOccasion =
       readonly a: Fan;
       readonly b: Fan;
       readonly said: string;
+    }
+  | {
+      /** A PLAY challenge thrown, or taken on. */
+      readonly kind: "dare";
+      readonly stage: "issued" | "accepted";
+      readonly challenger: Fan;
+      readonly target: Fan;
+      /** What it is, in words: "a bet that the Wild win". */
+      readonly what: string;
     };
 
 /** Ask for one line for a moment in the chat. */
@@ -123,6 +132,16 @@ export function lineRequest(input: {
     case "bold":
       ask = `${occasion.fan.name} just made a bold prediction: "${occasion.said}". React to how bold it is. Do not say whether it will happen.`;
       break;
+    case "dare": {
+      const self = occasion.challenger.id === occasion.target.id;
+      ask =
+        occasion.stage === "accepted"
+          ? `${fanLine(occasion.target)} just ACCEPTED a challenge from ${fanLine(occasion.challenger)}: ${occasion.what}. Escalate the rivalry like a commentator. Do not predict who wins.`
+          : self
+            ? `${fanLine(occasion.challenger)} just volunteered, unprompted, for ${occasion.what}. React to the nerve of it. Do not predict how it goes.`
+            : `${fanLine(occasion.challenger)} just challenged ${fanLine(occasion.target)} to ${occasion.what}. Stir the pot and dare ${occasion.target.name} to take it. Do not predict who wins.`;
+      break;
+    }
     case "rivalry": {
       const why =
         occasion.a.team && occasion.b.team

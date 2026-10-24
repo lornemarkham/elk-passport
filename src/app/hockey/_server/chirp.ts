@@ -17,6 +17,10 @@ import {
   readChatter,
   renderBotRow,
   welcomePlan,
+  challengePlan,
+  ruledPlan,
+  worstPlan,
+  type ChallengeView,
   type BotLine,
   type BotPlan,
   type ChirpRoom,
@@ -25,6 +29,7 @@ import {
   type DoneFamily,
   type Fan,
   type ScorePick,
+  worstPick,
 } from "@/domain/hockey/chirp";
 import {
   chirpsRequest,
@@ -39,9 +44,11 @@ import { modulesOf } from "@/domain/hockey/modules";
 import { matchupOf } from "@/domain/hockey/teams";
 import {
   SYCLE_HOCKEY_NIGHT,
+  settledPlay,
   templatePrompts,
   type NightRows,
 } from "@/domain/hockey/night";
+import { gameOf as playGame, sideWords } from "@/domain/hockey/challenges";
 import { askModel, modelConfigured, tell } from "./chirp-ai";
 
 /**
@@ -175,6 +182,44 @@ function dinnerLabel(
   return (id) => labels.get(id);
 }
 
+/** Every PLAY challenge as Chirp Bot reads it: who, what, and — once decided — who won. */
+export function challengeViews(
+  rows: NightRows,
+  now = new Date(),
+): Map<string, ChallengeView> {
+  const details = { ...SYCLE_HOCKEY_NIGHT.details, ...rows.occasion.details };
+  const game = playGame(details.home, details.opponent);
+  const views = new Map<string, ChallengeView>();
+  for (const s of settledPlay(rows, now)) {
+    const c = s.challenge;
+    const decided = s.state === "won" || s.state === "lost";
+    views.set(c.id, {
+      id: c.id,
+      kind: c.kind,
+      challenger: c.challenger_id,
+      target: c.target_id,
+      status: c.status,
+      side: c.market && c.side ? sideWords(c.market, c.side, game) : undefined,
+      winner: decided ? s.winner : undefined,
+      decidedAt: decided ? s.decidedAt : undefined,
+    });
+  }
+  return views;
+}
+
+/** The called final score, when it is known: [home, away]. */
+function finalCalled(rows: NightRows): [number, number] | null {
+  const r = rows.prompts.find(
+    (p) => p.prompt_id === "final-score" && p.content === null,
+  )?.resolution;
+  return Array.isArray(r) &&
+    r.length === 2 &&
+    Number.isInteger(r[0]) &&
+    Number.isInteger(r[1])
+    ? [r[0] as number, r[1] as number]
+    : null;
+}
+
 /** The chat's Chirp Bot lines and everybody's team, as this member may see them. */
 export function chirpRoomOf(
   rows: NightRows,
@@ -197,8 +242,20 @@ export function chirpRoomOf(
       );
     if (kind === "final" || kind === "lead")
       return facts.leader !== null && facts.leader.id === parts[2];
+    if (kind === "worst") {
+      const actual = finalCalled(rows);
+      const worst = actual ? worstPick(picks, actual) : null;
+      return (
+        facts.gameOver &&
+        worst !== null &&
+        worst.userId === parts[2] &&
+        `${worst.home}-${worst.away}` === parts[3]
+      );
+    }
     return false;
   };
+  const views = challengeViews(rows);
+  const actual = finalCalled(rows);
   const pointsOf = (id: string) =>
     facts.leader?.id === id ? facts.leader.points : undefined;
 
@@ -222,6 +279,8 @@ export function chirpRoomOf(
             optionLabel,
             claimHolds,
             pointsOf,
+            challengeOf: (cid) => views.get(cid),
+            finalScore: actual ? `${actual[0]}–${actual[1]}` : undefined,
           }),
         )
         .filter((line): line is BotLine => line !== null)
@@ -603,8 +662,106 @@ export async function chirpTick(
       seed: seed(),
     });
     if (lead && !verdict) await post(db, rows.occasion.id, userId, lead);
+    // The spectacularly wrong score call, once the score is in.
+    const worst = worstPlan({
+      now,
+      startsAt,
+      gameOver: facts.gameOver,
+      actual: finalCalled(rows),
+      picks: scorePicks(rows, members),
+      rows: bots,
+      seed: seed(),
+    });
+    if (worst) await post(db, rows.occasion.id, userId, worst);
+    // A challenge decided by the clock (a jury's deadline, a bet's question
+    // revealed): one verdict per look, so a backlog is never a flood.
+    for (const view of challengeViews(rows, now).values()) {
+      const ruled = ruledPlan({
+        challenge: view,
+        rows: bots,
+        now,
+        seed: seed(),
+      });
+      if (ruled) {
+        await post(db, rows.occasion.id, userId, ruled);
+        break;
+      }
+    }
   } catch (error) {
     console.warn("[hockey] chirp bot (tick):", error);
+  }
+}
+
+/**
+ * **PLAY, in the chat.** Somebody threw a challenge, took one on, or a
+ * jury's last vote decided one. Thrown lines may be voiced by the model
+ * (the library line stands in if it has nothing usable); a verdict is
+ * library only, because it states who won.
+ */
+export async function chirpOnChallenge(
+  db: Db,
+  rows: NightRows,
+  userId: string,
+  challengeId: string,
+  event: "issued" | "accepted" | "ruled",
+  now = new Date(),
+): Promise<void> {
+  try {
+    if (!chirpOn(rows)) return;
+    const view = challengeViews(rows, now).get(challengeId);
+    if (!view) return;
+    const bots = botRowsOf(rows);
+    if (event === "ruled") {
+      const plan = ruledPlan({
+        challenge: view,
+        rows: bots,
+        now,
+        seed: seed(),
+      });
+      if (plan) await post(db, rows.occasion.id, userId, plan);
+      return;
+    }
+    const newest = [...rows.moments].sort((a, b) =>
+      b.at.localeCompare(a.at),
+    )[0];
+    const plan = challengePlan({
+      event,
+      challenge: view,
+      userId,
+      rows: bots,
+      newestIsBot: newest?.kind === "chirp",
+      now,
+      level: levelOf(rows),
+      seed: seed(),
+    });
+    if (!plan) return;
+    const fans = fansOf(rows);
+    const fan = (id: string) =>
+      fans.find((f) => f.id === id) ?? { id, name: "Someone", team: null };
+    const occasion: LineOccasion = {
+      kind: "dare",
+      stage: event,
+      challenger: fan(view.challenger),
+      target: fan(view.target),
+      what:
+        view.kind === "bet"
+          ? `a bet that ${view.side}`
+          : view.kind === "prophecy"
+            ? "a prophecy about tonight's game"
+            : view.kind === "defend"
+              ? "defending their team's honour in front of the group"
+              : view.kind === "commentary"
+                ? "calling a goal like a broadcaster"
+                : "posting an outrageous hot take",
+    };
+    await post(
+      db,
+      rows.occasion.id,
+      userId,
+      await voiced(plan, rows, userId, occasion, now),
+    );
+  } catch (error) {
+    console.warn("[hockey] chirp bot (challenge):", error);
   }
 }
 

@@ -215,10 +215,14 @@ const TEAMS: Readonly<Record<string, TeamColours>> = {
   },
 };
 
-/** Every opponent the night can be started against has colours. */
-export const DRESSED: readonly string[] = OPPONENTS.map((o) => o.name).filter(
-  (name) => name in TEAMS,
-);
+/**
+ * Every opponent the night can be started against has colours. A function,
+ * not a constant: `schedule.ts` → `night.ts` → … → this file is a cycle, and
+ * `OPPONENTS` is not there yet while the cycle is still loading.
+ */
+export function dressed(): readonly string[] {
+  return OPPONENTS.map((o) => o.name).filter((name) => name in TEAMS);
+}
 
 /**
  * A team's colours, or a plain slate kit for a name Passport does not know —

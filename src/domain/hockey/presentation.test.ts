@@ -6,11 +6,11 @@ import { planItems } from "./plan";
 import { answerText, pickProgress, verdictFor } from "./reveal";
 import { OPPONENTS } from "./schedule";
 import { defaultTab, tabOfBlock } from "./tabs";
-import { DRESSED, teamColours } from "./teams";
+import { dressed, teamColours } from "./teams";
 
 describe("team colours", () => {
   it("dresses every opponent a night can be started against", () => {
-    expect(DRESSED).toHaveLength(OPPONENTS.length);
+    expect(dressed()).toHaveLength(OPPONENTS.length);
     expect(teamColours("Canucks").abbr).toBe("VAN");
     expect(teamColours("Wild").abbr).toBe("MIN");
   });

@@ -24,7 +24,18 @@ import {
   type NearbyPlace,
 } from "@/domain/hockey/nearby";
 import { answerProblem, type Action } from "@/domain/hockey/actions";
+import {
+  NO_PLAY,
+  issueProblem,
+  type ChallengeRow,
+  type LedgerRow,
+  type PlayRoom,
+  type PlayRows,
+  type TeamReactionRow,
+  type VoteRow,
+} from "@/domain/hockey/challenges";
 import { isTeamAbbr } from "@/domain/hockey/fans";
+import { cupStatus } from "@/domain/hockey/cup";
 import { NO_CROWD, isWatching, type Crowd } from "@/domain/hockey/crowd";
 import {
   chirpOnArrival,
@@ -34,6 +45,7 @@ import {
   chirpOnSwitch,
   chirpOnDone,
   chirpOnTeam,
+  chirpOnChallenge,
   chirpRoomOf,
   chirpTick,
   chirpsAbout,
@@ -64,6 +76,7 @@ import {
   SYCLE_HOCKEY_NIGHT,
   composeNight,
   rulesFor,
+  settledPlay,
   templateRules,
   type MemberRow,
   type NightRows,
@@ -92,6 +105,8 @@ export interface NightSnapshot {
   readonly chirp: ChirpRoom;
   /** Who's at the arena and who's on the couch (`domain/hockey/crowd.ts`). */
   readonly crowd: Crowd;
+  /** Challenges, the jury, team reactions, the mission ledger (`challenges.ts`). */
+  readonly play: PlayRoom;
 }
 
 export class NightError extends Error {
@@ -184,7 +199,7 @@ async function rowsWith(
     ),
     of(
       "passport_occasion_prompts",
-      "prompt_id, reveal, lock_offset_minutes, audience_only, open_to_suggestions, asked_by, content, resolution",
+      "prompt_id, reveal, lock_offset_minutes, audience_only, open_to_suggestions, asked_by, content, resolution, created_at",
     ),
     of(
       "passport_occasion_options",
@@ -215,9 +230,12 @@ async function rowsWith(
     if (r.error) throw new NightError(r.error.message, 500);
   }
 
+  const play = watching ? await playRowsFor(db, id) : undefined;
+
   return {
     chirpAvailable: chirp,
     watchingAvailable: watching,
+    play,
     occasion: occasion as unknown as NightRows["occasion"],
     members: members.data as unknown as NightRows["members"],
     prompts: prompts.data as unknown as NightRows["prompts"],
@@ -227,6 +245,48 @@ async function rowsWith(
     reactions: reactions.data as unknown as NightRows["reactions"],
     cues: cues.data as unknown as NightRows["cues"],
     consents: consents.data as unknown as NightRows["consents"],
+  };
+}
+
+/**
+ * PostgREST's "no such table" (PGRST205 / 42P01) or "no such function"
+ * (PGRST202 / 42883): mayhem-migration.sql is not applied yet.
+ */
+const missingRelation = (error: { code?: string } | null) =>
+  Boolean(
+    error &&
+    ["PGRST205", "42P01", "PGRST202", "42883"].includes(error.code ?? ""),
+  );
+
+/**
+ * Challenges, the jury's votes, team reactions and the mission ledger —
+ * or undefined before mayhem-migration.sql, when the night loads exactly as
+ * it did without them.
+ */
+async function playRowsFor(db: Db, id: string): Promise<PlayRows | undefined> {
+  const of = (table: string, columns: string) =>
+    db.from(table).select(columns).eq("occasion_id", id);
+  const [challenges, votes, reactions, ledger] = await Promise.all([
+    of(
+      "passport_occasion_challenges",
+      "id, kind, challenger_id, target_id, market, side, taunt, status, entry, entry_at, answered_at, created_at",
+    ).order("created_at"),
+    of(
+      "passport_occasion_challenge_votes",
+      "challenge_id, voter_id, verdict, at",
+    ),
+    of("passport_occasion_team_reactions", "from_id, to_id, emoji, at"),
+    db.rpc("passport_occasion_mission_ledger", { p_occasion: id }),
+  ]);
+  for (const r of [challenges, votes, reactions, ledger]) {
+    if (missingRelation(r.error)) return undefined;
+    if (r.error) throw new NightError(r.error.message, 500);
+  }
+  return {
+    challenges: challenges.data as unknown as ChallengeRow[],
+    votes: votes.data as unknown as VoteRow[],
+    teamReactions: reactions.data as unknown as TeamReactionRow[],
+    ledger: (ledger.data ?? []) as unknown as LedgerRow[],
   };
 }
 
@@ -242,7 +302,7 @@ export async function loadNight(
   const me = rows.members.find((m) => m.user_id === user.id);
   if (!me) return null;
   const composed = composeNight(rows, user.id);
-  const facts = nightFacts(composed.definition, composed.state);
+  const facts = nightFacts(composed.definition, composed.state, rows);
   // Chirp Bot's moments that come with time rather than with somebody's
   // action — picks sealed at puck drop, the final verdict — are noticed by
   // whichever phone asks next, after the answer has gone back.
@@ -253,6 +313,7 @@ export async function loadNight(
     role: me.role,
     chirp: chirpRoomOf(rows, rows.chirpAvailable, facts),
     crowd: crowdOf(rows),
+    play: rows.play ? { available: true, ...rows.play } : NO_PLAY,
   };
 }
 
@@ -273,17 +334,22 @@ function crowdOf(rows: Rows): Crowd {
 function nightFacts(
   definition: ExperienceDefinition,
   state: ExperienceState,
+  rows: NightRows,
 ): NightFacts {
-  const live = liveExperience(definition, state, new Date());
+  const now = new Date();
+  const live = liveExperience(definition, state, now);
   const after = definition.phases.findIndex((p) => p.id === "after");
   const top = live.standings[0];
   const outright =
     top && top.points > 0 && live.standings[1]?.points !== top.points;
+  // "Called" means the Cup is verified, not just that one score is in: the
+  // verdict never crowns somebody a later call or a jury could still unseat.
+  const finalIn =
+    live.prompts.find((p) => p.prompt.id === "final-score")?.prompt
+      .resolution !== undefined;
   return {
     gameOver: after >= 0 && live.phaseNumber >= after,
-    called:
-      live.prompts.find((p) => p.prompt.id === "final-score")?.prompt
-        .resolution !== undefined,
+    called: finalIn && cupStatus(live, settledPlay(rows, now)).verified,
     leader: outright ? { id: top.participant.id, points: top.points } : null,
   };
 }
@@ -577,6 +643,42 @@ function fail(error: { message: string; code?: string } | null, what: string) {
   );
 }
 
+/**
+ * Chirp Bot on a challenge, after the answer has gone back — reading the
+ * night again, because the row it is about was written after `rows` was.
+ */
+async function chirpLater(
+  db: Db,
+  id: string,
+  userId: string,
+  challengeId: string,
+  event: "issued" | "accepted" | "ruled",
+): Promise<void> {
+  const fresh = await rowsFor(db, id, userId).catch(() => null);
+  if (fresh?.chirpAvailable)
+    await chirpOnChallenge(db, fresh, userId, challengeId, event);
+}
+
+/**
+ * A refusal from one of the challenge functions, said as the function said
+ * it: they raise in plain words ("bets close at puck drop") with 22023 for
+ * "not like that", 42501 for "not yours", 23505 for "already".
+ */
+function challengeFailed(error: { message: string; code?: string } | null) {
+  if (!error) return;
+  if (error.code === "23505")
+    throw new NightError("That one's already been thrown.", 409);
+  if (error.code === "42501") throw new NightError("Not yours to do.", 403);
+  if (error.code === "22023") {
+    const said = error.message.replace(/^.*?:\s*/, "");
+    throw new NightError(
+      said.charAt(0).toUpperCase() + said.slice(1) + ".",
+      422,
+    );
+  }
+  throw new NightError(error.message, 500);
+}
+
 export async function act(
   user: PassportUser,
   id: string,
@@ -602,6 +704,16 @@ export async function act(
         action.value === user.id
       )
         throw new NightError("Nice try. You can't vote for your own.", 422);
+      // Whoever asked a scored question calls it; the referee doesn't play.
+      if (
+        prompt?.prompt.askedBy === user.id &&
+        prompt.prompt.scoring &&
+        !prompt.prompt.scoring.shared
+      )
+        throw new NightError(
+          "You asked it, so you call it. You don't get to answer it too.",
+          422,
+        );
       const before = prompt?.myResponse?.value;
       const { error } = await db.from("passport_occasion_responses").upsert(
         {
@@ -920,6 +1032,107 @@ export async function act(
         .eq("occasion_id", id)
         .eq("user_id", user.id);
       fail(error, "updating you");
+      break;
+    }
+
+    case "issueChallenge": {
+      if (!rows.play)
+        throw new NightError("Challenges aren't switched on here yet.", 409);
+      if (!modulesOf(rows.occasion.details).has("games"))
+        throw new NightError("The host left the games out tonight.", 422);
+      const problem = issueProblem(action, user.id, {
+        memberIds: rows.members.map((m) => m.user_id),
+        existing: rows.play.challenges,
+        startsAt: rows.occasion.starts_at,
+        now: new Date(),
+        promptIds: definition.prompts.map((p) => p.id),
+      });
+      if (problem) throw new NightError(problem, 422);
+      const { data, error } = await db.rpc("passport_issue_challenge", {
+        p_occasion: id,
+        p_kind: action.kind,
+        p_target: action.targetId,
+        p_market: action.market ?? null,
+        p_side: action.side ?? null,
+        p_taunt: action.taunt || null,
+        p_entry: action.entry || null,
+      });
+      challengeFailed(error);
+      if (typeof data === "string" && rows.chirpAvailable) {
+        const challengeId = data;
+        after(() => chirpLater(db, id, user.id, challengeId, "issued"));
+      }
+      break;
+    }
+
+    case "answerChallenge": {
+      if (!rows.play)
+        throw new NightError("Challenges aren't switched on here yet.", 409);
+      const { error } = await db.rpc("passport_answer_challenge", {
+        p_challenge: action.challengeId,
+        p_answer: action.answer,
+      });
+      challengeFailed(error);
+      // A pass is never announced. Taking it on is.
+      if (action.answer === "accept" && rows.chirpAvailable) {
+        const challengeId = action.challengeId;
+        after(() => chirpLater(db, id, user.id, challengeId, "accepted"));
+      }
+      break;
+    }
+
+    case "performChallenge": {
+      if (!rows.play)
+        throw new NightError("Challenges aren't switched on here yet.", 409);
+      const { error } = await db.rpc("passport_perform_challenge", {
+        p_challenge: action.challengeId,
+        p_entry: action.entry,
+      });
+      challengeFailed(error);
+      break;
+    }
+
+    case "voteChallenge": {
+      if (!rows.play)
+        throw new NightError("Challenges aren't switched on here yet.", 409);
+      const { error } = await db.rpc("passport_vote_challenge", {
+        p_challenge: action.challengeId,
+        p_verdict: action.verdict,
+      });
+      challengeFailed(error);
+      // The last juror's vote may have decided it: Chirp Bot reads the verdict.
+      if (rows.chirpAvailable) {
+        const challengeId = action.challengeId;
+        after(() => chirpLater(db, id, user.id, challengeId, "ruled"));
+      }
+      break;
+    }
+
+    case "reactTeam": {
+      if (!rows.play)
+        throw new NightError("Reactions aren't switched on here yet.", 409);
+      if (action.targetId === user.id)
+        throw new NightError("Saluting your own team is just a selfie.", 422);
+      if (!rows.members.some((m) => m.user_id === action.targetId))
+        throw new NightError("They're not on this night.", 404);
+      const { error } = action.emoji
+        ? await db.from("passport_occasion_team_reactions").upsert(
+            {
+              occasion_id: id,
+              from_id: user.id,
+              to_id: action.targetId,
+              emoji: action.emoji,
+              at: new Date().toISOString(),
+            },
+            { onConflict: "occasion_id,from_id,to_id" },
+          )
+        : await db
+            .from("passport_occasion_team_reactions")
+            .delete()
+            .eq("occasion_id", id)
+            .eq("from_id", user.id)
+            .eq("to_id", action.targetId);
+      fail(error, "reacting to that");
       break;
     }
 

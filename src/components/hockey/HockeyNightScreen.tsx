@@ -143,7 +143,11 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
       ? byTab.play
           .filter((b) => b.kind === "promptGroup")
           .flatMap((b) => promptsOf(b, live.prompts, live.phase.id))
-          .filter((p) => p.open && p.myResponse === undefined).length
+          .filter((p) => p.open && p.myResponse === undefined).length +
+        // A challenge waiting on my answer is the best reason to open PLAY.
+        night.play.challenges.filter(
+          (c) => c.target_id === live.me!.id && c.status === "open",
+        ).length
       : 0,
     chat: unread,
   };
@@ -292,6 +296,10 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                   blocks={byTab.play}
                   nhl={nhl}
                   onOpenToyBox={() => setToyBoxOpen(true)}
+                  onPickTeam={
+                    chirp.available ? () => setPicking(true) : undefined
+                  }
+                  onOpenChat={() => choose("chat")}
                 />
               )}
               {tab === "chat" && (

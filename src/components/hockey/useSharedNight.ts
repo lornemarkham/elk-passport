@@ -16,6 +16,11 @@ import type { ChirpLevel, ChirpRoom } from "@/domain/hockey/chirp";
 import type { Crowd, Watching } from "@/domain/hockey/crowd";
 import type { ModuleId } from "@/domain/hockey/modules";
 import type { SeriesView } from "@/domain/hockey/series";
+import {
+  NO_PLAY,
+  type IssueInput,
+  type PlayRoom,
+} from "@/domain/hockey/challenges";
 
 export interface NightSnapshot {
   readonly definition: ExperienceDefinition;
@@ -27,6 +32,8 @@ export interface NightSnapshot {
   readonly chirp: ChirpRoom;
   /** Who's at the arena and who's on the couch. Older servers send none. */
   readonly crowd?: Crowd;
+  /** Challenges, the jury, team reactions, the mission ledger. Older servers send none. */
+  readonly play?: PlayRoom;
   /**
    * The rest of this night's run. Sent with the page, not with every poll:
    * last time does not change while you are looking at this time, and
@@ -111,7 +118,7 @@ export function useSharedNight(initial: NightSnapshot) {
     async (
       action: Action,
       optimistic?: (s: ExperienceState) => ExperienceState,
-    ) => {
+    ): Promise<boolean> => {
       generation.current += 1;
       const mine = generation.current;
       setError(null);
@@ -128,13 +135,15 @@ export function useSharedNight(initial: NightSnapshot) {
         if (!res.ok) {
           setError(body.error ?? "That didn't work.");
           await refresh();
-          return;
+          return false;
         }
         if (generation.current === mine)
           setSnapshot(keepSeries(body as NightSnapshot));
+        return true;
       } catch {
         setError("Couldn't reach Passport. Try again in a second.");
         await refresh();
+        return false;
       }
     },
     [id, refresh, keepSeries],
@@ -164,6 +173,7 @@ export function useSharedNight(initial: NightSnapshot) {
     modules: snapshot.modules,
     chirp: snapshot.chirp,
     crowd: snapshot.crowd,
+    play: snapshot.play ?? NO_PLAY,
     series: snapshot.series,
     error,
     clearError: () => setError(null),
@@ -274,6 +284,51 @@ export function useSharedNight(initial: NightSnapshot) {
         };
       });
       void send({ type: "setWatching", where });
+    },
+
+    // ---- PLAY's challenges. Each waits for the server: what a challenge
+    // is worth and who may do what is the database's call, not this page's.
+    issueChallenge: (input: IssueInput) =>
+      send({ type: "issueChallenge", ...input }),
+    answerChallenge: (
+      challengeId: string,
+      answer: "accept" | "decline" | "withdraw",
+    ) => send({ type: "answerChallenge", challengeId, answer }),
+    performChallenge: (challengeId: string, entry: string) =>
+      send({ type: "performChallenge", challengeId, entry }),
+    voteChallenge: (challengeId: string, verdict: boolean) =>
+      send({ type: "voteChallenge", challengeId, verdict }),
+    /** 🫡 🤡 🧂 🔥 🪦 at somebody's team; the same again takes it back. */
+    reactTeam: (targetId: string, emoji: string | null) => {
+      const me = state.meId;
+      setSnapshot((prev) => {
+        if (!me || !prev.play) return prev;
+        const rest = prev.play.teamReactions.filter(
+          (r) => !(r.from_id === me && r.to_id === targetId),
+        );
+        return {
+          ...prev,
+          play: {
+            ...prev.play,
+            teamReactions: emoji
+              ? [
+                  ...rest,
+                  {
+                    from_id: me,
+                    to_id: targetId,
+                    emoji,
+                    at: new Date().toISOString(),
+                  },
+                ]
+              : rest,
+          },
+        };
+      });
+      return send({
+        type: "reactTeam",
+        targetId,
+        emoji: emoji as "🫡" | "🤡" | "🧂" | "🔥" | "🪦" | null,
+      });
     },
 
     setMyEdge: (edge: Edge | null) =>

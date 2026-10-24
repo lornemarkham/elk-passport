@@ -5,6 +5,16 @@ import { curatedNear } from "@/domain/collections/places";
 import { VANCOUVER_PLACES } from "@/domain/collections/vancouver";
 import { walkLabel } from "./nearby";
 import { modulesOf, promptIsOn, storedModules, type ModuleId } from "./modules";
+import {
+  MARKET_PROMPT,
+  cupLines,
+  gameOf,
+  settle,
+  type Market,
+  type PlayRows,
+  type Settled,
+} from "./challenges";
+import { phaseReached } from "@/experience-lab/core/phase";
 import type {
   Brief,
   Edge,
@@ -110,6 +120,8 @@ export interface PromptRow {
   readonly asked_by: string | null;
   readonly content: Prompt | null;
   readonly resolution: ResponseValue | null;
+  /** When it was asked; orders the per-asker cap (`scoringOf`). */
+  readonly created_at?: string;
 }
 
 export interface OptionRow {
@@ -168,6 +180,11 @@ export interface NightRows {
   readonly cues: readonly CueRow[];
   /** Mine only. RLS returns nobody else's, and nothing here would show them. */
   readonly consents: readonly ConsentRow[];
+  /**
+   * Challenges, juries, team reactions and the mission ledger
+   * (`challenges.ts`), when mayhem-migration.sql is applied.
+   */
+  readonly play?: PlayRows;
 }
 
 // -------------------------------------------------------------- template
@@ -399,6 +416,7 @@ function startersFor(
 export function composeNight(
   rows: NightRows,
   meId: string,
+  now: Date = new Date(),
 ): {
   definition: ExperienceDefinition;
   state: ExperienceState;
@@ -457,14 +475,27 @@ export function composeNight(
     );
 
   // Everything a member asked comes from the toy box, which is the games module.
-  const addedPrompts: Prompt[] = rows.prompts
-    .filter((r) => games && r.content !== null && isMember(r.asked_by))
-    .map((r) => ({
-      ...(r.content as Prompt),
-      id: r.prompt_id,
-      askedBy: r.asked_by ?? undefined,
-      resolution: r.resolution ?? undefined,
-    }));
+  // What a question is worth is Passport's rule, never the stored content's
+  // (`honestScoring`), and with the mission ledger a secret mission's points
+  // come from the ledger every member reads alike.
+  const ledgered = Boolean(rows.play);
+  const addedPrompts: Prompt[] = honestScoring(
+    rows.prompts
+      .filter((r) => games && r.content !== null && isMember(r.asked_by))
+      .map((r) => ({
+        ...(r.content as Prompt),
+        id: r.prompt_id,
+        askedBy: r.asked_by ?? undefined,
+        resolution: r.resolution ?? undefined,
+      })),
+    rows.prompts,
+    ledgered,
+  );
+  const askedBy = new Map(
+    addedPrompts
+      .filter((p) => p.scoring && !p.scoring.shared)
+      .map((p) => [p.id, p.askedBy]),
+  );
 
   const blocks = hockeyNight.blocks
     .map((b) =>
@@ -576,12 +607,30 @@ export function composeNight(
 
   const responses: Response[] = rows.responses
     .filter((r) => isMember(r.user_id))
+    // Whoever asked a scored question calls it, so their own answer to it
+    // never counts — the referee does not also play (the server refuses it
+    // too; this is for a row written straight to the database).
+    .filter((r) => askedBy.get(r.prompt_id.split("::")[0]) !== r.user_id)
     .map((r) => ({
       promptId: r.prompt_id,
       participantId: r.user_id,
       value: r.value,
       at: r.answered_at,
     }));
+
+  // Settled challenges and confirmed missions, as score lines everybody
+  // reads the same (`challenges.ts`).
+  if (rows.play && games) {
+    const cup = cupLines(rows.play, {
+      people: participants,
+      startsAt: new Date(occasion.starts_at).toISOString(),
+      now,
+      game: gameOf(details.home, details.opponent),
+      market: marketFacts(rows, now),
+    });
+    prompts.push(...cup.prompts);
+    responses.push(...cup.responses);
+  }
 
   const addedOptions = rows.options
     .filter((o) => isMember(o.added_by))
@@ -623,4 +672,125 @@ function weekday(iso: string): string {
     weekday: "long",
     timeZone: "America/Vancouver",
   });
+}
+
+/**
+ * **What a question somebody asked is worth: Passport's rule, not the row's.**
+ *
+ * A member's question is stored with its own content, and the database lets
+ * a member write any content they like through PostgREST — including a
+ * "prediction" worth 999. So the worth is decided here, from the family:
+ *
+ * - at most `FAMILY_POINTS[family]`, whatever the content says; a family
+ *   with no entry (or no family) scores nothing;
+ * - a side quest scores nothing: "I did it" with nobody to check is not a
+ *   point (the toy box still has them, for the story);
+ * - each person's first `ASKED_CAP` scored questions count, in the order
+ *   they asked them — enough for a good night, not a points farm;
+ * - with the ledger (`ledgered`), a secret mission or dare scores only
+ *   through it: everybody reads the ledger, only two people read the mission.
+ */
+export const FAMILY_POINTS: Partial<Record<ToyFamily, number>> = {
+  prediction: 5,
+  sealed: 5,
+  mission: 8,
+  dare: 5,
+  photo: 5,
+  vault: 5,
+  groupquest: 6,
+};
+export const ASKED_CAP = 3;
+
+export function honestScoring(
+  prompts: readonly Prompt[],
+  rules: readonly PromptRow[],
+  ledgered: boolean,
+): Prompt[] {
+  const askedAt = new Map(rules.map((r) => [r.prompt_id, r.created_at ?? ""]));
+  const counted = new Map<string, number>();
+  const order = [...prompts].sort(
+    (a, b) =>
+      (askedAt.get(a.id) ?? "").localeCompare(askedAt.get(b.id) ?? "") ||
+      a.id.localeCompare(b.id),
+  );
+  const keep = new Map<string, Prompt>();
+  for (const prompt of order) {
+    const { scoring, family } = prompt;
+    const max = family ? FAMILY_POINTS[family] : undefined;
+    const ledger = ledgered && (family === "mission" || family === "dare");
+    if (!scoring || !max || ledger) {
+      keep.set(prompt.id, { ...prompt, scoring: undefined });
+      continue;
+    }
+    const points = Math.max(
+      0,
+      Math.min(max, Math.round(Number(scoring.points) || 0)),
+    );
+    // Shared quests give everybody the same, so they cannot move anybody up.
+    const shared = scoring.shared === true;
+    const who = prompt.askedBy ?? "";
+    const n = counted.get(who) ?? 0;
+    if (!shared && (points === 0 || n >= ASKED_CAP)) {
+      keep.set(prompt.id, { ...prompt, scoring: undefined });
+      continue;
+    }
+    if (!shared) counted.set(who, n + 1);
+    keep.set(prompt.id, {
+      ...prompt,
+      scoring: {
+        points,
+        label:
+          typeof scoring.label === "string"
+            ? scoring.label.slice(0, 40)
+            : undefined,
+        shared: shared || undefined,
+      },
+    });
+  }
+  return prompts.map((p) => keep.get(p.id) ?? p);
+}
+
+/**
+ * What the group may know of each bet's question right now: the host's call,
+ * withheld until the phase it resolves at — the engine's own `knownPrompts`
+ * rule — so a bet is never settled before its pick is revealed.
+ */
+export function marketFacts(rows: NightRows, now: Date) {
+  const anchorAt = new Date(rows.occasion.starts_at).toISOString();
+  const timeline = { ...hockeyNight, anchorAt };
+  return (market: Market) => {
+    const id = MARKET_PROMPT[market];
+    const fixture = hockeyNight.prompts.find((p) => p.id === id);
+    const at = fixture?.resolvesAtPhaseId;
+    const stored = rows.prompts.find(
+      (r) => r.prompt_id === id && r.content === null,
+    );
+    const known = !at || phaseReached(timeline, at, now);
+    const offset =
+      hockeyNight.phases.find((p) => p.id === at)?.offsetMinutes ?? 0;
+    return {
+      resolution: known ? (stored?.resolution ?? undefined) : undefined,
+      resolvesAtPhaseId: at,
+      knownAt: new Date(Date.parse(anchorAt) + offset * 60_000).toISOString(),
+    };
+  };
+}
+
+/** Every challenge on this night, decided as far as the rows and the clock allow. */
+export function settledPlay(
+  rows: NightRows,
+  now: Date = new Date(),
+): Settled[] {
+  if (!rows.play) return [];
+  const memberIds = rows.members.map((m) => m.user_id);
+  const startsAt = new Date(rows.occasion.starts_at).toISOString();
+  const market = marketFacts(rows, now);
+  return rows.play.challenges
+    .filter(
+      (c) =>
+        memberIds.includes(c.challenger_id) && memberIds.includes(c.target_id),
+    )
+    .map((c) =>
+      settle(c, { memberIds, votes: rows.play!.votes, startsAt, now, market }),
+    );
 }

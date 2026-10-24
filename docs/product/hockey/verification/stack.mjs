@@ -333,6 +333,20 @@ async function start() {
     );
   }
 
+  // Operation Mayhem (2026-10-23): challenges, the jury, team reactions and
+  // the mission ledger. Needs night. HOCKEY_MAYHEM=0 starts without it — the
+  // night must load exactly as before, with no challenges.
+  if (
+    process.env.HOCKEY_CHIRP !== "0" &&
+    process.env.HOCKEY_ALIVE !== "0" &&
+    process.env.HOCKEY_NIGHT !== "0" &&
+    process.env.HOCKEY_MAYHEM !== "0"
+  ) {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "mayhem-migration.sql"), "utf8"),
+    );
+  }
+
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,
     PGRST_DB_SCHEMAS: "public",

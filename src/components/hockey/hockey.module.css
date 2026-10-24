@@ -302,6 +302,114 @@
   }
 }
 
+/* ------------------------------------------------------------- PLAY */
+
+/* The Sycle Cup: a slow shine across the gold, brighter once it's won. */
+.trophy {
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+}
+.trophy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 65%
+  );
+  mix-blend-mode: overlay;
+  mask: linear-gradient(#000, #000);
+  background-size: 250% 100%;
+  animation: shine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.trophyGlow {
+  filter: drop-shadow(0 0 22px rgba(255, 216, 77, 0.65))
+    drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+}
+@keyframes shine {
+  0%,
+  55% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+/* Enemy territory: the outsider's colours cut across the night. */
+.territory {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--team-a) 0%,
+    var(--team-a) 42%,
+    color-mix(in srgb, var(--team-b) 85%, #000) 42.4%,
+    #0b1220 100%
+  );
+}
+.territory::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: repeating-linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.05) 0 2px,
+    transparent 2px 22px
+  );
+}
+
+/* A game card: dark, lit from one corner in its own colour. */
+.gamecard {
+  background:
+    radial-gradient(
+      140% 90% at 0% 0%,
+      color-mix(in srgb, var(--tone) 70%, transparent) 0%,
+      transparent 62%
+    ),
+    linear-gradient(160deg, #16213a 0%, #0b1220 100%);
+}
+
+/* Something that wants your answer: a slow breathing ring. */
+.callout {
+  animation: callout 2.4s ease-in-out infinite;
+}
+@keyframes callout {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 216, 77, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 216, 77, 0);
+  }
+}
+
+/* A sealed card, face down. */
+.sealedBack {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.06) 0 6px,
+      transparent 6px 12px
+    ),
+    linear-gradient(
+      160deg,
+      var(--home),
+      color-mix(in srgb, var(--away) 70%, #000)
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trophy::after,
+  .callout {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stamp,
   .rise,

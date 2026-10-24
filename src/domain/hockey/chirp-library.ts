@@ -548,6 +548,88 @@ export const LEAD_LINES = lines("ld", [
   "New Cup leader: {name}, {points} points. Plenty of night left for this to go badly.",
 ]);
 
+// ------------------------------------------------------------ challenges
+//
+// PLAY's challenges (`challenges.ts`), said in the chat. `{name}` is whoever
+// caused the line, `{target}` the other person, `{team}` the target's team
+// (or "their team"), `{side}` a bet's side in words ("the Wild win").
+
+/** A challenge was thrown. Keyed `chal:<challenger>:<id>`; the prefix picks the kind. */
+export const CHALLENGE_ISSUED: Readonly<
+  Record<string, readonly LibraryLine[]>
+> = {
+  bet: lines("ch.bet", [
+    "{name} has bet {target} that {side}. Chirp Bot is holding the receipts. {target}, the floor is yours.",
+    "A bet has been placed: {name} says {side}. {target}, are you taking that or are you scared?",
+    "{name} just put it in writing: {side}. {target} has until puck drop to grow a spine.",
+  ]),
+  defend: lines("ch.defend", [
+    "{name} has challenged {target} to defend the {team}' honour. Chirp Bot has cleared its schedule.",
+    "Enemy territory: {target} must now defend the {team} in front of everybody. Good luck. Truly.",
+    "{name} wants {target} to justify the {team}. The jury is assembling. The jury is already smirking.",
+  ]),
+  commentary: lines("ch.commentary", [
+    "{name} has handed {target} the microphone. Broadcaster voice is mandatory. Dignity is optional.",
+    "{target} has been challenged to call a goal like it's Game 7. {name} wants drama. Deliver it.",
+  ]),
+  hottake: lines("ch.hottake", [
+    "{name} has dared {target} to post a hot take. Lukewarm takes will be returned to sender.",
+    "Hot take incoming from {target}, by order of {name}. Chirp Bot has the fire extinguisher ready.",
+  ]),
+  self: lines("ch.self", [
+    "{name} volunteered. Nobody asked. Chirp Bot respects it. The jury may not.",
+    "{name} just went on the record unprompted. Bold. Possibly a mistake. The jury will decide.",
+  ]),
+};
+
+/** The target took it on. Keyed `took:<target>:<id>`. `{name}` is the target. */
+export const CHALLENGE_TAKEN = lines("tk", [
+  "{name} accepted. It's on. {target} started this and Chirp Bot will make sure everyone remembers that.",
+  "Challenge accepted by {name}. {target}, you poked the bear. The bear is now on the record.",
+  "{name} said yes. The rivalry with {target} has officially escalated. Chirp Bot is thrilled.",
+  "{name} is in. {target}, there is no backing out now. Chirp Bot has screenshots. Allegedly.",
+]);
+
+/** Somebody made a prophecy. Keyed `oracle:<user>:<id>`. Never quotes it. */
+export const PROPHECY_LINES = lines("or", [
+  "{name} has issued a prophecy. It is on the record. The jury rules after puck drop.",
+  "A prophecy from {name}. Either a genius or a future recap highlight. No third option.",
+  "{name} has seen the future, apparently. Chirp Bot will be checking.",
+]);
+
+/**
+ * The verdict. Keyed `ruled:<id>:<winner|none>`; shown only while the rows
+ * still say so. `{name}` won, `{target}` lost (bets); `{name}` was judged
+ * (performances, prophecies).
+ */
+export const RULED_BET = lines("rl.b", [
+  "Bet settled: {name} beats {target}. Three points, and the right to bring it up forever.",
+  "{target} lost a bet to {name}. Chirp Bot would like to formally welcome {target} to the find-out phase.",
+]);
+export const RULED_WON = lines("rl.w", [
+  "The jury has ruled for {name}. Three points and, somehow, their dignity intact.",
+  "Verdict: {name} pulled it off. The jury was not expecting that. Neither was Chirp Bot.",
+]);
+export const RULED_LOST = lines("rl.l", [
+  "The jury was not convinced, {name}. Zero points. The performance will live on in the recap.",
+  "Verdict on {name}: unconvincing. Chirp Bot has filed it under 'brave'.",
+]);
+export const RULED_PROPHECY = lines("rl.p", [
+  "{name}'s prophecy came true. Five points. Chirp Bot is now slightly afraid of {name}.",
+  "The prophecy holds. {name} called it before puck drop. Five points and a cape.",
+]);
+export const RULED_FALSE_PROPHECY = lines("rl.px", [
+  "{name}'s prophecy did not come true. The jury has ruled. Nostradamus remains unthreatened.",
+  "Prophecy denied, {name}. The future had other plans. Zero points, maximum receipts.",
+]);
+
+/** The spectacularly wrong final-score pick, once the score is called. `{name}`, `{pick}`, `{actual}`. */
+export const WORST_PICK_LINES = lines("wr", [
+  "{name} predicted {pick}. It finished {actual}. Chirp Bot has never been prouder of anyone being this wrong.",
+  "Spectacularly wrong award: {name}, who called {pick}. Final was {actual}. A legend of the wrong kind.",
+  "The furthest call from reality tonight: {name} with {pick}. Actual: {actual}. Frame it.",
+]);
+
 // -------------------------------------------------------------- prompts
 
 export interface ControversyPrompt extends LibraryLine {
@@ -663,6 +745,15 @@ const ALL: LibraryLine[] = [
   ...MISSION_LINES,
   ...DONE_LINES,
   ...LEAD_LINES,
+  ...Object.values(CHALLENGE_ISSUED).flat(),
+  ...CHALLENGE_TAKEN,
+  ...PROPHECY_LINES,
+  ...RULED_BET,
+  ...RULED_WON,
+  ...RULED_LOST,
+  ...RULED_PROPHECY,
+  ...RULED_FALSE_PROPHECY,
+  ...WORST_PICK_LINES,
   ...PROMPTS,
 ];
 

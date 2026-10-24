@@ -21,6 +21,15 @@ import {
   MISSION_LINES,
   DONE_LINES,
   LEAD_LINES,
+  CHALLENGE_ISSUED,
+  CHALLENGE_TAKEN,
+  PROPHECY_LINES,
+  RULED_BET,
+  RULED_WON,
+  RULED_LOST,
+  RULED_PROPHECY,
+  RULED_FALSE_PROPHECY,
+  WORST_PICK_LINES,
   VERDICT_LINES,
   WELCOMES,
   currentStorylines,
@@ -73,7 +82,12 @@ export type BotKind =
   | "switch"
   | "mission"
   | "done"
-  | "lead";
+  | "lead"
+  | "chal"
+  | "took"
+  | "oracle"
+  | "ruled"
+  | "worst";
 
 /**
  * **How much Chirp Bot talks**, the host's call (`details.chirpLevel`).
@@ -177,6 +191,11 @@ export interface Fan {
  *   mission:<user>:<prompt>         they pulled off their secret mission
  *   done:<user>:<prompt>            they did their dare / side quest
  *   lead:<stamp>:<user>:<n>         the n-th Cup lead change of the game
+ *   chal:<user>:<challenge>         they threw a challenge (PLAY)
+ *   took:<user>:<challenge>         they accepted one
+ *   oracle:<user>:<challenge>       they made a prophecy
+ *   ruled:<challenge>:<winner|none> the challenge is decided
+ *   worst:<stamp>:<user>:<a>-<b>    the spectacularly wrong score call
  */
 export function kindOfKey(key: string): BotKind | null {
   const prefix = key.split(":", 1)[0];
@@ -197,6 +216,11 @@ export function kindOfKey(key: string): BotKind | null {
     case "mission":
     case "done":
     case "lead":
+    case "chal":
+    case "took":
+    case "oracle":
+    case "ruled":
+    case "worst":
       return prefix;
     default:
       return null;
@@ -219,6 +243,11 @@ const LINES_FOR: Readonly<Record<BotKind, readonly string[]>> = {
   mission: ["ms."],
   done: ["dn."],
   lead: ["ld."],
+  chal: ["ch."],
+  took: ["tk."],
+  oracle: ["or."],
+  ruled: ["rl."],
+  worst: ["wr."],
 };
 
 const ORGANIC: ReadonlySet<BotKind> = new Set([
@@ -226,6 +255,8 @@ const ORGANIC: ReadonlySet<BotKind> = new Set([
   "bold",
   "rivalry",
   "switch",
+  "chal",
+  "oracle",
 ]);
 
 /** Kinds whose key names the person who must have caused the line. */
@@ -236,6 +267,9 @@ const SELF_KEYED: ReadonlySet<BotKind> = new Set([
   "switch",
   "mission",
   "done",
+  "chal",
+  "took",
+  "oracle",
 ]);
 
 // ----------------------------------------------------------- render
@@ -278,6 +312,10 @@ export function renderBotRow(
     readonly claimHolds?: (kind: BotKind, parts: readonly string[]) => boolean;
     /** A person's points as the standings have them now (the verdict says it). */
     readonly pointsOf?: (userId: string) => number | undefined;
+    /** A PLAY challenge as the rows have it now (`chal`/`took`/`oracle`/`ruled`). */
+    readonly challengeOf?: (id: string) => ChallengeView | undefined;
+    /** The called final score, "4–3", for the spectacularly wrong pick. */
+    readonly finalScore?: string;
   },
 ): BotLine | null {
   if (!row.bot_key || !row.bot_line) return null;
@@ -289,7 +327,10 @@ export function renderBotRow(
 
   // Keys that name a person must name the one who caused the line.
   if (SELF_KEYED.has(kind) && parts[1] !== row.actor_id) return null;
-  const claims = kind === "picks" || kind === "final" || kind === "lead";
+  if (CHALLENGE_KINDS_OF_BOT.has(kind))
+    return renderChallengeRow(row, kind, parts, ctx, reactions);
+  const claims =
+    kind === "picks" || kind === "final" || kind === "lead" || kind === "worst";
   if (claims && !ctx.claimHolds?.(kind, parts)) return null;
   const about = claims
     ? parts[2]
@@ -329,6 +370,12 @@ export function renderBotRow(
     const score = /^(\d{1,2})-(\d{1,2})$/.exec(parts[3] ?? "");
     if (!score) return null;
     vars.pick = `${score[1]}–${score[2]}`;
+  }
+  if (kind === "worst") {
+    const score = /^(\d{1,2})-(\d{1,2})$/.exec(parts[3] ?? "");
+    if (!score || !ctx.finalScore) return null;
+    vars.pick = `${score[1]}–${score[2]}`;
+    vars.actual = ctx.finalScore;
   }
   if (kind === "final" || kind === "lead") {
     const points = ctx.pointsOf?.(parts[2]);
@@ -1001,5 +1048,260 @@ export function leadPlan(input: {
   const n = (last?.n ?? 0) + 1;
   return line
     ? { key: `lead:${stamp}:${input.leader.id}:${n}`, line: line.id }
+    : null;
+}
+
+// ------------------------------------------------------- challenges
+
+/** A PLAY challenge as Chirp Bot needs it (`challenges.ts` decides the state). */
+export interface ChallengeView {
+  readonly id: string;
+  readonly kind: "bet" | "defend" | "commentary" | "hottake" | "prophecy";
+  readonly challenger: string;
+  readonly target: string;
+  readonly status: "open" | "accepted" | "declined" | "withdrawn";
+  /** A bet's side in words, "the Wild win". */
+  readonly side?: string;
+  /** Decided: who won (null: the jury wasn't convinced). Undefined: not decided. */
+  readonly winner?: string | null;
+  /** When it was decided, ISO. */
+  readonly decidedAt?: string | null;
+}
+
+const CHALLENGE_KINDS_OF_BOT: ReadonlySet<BotKind> = new Set([
+  "chal",
+  "took",
+  "oracle",
+  "ruled",
+]);
+
+/** The library pool for a decided challenge. */
+function ruledPool(c: ChallengeView): readonly LibraryLine[] {
+  if (c.kind === "bet") return RULED_BET;
+  if (c.kind === "prophecy")
+    return c.winner ? RULED_PROPHECY : RULED_FALSE_PROPHECY;
+  return c.winner ? RULED_WON : RULED_LOST;
+}
+
+/** The pool a thrown challenge's line comes from. */
+function issuedPool(c: ChallengeView): readonly LibraryLine[] {
+  if (c.challenger === c.target)
+    return c.kind === "prophecy" ? PROPHECY_LINES : CHALLENGE_ISSUED.self;
+  return CHALLENGE_ISSUED[c.kind] ?? [];
+}
+
+/**
+ * A challenge line, checked against the challenge as it stands: the key's
+ * person did the thing, the line is from that kind's own pool, and — for a
+ * verdict — the rows still say what the line says.
+ */
+function renderChallengeRow(
+  row: BotRow,
+  kind: BotKind,
+  parts: readonly string[],
+  ctx: Parameters<typeof renderBotRow>[1],
+  reactions: Readonly<Record<string, readonly string[]>>,
+): BotLine | null {
+  const id = kind === "ruled" ? parts[1] : parts[2];
+  const c = id ? ctx.challengeOf?.(id) : undefined;
+  if (!c) return null;
+  const nameOf = (who: string) => ctx.fans.get(who)?.name ?? "Someone";
+  let pool: readonly LibraryLine[];
+  let about: string;
+  let vars: Record<string, string>;
+  const teamOf = (who: string) =>
+    teamByAbbr(ctx.fans.get(who)?.team ?? null)?.name ?? "their team";
+
+  switch (kind) {
+    case "chal":
+    case "oracle": {
+      if (c.challenger !== row.actor_id) return null;
+      if ((kind === "oracle") !== (c.kind === "prophecy")) return null;
+      if (c.status !== "open" && c.status !== "accepted") return null;
+      pool = issuedPool(c);
+      about = c.target;
+      vars = {
+        name: nameOf(c.challenger),
+        target: nameOf(c.target),
+        team: teamOf(c.target),
+        side: c.side ?? "",
+      };
+      break;
+    }
+    case "took": {
+      if (c.target !== row.actor_id || c.status !== "accepted") return null;
+      if (c.target === c.challenger) return null;
+      pool = CHALLENGE_TAKEN;
+      about = c.target;
+      vars = { name: nameOf(c.target), target: nameOf(c.challenger) };
+      break;
+    }
+    case "ruled": {
+      if (c.winner === undefined) return null;
+      if ((parts[2] ?? "") !== (c.winner ?? "none")) return null;
+      pool = ruledPool(c);
+      if (c.kind === "bet") {
+        if (!c.winner) return null;
+        const loser = c.winner === c.challenger ? c.target : c.challenger;
+        about = c.winner;
+        vars = { name: nameOf(c.winner), target: nameOf(loser) };
+      } else {
+        about = c.target;
+        vars = { name: nameOf(c.target) };
+      }
+      break;
+    }
+    default:
+      return null;
+  }
+
+  if (row.bot_line === "ai") {
+    // A model may voice a challenge being thrown or taken; never a verdict.
+    if (kind === "ruled" || !row.text || !ctx.verify(row)) return null;
+    return {
+      id: row.id,
+      at: row.at,
+      kind,
+      text: row.text,
+      tone: "satire",
+      about,
+      reactions,
+    };
+  }
+  const line = pool.find((l) => l.id === row.bot_line);
+  if (!line) return null;
+  return {
+    id: row.id,
+    at: row.at,
+    kind,
+    text: fill(line.text, vars),
+    tone: "satire",
+    about,
+    reactions,
+  };
+}
+
+/**
+ * **A challenge was thrown, taken, or a prophecy made.** Thrown and
+ * prophecy are heckles (cooldown, daily cap, never twice in a row, nothing
+ * on Quiet); taken is one of the night's moments — the rivalry escalating —
+ * so it speaks on every level. Once per challenge per event. A decline is
+ * never announced: there is no plan for it.
+ */
+export function challengePlan(input: {
+  readonly event: "issued" | "accepted";
+  readonly challenge: ChallengeView;
+  readonly userId: string;
+  readonly rows: readonly BotRow[];
+  readonly newestIsBot: boolean;
+  readonly now: Date;
+  readonly level: ChirpLevel;
+  readonly seed: number;
+}): BotPlan | null {
+  const c = input.challenge;
+  const prophecy = c.kind === "prophecy";
+  let key: string;
+  let pool: readonly LibraryLine[];
+  if (input.event === "issued") {
+    if (c.challenger !== input.userId) return null;
+    if (!organicAllowed(input.rows, input.newestIsBot, input.now, input.level))
+      return null;
+    key = `${prophecy ? "oracle" : "chal"}:${input.userId}:${c.id}`;
+    pool = issuedPool(c);
+  } else {
+    if (c.target !== input.userId || c.status !== "accepted") return null;
+    if (c.target === c.challenger) return null;
+    key = `took:${input.userId}:${c.id}`;
+    pool = CHALLENGE_TAKEN;
+  }
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const line = chooseLine(
+    [pool],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+/** How long after a challenge is decided Chirp Bot will still announce it. */
+export const RULED_WINDOW_MS = 6 * HOUR;
+
+/**
+ * **The verdict.** Once a challenge is decided — a bet by the host's call, a
+ * jury by its last vote or its deadline — Chirp Bot says who won. A moment:
+ * it speaks on every level, once per challenge, and only for a fresh
+ * decision (a night reopened next week does not get a backlog).
+ */
+export function ruledPlan(input: {
+  readonly challenge: ChallengeView;
+  readonly rows: readonly BotRow[];
+  readonly now: Date;
+  readonly seed: number;
+}): BotPlan | null {
+  const c = input.challenge;
+  if (c.winner === undefined || c.status !== "accepted") return null;
+  if (c.kind === "bet" && !c.winner) return null;
+  const at = c.decidedAt ? Date.parse(c.decidedAt) : NaN;
+  if (!(input.now.getTime() - at <= RULED_WINDOW_MS)) return null;
+  const key = `ruled:${c.id}:${c.winner ?? "none"}`;
+  if (input.rows.some((r) => r.bot_key?.startsWith(`ruled:${c.id}:`)))
+    return null;
+  const line = chooseLine(
+    [ruledPool(c)],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+/**
+ * The spectacularly wrong final-score pick: furthest from the called score
+ * (total goals off, then margin off, then earliest member), once per game,
+ * once the game is over and the score is called — only with two picks or
+ * more, because being the worst of one is just being there.
+ */
+export function worstPick(
+  picks: readonly ScorePick[],
+  actual: readonly [number, number],
+): ScorePick | null {
+  if (picks.length < 2) return null;
+  const off = (p: ScorePick) =>
+    Math.abs(p.home - actual[0]) + Math.abs(p.away - actual[1]);
+  const sorted = [...picks].sort(
+    (a, b) => off(b) - off(a) || a.userId.localeCompare(b.userId),
+  );
+  return off(sorted[0]) > 0 ? sorted[0] : null;
+}
+
+export function worstPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly gameOver: boolean;
+  readonly actual: readonly [number, number] | null;
+  readonly picks: readonly ScorePick[];
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+}): BotPlan | null {
+  if (!input.gameOver || !input.actual) return null;
+  const since = (input.now.getTime() - Date.parse(input.startsAt)) / HOUR;
+  if (!(since >= 0) || since > 30) return null;
+  const stamp = gameStamp(input.startsAt);
+  if (input.rows.some((r) => r.bot_key?.startsWith(`worst:${stamp}:`)))
+    return null;
+  const pick = worstPick(input.picks, input.actual);
+  if (!pick) return null;
+  const line = chooseLine(
+    [WORST_PICK_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line
+    ? {
+        key: `worst:${stamp}:${pick.userId}:${pick.home}-${pick.away}`,
+        line: line.id,
+      }
     : null;
 }
