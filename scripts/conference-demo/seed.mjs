@@ -47,9 +47,19 @@ class Person {
   }
 }
 
-const DAY1 = "2026-10-24";
-const DAY2 = "2026-10-25";
-const DAY3 = "2026-10-26";
+// Day one is tomorrow in Vancouver, unless SEED_DAY1 says otherwise (the
+// screenshots use 2026-10-24 against a server told CONFERENCE_NOW).
+const shift = (ymd, days) =>
+  new Date(Date.parse(`${ymd}T12:00:00Z`) + days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+const todayInVancouver = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Vancouver",
+}).format(new Date());
+const DAY1 = process.env.SEED_DAY1 ?? shift(todayInVancouver, 1);
+const DAY0 = shift(DAY1, -1);
+const DAY2 = shift(DAY1, 1);
+const DAY3 = shift(DAY1, 2);
 
 const details = {
   name: "Sycle Vancouver 2026",
@@ -214,19 +224,22 @@ const fly = (p, flight, date, from, lands) =>
     lands,
     shared: true,
   });
-await fly(priya, "WS3311", "2026-10-23", "YYC", "2026-10-23T13:20");
-await fly(daniel, "AC116", "2026-10-23", "YYZ", "2026-10-23T16:05");
-await fly(tom, "UA1580", "2026-10-23", "SFO", "2026-10-23T21:10");
-await fly(org, "AC123", "2026-10-23", "YUL", "2026-10-23T11:45");
+await fly(priya, "WS3311", DAY0, "YYC", `${DAY0}T13:20`);
+await fly(daniel, "AC116", DAY0, "YYZ", `${DAY0}T16:05`);
+await fly(tom, "UA1580", DAY0, "SFO", `${DAY0}T21:10`);
+await fly(org, "AC123", DAY0, "YUL", `${DAY0}T11:45`);
 
 // Real places near the venue, from Atlas via the conference's own Explore.
 const { explore } = await org.call("GET", `/api/conferences/${id}/explore`);
-const restaurants = explore.shelves.restaurants.filter((p) => p.photo);
+// Photographed first; any restaurant Explore offers if Atlas has few photos.
+const restaurants = [
+  ...explore.shelves.restaurants.filter((p) => p.photo),
+  ...explore.shelves.restaurants.filter((p) => !p.photo),
+];
 const pick = restaurants.slice(0, 3);
-if (pick.length < 2)
-  throw new Error("Explore returned fewer than two photographed restaurants.");
 
-// The team dinner: suggested by the organiser, places suggested by others, voted, chosen.
+// The team dinner: suggested by the organiser, places suggested by others,
+// voted, chosen — and the chosen place becomes where the group meets.
 const plan = (p, body) => p.call("POST", `/api/conferences/${id}/plans`, body);
 await plan(org, {
   action: "create",
@@ -241,26 +254,26 @@ await plan(org, {
 });
 let { board } = await org.call("GET", `/api/conferences/${id}/plans`);
 const dinner = board.plans.find((x) => x.kind === "dinner");
-await plan(daniel, {
-  action: "suggest",
-  planId: dinner.id,
-  placeId: pick[0].id,
-  name: pick[0].name,
-});
-await plan(priya, {
-  action: "suggest",
-  planId: dinner.id,
-  placeId: pick[1].id,
-  name: pick[1].name,
-});
-({ board } = await org.call("GET", `/api/conferences/${id}/plans`));
-const opts = board.plans.find((x) => x.id === dinner.id).options;
-const first = opts.find((o) => o.place.id === pick[0].id);
-const second = opts.find((o) => o.place.id === pick[1].id);
-await plan(daniel, { action: "vote", planId: dinner.id, optionId: first.id });
-await plan(tom, { action: "vote", planId: dinner.id, optionId: first.id });
-await plan(priya, { action: "vote", planId: dinner.id, optionId: second.id });
-await plan(org, { action: "choose", planId: dinner.id, optionId: first.id });
+if (pick.length >= 2) {
+  await plan(daniel, {
+    action: "suggest",
+    planId: dinner.id,
+    placeId: pick[0].id,
+  });
+  await plan(priya, {
+    action: "suggest",
+    planId: dinner.id,
+    placeId: pick[1].id,
+  });
+  ({ board } = await org.call("GET", `/api/conferences/${id}/plans`));
+  const opts = board.plans.find((x) => x.id === dinner.id).options;
+  const first = opts.find((o) => o.place.id === pick[0].id);
+  const second = opts.find((o) => o.place.id === pick[1].id);
+  await plan(daniel, { action: "vote", planId: dinner.id, optionId: first.id });
+  await plan(tom, { action: "vote", planId: dinner.id, optionId: first.id });
+  await plan(priya, { action: "vote", planId: dinner.id, optionId: second.id });
+  await plan(org, { action: "choose", planId: dinner.id, optionId: first.id });
+}
 const occ = board.plans.find((x) => x.id === dinner.id).occurrences[0].id;
 for (const [p, a] of [
   [org, "in"],
@@ -299,14 +312,14 @@ await say(
 );
 await say(
   priya,
-  "Seawall walk Sunday 7:15 from the Pan Pacific lobby if you're up early.",
+  "Seawall walk on day two, 7:15 from the Pan Pacific lobby, if you're up early.",
 );
 
 console.log(
   JSON.stringify({
     id,
     dinner: dinner.id,
-    places: pick.map((p) => p.name),
+    places: pick.slice(0, 2).map((p) => p.name),
     people: {
       organiser: org.cookie,
       daniel: daniel.cookie,

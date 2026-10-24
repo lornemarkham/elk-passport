@@ -112,7 +112,7 @@ export function ArrivalsTimeline({
                         {clock(new Date(e.at!), timeZone)}
                       </span>
                       <span className="sr-only">
-                        {e.name}, {e.flight}, {tag(e)}
+                        {e.name}, {e.flight} ({tag(e)})
                       </span>
                     </div>
                   );

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { btn } from "@/components/conference/kit";
+import { useUsableImages } from "@/components/conference/usableImages";
 import { Problem } from "@/components/conference/ui";
 import { PlanPhoto } from "@/components/hockey/VenueCard";
 import {
@@ -71,7 +72,16 @@ export function Explore({
     };
   }, [conferenceId, near, here]);
 
-  const places = view?.shelves[shelf] ?? [];
+  const shelfPlaces = view?.shelves[shelf] ?? [];
+  // Places whose photograph actually loads lead; the rest keep their order.
+  const usable = useUsableImages(shelfPlaces.map((p) => p.photo?.url));
+  const places = usable
+    ? [...shelfPlaces].sort(
+        (a, b) =>
+          Number(usable.has(b.photo?.url ?? "")) -
+          Number(usable.has(a.photo?.url ?? "")),
+      )
+    : shelfPlaces;
 
   return (
     <div className="mt-6">
@@ -144,7 +154,7 @@ export function Explore({
           : ""}
       </p>
 
-      {loading ? (
+      {loading || (shelfPlaces.length > 0 && !usable) ? (
         <p className="text-cf-mist mt-6 text-[15px]">Finding places…</p>
       ) : !places.length ? (
         <p className="text-cf-mist mt-6 text-[15px]">
@@ -210,12 +220,14 @@ function PlaceCard({
           url={p.photo?.url}
           className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
           fallback={
-            <span className="flex h-full w-full flex-col items-start justify-end bg-[linear-gradient(135deg,#efebe2,#e6e1d5)] p-5">
-              <span className="cf-eyebrow text-cf-mist">
-                {p.subtype ?? "Place"} · no photograph in Atlas
-              </span>
-              <span className="cf-display text-cf-ink/80 mt-1 text-[30px] leading-none">
-                {p.name}
+            <span className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#efebe2,#e6e1d5)]">
+              <span className="text-center">
+                <span className="cf-display text-cf-ink/25 block text-[56px] leading-none">
+                  {p.name.trim()[0]?.toUpperCase()}
+                </span>
+                <span className="cf-eyebrow text-cf-mist mt-2 block">
+                  No usable photo in Atlas
+                </span>
               </span>
             </span>
           }
@@ -232,7 +244,10 @@ function PlaceCard({
             .filter(Boolean)
             .join(" · ")}
         </p>
-        <p className="cf-serif text-cf-ink mt-1.5 text-[20px] leading-snug">
+        <p
+          data-testid="place-name"
+          className="cf-serif text-cf-ink mt-1.5 text-[20px] leading-snug"
+        >
           {p.name}
         </p>
         {p.blurb ? (

@@ -2,7 +2,12 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import type { ArrivalRow } from "@/domain/conference-arrivals/board";
 import { timeCell } from "@/components/conference-arrivals/words";
-import { utcToZoned, zonedToUtc } from "@/domain/conference-plans/time";
+import {
+  clock,
+  dayWords,
+  utcToZoned,
+  zonedToUtc,
+} from "@/domain/conference-plans/time";
 import { Avatar, AvatarStack, EmptyNote, Panel, PanelHead, Pill } from "../kit";
 
 /**
@@ -62,12 +67,15 @@ export function ArrivalsPanel({
   now,
   href,
   airport,
+  next = null,
 }: {
   rows: readonly ArrivalRow[];
   timeZone: string;
   now: Date;
   href: string;
   airport: string;
+  /** The digest's soonest arrival still to come, with its kind of time. */
+  next?: { name: string; at: string; estimated: boolean } | null;
 }) {
   const landed = rows.filter((r) => r.phase === "landed").length;
   const shown = [...rows]
@@ -85,43 +93,55 @@ export function ArrivalsPanel({
         action={{ href, label: "Board" }}
       />
       {rows.length ? (
-        <ul
-          className="divide-cf-line mt-4 divide-y"
-          data-testid="arrivals-summary"
-        >
-          {shown.map((r) => {
-            const t = timeCell(r, timeZone);
-            const s = arrivalStatus(r, now, timeZone);
-            const name = r.isYou ? "You" : (r.name ?? "Someone");
-            const from = r.from?.city ?? r.from?.name;
-            return (
-              <li key={r.memberId} className="flex items-center gap-3 py-3">
-                <Avatar name={r.isYou ? "You" : name} size={34} you={r.isYou} />
-                <span className="min-w-0 flex-1">
-                  <span className="text-cf-ink block truncate text-[14px] font-semibold">
-                    {name}
+        <div data-testid="arrivals-summary">
+          {next ? (
+            <p className="text-cf-slate mt-2 text-[13px]">
+              Next:{" "}
+              <span className="text-cf-ink font-semibold">{next.name}</span>,{" "}
+              {dayWords(new Date(next.at), timeZone, now).toLowerCase()}{" "}
+              {next.estimated ? "~" : ""}
+              {clock(new Date(next.at), timeZone)}
+            </p>
+          ) : null}
+          <ul className="divide-cf-line mt-4 divide-y">
+            {shown.map((r) => {
+              const t = timeCell(r, timeZone);
+              const s = arrivalStatus(r, now, timeZone);
+              const name = r.isYou ? "You" : (r.name ?? "Someone");
+              const from = r.from?.city ?? r.from?.name;
+              return (
+                <li key={r.memberId} className="flex items-center gap-3 py-3">
+                  <Avatar
+                    name={r.isYou ? "You" : name}
+                    size={34}
+                    you={r.isYou}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="text-cf-ink block truncate text-[14px] font-semibold">
+                      {name}
+                    </span>
+                    <span className="text-cf-mist block truncate text-[12px]">
+                      {from ? `From ${from} · ` : ""}
+                      {r.flight}
+                    </span>
                   </span>
-                  <span className="text-cf-mist block truncate text-[12px]">
-                    {from ? `From ${from} · ` : ""}
-                    {r.flight}
+                  <span className="text-right">
+                    <span className="text-cf-ink block text-[15px] font-semibold tabular-nums">
+                      {arrivalClock(r, now, timeZone, t.time)}
+                    </span>
+                    <Pill
+                      tone={s.tone}
+                      dot={s.tone === "live"}
+                      className="mt-0.5"
+                    >
+                      {s.label}
+                    </Pill>
                   </span>
-                </span>
-                <span className="text-right">
-                  <span className="text-cf-ink block text-[15px] font-semibold tabular-nums">
-                    {arrivalClock(r, now, timeZone, t.time)}
-                  </span>
-                  <Pill
-                    tone={s.tone}
-                    dot={s.tone === "live"}
-                    className="mt-0.5"
-                  >
-                    {s.label}
-                  </Pill>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : (
         <p className="text-cf-slate mt-3 text-[14px] leading-relaxed">
           Flights appear here only when people choose to share them.{" "}

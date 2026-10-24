@@ -163,6 +163,16 @@ export function ArrivalsBoard({
         </div>
       </header>
 
+      {!view && !failed ? (
+        <div
+          className="mx-auto max-w-[1180px] px-5 pt-8 sm:px-8"
+          aria-busy="true"
+          aria-label="Loading the arrivals board"
+        >
+          <div className="h-[420px] animate-pulse rounded-2xl bg-[#0b111b]/90" />
+        </div>
+      ) : null}
+
       {failed && !view ? (
         <p className="mx-auto max-w-[760px] px-5 pt-6 text-black/60">
           Couldn&apos;t reach Passport. Are you online?

@@ -206,6 +206,15 @@ export default async function ConferenceOverview({
         rows={rows}
         timeZone={tz}
         now={now}
+        next={
+          arrived?.next?.at
+            ? {
+                name: arrived.next.you ? "You" : arrived.next.name,
+                at: arrived.next.at,
+                estimated: arrived.next.kind === "estimated",
+              }
+            : null
+        }
         href={`${base}/arrivals`}
         airport={arrivals.board.arrival.iata ?? arrivals.board.arrival.icao}
       />

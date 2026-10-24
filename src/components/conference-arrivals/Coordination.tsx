@@ -84,16 +84,13 @@ export function Coordination({
         )}
       </section>
 
-      <section>
+      <section data-testid="arriving-next">
         <PanelHead
           eyebrow="Arriving next"
           title={d.next ? d.next.name : "No times shared yet"}
         />
         {d.next ? (
-          <p
-            className="text-cf-slate mt-2 text-[15px]"
-            data-testid="arriving-next"
-          >
+          <p className="text-cf-slate mt-2 text-[15px]">
             {d.next.flight} · {dayWords(new Date(d.next.at!), timeZone, now)}{" "}
             {when(d.next, timeZone)}
           </p>
@@ -125,7 +122,7 @@ export function Coordination({
                     size={28}
                   />
                   <p className="text-cf-ink text-[15px] font-semibold">
-                    {g.people.map((p) => (p.you ? "You" : p.name)).join(" & ")}
+                    {g.people.map((p) => (p.you ? "You" : p.name)).join(", ")}
                   </p>
                 </div>
                 <p className="text-cf-slate mt-2 text-[13px]">

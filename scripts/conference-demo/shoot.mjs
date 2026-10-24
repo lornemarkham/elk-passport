@@ -39,9 +39,23 @@ for (const size of sizes) {
     const url = `${base}/conferences/${seed.id}${p ? `/${p}` : ""}`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("load");
+    await page
+      .waitForLoadState("networkidle", { timeout: 15_000 })
+      .catch(() => {});
+    // `next dev`'s badge isn't part of the product.
+    await page.addStyleTag({
+      content: "nextjs-portal{display:none!important}",
+    });
     // Let the page's own timers and fetches run against the fake clock.
     for (let i = 0; i < 8; i++) {
       await page.waitForTimeout(Number(process.env.WAIT ?? 400));
+    }
+    if (process.env.SCROLL) {
+      await page.evaluate(
+        (y) => window.scrollTo(0, y),
+        Number(process.env.SCROLL),
+      );
+      await page.waitForTimeout(1500);
     }
     const file = `${out}/${prefix}-${(p || "overview").replace(/[/?=&#]/g, "_")}-${size}.png`;
     await page.screenshot({ path: file, fullPage: process.env.FULL !== "0" });

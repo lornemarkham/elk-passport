@@ -119,7 +119,8 @@ export function ConferenceBar({
             {chat ? (
               <Link
                 href={chat}
-                aria-label="Messages"
+                aria-label="Group chat"
+                title="Group chat"
                 aria-current={path.startsWith(chat) ? "page" : undefined}
                 className={`hover:bg-cf-sand flex h-10 w-10 items-center justify-center rounded-full transition ${
                   path.startsWith(chat) ? "bg-cf-sand" : ""
