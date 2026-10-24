@@ -632,7 +632,7 @@ export function WitchingHour({
       />
 
       {/* Fixture readout: small, top-left, present the whole time. */}
-      <p className="absolute top-5 left-5 font-mono text-[10px] tracking-[0.18em] text-[#e9e6da]/35 uppercase">
+      <p className="absolute top-5 right-16 left-5 font-mono text-[10px] tracking-[0.18em] text-[#e9e6da]/35 uppercase">
         {context} · {CONTEXT.fear}
       </p>
 

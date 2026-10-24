@@ -908,6 +908,14 @@ certainty. Do not invent an answer here to make the document feel finished.
     how a group experience should feel, live and adapt; whether a group plan
     needs a commitment state (§2.6, item 14); who may invite; what an
     invitation reveals.
+    _Informed 2026-10-23 by Conference, together_
+    (`docs/products/go-have-a-conference/TOGETHER.md`): one conference may
+    plan things together (one or several days, everyone or selected
+    coworkers, _I'm in / Maybe / Can't make it_ per day), talk, share photos,
+    and — by an owner decision recorded in
+    [ADR 011](architecture/decisions/011-find-my-people.md) — share where
+    they are, opt-in and for a limited time. That is one composition for one
+    kind of group; the general question stays open.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

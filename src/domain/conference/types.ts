@@ -37,6 +37,8 @@ export const MODULE_IDS = [
   "schedule",
   "community",
   "plans",
+  "people",
+  "memories",
 ] as const;
 export type ModuleId = (typeof MODULE_IDS)[number];
 
