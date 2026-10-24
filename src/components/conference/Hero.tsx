@@ -31,7 +31,7 @@ export function Hero({
         <p className="text-[13px] font-bold tracking-[0.16em] uppercase opacity-75">
           {details.place.label} · {dateRange(details)}
         </p>
-        <h1 className="mt-2 text-[40px] leading-[0.95] font-black tracking-[-0.03em] sm:text-[60px]">
+        <h1 className="mt-2 text-[40px] leading-[0.95] font-semibold tracking-[-0.03em] sm:text-[60px]">
           {details.name}
         </h1>
         {details.tagline ? (

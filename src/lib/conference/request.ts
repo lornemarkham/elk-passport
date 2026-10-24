@@ -1,5 +1,7 @@
 import "server-only";
+import { conferenceNow } from "./clock";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth/currentUser";
 import type { ConferenceContext } from "@/domain/conference/contracts";
@@ -38,7 +40,7 @@ export const deps = (): Deps => {
         ? supabaseStore(createSupabaseServerClient)
         : store(),
     lifecycle: LIFECYCLE,
-    now: new Date(),
+    now: conferenceNow(),
   };
 };
 
@@ -58,17 +60,18 @@ export async function readIdentity(
 /**
  * For a module's page or route: the context for this member, or `null` when
  * conferences are closed, the viewer has no identity, or they are not in it.
- * Every one of those reads, to a module, as `notFound()`.
+ * Every one of those reads, to a module, as `notFound()`. Asked once per
+ * request: the conference bar (layout) and the page share the answer.
  */
-export async function conferenceContext(
-  conferenceId: string,
-): Promise<ConferenceContext | null> {
-  const setup = conferenceSetup();
-  if (!setup.open) return null;
-  const identity = await readIdentity(setup.config);
-  if (!identity) return null;
-  return contextFor(deps(), identity, conferenceId);
-}
+export const conferenceContext = cache(
+  async (conferenceId: string): Promise<ConferenceContext | null> => {
+    const setup = conferenceSetup();
+    if (!setup.open) return null;
+    const identity = await readIdentity(setup.config);
+    if (!identity) return null;
+    return contextFor(deps(), identity, conferenceId);
+  },
+);
 
 const STATUS: Record<Failure | "closed" | "signed-out" | "slow-down", number> =
   {

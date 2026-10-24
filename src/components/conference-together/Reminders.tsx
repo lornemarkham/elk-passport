@@ -47,7 +47,14 @@ const subscribeStorage = (change: () => void) => {
   return () => window.removeEventListener("storage", change);
 };
 
-export function Reminders({ conferenceId }: { conferenceId: string }) {
+export function Reminders({
+  conferenceId,
+  controls = true,
+}: {
+  conferenceId: string;
+  /** Show the "remind me on this device" switch (Plans, your profile). */
+  controls?: boolean;
+}) {
   const [due, setDue] = useState<Reminder[]>([]);
   const [, bump] = useState(0);
   // Read from the browser on every render; the server shows no toggle.
@@ -125,27 +132,30 @@ export function Reminders({ conferenceId }: { conferenceId: string }) {
         <div
           key={r.key}
           role="status"
-          className="mt-4 flex items-start justify-between gap-3 rounded-2xl bg-[#ffd84d] p-4"
+          className="cf-rise border-cf-line border-l-cf-brass mt-4 flex items-start justify-between gap-3 rounded-2xl border border-l-[3px] bg-white p-4 shadow-[0_1px_2px_rgba(23,24,27,0.05)]"
           data-testid="reminder"
         >
           <span>
-            <span className="block text-[17px] font-black">⏰ {r.title}</span>
-            <span className="text-[14px]">{r.body}</span>
+            <span className="cf-eyebrow text-cf-brass block">Reminder</span>
+            <span className="text-cf-ink mt-1 block text-[16px] font-semibold">
+              {r.title}
+            </span>
+            <span className="text-cf-slate text-[14px]">{r.body}</span>
           </span>
           <button
             type="button"
             onClick={() => dismiss(r.key)}
-            className="min-h-11 shrink-0 px-2 text-[14px] underline"
+            className="text-cf-slate hover:text-cf-ink min-h-11 shrink-0 px-2 text-[14px] font-semibold"
             aria-label="Got it"
           >
             Got it
           </button>
         </div>
       ))}
-      {notify === "off" ? (
+      {!controls ? null : notify === "off" ? (
         <button
           type="button"
-          className="mt-3 min-h-11 text-[14px] text-black/60 underline"
+          className="text-cf-slate mt-3 min-h-11 text-[14px] underline underline-offset-4"
           onClick={async () => {
             const p = await Notification.requestPermission();
             if (p === "granted") {
@@ -159,7 +169,7 @@ export function Reminders({ conferenceId }: { conferenceId: string }) {
       ) : notify === "on" ? (
         <button
           type="button"
-          className="mt-3 min-h-11 text-[14px] text-black/60 underline"
+          className="text-cf-slate mt-3 min-h-11 text-[14px] underline underline-offset-4"
           onClick={() => {
             localStorage.removeItem(NOTIFY(conferenceId));
             bump((n) => n + 1);

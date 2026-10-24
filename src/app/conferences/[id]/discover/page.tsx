@@ -53,14 +53,15 @@ export default async function DiscoverModule({
       <ModuleTop
         conferenceId={c.id}
         conferenceName={c.name}
-        title={`Explore ${c.place.label}`}
-        lede="Real places a walk away. Find one, then make it a plan so it actually happens."
+        eyebrow="Explore"
+        title={`${c.place.label}, a short walk away`}
+        lede="Real places from Passport’s Atlas, measured from where you are. Find one, then make it a plan so it actually happens."
       />
-      <div className="mx-auto max-w-[760px] px-5">
+      <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
         {doors.length ? (
           <Explore conferenceId={c.id} plans={plans} plansOn={plansOn} />
         ) : (
-          <p className="mt-4 text-black/60">
+          <p className="text-cf-slate mt-4">
             Passport doesn&apos;t know {c.place.label} well enough to suggest
             anything yet, and it won&apos;t pretend to.
             {ctx.viewer.role === "organiser"
@@ -70,10 +71,10 @@ export default async function DiscoverModule({
         )}
         {doors.length ? (
           <>
-            <h2 className="mt-12 text-[24px] leading-tight font-black tracking-[-0.02em]">
+            <h2 className="cf-serif text-cf-ink mt-16 text-[24px] leading-tight">
               A whole free day
             </h2>
-            <p className="mt-2 mb-4 text-black/60">
+            <p className="text-cf-slate mt-2 mb-5">
               Say what kind of time you&apos;ve got. Go Have A Day builds it out
               of real places.
             </p>

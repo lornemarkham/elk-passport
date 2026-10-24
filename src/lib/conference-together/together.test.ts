@@ -16,7 +16,10 @@ import * as people from "@/lib/conference-people/service";
 import { peopleLifecycle } from "@/lib/conference-people/service";
 import { memoryPeople } from "@/lib/conference-people/store";
 import * as plans from "@/lib/conference-plans/service";
-import { plansLifecycle } from "@/lib/conference-plans/service";
+import {
+  meetingAfterChoice,
+  plansLifecycle,
+} from "@/lib/conference-plans/service";
 import { memoryPlans } from "@/lib/conference-plans/store";
 
 /**
@@ -344,6 +347,68 @@ describe("lunch: suggest, vote, choose", () => {
     p = (await plans.readPlans(w.plans(), BEN, id))!.plans[0]!;
     expect(p.venue?.name).toBe("Chambar");
     expect(p.venue && "at" in p.venue && p.venue.at).toBeTruthy();
+    // Choosing the place is choosing where we meet: nobody decides twice.
+    expect(p.meeting?.label).toBe("Chambar");
+    await plans.chooseVenue(w.plans(), ANA, id, { planId, optionId: miku });
+    p = (await plans.readPlans(w.plans(), BEN, id))!.plans[0]!;
+    expect([p.venue?.name, p.meeting?.label]).toEqual(["Miku", "Miku"]);
+    await plans.chooseVenue(w.plans(), ANA, id, { planId, optionId: null });
+    p = (await plans.readPlans(w.plans(), BEN, id))!.plans[0]!;
+    expect([p.venue, p.meeting]).toEqual([null, null]);
+  });
+
+  it("keeps a meeting point somebody typed when the place is chosen", async () => {
+    const w = world();
+    const id = await conference(w);
+    const made = await plans.createPlan(w.plans(), ANA, id, {
+      kind: "dinner",
+      title: "Dinner",
+      days: ["2026-10-27"],
+      time: "19:00",
+      meeting: "Hotel lobby, then we walk",
+    });
+    const planId = made.ok ? made.planId : "";
+    const a = await plans.suggestVenue(w.plans(), BEN, id, {
+      planId,
+      placeId: "curated:vancouver:chambar",
+    });
+    await plans.chooseVenue(w.plans(), ANA, id, {
+      planId,
+      optionId: a.ok ? a.optionId : "",
+    });
+    const p = (await plans.readPlans(w.plans(), BEN, id))!.plans[0]!;
+    expect([p.venue?.name, p.meeting?.label]).toEqual([
+      "Chambar",
+      "Hotel lobby, then we walk",
+    ]);
+  });
+});
+
+describe("meetingAfterChoice", () => {
+  const chosen = { placeId: "curated:vancouver:miku", name: "Miku" };
+  it("follows the choice when the meeting point was only ever a place", () => {
+    expect(
+      meetingAfterChoice({ meeting: null, venueId: null }, chosen),
+    ).toEqual({
+      label: "Miku",
+      placeId: "curated:vancouver:miku",
+    });
+    expect(
+      meetingAfterChoice(
+        { meeting: { label: "Chambar", placeId: "c" }, venueId: "c" },
+        chosen,
+      ),
+    ).toEqual({ label: "Miku", placeId: "curated:vancouver:miku" });
+  });
+  it("leaves typed words and a separately picked meeting place alone", () => {
+    const typed = { label: "Hotel lobby" };
+    expect(meetingAfterChoice({ meeting: typed, venueId: null }, chosen)).toBe(
+      typed,
+    );
+    const cauldron = { label: "Olympic Cauldron", placeId: "m" };
+    expect(
+      meetingAfterChoice({ meeting: cauldron, venueId: "c" }, chosen),
+    ).toBe(cauldron);
   });
 });
 

@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
 
-/** The few pieces every conference screen shares. Mobile-first: big targets. */
+/**
+ * The few pieces every conference form shares, in the conference kit's
+ * colours (`kit.tsx`). Mobile-first: big targets.
+ */
 export const field =
-  "w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-[16px] outline-none focus:border-black/60";
+  "w-full rounded-xl border border-cf-line bg-white px-4 py-3 text-[16px] text-cf-ink outline-none transition placeholder:text-cf-mist focus:border-cf-ink/50 focus:ring-4 focus:ring-cf-ink/5";
 
 export const primary =
-  "rounded-xl bg-black px-5 py-3 text-[16px] font-bold text-white disabled:opacity-40";
+  "inline-flex min-h-11 items-center justify-center rounded-full bg-cf-ink px-5 text-[15px] font-semibold text-white transition hover:bg-cf-graphite active:scale-[0.98] disabled:opacity-40";
 
 export const secondary =
-  "rounded-xl border border-black/15 px-4 py-2.5 text-[15px] font-semibold disabled:opacity-40";
+  "inline-flex min-h-10 items-center justify-center rounded-full border border-cf-line bg-white px-4 text-[14px] font-semibold text-cf-ink transition hover:border-cf-ink/30 disabled:opacity-40";
 
 export function Section({
   title,
@@ -21,11 +24,13 @@ export function Section({
 }) {
   return (
     <section className="mt-10">
-      <h2 className="text-[13px] font-bold tracking-[0.14em] text-black/50 uppercase">
+      <h2 className="cf-serif text-cf-ink text-[21px] leading-tight">
         {title}
       </h2>
-      {hint ? <p className="mt-1 text-[14px] text-black/55">{hint}</p> : null}
-      <div className="mt-3">{children}</div>
+      {hint ? (
+        <p className="text-cf-slate mt-1 text-[14px] leading-relaxed">{hint}</p>
+      ) : null}
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
