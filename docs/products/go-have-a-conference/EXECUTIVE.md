@@ -136,6 +136,12 @@ to a plan_, _Directions_, and, for Atlas places, _Details & save_ — the place'
 Passport page, where it can be saved to your own Saved and Adventures. The
 overview's editorial strip shows only places whose photographs actually load.
 
+_Details & save_ links to `/passport/<id>`, not `/places/<id>`: most of
+Explore's restaurants, cafés and bars are Atlas organisations, and
+`/places/<id>` answers 404 for them. Found in production on 2026-10-24
+(18 of 30 links dead); `/passport/<id>` resolves every kind and forwards
+places to `/places/`.
+
 ## 9. Venue
 
 `ConferenceDetails.venue` (`name`, optional `address`), set in the details
