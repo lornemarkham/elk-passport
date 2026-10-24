@@ -372,10 +372,29 @@ const after = rows(
     `/passport_occasion_responses?occasion_id=eq.${occ}&prompt_id=eq.final-score&select=user_id`,
   ),
 );
+// night-migration.sql (2026-10-23): sealing your own opens nobody else's.
 check(
-  after.length === 2,
-  "once Nathan commits his pick, he sees the others (the lab's onLock rule)",
+  after.length === 1 && after[0].user_id === nathan.id,
+  "Nathan seals his own pick and still cannot see Lorne's (sealed until puck drop)",
 );
+// Puck drop: the host moves the game into the past, and the picks lock.
+const moved = await rest(lorne, "PATCH", `/passport_occasions?id=eq.${occ}`, {
+  starts_at: new Date(Date.now() - 60_000).toISOString(),
+});
+const atLock = rows(
+  await rest(
+    nathan,
+    "GET",
+    `/passport_occasion_responses?occasion_id=eq.${occ}&prompt_id=eq.final-score&select=user_id`,
+  ),
+);
+check(
+  moved.status < 300 && atLock.length === 2,
+  "once the picks lock, everybody sees every pick",
+);
+await rest(lorne, "PATCH", `/passport_occasions?id=eq.${occ}`, {
+  starts_at: future,
+});
 await rest(nathan, "POST", "/passport_occasion_cues", {
   occasion_id: occ,
   prompt_id: "vault",

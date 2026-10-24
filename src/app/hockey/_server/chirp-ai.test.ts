@@ -7,7 +7,7 @@ vi.mock("openai", () => ({
   },
 }));
 
-const { askModel, modelConfigured } = await import("./chirp-ai");
+const { askModel, modelConfigured, scrub } = await import("./chirp-ai");
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -51,5 +51,33 @@ describe("asking a model for Chirp Bot's words", () => {
     // Somebody else is unaffected; the same person recovers after the window.
     expect(await askModel("x", "person-d", 2000)).toBe("{}");
     expect(await askModel("x", "person-c", 1000 + 10 * 60_000 + 1)).toBe("{}");
+  });
+
+  it("asks in a shape reasoning models accept, with the effort the deploy sets", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    vi.stubEnv("OPENAI_CHIRP_REASONING_EFFORT", "none");
+    create.mockResolvedValue({ choices: [{ message: { content: "{}" } }] });
+    await askModel("x", "person-e", 0);
+    const body = create.mock.calls[0][0];
+    expect(body.max_completion_tokens).toBe(300);
+    expect(body).not.toHaveProperty("max_tokens");
+    expect(body.reasoning_effort).toBe("none");
+    vi.stubEnv("OPENAI_CHIRP_REASONING_EFFORT", "turbo; drop table");
+    await askModel("x", "person-e", 1);
+    expect(create.mock.calls[1][0]).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("treats an empty answer as no answer, and says why without the key", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    create.mockResolvedValue({
+      choices: [{ message: { content: "" }, finish_reason: "length" }],
+    });
+    expect(await askModel("x", "person-f", 0)).toBeNull();
+    expect(warn.mock.calls.flat().join(" ")).toMatch(/cut-off/);
+    expect(scrub("Incorrect API key provided: sk-proj-ab***yz.")).toBe(
+      "Incorrect API key provided: sk-….",
+    );
+    warn.mockRestore();
   });
 });

@@ -320,6 +320,19 @@ async function start() {
     );
   }
 
+  // Finish the night (2026-10-23): sealed picks sealed for everybody until
+  // they lock, and mission:/done: Chirp Bot keys self-keyed. Needs alive.
+  // HOCKEY_NIGHT=0 starts without it — the app must keep picks sealed anyway.
+  if (
+    process.env.HOCKEY_CHIRP !== "0" &&
+    process.env.HOCKEY_ALIVE !== "0" &&
+    process.env.HOCKEY_NIGHT !== "0"
+  ) {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "night-migration.sql"), "utf8"),
+    );
+  }
+
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,
     PGRST_DB_SCHEMAS: "public",

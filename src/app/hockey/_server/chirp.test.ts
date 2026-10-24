@@ -7,6 +7,7 @@ let configured = false;
 vi.mock("./chirp-ai", () => ({
   askModel: (request: string, who: string) => askModel(request, who),
   modelConfigured: () => configured,
+  tell: () => {},
 }));
 
 const {

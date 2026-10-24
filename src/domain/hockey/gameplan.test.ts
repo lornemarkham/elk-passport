@@ -5,6 +5,7 @@ import {
   meetOffsetMinutes,
   meetingPoint,
   meetingSourceLine,
+  NOT_DECIDED,
 } from "./gameplan";
 import { crowdCounts, isWatching } from "./crowd";
 import type { PlanItem } from "./plan";
@@ -47,37 +48,62 @@ describe("the meet-up time", () => {
   });
 });
 
-describe("one answer to where we meet", () => {
+describe("one answer to where we meet — never an assumption as a decision", () => {
   it("the host's official spot beats everything", () => {
     const p = meetingPoint({
       official: "Gate 10",
       vote: item(["Stadium–Chinatown Station"]),
       dinner: item(["Chambar"]),
     });
-    expect(p).toEqual({ value: "Gate 10", source: "host" });
+    expect(p).toEqual({ value: "Gate 10", source: "host", decided: true });
     expect(meetingSourceLine(p)).toMatch(/host/);
   });
-  it("then the group's vote, a tie said as a tie", () => {
+  it("a settled meet-up vote is the group's; an early lead or a tie is not", () => {
+    const settled = { ...item(["A"]), locked: true };
+    expect(meetingPoint({ vote: settled, dinner: item(["Chambar"]) })).toEqual({
+      value: "A",
+      source: "vote",
+      decided: true,
+    });
+    const early = meetingPoint({ vote: item(["A"]), members: 4 });
+    expect(early).toMatchObject({
+      value: NOT_DECIDED,
+      source: "leading",
+      decided: false,
+    });
+    expect(meetingSourceLine(early)).toMatch(/Leading the vote: A — not final/);
+    expect(meetingPoint({ vote: item(["A", "B"]) })).toMatchObject({
+      value: NOT_DECIDED,
+      source: "tied",
+    });
+    // Everybody going has voted: that is a decision.
     expect(
-      meetingPoint({ vote: item(["A"]), dinner: item(["Chambar"]) }),
-    ).toEqual({ value: "A", source: "vote" });
-    expect(meetingPoint({ vote: item(["A", "B"]) }).source).toBe("tied");
+      meetingPoint({ vote: { ...item(["A"]), voters: 3 }, members: 3 }).decided,
+    ).toBe(true);
   });
-  it("otherwise we meet where we eat — but not 'the concourse', and not a tie", () => {
-    expect(meetingPoint({ vote: item([]), dinner: item(["Chambar"]) })).toEqual(
-      {
-        value: "Chambar",
-        source: "dinner",
-      },
-    );
+  it("a restaurant the group chose is suggested, and says it is only a suggestion", () => {
+    const chosen = { ...item(["Chambar"]), locked: true };
+    const p = meetingPoint({ vote: item([]), dinner: chosen });
+    expect(p).toEqual({ value: "Chambar", source: "dinner", decided: false });
+    expect(meetingSourceLine(p)).toMatch(/^Suggested/);
+    expect(meetingSourceLine(p)).toMatch(/Not confirmed/);
+  });
+  it("a dinner still being voted on, a tie, or the concourse suggests nothing", () => {
+    expect(meetingPoint({ dinner: item(["Chambar"]), members: 4 })).toEqual({
+      value: NOT_DECIDED,
+      source: "none",
+      decided: false,
+    });
     expect(
       meetingPoint({
-        dinner: item(["Just eat in the concourse"]),
+        dinner: { ...item(["Just eat in the concourse"]), locked: true },
         concourseLabel: "Just eat in the concourse",
       }).source,
     ).toBe("none");
-    expect(meetingPoint({ dinner: item(["A", "B"]) }).source).toBe("none");
-    expect(meetingPoint({}).value).toBe("Not decided yet");
+    expect(
+      meetingPoint({ dinner: { ...item(["A", "B"]), locked: true } }).source,
+    ).toBe("none");
+    expect(meetingPoint({}).value).toBe("Meeting point not decided.");
   });
 });
 

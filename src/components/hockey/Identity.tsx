@@ -124,7 +124,7 @@ export function TeamMoment({
           {team.name}
         </p>
         <span
-          className={`${styles.rise} mt-6 flex items-center gap-3 rounded-full bg-black/35 py-2 pr-5 pl-2 text-white backdrop-blur`}
+          className={`${styles.rise} mt-6 flex items-center gap-3 rounded-full bg-black/60 py-2 pr-5 pl-2 text-white backdrop-blur`}
           style={{ animationDelay: "380ms" }}
         >
           <FanAvatar person={person} size={40} />
@@ -132,7 +132,7 @@ export function TeamMoment({
             <span className="block text-[17px] font-extrabold">
               {person.name}
             </span>
-            <span className="block text-[13px] text-white/80">
+            <span className="block text-[13px] text-white/90">
               Chirp Bot has been notified.
             </span>
           </span>

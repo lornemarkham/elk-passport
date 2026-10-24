@@ -74,54 +74,86 @@ export function meetOffsetMinutes(
   return Math.abs(offset) > 12 * 60 ? -DEFAULT_MEET_BEFORE_MINUTES : offset;
 }
 
+export const NOT_DECIDED = "Meeting point not decided.";
+
 export interface MeetingPoint {
   readonly value: string;
   /** Why this is the answer, so nobody wonders who decided. */
-  readonly source: "host" | "vote" | "tied" | "dinner" | "none";
+  readonly source: "host" | "vote" | "dinner" | "leading" | "tied" | "none";
+  /**
+   * The group (or the host) settled it. False for a suggestion or a vote
+   * still going — those are never shown as the group's decision.
+   */
+  readonly decided: boolean;
+  /** For `leading` and `tied`: what the open vote says so far. */
+  readonly leading?: readonly string[];
 }
 
 /**
- * **One answer to "where are we meeting?"** — asked in one place.
+ * Has the group settled a vote? Voting closed with one leader, or everybody
+ * has voted and one option leads. One person's vote is not the group's.
+ */
+export function voteSettled(
+  item: PlanItem | undefined,
+  members?: number,
+): boolean {
+  if (!item || item.leaders.length !== 1) return false;
+  if (item.locked) return true;
+  return members !== undefined && members > 0 && item.voters >= members;
+}
+
+/**
+ * **One answer to "where are we meeting?"** — asked in one place, and never
+ * an assumption dressed as a decision (2026-10-23).
  *
- * In order: the host made it official (their spot or gate); the group voted
- * (the leader, or a tie said as a tie); otherwise the sensible default — we
- * meet where we eat, and walk over together. Dinner is only a default when a
- * real place is winning outright: "the concourse" is already at the arena.
+ * In order: the host made it official (their spot or gate); the group
+ * settled the meet-up vote; the group has chosen where to eat, so that is
+ * *suggested* (we eat, then walk over together) — labelled a suggestion;
+ * otherwise "Meeting point not decided.", saying where an open vote stands.
+ * "The concourse" is never suggested: it is already inside the arena.
  */
 export function meetingPoint(input: {
   readonly official?: string;
   readonly vote?: PlanItem;
   readonly dinner?: PlanItem;
   readonly concourseLabel?: string;
+  /** People on the night, to tell a settled vote from an early lead. */
+  readonly members?: number;
 }): MeetingPoint {
-  if (input.official) return { value: input.official, source: "host" };
-  const vote = input.vote;
-  if (vote && vote.leaders.length === 1)
-    return { value: vote.leaders[0], source: "vote" };
-  if (vote && vote.leaders.length > 1)
-    return { value: `Tied: ${vote.leaders.join(" / ")}`, source: "tied" };
-  const dinner = input.dinner;
+  if (input.official)
+    return { value: input.official, source: "host", decided: true };
+  const { vote, dinner, members } = input;
+  if (voteSettled(vote, members))
+    return { value: vote!.leaders[0], source: "vote", decided: true };
+  if (vote && vote.leaders.length > 0)
+    return {
+      value: NOT_DECIDED,
+      source: vote.leaders.length > 1 ? "tied" : "leading",
+      decided: false,
+      leading: vote.leaders,
+    };
   if (
-    dinner &&
-    dinner.leaders.length === 1 &&
-    dinner.leaders[0] !== input.concourseLabel
+    voteSettled(dinner, members) &&
+    dinner!.leaders[0] !== input.concourseLabel
   )
-    return { value: dinner.leaders[0], source: "dinner" };
-  return { value: "Not decided yet", source: "none" };
+    return { value: dinner!.leaders[0], source: "dinner", decided: false };
+  return { value: NOT_DECIDED, source: "none", decided: false };
 }
 
-/** The line under the meeting point that says who decided it. */
+/** The line under the meeting point that says who decided it — or that nobody has. */
 export function meetingSourceLine(point: MeetingPoint): string {
   switch (point.source) {
     case "host":
       return "Made official by the host";
     case "vote":
       return "The group's vote";
-    case "tied":
-      return "Tied — one more vote settles it";
     case "dinner":
-      return "Where we eat, then we walk over together";
+      return "Suggested: it's where we eat. Not confirmed — the host can make it official";
+    case "leading":
+      return `Leading the vote: ${point.leading?.[0]} — not final`;
+    case "tied":
+      return `Tied: ${point.leading?.join(" / ")} — one more vote settles it`;
     case "none":
-      return "Vote, or it'll be wherever dinner is";
+      return "Vote, or the host makes it official";
   }
 }

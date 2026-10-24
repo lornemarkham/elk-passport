@@ -153,7 +153,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
 
   // Maya nominates somewhere; Lorne sees it arrive without reloading.
   await dinner(maya.page)
-    .getByPlaceholder("Somewhere else? Type a name")
+    .getByLabel("Somewhere else? Type a name")
     .fill("Tap & Barrel Bridges");
   await dinner(maya.page)
     .getByRole("button", { name: "Add", exact: true })

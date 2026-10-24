@@ -80,6 +80,7 @@ interface Snapshot {
     meId: string;
     addedPrompts: { id: string; family?: string }[];
     addedOptions: { promptId: string; option: { id: string; label: string } }[];
+    responses: { promptId: string; participantId: string }[];
   };
   chirp: {
     fans: Record<string, string>;
@@ -492,8 +493,8 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
   await shot(priya.page, "15-couch-plan");
 
   // ============================================================ PREDICTIONS
-  // Danny goes first and goes big. Sealed: someone who hasn't made their own
-  // call can't read it (the lab's rule — you see others' once yours is in).
+  // Danny goes first and goes big. Sealed until puck drop, for everybody:
+  // sealing your own opens nobody else's (night-migration.sql + the server).
   await ok(danny.page, {
     type: "respond",
     promptId: "final-score",
@@ -516,6 +517,21 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
       promptId: "final-score",
       value: score,
     });
+  // Alex has sealed his own now — and still cannot read Danny's, from the
+  // database or from anything the server sends the page.
+  const stillSealed = await rest(
+    "alex",
+    "GET",
+    `passport_occasion_responses?occasion_id=eq.${night}&prompt_id=eq.final-score&select=user_id`,
+  );
+  // NIGHT_OFF=1: a database without night-migration.sql still leaks at
+  // PostgREST — that is what the migration is for — but the server must not.
+  if (process.env.NIGHT_OFF) expect(stillSealed.json).toHaveLength(4);
+  else expect(stillSealed.json).toEqual([{ user_id: alex.id }]);
+  const alexSees = (await snapshot(alex.page)).state.responses.filter(
+    (r) => r.promptId === "final-score",
+  );
+  expect(alexSees.map((r) => r.participantId)).toEqual([alex.id]);
   for (const p of [priya, danny, lorne])
     await ok(p.page, {
       type: "respond",
@@ -583,10 +599,28 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     danny.page.locator('[data-chirp-bot="picks"]').first(),
   ).toBeVisible();
   await shot(danny.page, "32-arena-peek-at-chat");
+  // One tap and the phone is away again.
+  await danny.page
+    .getByRole("button", { name: /Phones away — back to the game/ })
+    .click();
+  await expect(danny.page.getByText("Put your phone away")).toBeVisible();
+
+  // Alex pulls off his secret mission during the game: Chirp Bot notices,
+  // and never says what it was.
+  await ok(alex.page, { type: "respond", promptId: mission.id, value: true });
+  const won = await botLine(lorne.page, "mission", alex.id);
+  expect(won.text).toContain("Alex");
+  expect(won.text).not.toContain("analytics");
+  // The host calls it, and the Cup has a leader mid-game: a lead change.
+  await ok(lorne.page, { type: "callIt", promptId: mission.id, value: true });
+  // (Alex's own view: a secret mission's answer is his until it locks, so
+  // the standings that count it are his — missions are viewer-dependent.)
+  const lead = await botLine(alex.page, "lead", alex.id);
+  expect(lead.text).toContain("Alex");
+  expect(lead.text).toMatch(/\d+ points/);
 
   // ========================================================= AFTER THE GAME
   await moveStart(new Date(Date.now() - 3.5 * 3600_000).toISOString());
-  await ok(alex.page, { type: "respond", promptId: mission.id, value: true });
   await act(alex.page, { type: "cue", promptId: mission.id });
   await ok(lorne.page, {
     type: "callIt",
@@ -598,8 +632,6 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     promptId: "first-team",
     value: "canucks",
   });
-  // The host wrote the mission, so the host calls it.
-  await ok(lorne.page, { type: "callIt", promptId: mission.id, value: true });
   // Lorne called the exact score: the Cup is his, and Chirp Bot says so.
   const verdict = await botLine(danny.page, "final");
   expect(verdict.text).toContain("Lorne");

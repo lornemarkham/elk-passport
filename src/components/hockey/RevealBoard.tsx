@@ -46,7 +46,7 @@ export function RevealBoard({
           <p className="mt-2 text-[15px] leading-snug text-white/70">
             {morning
               ? "Every sealed pick, and how it went."
-              : "Sealed until puck drop. Turn them over."}
+              : "Sealed until puck drop. Now they're not. Turn them over."}
           </p>
         </div>
         <button
@@ -165,8 +165,12 @@ function FlipCard({
         >
           <Avatar person={person} size={32} />
           <span className="min-w-0">
-            <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-white">
-              <span className="truncate">{person.name}</span>
+            {/* The name gets the whole line; the team sits under it (a
+                badge beside it squeezed "Danny" to "Da…" at 390 px). */}
+            <span className="block truncate text-[15px] font-semibold text-white">
+              {person.name}
+            </span>
+            <span className="flex">
               <FanTag personId={person.id} />
             </span>
             <span className="block text-[12.5px] font-semibold tracking-wide text-white/55 uppercase">
@@ -180,7 +184,6 @@ function FlipCard({
           <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[#0b1220]/65">
             <Avatar person={person} size={18} />
             <span className="truncate">{person.name}</span>
-            <FanTag personId={person.id} onDark={false} />
           </span>
           <span
             className={`${styles.display} mt-0.5 truncate text-[26px] leading-none`}

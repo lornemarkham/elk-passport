@@ -4,7 +4,9 @@ import type { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   chirpLevelOf,
   couchPlan,
+  donePlan,
   finalPlan,
+  leadPlan,
   lastCallPlan,
   picksPlan,
   switchPlan,
@@ -20,6 +22,7 @@ import {
   type ChirpRoom,
   type BotKind,
   type BotRow,
+  type DoneFamily,
   type Fan,
   type ScorePick,
 } from "@/domain/hockey/chirp";
@@ -39,7 +42,7 @@ import {
   templatePrompts,
   type NightRows,
 } from "@/domain/hockey/night";
-import { askModel, modelConfigured } from "./chirp-ai";
+import { askModel, modelConfigured, tell } from "./chirp-ai";
 
 /**
  * **Chirp Bot, server side: reading its lines and writing new ones.**
@@ -192,7 +195,7 @@ export function chirpRoomOf(
       return picks.some(
         (p) => p.userId === parts[2] && `${p.home}-${p.away}` === parts[3],
       );
-    if (kind === "final")
+    if (kind === "final" || kind === "lead")
       return facts.leader !== null && facts.leader.id === parts[2];
     return false;
   };
@@ -288,6 +291,8 @@ async function voiced(
     now.getTime(),
   );
   const text = readLine(raw);
+  // The model answered, but not with a line Chirp Bot may say.
+  if (raw && !text) tell("rejected");
   return text ? { key: plan.key, line: "ai", text } : plan;
 }
 
@@ -487,6 +492,7 @@ export async function chirpsAbout(
     now.getTime(),
   );
   const fromModel = readChirps(raw);
+  if (raw && fromModel.length === 0) tell("rejected");
   if (fromModel.length === 0) return { chirps: fallback, by: "library" };
   const chirps = [...fromModel];
   for (const line of fallback) {
@@ -586,7 +592,51 @@ export async function chirpTick(
       seed: seed(),
     });
     if (verdict) await post(db, rows.occasion.id, userId, verdict);
+    // A lead change during the night (the verdict has the last word).
+    const lead = leadPlan({
+      now,
+      startsAt,
+      gameOver: facts.gameOver,
+      called: facts.called,
+      leader: facts.leader,
+      rows: bots,
+      seed: seed(),
+    });
+    if (lead && !verdict) await post(db, rows.occasion.id, userId, lead);
   } catch (error) {
     console.warn("[hockey] chirp bot (tick):", error);
+  }
+}
+
+/**
+ * Somebody said "yes, I did it" to their own secret mission, dare or side
+ * quest. Library only, and the line never says what it was.
+ */
+export async function chirpOnDone(
+  db: Db,
+  rows: NightRows,
+  userId: string,
+  promptId: string,
+  family: DoneFamily,
+  now = new Date(),
+): Promise<void> {
+  try {
+    if (!chirpOn(rows)) return;
+    const newest = [...rows.moments].sort((a, b) =>
+      b.at.localeCompare(a.at),
+    )[0];
+    const plan = donePlan({
+      userId,
+      promptId,
+      family,
+      rows: botRowsOf(rows),
+      newestIsBot: newest?.kind === "chirp",
+      now,
+      level: levelOf(rows),
+      seed: seed(),
+    });
+    if (plan) await post(db, rows.occasion.id, userId, plan);
+  } catch (error) {
+    console.warn("[hockey] chirp bot (done):", error);
   }
 }

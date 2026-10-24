@@ -527,6 +527,27 @@ export const SWITCH_LINES = lines("o.sw", [
   "{name} was {from} five minutes ago. Now it's {to}. Somebody check on {from}.",
 ]);
 
+/** Somebody pulled off their secret mission. `{name}` — never what it was. */
+export const MISSION_LINES = lines("ms", [
+  "{name} just completed a secret mission. Chirp Bot isn't allowed to say what. Chirp Bot is furious about that.",
+  "Mission accomplished: {name}. Classified until further notice. Everyone act natural.",
+  "{name} pulled off a secret mission and nobody noticed. That is the whole point and it's still unsettling.",
+]);
+
+/** Somebody did their dare or side quest. `{name}`. */
+export const DONE_LINES = lines("dn", [
+  "{name} actually did it. Challenge complete. Chirp Bot had money on them chickening out. (Chirp Bot has no money.)",
+  "Challenge complete, {name}. Points on the board and receipts in the recap.",
+  "{name} delivered. The rest of you have run out of excuses.",
+]);
+
+/** The Sycle Cup has a new outright leader during the night. `{name}`, `{points}`. */
+export const LEAD_LINES = lines("ld", [
+  "Lead change. {name} takes over the Sycle Cup with {points} points. The trophy is worthless and everyone wants it.",
+  "{name} is top of the Sycle Cup now, {points} points. Chirp Bot is updating the group's grudges.",
+  "New Cup leader: {name}, {points} points. Plenty of night left for this to go badly.",
+]);
+
 // -------------------------------------------------------------- prompts
 
 export interface ControversyPrompt extends LibraryLine {
@@ -639,6 +660,9 @@ const ALL: LibraryLine[] = [
   ...PICKS_LINES,
   ...VERDICT_LINES,
   ...SWITCH_LINES,
+  ...MISSION_LINES,
+  ...DONE_LINES,
+  ...LEAD_LINES,
   ...PROMPTS,
 ];
 

@@ -463,7 +463,8 @@ function Reactions({
 }
 
 const LEVEL_HINT: Readonly<Record<ChirpLevel, string>> = {
-  quiet: "Only the big moments: welcomes, picks sealed, the final verdict.",
+  quiet:
+    "Only the big moments: welcomes, picks sealed, missions pulled off, Cup lead changes, the final verdict.",
   normal: "The moments, plus a heckle now and then and a pregame question.",
   rowdy: "Heckles every few minutes. You asked for this.",
 };

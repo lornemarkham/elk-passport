@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { liveExperience } from "@/experience-lab/core/engine";
+import { sealedFor } from "@/domain/hockey/sealed";
 import { TOYS } from "@/experience-lab/core/toybox";
 import type {
   ExperienceDefinition,
@@ -31,6 +32,7 @@ import {
   chirpOnLook,
   chirpOnSay,
   chirpOnSwitch,
+  chirpOnDone,
   chirpOnTeam,
   chirpRoomOf,
   chirpTick,
@@ -133,10 +135,15 @@ type Rows = NightRows & {
  * original columns. A database missing a migration gets the night without
  * that migration's features, never an error.
  */
-async function rowsFor(db: Db, id: string): Promise<Rows | null> {
+async function rowsFor(
+  db: Db,
+  id: string,
+  viewer: string,
+): Promise<Rows | null> {
   for (const level of ["alive", "chirp", "none"] as const) {
     const rows = await rowsWith(db, id, level !== "none", level === "alive");
-    if (rows !== "missing") return rows;
+    // Sealed picks stay sealed whatever the database's reveal rule is.
+    if (rows !== "missing") return rows && sealedFor(rows, viewer);
   }
   return null;
 }
@@ -230,7 +237,7 @@ export async function loadNight(
   options: { tick?: boolean } = {},
 ): Promise<NightSnapshot | null> {
   const db = await createSupabaseServerClient();
-  const rows = await rowsFor(db, id);
+  const rows = await rowsFor(db, id, user.id);
   if (!rows) return null;
   const me = rows.members.find((m) => m.user_id === user.id);
   if (!me) return null;
@@ -355,7 +362,7 @@ async function seriesNights(
     .slice(0, CUP_DEPTH);
   const read = await Promise.all(
     wanted.map(async (n) => {
-      const rows = await rowsFor(db, n.id);
+      const rows = await rowsFor(db, n.id, user.id);
       if (!rows?.members.some((m) => m.user_id === user.id)) return null;
       const { definition, state } = composeNight(rows, user.id);
       return {
@@ -545,7 +552,7 @@ export async function chirpsFor(
   targetId: string,
 ): Promise<{ chirps: string[]; by: "model" | "library" }> {
   const db = await createSupabaseServerClient();
-  const rows = await rowsFor(db, id);
+  const rows = await rowsFor(db, id, user.id);
   if (!rows || !rows.members.some((m) => m.user_id === user.id))
     throw new NightError("Not found.", 404);
   if (!rows.chirpAvailable || rows.occasion.details.chirp === false)
@@ -576,7 +583,7 @@ export async function act(
   action: Action,
 ): Promise<NightSnapshot> {
   const db = await createSupabaseServerClient();
-  const rows = await rowsFor(db, id);
+  const rows = await rowsFor(db, id, user.id);
   const me = rows?.members.find((m) => m.user_id === user.id);
   if (!rows || !me) throw new NightError("Not found.", 404);
 
@@ -617,6 +624,20 @@ export async function act(
       ) {
         const [from, to] = [before, action.value];
         after(() => chirpOnSwitch(db, rows, user.id, from, to));
+      }
+      // "Yes, I did it": a mission or dare (their own), or a side quest.
+      const family = prompt?.prompt.family;
+      if (
+        rows.chirpAvailable &&
+        prompt &&
+        action.value === true &&
+        before !== true &&
+        (family === "sidequest" ||
+          ((family === "mission" || family === "dare") &&
+            prompt.prompt.audience?.only === user.id))
+      ) {
+        const promptId = action.promptId;
+        after(() => chirpOnDone(db, rows, user.id, promptId, family));
       }
       break;
     }
@@ -789,7 +810,7 @@ export async function act(
         actor_id: user.id,
         kind: "note",
         text: secret
-          ? `slipped somebody a ${TOYS[family].label.toLowerCase()}. Nobody else needs to know what.`
+          ? `slipped somebody ${TOYS[family].label.toLowerCase()}. Nobody else needs to know what.`
           : `added ${TOYS[family].label.toLowerCase()}: “${input.text.split("|")[0].trim()}”`.slice(
               0,
               500,
@@ -999,7 +1020,7 @@ export async function nearbyFor(
   id: string,
 ): Promise<Nearby> {
   const db = await createSupabaseServerClient();
-  const rows = await rowsFor(db, id);
+  const rows = await rowsFor(db, id, user.id);
   if (!rows?.members.some((m) => m.user_id === user.id)) {
     throw new NightError("Not found.", 404);
   }
@@ -1206,7 +1227,7 @@ export async function redeemInvite(
   // Chirp Bot says hello (or asks who they bleed for) once the join is done.
   const joined = data;
   after(async () => {
-    const rows = await rowsFor(db, joined).catch(() => null);
+    const rows = await rowsFor(db, joined, user.id).catch(() => null);
     if (rows?.chirpAvailable) await chirpOnArrival(db, rows, user.id);
   });
   return joined;

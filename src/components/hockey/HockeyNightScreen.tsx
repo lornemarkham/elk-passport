@@ -36,6 +36,7 @@ import { PlayTab, promptsOf } from "./PlayTab";
 import { useNhlGame } from "./useNhlGame";
 import { useSharedNight, type NightSnapshot } from "./useSharedNight";
 import styles from "./hockey.module.css";
+import { mentioner } from "@/domain/hockey/mention";
 
 /**
  * **Sycle Hockey Night — the shared one.**
@@ -118,12 +119,16 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
     ? pickProgress(promptsOf(picksBlock, live.prompts, live.phase.id))
     : undefined;
 
-  const unread = useUnread(
+  const { count: unread, mention } = useUnread(
     state.slug,
     live.moments,
-    live.me?.id,
+    live.me ?? undefined,
+    live.participants,
     tab === "chat",
   );
+  // At the arena, peeking at the chat in a period is for that look only:
+  // one tap puts the phone away again.
+  const peekingNow = periods && !couch && peeking === live.phase.id;
   const badges = {
     plan: live.me
       ? live.prompts.filter(
@@ -206,11 +211,25 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               >
                 At a whistle? Open the chat
                 {unread > 0 && (
-                  <span className="rounded-full bg-[#ffd84d] px-2 text-[13px] text-[#0b1220]">
+                  <span
+                    aria-label={`${unread} new`}
+                    className="rounded-full bg-[#ffd84d] px-2 text-[13px] text-[#0b1220]"
+                  >
                     {unread}
                   </span>
                 )}
               </button>
+            )}
+            {/* Subtle: only what is worth a glance at a whistle — somebody
+                said your name. Everything else waits in the count. */}
+            {live.me && mention && (
+              <p className="-mt-4 text-center text-[13px] text-white/60">
+                <span
+                  aria-hidden
+                  className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#ffd84d] align-middle"
+                />
+                {mention} mentioned you
+              </p>
             )}
             {/* Arena Mode stays reachable in a period: the herd, the
               washrooms and the beer line are most needed when the phone
@@ -232,6 +251,15 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               aria-labelledby={`tab-${tab}`}
               className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
             >
+              {peekingNow && (
+                <button
+                  type="button"
+                  onClick={() => setPeeking(null)}
+                  className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-4 text-[14px] font-bold text-white ring-1 ring-white/15"
+                >
+                  ← Phones away — back to the game
+                </button>
+              )}
               {live.me && unsettled && !welcomed && (
                 <div className="mb-6">
                   <WelcomeCard
@@ -422,10 +450,11 @@ function subscribeSeen(onChange: () => void) {
  */
 function useUnread(
   slug: string,
-  moments: readonly { at: string; kind: string; by?: string }[],
-  meId: string | undefined,
+  moments: readonly { at: string; kind: string; by?: string; text?: string }[],
+  me: { readonly id: string; readonly name: string } | undefined,
+  people: readonly { readonly id: string; readonly name: string }[],
   looking: boolean,
-): number {
+): { count: number; mention: string | null } {
   const key = `hockey:${slug}:chat-seen`;
   const latest = moments.reduce((max, m) => (m.at > max ? m.at : max), "");
   const seen = useSyncExternalStore(
@@ -440,8 +469,9 @@ function useUnread(
     window.dispatchEvent(new Event(SEEN_EVENT));
   }, [looking, latest, key, seen]);
 
-  if (seen === null || looking) return 0;
-  return moments.filter(
-    (m) => m.kind === "note" && m.by && m.by !== meId && m.at > seen,
-  ).length;
+  if (seen === null || looking) return { count: 0, mention: null };
+  const fresh = moments.filter(
+    (m) => m.kind === "note" && m.by && m.by !== me?.id && m.at > seen,
+  );
+  return { count: fresh.length, mention: mentioner(fresh, me, people) };
 }

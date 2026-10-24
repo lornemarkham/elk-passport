@@ -22,6 +22,8 @@ import {
   meetOffsetMinutes,
   meetingPoint,
   meetingSourceLine,
+  NOT_DECIDED,
+  type MeetingPoint,
   type StopId,
 } from "@/domain/hockey/gameplan";
 import type { NearbyPlace } from "@/domain/hockey/nearby";
@@ -230,6 +232,11 @@ function GamePlan({
   const concourseLabel = live.prompts
     .find((p) => p.prompt.id === DINNER)
     ?.tally.find((o) => o.optionId === CONCOURSE)?.label;
+  const couchIds = new Set(
+    Object.entries(night.crowd?.where ?? {})
+      .filter(([, where]) => where === "couch")
+      .map(([id]) => id),
+  );
   const point = meetingPoint({
     official: meetup
       ? ((meetup.spot || gateById(meetup.gate)?.name) ?? undefined)
@@ -237,6 +244,8 @@ function GamePlan({
     vote: meetItem,
     dinner,
     concourseLabel,
+    // Everybody going settles it; the couch isn't meeting anyone.
+    members: live.participants.filter((p) => !couchIds.has(p.id)).length,
   });
   const dinnerLeader =
     dinner?.leaders.length === 1 ? dinner.leaders[0] : undefined;
@@ -245,11 +254,6 @@ function GamePlan({
     : undefined;
   const seat = seatsSummary(seats.view);
   const door = ahead && !couch && isRogersArena(live.definition.kicker);
-  const couchIds = new Set(
-    Object.entries(night.crowd?.where ?? {})
-      .filter(([, where]) => where === "couch")
-      .map(([id]) => id),
-  );
 
   const stops: Stop[] = [];
 
@@ -306,7 +310,7 @@ function GamePlan({
       label: "Meet up",
       time: clockAt(anchor, offset),
       value: point.value,
-      muted: point.source === "none",
+      muted: !point.decided && point.source !== "dinner",
       sub: meetingSourceLine(point),
       needs: Boolean(
         meetPrompt &&
@@ -317,21 +321,15 @@ function GamePlan({
       action:
         !readOnly && ahead && (meetPrompt || seats.view?.available)
           ? {
-              label:
-                point.source === "none"
-                  ? "Choose where we meet"
-                  : "Change meeting point",
+              label: !point.decided
+                ? "Choose where we meet"
+                : "Change meeting point",
               open: open === "meet",
               onClick: () => toggle("meet"),
             }
           : undefined,
       body: (
-        <MeetUp
-          night={night}
-          prompt={meetPrompt}
-          seats={seats}
-          point={point.value}
-        />
+        <MeetUp night={night} prompt={meetPrompt} seats={seats} point={point} />
       ),
     });
   }
@@ -678,7 +676,7 @@ function MeetUp({
   night: SharedNight;
   prompt?: LivePrompt;
   seats: SeatsState;
-  point: string;
+  point: MeetingPoint;
 }) {
   const official = seats.view?.available && seats.view.meetup;
   const host = seats.view?.role === "host";
@@ -689,7 +687,7 @@ function MeetUp({
           <p className="mb-2.5 text-[14px] leading-snug text-white/70">
             {prompt.locked
               ? "Voting's closed. This is what the group decided."
-              : "Pick somewhere everyone can find. Nobody votes? We meet where we eat."}
+              : "Pick somewhere everyone can find. Once dinner's decided, we'll suggest meeting there."}
           </p>
           <ChoiceVote night={night} prompt={prompt} bare />
         </div>
@@ -700,7 +698,10 @@ function MeetUp({
           {host && !official && (
             <p className="px-5 pb-3 text-[13px] leading-snug text-[#0b1220]/60">
               Make it official and everyone sees one time and one place
-              {point !== "Not decided yet" ? ` (now: ${point})` : ""}.
+              {point.source !== "none" && point.value !== NOT_DECIDED
+                ? ` (suggested: ${point.value})`
+                : ""}
+              .
             </p>
           )}
         </LightPanel>
@@ -899,7 +900,8 @@ function DinnerVote({
 
       {canVote && prompt.prompt.openToSuggestions && (
         <AddYourOwn
-          placeholder="Somewhere else? Type a name"
+          label="Somewhere else? Type a name"
+          placeholder="Somewhere else?"
           onAdd={(label) => night.addOption(prompt.prompt.id, label)}
         />
       )}
@@ -1285,9 +1287,12 @@ function ChoiceVote({
 
 function AddYourOwn({
   placeholder,
+  label = placeholder,
   onAdd,
 }: {
   placeholder: string;
+  /** The accessible name, when the placeholder is shortened to fit. */
+  label?: string;
   onAdd: (label: string) => void;
 }) {
   const [draft, setDraft] = useState("");
@@ -1306,7 +1311,7 @@ function AddYourOwn({
         onChange={(event) => setDraft(event.target.value)}
         maxLength={80}
         placeholder={placeholder}
-        aria-label={placeholder}
+        aria-label={label}
         className="min-h-12 min-w-0 flex-1 rounded-2xl bg-white/[0.07] px-4 text-[16px] text-white ring-1 ring-white/15 outline-none placeholder:text-white/45 focus:ring-white/40"
       />
       <button

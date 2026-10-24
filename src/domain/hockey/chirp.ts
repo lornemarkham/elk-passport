@@ -18,6 +18,9 @@ import {
   STORYLINE_BY_ID,
   SWITCHES,
   SWITCH_LINES,
+  MISSION_LINES,
+  DONE_LINES,
+  LEAD_LINES,
   VERDICT_LINES,
   WELCOMES,
   currentStorylines,
@@ -67,13 +70,18 @@ export type BotKind =
   | "couch"
   | "picks"
   | "final"
-  | "switch";
+  | "switch"
+  | "mission"
+  | "done"
+  | "lead";
 
 /**
  * **How much Chirp Bot talks**, the host's call (`details.chirpLevel`).
  *
- * - `quiet` — only the moments: welcomes, couch fans, picks sealed, the
- *   final verdict. No heckling the chat, no pregame questions.
+ * - `quiet` — only the moments: welcomes, couch fans, picks sealed, a
+ *   secret mission pulled off, a Cup lead change, the final verdict. No
+ *   heckling the chat (a dare or side quest done is a heckle), no pregame
+ *   questions.
  * - `normal` — that, plus a heckle at most every ten minutes and eight a
  *   day, and a pregame question every six hours.
  * - `rowdy` — heckles every four minutes, fourteen a day.
@@ -166,6 +174,9 @@ export interface Fan {
  *   final:<stamp>:<user>            the game is over: the Cup's leader
  *                                   (<stamp> is `gameStamp`: no colons)
  *   switch:<user>:<from>:<to>       someone moved their dinner vote
+ *   mission:<user>:<prompt>         they pulled off their secret mission
+ *   done:<user>:<prompt>            they did their dare / side quest
+ *   lead:<stamp>:<user>:<n>         the n-th Cup lead change of the game
  */
 export function kindOfKey(key: string): BotKind | null {
   const prefix = key.split(":", 1)[0];
@@ -183,6 +194,9 @@ export function kindOfKey(key: string): BotKind | null {
     case "picks":
     case "final":
     case "switch":
+    case "mission":
+    case "done":
+    case "lead":
       return prefix;
     default:
       return null;
@@ -202,6 +216,9 @@ const LINES_FOR: Readonly<Record<BotKind, readonly string[]>> = {
   picks: ["pk."],
   final: ["fv."],
   switch: ["o.sw."],
+  mission: ["ms."],
+  done: ["dn."],
+  lead: ["ld."],
 };
 
 const ORGANIC: ReadonlySet<BotKind> = new Set([
@@ -217,6 +234,8 @@ const SELF_KEYED: ReadonlySet<BotKind> = new Set([
   "arrival",
   "couch",
   "switch",
+  "mission",
+  "done",
 ]);
 
 // ----------------------------------------------------------- render
@@ -270,19 +289,20 @@ export function renderBotRow(
 
   // Keys that name a person must name the one who caused the line.
   if (SELF_KEYED.has(kind) && parts[1] !== row.actor_id) return null;
-  if ((kind === "picks" || kind === "final") && !ctx.claimHolds?.(kind, parts))
-    return null;
-  const about =
-    kind === "picks" || kind === "final"
-      ? parts[2]
-      : kind === "welcome" ||
-          kind === "arrival" ||
-          kind === "challenge" ||
-          kind === "bold" ||
-          kind === "couch" ||
-          kind === "switch"
-        ? row.actor_id
-        : undefined;
+  const claims = kind === "picks" || kind === "final" || kind === "lead";
+  if (claims && !ctx.claimHolds?.(kind, parts)) return null;
+  const about = claims
+    ? parts[2]
+    : kind === "welcome" ||
+        kind === "arrival" ||
+        kind === "challenge" ||
+        kind === "bold" ||
+        kind === "couch" ||
+        kind === "switch" ||
+        kind === "mission" ||
+        kind === "done"
+      ? row.actor_id
+      : undefined;
 
   if (row.bot_line === "ai") {
     if (!row.text || !ctx.verify(row)) return null;
@@ -302,16 +322,15 @@ export function renderBotRow(
   const line = LIBRARY.get(row.bot_line);
   if (!line) return null;
 
-  const subject =
-    kind === "picks" || kind === "final" ? ctx.fans.get(parts[2]) : actor;
-  if ((kind === "picks" || kind === "final") && !subject) return null;
+  const subject = claims ? ctx.fans.get(parts[2]) : actor;
+  if (claims && !subject) return null;
   const vars: Record<string, string> = { name: subject?.name ?? "Someone" };
   if (kind === "picks") {
     const score = /^(\d{1,2})-(\d{1,2})$/.exec(parts[3] ?? "");
     if (!score) return null;
     vars.pick = `${score[1]}–${score[2]}`;
   }
-  if (kind === "final") {
+  if (kind === "final" || kind === "lead") {
     const points = ctx.pointsOf?.(parts[2]);
     if (points === undefined) return null;
     vars.points = String(points);
@@ -890,4 +909,97 @@ export function switchPlan(input: {
     input.now.toISOString().slice(0, 10),
   );
   return line ? { key, line: line.id } : null;
+}
+
+/** The toy families whose completion Chirp Bot notices, and how it says so. */
+export type DoneFamily = "mission" | "dare" | "sidequest";
+
+/**
+ * Somebody answered "yes" to their own secret mission, dare or side quest.
+ * Self-keyed — only that person's own answer can set it off — once per
+ * person per prompt, and the line never says what the thing was (a mission
+ * stays secret; a dare someone passed on is never announced, because a pass
+ * is never a "yes").
+ *
+ * A mission is one of the night's moments, so it speaks even when the host
+ * has Chirp Bot quiet. A dare or side quest is a heckle: cooldown, daily
+ * cap, never twice in a row, nothing when quiet.
+ */
+export function donePlan(input: {
+  readonly userId: string;
+  readonly promptId: string;
+  readonly family: DoneFamily;
+  readonly rows: readonly BotRow[];
+  readonly newestIsBot: boolean;
+  readonly now: Date;
+  readonly level: ChirpLevel;
+  readonly seed: number;
+}): BotPlan | null {
+  const mission = input.family === "mission";
+  if (
+    !mission &&
+    !organicAllowed(input.rows, input.newestIsBot, input.now, input.level)
+  )
+    return null;
+  const key = `${mission ? "mission" : "done"}:${input.userId}:${input.promptId}`;
+  if (key.length > 160 || input.promptId.includes(":")) return null;
+  if (input.rows.some((r) => r.bot_key === key)) return null;
+  const line = chooseLine(
+    [mission ? MISSION_LINES : DONE_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  return line ? { key, line: line.id } : null;
+}
+
+/** At most this many lead-change lines in one game, and this far apart. */
+export const LEAD_LINES_PER_GAME = 4;
+export const LEAD_COOLDOWN_MS = 10 * 60_000;
+
+/**
+ * **A Sycle Cup lead change**, while the game is on. When somebody new leads
+ * outright (points above zero, nobody level), Chirp Bot says so — once per
+ * change, at most four a game and ten minutes apart, so a host calling three
+ * results in a row is one line, not three. The final verdict takes over once
+ * the game is over and called. Like the verdict, a lead line shows only
+ * while it is true (`claimHolds`), so the chat never claims a lead that was
+ * since lost or never real.
+ */
+export function leadPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly gameOver: boolean;
+  readonly called: boolean;
+  readonly leader: { readonly id: string; readonly points: number } | null;
+  readonly rows: readonly BotRow[];
+  readonly seed: number;
+}): BotPlan | null {
+  if (!input.leader || input.leader.points <= 0) return null;
+  if (input.gameOver && input.called) return null;
+  const since = (input.now.getTime() - Date.parse(input.startsAt)) / HOUR;
+  if (!(since >= 0) || since > 4) return null;
+  const stamp = gameStamp(input.startsAt);
+  const leads = input.rows
+    .filter((r) => r.bot_key?.startsWith(`lead:${stamp}:`))
+    .map((r) => ({
+      who: r.bot_key!.split(":")[2],
+      n: Number(r.bot_key!.split(":")[3]),
+      at: Date.parse(r.at),
+    }))
+    .sort((a, b) => a.n - b.n);
+  const last = leads.at(-1);
+  if (last?.who === input.leader.id) return null;
+  if (leads.length >= LEAD_LINES_PER_GAME) return null;
+  if (last && input.now.getTime() - last.at < LEAD_COOLDOWN_MS) return null;
+  const line = chooseLine(
+    [LEAD_LINES],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  const n = (last?.n ?? 0) + 1;
+  return line
+    ? { key: `lead:${stamp}:${input.leader.id}:${n}`, line: line.id }
+    : null;
 }

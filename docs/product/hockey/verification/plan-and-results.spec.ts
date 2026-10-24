@@ -144,7 +144,7 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
 
   // ------------------------------------------ a second voter, a different way
   await dinner(maya.page)
-    .getByPlaceholder("Somewhere else? Type a name")
+    .getByLabel("Somewhere else? Type a name")
     .fill("Tap & Barrel Bridges");
   await dinner(maya.page)
     .getByRole("button", { name: "Add", exact: true })
@@ -206,10 +206,11 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
       })
     ).ok(),
   ).toBe(true);
-  // Committing your own answer opens that one question to you, and only that one.
-  expect(await answers(maya.page, "first-team")).toHaveLength(2);
+  // Sealed until puck drop for everybody (2026-10-23): committing your own
+  // answer opens nobody else's — not even on the same question.
+  expect(await answers(maya.page, "first-team")).toHaveLength(1);
   expect(await answers(maya.page, "final-score")).toHaveLength(0);
-  expect(await answers(lorne.page, "first-team")).toHaveLength(2);
+  expect(await answers(lorne.page, "first-team")).toHaveLength(1);
   expect(
     (
       await act(maya.page, {
