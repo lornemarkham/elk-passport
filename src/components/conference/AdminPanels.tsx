@@ -51,7 +51,7 @@ export function AccessPanel({ view }: { view: OrganiserView }) {
             {view.accessCode}
           </p>
         ) : (
-          <p className="text-black/55">Codes are off.</p>
+          <p className="text-cf-slate">Codes are off.</p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -85,7 +85,7 @@ export function AccessPanel({ view }: { view: OrganiserView }) {
       >
         <div className="flex flex-wrap items-center gap-2">
           <select
-            className="rounded-xl border border-black/15 px-3 py-2.5 text-[15px]"
+            className="border-cf-line rounded-xl border px-3 py-2.5 text-[15px]"
             value={days}
             onChange={(e) => setDays(e.target.value)}
             aria-label="Link lasts"
@@ -110,14 +110,14 @@ export function AccessPanel({ view }: { view: OrganiserView }) {
           {view.invites.map((i) => (
             <li
               key={i.token}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-black/10 p-3 text-[14px]"
+              className="border-cf-line flex flex-wrap items-center gap-2 rounded-xl border p-3 text-[14px]"
               data-testid="invite-link"
               data-token={i.token}
             >
-              <span className="font-mono text-black/70">
+              <span className="text-cf-slate font-mono">
                 …{i.token.slice(-6)}
               </span>
-              <span className="text-black/50">
+              <span className="text-cf-mist">
                 made {when(i.createdAt)} · used {i.uses}
                 {i.expiresAt ? ` · until ${when(i.expiresAt)}` : ""}
                 {i.state !== "valid" ? ` · ${i.state}` : ""}
@@ -133,7 +133,7 @@ export function AccessPanel({ view }: { view: OrganiserView }) {
                   {copied === i.token ? "Copied" : "Copy link"}
                 </button>
                 <button
-                  className="text-black/50 underline"
+                  className="text-cf-mist underline"
                   disabled={busy}
                   onClick={() =>
                     run("DELETE", `/api/conferences/${id}/invites`, {
@@ -162,7 +162,7 @@ export function MembersPanel({ view }: { view: OrganiserView }) {
       hint="Only you and other organisers see this list. Hidden people are hidden from everyone else."
     >
       <ul
-        className="flex flex-col divide-y divide-black/5"
+        className="divide-cf-line flex flex-col divide-y"
         data-testid="members"
       >
         {view.members.map((m) => (
@@ -174,14 +174,14 @@ export function MembersPanel({ view }: { view: OrganiserView }) {
               {m.displayName ?? "No name given"}
               {m.isYou ? " (you)" : ""}
             </span>
-            <span className="text-[13px] text-black/50">
+            <span className="text-cf-mist text-[13px]">
               {m.role === "organiser" ? "organiser · " : ""}
               {m.visibility === "hidden" ? "hidden" : "visible"} · joined{" "}
               {when(m.joinedAt)}
             </span>
             {!m.isYou ? (
               <button
-                className="ml-auto text-[14px] text-black/50 underline"
+                className="text-cf-mist ml-auto text-[14px] underline"
                 onClick={async () => {
                   if (
                     !window.confirm(

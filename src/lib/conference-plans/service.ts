@@ -394,9 +394,26 @@ export async function chooseVenue(
   await d.store.savePlan({
     ...plan,
     venueId: option?.placeId ?? null,
+    meeting: meetingAfterChoice(plan, option),
     updatedAt: d.conference.now.toISOString(),
   });
   return { ok: true };
+}
+
+/**
+ * **Choosing the place is choosing where we meet** — nobody should have to
+ * make that decision twice. A meeting point somebody typed in their own
+ * words ("Hotel lobby, then we walk") is theirs and stays. One that was only
+ * ever a place (none yet, or the previously chosen venue) follows the
+ * choice; un-choosing takes it away again.
+ */
+export function meetingAfterChoice(
+  plan: Pick<Plan, "meeting" | "venueId">,
+  option: { placeId: string; name: string } | null,
+): Plan["meeting"] {
+  const m = plan.meeting;
+  if (m && (!m.placeId || m.placeId !== plan.venueId)) return m;
+  return option ? { label: option.name, placeId: option.placeId } : null;
 }
 
 export function plansLifecycle(store: () => PlansStore): ConferenceLifecycle {

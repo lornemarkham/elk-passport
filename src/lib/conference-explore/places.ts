@@ -76,15 +76,24 @@ export interface Anchor {
 }
 
 /** Where Explore measures from: a chosen curated place, else the conference's venue, else the town. */
-export function anchorsFor(c: Pick<ConferenceSummary, "place">): Anchor[] {
+export function anchorsFor(
+  c: Pick<ConferenceSummary, "place"> &
+    Partial<Pick<ConferenceSummary, "venue">>,
+): Anchor[] {
   const town = c.place.townId ? townById(c.place.townId) : undefined;
   const list = anchorsFrom(curatedFor(c));
-  // The convention centre leads where there is one: it is where people are.
-  list.sort(
-    (a, b) =>
-      Number(/convention centre west/i.test(b.name)) -
-      Number(/convention centre west/i.test(a.name)),
-  );
+  // The venue leads: it is where people are. It leads only when the
+  // organiser's words name a place Passport knows; the words alone are
+  // never turned into coordinates. Without a venue, the convention centre
+  // (where there is one) leads, as before.
+  const venue = c.venue?.name.toLowerCase().replace(/\s+/g, " ").trim();
+  const isVenue = (name: string) => {
+    const n = name.toLowerCase();
+    return venue
+      ? n.includes(venue) || venue.includes(n)
+      : /convention centre west/i.test(name);
+  };
+  list.sort((a, b) => Number(isVenue(b.name)) - Number(isVenue(a.name)));
   if (town)
     list.push({
       id: `town:${town.id}`,
@@ -92,6 +101,25 @@ export function anchorsFor(c: Pick<ConferenceSummary, "place">): Anchor[] {
       at: [town.latitude, town.longitude],
     });
   return list;
+}
+
+/**
+ * The venue as a point on a map, or `null`. Only when the organiser named a
+ * venue and it is a place Passport knows — never geocoded from their words.
+ */
+export function venueAnchor(
+  c: Pick<ConferenceSummary, "place"> &
+    Partial<Pick<ConferenceSummary, "venue">>,
+): Anchor | null {
+  if (!c.venue) return null;
+  const first = anchorsFor(c)[0];
+  const venue = c.venue.name.toLowerCase();
+  return first &&
+    !first.id.startsWith("town:") &&
+    (first.name.toLowerCase().includes(venue) ||
+      venue.includes(first.name.toLowerCase()))
+    ? first
+    : null;
 }
 
 export interface ExploreView {

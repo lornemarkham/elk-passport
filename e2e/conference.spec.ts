@@ -65,6 +65,11 @@ test("create, invite, join privately, and choose to be seen", async ({
   await ana.getByRole("button", { name: "I'm in" }).click();
   await ana.waitForURL(`**/conferences/${id}`);
   await expect(ana.getByText("Who's here · 2")).toBeVisible();
+  // The overview is not a form: free-time doors live on Explore.
+  await ana
+    .getByRole("navigation", { name: "Conference" })
+    .getByRole("link", { name: "Explore" })
+    .click();
   await expect(ana.getByTestId("doors").getByRole("link")).toHaveCount(3);
   await expect(
     ana.getByRole("link", { name: /Two hours between sessions/ }),
@@ -81,7 +86,10 @@ test("create, invite, join privately, and choose to be seen", async ({
   await expect(ben.getByText("Who's here · 3")).toBeVisible();
   await expect(ben.getByTestId("visible-people")).toHaveCount(0);
 
-  // ── Ana chooses to be seen; Ben sees her name and nobody else's ──
+  // ── Ana chooses to be seen, from her profile; Ben sees her name and nobody else's ──
+  await ana.getByRole("button", { name: "Your profile and settings" }).click();
+  await ana.getByRole("menuitem", { name: "Your profile & privacy" }).click();
+  await ana.waitForURL(`**/conferences/${id}/you`);
   await ana.getByLabel("Your name here").fill("Ana");
   await ana.getByLabel("Show my name to other colleagues.").check();
   await ana.getByRole("button", { name: "Save" }).click();

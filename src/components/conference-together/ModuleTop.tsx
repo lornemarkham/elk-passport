@@ -1,37 +1,28 @@
-import Link from "next/link";
+import { PageHead } from "@/components/conference/kit";
 
-/** The top of a module page: back to the conference, and what this is. */
+/**
+ * The top of a module page. The conference bar above it already says which
+ * conference this is and leads home, so this is just what the page is.
+ */
 export function ModuleTop({
-  conferenceId,
-  conferenceName,
   title,
   lede,
+  eyebrow,
 }: {
-  conferenceId: string;
-  conferenceName: string;
+  /** Kept for callers; the conference bar names the conference now. */
+  conferenceId?: string;
+  conferenceName?: string;
   title: string;
   lede?: string;
+  eyebrow?: string;
 }) {
-  return (
-    <div className="mx-auto max-w-[760px] px-5 pt-8">
-      <Link
-        href={`/conferences/${conferenceId}`}
-        className="inline-flex min-h-11 items-center text-[15px] text-black/55 underline"
-      >
-        ← {conferenceName}
-      </Link>
-      <h1 className="mt-1 text-[34px] leading-none font-black tracking-[-0.03em]">
-        {title}
-      </h1>
-      {lede ? <p className="mt-3 text-[16px] text-black/60">{lede}</p> : null}
-    </div>
-  );
+  return <PageHead eyebrow={eyebrow} title={title} lede={lede} />;
 }
 
 /** A module that can't open here yet, said plainly. */
 export function NotOpen({ what }: { what: string }) {
   return (
-    <p className="mx-auto mt-6 max-w-[760px] px-5 text-black/60">
+    <p className="text-cf-slate mx-auto mt-6 max-w-[1180px] px-5 sm:px-8">
       {what} isn&apos;t open yet. The organiser has to switch it on first.
     </p>
   );

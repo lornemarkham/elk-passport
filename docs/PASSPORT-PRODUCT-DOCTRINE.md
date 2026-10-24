@@ -916,6 +916,11 @@ certainty. Do not invent an answer here to make the document feel finished.
     [ADR 011](architecture/decisions/011-find-my-people.md) — share where
     they are, opt-in and for a limited time. That is one composition for one
     kind of group; the general question stays open.
+    _Informed again 2026-10-23 by the executive overhaul_
+    (`docs/products/go-have-a-conference/EXECUTIVE.md`): a conference's
+    overview leads with what matters at this point of the trip — before,
+    arrival day, during, after — from the organiser's published agenda and
+    the plans colleagues made, kept visibly apart. Still one composition.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

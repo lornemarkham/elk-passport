@@ -38,6 +38,37 @@ const optionalText = (max: number) =>
     .optional()
     .transform((s) => (s ? s : undefined));
 
+const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** At most this many agenda lines: the whole details record must stay small. */
+export const AGENDA_MAX = 40;
+
+const agendaItemSchema = z
+  .object({
+    id: z
+      .string()
+      .regex(/^[\w-]{1,24}$/, "Not an id.")
+      .optional(),
+    day: z.string().refine(realDay, "Not a date."),
+    start: z.string().regex(CLOCK, "A time like 09:30."),
+    end: z
+      .string()
+      .optional()
+      .transform((s) => (s ? s : undefined))
+      .refine((s) => s === undefined || CLOCK.test(s), "A time like 10:15."),
+    title: z.string().trim().min(1, "Say what it is.").max(80),
+    where: optionalText(80),
+    note: optionalText(200),
+    featured: z
+      .boolean()
+      .optional()
+      .transform((b) => (b ? true : undefined)),
+  })
+  .refine((i) => !i.end || i.end > i.start, {
+    message: "It can't end before it starts.",
+    path: ["end"],
+  });
+
 export const detailsSchema = z
   .object({
     name: z.string().trim().min(1, "Give it a name.").max(80),
@@ -48,6 +79,35 @@ export const detailsSchema = z
       label: z.string().trim().min(1, "Say where it is.").max(80),
       townId: optionalText(60),
     }),
+    venue: z
+      .object({
+        name: optionalText(80),
+        address: optionalText(120),
+      })
+      .optional()
+      .transform((v) =>
+        v?.name
+          ? { name: v.name, ...(v.address ? { address: v.address } : {}) }
+          : undefined,
+      ),
+    agenda: z
+      .array(agendaItemSchema)
+      .max(AGENDA_MAX, `At most ${AGENDA_MAX} agenda lines.`)
+      .optional()
+      .transform((items) =>
+        items?.length
+          ? items
+              .map((i, n) => ({
+                ...i,
+                id:
+                  i.id ??
+                  `a${n.toString(36)}${i.day.replace(/-/g, "")}${i.start.replace(":", "")}`,
+              }))
+              .sort((a, b) =>
+                `${a.day}T${a.start}`.localeCompare(`${b.day}T${b.start}`),
+              )
+          : undefined,
+      ),
     timeZone: z.string().refine(realZone, "Not a time zone."),
     startsOn: z.string().refine(realDay, "Not a date."),
     endsOn: z
@@ -72,7 +132,27 @@ export const detailsSchema = z
   .refine((d) => !d.endsOn || d.endsOn >= d.startsOn, {
     message: "It can't end before it starts.",
     path: ["endsOn"],
-  });
+  })
+  .refine(
+    (d) => {
+      // A typo'd year shouldn't publish a session in 2062: the agenda keeps
+      // to the conference's days, with a few either side for arrivals.
+      const n = (ymd: string) => Date.parse(`${ymd}T00:00:00Z`) / 86_400_000;
+      const from = n(d.startsOn) - 3;
+      const to = n(d.endsOn ?? d.startsOn) + 3;
+      return (d.agenda ?? []).every((i) => n(i.day) >= from && n(i.day) <= to);
+    },
+    {
+      message: "Agenda lines have to be on or near the conference's days.",
+      path: ["agenda"],
+    },
+  )
+  .refine(
+    (d) =>
+      new Set((d.agenda ?? []).map((i) => i.id)).size ===
+      (d.agenda ?? []).length,
+    { message: "Two agenda lines share an id.", path: ["agenda"] },
+  );
 
 export type DetailsInput = z.input<typeof detailsSchema>;
 

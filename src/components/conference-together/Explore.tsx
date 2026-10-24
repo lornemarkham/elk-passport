@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { btn } from "@/components/conference/kit";
+import { useUsableImages } from "@/components/conference/usableImages";
 import { Problem } from "@/components/conference/ui";
 import { PlanPhoto } from "@/components/hockey/VenueCard";
 import {
@@ -70,12 +72,21 @@ export function Explore({
     };
   }, [conferenceId, near, here]);
 
-  const places = view?.shelves[shelf] ?? [];
+  const shelfPlaces = view?.shelves[shelf] ?? [];
+  // Places whose photograph actually loads lead; the rest keep their order.
+  const usable = useUsableImages(shelfPlaces.map((p) => p.photo?.url));
+  const places = usable
+    ? [...shelfPlaces].sort(
+        (a, b) =>
+          Number(usable.has(b.photo?.url ?? "")) -
+          Number(usable.has(a.photo?.url ?? "")),
+      )
+    : shelfPlaces;
 
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-[14px] font-bold" htmlFor="explore-from">
+        <label className="cf-eyebrow text-cf-mist" htmlFor="explore-from">
           From
         </label>
         <select
@@ -99,7 +110,7 @@ export function Explore({
             setHere(null);
             setNear(e.target.value);
           }}
-          className="min-h-11 max-w-[70vw] rounded-xl border border-black/15 px-3 text-[15px]"
+          className="border-cf-line min-h-10 max-w-[70vw] rounded-full border bg-white px-4 text-[14px]"
         >
           {(view?.anchors ?? []).map((a) => (
             <option key={a.id} value={a.id}>
@@ -122,10 +133,10 @@ export function Explore({
                 type="button"
                 aria-pressed={shelf === s.id}
                 onClick={() => setShelf(s.id)}
-                className={`min-h-11 rounded-full border px-3 text-[15px] ${
+                className={`min-h-10 rounded-full border px-4 text-[14px] font-semibold transition ${
                   shelf === s.id
-                    ? "border-black bg-black font-bold text-white"
-                    : "border-black/15"
+                    ? "border-cf-ink bg-cf-ink text-white"
+                    : "border-cf-line text-cf-slate hover:text-cf-ink bg-white"
                 }`}
               >
                 {s.title}
@@ -135,7 +146,7 @@ export function Explore({
           ))}
         </ul>
       </nav>
-      <p className="mt-2 text-[13px] text-black/50">
+      <p className="text-cf-mist mt-2 text-[13px]">
         {SHELVES.find((s) => s.id === shelf)?.note} Straight-line distances from{" "}
         {view?.anchor?.name ?? "the venue"}.
         {view?.outage
@@ -143,16 +154,16 @@ export function Explore({
           : ""}
       </p>
 
-      {loading ? (
-        <p className="mt-6 text-[15px] text-black/55">Finding places…</p>
+      {loading || (shelfPlaces.length > 0 && !usable) ? (
+        <p className="text-cf-mist mt-6 text-[15px]">Finding places…</p>
       ) : !places.length ? (
-        <p className="mt-6 text-[15px] text-black/55">
+        <p className="text-cf-mist mt-6 text-[15px]">
           Nothing on this shelf within a walk. Try another, or another starting
           point.
         </p>
       ) : (
         <ul
-          className="mt-4 grid gap-4 sm:grid-cols-2"
+          className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
           data-testid="explore-places"
         >
           {places.map((p) => (
@@ -196,18 +207,28 @@ function PlaceCard({
     venue: p.id,
     venueName: p.name,
   })}`;
+  // Atlas places have a Passport page, where they can be saved to your own
+  // Saved and Adventures. Curated ones don't (yet).
+  const atlas = p.from !== "curated" && !p.id.startsWith("curated:");
   return (
     <li
-      className="overflow-hidden rounded-3xl border border-black/10"
+      className="group border-cf-line flex flex-col overflow-hidden rounded-2xl border bg-white transition hover:shadow-[0_18px_40px_-24px_rgba(23,24,27,0.35)]"
       data-testid="explore-place"
     >
-      <div className="relative aspect-[16/10] w-full bg-black/5">
+      <div className="bg-cf-sand relative aspect-[4/3] w-full overflow-hidden">
         <PlanPhoto
           url={p.photo?.url}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
           fallback={
-            <span className="flex h-full w-full items-center justify-center text-[40px] text-black/25">
-              📍
+            <span className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#efebe2,#e6e1d5)]">
+              <span className="text-center">
+                <span className="cf-display text-cf-ink/25 block text-[56px] leading-none">
+                  {p.name.trim()[0]?.toUpperCase()}
+                </span>
+                <span className="cf-eyebrow text-cf-mist mt-2 block">
+                  No usable photo in Atlas
+                </span>
+              </span>
             </span>
           }
         />
@@ -217,23 +238,27 @@ function PlaceCard({
           </span>
         ) : null}
       </div>
-      <div className="p-4">
-        <p className="text-[18px] leading-tight font-black">{p.name}</p>
-        <p className="mt-0.5 text-[13px] text-black/55">
+      <div className="flex flex-1 flex-col p-5">
+        <p className="cf-eyebrow text-cf-mist">
           {[p.subtype, p.area, p.from === "curated" ? "Passport's list" : null]
             .filter(Boolean)
             .join(" · ")}
         </p>
+        <p
+          data-testid="place-name"
+          className="cf-serif text-cf-ink mt-1.5 text-[20px] leading-snug"
+        >
+          {p.name}
+        </p>
         {p.blurb ? (
-          <p className="mt-2 text-[14px] text-black/75">{p.blurb}</p>
+          <p className="text-cf-slate mt-2 line-clamp-2 text-[14px] leading-relaxed">
+            {p.blurb}
+          </p>
         ) : null}
-        <p className="mt-2 text-[13px] text-black/50">{walkLabel(p)}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <p className="text-cf-mist mt-3 text-[12px]">{walkLabel(p)}</p>
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
           {plansOn ? (
-            <Link
-              href={planHref}
-              className="inline-flex min-h-11 items-center rounded-xl bg-black px-3 text-[14px] font-bold text-white"
-            >
+            <Link href={planHref} className={btn.primary}>
               Plan this
             </Link>
           ) : null}
@@ -241,20 +266,32 @@ function PlaceCard({
             <button
               type="button"
               onClick={() => onAdding(!adding)}
-              className="min-h-11 rounded-xl border border-black/15 px-3 text-[14px] font-semibold"
+              aria-expanded={adding}
+              className={btn.secondary}
             >
               Add to a plan
             </button>
           ) : null}
           {p.at ? <Directions name={p.name} at={p.at} compact /> : null}
+          {atlas ? (
+            <Link
+              href={`/places/${encodeURIComponent(p.id)}`}
+              className="text-cf-slate hover:text-cf-ink ml-auto text-[13px] font-semibold underline-offset-4 hover:underline"
+            >
+              Details &amp; save
+            </Link>
+          ) : null}
         </div>
         {adding ? (
-          <ul className="mt-2 flex flex-col gap-1">
+          <ul className="mt-3 flex flex-col gap-1">
+            <li className="cf-eyebrow text-cf-mist px-1 pb-1">
+              Suggest it for
+            </li>
             {plans.map((pl) => (
               <li key={pl.id}>
                 <button
                   type="button"
-                  className="min-h-11 w-full rounded-xl bg-black/[0.05] px-3 text-left text-[14px]"
+                  className="bg-cf-paper text-cf-ink hover:bg-cf-sand min-h-10 w-full rounded-xl px-3 text-left text-[14px]"
                   onClick={async () => {
                     const r = await send(
                       `/api/conferences/${conferenceId}/plans`,
@@ -275,7 +312,10 @@ function PlaceCard({
           </ul>
         ) : null}
         {done ? (
-          <p className="mt-2 text-[13px] font-semibold" role="status">
+          <p
+            className="text-cf-sage mt-2 text-[13px] font-semibold"
+            role="status"
+          >
             {done}
           </p>
         ) : null}

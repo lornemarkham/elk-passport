@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PlanPhoto } from "@/components/hockey/VenueCard";
+import { useUsableImages } from "@/components/conference/usableImages";
 import type { ExplorePlace } from "@/domain/conference-explore/explore";
 import type { ExploreView } from "@/lib/conference-explore/places";
 
@@ -20,14 +21,15 @@ export function ExplorePicks({ conferenceId }: { conferenceId: string }) {
       .then((j) => {
         const v = j.explore as ExploreView | undefined;
         if (!live || !v) return;
+        // More than are shown: only places whose photograph works make the row.
         const take = (s: keyof ExploreView["shelves"], n: number) =>
           v.shelves[s].filter((p) => p.photo).slice(0, n);
         setPicks([
-          ...take("coffee", 1),
-          ...take("restaurants", 2),
-          ...take("waterfront", 1),
-          ...take("sights", 1),
-          ...take("drinks", 1),
+          ...take("waterfront", 2),
+          ...take("sights", 3),
+          ...take("restaurants", 5),
+          ...take("coffee", 2),
+          ...take("drinks", 3),
         ]);
       })
       .catch(() => live && setPicks([]));
@@ -35,48 +37,63 @@ export function ExplorePicks({ conferenceId }: { conferenceId: string }) {
       live = false;
     };
   }, [conferenceId]);
-  if (picks && !picks.length) return null;
+  const usable = useUsableImages((picks ?? []).map((p) => p.photo?.url));
+  const shown = usable
+    ? (picks ?? [])
+        .filter((p) => p.photo && usable.has(p.photo.url))
+        .slice(0, 5)
+    : null;
+  if ((picks && !picks.length) || (shown && !shown.length)) return null;
   return (
-    <div className="-mx-5 overflow-x-auto px-5" data-testid="explore-picks">
-      <ul className="flex gap-3">
-        {(picks ?? []).map((p) => (
-          <li
-            key={p.id}
-            className="w-[220px] shrink-0 overflow-hidden rounded-2xl border border-black/10"
+    <ul
+      className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:grid-rows-2 sm:overflow-visible sm:px-0"
+      data-testid="explore-picks"
+    >
+      {(shown ?? []).map((p, i) => (
+        <li
+          key={p.id}
+          className={`group bg-cf-sand relative w-[240px] shrink-0 snap-start overflow-hidden rounded-2xl sm:w-auto ${
+            i === 0 ? "sm:col-span-2 sm:row-span-2" : ""
+          }`}
+        >
+          <Link
+            href={`/conferences/${conferenceId}/discover`}
+            className="block h-full"
           >
-            <Link
-              href={`/conferences/${conferenceId}/discover`}
-              className="block"
+            <div
+              className={`relative h-full ${i === 0 ? "aspect-[4/3] sm:aspect-auto sm:min-h-[340px]" : "aspect-[4/3]"}`}
             >
-              <div className="aspect-[4/3] bg-black/5">
-                <PlanPhoto
-                  url={p.photo?.url}
-                  className="h-full w-full object-cover"
-                  fallback={
-                    <span className="flex h-full items-center justify-center text-[32px]">
-                      📍
-                    </span>
-                  }
-                />
-              </div>
-              <span className="block truncate px-3 pt-2 text-[15px] font-bold">
-                {p.name}
-              </span>
-              <span className="block px-3 pb-3 text-[13px] text-black/55">
-                {p.subtype ?? ""} · {p.walkMinutes}+ min walk
-              </span>
-            </Link>
-          </li>
-        ))}
-        {!picks
-          ? [0, 1, 2].map((i) => (
-              <li
-                key={i}
-                className="h-[230px] w-[220px] shrink-0 animate-pulse rounded-2xl bg-black/5"
+              <PlanPhoto
+                url={p.photo?.url}
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                fallback={<span className="bg-cf-sand absolute inset-0" />}
               />
-            ))
-          : null}
-      </ul>
-    </div>
+              <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(16,17,19,0.78)_100%)]" />
+              <span className="absolute inset-x-0 bottom-0 p-4 text-white">
+                <span
+                  className={`cf-serif block leading-tight ${i === 0 ? "text-[22px] sm:text-[26px]" : "text-[16px]"}`}
+                >
+                  {p.name}
+                </span>
+                <span className="mt-1 block text-[12px] text-white/75">
+                  {p.subtype
+                    ? `${p.subtype[0]!.toUpperCase()}${p.subtype.slice(1)} · `
+                    : ""}
+                  {p.walkMinutes}+ min walk
+                </span>
+              </span>
+            </div>
+          </Link>
+        </li>
+      ))}
+      {!shown
+        ? [0, 1, 2].map((i) => (
+            <li
+              key={i}
+              className={`bg-cf-sand aspect-[4/3] w-[240px] shrink-0 animate-pulse rounded-2xl sm:w-auto ${i === 0 ? "sm:col-span-2 sm:row-span-2 sm:aspect-auto" : ""}`}
+            />
+          ))
+        : null}
+    </ul>
   );
 }

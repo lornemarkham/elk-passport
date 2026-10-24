@@ -81,15 +81,15 @@ export function PlansBoard({
   const past = board.plans.filter((p) => !p.next);
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 pb-16">
+    <div className="mx-auto max-w-[1180px] px-5 pb-16 *:max-w-[820px] sm:px-8">
       {!making && !editing ? (
         <button
           type="button"
           onClick={() => setMaking(true)}
-          className="mt-6 w-full rounded-2xl bg-black px-5 py-4 text-left text-[19px] font-black text-white"
+          className="border-cf-line text-cf-ink hover:border-cf-ink/30 mt-6 flex w-full flex-col rounded-2xl border bg-white px-5 py-4 text-left text-[17px] font-semibold transition"
         >
           + Make a plan
-          <span className="block text-[14px] font-medium text-white/70">
+          <span className="text-cf-slate block text-[14px] font-normal">
             A walk, coffee, lunch, dinner, drinks — on one day or several.
           </span>
         </button>
@@ -140,7 +140,7 @@ export function PlansBoard({
           ))}
         </ul>
       ) : (
-        <p className="mt-8 rounded-2xl bg-black/[0.04] p-5 text-[16px] text-black/65">
+        <p className="bg-cf-sand text-cf-slate mt-8 rounded-2xl p-5 text-[16px]">
           Nothing planned yet. The first plan is usually somebody saying
           &ldquo;Coffee at 8, anyone?&rdquo; — be that somebody.
         </p>
@@ -148,16 +148,16 @@ export function PlansBoard({
 
       {past.length ? (
         <details className="mt-10">
-          <summary className="min-h-11 cursor-pointer text-[13px] font-bold tracking-[0.14em] text-black/50 uppercase">
+          <summary className="text-cf-mist min-h-11 cursor-pointer text-[13px] font-bold tracking-[0.14em] uppercase">
             Already happened · {past.length}
           </summary>
           <ul className="mt-3 flex flex-col gap-3">
             {past.map((p) => (
-              <li key={p.id} className="rounded-2xl border border-black/10 p-4">
+              <li key={p.id} className="border-cf-line rounded-2xl border p-4">
                 <span className="text-[15px] font-bold">
                   {p.emoji} {p.title}
                 </span>
-                <span className="block text-[14px] text-black/55">
+                <span className="text-cf-mist block text-[14px]">
                   {p.occurrences
                     .map((o) => shortDay(new Date(o.startsAt), board.timeZone))
                     .join(" · ")}{" "}
@@ -222,16 +222,18 @@ function PlanCard({
 
   const meetingAt = p.meeting?.place?.at;
   const venueAt = p.venue && "at" in p.venue ? p.venue.at : undefined;
+  // Chosen venue and meeting point are one place: say it once.
+  const sameSpot = !!p.venue && p.meeting?.place?.id === p.venue.id;
 
   return (
     <li
       id={`plan-${p.id}`}
-      className="scroll-mt-4 rounded-3xl border border-black/10 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)]"
+      className="border-cf-line scroll-mt-4 rounded-3xl border bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)]"
       data-testid="plan"
       data-plan={p.title}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-bold tracking-[0.12em] text-black/50 uppercase">
+        <p className="text-cf-mist text-[13px] font-bold tracking-[0.12em] uppercase">
           {p.emoji} {p.kindLabel}
           {p.audience === "selected" ? " · Invite only" : ""}
         </p>
@@ -259,7 +261,7 @@ function PlanCard({
               <button
                 type="button"
                 onClick={() => setCancelling(true)}
-                className="min-h-11 px-2 text-[14px] text-black/55 underline"
+                className="text-cf-mist min-h-11 px-2 text-[14px] underline"
               >
                 Cancel plan
               </button>
@@ -267,10 +269,10 @@ function PlanCard({
           </span>
         ) : null}
       </div>
-      <h3 className="mt-1 text-[22px] leading-tight font-black tracking-[-0.01em]">
+      <h3 className="mt-1 text-[22px] leading-tight font-semibold tracking-[-0.01em]">
         {p.title}
       </h3>
-      <p className="mt-1 text-[14px] text-black/55">
+      <p className="text-cf-mist mt-1 text-[14px]">
         {p.organiser.you
           ? "You organised this"
           : `Organised by ${p.organiser.name ?? "a coworker"}`}
@@ -279,17 +281,17 @@ function PlanCard({
           : " · everyone's invited"}
       </p>
       {p.description ? (
-        <p className="mt-3 text-[16px] whitespace-pre-line text-black/80">
+        <p className="text-cf-slate mt-3 text-[16px] whitespace-pre-line">
           {p.description}
         </p>
       ) : null}
 
-      {p.meeting ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-black/[0.04] p-3">
+      {p.meeting && !sameSpot ? (
+        <div className="bg-cf-sand mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3">
           <span className="text-[15px]">
             <span className="font-bold">Meet:</span> {p.meeting.label}
             {p.meeting.place?.address ? (
-              <span className="block text-[13px] text-black/55">
+              <span className="text-cf-mist block text-[13px]">
                 {p.meeting.place.address}
               </span>
             ) : null}
@@ -301,7 +303,11 @@ function PlanCard({
       ) : null}
 
       {p.venue ? (
-        <VenueLine place={p.venue} label="Going to" at={venueAt} />
+        <VenueLine
+          place={p.venue}
+          label={sameSpot ? "Meet at" : "Going to"}
+          at={venueAt}
+        />
       ) : null}
 
       <ul className="mt-4 flex flex-col gap-3">
@@ -355,7 +361,7 @@ function Occurrence({
   const done = o.status === "past";
   return (
     <li
-      className="rounded-2xl border border-black/10 p-3"
+      className="border-cf-line rounded-2xl border p-3"
       data-testid="occurrence"
       data-day={utcToZoned(at, timeZone).ymd}
     >
@@ -368,10 +374,10 @@ function Occurrence({
             {o.status === "now" ? "Happening now" : "Starting soon"}
           </span>
         ) : done ? (
-          <span className="text-[13px] text-black/45">Done</span>
+          <span className="text-cf-mist text-[13px]">Done</span>
         ) : null}
       </div>
-      <p className="mt-1 text-[14px] text-black/60" data-testid="who">
+      <p className="text-cf-slate mt-1 text-[14px]" data-testid="who">
         {o.counts.in} in
         {o.counts.maybe ? ` · ${o.counts.maybe} maybe` : ""}
         {names.length ? ` — ${names.join(", ")}` : ""}
@@ -395,11 +401,11 @@ function Occurrence({
               className={`min-h-11 rounded-xl border px-2 text-[14px] font-bold ${
                 o.mine === a
                   ? a === "in"
-                    ? "border-black bg-black text-white"
+                    ? "border-cf-ink bg-cf-ink text-white"
                     : a === "maybe"
-                      ? "border-black bg-black/10"
-                      : "border-black/40 bg-black/[0.03] text-black/60"
-                  : "border-black/15"
+                      ? "border-cf-ink/60 bg-cf-sand"
+                      : "border-cf-line bg-cf-sand text-cf-slate"
+                  : "border-cf-line"
               }`}
             >
               {ANSWER_WORDS[a]}
@@ -422,12 +428,12 @@ function VenueLine({
 }) {
   const image = "image" in place ? place.image : undefined;
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-2xl bg-black/[0.04] p-3">
+    <div className="bg-cf-sand mt-3 flex items-center gap-3 rounded-2xl p-3">
       <PlanPhoto
         url={image}
         className="h-14 w-14 shrink-0 rounded-xl object-cover"
         fallback={
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-black/10 text-[22px]">
+          <span className="bg-cf-sand flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-[22px]">
             📍
           </span>
         }
@@ -435,7 +441,7 @@ function VenueLine({
       <span className="min-w-0 flex-1 text-[15px]">
         <span className="font-bold">{label}:</span> {place.name}
         {"address" in place && place.address ? (
-          <span className="block text-[13px] text-black/55">
+          <span className="text-cf-mist block text-[13px]">
             {place.address}
           </span>
         ) : null}
@@ -463,7 +469,7 @@ function VenueVote({
   const [picking, setPicking] = useState(false);
   return (
     <section className="mt-5" aria-label="Where shall we go?">
-      <h4 className="text-[13px] font-bold tracking-[0.14em] text-black/50 uppercase">
+      <h4 className="text-cf-mist text-[13px] font-bold tracking-[0.14em] uppercase">
         Where shall we go?
       </h4>
       {p.options.length ? (
@@ -475,14 +481,14 @@ function VenueVote({
               <li
                 key={o.id}
                 className={`flex items-center gap-3 rounded-2xl border p-2 ${
-                  chosen ? "border-black" : "border-black/10"
+                  chosen ? "border-cf-ink/60" : "border-cf-line"
                 }`}
               >
                 <PlanPhoto
                   url={image}
                   className="h-14 w-14 shrink-0 rounded-xl object-cover"
                   fallback={
-                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-black/10 text-[22px]">
+                    <span className="bg-cf-sand flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-[22px]">
                       🍽️
                     </span>
                   }
@@ -491,7 +497,7 @@ function VenueVote({
                   <span className="block truncate text-[16px] font-bold">
                     {o.place.name}
                   </span>
-                  <span className="text-[13px] text-black/55">
+                  <span className="text-cf-mist text-[13px]">
                     {o.votes} vote{o.votes === 1 ? "" : "s"}
                     {o.leading && o.votes ? " · leading" : ""}
                     {chosen ? " · chosen" : ""}
@@ -511,7 +517,7 @@ function VenueVote({
                       setProblem(r.ok ? "" : r.message);
                     }}
                     className={`min-h-11 rounded-xl px-3 text-[14px] font-bold ${
-                      o.mine ? "bg-black text-white" : "border border-black/15"
+                      o.mine ? "bg-cf-ink text-white" : "border-cf-line border"
                     }`}
                   >
                     {o.mine ? "✓ Voted" : "Vote"}
@@ -528,7 +534,7 @@ function VenueVote({
                         });
                         setProblem(r.ok ? "" : r.message);
                       }}
-                      className="min-h-11 rounded-xl border border-black/15 px-3 text-[14px]"
+                      className="border-cf-line min-h-11 rounded-xl border px-3 text-[14px]"
                     >
                       Choose
                     </button>
@@ -539,7 +545,7 @@ function VenueVote({
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-[14px] text-black/55">
+        <p className="text-cf-mist mt-2 text-[14px]">
           No places yet. Suggest one and the group votes.
         </p>
       )}
@@ -610,7 +616,7 @@ export function PlacePicker({
   }, [conferenceId, shelf]);
   return (
     <div
-      className="mt-2 rounded-2xl border border-black/15 p-3"
+      className="border-cf-line mt-2 rounded-2xl border p-3"
       data-testid="place-picker"
     >
       <div className="flex items-center justify-between">
@@ -624,11 +630,11 @@ export function PlacePicker({
         </button>
       </div>
       {failed ? (
-        <p className="text-[14px] text-black/55">Couldn&apos;t load places.</p>
+        <p className="text-cf-mist text-[14px]">Couldn&apos;t load places.</p>
       ) : !places ? (
-        <p className="text-[14px] text-black/55">Finding places near you…</p>
+        <p className="text-cf-mist text-[14px]">Finding places near you…</p>
       ) : !places.length ? (
-        <p className="text-[14px] text-black/55">
+        <p className="text-cf-mist text-[14px]">
           Passport doesn&apos;t know places near here yet.
         </p>
       ) : (
@@ -638,13 +644,13 @@ export function PlacePicker({
               <button
                 type="button"
                 onClick={() => onPick(pl)}
-                className="flex w-full items-center gap-3 rounded-xl border border-black/10 p-2 text-left"
+                className="border-cf-line flex w-full items-center gap-3 rounded-xl border p-2 text-left"
               >
                 <PlanPhoto
                   url={pl.photo?.url}
                   className="h-12 w-12 shrink-0 rounded-lg object-cover"
                   fallback={
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-black/10">
+                    <span className="bg-cf-sand flex h-12 w-12 shrink-0 items-center justify-center rounded-lg">
                       📍
                     </span>
                   }
@@ -653,7 +659,7 @@ export function PlacePicker({
                   <span className="block truncate text-[15px] font-bold">
                     {pl.name}
                   </span>
-                  <span className="text-[13px] text-black/55">
+                  <span className="text-cf-mist text-[13px]">
                     {pl.subtype ??
                       (pl.from === "curated" ? "Passport's list" : "")}{" "}
                     · {pl.walkMinutes}+ min walk
@@ -775,10 +781,10 @@ function PlanForm({
   return (
     <form
       onSubmit={save}
-      className="mt-6 rounded-3xl border-2 border-black p-5"
+      className="border-cf-line mt-6 rounded-2xl border bg-white p-5 shadow-[0_1px_2px_rgba(23,24,27,0.04)]"
       aria-label={editing ? "Edit plan" : "Make a plan"}
     >
-      <h2 className="text-[22px] font-black">
+      <h2 className="text-[22px] font-semibold">
         {editing ? "Change the plan" : "Make a plan"}
       </h2>
 
@@ -793,8 +799,8 @@ function PlanForm({
               onClick={() => pickKind(k)}
               className={`min-h-11 rounded-full border px-3 text-[15px] ${
                 kind === k
-                  ? "border-black bg-black font-bold text-white"
-                  : "border-black/15"
+                  ? "border-cf-ink bg-cf-ink font-bold text-white"
+                  : "border-cf-line"
               }`}
             >
               {KINDS[k].emoji} {KINDS[k].label}
@@ -828,7 +834,7 @@ function PlanForm({
       <fieldset className="mt-4">
         <legend className="text-[14px] font-bold">
           Which days?{" "}
-          <span className="font-normal text-black/55">
+          <span className="text-cf-mist font-normal">
             Pick several for a regular thing.
           </span>
         </legend>
@@ -838,8 +844,8 @@ function PlanForm({
               key={d.ymd}
               className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-[15px] ${
                 chosenDays.has(d.ymd)
-                  ? "border-black bg-black/5 font-bold"
-                  : "border-black/15"
+                  ? "border-cf-ink/60 bg-cf-sand font-bold"
+                  : "border-cf-line"
               } ${inPast(d.ymd) && !chosenDays.has(d.ymd) ? "opacity-40" : ""}`}
             >
               <input
@@ -861,7 +867,7 @@ function PlanForm({
 
       <label className="mt-4 block text-[14px] font-bold">
         What time?{" "}
-        <span className="font-normal text-black/55">
+        <span className="text-cf-mist font-normal">
           ({tz.split("/")[1]?.replace("_", " ")} time)
         </span>
         <input
@@ -902,7 +908,7 @@ function PlanForm({
                   setMeeting(name);
                   setMeetingPlaceId(idea?.id ?? "");
                 }}
-                className="min-h-11 rounded-full border border-black/15 px-3 text-[14px]"
+                className="border-cf-line min-h-11 rounded-full border px-3 text-[14px]"
               >
                 {name}
               </button>
@@ -943,7 +949,7 @@ function PlanForm({
           </button>
         )}
         {KINDS[kind].vote && !venue ? (
-          <p className="mt-1 text-[13px] text-black/55">
+          <p className="text-cf-mist mt-1 text-[13px]">
             Or leave it open: people can suggest places and vote.
           </p>
         ) : null}
@@ -956,7 +962,7 @@ function PlanForm({
             <label
               key={a}
               className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-[15px] ${
-                audience === a ? "border-black font-bold" : "border-black/15"
+                audience === a ? "border-cf-ink/60 font-bold" : "border-cf-line"
               }`}
             >
               <input
@@ -980,8 +986,8 @@ function PlanForm({
                   key={p.memberId}
                   className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-3 text-[15px] ${
                     invited.has(p.memberId)
-                      ? "border-black bg-black/5 font-bold"
-                      : "border-black/15"
+                      ? "border-cf-ink/60 bg-cf-sand font-bold"
+                      : "border-cf-line"
                   }`}
                 >
                   <input
@@ -1000,12 +1006,12 @@ function PlanForm({
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-[14px] text-black/55">
+            <p className="text-cf-mist mt-2 text-[14px]">
               Nobody has chosen to be seen yet, so there&apos;s nobody to pick.
             </p>
           )
         ) : null}
-        <p className="mt-2 text-[13px] text-black/55">
+        <p className="text-cf-mist mt-2 text-[13px]">
           {audience === "selected"
             ? "Only the people you pick will see this plan."
             : "Everyone in the conference will see it and can join."}
