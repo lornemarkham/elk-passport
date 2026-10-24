@@ -71,7 +71,7 @@ export function StartAdventure() {
   return (
     <form
       onSubmit={start}
-      className="space-y-5 rounded-2xl border p-5"
+      className="space-y-5 rounded-2xl border border-[var(--gh-line)] bg-white p-5"
       aria-label="Start an adventure"
     >
       <fieldset>
@@ -83,9 +83,8 @@ export function StartAdventure() {
               type="button"
               aria-pressed={kind === k.id}
               onClick={() => setKind(k.id)}
-              title={k.blurb}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                "min-h-11 rounded-full border-2 px-4 text-base font-semibold transition-colors",
                 kind === k.id
                   ? "bg-primary text-primary-foreground border-primary"
                   : "hover:bg-muted",
@@ -95,11 +94,15 @@ export function StartAdventure() {
             </button>
           ))}
         </div>
+        <p className="text-muted-foreground mt-2 text-sm">
+          {ADVENTURE_KINDS.find((k) => k.id === kind)?.blurb}
+        </p>
       </fieldset>
 
       <div className="space-y-1.5">
         <Label htmlFor="adventure-title">Name it</Label>
         <Input
+          className="h-12 text-base"
           id="adventure-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -117,6 +120,7 @@ export function StartAdventure() {
         <div className="space-y-1.5">
           <Label htmlFor="adventure-day">When (optional)</Label>
           <Input
+            className="h-12 text-base"
             id="adventure-day"
             type="date"
             value={startsOn}
@@ -126,6 +130,7 @@ export function StartAdventure() {
         <div className="space-y-1.5">
           <Label htmlFor="adventure-where">Where (optional)</Label>
           <Input
+            className="h-12 text-base"
             id="adventure-where"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
@@ -140,6 +145,7 @@ export function StartAdventure() {
           <div className="space-y-1.5">
             <Label htmlFor="adventure-arena">Arena (optional)</Label>
             <Input
+              className="h-12 text-base"
               id="adventure-arena"
               value={arena}
               onChange={(e) => setArena(e.target.value)}
@@ -150,6 +156,7 @@ export function StartAdventure() {
           <div className="space-y-1.5">
             <Label htmlFor="adventure-opponent">Against (optional)</Label>
             <Input
+              className="h-12 text-base"
               id="adventure-opponent"
               value={opponent}
               onChange={(e) => setOpponent(e.target.value)}
@@ -166,7 +173,11 @@ export function StartAdventure() {
         </p>
       )}
 
-      <Button type="submit" disabled={busy || !title.trim()}>
+      <Button
+        type="submit"
+        disabled={busy || !title.trim()}
+        className="min-h-12 rounded-full px-6 text-base"
+      >
         {busy ? "Starting…" : "Start it"}
       </Button>
     </form>

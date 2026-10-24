@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles, X } from "lucide-react";
-import { ADVENTURE_KINDS, PLANNING_KINDS } from "@/lib/adventures/kinds";
 import { MAX_SEED } from "@/lib/adventures/days";
 import { whenLabel } from "@/lib/adventures/present";
-import { TOWN_GROUPS, townById } from "@/domain/discovery/towns";
 
 interface AdventureChoice {
   readonly id: string;
@@ -23,21 +21,20 @@ type Load =
   | { at: "ready"; adventures: readonly AdventureChoice[] }
   | { at: "unavailable" };
 
-const KINDS = ADVENTURE_KINDS.filter((k) => PLANNING_KINDS.includes(k.id));
-
 /**
  * **Saved, leading somewhere** (doctrine §2.6, §9): the things somebody
  * chose, turned into a day or put into an adventure.
  *
- * Two ways on, both explicit — nothing is offered unasked (when Passport
+ * Three ways on, all explicit — nothing is offered unasked (when Passport
  * should offer is §15.5, still open):
  *
- * - **Make a day out of these** opens Go Have a Day with them kept
+ * - **Build an adventure with these** opens the guided start
+ *   (`/adventures/new?with=`), which sketches real days around them
+ *   (ADR 012). There is one way to start an adventure, not two forms.
+ * - **Add to one I've started** puts them on an existing adventure as ideas.
+ * - **Just make a day out of these** opens Go Have a Day with them kept
  *   (`/go?with=`, at most five). It writes nothing; the day is kept there
  *   or not at all (roadmap BRD-02).
- * - **Add to an adventure** puts them on a new or existing adventure as
- *   ideas. An adventure is where a day, a weekend or a longer trip is
- *   planned, shared and come back to.
  *
  * Choosing does not change what anything *is* on Saved: a thing on an
  * adventure is still saved, and is not marked planned or wanted (§15.14).
@@ -58,12 +55,7 @@ export function PlanFromSaved({
   const router = useRouter();
   const [open, setOpen] = useState(Boolean(preselect));
   const [load, setLoad] = useState<Load>({ at: "loading" });
-  const [target, setTarget] = useState<string>(preselect ?? "new");
-  const [title, setTitle] = useState("");
-  const [kind, setKind] = useState("day");
-  const [startsOn, setStartsOn] = useState("");
-  const [endsOn, setEndsOn] = useState("");
-  const [townId, setTownId] = useState("");
+  const [target, setTarget] = useState<string>(preselect ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +74,7 @@ export function PlanFromSaved({
           !adventures.some((a) => a.id === preselect) &&
           target === preselect
         )
-          setTarget("new");
+          setTarget("");
       } catch {
         if (!cancelled) setLoad({ at: "unavailable" });
       }
@@ -96,43 +88,22 @@ export function PlanFromSaved({
 
   const seed = chosen.slice(0, MAX_SEED);
   const dayHref = `/go?with=${seed.map(encodeURIComponent).join(",")}`;
+  const buildHref = `/adventures/new?with=${chosen.slice(0, 12).map(encodeURIComponent).join(",")}`;
 
   async function add(event: React.FormEvent) {
     event.preventDefault();
-    if (chosen.length === 0) return;
+    if (chosen.length === 0 || !target) return;
     setBusy(true);
     setError(null);
     try {
-      let id = target;
-      if (target === "new") {
-        const response = await fetch("/api/adventures", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            kind,
-            title,
-            startsOn: startsOn || null,
-            endsOn: kind === "day" ? null : endsOn || null,
-            destinationTownId: townId || null,
-            destinationLabel: townId
-              ? (townById(townId)?.name.replace(/,\s*BC$/, "") ?? null)
-              : null,
-            atlasRefs: chosen,
-          }),
-        });
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(body.error ?? "Couldn't start it.");
-        id = body.id;
-      } else {
-        const response = await fetch(`/api/adventures/${target}/ideas`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ atlasRefs: chosen }),
-        });
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(body.error ?? "Couldn't add them.");
-      }
-      router.push(`/adventures/${id}`);
+      const response = await fetch(`/api/adventures/${target}/ideas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ atlasRefs: chosen }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Couldn't add them.");
+      router.push(`/adventures/${target}`);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -142,49 +113,28 @@ export function PlanFromSaved({
   const adventures = load.at === "ready" ? load.adventures : [];
   const names = chosen.map((id) => titles[id]).filter(Boolean);
 
+  const startedHere = adventures;
+
   return (
     <div
       data-testid="plan-from-saved"
-      className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-black/15 bg-[#f7ecd3]/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border"
+      className="sticky bottom-0 z-20 -mx-4 mt-8 max-h-[80vh] overflow-y-auto border-t border-[var(--gh-line)] bg-white/95 px-4 py-4 shadow-[0_-12px_30px_-20px_rgba(0,0,0,0.35)] backdrop-blur sm:mx-0 sm:rounded-3xl sm:border"
     >
       <div className="flex flex-wrap items-center gap-2">
         <p
-          className="mr-auto text-sm text-[#2b2015]"
+          className="mr-auto text-base font-semibold text-[var(--gh-ink)]"
           data-testid="chosen-count"
         >
           {chosen.length === 0
             ? "Choose what to plan with."
             : `${chosen.length} chosen`}
           {names.length > 0 && names.length <= 3 && (
-            <span className="text-black/55"> · {names.join(", ")}</span>
+            <span className="font-normal text-[var(--gh-ink-soft)]">
+              {" "}
+              · {names.join(", ")}
+            </span>
           )}
         </p>
-        {chosen.length > 0 && (
-          <Link
-            href={dayHref}
-            data-testid="saved-make-day"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/30 px-4 text-sm font-medium hover:bg-black/5"
-          >
-            Make a day out of{" "}
-            {chosen.length > MAX_SEED
-              ? `the first ${MAX_SEED}`
-              : chosen.length === 1
-                ? "it"
-                : "these"}
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
-        )}
-        {chosen.length > 0 && !open && (
-          <button
-            type="button"
-            data-testid="saved-to-adventure"
-            onClick={() => setOpen(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#111] px-4 text-sm font-medium text-white"
-          >
-            <Sparkles className="h-4 w-4" aria-hidden />
-            Add to an adventure
-          </button>
-        )}
         <button
           type="button"
           onClick={() => {
@@ -192,48 +142,96 @@ export function PlanFromSaved({
             onClear();
           }}
           aria-label="Stop choosing"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full text-black/50 hover:bg-black/5"
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full text-[var(--gh-ink-soft)] hover:bg-[var(--gh-cream)]"
         >
-          <X className="h-4 w-4" aria-hidden />
+          <X className="h-5 w-5" aria-hidden />
         </button>
       </div>
+      {chosen.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={buildHref}
+            data-testid="saved-build-adventure"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--gh-ink)] px-5 text-base font-semibold text-white hover:bg-black"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Build an adventure with {chosen.length === 1 ? "it" : "these"}
+          </Link>
+          {!open && (
+            <button
+              type="button"
+              data-testid="saved-to-adventure"
+              onClick={() => setOpen(true)}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-[var(--gh-ink)]/15 bg-white px-5 text-base font-semibold text-[var(--gh-ink)] hover:border-[var(--gh-ink)]/40"
+            >
+              Add to one I&apos;ve started
+            </button>
+          )}
+          <Link
+            href={dayHref}
+            data-testid="saved-make-day"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full px-4 text-base font-semibold text-[var(--gh-ink)] underline-offset-4 hover:underline"
+          >
+            Just make a day out of{" "}
+            {chosen.length > MAX_SEED
+              ? `the first ${MAX_SEED}`
+              : chosen.length === 1
+                ? "it"
+                : "these"}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+      )}
 
       {open && (
         <form
           onSubmit={add}
           aria-label="Add to an adventure"
-          className="mt-3 space-y-3 border-t border-black/10 pt-3"
+          className="mt-4 space-y-3 border-t border-[var(--gh-line)] pt-4"
         >
           {load.at === "loading" && (
-            <p className="text-sm text-black/55">
+            <p className="text-base text-[var(--gh-ink-soft)]">
               Looking for your adventures…
             </p>
           )}
           {load.at === "unavailable" && (
             <p
-              className="text-sm text-black/70"
+              className="text-base text-[var(--gh-ink-soft)]"
               data-testid="adventures-unavailable"
             >
               Adventures can&apos;t be reached right now. You can still make a
               day out of these.
             </p>
           )}
-          {load.at === "ready" && (
+          {load.at === "ready" && startedHere.length === 0 && (
+            <p className="text-base text-[var(--gh-ink-soft)]">
+              You haven&apos;t started one yet —{" "}
+              <Link href={buildHref} className="font-semibold underline">
+                build one with these
+              </Link>
+              .
+            </p>
+          )}
+          {load.at === "ready" && startedHere.length > 0 && (
             <>
               <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">Add them to</legend>
-                {adventures.map((a) => (
-                  <label key={a.id} className="flex items-center gap-2 text-sm">
+                <legend className="text-base font-semibold">Add them to</legend>
+                {startedHere.map((a) => (
+                  <label
+                    key={a.id}
+                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 text-base ${target === a.id ? "border-[var(--gh-forest)] bg-[var(--gh-forest-soft)]" : "border-[var(--gh-line)]"}`}
+                  >
                     <input
                       type="radio"
                       name="target"
                       value={a.id}
                       checked={target === a.id}
                       onChange={() => setTarget(a.id)}
+                      className="h-5 w-5 accent-[var(--gh-forest)]"
                     />
                     <span>
-                      {a.title}
-                      <span className="text-black/50">
+                      <span className="font-semibold">{a.title}</span>
+                      <span className="text-[var(--gh-ink-soft)]">
                         {[
                           whenLabel(a.startsOn, a.endsOn),
                           a.role === "participant" ? "as suggestions" : null,
@@ -245,117 +243,19 @@ export function PlanFromSaved({
                     </span>
                   </label>
                 ))}
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="target"
-                    value="new"
-                    checked={target === "new"}
-                    onChange={() => setTarget("new")}
-                  />
-                  A new adventure
-                </label>
               </fieldset>
-
-              {target === "new" && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="space-y-1 text-sm sm:col-span-2">
-                    <span className="font-medium">Name it</span>
-                    <input
-                      required
-                      value={title}
-                      maxLength={120}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Saturday with the kids"
-                      className="block min-h-11 w-full rounded-xl border border-black/20 bg-white px-3"
-                    />
-                  </label>
-                  <fieldset className="space-y-1 text-sm sm:col-span-2">
-                    <legend className="font-medium">How long</legend>
-                    <div className="flex flex-wrap gap-2">
-                      {KINDS.map((k) => (
-                        <label
-                          key={k.id}
-                          className={`inline-flex min-h-10 cursor-pointer items-center rounded-full border px-3 ${kind === k.id ? "border-[#111] bg-[#111] text-white" : "border-black/25"}`}
-                        >
-                          <input
-                            type="radio"
-                            name="kind"
-                            value={k.id}
-                            checked={kind === k.id}
-                            onChange={() => setKind(k.id)}
-                            className="sr-only"
-                          />
-                          {k.id === "day" ? "A day" : k.label}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <label className="space-y-1 text-sm sm:col-span-2">
-                    <span className="font-medium">
-                      Starting from (optional)
-                    </span>
-                    <select
-                      value={townId}
-                      onChange={(e) => setTownId(e.target.value)}
-                      className="block min-h-11 w-full rounded-xl border border-black/20 bg-white px-3"
-                    >
-                      <option value="">Decide when planning</option>
-                      {TOWN_GROUPS.map((group) => (
-                        <optgroup key={group.area} label={group.area}>
-                          {group.towns.map((town) => (
-                            <option key={town.id} value={town.id}>
-                              {town.name.replace(/,\s*BC$/, "")}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium">
-                      {kind === "day"
-                        ? "Which day (optional)"
-                        : "From (optional)"}
-                    </span>
-                    <input
-                      type="date"
-                      value={startsOn}
-                      onChange={(e) => setStartsOn(e.target.value)}
-                      className="block min-h-11 w-full rounded-xl border border-black/20 bg-white px-3"
-                    />
-                  </label>
-                  {kind !== "day" && (
-                    <label className="space-y-1 text-sm">
-                      <span className="font-medium">To (optional)</span>
-                      <input
-                        type="date"
-                        value={endsOn}
-                        min={startsOn || undefined}
-                        onChange={(e) => setEndsOn(e.target.value)}
-                        className="block min-h-11 w-full rounded-xl border border-black/20 bg-white px-3"
-                      />
-                    </label>
-                  )}
-                </div>
-              )}
-
               {error && (
-                <p role="alert" className="text-sm text-red-700">
+                <p role="alert" className="text-base text-red-700">
                   {error}
                 </p>
               )}
               <button
                 type="submit"
                 data-testid="saved-add-adventure"
-                disabled={
-                  busy ||
-                  chosen.length === 0 ||
-                  (target === "new" && !title.trim())
-                }
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#111] px-5 text-sm font-medium text-white disabled:opacity-50"
+                disabled={busy || chosen.length === 0 || !target}
+                className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--gh-forest)] px-6 text-base font-semibold text-white disabled:opacity-50"
               >
-                {target === "new" ? "Start it" : "Add them"}
+                Add them
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </button>
             </>

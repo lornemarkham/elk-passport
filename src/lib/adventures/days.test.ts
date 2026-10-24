@@ -157,7 +157,36 @@ describe("saving a built day", () => {
       place: [{ id: "i", position: 0 }],
       add: [],
       release: [],
+      drop: [],
     });
+  });
+
+  it("drops Passport's suggestions nobody kept, and nothing a person chose", () => {
+    const writes = dayWrites(
+      [
+        {
+          ...item("sketched", "a", day, 0),
+          origin: "passport",
+          status: "proposed",
+        },
+        {
+          ...item("kept", "b", day, 1),
+          origin: "passport",
+          status: "confirmed",
+        },
+        {
+          ...item("chosen", "c", day, 2),
+          origin: "person",
+          status: "proposed",
+        },
+        item("old", "d", day, 3),
+      ],
+      day,
+      ["e"],
+    );
+    expect(writes.drop).toEqual(["sketched"]);
+    // Kept, chosen from Saved, or older than origins: back to the ideas.
+    expect(writes.release).toEqual(["kept", "chosen", "old"]);
   });
 });
 

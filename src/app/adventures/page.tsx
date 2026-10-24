@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Plus } from "lucide-react";
 import { PassportNav } from "@/components/shell/PassportNav";
+import { ThemeProvider } from "@/components/ghad/theme";
 import { StartAdventure } from "@/components/adventures/StartAdventure";
+import { AdventureCard } from "@/components/adventures/AdventureCard";
+import { Eyebrow, PillLink, SectionHeading } from "@/components/adventures/kit";
 import { adventureSession } from "@/lib/adventures/server";
-import { adventuresOf, type AdventureSummary } from "@/lib/adventures/store";
-import { kindLabel } from "@/lib/adventures/kinds";
-import { whenLabel } from "@/lib/adventures/present";
+import { adventureOverview, todayIn } from "@/lib/adventures/overview";
+import { adventureStatus } from "@/lib/adventures/present";
 
 export const metadata: Metadata = {
   title: "Adventures — Passport",
@@ -14,119 +16,131 @@ export const metadata: Metadata = {
 };
 
 /**
- * **Everything you're doing with other people.**
+ * **Everything you're doing, and with whom.**
  *
- * Hockey Nights, conferences, days out, birthdays — every adventure you
- * started or joined, each with its own people and its own plan. Being in one
- * gives you nothing in any other.
+ * Days out, weekends, trips, Hockey Nights, conferences — every adventure you
+ * started or joined, coming first, then drafts, then the ones you've done.
+ * Being in one gives you nothing in any other.
  */
 export default async function AdventuresPage() {
   const session = await adventureSession();
-
-  let adventures: AdventureSummary[] | null = [];
-  if (session) {
-    adventures = await adventuresOf(session.db, session.user.id).catch(
-      () => null,
-    );
-  }
+  const overview = session ? await adventureOverview(session) : null;
+  const today = todayIn();
+  const order = { today: 0, upcoming: 1, draft: 2, done: 3 } as const;
+  const sorted = overview
+    ? [...overview.adventures].sort((a, b) => {
+        const sa = adventureStatus(a, { stops: 1, undecided: 0 }, today).stage;
+        const sb = adventureStatus(b, { stops: 1, undecided: 0 }, today).stage;
+        return (
+          order[sa] - order[sb] ||
+          (a.startsOn ?? "9999").localeCompare(b.startsOn ?? "9999")
+        );
+      })
+    : [];
 
   return (
     <>
       <PassportNav displayName={session?.user.displayName ?? null} />
-      <main className="bg-background min-h-screen">
-        <div className="mx-auto max-w-3xl space-y-10 px-6 py-10 sm:py-14">
-          <header>
-            <h1 className="font-heading text-3xl font-semibold tracking-tight">
-              Adventures
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Atlas knows what&apos;s out there. This is who&apos;s going, and
-              what you&apos;re doing together.
-            </p>
-          </header>
-
-          {!session ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
-              <Users className="text-muted-foreground h-8 w-8" aria-hidden />
-              <p className="text-lg font-medium">Do things with people</p>
-              <p className="text-muted-foreground max-w-sm text-sm">
-                Sign in to start a Hockey Night, a weekend or a day out, and
-                send the people you want there a link.
-              </p>
-              <Link
-                href="/auth?next=/adventures"
-                className="bg-primary text-primary-foreground mt-2 rounded-full px-4 py-2 text-sm font-medium"
-              >
-                Sign in
-              </Link>
-            </div>
-          ) : (
-            <>
-              <section aria-labelledby="yours-heading" className="space-y-3">
-                <h2 id="yours-heading" className="text-lg font-semibold">
-                  Yours
-                </h2>
-                {adventures === null ? (
-                  <p className="text-muted-foreground text-sm">
-                    Couldn&apos;t load your adventures just now. Try again in a
-                    moment.
-                  </p>
-                ) : adventures.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">
-                    Nothing yet. Start one below, or open a link somebody sent
-                    you.
-                  </p>
-                ) : (
-                  <ul
-                    className="divide-y rounded-xl border"
-                    aria-label="Your adventures"
-                  >
-                    {adventures.map((a) => {
-                      const when = whenLabel(a.startsOn, a.endsOn);
-                      return (
-                        <li key={a.id}>
-                          <Link
-                            href={`/adventures/${a.id}`}
-                            className="hover:bg-muted/50 flex items-center justify-between gap-3 px-4 py-3"
-                          >
-                            <span>
-                              <span className="font-medium">{a.title}</span>
-                              <span className="text-muted-foreground block text-xs">
-                                {kindLabel(a.kind)}
-                                {when ? ` · ${when}` : ""}
-                                {a.destinationLabel
-                                  ? ` · ${a.destinationLabel}`
-                                  : ""}
-                              </span>
-                            </span>
-                            <span className="text-muted-foreground text-xs">
-                              {a.role === "owner" ? "You started it" : "Joined"}
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
-
-              <section aria-labelledby="start-heading" className="space-y-3">
-                <h2 id="start-heading" className="text-lg font-semibold">
-                  Start one
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  Planning a day, a weekend or a trip? Start from{" "}
-                  <Link href="/saved" className="text-foreground underline">
-                    what you saved
-                  </Link>{" "}
-                  and choose <em>Plan with these</em>.
+      <ThemeProvider className="block">
+        <main className="min-h-screen bg-white">
+          <div className="mx-auto max-w-6xl px-4 pt-6 pb-20 sm:px-6 sm:pt-12">
+            <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <Eyebrow>Adventures</Eyebrow>
+                <h1 className="ghad-display mt-2 text-[2.6rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-[var(--gh-ink)] sm:text-7xl">
+                  Go have a day.
+                </h1>
+                <p className="mt-3 max-w-xl text-lg text-[var(--gh-ink-soft)]">
+                  Atlas knows what&apos;s out there. This is what you&apos;re
+                  doing about it, and who&apos;s coming.
                 </p>
-                <StartAdventure />
-              </section>
-            </>
-          )}
-        </div>
-      </main>
+              </div>
+              <PillLink
+                href="/adventures/new"
+                variant="forest"
+                data-testid="create-adventure"
+                className="min-h-14 shrink-0 px-7 text-lg"
+              >
+                <Plus className="h-5 w-5" aria-hidden />
+                Create an adventure
+              </PillLink>
+            </header>
+
+            {!session ? (
+              <div className="mt-10 rounded-[28px] bg-[var(--gh-cream)] px-6 py-14 text-center">
+                <p className="ghad-display text-2xl font-extrabold">
+                  Do things with people
+                </p>
+                <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
+                  Sign in to start a day out, a weekend or a Hockey Night, and
+                  send the people you want there a link.
+                </p>
+                <PillLink
+                  href="/auth?next=/adventures"
+                  variant="primary"
+                  className="mt-6"
+                >
+                  Sign in
+                </PillLink>
+              </div>
+            ) : (
+              <>
+                <section aria-labelledby="yours-heading" className="mt-12">
+                  <SectionHeading id="yours-heading" title="Yours" />
+                  {overview === null ? (
+                    <p className="mt-4 text-base text-[var(--gh-ink-soft)]">
+                      Couldn&apos;t load your adventures just now. Try again in
+                      a moment.
+                    </p>
+                  ) : sorted.length === 0 ? (
+                    <p className="mt-4 text-base text-[var(--gh-ink-soft)]">
+                      Nothing yet. Create one, start from{" "}
+                      <Link href="/saved" className="font-semibold underline">
+                        what you saved
+                      </Link>
+                      , or open a link somebody sent you.
+                    </p>
+                  ) : (
+                    <ul
+                      className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+                      aria-label="Your adventures"
+                    >
+                      {sorted.map((a) => (
+                        <li key={a.id}>
+                          <AdventureCard
+                            adventure={a}
+                            today={today}
+                            {...(overview.glances[a.id]
+                              ? { glance: overview.glances[a.id] }
+                              : {})}
+                            {...(overview.covers[a.id]
+                              ? { cover: overview.covers[a.id] }
+                              : {})}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                <section
+                  id="something-else"
+                  aria-labelledby="start-heading"
+                  className="mt-16 rounded-[28px] bg-[var(--gh-cream)] p-5 sm:p-8"
+                >
+                  <SectionHeading id="start-heading" title="Something else?">
+                    A Hockey Night, a birthday, a conference — start it here and
+                    plan it with the people coming.
+                  </SectionHeading>
+                  <div className="mt-5">
+                    <StartAdventure />
+                  </div>
+                </section>
+              </>
+            )}
+          </div>
+        </main>
+      </ThemeProvider>
     </>
   );
 }
