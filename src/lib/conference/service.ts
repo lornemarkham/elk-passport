@@ -159,7 +159,13 @@ export async function updateConference(
 ): Promise<Result<{ conference: ConferenceSummary }>> {
   const access = await asOrganiser(deps, conferenceId, identity);
   if (!access.ok) return fail(access.error);
-  const parsed = parseDetails(input);
+  // The agenda has its own editor. A details form that doesn't mention it
+  // leaves it as it is; `agenda: []` is how it is cleared.
+  const merged =
+    input && typeof input === "object" && !("agenda" in input)
+      ? { ...input, agenda: access.conference.details.agenda }
+      : input;
+  const parsed = parseDetails(merged);
   if (!parsed.ok) return fail("invalid", parsed.issues);
   const conference: Conference = {
     ...access.conference,

@@ -34,13 +34,13 @@ export default async function ConferencesPage() {
 
   return (
     <div className="mx-auto max-w-[760px] px-5 pt-10">
-      <p className="text-[13px] font-bold tracking-[0.16em] text-black/50 uppercase">
+      <p className="text-cf-mist text-[13px] font-bold tracking-[0.16em] uppercase">
         Go have a conference
       </p>
-      <h1 className="mt-2 text-[40px] leading-[0.95] font-black tracking-[-0.03em] sm:text-[56px]">
+      <h1 className="mt-2 text-[40px] leading-[0.95] font-semibold tracking-[-0.03em] sm:text-[56px]">
         Everyone&apos;s going to be in the same place.
       </h1>
-      <p className="mt-4 max-w-[52ch] text-[17px] text-black/60">
+      <p className="text-cf-slate mt-4 max-w-[52ch] text-[17px]">
         One private place for the group: who&apos;s coming, what&apos;s on, and
         something great to do with the hours in between.
       </p>
@@ -48,7 +48,7 @@ export default async function ConferencesPage() {
       {listFailed ? (
         <p
           role="status"
-          className="mt-8 rounded-2xl border border-black/10 p-4 text-black/70"
+          className="border-cf-line text-cf-slate mt-8 rounded-2xl border p-4"
         >
           We couldn&apos;t load your conferences just now. Nothing is lost; try
           again in a moment.
@@ -62,7 +62,7 @@ export default async function ConferencesPage() {
               <li key={c.id}>
                 <Link
                   href={`/conferences/${c.id}`}
-                  className="flex items-center gap-4 rounded-2xl border border-black/10 p-4"
+                  className="border-cf-line flex items-center gap-4 rounded-2xl border p-4"
                 >
                   <span
                     className="h-10 w-2 rounded-full"
@@ -72,7 +72,7 @@ export default async function ConferencesPage() {
                     <span className="block text-[18px] font-bold">
                       {c.name}
                     </span>
-                    <span className="text-[14px] text-black/55">
+                    <span className="text-cf-mist text-[14px]">
                       {c.place.label} · {dateRange(c)}
                       {role === "organiser" ? " · you're organising" : ""}
                     </span>
@@ -92,12 +92,12 @@ export default async function ConferencesPage() {
         {canCreate ? (
           <Link
             href="/conferences/new"
-            className="inline-block rounded-xl bg-black px-5 py-3 font-bold text-white"
+            className="bg-cf-ink inline-block rounded-full px-5 py-3 font-bold text-white"
           >
             Start a conference
           </Link>
         ) : (
-          <p className="text-black/60">
+          <p className="text-cf-slate">
             <Link
               href={`/auth?next=${encodeURIComponent("/conferences")}`}
               className="font-semibold underline"

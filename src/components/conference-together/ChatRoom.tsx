@@ -55,7 +55,7 @@ export function ChatRoom({
   };
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 pb-40">
+    <div className="mx-auto max-w-[1180px] px-5 pb-40 *:max-w-[820px] sm:px-8">
       {rooms.length > 1 ? (
         <nav aria-label="Rooms" className="-mx-5 mt-4 overflow-x-auto px-5">
           <ul className="flex gap-2">
@@ -68,8 +68,8 @@ export function ChatRoom({
                     aria-current={here ? "page" : undefined}
                     className={`inline-flex min-h-11 items-center rounded-full border px-3 text-[14px] ${
                       here
-                        ? "border-black bg-black font-bold text-white"
-                        : "border-black/15"
+                        ? "border-cf-ink bg-cf-ink font-bold text-white"
+                        : "border-cf-line"
                     }`}
                   >
                     {r.id ? `💬 ${r.title}` : "Everyone"}
@@ -82,7 +82,7 @@ export function ChatRoom({
       ) : null}
 
       {room.title ? (
-        <p className="mt-4 text-[14px] text-black/55">
+        <p className="text-cf-mist mt-4 text-[14px]">
           The thread for <strong>{room.title}</strong>. Only people who can see
           the plan can read it.
         </p>
@@ -94,7 +94,7 @@ export function ChatRoom({
         aria-live="polite"
       >
         {room.messages.length === 0 ? (
-          <li className="rounded-2xl bg-black/[0.04] p-4 text-[15px] text-black/60">
+          <li className="bg-cf-sand text-cf-slate rounded-2xl p-4 text-[15px]">
             Quiet so far. Ask the thing everyone&apos;s wondering: where&apos;s
             good for lunch?
           </li>
@@ -105,7 +105,7 @@ export function ChatRoom({
             className={`flex flex-col ${m.by.you ? "items-end" : "items-start"}`}
             data-testid="message"
           >
-            <span className="px-1 text-[12px] font-semibold text-black/50">
+            <span className="text-cf-mist px-1 text-[12px] font-semibold">
               {m.by.name} ·{" "}
               {new Date(m.at).toLocaleTimeString([], {
                 hour: "numeric",
@@ -116,7 +116,7 @@ export function ChatRoom({
               type="button"
               onClick={() => setReacting(reacting === m.id ? null : m.id)}
               className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-left text-[16px] whitespace-pre-wrap ${
-                m.by.you ? "bg-black text-white" : "bg-black/[0.06]"
+                m.by.you ? "bg-cf-ink text-white" : "bg-cf-sand"
               }`}
               aria-label={`Message from ${m.by.name}: ${m.body}. Tap to react.`}
             >
@@ -139,7 +139,7 @@ export function ChatRoom({
                       await refresh();
                     }}
                     className={`min-h-8 rounded-full border px-2 text-[13px] ${
-                      r.mine ? "border-black bg-black/10" : "border-black/10"
+                      r.mine ? "border-cf-ink/60 bg-cf-sand" : "border-cf-line"
                     }`}
                   >
                     {r.emoji} {r.count}
@@ -157,7 +157,7 @@ export function ChatRoom({
                   <button
                     key={e}
                     type="button"
-                    className="h-11 w-11 rounded-full bg-black/[0.06] text-[20px]"
+                    className="bg-cf-sand h-11 w-11 rounded-full text-[20px]"
                     aria-label={`React ${e}`}
                     onClick={async () => {
                       setReacting(null);
@@ -197,8 +197,8 @@ export function ChatRoom({
       </ol>
       <div ref={end} />
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-        <div className="mx-auto max-w-[760px] px-5 py-3">
+      <div className="border-cf-line fixed inset-x-0 bottom-16 z-20 !max-w-none border-t bg-white/95 backdrop-blur md:bottom-0 md:pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto max-w-[1180px] px-5 py-3 *:max-w-[820px] sm:px-8">
           {room.you.canPost ? (
             <form onSubmit={post} className="flex items-end gap-2">
               <label className="sr-only" htmlFor="say">
@@ -221,14 +221,14 @@ export function ChatRoom({
                     ? `About ${room.title}…`
                     : "Say something to everyone…"
                 }
-                className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-black/15 px-3 py-2.5 text-[16px] outline-none focus:border-black/60"
+                className="border-cf-line focus:border-cf-ink/50 max-h-32 min-h-11 flex-1 resize-none rounded-xl border px-3 py-2.5 text-[16px] outline-none"
               />
               <button className={primary} disabled={busy || !text.trim()}>
                 Send
               </button>
             </form>
           ) : (
-            <p className="text-[14px] text-black/65">
+            <p className="text-cf-slate text-[14px]">
               You&apos;re reading quietly. To post, choose a name and to be seen
               on the{" "}
               <Link

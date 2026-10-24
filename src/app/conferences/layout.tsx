@@ -26,7 +26,9 @@ export default async function ConferencesLayout({
   return (
     <>
       <PassportNav displayName={user?.displayName ?? null} />
-      <main className="min-h-screen bg-white pb-24 text-black">{children}</main>
+      <main className="bg-cf-paper text-cf-ink min-h-screen pb-24">
+        {children}
+      </main>
     </>
   );
 }

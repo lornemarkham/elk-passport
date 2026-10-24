@@ -31,8 +31,8 @@ export function MyPresence({
     name.trim() !== (you.displayName ?? "") || visibility !== you.visibility;
 
   return (
-    <div className="rounded-2xl border border-black/10 p-4">
-      <label className="block text-[14px] font-semibold text-black/70">
+    <div>
+      <label className="text-cf-slate block text-[13px] font-semibold">
         Your name here
         <input
           className={`${field} mt-1`}
@@ -53,11 +53,14 @@ export function MyPresence({
             ["members", `Show my name to other ${people}.`],
           ] as const
         ).map(([value, words]) => (
-          <label key={value} className="flex items-center gap-3">
+          <label
+            key={value}
+            className="border-cf-line has-[:checked]:border-cf-ink/40 has-[:checked]:bg-cf-paper flex items-center gap-3 rounded-xl border px-4 py-3"
+          >
             <input
               type="radio"
               name="visibility"
-              className="h-5 w-5"
+              className="h-4 w-4 accent-[#17181b]"
               checked={visibility === value}
               onChange={() => {
                 setSaved(false);
@@ -68,7 +71,7 @@ export function MyPresence({
           </label>
         ))}
       </fieldset>
-      <p className="mt-2 text-[13px] text-black/45">
+      <p className="text-cf-mist mt-3 text-[13px]">
         Organisers can always see who has joined, so they can look after the
         list.
       </p>
@@ -96,10 +99,10 @@ export function MyPresence({
           Save
         </button>
         {saved ? (
-          <span className="text-[14px] text-black/55">Saved.</span>
+          <span className="text-cf-sage text-[14px]">Saved.</span>
         ) : null}
         <button
-          className="ml-auto text-[14px] text-black/50 underline"
+          className="text-cf-mist ml-auto text-[14px] underline underline-offset-4 hover:text-[#b42318]"
           disabled={busy}
           onClick={async () => {
             if (!window.confirm("Leave, and remove everything about you here?"))

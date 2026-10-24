@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { digest } from "@/domain/conference-arrivals/digest";
 import { Coordination } from "./Coordination";
 import { useCallback, useEffect, useState } from "react";
@@ -11,6 +10,8 @@ import type { ConferenceKind } from "@/domain/conference/types";
 import type { ArrivalsView } from "@/lib/conference-arrivals/service";
 import { inkOn } from "@/domain/conference/branding";
 import { Section } from "@/components/conference/ui";
+import { Avatar, Eyebrow } from "@/components/conference/kit";
+import { ArrivalsTimeline } from "./ArrivalsTimeline";
 import { MyFlight } from "./MyFlight";
 import {
   ago,
@@ -50,7 +51,6 @@ export function ArrivalsBoard({
   kind,
   timeZone,
   accent,
-  ink,
   plansOn = false,
 }: {
   /** Whether "Meet at arrivals" can open a plan. */
@@ -60,7 +60,8 @@ export function ArrivalsBoard({
   kind: ConferenceKind;
   timeZone: string;
   accent: string;
-  ink: string;
+  /** Unused since the banner went; kept so callers needn't change. */
+  ink?: string;
 }) {
   const [view, setView] = useState<ArrivalsView | null>(null);
   const [failed, setFailed] = useState(false);
@@ -112,36 +113,65 @@ export function ArrivalsBoard({
     : { big: "Arrivals", small: "" };
   const rows = board?.rows ?? [];
   const chosen = rows.find((r) => r.memberId === selected) ?? null;
+  const dig = board ? digest(board, now, timeZone) : null;
 
   return (
     <>
-      <header style={{ background: accent, color: ink }}>
-        <div className="mx-auto max-w-[1280px] px-5 pt-8 pb-6">
-          <Link
-            href={`/conferences/${conferenceId}`}
-            className="text-[14px] underline opacity-75"
-          >
-            ← {name}
-          </Link>
+      <header className="border-cf-line border-b">
+        <div className="mx-auto max-w-[1180px] px-5 pt-8 pb-8 sm:px-8 sm:pt-12">
+          <Eyebrow>
+            Arrivals
+            {board ? ` · ${board.arrival.iata ?? board.arrival.icao}` : ""}
+          </Eyebrow>
           <h1
-            className="mt-3 text-[34px] leading-[0.98] font-black tracking-[-0.03em] sm:text-[48px]"
+            className="cf-display text-cf-ink mt-2 text-[34px] leading-[1.02] sm:text-[46px]"
             data-testid="arrivals-headline"
           >
             {words.big}
           </h1>
           {words.small ? (
-            <p className="mt-2 text-[18px] font-semibold opacity-85">
+            <p className="text-cf-slate mt-3 max-w-[60ch] text-[16px]">
               {words.small}
             </p>
           ) : null}
           {board && board.counts.total ? (
-            <p className="mt-4 text-[13px] font-bold tracking-[0.12em] uppercase opacity-75">
-              {board.counts.airborne} in the air · {board.counts.landed} landed
-              · {board.counts.total} shared
-            </p>
+            <dl className="border-cf-line mt-7 grid max-w-[640px] grid-cols-3 gap-4 border-t pt-5">
+              {[
+                ["In the air", board.counts.airborne],
+                ["Landed", board.counts.landed],
+                ["Sharing a flight", board.counts.total],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <dt className="cf-eyebrow text-cf-mist">{k}</dt>
+                  <dd className="cf-serif text-cf-ink mt-1 text-[28px] tabular-nums">
+                    {v}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {board && dig && dig.timeline.length ? (
+            <div className="border-cf-line mt-8 rounded-2xl border bg-white px-5 py-5 sm:px-6">
+              <ArrivalsTimeline
+                timeline={dig.timeline}
+                timeZone={timeZone}
+                now={now}
+                airport={board.arrival.iata ?? board.arrival.icao}
+              />
+            </div>
           ) : null}
         </div>
       </header>
+
+      {!view && !failed ? (
+        <div
+          className="mx-auto max-w-[1180px] px-5 pt-8 sm:px-8"
+          aria-busy="true"
+          aria-label="Loading the arrivals board"
+        >
+          <div className="h-[420px] animate-pulse rounded-2xl bg-[#0b111b]/90" />
+        </div>
+      ) : null}
 
       {failed && !view ? (
         <p className="mx-auto max-w-[760px] px-5 pt-6 text-black/60">
@@ -159,7 +189,7 @@ export function ArrivalsBoard({
 
       {board ? (
         <div className="bg-[#070b12] lg:grid lg:grid-cols-[minmax(0,1fr)_440px]">
-          <div className="lg:sticky lg:top-0 lg:h-[100dvh]">
+          <div className="lg:h-[680px]">
             <ArrivalsMap
               rows={rows}
               arrival={board.arrival}
@@ -169,7 +199,7 @@ export function ArrivalsBoard({
               onSelect={setSelected}
             />
           </div>
-          <div className="text-white lg:min-h-[100dvh] lg:border-l lg:border-white/10">
+          <div className="text-white lg:h-[680px] lg:overflow-y-auto lg:border-l lg:border-white/10">
             <div className="px-5 pt-6 pb-8">
               {chosen ? (
                 <Details
@@ -211,17 +241,25 @@ export function ArrivalsBoard({
               </ul>
               <Legend />
             </div>
+          </div>
+        </div>
+      ) : null}
 
-            <div className="rounded-t-3xl bg-white px-5 pt-2 pb-10 text-black lg:rounded-none">
-              <Coordination
-                conferenceId={conferenceId}
-                digest={digest(board, now, timeZone)}
-                timeZone={timeZone}
-                now={now}
-                plansOn={plansOn}
-              />
-              <Section title="Your flight">
-                {view ? (
+      {board ? (
+        <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pt-10 pb-16 sm:px-8 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="min-w-0">
+            <Coordination
+              conferenceId={conferenceId}
+              digest={dig!}
+              timeZone={timeZone}
+              now={now}
+              plansOn={plansOn}
+            />
+          </div>
+          <div className="min-w-0">
+            <Section title="Your flight">
+              {view ? (
+                <div className="border-cf-line rounded-2xl border bg-white p-5">
                   <MyFlight
                     conferenceId={conferenceId}
                     place={view.place}
@@ -231,19 +269,18 @@ export function ArrivalsBoard({
                     mine={view.mine}
                     onSaved={load}
                   />
-                ) : null}
-              </Section>
-
-              <p className="mt-10 text-[12px] leading-relaxed text-black/45">
-                Positions are real ADS-B reports from volunteer receivers via
-                ADSB.lol (ODbL), checked against your flight before
-                anyone&apos;s name goes on a plane. Over oceans and remote land
-                the receivers can&apos;t hear aircraft, and the map shows the
-                last real position, labelled with its age. It never guesses one.
-                Scheduled times are what each person typed from their booking;
-                Passport doesn&apos;t check them with the airline.
-              </p>
-            </div>
+                </div>
+              ) : null}
+            </Section>
+            <p className="text-cf-mist mt-8 text-[12px] leading-relaxed">
+              Positions are real ADS-B reports from volunteer receivers via
+              ADSB.lol (ODbL), checked against your flight before anyone&apos;s
+              name goes on a plane. Over oceans and remote land the receivers
+              can&apos;t hear aircraft, and the map shows the last real
+              position, labelled with its age. It never guesses one. Scheduled
+              times are what each person typed from their booking; Passport
+              doesn&apos;t check them with the airline.
+            </p>
           </div>
         </div>
       ) : null}
@@ -283,9 +320,16 @@ function BoardRow({
         type="button"
         onClick={onSelect}
         aria-label={`${r.isYou ? "You" : r.name} ${r.flight}. ${t.says}.`}
-        className="flex w-full items-start gap-4 py-3.5 text-left"
+        className="flex w-full items-start gap-3.5 py-3.5 text-left"
       >
-        <span className="w-[68px] shrink-0">
+        <Avatar
+          name={r.isYou ? "You" : (r.name ?? "Someone")}
+          you={r.isYou}
+          size={34}
+          dark
+          className="mt-0.5"
+        />
+        <span className="order-last w-[78px] shrink-0 text-right">
           <span
             className={`block text-[20px] leading-none font-black tabular-nums ${KIND_INK[t.kind]}`}
           >
@@ -300,7 +344,7 @@ function BoardRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[17px] leading-tight font-bold">
+            <span className="text-[16px] leading-tight font-semibold">
               {r.isYou ? "You" : r.name}
             </span>
             <span className="text-[15px] font-semibold text-white/45">

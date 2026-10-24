@@ -42,7 +42,7 @@ export function Directions({
           href={l.href}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex min-h-11 items-center rounded-xl border border-black/15 px-3 text-[14px] font-semibold"
+          className="border-cf-line text-cf-ink hover:border-cf-ink/30 inline-flex min-h-10 items-center rounded-full border bg-white px-4 text-[13px] font-semibold transition"
           aria-label={`Directions to ${name} in ${l.label}`}
         >
           {compact ? "Directions" : l.label}
