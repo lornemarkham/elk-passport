@@ -275,7 +275,7 @@ function PlaceCard({
           {p.at ? <Directions name={p.name} at={p.at} compact /> : null}
           {atlas ? (
             <Link
-              href={`/places/${encodeURIComponent(p.id)}`}
+              href={`/passport/${encodeURIComponent(p.id)}`}
               className="text-cf-slate hover:text-cf-ink ml-auto text-[13px] font-semibold underline-offset-4 hover:underline"
             >
               Details &amp; save
