@@ -190,7 +190,7 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
 
   // ------------------------------------------------- picks, by thumb
   await openTab(maya.page, "Play");
-  const deck = maya.page.getByRole("region", { name: "Your picks" });
+  const deck = maya.page.getByRole("region", { name: "Bold predictions" });
   await expect(deck).toContainText("0 of 7 sealed");
   await deck.getByRole("button", { name: "Canucks one more" }).click();
   await expect(deck).toContainText("1 of 7 sealed");

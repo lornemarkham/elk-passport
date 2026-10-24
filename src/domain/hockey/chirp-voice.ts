@@ -134,12 +134,15 @@ export function lineRequest(input: {
       break;
     case "dare": {
       const self = occasion.challenger.id === occasion.target.id;
+      const strict =
+        " Do NOT state any statistic, streak, record, standing or score — not even a joking one. Keep who said what exactly as written above.";
       ask =
         occasion.stage === "accepted"
           ? `${fanLine(occasion.target)} just ACCEPTED a challenge from ${fanLine(occasion.challenger)}: ${occasion.what}. Escalate the rivalry like a commentator. Do not predict who wins.`
           : self
             ? `${fanLine(occasion.challenger)} just volunteered, unprompted, for ${occasion.what}. React to the nerve of it. Do not predict how it goes.`
             : `${fanLine(occasion.challenger)} just challenged ${fanLine(occasion.target)} to ${occasion.what}. Stir the pot and dare ${occasion.target.name} to take it. Do not predict who wins.`;
+      ask += strict;
       break;
     }
     case "rivalry": {

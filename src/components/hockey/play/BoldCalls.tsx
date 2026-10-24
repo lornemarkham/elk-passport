@@ -27,10 +27,13 @@ export function BoldCalls({
   prompts,
   lockLabel,
   onBet,
+  sealedPicks = true,
 }: {
   night: SharedNight;
   prompts: readonly LivePrompt[];
   lockLabel?: string;
+  /** The host's sealed picks are on. Off: only what people asked, and no sealing promise. */
+  sealedPicks?: boolean;
   /** Bet somebody on the winner, from your own pick's side. */
   onBet?: (side?: Side) => void;
 }) {
@@ -46,7 +49,13 @@ export function BoldCalls({
   const advance = useRef<number | null>(null);
   const at = Math.min(index, Math.max(0, prompts.length - 1));
   const current = prompts[at];
-  const done = progress.total > 0 && progress.mine === progress.total;
+  // An opt-in forfeit you haven't opted into is optional: it doesn't hold
+  // the rest out of the vault.
+  const required = prompts.filter(
+    (p) => !p.prompt.requiresConsent || p.consented,
+  );
+  const done =
+    required.length > 0 && required.every((p) => p.myResponse !== undefined);
   const [showVault, setShowVault] = useState(done);
   const touch = useRef<number | null>(null);
 
@@ -81,7 +90,7 @@ export function BoldCalls({
       );
       if (next >= 0) setIndex(next);
       else if (
-        prompts.every(
+        required.every(
           (p) => p.myResponse !== undefined || p.prompt.id === prompt.prompt.id,
         )
       )
@@ -110,12 +119,12 @@ export function BoldCalls({
           id="picks-title"
           className={`${styles.display} text-[40px] leading-[0.85] text-white`}
         >
-          Bold predictions
+          {sealedPicks ? "Bold predictions" : "Ask the group"}
         </h2>
         <p className="mt-2 text-[15px] leading-snug text-white/70">
-          Sealed until puck drop — nobody sees anybody&apos;s, even after they
-          make theirs. No money, no gambling, purely so you can be insufferable
-          about it later.
+          {sealedPicks
+            ? "Sealed until puck drop — nobody sees anybody's, even after they make theirs. No money, no gambling, purely so you can be insufferable about it later."
+            : "Questions people here asked. No money, no gambling."}
         </p>
       </div>
 
@@ -170,6 +179,7 @@ export function BoldCalls({
           onChange={() => go(0)}
           onBet={onBet}
           home={home}
+          away={away}
         />
       ) : (
         <div
@@ -562,6 +572,7 @@ function Vault({
   onChange,
   onBet,
   home,
+  away,
 }: {
   prompts: readonly LivePrompt[];
   people: readonly Participant[];
@@ -573,6 +584,7 @@ function Vault({
   onChange: () => void;
   onBet?: (side?: Side) => void;
   home: string;
+  away: string;
 }) {
   const [peek, setPeek] = useState(false);
   const mine = prompts.filter((p) => p.myResponse);
@@ -612,7 +624,6 @@ function Vault({
               <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#c8102e] text-[13px] ring-2 ring-[#7a0a1c]">
                 🏒
               </span>
-              {personaOf(p.prompt, host).title.split(" ").slice(-1)[0]}
             </span>
           ))}
         </div>
@@ -639,7 +650,8 @@ function Vault({
                 Your big call
               </span>
               <span className={`${styles.display} text-[30px] text-white`}>
-                {home} {(score as number[])[0]}–{(score as number[])[1]}
+                {teamColours(home).abbr} {(score as number[])[0]}–
+                {(score as number[])[1]} {teamColours(away).abbr}
               </span>
             </p>
           )}

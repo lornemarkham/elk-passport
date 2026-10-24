@@ -288,7 +288,8 @@ function Champion({
   const secondary = team?.colours.secondary ?? "#0b1220";
   void live;
   return (
-    <div
+    <section
+      aria-labelledby="cup-champion"
       className={`${styles.rise} relative mt-4 overflow-hidden rounded-[26px] p-5 text-white ring-2 ring-[#ffd84d]`}
       style={{
         background: `linear-gradient(150deg, ${primary}, ${secondary} 60%, #0b1220)`,
@@ -318,6 +319,7 @@ function Champion({
         </span>
         <div className="min-w-0">
           <h3
+            id="cup-champion"
             className={`${styles.display} text-[42px] leading-[0.9] [overflow-wrap:anywhere]`}
           >
             {standing.participant.name}
@@ -334,7 +336,7 @@ function Champion({
           and will be hearing about it.
         </p>
       )}
-    </div>
+    </section>
   );
 }
 

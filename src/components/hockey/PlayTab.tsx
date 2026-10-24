@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { RecapBlock } from "@/experience-lab/ui/blocks";
+import { ObligationsBlock, RecapBlock } from "@/experience-lab/ui/blocks";
 import { PromptCard } from "@/experience-lab/ui/PromptCard";
 import { PromptDeck } from "@/experience-lab/ui/PromptDeck";
 import type { LivePrompt } from "@/experience-lab/core/engine";
@@ -123,7 +123,7 @@ export function PlayTab({
     targetId,
   });
 
-  const hero = me && play.rivalry && act !== "after" && (
+  const hero = me && play.rivalry && act === "before" && (
     <RivalryHero
       rivalry={play.rivalry}
       me={me}
@@ -146,8 +146,25 @@ export function PlayTab({
     />
   );
 
+  const needs = me && play.on && (
+    <Chaos
+      part="needs"
+      me={me.id}
+      people={live.participants}
+      fans={play.fans}
+      game={play.game}
+      now={live.now}
+      settled={play.settled}
+      cards={[]}
+      act={challengeActs}
+      beforeHorn={play.beforeHorn}
+      onDraft={setDraft}
+    />
+  );
+
   const chaos = me && play.on && (
     <Chaos
+      part="rest"
       me={me.id}
       people={live.participants}
       fans={play.fans}
@@ -162,14 +179,18 @@ export function PlayTab({
   );
 
   const cup = (
-    <CupBoard
-      live={live}
-      status={play.status}
-      settled={play.settled}
-      reactions={room.teamReactions}
-      onReact={play.on ? night.reactTeam : undefined}
-      available={play.on}
-    />
+    <div className="flex flex-col gap-3">
+      <CupBoard
+        live={live}
+        status={play.status}
+        settled={play.settled}
+        reactions={room.teamReactions}
+        onReact={play.on ? night.reactTeam : undefined}
+        available={play.on}
+      />
+      {/* Forfeits people opted into and lost: the receipts. */}
+      {act !== "before" && <ObligationsBlock live={live} />}
+    </div>
   );
 
   const drama = (
@@ -180,6 +201,7 @@ export function PlayTab({
       slug={state.slug}
       now={live.now}
       onOpenChat={onOpenChat}
+      max={act === "before" ? 14 : 6}
     />
   );
 
@@ -241,6 +263,7 @@ export function PlayTab({
                 definition,
                 prompts[0]?.prompt.locksAtPhaseId,
               )}
+              sealedPicks={night.modules.includes("picks")}
               onBet={
                 play.on && play.beforeStart && live.participants.length > 1
                   ? (side) => setDraft(betDraft(side))
@@ -336,6 +359,8 @@ export function PlayTab({
           </div>
         </section>
       )}
+
+      {needs}
 
       {hero}
 

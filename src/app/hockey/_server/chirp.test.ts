@@ -429,3 +429,21 @@ describe("what a model is told", () => {
     expect(readLine('{"nope":1}')).toBeNull();
   });
 });
+
+describe("challenge lines from a model that make things up", () => {
+  it("are refused: numbers and invented quotes", async () => {
+    const { inventsFacts } = await import("./chirp");
+    expect(inventsFacts("They barely beat the Jets 4-1 last week.")).toBe(true);
+    expect(inventsFacts("Lorne: 'You think the Wild are gonna lose?'")).toBe(
+      true,
+    );
+    expect(
+      inventsFacts("Alex said “the Canucks are a lock” and meant it."),
+    ).toBe(true);
+    expect(
+      inventsFacts(
+        "Lorne, you're betting against the team that traded Quinn Hughes? Real confidence there.",
+      ),
+    ).toBe(false);
+  });
+});

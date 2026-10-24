@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { LedgerRow } from "@/domain/hockey/challenges";
 import { FanAvatar } from "../FanTag";
@@ -25,6 +26,14 @@ export function Missions({
 }) {
   const { live, state } = night;
   const me = live.me?.id;
+  // Opting in is saved before anything can be claimed: a claim that arrives
+  // first is refused ("opt in first") and would quietly vanish.
+  const [saving, setSaving] = useState<string | null>(null);
+  const optIn = async (promptId: string, agreed: boolean) => {
+    setSaving(promptId);
+    await night.send({ type: "consent", promptId, agreed });
+    setSaving(null);
+  };
   if (!me) return null;
   const secret = (p: LivePrompt) =>
     (p.prompt.family === "mission" || p.prompt.family === "dare") &&
@@ -102,14 +111,16 @@ export function Missions({
                 <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
                   <button
                     type="button"
-                    onClick={() => night.consent(p.prompt.id, true)}
+                    onClick={() => optIn(p.prompt.id, true)}
+                    disabled={saving === p.prompt.id}
                     className={`${styles.display} min-h-12 rounded-2xl bg-[#ffd84d] text-[19px] text-[#0b1220]`}
                   >
                     Show me
                   </button>
                   <button
                     type="button"
-                    onClick={() => night.consent(p.prompt.id, false)}
+                    onClick={() => optIn(p.prompt.id, false)}
+                    disabled={saving === p.prompt.id}
                     className="min-h-12 rounded-2xl text-[14.5px] font-bold text-white/80 ring-1 ring-white/20"
                   >
                     Not for me

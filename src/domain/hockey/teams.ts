@@ -1,5 +1,3 @@
-import { OPPONENTS } from "./schedule";
-
 /**
  * **Team-inspired, not team-branded.**
  *
@@ -216,12 +214,13 @@ const TEAMS: Readonly<Record<string, TeamColours>> = {
 };
 
 /**
- * Every opponent the night can be started against has colours. A function,
- * not a constant: `schedule.ts` → `night.ts` → … → this file is a cycle, and
- * `OPPONENTS` is not there yet while the cycle is still loading.
+ * Which of `names` Passport has real colours for. Takes the names rather
+ * than importing `schedule.ts`'s opponents: this file is imported by
+ * `fans.ts` while `schedule.ts` → `night.ts` → `challenges.ts` → `fans.ts`
+ * is still loading, so it must import nothing itself.
  */
-export function dressed(): readonly string[] {
-  return OPPONENTS.map((o) => o.name).filter((name) => name in TEAMS);
+export function dressed(names: readonly string[]): readonly string[] {
+  return names.filter((name) => name in TEAMS);
 }
 
 /**

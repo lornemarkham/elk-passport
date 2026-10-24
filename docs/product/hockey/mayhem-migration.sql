@@ -217,14 +217,19 @@ begin
   if not found or v_me is null or not passport_is_occasion_member(v.occasion_id, v_me) then
     raise exception 'not found' using errcode = '42501';
   end if;
+  -- Whose it is first: a stranger learns nothing about its state.
+  if p_answer = 'withdraw' and v.challenger_id <> v_me then
+    raise exception 'not yours' using errcode = '42501';
+  end if;
+  if p_answer <> 'withdraw' and v.target_id <> v_me then
+    raise exception 'not yours to answer' using errcode = '42501';
+  end if;
   if v.status <> 'open' then raise exception 'already answered' using errcode = '22023'; end if;
   select starts_at into v_start from passport_occasions where id = v.occasion_id;
   if p_answer = 'withdraw' then
-    if v.challenger_id <> v_me then raise exception 'not yours' using errcode = '42501'; end if;
     update passport_occasion_challenges set status = 'withdrawn', answered_at = now() where id = v.id;
     return 'withdrawn';
   end if;
-  if v.target_id <> v_me then raise exception 'not yours to answer' using errcode = '42501'; end if;
   if p_answer = 'decline' then
     update passport_occasion_challenges set status = 'declined', answered_at = now() where id = v.id;
     return 'declined';

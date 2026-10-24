@@ -124,7 +124,7 @@ export function ChallengeCard({
                 `${target.id === me ? "You" : target.name}: `,
               )}
       </p>
-      {c.taunt && !compact && (
+      {c.taunt && (
         <p className="mt-2 border-l-2 border-[#ffd84d]/70 pl-3 text-[14.5px] text-white/75 italic">
           “{c.taunt}”
         </p>
@@ -164,7 +164,7 @@ export function ChallengeCard({
           </p>
         </div>
       )}
-      {mineThrown && c.status === "open" && !compact && (
+      {mineThrown && c.status === "open" && (
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-[13.5px] text-white/60">
             Waiting on {target.name}.

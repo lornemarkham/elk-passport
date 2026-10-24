@@ -10,7 +10,9 @@ import { dressed, teamColours } from "./teams";
 
 describe("team colours", () => {
   it("dresses every opponent a night can be started against", () => {
-    expect(dressed()).toHaveLength(OPPONENTS.length);
+    expect(dressed(OPPONENTS.map((o) => o.name))).toHaveLength(
+      OPPONENTS.length,
+    );
     expect(teamColours("Canucks").abbr).toBe("VAN");
     expect(teamColours("Wild").abbr).toBe("MIN");
   });

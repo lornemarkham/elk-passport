@@ -1060,8 +1060,10 @@ export interface ChallengeView {
   readonly challenger: string;
   readonly target: string;
   readonly status: "open" | "accepted" | "declined" | "withdrawn";
-  /** A bet's side in words, "the Wild win". */
+  /** A bet's side in words, "the Wild win" (the challenger's). */
   readonly side?: string;
+  /** The other side, "the Canucks win" (the target's). */
+  readonly against?: string;
   /** Decided: who won (null: the jury wasn't convinced). Undefined: not decided. */
   readonly winner?: string | null;
   /** When it was decided, ISO. */

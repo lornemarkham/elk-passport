@@ -540,7 +540,7 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     });
   await openTab(priya.page, "Play");
   await expect(
-    priya.page.getByRole("region", { name: "Your picks" }),
+    priya.page.getByRole("region", { name: "Bold predictions" }),
   ).toBeVisible();
   await priya.page.getByText("How to win the Cup").click();
   await shot(priya.page, "20-couch-picks-and-how-to-win", true);

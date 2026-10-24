@@ -668,7 +668,8 @@ function challengeFailed(error: { message: string; code?: string } | null) {
   if (!error) return;
   if (error.code === "23505")
     throw new NightError("That one's already been thrown.", 409);
-  if (error.code === "42501") throw new NightError("Not yours to do.", 403);
+  if (error.code === "42501")
+    throw new NightError(`Not yours to do: ${error.message}.`, 403);
   if (error.code === "22023") {
     const said = error.message.replace(/^.*?:\s*/, "");
     throw new NightError(

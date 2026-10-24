@@ -29,7 +29,10 @@ export function Chaos({
   act,
   beforeHorn,
   onDraft,
+  part = "all",
 }: {
+  /** "needs": only what waits on you (shown first on the page); "rest": the remainder. */
+  part?: "all" | "needs" | "rest";
   me: string;
   people: readonly Participant[];
   fans: Readonly<Record<string, string>>;
@@ -69,6 +72,38 @@ export function Chaos({
         s.challenge.status === "declined",
     )
     .reverse();
+  if (part === "needs") {
+    if (needsYou.length === 0) return null;
+    return (
+      <section aria-labelledby="needs-title">
+        <h2
+          id="needs-title"
+          className={`${styles.display} text-[34px] leading-[0.9] text-white`}
+        >
+          ⚔️ Your move
+        </h2>
+        <p className="mt-1.5 text-[15px] text-white/70">
+          {needsYou.length === 1
+            ? "Somebody is waiting on you."
+            : `${needsYou.length} things are waiting on you.`}
+        </p>
+        <div className="mt-3 flex flex-col gap-2.5">
+          {needsYou.map((s) => (
+            <ChallengeCard
+              key={s.challenge.id}
+              s={s}
+              me={me}
+              people={people}
+              fans={fans}
+              game={game}
+              now={now}
+              act={act}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
   const card = (s: Settled, compact = false) => (
     <ChallengeCard
       key={s.challenge.id}
@@ -96,7 +131,7 @@ export function Chaos({
         it the next time they open PLAY.
       </p>
 
-      {needsYou.length > 0 && (
+      {part === "all" && needsYou.length > 0 && (
         <div className="mt-4">
           <p className="mb-2 text-[12px] font-extrabold tracking-[0.18em] text-[#ffd84d] uppercase">
             Needs you · {needsYou.length}

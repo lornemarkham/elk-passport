@@ -151,7 +151,7 @@ test("create, invite, join, vote, predict, share, game, recap, run it back", asy
   // ------------------------------------------------- vote and predict, by UI
   // Maya answers the first sealed pick by tapping, and it survives a reload.
   await openTab(maya.page, "Play");
-  const deck = maya.page.getByRole("region", { name: "Your picks" });
+  const deck = maya.page.getByRole("region", { name: "Bold predictions" });
   await expect(deck).toContainText("0 of 7 sealed");
   await deck.getByRole("button", { name: "Canucks one more" }).click();
   await expect(deck).toContainText("1 of 7 sealed");

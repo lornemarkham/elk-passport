@@ -127,26 +127,29 @@ export function Trophy({
           rx="2.5"
           fill={`url(#${id}-wood)`}
         />
-        {/* Engraving bands */}
+        {/* Engraving bands — drawn at ten times the size and scaled down, so the
+            page's type reads as type (the trophy itself is decoration). */}
         <text
-          x="50"
-          y="70.5"
+          transform="scale(0.1)"
+          x="500"
+          y="705"
           textAnchor="middle"
-          fontSize="6.4"
+          fontSize="64"
           fontWeight="900"
           fill="#4a3608"
-          letterSpacing="0.6"
+          letterSpacing="6"
         >
           {engraving}
         </text>
         <text
-          x="50"
-          y="83.4"
+          transform="scale(0.1)"
+          x="500"
+          y="834"
           textAnchor="middle"
-          fontSize="5.4"
+          fontSize="54"
           fontWeight="800"
           fill="#2c3440"
-          letterSpacing="0.8"
+          letterSpacing="8"
         >
           CUP
         </text>

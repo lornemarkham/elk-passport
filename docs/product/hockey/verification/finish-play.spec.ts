@@ -173,15 +173,13 @@ test("secret mission, forfeit, prediction, the Cup and the receipts", async ({
   // Sam sees it in Play and has to opt in; nobody is bound by being asked.
   await sam.page.reload();
   await openTab(sam.page, "Play");
-  // The mission is a card in Sam's deck, after the seven the night starts with.
-  const deck = sam.page.getByRole("region", { name: "Your picks" });
-  await expect(deck).toContainText("0 of 10 sealed", { timeout: 15_000 });
-  for (
-    let i = 0;
-    i < 9 && !(await sam.page.getByText(/analytics/).isVisible());
-    i++
-  )
-    await deck.getByRole("button", { name: /Skip|Next/ }).click();
+  // Since Operation Mayhem the mission is not a card in the picks deck: it is
+  // its own card under Secret missions, sealed until Sam opts in to read it.
+  const deck = sam.page.getByRole("region", { name: "Bold predictions" });
+  await expect(deck).toContainText("0 of 9 sealed", { timeout: 15_000 });
+  const secret = sam.page.getByRole("article", { name: "Your secret mission" });
+  await expect(secret).not.toContainText("analytics");
+  await secret.getByRole("button", { name: "Show me" }).click();
   await expect(sam.page.getByText(/analytics/)).toBeVisible();
   await shot(sam.page, "p2-sam-secret-mission");
 

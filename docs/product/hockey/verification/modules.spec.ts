@@ -76,7 +76,7 @@ async function join(page: Page, path: string, who: string) {
 const inDays = (days: number) =>
   new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
-const picks = (p: Page) => p.getByRole("heading", { name: "Your picks" });
+const picks = (p: Page) => p.getByRole("heading", { name: "Bold predictions" });
 const leaving = (p: Page) =>
   p.getByRole("heading", { name: /when are you leaving/i });
 

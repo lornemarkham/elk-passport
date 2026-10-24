@@ -36,7 +36,10 @@ export function Drama({
   slug,
   now,
   onOpenChat,
+  max = 14,
 }: {
+  /** During the game the page is a glance: fewer items. */
+  max?: number;
   items: readonly DramaItem[];
   bot: readonly BotLine[];
   people: readonly Participant[];
@@ -80,7 +83,7 @@ export function Drama({
     }));
   const all = [...items.map((i) => ({ ...i, bot: false as const })), ...lines]
     .sort((a, b) => b.at.localeCompare(a.at))
-    .slice(0, 14);
+    .slice(0, max);
   const fresh = seen ? all.filter((i) => i.at > seen).length : 0;
 
   return (

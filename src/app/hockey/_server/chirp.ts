@@ -48,7 +48,11 @@ import {
   templatePrompts,
   type NightRows,
 } from "@/domain/hockey/night";
-import { gameOf as playGame, sideWords } from "@/domain/hockey/challenges";
+import {
+  gameOf as playGame,
+  otherSide,
+  sideWords,
+} from "@/domain/hockey/challenges";
 import { askModel, modelConfigured, tell } from "./chirp-ai";
 
 /**
@@ -200,6 +204,10 @@ export function challengeViews(
       target: c.target_id,
       status: c.status,
       side: c.market && c.side ? sideWords(c.market, c.side, game) : undefined,
+      against:
+        c.market && c.side
+          ? sideWords(c.market, otherSide(c.market, c.side), game)
+          : undefined,
       winner: decided ? s.winner : undefined,
       decidedAt: decided ? s.decidedAt : undefined,
     });
@@ -745,7 +753,7 @@ export async function chirpOnChallenge(
       target: fan(view.target),
       what:
         view.kind === "bet"
-          ? `a bet that ${view.side}`
+          ? `a bet: ${fan(view.challenger).name} says ${view.side}; ${fan(view.target).name} gets the other side, that ${view.against}`
           : view.kind === "prophecy"
             ? "a prophecy about tonight's game"
             : view.kind === "defend"
@@ -754,12 +762,15 @@ export async function chirpOnChallenge(
                 ? "calling a goal like a broadcaster"
                 : "posting an outrageous hot take",
     };
-    await post(
-      db,
-      rows.occasion.id,
-      userId,
-      await voiced(plan, rows, userId, occasion, now),
-    );
+    const said = await voiced(plan, rows, userId, occasion, now);
+    // A challenge line is about two real people. A model that puts words in
+    // their mouths ("Lorne: '…'") or reaches for a number (a record, a
+    // streak, "last week") is making something up; the library line says
+    // the true thing instead.
+    const invents =
+      said.line === "ai" && said.text !== undefined && inventsFacts(said.text);
+    if (invents) tell("rejected");
+    await post(db, rows.occasion.id, userId, invents ? plan : said);
   } catch (error) {
     console.warn("[hockey] chirp bot (challenge):", error);
   }
@@ -796,4 +807,16 @@ export async function chirpOnDone(
   } catch (error) {
     console.warn("[hockey] chirp bot (done):", error);
   }
+}
+
+/**
+ * A model line that states a number or quotes somebody: on a challenge, both
+ * are invention (the line is handed no statistics and nobody's words).
+ */
+export function inventsFacts(text: string): boolean {
+  return (
+    /\d/.test(text) ||
+    /[“"][^”"]{6,}[”"]/.test(text) ||
+    /\b[A-Z][a-z]+:\s*['‘“"]/.test(text)
+  );
 }

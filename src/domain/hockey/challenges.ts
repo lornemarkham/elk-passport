@@ -35,20 +35,16 @@ import { rivalry, teamByAbbr, teamByName, type NhlTeam } from "./fans";
  * Cup is the same Sycle Cup.
  */
 
-export const CHALLENGE_KINDS = [
-  "bet",
-  "defend",
-  "commentary",
-  "hottake",
-  "prophecy",
-] as const;
-export type ChallengeKind = (typeof CHALLENGE_KINDS)[number];
-
-export const MARKETS = ["winner", "first-goal", "overtime", "goals"] as const;
-export type Market = (typeof MARKETS)[number];
-
-export const SIDES = ["home", "away", "yes", "no", "over", "under"] as const;
-export type Side = (typeof SIDES)[number];
+export {
+  CHALLENGE_KINDS,
+  MARKETS,
+  SIDES,
+  TEAM_REACTIONS,
+  type ChallengeKind,
+  type Market,
+  type Side,
+} from "./challenge-rules";
+import type { ChallengeKind, Market, Side } from "./challenge-rules";
 
 /** The over/under line on total goals. Fixed, so a bet is one tap. */
 export const GOALS_LINE = 5.5;
@@ -124,7 +120,6 @@ export interface TeamReactionRow {
   readonly at: string;
 }
 
-export const TEAM_REACTIONS = ["🫡", "🤡", "🧂", "🔥", "🪦"] as const;
 export const TEAM_REACTION_WORDS: Readonly<Record<string, string>> = {
   "🫡": "Respect",
   "🤡": "Clown",
