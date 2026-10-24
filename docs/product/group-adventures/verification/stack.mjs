@@ -315,6 +315,19 @@ async function services({ fresh }) {
     );
     await sql(proposal);
     await sql(proposal);
+    // ADR 012's item origin, twice as well. ADVENTURES_WITHOUT_ORIGIN=1 leaves
+    // it out, for proving the app still works before it is applied.
+    if (process.env.ADVENTURES_WITHOUT_ORIGIN !== "1") {
+      const origin = fs.readFileSync(
+        path.join(
+          repo,
+          "supabase/migrations/20261023100000_passport_adventure_item_origin.sql",
+        ),
+        "utf8",
+      );
+      await sql(origin);
+      await sql(origin);
+    }
   }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {

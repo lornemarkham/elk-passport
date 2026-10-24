@@ -1,6 +1,6 @@
 # ADR 010 — Saved leads to adventures; Go Have a Day plans their days
 
-**Status:** accepted · **Date:** 2026-10-21 · **Source:** the owner's
+**Status:** accepted, amended by [ADR 012](012-adventures-start-full.md) (2026-10-23: adventures start full and are shaped where they live) · **Date:** 2026-10-21 · **Source:** the owner's
 _Complete Saved & Adventures_ mission brief. Builds on
 [ADR 009](009-one-group-foundation.md) (one group foundation) and
 [ADR 003](003-go-day-needs-a-start.md) (a day needs a start).

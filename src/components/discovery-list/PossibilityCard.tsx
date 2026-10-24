@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { Check, Leaf, MapPin } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
-import type { CandidatePresentationImage } from "@/lib/data/types";
 import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import {
@@ -14,6 +13,7 @@ import {
   whereLine,
 } from "@/domain/discovery/compose";
 import { isIllustrative } from "@/domain/discovery/illustrations";
+import { presentedLabel } from "@/lib/media/cardPicture";
 import { distanceText } from "@/domain/discovery/proximity";
 import { describeJourney, routedShort } from "@/lib/routing/journey";
 import { ageLine } from "@/domain/discovery/suitability";
@@ -68,6 +68,7 @@ export function PossibilityCard({
   because,
   caveat,
   dayHref,
+  actions,
 }: {
   readonly experience: Experience;
   /** Today where the subjects are, `YYYY-MM-DD`. Makes the when-line relative. */
@@ -127,6 +128,12 @@ export function PossibilityCard({
    * somebody keeps it there.
    */
   readonly dayHref?: string;
+  /**
+   * **A surface's own controls, in the card's action row** (Saved's _Choose_,
+   * _Remove_). Replaces the saved chip / Save button. Each control must take
+   * the pointer itself (`pointer-events-auto`), as the row's own do.
+   */
+  readonly actions?: React.ReactNode;
 }) {
   const base = destinationFor(experience);
   const destination = base && carry ? `${base}?${carry}` : base;
@@ -495,7 +502,9 @@ export function PossibilityCard({
         )}
 
         <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-2 pt-4">
-          {saved ? (
+          {actions ? (
+            actions
+          ) : saved ? (
             <span className="ghad-accent-text inline-flex min-h-11 items-center gap-1 rounded-full bg-[#b5651d]/10 px-3 text-xs font-medium">
               <Check className="h-3.5 w-3.5" aria-hidden />
               Saved
@@ -550,24 +559,4 @@ export function PossibilityCard({
       </div>
     </li>
   );
-}
-
-/**
- * What to print on a picture that is not of the thing itself. The words say
- * whose picture it is; a category photograph also carries its author and
- * licence, which its licence requires.
- */
-function presentedLabel(image: CandidatePresentationImage): string {
-  switch (image.relationship) {
-    case "venue":
-      return `Venue photo${image.source?.heldBy ? ` · ${image.source.heldBy.name}` : ""}`;
-    case "organization":
-      return `From ${image.source?.heldBy?.name ?? "the organizer"}`;
-    case "representative":
-      return "Representative image";
-    case "category":
-      return `Illustrative photo${image.license?.author ? ` · ${image.license.author}, ${image.license.name}` : ""}`;
-    default:
-      return "";
-  }
 }

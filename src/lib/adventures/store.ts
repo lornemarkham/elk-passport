@@ -68,6 +68,27 @@ function raise(error: { code?: string; message: string }): never {
   throw new Unavailable(error.message);
 }
 
+/**
+ * **`origin` before its migration is applied** (ADR 012). Postgres says
+ * 42703 for a column it does not have; PostgREST says PGRST204 for one its
+ * schema cache does not. Either way the request is retried without it, so
+ * the app ships before the migration and behaves as ADR 010 did until then.
+ */
+const NO_ORIGIN = new Set(["42703", "PGRST204"]);
+const lacksOrigin = (error: { code?: string; message?: string } | null) =>
+  Boolean(
+    error &&
+    ((error.code && NO_ORIGIN.has(error.code)) ||
+      /origin/.test(error.message ?? "")),
+  );
+
+async function withOrigin<
+  T extends { error: { code?: string; message: string } | null },
+>(withIt: () => PromiseLike<T>, without: () => PromiseLike<T>): Promise<T> {
+  const first = await withIt();
+  return lacksOrigin(first.error) ? await without() : first;
+}
+
 // ------------------------------------------------------------------ views
 
 export interface AdventureSummary {
@@ -104,6 +125,8 @@ export interface ItemView {
   readonly canChange: boolean;
   readonly responses: Readonly<Record<ResponseValue, number>>;
   readonly yourResponse: ResponseValue | null;
+  /** A person chose it, or Passport sketched it (ADR 012). */
+  readonly origin: "person" | "passport";
 }
 
 export interface AdventureView extends AdventureDetails {
@@ -174,6 +197,7 @@ interface ItemRow {
   starts_at: string | null;
   position: number;
   added_by: string | null;
+  origin?: "person" | "passport";
 }
 
 interface ResponseRow {
@@ -189,6 +213,9 @@ interface HockeyRow {
   arena_atlas_ref: string | null;
   arena_label: string | null;
 }
+
+const ITEM_COLUMNS =
+  "id, atlas_ref, label, note, status, on_day, starts_at, position, added_by";
 
 const ADVENTURE_COLUMNS =
   "id, kind, title, owner_id, starts_on, ends_on, time_zone, destination_label, destination_town_id, created_at, updated_at";
@@ -327,14 +354,22 @@ export async function adventureFor(
       .from("passport_adventure_members")
       .select("user_id, member_id, role, display_name, visibility")
       .eq("adventure_id", id),
-    db
-      .from("passport_adventure_items")
-      .select(
-        "id, atlas_ref, label, note, status, on_day, starts_at, position, added_by",
-      )
-      .eq("adventure_id", id)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true }),
+    withOrigin(
+      () =>
+        db
+          .from("passport_adventure_items")
+          .select(`${ITEM_COLUMNS}, origin`)
+          .eq("adventure_id", id)
+          .order("position", { ascending: true })
+          .order("created_at", { ascending: true }),
+      () =>
+        db
+          .from("passport_adventure_items")
+          .select(ITEM_COLUMNS)
+          .eq("adventure_id", id)
+          .order("position", { ascending: true })
+          .order("created_at", { ascending: true }),
+    ),
     db
       .from("passport_adventure_responses")
       .select("item_id, user_id, response")
@@ -410,6 +445,7 @@ export async function adventureFor(
         canChange: role === "owner" || (isMine && item.status === "proposed"),
         responses: counts.get(item.id) ?? { in: 0, maybe: 0, out: 0 },
         yourResponse: yours.get(item.id) ?? null,
+        origin: item.origin === "passport" ? "passport" : "person",
       };
     }),
     hockey: wantsHockey
@@ -824,14 +860,23 @@ export async function addIdeas(
 }
 
 /**
- * **Save a day Go Have a Day built** onto the adventure. Owner only: it sets
- * every stop's day and order, and keeps how the day was asked for so it can
- * be reopened and refined (`passport_adventure_days`).
+ * **Save a built day** onto the adventure. Owner only: it sets every stop's
+ * day and order, and keeps how the day was asked for so it can be reopened
+ * and refined (`passport_adventure_days`).
+ *
+ * Two modes (ADR 012):
+ *
+ * - `confirm` — a day the owner built in Go Have a Day and saved. Its stops
+ *   are the owner's decision: confirmed.
+ * - `propose` — Passport's sketch, or a change asked for in words. Stops
+ *   Passport brings are suggestions (`proposed`, `origin = passport`);
+ *   anything already on the adventure keeps whatever it was.
  *
  * Several requests, not one transaction: a failure part-way leaves some
  * stops placed, and saving again finishes the job (every step is
- * idempotent). Nothing is ever deleted — a stop the new day left out goes
- * back to the ideas (`dayWrites`).
+ * idempotent). A stop the new day left out goes back to the ideas if a
+ * person chose it; a Passport suggestion nobody kept is deleted
+ * (`dayWrites`).
  */
 export async function saveDay(
   db: Db,
@@ -841,12 +886,22 @@ export async function saveDay(
     readonly onDay: string;
     readonly ask: string;
     readonly stops: readonly string[];
+    readonly mode?: "confirm" | "propose";
   },
 ): Promise<void> {
-  const current = await db
-    .from("passport_adventure_items")
-    .select("id, atlas_ref, on_day, position")
-    .eq("adventure_id", id);
+  const proposing = input.mode === "propose";
+  const current = await withOrigin(
+    () =>
+      db
+        .from("passport_adventure_items")
+        .select("id, atlas_ref, on_day, position, status, origin")
+        .eq("adventure_id", id),
+    () =>
+      db
+        .from("passport_adventure_items")
+        .select("id, atlas_ref, on_day, position, status")
+        .eq("adventure_id", id),
+  );
   if (current.error) raise(current.error);
   const items = (
     (current.data as
@@ -855,6 +910,8 @@ export async function saveDay(
           atlas_ref: string | null;
           on_day: string | null;
           position: number;
+          status: ItemStatus;
+          origin?: "person" | "passport";
         }[]
       | null) ?? []
   ).map((r) => ({
@@ -862,28 +919,18 @@ export async function saveDay(
     atlasRef: r.atlas_ref,
     onDay: r.on_day,
     position: r.position,
+    status: r.status,
+    ...(r.origin ? { origin: r.origin } : {}),
   }));
   const writes = dayWrites(items, input.onDay, input.stops);
 
   // The day row first: it is the owner check. A participant is refused here,
   // before any item moves.
-  const updated = await db
-    .from("passport_adventure_days")
-    .update({ ask: input.ask, updated_by: me })
-    .eq("adventure_id", id)
-    .eq("on_day", input.onDay)
-    .select("on_day");
-  if (updated.error) raise(updated.error);
-  if (!updated.data || updated.data.length === 0) {
-    const { error } = await db.from("passport_adventure_days").insert({
-      adventure_id: id,
-      on_day: input.onDay,
-      ask: input.ask,
-      updated_by: me,
-    });
-    if (error) raise(error);
-  }
+  await keepAsk(db, id, me, input.onDay, input.ask);
 
+  for (const itemId of writes.drop) {
+    await removeItem(db, id, itemId);
+  }
   for (const itemId of writes.release) {
     await updateItem(db, id, itemId, { onDay: null });
   }
@@ -891,22 +938,237 @@ export async function saveDay(
     await updateItem(db, id, itemId, {
       onDay: input.onDay,
       position,
-      status: "confirmed",
+      ...(proposing ? {} : { status: "confirmed" as const }),
     });
   }
   if (writes.add.length > 0) {
-    const { error } = await db.from("passport_adventure_items").insert(
-      writes.add.map(({ atlasRef, position }) => ({
-        adventure_id: id,
-        added_by: me,
-        atlas_ref: atlasRef,
-        status: "confirmed",
-        on_day: input.onDay,
-        position,
-      })),
+    const rows = writes.add.map(({ atlasRef, position }) => ({
+      adventure_id: id,
+      added_by: me,
+      atlas_ref: atlasRef,
+      status: proposing ? "proposed" : "confirmed",
+      on_day: input.onDay,
+      position,
+    }));
+    const inserted = await withOrigin(
+      () =>
+        db.from("passport_adventure_items").insert(
+          rows.map((r) => ({
+            ...r,
+            origin: proposing ? "passport" : "person",
+          })),
+        ),
+      () => db.from("passport_adventure_items").insert(rows),
     );
+    if (inserted.error) raise(inserted.error);
+  }
+}
+
+/**
+ * **Clear a day**: Passport's suggestions nobody kept are removed, anything a
+ * person chose goes back to the ideas, and the day forgets how it was asked
+ * for. Owner only — the day row's delete is the owner check, and runs first.
+ * It is how Undo takes back a sketch of a day that had nothing on it.
+ */
+export async function clearDay(
+  db: Db,
+  id: string,
+  onDay: string,
+): Promise<void> {
+  if ((await roleIn(db, id)) !== "owner") throw new Refused();
+  const current = await withOrigin(
+    () =>
+      db
+        .from("passport_adventure_items")
+        .select("id, atlas_ref, on_day, position, status, origin")
+        .eq("adventure_id", id)
+        .eq("on_day", onDay),
+    () =>
+      db
+        .from("passport_adventure_items")
+        .select("id, atlas_ref, on_day, position, status")
+        .eq("adventure_id", id)
+        .eq("on_day", onDay),
+  );
+  if (current.error) raise(current.error);
+  const items = (
+    (current.data as
+      | {
+          id: string;
+          atlas_ref: string | null;
+          on_day: string | null;
+          position: number;
+          status: ItemStatus;
+          origin?: "person" | "passport";
+        }[]
+      | null) ?? []
+  ).map((r) => ({
+    id: r.id,
+    atlasRef: r.atlas_ref,
+    onDay: r.on_day,
+    position: r.position,
+    status: r.status,
+    ...(r.origin ? { origin: r.origin } : {}),
+  }));
+  const writes = dayWrites(items, onDay, []);
+  const { error } = await db
+    .from("passport_adventure_days")
+    .delete()
+    .eq("adventure_id", id)
+    .eq("on_day", onDay);
+  if (error) raise(error);
+  for (const itemId of writes.drop) await removeItem(db, id, itemId);
+  for (const itemId of writes.release)
+    await updateItem(db, id, itemId, { onDay: null });
+}
+
+/** Keep how a day was asked for (owner only — the RLS owner check). */
+async function keepAsk(
+  db: Db,
+  id: string,
+  me: string,
+  onDay: string,
+  ask: string,
+): Promise<void> {
+  const updated = await db
+    .from("passport_adventure_days")
+    .update({ ask, updated_by: me })
+    .eq("adventure_id", id)
+    .eq("on_day", onDay)
+    .select("on_day");
+  if (updated.error) raise(updated.error);
+  if (!updated.data || updated.data.length === 0) {
+    const { error } = await db.from("passport_adventure_days").insert({
+      adventure_id: id,
+      on_day: onDay,
+      ask,
+      updated_by: me,
+    });
     if (error) raise(error);
   }
+}
+
+/**
+ * **"Swap Saturday and Sunday."** Every stop on one day moves to the other,
+ * in its order, and each day's sentence goes with it (re-dated). Owner only:
+ * the day rows are written first, which is the owner check.
+ */
+export async function swapDays(
+  db: Db,
+  id: string,
+  me: string,
+  first: string,
+  second: string,
+): Promise<void> {
+  const [items, days] = await Promise.all([
+    db
+      .from("passport_adventure_items")
+      .select("id, on_day")
+      .eq("adventure_id", id)
+      .in("on_day", [first, second]),
+    db
+      .from("passport_adventure_days")
+      .select("on_day, ask")
+      .eq("adventure_id", id)
+      .in("on_day", [first, second]),
+  ]);
+  if (items.error) raise(items.error);
+  if (days.error) raise(days.error);
+  const askOn = new Map(
+    ((days.data as { on_day: string; ask: string }[] | null) ?? []).map((d) => [
+      d.on_day,
+      d.ask,
+    ]),
+  );
+  const redate = (ask: string, onDay: string) => {
+    const params = new URLSearchParams(ask);
+    params.set("on", onDay);
+    return params.toString();
+  };
+  for (const [from, to] of [
+    [first, second],
+    [second, first],
+  ] as const) {
+    const ask = askOn.get(from);
+    if (ask) await keepAsk(db, id, me, to, redate(ask, to));
+    else if (askOn.has(to)) {
+      const { error } = await db
+        .from("passport_adventure_days")
+        .delete()
+        .eq("adventure_id", id)
+        .eq("on_day", to);
+      if (error) raise(error);
+    }
+  }
+  for (const row of (items.data as { id: string; on_day: string }[] | null) ??
+    []) {
+    await updateItem(db, id, row.id, {
+      onDay: row.on_day === first ? second : first,
+    });
+  }
+}
+
+/** What a card needs to show an adventure: its stops in order, and how many are going. */
+export interface AdventureGlance {
+  /** Atlas ids on days, in day then position order — the first is the cover. */
+  readonly stops: readonly string[];
+  /** Atlas ids not on a day. */
+  readonly ideas: readonly string[];
+  /** Stops on a day nobody has kept yet. */
+  readonly undecided: number;
+  /** People you can see in it, you included. */
+  readonly people: number;
+}
+
+/**
+ * Two reads for any number of adventures, so Saved can show a picture, a
+ * status and the people on every card without opening each one. RLS limits
+ * both reads to adventures the caller is in.
+ */
+export async function adventureGlances(
+  db: Db,
+  ids: readonly string[],
+): Promise<Record<string, AdventureGlance>> {
+  if (ids.length === 0) return {};
+  const [items, members] = await Promise.all([
+    db
+      .from("passport_adventure_items")
+      .select("adventure_id, atlas_ref, on_day, position, status")
+      .in("adventure_id", [...ids])
+      .order("on_day", { ascending: true, nullsFirst: false })
+      .order("position", { ascending: true }),
+    db
+      .from("passport_adventure_members")
+      .select("adventure_id")
+      .in("adventure_id", [...ids]),
+  ]);
+  if (items.error) raise(items.error);
+  if (members.error) raise(members.error);
+  const out: Record<
+    string,
+    { stops: string[]; ideas: string[]; undecided: number; people: number }
+  > = Object.fromEntries(
+    ids.map((i) => [i, { stops: [], ideas: [], undecided: 0, people: 0 }]),
+  );
+  for (const row of (items.data as
+    | {
+        adventure_id: string;
+        atlas_ref: string | null;
+        on_day: string | null;
+        status: ItemStatus;
+      }[]
+    | null) ?? []) {
+    const glance = out[row.adventure_id];
+    if (!glance) continue;
+    if (row.on_day && row.status === "proposed") glance.undecided += 1;
+    if (!row.atlas_ref) continue;
+    (row.on_day ? glance.stops : glance.ideas).push(row.atlas_ref);
+  }
+  for (const row of (members.data as { adventure_id: string }[] | null) ?? []) {
+    const glance = out[row.adventure_id];
+    if (glance) glance.people += 1;
+  }
+  return out;
 }
 
 /** The caller's role in an adventure, or `null` when it is not theirs. */

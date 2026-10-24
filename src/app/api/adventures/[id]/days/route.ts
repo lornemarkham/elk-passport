@@ -5,7 +5,13 @@ import {
   bodyOf,
   requireAdventureSession,
 } from "@/lib/adventures/server";
-import { addIdeas, Refused, roleIn, saveDay } from "@/lib/adventures/store";
+import {
+  addIdeas,
+  clearDay,
+  Refused,
+  roleIn,
+  saveDay,
+} from "@/lib/adventures/store";
 import { askFrom, stopsFrom } from "@/lib/adventures/days";
 
 type Params = { params: Promise<{ id: string }> };
@@ -20,13 +26,31 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
  * sentence is kept so the day can be refined later. Anybody else in the
  * adventure suggests it instead — its stops arrive as ideas for the owner —
  * because placing stops on a day is the owner's to do (RLS).
+ *
+ * `mode: "propose"` (ADR 012) is a change asked for in words, or its Undo:
+ * Passport's new stops arrive as suggestions and nothing already on the
+ * adventure is confirmed by it. The default, `confirm`, is `/go`'s _Save to_.
  */
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
   const session = await requireAdventureSession();
   if ("response" in session) return session.response;
 
-  const query = (await bodyOf(request)) as { query?: unknown } | null;
+  const query = (await bodyOf(request)) as {
+    query?: unknown;
+    mode?: unknown;
+  } | null;
+  const mode = query?.mode === "propose" ? "propose" : "confirm";
+
+  // `{ clear: "YYYY-MM-DD" }` — Undo of a sketch on a day that was empty.
+  const clear = (query as { clear?: unknown } | null)?.clear;
+  if (typeof clear === "string") {
+    if (!DAY.test(clear)) return badRequest("That day isn't a real day.");
+    return answer(async () => {
+      await clearDay(session.db, id, clear);
+      return NextResponse.json({ cleared: clear });
+    });
+  }
   if (typeof query?.query !== "string" || query.query.length > 4000)
     return badRequest("That isn't a day.");
   const stops = stopsFrom(query.query);
@@ -39,7 +63,12 @@ export async function POST(request: Request, { params }: Params) {
     const role = await roleIn(session.db, id);
     if (!role) throw new Refused();
     if (role === "owner") {
-      await saveDay(session.db, id, session.user.id, { onDay, ask, stops });
+      await saveDay(session.db, id, session.user.id, {
+        onDay,
+        ask,
+        stops,
+        mode,
+      });
       return NextResponse.json({ saved: "day", onDay });
     }
     const added = await addIdeas(session.db, id, session.user.id, stops);

@@ -32,7 +32,15 @@ export interface PlannableItem {
   readonly atlasRef: string | null;
   readonly onDay: string | null;
   readonly position: number;
+  /** `proposed` or `confirmed`; absent reads as proposed. */
+  readonly status?: string;
+  /** Who put it there (ADR 012): a person, or Passport's sketch. */
+  readonly origin?: "person" | "passport";
 }
+
+/** A stop Passport sketched that nobody has kept. Only this may be deleted. */
+export const isPassportSuggestion = (item: PlannableItem): boolean =>
+  item.origin === "passport" && item.status !== "confirmed";
 
 export interface DayGroup<T extends PlannableItem> {
   readonly onDay: string;
@@ -170,15 +178,22 @@ export interface DayWrites {
   readonly place: readonly { id: string; position: number }[];
   /** Stops the adventure did not hold yet. */
   readonly add: readonly { atlasRef: string; position: number }[];
-  /** This day's stops the new plan left out: back to the ideas. */
+  /** This day's stops the new plan left out, that a person chose: back to the ideas. */
   readonly release: readonly string[];
+  /** This day's stops the new plan left out that were only ever Passport's suggestion. */
+  readonly drop: readonly string[];
 }
 
 /**
  * What saving a built day changes. Each stop takes, in order of preference,
  * the item already on this day, an idea not on any day, or a new item. Items
  * on other days are left alone — the same place can be on Saturday and
- * Sunday. Nothing is deleted.
+ * Sunday.
+ *
+ * A stop the new day leaves out goes back to the ideas if a person chose it
+ * (ADR 010 §3). A stop Passport sketched that nobody kept is dropped instead
+ * (ADR 012 §2) — nobody wanted it, so keeping it as an "idea" would only
+ * fill the ideas with things nobody chose.
  */
 export function dayWrites(
   items: readonly PlannableItem[],
@@ -200,10 +215,15 @@ export function dayWrites(
       add.push({ atlasRef: ref, position });
     }
   });
-  const release = items
-    .filter((i) => i.onDay === onDay && !used.has(i.id) && i.atlasRef)
-    .map((i) => i.id);
-  return { place, add, release };
+  const left = items.filter(
+    (i) => i.onDay === onDay && !used.has(i.id) && i.atlasRef,
+  );
+  return {
+    place,
+    add,
+    release: left.filter((i) => !isPassportSuggestion(i)).map((i) => i.id),
+    drop: left.filter(isPassportSuggestion).map((i) => i.id),
+  };
 }
 
 /**

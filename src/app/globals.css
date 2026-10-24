@@ -179,6 +179,31 @@
   font-stretch: 112%;
 }
 
+/* ---------------------------------------------------------------------------
+   GO HAVE A DAY — the journal palette (Saved, Adventures, the guide).
+
+   Not a second theme: Discovery's white ground, Archivo display face and the
+   person's accent (`--ghad-accent`) stay. These name the warm surfaces and
+   the deep colours a plan needs that a feed does not — a cream band to set
+   a section on, forest for "this is decided", and one hue per day so a
+   weekend reads as two different days at a glance. Measured (WCAG 2), not
+   guessed: white on --gh-forest 10.1:1, on --gh-lake 7.3:1, on --gh-berry
+   7.9:1; --gh-ink on --gh-sun 10.0:1; --gh-ink-soft on --gh-cream 8.6:1;
+   --gh-forest on --gh-forest-soft 8.4:1.
+--------------------------------------------------------------------------- */
+:root {
+  --gh-ink: #141414;
+  --gh-ink-soft: #4a443b;
+  --gh-cream: #f7f1e6;
+  --gh-sand: #ebe1cd;
+  --gh-line: #e2d8c4;
+  --gh-forest: #1f4a35;
+  --gh-forest-soft: #e3ede5;
+  --gh-lake: #245c78;
+  --gh-sun: #f0b54a;
+  --gh-berry: #8e3049;
+}
+
 /* Subtle topo-line texture for basecamp surfaces — restrained, not a rustic gimmick. */
 .bg-topo {
   background-image: radial-gradient(

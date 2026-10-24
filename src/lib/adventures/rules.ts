@@ -367,3 +367,37 @@ export function parseIdeas(body: unknown): Parsed<string[]> {
     return fail("That isn't an Atlas id.");
   return ok([...new Set(refs as string[])]);
 }
+
+// ----------------------------------------------------------------- sketch
+
+/** How a new adventure's days should be sketched (ADR 012 §1). */
+export interface SketchRequest {
+  /** One sentence the Day Builder reads: what kind of day, who, any constraint. */
+  readonly say: string;
+  readonly childAge?: number;
+}
+
+export function parseSketch(value: unknown): Parsed<SketchRequest> {
+  if (!value || typeof value !== "object") return fail("Nothing to sketch.");
+  const v = value as Record<string, unknown>;
+  const say = typeof v.say === "string" ? v.say.trim() : "";
+  if (!say) return fail("Say what kind of day it should be.");
+  if (say.length > 300) return fail("Keep it under 300 characters.");
+  if (v.childAge === undefined || v.childAge === null) return ok({ say });
+  const age = Number(v.childAge);
+  if (!Number.isInteger(age) || age < 0 || age > 17)
+    return fail("A child's age is 0 to 17.");
+  return ok({ say, childAge: age });
+}
+
+/** A change asked for in words: one sentence, short. */
+export function parseSaid(value: unknown): Parsed<string> {
+  const said =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>).said
+      : undefined;
+  if (typeof said !== "string" || !said.trim())
+    return fail("Say what you'd like to change.");
+  if (said.length > 300) return fail("Keep it under 300 characters.");
+  return ok(said.trim());
+}

@@ -117,15 +117,21 @@ export function AdventurePeople({
 
   return (
     <section aria-labelledby="people-heading" className="space-y-4">
-      <h2 id="people-heading" className="text-lg font-semibold">
+      <h2
+        id="people-heading"
+        className="ghad-display text-[1.75rem] leading-tight font-extrabold tracking-[-0.03em] sm:text-4xl"
+      >
         Who&apos;s going
       </h2>
 
-      <ul className="divide-y rounded-xl border" aria-label="Members">
+      <ul
+        className="divide-y divide-[var(--gh-line)] rounded-3xl border border-[var(--gh-line)] bg-white"
+        aria-label="Members"
+      >
         {members.map((member) => (
           <li
             key={member.memberId}
-            className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
+            className="flex min-h-14 items-center justify-between gap-3 px-4 py-2 text-base"
           >
             <span>
               {member.displayName}
@@ -143,7 +149,7 @@ export function AdventurePeople({
               <button
                 type="button"
                 onClick={() => remove(member)}
-                className="text-muted-foreground hover:text-destructive inline-flex items-center gap-1 text-xs"
+                className="text-muted-foreground hover:text-destructive inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold"
                 aria-label={`Remove ${member.displayName}`}
               >
                 <UserMinus className="h-3.5 w-3.5" aria-hidden />
@@ -162,9 +168,10 @@ export function AdventurePeople({
 
       {you.role !== "owner" && (
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="inline-flex items-center gap-2">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-3">
             <input
               type="checkbox"
+              className="h-5 w-5"
               checked={you.visibility === "members"}
               onChange={(e) => setListed(e.target.checked)}
             />
@@ -173,11 +180,17 @@ export function AdventurePeople({
           {confirmLeave ? (
             <span className="inline-flex items-center gap-2">
               Leave this one?
-              <Button size="sm" variant="destructive" onClick={leave}>
+              <Button
+                size="lg"
+                className="h-11 rounded-full px-4 text-sm"
+                variant="destructive"
+                onClick={leave}
+              >
                 Yes, leave
               </Button>
               <Button
-                size="sm"
+                size="lg"
+                className="h-11 rounded-full px-4 text-sm"
                 variant="ghost"
                 onClick={() => setConfirmLeave(false)}
               >
@@ -186,7 +199,8 @@ export function AdventurePeople({
             </span>
           ) : (
             <Button
-              size="sm"
+              size="lg"
+              className="h-11 rounded-full px-4 text-sm"
               variant="ghost"
               onClick={() => setConfirmLeave(true)}
             >
@@ -197,15 +211,23 @@ export function AdventurePeople({
       )}
 
       {isOwner && (
-        <div className="space-y-3 rounded-xl border border-dashed p-4">
-          <p className="text-sm font-medium">Invite people</p>
+        <div className="space-y-3 rounded-3xl bg-[var(--gh-cream)] p-5">
+          <p className="ghad-display text-xl font-extrabold">
+            Invite people — send them a link
+          </p>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => makeLink(false)} disabled={busy}>
+            <Button
+              size="lg"
+              className="h-11 rounded-full px-4 text-sm"
+              onClick={() => makeLink(false)}
+              disabled={busy}
+            >
               <Link2 className="h-4 w-4" aria-hidden />
               Link for one person
             </Button>
             <Button
-              size="sm"
+              size="lg"
+              className="h-11 rounded-full px-4 text-sm"
               variant="outline"
               onClick={() => makeLink(true)}
               disabled={busy}
@@ -217,12 +239,17 @@ export function AdventurePeople({
           {fresh && (
             <div className="bg-muted/50 flex items-center gap-2 rounded-lg p-2">
               <code
-                className="flex-1 truncate text-xs"
+                className="flex-1 text-xs break-all"
                 data-testid="invite-url"
               >
                 {fresh.url}
               </code>
-              <Button size="sm" variant="ghost" onClick={() => copy(fresh.url)}>
+              <Button
+                size="lg"
+                className="h-11 rounded-full px-4 text-sm"
+                variant="ghost"
+                onClick={() => copy(fresh.url)}
+              >
                 <Copy className="h-4 w-4" aria-hidden />
                 Copy
               </Button>
@@ -248,7 +275,8 @@ export function AdventurePeople({
                   <button
                     type="button"
                     onClick={() => revoke(invite.id)}
-                    className="text-muted-foreground hover:text-destructive inline-flex items-center gap-1 text-xs"
+                    aria-label={`Turn off ${invite.label ?? "link"} (${usesLabel(invite.maxUses, invite.uses)})`}
+                    className="text-muted-foreground hover:text-destructive inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
                     Turn off

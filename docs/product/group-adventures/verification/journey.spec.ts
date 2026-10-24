@@ -71,15 +71,23 @@ test("Saved becomes a planned, shared adventure — and is still there later", a
 
   const save = alice.page.getByRole("button", { name: "Save", exact: true });
   await expect(save.first()).toBeVisible({ timeout: 30_000 });
-  const saved: string[] = [];
+  // How many things this person's board holds — what a save writes.
+  const held = async () => {
+    const boards = await (await alice.page.request.get("/api/boards")).json();
+    if (!Array.isArray(boards) || boards.length === 0) return 0;
+    const items = await (
+      await alice.page.request.get(`/api/boards/${boards[0].id}/items`)
+    ).json();
+    return Array.isArray(items) ? items.length : 0;
+  };
   for (let i = 0; i < 3; i++) {
-    const button = save.first();
-    const card = button.locator("xpath=ancestor::*[.//h3][1]");
-    saved.push(((await card.locator("h3").first().textContent()) ?? "").trim());
-    const before = await save.count();
-    await button.click();
-    // Saved: the card's button becomes "Saved", so there is one fewer.
-    await expect(save).toHaveCount(before - 1, { timeout: 15_000 });
+    // A saved thing leaves the feed (its home is Saved) and another card
+    // takes its place, so the page's own buttons can't count saves; the board
+    // can. Retried, because a click before Discovery hydrates does nothing.
+    await expect(async () => {
+      if ((await held()) <= i) await save.first().click({ timeout: 2_000 });
+      expect(await held()).toBe(i + 1);
+    }).toPass({ timeout: 45_000 });
   }
 
   // ------------------------------------------------------- Saved → plan
@@ -98,14 +106,20 @@ test("Saved becomes a planned, shared adventure — and is still there later", a
     "href",
     /^\/go\?with=/,
   );
-  await alice.page.getByTestId("saved-to-adventure").click();
-  await alice.page.getByLabel("A new adventure").check();
-  await alice.page.getByLabel("Name it").fill("Vernon Saturday");
-  await alice.page.getByLabel("Which day (optional)").fill(DAY);
-  await alice.page
-    .getByLabel("Starting from (optional)")
-    .selectOption("vernon");
-  await alice.page.getByTestId("saved-add-adventure").click();
+  // One way to start an adventure (ADR 012): the guided start, seeded.
+  await alice.page.getByTestId("saved-build-adventure").click();
+  await expect(alice.page).toHaveURL(/\/adventures\/new\?with=/);
+  await expect(alice.page.getByTestId("create-seeds")).toContainText(
+    "3 saved places",
+  );
+  await alice.page.getByTestId("create-town").selectOption("vernon");
+  await alice.page.getByRole("button", { name: "Pick dates" }).click();
+  await alice.page.getByLabel("From", { exact: true }).fill(DAY);
+  await alice.page.getByLabel("To", { exact: true }).fill(DAY);
+  await alice.page.getByTestId("create-title").fill("Vernon Saturday");
+  // This journey plans the day in Go Have a Day, so no sketch.
+  await alice.page.getByTestId("create-sketch").uncheck();
+  await alice.page.getByTestId("create-submit").click();
 
   await expect(alice.page).toHaveURL(/\/adventures\/[0-9a-f]{32}$/);
   const adventureUrl = alice.page.url();
@@ -178,6 +192,7 @@ test("Saved becomes a planned, shared adventure — and is still there later", a
 
   // Move the first stop later, by hand.
   if (built.length > 1) {
+    await day.getByLabel(`More for ${built[0]}`).click();
     await day.getByRole("button", { name: `Move ${built[0]} later` }).click();
     await expect(day.getByTestId("plan-item").nth(1)).toContainText(built[0]!);
     await expect(day.getByTestId("plan-item").nth(0)).toContainText(built[1]!);

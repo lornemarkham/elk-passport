@@ -95,11 +95,12 @@ test("Alice starts a Hockey Night, Bob joins by link, Charlie stays out", async 
   await expect(bobMembers).toContainText("bob");
 
   // Bob proposes; he cannot invite or remove.
+  await bob.page.getByText("Propose something", { exact: true }).click();
   await bob.page
     .getByLabel("What or where")
     .fill("Pregame at the pub on Abbott");
   await bob.page.getByRole("button", { name: "Propose it" }).click();
-  await expect(bob.page.getByTestId("plan-item")).toContainText("Proposed");
+  await expect(bob.page.getByTestId("plan-item")).toContainText("Your idea");
   await expect(
     bob.page.getByRole("button", { name: "Link for one person" }),
   ).toHaveCount(0);
@@ -115,13 +116,14 @@ test("Alice starts a Hockey Night, Bob joins by link, Charlie stays out", async 
   await expect(alice.page.getByRole("list", { name: "Members" })).toContainText(
     "bob",
   );
-  await alice.page.getByRole("button", { name: "Confirm" }).click();
-  await expect(alice.page.getByTestId("plan-item")).toContainText("On");
+  // Confirming is "Keep" since ADR 012; a kept idea says so.
+  await alice.page.getByRole("button", { name: "Keep", exact: true }).click();
+  await expect(alice.page.getByTestId("plan-item")).toContainText("Kept");
   await alice.page.getByRole("button", { name: "I'm in" }).click();
   await expect(alice.page.getByTestId("plan-item")).toContainText("1 in");
 
   await bob.page.reload();
-  await expect(bob.page.getByTestId("plan-item")).toContainText("On");
+  await expect(bob.page.getByTestId("plan-item")).toContainText("Kept");
   await expect(bob.page.getByTestId("plan-item")).toContainText("1 in");
 
   // ----------------------------------------------------------- Charlie

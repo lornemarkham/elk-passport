@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, Share2, Sparkles, Trash2 } from "lucide-react";
+import { Check, Search, Share2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Experience } from "@/domain/experience/types";
 import type { OctoberThing } from "@/lib/october/types";
@@ -146,11 +146,34 @@ export function SavedReview({
   }
 
   const total = showing.length + unresolved.length;
+  // **Find one again** — by name, and by what kind of thing it is. Filtering
+  // narrows what is shown; it never changes what is saved.
+  const [find, setFind] = useState("");
+  const [kind, setKind] = useState<string>("all");
+  const kinds = useMemo(
+    () => [...new Set(showing.map((e) => e.kind))].sort(),
+    [showing],
+  );
+  const shown = useMemo(() => {
+    const words = find.trim().toLowerCase();
+    return showing.filter(
+      (e) =>
+        (kind === "all" || e.kind === kind) &&
+        (!words ||
+          [e.title, e.subtype, e.venue?.name, e.shortDescription]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(words)),
+    );
+  }, [showing, find, kind]);
+  const small =
+    "pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-colors disabled:opacity-50";
 
   return (
     <div data-testid="saved-review">
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-black/60">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-base text-[var(--gh-ink-soft)]">
           {total} {total === 1 ? "possibility" : "possibilities"} in {boardName}
           {readOnly ? " · shared with you to look at" : ""}
         </p>
@@ -159,7 +182,7 @@ export function SavedReview({
             type="button"
             data-testid="saved-plan"
             onClick={() => setChoosing(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#111] px-4 text-sm font-medium text-white"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--gh-ink)] px-5 text-base font-semibold text-white hover:bg-black"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             Plan with these
@@ -167,11 +190,50 @@ export function SavedReview({
         )}
       </div>
 
+      {showing.length > 3 && (
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="relative block sm:w-80">
+            <span className="sr-only">Find a saved place</span>
+            <Search
+              className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-[var(--gh-ink-soft)]"
+              aria-hidden
+            />
+            <input
+              type="search"
+              data-testid="saved-find"
+              value={find}
+              onChange={(e) => setFind(e.target.value)}
+              placeholder="Find a saved place"
+              className="block min-h-12 w-full rounded-full border-2 border-[var(--gh-line)] bg-white pr-4 pl-11 text-base outline-none focus:border-[var(--gh-ink)]"
+            />
+          </label>
+          {kinds.length > 1 && (
+            <div
+              role="group"
+              aria-label="Show"
+              className="flex flex-wrap gap-2"
+            >
+              {["all", ...kinds].map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={kind === k}
+                  onClick={() => setKind(k)}
+                  className={`inline-flex min-h-11 items-center rounded-full border-2 px-4 text-sm font-semibold ${kind === k ? "border-[var(--gh-ink)] bg-[var(--gh-ink)] text-white" : "border-[var(--gh-line)] bg-white text-[var(--gh-ink)] hover:border-[var(--gh-ink)]/40"}`}
+                >
+                  {KIND_WORDS[k] ?? k}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Never silently dropped — see `loadBoardWithExperiences`. */}
       {unresolved.length > 0 && (
         <p
           data-testid="saved-unresolved"
-          className="mt-4 rounded-xl border border-dashed border-black/30 bg-white px-4 py-3 text-sm text-black/60"
+          className="mt-4 rounded-2xl border border-dashed border-[var(--gh-line)] bg-white px-4 py-3 text-sm text-[var(--gh-ink-soft)]"
         >
           {unresolved.length} saved {unresolved.length === 1 ? "item" : "items"}{" "}
           {unresolved.length === 1 ? "is" : "are"} still here but can&apos;t be
@@ -181,84 +243,113 @@ export function SavedReview({
       )}
 
       {showing.length === 0 && unresolved.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-black/30 bg-white px-5 py-12 text-center">
-          <p className="text-lg text-[#111]">Nothing saved yet</p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-black/60">
+        <div className="mt-6 rounded-3xl bg-[var(--gh-cream)] px-6 py-12 text-center">
+          <p className="ghad-display text-2xl font-extrabold text-[var(--gh-ink)]">
+            Nothing saved yet
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
             Save anything that looks interesting while you browse, and it will
-            be here to look at together.
+            be here — raw material for your next adventure.
           </p>
           <Link
             href={back}
-            className="mt-5 inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-sm font-medium text-white"
+            className="mt-5 inline-flex min-h-12 items-center rounded-full bg-[var(--gh-ink)] px-6 text-base font-semibold text-white"
           >
             Back to discovering
           </Link>
         </div>
+      ) : shown.length === 0 && showing.length > 0 ? (
+        <p className="mt-6 text-base text-[var(--gh-ink-soft)]">
+          Nothing saved matches that.{" "}
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-4"
+            onClick={() => {
+              setFind("");
+              setKind("all");
+            }}
+          >
+            Show everything
+          </button>
+        </p>
       ) : (
-        <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {showing.map((experience) => (
-            <li key={experience.id} className="flex flex-col">
+        <ul className="mt-6 grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+          {shown.map((experience) => {
+            const isChosen = chosen.includes(experience.id);
+            return (
               <PossibilityCard
+                key={experience.id}
                 experience={experience}
                 {...(at ? { origin: at } : {})}
                 saved
                 saving={false}
                 onSave={() => {}}
-              />
-              {choosing && (
-                <button
-                  type="button"
-                  data-testid="saved-choose"
-                  aria-pressed={chosen.includes(experience.id)}
-                  aria-label={`Choose ${experience.title}`}
-                  onClick={() => choose(experience.id)}
-                  className={`mt-2 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors ${chosen.includes(experience.id) ? "border-[#111] bg-[#111] text-white" : "border-black/30 hover:bg-black/5"}`}
-                >
-                  {chosen.includes(experience.id) ? (
-                    <>
-                      <Check className="h-4 w-4" aria-hidden />
-                      Chosen
-                    </>
-                  ) : (
-                    "Choose"
-                  )}
-                </button>
-              )}
-              {!readOnly && !choosing && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {wanted.has(experience.id) ? (
-                    <span
-                      data-testid="saved-wanted"
-                      className="ghad-accent-text inline-flex min-h-9 items-center rounded-full bg-black/12 px-3 text-xs font-medium"
-                    >
-                      In My October
-                    </span>
-                  ) : (
+                className={
+                  isChosen
+                    ? "rounded-2xl ring-4 ring-[var(--gh-forest)] ring-offset-4"
+                    : ""
+                }
+                actions={
+                  choosing ? (
                     <button
                       type="button"
-                      data-testid="saved-want"
-                      disabled={busy === experience.id}
-                      onClick={() => void want(experience)}
-                      className="ghad-accent-text inline-flex min-h-9 items-center rounded-full border border-black/30 px-3 text-xs font-medium transition-colors hover:bg-black/10 disabled:opacity-50"
+                      data-testid="saved-choose"
+                      aria-pressed={isChosen}
+                      aria-label={`Choose ${experience.title}`}
+                      onClick={() => choose(experience.id)}
+                      className={`${small} border-2 ${isChosen ? "border-[var(--gh-forest)] bg-[var(--gh-forest)] text-white" : "border-[var(--gh-ink)]/20 bg-white text-[var(--gh-ink)] hover:border-[var(--gh-ink)]/50"}`}
                     >
-                      Want to do
+                      {isChosen ? (
+                        <>
+                          <Check className="h-4 w-4" aria-hidden />
+                          Chosen
+                        </>
+                      ) : (
+                        "Choose"
+                      )}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    data-testid="saved-remove"
-                    disabled={busy === experience.id}
-                    onClick={() => void remove(experience)}
-                    aria-label={`Remove ${experience.title}`}
-                    className="inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-xs font-medium text-black/45 transition-colors hover:bg-[#111]/[0.06] hover:text-black/70 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                    Remove
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
+                  ) : readOnly ? (
+                    <span className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--gh-ink-soft)]">
+                      <Check className="h-4 w-4" aria-hidden />
+                      Saved
+                    </span>
+                  ) : (
+                    <>
+                      {wanted.has(experience.id) ? (
+                        <span
+                          data-testid="saved-wanted"
+                          className="ghad-accent-text inline-flex min-h-11 items-center rounded-full bg-[var(--gh-cream)] px-4 text-sm font-semibold"
+                        >
+                          In My October
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          data-testid="saved-want"
+                          disabled={busy === experience.id}
+                          onClick={() => void want(experience)}
+                          className={`${small} ghad-accent-text border-2 border-[var(--gh-line)] bg-white hover:border-[var(--gh-ink)]/40`}
+                        >
+                          Want to do
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        data-testid="saved-remove"
+                        disabled={busy === experience.id}
+                        onClick={() => void remove(experience)}
+                        aria-label={`Remove ${experience.title}`}
+                        className={`${small} text-[var(--gh-ink-soft)] hover:bg-[var(--gh-cream)] hover:text-[var(--gh-ink)]`}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                        Remove
+                      </button>
+                    </>
+                  )
+                }
+              />
+            );
+          })}
         </ul>
       )}
 
@@ -277,11 +368,11 @@ export function SavedReview({
       {/* Sharing is real and kept — just not above the things somebody came
           here to look at. One link, at the end, for the person who wants it. */}
       {!readOnly && (
-        <div className="mt-10 border-t border-black/15 pt-6">
+        <div className="mt-12 border-t border-[var(--gh-line)] pt-6">
           <Link
             href={`/boards/${boardId}`}
             data-testid="share-this"
-            className="ghad-accent-text inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:text-[#111]"
+            className="inline-flex min-h-12 items-center gap-2 text-base font-semibold text-[var(--gh-ink)] underline-offset-4 hover:underline"
           >
             <Share2 className="h-4 w-4" aria-hidden />
             Share this collection, or manage it as a board
@@ -291,3 +382,13 @@ export function SavedReview({
     </div>
   );
 }
+
+/** Atlas's kinds, in a person's words. */
+const KIND_WORDS: Readonly<Record<string, string>> = {
+  all: "Everything",
+  Place: "Places",
+  Event: "Events",
+  Organization: "Food & business",
+  Activity: "Things to do",
+  Experience: "Experiences",
+};
