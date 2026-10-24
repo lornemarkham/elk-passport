@@ -22,8 +22,8 @@ export const MODULES = [
   {
     id: "meet",
     label: "Where we meet",
-    detail: "Pick a spot to find each other",
-    promptIds: ["meet-spot"],
+    detail: "Who's joining the pregame, and where the rest find us",
+    promptIds: ["meet-spot", "pregame-plans"],
   },
   {
     id: "leaving",

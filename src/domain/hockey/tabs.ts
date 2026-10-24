@@ -34,6 +34,7 @@ export const TABS: readonly { readonly id: TabId; readonly label: string }[] = [
 export const PLAN_PROMPT_IDS: ReadonlySet<string> = new Set([
   "pregame-spot",
   "meet-spot",
+  "pregame-plans",
   "hard-out",
   "postgame",
 ]);

@@ -35,7 +35,6 @@ import {
   QUESTS,
   agoWords,
   dollars,
-  freshness,
   lowestReport,
   placeOf,
   questKind,
@@ -50,7 +49,7 @@ const H = ({ children }: { children: React.ReactNode }) => (
   <h2 className="text-[20px] leading-tight font-extrabold">{children}</h2>
 );
 
-function Face({ p, size = 40 }: { p: ArenaPerson; size?: number }) {
+export function Face({ p, size = 40 }: { p: ArenaPerson; size?: number }) {
   return (
     <span
       aria-hidden
@@ -67,7 +66,7 @@ function Face({ p, size = 40 }: { p: ArenaPerson; size?: number }) {
   );
 }
 
-function Btn({
+export function Btn({
   children,
   onClick,
   kind = "ghost",
@@ -95,196 +94,6 @@ function Btn({
     >
       {children}
     </button>
-  );
-}
-
-// ------------------------------------------------------------------ the herd
-
-export function HerdPanel({
-  arena,
-  live,
-  onShow,
-  onCheckIn,
-}: {
-  arena: Arena;
-  live: boolean;
-  onShow: (placeId: string) => void;
-  onCheckIn: () => void;
-}) {
-  const { view, now } = arena;
-  const reduced = useReducedMotion() ?? false;
-  const mine = view.checkins.find((c) => c.user === view.me);
-  const people = new Map(view.people.map((p) => [p.id, p]));
-  const ordered = [...view.people].sort((a, b) =>
-    a.id === view.me ? -1 : b.id === view.me ? 1 : a.name.localeCompare(b.name),
-  );
-  const sent = view.pings
-    .filter((p) => p.from === view.me && !p.replyTo)
-    .slice(0, 5);
-
-  return (
-    <section aria-labelledby="herd-title">
-      <H>
-        <span id="herd-title">The herd</span>
-      </H>
-      <p className="mt-1 text-[14px] text-white/65">
-        Where everybody said they were, and how long ago. Nobody is tracked.
-      </p>
-      <ul className="mt-4 flex flex-col gap-3">
-        {ordered.map((p, i) => {
-          const c = view.checkins.find((x) => x.user === p.id);
-          const place = c ? placeOf(c.place, view.meetup) : undefined;
-          const fresh = c ? freshness(c.at, now) : undefined;
-          const isMe = p.id === view.me;
-          return (
-            <motion.li
-              key={p.id}
-              data-testid={`herd-${isMe ? "me" : p.name}`}
-              initial={reduced ? false : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: reduced ? 0 : i * 0.04 }}
-              className="rounded-3xl bg-white/6 p-4"
-            >
-              <div className="flex items-start gap-3">
-                <Face p={p} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[16px] font-bold">
-                    {isMe ? "You" : p.name}
-                    {p.role === "host" && (
-                      <span className="ml-2 rounded-full bg-white/12 px-2 py-0.5 text-[12px] font-semibold">
-                        host
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[14px] text-white/80">
-                    {place ? (
-                      <>
-                        📍 {place.label}
-                        <span className="text-white/55">
-                          {" "}
-                          · {agoWords(c!.at, now)}
-                        </span>
-                        {fresh === "stale" && (
-                          <span className="ml-1 text-[12px] text-[#ffd84d]">
-                            (old news)
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-white/55">
-                        Hasn&apos;t checked in
-                      </span>
-                    )}
-                  </p>
-                  {c?.status && (
-                    <p className="text-[14px] text-white/70 italic">
-                      “{c.status}”
-                    </p>
-                  )}
-                  <p className="text-[12px] text-white/50">
-                    {p.section
-                      ? `Seat: Section ${p.section}`
-                      : "No seat entered"}
-                  </p>
-                </div>
-              </div>
-              {live && !isMe && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {place && !place.offMap && fresh !== "stale" ? (
-                    <Btn kind="light" onClick={() => onShow(c!.place)}>
-                      🔦 Find this legend
-                    </Btn>
-                  ) : (
-                    <Btn
-                      kind="light"
-                      onClick={() =>
-                        void arena.send(
-                          { type: "ping", kind: "where", to: p.id, note: "" },
-                          { done: `Asked ${p.name} where they are.` },
-                        )
-                      }
-                    >
-                      🔦 Where you at, {p.name.split(" ")[0]}?
-                    </Btn>
-                  )}
-                  <Btn
-                    onClick={() =>
-                      mine
-                        ? void arena.send(
-                            {
-                              type: "ping",
-                              kind: "here",
-                              to: p.id,
-                              place: mine.place,
-                              note: "",
-                            },
-                            { done: `Told ${p.name} where you are.` },
-                          )
-                        : onCheckIn()
-                    }
-                  >
-                    👋 I&apos;m over here, genius
-                  </Btn>
-                  <Btn
-                    onClick={() =>
-                      mine
-                        ? void arena.send(
-                            {
-                              type: "ping",
-                              kind: "meet",
-                              to: p.id,
-                              place: mine.place,
-                              note: "",
-                            },
-                            { done: `Asked ${p.name} to meet you.` },
-                          )
-                        : onCheckIn()
-                    }
-                  >
-                    🤝 Meet me
-                  </Btn>
-                </div>
-              )}
-            </motion.li>
-          );
-        })}
-      </ul>
-
-      {sent.length > 0 && (
-        <section className="mt-6" aria-labelledby="sent-title">
-          <h3 id="sent-title" className="text-[15px] font-bold">
-            What you sent
-          </h3>
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {sent.map((s) => {
-              const to = s.to ? people.get(s.to)?.name : "everyone";
-              const replies = view.pings.filter((r) => r.replyTo === s.id);
-              return (
-                <li key={s.id} className="text-[14px] text-white/80">
-                  {s.kind === "where"
-                    ? `Asked ${to} where they are`
-                    : s.kind === "here"
-                      ? `Told ${to} where you are`
-                      : s.kind === "herd"
-                        ? `Rounded up the herd at ${placeOf(s.place ?? "", view.meetup)?.label ?? "a spot"}`
-                        : `Asked ${to} to meet at ${placeOf(s.place ?? "", view.meetup)?.label ?? "a spot"}`}
-                  <span className="text-white/50">
-                    {" "}
-                    · {agoWords(s.at, now)}
-                  </span>
-                  {replies.map((r) => (
-                    <span key={r.id} className="ml-2">
-                      {r.kind === "coming" ? "✅" : "🙅"}{" "}
-                      {people.get(r.from)?.name}
-                    </span>
-                  ))}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-    </section>
   );
 }
 
@@ -1060,14 +869,16 @@ export function ArenaPanel() {
 
       <details className="rounded-2xl bg-white/6 p-4">
         <summary className="min-h-10 cursor-pointer text-[15px] font-bold">
-          Why there&apos;s no live location
+          Why GPS is only a hint
         </summary>
         <p className="mt-2 text-[13px] leading-relaxed text-white/75">
           Phone location inside a concrete bowl is good to the building, not the
-          section, and a web page can&apos;t keep sharing it from a pocket.
-          Doing it properly means continuous tracking, which needs its own
-          privacy review first. So Arena Mode only ever shows where somebody
-          said they were, and when.
+          section, and a web page can&apos;t keep sharing it from a pocket. So
+          the map only ever shows where somebody said they were, and when. A GPS
+          hint is optional, off until you add it, never draws a dot, and says
+          only &ldquo;around the arena&rdquo;, &ldquo;near&rdquo; or
+          &ldquo;away&rdquo; with how sure the phone is. There is no continuous
+          tracking and no trail.
         </p>
       </details>
     </section>

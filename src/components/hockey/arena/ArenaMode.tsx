@@ -14,7 +14,6 @@ import {
   levelOfSection,
 } from "@/domain/hockey/concourse";
 import {
-  agoWords,
   arenaWindow,
   levelOfPlace,
   placeOf,
@@ -26,12 +25,27 @@ import { ArenaMap, FILTERS, pointOf, usePlaces, type Filter } from "./ArenaMap";
 import { useArena } from "./useArena";
 import { IncomingPings } from "./IncomingPings";
 import { CheckInSheet, PlaceSheet, SourceLink } from "./sheets";
-import { ArenaPanel, EatPanel, HerdPanel, QuestsPanel } from "./panels";
+import { ArenaPanel, EatPanel, QuestsPanel } from "./panels";
+import {
+  Celebration,
+  CrewPanel,
+  CrewStrip,
+  IncomingSummons,
+  PersonSheet,
+  SharingBar,
+  SnackPanel,
+  SquadPanel,
+  SummonSheet,
+  useArrivals,
+  useGpsHint,
+} from "./crew";
 
-type Tab = "herd" | "eat" | "quests" | "arena";
+type Tab = "crew" | "squad" | "snacks" | "eat" | "quests" | "arena";
 
 const TABS: readonly { id: Tab; label: string }[] = [
-  { id: "herd", label: "The herd" },
+  { id: "crew", label: "Find friends" },
+  { id: "squad", label: "Squad" },
+  { id: "snacks", label: "Snack run" },
   { id: "eat", label: "Eat & drink" },
   { id: "quests", label: "Quests" },
   { id: "arena", label: "The arena" },
@@ -69,8 +83,6 @@ export function ArenaMode({
     [view.people],
   );
   const me = people.get(view.me);
-  const myCheckIn = view.checkins.find((c) => c.user === view.me);
-  const myPlace = myCheckIn ? placeOf(myCheckIn.place, view.meetup) : undefined;
 
   const [level, setLevel] = useState<ArenaLevel>(
     () =>
@@ -81,9 +93,17 @@ export function ArenaMode({
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState<Point | null>(null);
-  const [picking, setPicking] = useState<{ status: string } | null>(null);
+  const [picking, setPicking] = useState<
+    | { kind: "checkin"; status: string }
+    | { kind: "summon"; note: string }
+    | null
+  >(null);
   const [checkInOpen, setCheckInOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("herd");
+  const [summonOpen, setSummonOpen] = useState(false);
+  const [personOpen, setPersonOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("crew");
+  const gps = useGpsHint(arena);
+  const { arrival, recent } = useArrivals(view);
 
   const places = { "100": usePlaces("100"), "300": usePlaces("300") };
   const state = windowState(arenaWindow(view.startsAt), now);
@@ -105,7 +125,16 @@ export function ArenaMode({
 
   const onSelect = (placeId: string) => {
     if (picking) {
-      void arena.checkIn(placeId, picking.status);
+      if (picking.kind === "summon") {
+        void arena.send(
+          { type: "summon", place: placeId, note: picking.note },
+          {
+            done: `Squad summoned to ${placeOf(placeId, view.meetup)?.label}.`,
+          },
+        );
+      } else {
+        void arena.checkIn(placeId, picking.status);
+      }
       setPicking(null);
       setSelected(null);
       return;
@@ -149,6 +178,7 @@ export function ArenaMode({
       const c = view.checkins.find((x) => x.user === p.id);
       const place = c ? placeOf(c.place, view.meetup) : undefined;
       const lvl = place ? levelOfPlace(place) : undefined;
+      if (!c) return null;
       if (lvl === level && !place?.offMap) return null;
       return { person: p, checkin: c, place, lvl };
     })
@@ -180,15 +210,23 @@ export function ArenaMode({
       </header>
 
       <div className="mx-auto max-w-2xl px-4">
-        <StatusStrip
-          state={state}
-          available={view.available}
-          opensAt={view.opensAt}
-          closesAt={view.closesAt}
-          myPlace={myPlace?.label}
-          myAt={myCheckIn ? agoWords(myCheckIn.at, now) : undefined}
-          onVanish={() => void arena.vanish()}
-        />
+        {live ? (
+          <SharingBar
+            arena={arena}
+            gpsOn={!!gps.mine}
+            closesAt={view.closesAt}
+          />
+        ) : (
+          <StatusStrip
+            state={state}
+            available={view.available}
+            opensAt={view.opensAt}
+          />
+        )}
+
+        {view.available && (
+          <CrewStrip arena={arena} recent={recent} onOpen={setPersonOpen} />
+        )}
 
         {live && (
           <IncomingPings
@@ -215,6 +253,8 @@ export function ArenaMode({
             }
           />
         )}
+
+        {live && <IncomingSummons arena={arena} onShow={showPlace} />}
 
         <div role="tablist" aria-label="Level" className="mt-4 flex gap-2">
           {LEVELS.map((l) => onLevel(countOn(l), l))}
@@ -254,7 +294,9 @@ export function ArenaMode({
                 exit={{ y: -30, opacity: 0 }}
                 className="absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2 rounded-2xl bg-[#ffd84d] px-4 py-2 text-[14px] font-bold text-[#1b1300]"
               >
-                Tap where you are — a section or a pin.
+                {picking.kind === "summon"
+                  ? "Tap where the squad should meet — a section or a pin."
+                  : "Tap where you are — a section or a pin."}
                 <button
                   type="button"
                   className="min-h-10 rounded-full bg-black/10 px-3 text-[13px]"
@@ -298,7 +340,7 @@ export function ArenaMode({
         <p className="mt-2 text-[12px] leading-snug text-white/60">
           Schematic drawn from the arena&apos;s directory map (read{" "}
           {CONCOURSE_CHECKED}). Not to scale; no indoor routes. Dots are
-          check-ins people made, not GPS.
+          check-ins people made. GPS never draws a dot.
         </p>
         <SourceLink
           href={CONCOURSE_SOURCE.url}
@@ -337,7 +379,9 @@ export function ArenaMode({
         )}
 
         {live && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div
+            className={`mt-4 grid gap-2 ${view.crew.available ? "grid-cols-2" : "grid-cols-1"}`}
+          >
             <button
               type="button"
               onClick={() => setCheckInOpen(true)}
@@ -345,28 +389,15 @@ export function ArenaMode({
             >
               📍 I&apos;m here
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const target = view.meetup
-                  ? "meetup"
-                  : (myCheckIn?.place ?? null);
-                if (!target) {
-                  setCheckInOpen(true);
-                  return;
-                }
-                void arena.send(
-                  { type: "ping", kind: "herd", place: target, note: "" },
-                  {
-                    done: `Herd summoned to ${placeOf(target, view.meetup)?.label}.`,
-                  },
-                );
-                setFocus(null);
-              }}
-              className="min-h-13 rounded-2xl bg-white px-4 text-[16px] font-extrabold text-[#070b14]"
-            >
-              🐃 Find the herd
-            </button>
+            {view.crew.available && (
+              <button
+                type="button"
+                onClick={() => setSummonOpen(true)}
+                className="min-h-13 rounded-2xl bg-white px-4 text-[16px] font-extrabold text-[#070b14]"
+              >
+                📣 Summon the squad
+              </button>
+            )}
           </div>
         )}
 
@@ -396,13 +427,25 @@ export function ArenaMode({
         </div>
 
         <div className="pt-4">
-          {tab === "herd" && (
-            <HerdPanel
+          {tab === "crew" && (
+            <CrewPanel
+              arena={arena}
+              live={live}
+              gps={gps}
+              onCheckIn={() => setCheckInOpen(true)}
+              onOpen={setPersonOpen}
+            />
+          )}
+          {tab === "squad" && (
+            <SquadPanel
               arena={arena}
               live={live}
               onShow={showPlace}
-              onCheckIn={() => setCheckInOpen(true)}
+              onSummon={() => setSummonOpen(true)}
             />
+          )}
+          {tab === "snacks" && (
+            <SnackPanel arena={arena} live={live} onShow={showPlace} />
           )}
           {tab === "eat" && (
             <EatPanel mySection={me?.section} onShow={showPlace} />
@@ -435,7 +478,7 @@ export function ArenaMode({
             onClose={() => setCheckInOpen(false)}
             onPick={(status) => {
               setCheckInOpen(false);
-              setPicking({ status });
+              setPicking({ kind: "checkin", status });
               setSelected(null);
               window.scrollTo({
                 top: 0,
@@ -445,6 +488,39 @@ export function ArenaMode({
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {personOpen && (
+          <PersonSheet
+            key={personOpen}
+            arena={arena}
+            userId={personOpen}
+            live={live}
+            onShow={showPlace}
+            onCheckIn={() => setCheckInOpen(true)}
+            onClose={() => setPersonOpen(null)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence mode="wait">
+        {summonOpen && (
+          <SummonSheet
+            key="summon"
+            arena={arena}
+            onClose={() => setSummonOpen(false)}
+            onPick={(note) => {
+              setSummonOpen(false);
+              setPicking({ kind: "summon", note });
+              setSelected(null);
+              window.scrollTo({
+                top: 0,
+                behavior: reduced ? "auto" : "smooth",
+              });
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <Celebration arrival={arrival} />
 
       <AnimatePresence>
         {(arena.error || arena.flash) && (
@@ -478,18 +554,10 @@ function StatusStrip({
   state,
   available,
   opensAt,
-  closesAt,
-  myPlace,
-  myAt,
-  onVanish,
 }: {
   state: "before" | "open" | "closed";
   available: boolean;
   opensAt: string;
-  closesAt: string;
-  myPlace?: string;
-  myAt?: string;
-  onVanish: () => void;
 }) {
   if (!available) {
     return (
@@ -515,37 +583,5 @@ function StatusStrip({
       </p>
     );
   }
-  return (
-    <div
-      className="mt-4 flex items-center gap-3 rounded-2xl bg-white/8 px-4 py-2.5"
-      data-testid="sharing"
-    >
-      <span
-        aria-hidden
-        className={`size-2.5 shrink-0 rounded-full ${myPlace ? "bg-[#7dffb0]" : "bg-white/35"}`}
-      />
-      <p className="min-w-0 flex-1 text-[14px] leading-snug">
-        {myPlace ? (
-          <>
-            Your group sees you at <strong>{myPlace}</strong>{" "}
-            <span className="text-white/60">({myAt})</span>
-          </>
-        ) : (
-          <>You&apos;re hidden. Nobody sees you until you check in.</>
-        )}
-        <span className="block text-[12px] text-white/55">
-          Only people on this night · gone at {clock(closesAt)}
-        </span>
-      </p>
-      {myPlace && (
-        <button
-          type="button"
-          onClick={onVanish}
-          className="min-h-10 shrink-0 rounded-full border border-white/30 px-3 text-[13px] font-bold"
-        >
-          👻 Vanish
-        </button>
-      )}
-    </div>
-  );
+  return null;
 }

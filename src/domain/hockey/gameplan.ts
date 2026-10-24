@@ -78,15 +78,20 @@ export const NOT_DECIDED = "Meeting point not decided.";
 
 export interface MeetingPoint {
   readonly value: string;
-  /** Why this is the answer, so nobody wonders who decided. */
-  readonly source: "host" | "vote" | "dinner" | "leading" | "tied" | "none";
   /**
-   * The group (or the host) settled it. False for a suggestion or a vote
-   * still going — those are never shown as the group's decision.
+   * Why this is the answer, so nobody wonders who decided:
+   * the host's call; the pregame restaurant (the default); an earlier
+   * "where are we meeting?" vote on a night that has one; or the arena.
+   */
+  readonly source: "host" | "pregame" | "vote" | "arena";
+  /**
+   * The group (or the host) settled it. False while the pregame vote is
+   * still moving, or nobody has chosen one: that is the current default, said
+   * as the default, never as the group's decision.
    */
   readonly decided: boolean;
-  /** For `leading` and `tied`: what the open vote says so far. */
-  readonly leading?: readonly string[];
+  /** The pregame vote is level: the labels it is level between. */
+  readonly tied?: readonly string[];
 }
 
 /**
@@ -103,57 +108,106 @@ export function voteSettled(
 }
 
 /**
- * **One answer to "where are we meeting?"** — asked in one place, and never
- * an assumption dressed as a decision (2026-10-23).
+ * **One answer to "where are we meeting?"** — and nobody is asked twice.
  *
- * In order: the host made it official (their spot or gate); the group
- * settled the meet-up vote; the group has chosen where to eat, so that is
- * *suggested* (we eat, then walk over together) — labelled a suggestion;
- * otherwise "Meeting point not decided.", saying where an open vote stands.
- * "The concourse" is never suggested: it is already inside the arena.
+ * The pregame restaurant *is* the meeting point (2026-10-24): the group
+ * already argued about where to start the night, so a second vote about where
+ * to find each other was the same question again. In order:
+ *
+ * 1. the host overrode it (their spot or gate, `PUT /meetup`);
+ * 2. the pregame vote has one leader — that restaurant, `decided` once the
+ *    vote is settled and "leading" until then;
+ * 3. an earlier "where are we meeting?" vote on a night that has one (the
+ *    question is no longer asked, but its answer is not thrown away);
+ * 4. the arena (`arena`), which is also where anyone skipping the pregame
+ *    goes.
+ *
+ * "The concourse" is never a meeting point: it is already inside the arena,
+ * so choosing it means the arena.
  */
 export function meetingPoint(input: {
   readonly official?: string;
-  readonly vote?: PlanItem;
   readonly dinner?: PlanItem;
   readonly concourseLabel?: string;
+  /** An earlier "where are we meeting?" vote, if the night has one. */
+  readonly vote?: PlanItem;
+  /** What the arena is called as a place to meet ("Outside Rogers Arena"). */
+  readonly arena: string;
   /** People on the night, to tell a settled vote from an early lead. */
   readonly members?: number;
 }): MeetingPoint {
   if (input.official)
     return { value: input.official, source: "host", decided: true };
-  const { vote, dinner, members } = input;
+  const { dinner, vote, members, concourseLabel } = input;
+  const leader = dinner?.leaders[0];
+  if (dinner && dinner.leaders.length === 1 && leader !== concourseLabel)
+    return {
+      value: leader as string,
+      source: "pregame",
+      decided: voteSettled(dinner, members),
+    };
   if (voteSettled(vote, members))
     return { value: vote!.leaders[0], source: "vote", decided: true };
-  if (vote && vote.leaders.length > 0)
+  if (dinner && dinner.leaders.length > 1)
     return {
-      value: NOT_DECIDED,
-      source: vote.leaders.length > 1 ? "tied" : "leading",
+      value: input.arena,
+      source: "arena",
       decided: false,
-      leading: vote.leaders,
+      tied: dinner.leaders,
     };
-  if (
-    voteSettled(dinner, members) &&
-    dinner!.leaders[0] !== input.concourseLabel
-  )
-    return { value: dinner!.leaders[0], source: "dinner", decided: false };
-  return { value: NOT_DECIDED, source: "none", decided: false };
+  // The group chose the concourse: that is the arena, and it is decided.
+  return {
+    value: input.arena,
+    source: "arena",
+    decided: voteSettled(dinner, members),
+  };
 }
 
 /** The line under the meeting point that says who decided it — or that nobody has. */
 export function meetingSourceLine(point: MeetingPoint): string {
   switch (point.source) {
     case "host":
-      return "Made official by the host";
+      return "The host's call, instead of the pregame plan";
+    case "pregame":
+      return point.decided
+        ? "Pregame winner: everyone joining the pregame meets here"
+        : "Leading the pregame vote: it's where we meet unless that changes";
     case "vote":
-      return "The group's vote";
-    case "dinner":
-      return "Suggested: it's where we eat. Not confirmed — the host can make it official";
-    case "leading":
-      return `Leading the vote: ${point.leading?.[0]} — not final`;
-    case "tied":
-      return `Tied: ${point.leading?.join(" / ")} — one more vote settles it`;
-    case "none":
-      return "Vote, or the host makes it official";
+      return "The group's earlier vote on where to meet";
+    case "arena":
+      return point.tied
+        ? `Pregame is tied (${point.tied.join(" / ")}): the arena until one wins`
+        : point.decided
+          ? "The pregame is at the arena, so that's where we meet"
+          : "Nobody has picked a pregame yet: the arena until they do";
   }
+}
+
+/**
+ * Where to meet at the arena, for anyone skipping the pregame: the nearest
+ * curated meeting place if one is right at the doors (a plaza, a station
+ * across the street), else the arena itself. Never a gate: Passport holds no
+ * verified point for one (`arena.ts`).
+ */
+export function arenaMeetingSpot(
+  venue: string,
+  meetingPlaces: readonly {
+    readonly name: string;
+    readonly walkMinutes: number;
+    readonly km: number;
+  }[] = [],
+): { readonly value: string; readonly detail: string } {
+  const near = [...meetingPlaces]
+    .filter((p) => p.km <= 0.35)
+    .sort((a, b) => a.km - b.km)[0];
+  return near
+    ? {
+        value: `Outside ${venue}`,
+        detail: `${near.name} is the closest landmark, about ${near.walkMinutes}+ min on foot (straight line).`,
+      }
+    : {
+        value: `Outside ${venue}`,
+        detail:
+          "Passport doesn't know which doors suit your seats, so ask the host if there's a gate.",
+      };
 }

@@ -1205,6 +1205,7 @@ async function placesNear(
       weekday,
     }),
     ...(arena ? { arena } : {}),
+    venue: { name: venueName, at: [venue[0], venue[1]] },
     outage,
   };
 }
@@ -1215,6 +1216,8 @@ export interface Nearby {
   readonly meeting?: NearbyPlace[];
   /** The arena as Atlas holds it, when it does: what a walk is routed to. */
   readonly arena?: { readonly atlasId: string; readonly at: [number, number] };
+  /** Where the night is, as Passport places it: what a walk to the arena ends at. */
+  readonly venue?: { readonly name: string; readonly at: [number, number] };
   readonly outage?: string;
 }
 
@@ -1241,7 +1244,9 @@ export async function nearbyFor(
   return placesNear(
     rows.occasion,
     rows.options
-      .filter((o) => o.prompt_id === "pregame-spot")
+      .filter(
+        (o) => o.prompt_id === "pregame-spot" || o.prompt_id === "postgame",
+      )
       .map((o) => o.label),
   );
 }

@@ -26,7 +26,8 @@ export async function openTab(
  *   Our seats        → Game time
  *   After the game   → After / What's next
  *
- * Opens the stop if it's closed (its first button with aria-expanded).
+ * Opens the stop if it's closed (the stop's own button, the one that
+ * controls its detail). Pregame has none: its venue cards are on the page.
  */
 export async function openDecision(
   page: Page,
@@ -53,7 +54,8 @@ export async function openDecision(
   if (stop === "After" && (await region.count()) === 0)
     region = page.getByRole("region", { name: "What's next", exact: true });
   await expect(region).toBeVisible();
-  const toggle = region.locator("button[aria-expanded]").first();
+  const toggle = region.locator("button[aria-controls]").first();
+  if ((await toggle.count()) === 0) return region;
   if ((await toggle.getAttribute("aria-expanded")) === "false")
     await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -61,13 +63,14 @@ export async function openDecision(
 }
 
 /**
- * Open Explore — Passport's venue cards for the places near the arena — from
- * the Pregame stop, and return the sheet. Every card is an `article`; the
- * places already on the vote are under "On the vote".
+ * Open the "Find one in Passport" browser — Passport's venue cards for every
+ * place near the arena — from the Pregame stop's "Think you know somewhere
+ * better?" box, and return the sheet. Every card is an `article`; the places
+ * already on the vote are under "On the vote".
  */
 export async function openExplore(page: Page) {
   const stop = await openDecision(page, "Pregame");
-  await stop.getByRole("button", { name: "Explore", exact: true }).click();
+  await stop.getByRole("button", { name: /^Find one in Passport/ }).click();
   const sheet = page.getByRole("dialog", { name: /^Near / });
   await expect(sheet).toBeVisible();
   return sheet;

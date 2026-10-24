@@ -16,6 +16,15 @@ import {
   type PingKind,
   type Quest,
 } from "@/domain/hockey/arena-mode";
+import {
+  NO_CREW,
+  hintFromReading,
+  type CrewView,
+  type GpsZone,
+  type SnackRunStatus,
+  type SummonResponse,
+} from "@/domain/hockey/crew";
+import { spotById } from "@/domain/hockey/concourse";
 import { NightError } from "./night";
 
 /**
@@ -169,6 +178,7 @@ async function viewOf(
   // looks first also deletes them for good.
   if (windowState(window, now) === "closed") {
     await db.rpc("passport_arena_purge");
+    await db.rpc("passport_crew_purge");
   }
 
   const [checkins, pings, quests, crew] = await Promise.all([
@@ -198,11 +208,19 @@ async function viewOf(
   const first = checkins.error ?? pings.error ?? quests.error ?? crew.error;
   if (first) {
     if (missingTable(first))
-      return { ...base, available: false, checkins: [], pings: [], quests: [] };
+      return {
+        ...base,
+        available: false,
+        checkins: [],
+        pings: [],
+        quests: [],
+        crew: NO_CREW,
+      };
     throw new NightError(first.message, 500);
   }
 
   const members = new Set(night.members.map((m) => m.user_id));
+  const crewView = await tonightsCrew(db, id, members);
   type CrewRow = {
     quest_id: string;
     user_id: string;
@@ -225,6 +243,7 @@ async function viewOf(
   return {
     ...base,
     available: true,
+    crew: crewView,
     checkins: (
       checkins.data as {
         user_id: string;
@@ -290,6 +309,127 @@ async function viewOf(
   };
 }
 
+/**
+ * The Crew tables are a separate migration: without them everything else in
+ * Arena Mode still works and `crew.available` is false.
+ */
+async function tonightsCrew(
+  db: Db,
+  id: string,
+  members: ReadonlySet<string>,
+): Promise<CrewView> {
+  const [gps, summons, replies, runs, items] = await Promise.all([
+    db
+      .from("passport_occasion_gps_hints")
+      .select("user_id, zone, distance_m, accuracy_m, updated_at")
+      .eq("occasion_id", id),
+    db
+      .from("passport_occasion_summons")
+      .select("id, from_user, place, note, created_at")
+      .eq("occasion_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    db
+      .from("passport_occasion_summon_replies")
+      .select("summon_id, user_id, response, updated_at")
+      .eq("occasion_id", id),
+    db
+      .from("passport_occasion_snack_runs")
+      .select("id, runner, stand, note, status, created_at")
+      .eq("occasion_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    db
+      .from("passport_occasion_snack_items")
+      .select("run_id, user_id, item, updated_at")
+      .eq("occasion_id", id),
+  ]);
+  const first =
+    gps.error ?? summons.error ?? replies.error ?? runs.error ?? items.error;
+  if (first) {
+    if (missingTable(first)) return NO_CREW;
+    throw new NightError(first.message, 500);
+  }
+  const replyRows = replies.data as {
+    summon_id: string;
+    user_id: string;
+    response: SummonResponse;
+    updated_at: string;
+  }[];
+  const itemRows = items.data as {
+    run_id: string;
+    user_id: string;
+    item: string;
+    updated_at: string;
+  }[];
+  return {
+    available: true,
+    gps: (
+      gps.data as {
+        user_id: string;
+        zone: GpsZone;
+        distance_m: number;
+        accuracy_m: number;
+        updated_at: string;
+      }[]
+    )
+      .filter((g) => members.has(g.user_id))
+      .map((g) => ({
+        user: g.user_id,
+        zone: g.zone,
+        distanceM: g.distance_m,
+        accuracyM: g.accuracy_m,
+        at: g.updated_at,
+      })),
+    summons: (
+      summons.data as {
+        id: string;
+        from_user: string;
+        place: string;
+        note: string;
+        created_at: string;
+      }[]
+    )
+      .filter((x) => members.has(x.from_user))
+      .map((x) => ({
+        id: x.id,
+        from: x.from_user,
+        place: x.place,
+        note: x.note,
+        at: x.created_at,
+        replies: replyRows
+          .filter((r) => r.summon_id === x.id && members.has(r.user_id))
+          .map((r) => ({
+            user: r.user_id,
+            response: r.response,
+            at: r.updated_at,
+          })),
+      })),
+    runs: (
+      runs.data as {
+        id: string;
+        runner: string;
+        stand: string | null;
+        note: string;
+        status: SnackRunStatus;
+        created_at: string;
+      }[]
+    )
+      .filter((r) => members.has(r.runner))
+      .map((r) => ({
+        id: r.id,
+        runner: r.runner,
+        stand: r.stand,
+        note: r.note,
+        status: r.status,
+        at: r.created_at,
+        items: itemRows
+          .filter((i) => i.run_id === r.id && members.has(i.user_id))
+          .map((i) => ({ user: i.user_id, item: i.item, at: i.updated_at })),
+      })),
+  };
+}
+
 /** Pings of one kind to one person (or everyone) this soon after the last are refused. */
 const PING_COOLDOWN_MS = 20_000;
 
@@ -301,7 +441,11 @@ export async function arenaAct(
   const db = await createSupabaseServerClient();
   const night = await nightFor(db, user, id);
   const state = windowState(arenaWindow(night.occasion.starts_at), new Date());
-  if (action.type !== "vanish" && state !== "open") {
+  if (
+    action.type !== "vanish" &&
+    action.type !== "stopSharing" &&
+    state !== "open"
+  ) {
     throw new NightError(
       state === "before"
         ? "Arena Mode opens three hours before puck drop."
@@ -347,6 +491,7 @@ export async function arenaAct(
         .eq("user_id", user.id);
       if (error && missingTable(error)) throw switchedOff();
       fail(error, "vanishing");
+      await dropHint(db, id, user.id);
       break;
     }
     case "ping": {
@@ -495,9 +640,210 @@ export async function arenaAct(
       }
       break;
     }
+    case "stopSharing": {
+      const { error } = await db
+        .from("passport_occasion_checkins")
+        .delete()
+        .eq("occasion_id", id)
+        .eq("user_id", user.id);
+      if (error && missingTable(error)) throw switchedOff();
+      fail(error, "stopping");
+      await dropHint(db, id, user.id);
+      break;
+    }
+    case "gpsShare": {
+      const hint = hintFromReading(action.reading);
+      if (!hint) {
+        throw new NightError(
+          "Your phone's GPS is too rough right now to say anything useful. Say where you are on the map instead.",
+          422,
+        );
+      }
+      const columns = {
+        zone: hint.zone,
+        distance_m: hint.distanceM,
+        accuracy_m: hint.accuracyM,
+      };
+      const { data, error } = await db
+        .from("passport_occasion_gps_hints")
+        .update(columns)
+        .eq("occasion_id", id)
+        .eq("user_id", user.id)
+        .select("user_id");
+      if (error && missingTable(error)) throw crewOff();
+      fail(error, "sharing a GPS hint");
+      if (!data?.length) {
+        const { error: insError } = await db
+          .from("passport_occasion_gps_hints")
+          .insert({ occasion_id: id, user_id: user.id, ...columns });
+        if (insError?.code !== "23505") fail(insError, "sharing a GPS hint");
+      }
+      break;
+    }
+    case "summon": {
+      knownPlace(action.place);
+      const since = new Date(Date.now() - PING_COOLDOWN_MS).toISOString();
+      const { data: again, error: againError } = await db
+        .from("passport_occasion_summons")
+        .select("id")
+        .eq("occasion_id", id)
+        .eq("from_user", user.id)
+        .gte("created_at", since);
+      if (againError && missingTable(againError)) throw crewOff();
+      if (again?.length) {
+        throw new NightError("Easy. Give the squad twenty seconds.", 429);
+      }
+      const { error } = await db.from("passport_occasion_summons").insert({
+        occasion_id: id,
+        from_user: user.id,
+        place: action.place,
+        note: action.note,
+      });
+      fail(error, "summoning the squad");
+      break;
+    }
+    case "summonReply": {
+      const { data: summon, error: readError } = await db
+        .from("passport_occasion_summons")
+        .select("id, from_user")
+        .eq("id", action.summon)
+        .eq("occasion_id", id)
+        .maybeSingle();
+      if (readError && missingTable(readError)) throw crewOff();
+      fail(readError, "reading that summons");
+      if (!summon) throw new NightError("That summons is gone.", 404);
+      if (summon.from_user === user.id) {
+        throw new NightError("You summoned them. You're already there.", 400);
+      }
+      const { data, error } = await db
+        .from("passport_occasion_summon_replies")
+        .update({ response: action.response })
+        .eq("summon_id", action.summon)
+        .eq("user_id", user.id)
+        .select("user_id");
+      fail(error, "answering");
+      if (!data?.length) {
+        const { error: insError } = await db
+          .from("passport_occasion_summon_replies")
+          .insert({
+            summon_id: action.summon,
+            occasion_id: id,
+            user_id: user.id,
+            response: action.response,
+          });
+        if (insError?.code !== "23505") fail(insError, "answering");
+      }
+      break;
+    }
+    case "runStart": {
+      if (action.stand) {
+        const spot = spotById(action.stand);
+        if (
+          !spot ||
+          !(
+            spot.kind === "food" ||
+            spot.kind === "drink" ||
+            spot.kind === "snackCart"
+          )
+        ) {
+          throw new NightError("That isn't a concession on the map.", 400);
+        }
+      }
+      const { data: mine, error: mineError } = await db
+        .from("passport_occasion_snack_runs")
+        .select("id")
+        .eq("occasion_id", id)
+        .eq("runner", user.id)
+        .eq("status", "open");
+      if (mineError && missingTable(mineError)) throw crewOff();
+      fail(mineError, "reading your runs");
+      if (mine?.length) {
+        throw new NightError(
+          "You already have a run on. Finish it or cancel it first.",
+          409,
+        );
+      }
+      const { error } = await db.from("passport_occasion_snack_runs").insert({
+        occasion_id: id,
+        runner: user.id,
+        stand: action.stand ?? null,
+        note: action.note,
+      });
+      fail(error, "announcing that run");
+      break;
+    }
+    case "runRequest": {
+      const columns = { item: action.item };
+      const { data, error } = await db
+        .from("passport_occasion_snack_items")
+        .update(columns)
+        .eq("run_id", action.run)
+        .eq("user_id", user.id)
+        .select("user_id");
+      if (error && missingTable(error)) throw crewOff();
+      fail(error, "changing your request");
+      if (!data?.length) {
+        const { error: insError } = await db
+          .from("passport_occasion_snack_items")
+          .insert({
+            run_id: action.run,
+            occasion_id: id,
+            user_id: user.id,
+            ...columns,
+          });
+        if (insError?.code === "23505") break;
+        if (insError) {
+          throw new NightError(
+            insError.code === "42501" ||
+              /row-level security/i.test(insError.message)
+              ? "That run has left. Ask for the next one."
+              : insError.message,
+            insError.code === "42501" ? 409 : 500,
+          );
+        }
+      }
+      break;
+    }
+    case "runUnrequest": {
+      const { error } = await db
+        .from("passport_occasion_snack_items")
+        .delete()
+        .eq("run_id", action.run)
+        .eq("user_id", user.id);
+      if (error && missingTable(error)) throw crewOff();
+      fail(error, "taking that back");
+      break;
+    }
+    case "runClose": {
+      const { data, error } = await db
+        .from("passport_occasion_snack_runs")
+        .update({ status: action.outcome })
+        .eq("id", action.run)
+        .eq("occasion_id", id)
+        .select("id");
+      if (error && missingTable(error)) throw crewOff();
+      fail(error, "closing that run");
+      if (!data?.length) {
+        throw new NightError("Only the person going can close their run.", 403);
+      }
+      break;
+    }
   }
   return viewOf(db, user, night);
 }
+
+/** Removing your GPS hint is part of vanishing; a night without the Crew has none. */
+async function dropHint(db: Db, id: string, userId: string) {
+  const { error } = await db
+    .from("passport_occasion_gps_hints")
+    .delete()
+    .eq("occasion_id", id)
+    .eq("user_id", userId);
+  if (error && !missingTable(error)) fail(error, "stopping your GPS hint");
+}
+
+const crewOff = () =>
+  new NightError("The Crew isn't switched on for this night yet.", 503);
 
 const switchedOff = () =>
   new NightError("Arena Mode isn't switched on for this night yet.", 503);

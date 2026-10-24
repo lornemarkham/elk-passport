@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openDecision } from "./night-tabs";
+import { openDecision, openExplore } from "./night-tabs";
 import { TEST_PASSWORD } from "./test-credentials";
 
 /**
@@ -38,11 +38,10 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   await page.getByRole("button", { name: /Skip/ }).click();
 
-  await openDecision(page, "Before the game");
-  // Nothing on the vote yet: three good bets, each one tap to add and vote.
-  const bets = page
-    .getByRole("list", { name: "Good bets nearby" })
-    .getByRole("listitem");
+  const pregame = await openDecision(page, "Pregame");
+  // Nothing on the vote yet: three good bets as cards, each one tap to add
+  // and vote, and no dropdown to open first.
+  const bets = pregame.getByRole("article");
   await expect(bets.first()).toBeVisible({ timeout: 30_000 });
   await expect(bets).toHaveCount(3);
 
@@ -53,11 +52,7 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
     concourse.getByRole("button", { name: /Vote for/ }),
   ).toBeEnabled();
   // Every place, as Passport's cards, for judging the pictures.
-  await page
-    .getByRole("region", { name: "Pregame", exact: true })
-    .getByRole("button", { name: "Explore", exact: true })
-    .click();
-  const near = page.getByRole("dialog", { name: "Near Rogers Arena" });
+  const near = await openExplore(page);
   await expect(near.getByRole("article").first()).toBeVisible();
 
   // Let the pictures settle, then judge every one that is still on a card.
@@ -103,9 +98,15 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   });
   const shark = dinner.locator('[data-option="Shark Club"]');
   await expect(shark).toBeVisible({ timeout: 15_000 });
+  // Everyone going (one person) has voted, so the place is the plan, and the
+  // easy way out is one tap away under "Still on the table".
+  await expect(dinner.getByText("We're meeting at Shark Club")).toBeVisible();
+  // (It opened by itself: the place was thrown in from here.)
+  const easy = dinner.locator('[data-option="Just eat in the concourse"]');
+  await expect(easy).toBeVisible();
   const [sharkBox, easyBox] = await Promise.all([
     shark.boundingBox(),
-    concourse.boundingBox(),
+    easy.boundingBox(),
   ]);
   expect(sharkBox!.y).toBeLessThan(easyBox!.y);
   await context.close();

@@ -342,11 +342,12 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     await expect(
       lorne.page.getByRole("region", { name: stop, exact: true }),
     ).toBeVisible();
-  // Compact: the whole plan on about two phone screens, not seven.
+  // The pregame is the main event (three venue cards on the page), so the
+  // plan is longer than the old accordion — but not a corridor of forms.
   const planHeight = await lorne.page.evaluate(
     () => document.documentElement.scrollHeight,
   );
-  expect(planHeight).toBeLessThan(2400);
+  expect(planHeight).toBeLessThan(6500);
   await noSidewaysScroll(lorne.page);
   await noTinyTargets(lorne.page);
   await shot(lorne.page, "10-game-plan-compact", true);
@@ -356,7 +357,7 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     name: "Pregame",
     exact: true,
   });
-  await pregame.getByRole("button", { name: "Explore" }).click();
+  await pregame.getByRole("button", { name: /^Find one in Passport/ }).click();
   const explore = lorne.page.getByRole("dialog", { name: /Near Rogers Arena/ });
   await expect(explore).toBeVisible();
   const addFirst = explore
@@ -386,19 +387,15 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     exact: true,
   });
   await openTab(alex.page, "Plan");
-  await alexPregame
-    .getByRole("button", { name: /^(Vote|Change vote)/ })
-    .click();
-  const ballot = alexPregame.getByRole("list", { name: "On the vote" });
+  const ballot = alexPregame;
   await expect(
     ballot.getByRole("button", { name: `Vote for ${lornePlace}` }),
   ).toBeVisible();
   await expect(
     ballot.getByRole("button", { name: /Vote for .*concourse/i }),
   ).toBeVisible();
-  // Alex adds a place of his own straight from the good bets.
+  // Alex adds a place of his own straight from the cards on the page.
   const bet = alexPregame
-    .getByRole("list", { name: "Good bets nearby" })
     .getByRole("button", { name: /^Add .+ and vote$/ })
     .first();
   const alexPlace = (await bet.getAttribute("aria-label"))!
@@ -417,9 +414,6 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
     name: "Pregame",
     exact: true,
   });
-  await dannyPregame
-    .getByRole("button", { name: /^(Vote|Change vote)/ })
-    .click();
   await dannyPregame
     .getByRole("button", { name: `Vote for ${lornePlace}` })
     .click();
@@ -449,16 +443,23 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
   await lorne.page.reload();
   await openTab(lorne.page, "Plan");
   const meet = lorne.page.getByRole("region", { name: "Meet up", exact: true });
-  // Nobody has voted on a meeting spot: we meet where we eat.
-  await expect(meet).toContainText(/Where we eat|Not decided|vote/i);
+  // Nobody is voting on a meeting spot: the pregame is where we meet.
+  await expect(meet).toContainText(/pregame/i);
   await meet
-    .getByRole("button", { name: /Choose where we meet|Change meeting point/ })
+    .getByRole("button", { name: /Directions & host controls/ })
     .click();
-  await meet.getByRole("button", { name: "Set a meeting point" }).click();
-  await meet.getByLabel("Where exactly").fill("Under the Bobby Lou statue");
-  await meet.getByLabel("Time").fill("18:30");
-  await meet.getByRole("button", { name: "Save" }).click();
-  await expect(meet).toContainText("Made official by the host");
+  await meet
+    .getByRole("button", { name: "Override the meeting point" })
+    .click();
+  const override = lorne.page.getByRole("form", {
+    name: "Override the meeting point",
+  });
+  await override
+    .getByLabel("Where exactly (optional)", { exact: true })
+    .fill("Under the Bobby Lou statue");
+  await override.getByLabel("Time", { exact: true }).fill("18:30");
+  await override.getByRole("button", { name: "Make it official" }).click();
+  await expect(meet).toContainText("The host's call");
   await expect(meet).toContainText("Under the Bobby Lou statue");
   await expect(meet).toContainText("6:30");
   await shot(lorne.page, "13-meet-up-official");

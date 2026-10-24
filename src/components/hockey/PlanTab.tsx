@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
-  Compass,
   MapPin,
   Moon,
-  Plus,
+  Search,
   Sofa,
   Ticket,
   Utensils,
@@ -15,18 +14,17 @@ import {
 import { FanAvatar as Avatar } from "./FanTag";
 import type { LiveExperience, LivePrompt } from "@/experience-lab/core/engine";
 import type { Block } from "@/experience-lab/core/types";
-import { sameName } from "@/domain/collections/places";
 import { clockAt } from "@/domain/hockey/countdown";
 import {
+  arenaMeetingSpot,
   currentStop,
   meetOffsetMinutes,
   meetingPoint,
   meetingSourceLine,
-  NOT_DECIDED,
-  type MeetingPoint,
   type StopId,
 } from "@/domain/hockey/gameplan";
 import type { NearbyPlace } from "@/domain/hockey/nearby";
+import { PLANS_PROMPT_ID } from "@/domain/hockey/night";
 import {
   decisionVote,
   needsMyVote,
@@ -35,19 +33,12 @@ import {
   type PlanItem,
 } from "@/domain/hockey/plan";
 import { gateById } from "@/domain/hockey/arena";
+import type { Moment } from "@/domain/hockey/reasons";
 import { nextGameAfter } from "@/domain/hockey/schedule";
-import {
-  Directions,
-  OfficialMeetup,
-  SeatsEditor,
-  seatsSummary,
-  useSeats,
-  type SeatsState,
-} from "./OurSeats";
+import { Directions, SeatsEditor, seatsSummary, useSeats } from "./OurSeats";
 import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { RunItBack } from "./RunItBack";
 import {
-  BallotRow,
   BallotVenueCard,
   NearbyVenueCard,
   PlanPhoto,
@@ -55,19 +46,21 @@ import {
   VoteButton,
   VoteCount,
 } from "./VenueCard";
+import {
+  AddYourOwn,
+  placeFor,
+  useBallot,
+  useNearby,
+  type Ballot,
+  type NearbyState,
+} from "./PlanShared";
+import { Attendance, MeetPlan, VenueBoard } from "./PlanBoards";
 import type { SharedNight } from "./useSharedNight";
 import styles from "./hockey.module.css";
 
-type Nearby = {
-  places: NearbyPlace[];
-  meeting?: NearbyPlace[];
-  arena?: { atlasId: string; at: [number, number] };
-  outage?: string;
-};
-type NearbyState = ReturnType<typeof useNearby>;
-
 const DINNER = "pregame-spot";
 const MEET = "meet-spot";
+const POSTGAME = "postgame";
 const CONCOURSE = "concourse";
 
 /** Phases after the night is over, when Run it back leads Plan. */
@@ -174,7 +167,11 @@ interface Stop {
   readonly action?: { label: string; open?: boolean; onClick?: () => void };
   /** A second, quieter button. */
   readonly extra?: { label: string; onClick: () => void; icon?: ReactNode };
+  /** A second line under `sub`, for the other crew. */
+  readonly sub2?: string;
   readonly body?: ReactNode;
+  /** The body is the point of this stop: on the page, not behind a button. */
+  readonly featured?: boolean;
 }
 
 function GamePlan({
@@ -195,15 +192,24 @@ function GamePlan({
   const over = gameIsOver(live);
   const morning = AFTER_THE_NIGHT.has(live.phase.id);
   const ahead = me && !morning;
-  // Photographs and walks for the vote come from these places.
+  // Photographs and walks for the votes come from these places.
   const nearby = useNearby(night.state.slug, me && !readOnly);
   const seats = useSeats(night.state.slug, ahead && !couch);
   const items = planItems(live.prompts);
   const dinner = items.find((i) => i.id === DINNER);
   const meetItem = items.find((i) => i.id === MEET);
+  const postItem = items.find((i) => i.id === POSTGAME);
   const afterItem = decisionVote("after", items, over);
+  const dinnerBallot = useBallot(
+    night,
+    live.prompts.find((p) => p.prompt.id === DINNER),
+  );
+  const postBallot = useBallot(
+    night,
+    live.prompts.find((p) => p.prompt.id === POSTGAME),
+  );
   const [open, setOpen] = useState<StopId | null>(null);
-  const [exploring, setExploring] = useState(false);
+  const [exploring, setExploring] = useState<Moment | null>(null);
   const toggle = (id: StopId) => setOpen((now) => (now === id ? null : id));
 
   // Only the questions this phase puts on the page take votes.
@@ -217,12 +223,9 @@ function GamePlan({
       ? live.prompts.find((p) => p.prompt.id === id)
       : undefined;
   const dinnerPrompt = votable(DINNER);
-  const meetPrompt = votable(MEET);
-  const afterPrompts = (
-    over ? ["postgame", "hard-out"] : ["hard-out", "postgame"]
-  )
-    .map(votable)
-    .filter((p): p is LivePrompt => Boolean(p));
+  const plansPrompt = votable(PLANS_PROMPT_ID);
+  const postPrompt = votable(POSTGAME);
+  const leavingPrompt = votable("hard-out");
 
   const anchorAt = live.definition.anchorAt;
   const anchor = new Date(anchorAt);
@@ -237,23 +240,34 @@ function GamePlan({
       .filter(([, where]) => where === "couch")
       .map(([id]) => id),
   );
+  const members = live.participants.filter((p) => !couchIds.has(p.id)).length;
+  const arena = arenaMeetingSpot(venue, nearby.data?.meeting);
   const point = meetingPoint({
     official: meetup
       ? ((meetup.spot || gateById(meetup.gate)?.name) ?? undefined)
       : undefined,
-    vote: meetItem,
     dinner,
     concourseLabel,
+    vote: meetItem,
+    arena: arena.value,
     // Everybody going settles it; the couch isn't meeting anyone.
-    members: live.participants.filter((p) => !couchIds.has(p.id)).length,
+    members,
   });
   const dinnerLeader =
     dinner?.leaders.length === 1 ? dinner.leaders[0] : undefined;
   const dinnerPlace = dinnerLeader
     ? placeFor(dinnerLeader, nearby.data?.places)
     : undefined;
+  const postLeader =
+    postItem?.leaders.length === 1 ? postItem.leaders[0] : undefined;
+  const postPlace = postLeader
+    ? placeFor(postLeader, nearby.data?.places)
+    : undefined;
   const seat = seatsSummary(seats.view);
   const door = ahead && !couch && isRogersArena(live.definition.kicker);
+  // Where the arena is: from the seats read or the places read, whichever has
+  // answered. Neither yet means no map link, never a link to nowhere.
+  const venuePoint = seats.view?.venue ?? nearby.data?.venue;
 
   const stops: Stop[] = [];
 
@@ -266,9 +280,7 @@ function GamePlan({
       muted: dinner.leaders.length === 0,
       sub:
         dinner.voters === 0
-          ? dinnerPrompt
-            ? "Real places a short walk from the arena. Explore, add one, vote."
-            : undefined
+          ? undefined
           : [
               votesLine(dinner),
               dinnerPlace && `${dinnerPlace.walkMinutes}+ min walk`,
@@ -277,28 +289,23 @@ function GamePlan({
               .join(" · "),
       photo: dinnerPlace?.image?.url,
       needs: Boolean(dinnerPrompt && needsMyVote(dinner)),
-      action: dinnerPrompt
-        ? {
-            label: dinner.mine ? "Change vote" : "Vote",
-            open: open === "pregame",
-            onClick: () => toggle("pregame"),
-          }
-        : undefined,
-      extra:
-        dinnerPrompt && live.me
-          ? {
-              label: "Explore",
-              icon: <Compass className="h-4 w-4" aria-hidden />,
-              onClick: () => setExploring(true),
-            }
-          : undefined,
+      featured: Boolean(dinnerPrompt),
       body: dinnerPrompt ? (
-        <DinnerVote
+        <VenueBoard
           night={night}
           prompt={dinnerPrompt}
+          item={dinner}
           nearby={nearby}
-          onExplore={() => setExploring(true)}
-        />
+          ballot={dinnerBallot}
+          moment="pregame"
+          venue={venue}
+          away={couchIds}
+          onExplore={() => setExploring("pregame")}
+        >
+          {plansPrompt && !couch && (
+            <Attendance night={night} prompt={plansPrompt} away={couchIds} />
+          )}
+        </VenueBoard>
       ) : undefined,
     });
   }
@@ -308,28 +315,42 @@ function GamePlan({
     stops.push({
       id: "meet",
       label: "Meet up",
-      time: clockAt(anchor, offset),
+      // The pregame crew meets at the pregame; the default time is theirs.
+      time:
+        point.source === "pregame" && !meetup?.time
+          ? clockAt(anchor, warmup?.offsetMinutes ?? -90)
+          : clockAt(anchor, offset),
       value: point.value,
-      muted: !point.decided && point.source !== "dinner",
+      muted: !point.decided && point.source === "arena",
       sub: meetingSourceLine(point),
-      needs: Boolean(
-        meetPrompt &&
-        meetItem &&
-        needsMyVote(meetItem) &&
-        point.source !== "host",
-      ),
+      sub2:
+        point.source === "arena" || point.source === "host"
+          ? undefined
+          : `Skipping the pregame? ${arena.value}.`,
       action:
-        !readOnly && ahead && (meetPrompt || seats.view?.available)
+        ahead && !readOnly
           ? {
-              label: !point.decided
-                ? "Choose where we meet"
-                : "Change meeting point",
+              label:
+                seats.view?.role === "host"
+                  ? "Directions & host controls"
+                  : "Who goes where & directions",
               open: open === "meet",
               onClick: () => toggle("meet"),
             }
           : undefined,
       body: (
-        <MeetUp night={night} prompt={meetPrompt} seats={seats} point={point} />
+        <MeetPlan
+          night={night}
+          plans={live.prompts.find((p) => p.prompt.id === PLANS_PROMPT_ID)}
+          point={point}
+          winner={dinnerPlace}
+          arena={arena}
+          venue={venue}
+          venueAt={venuePoint?.at}
+          seats={seats}
+          nearby={nearby}
+          away={couchIds}
+        />
       ),
     });
   }
@@ -393,35 +414,61 @@ function GamePlan({
   );
 
   if (afterItem) {
+    const afterBody =
+      postPrompt || leavingPrompt ? (
+        <div className="flex flex-col gap-8">
+          {postPrompt && (
+            <VenueBoard
+              night={night}
+              prompt={postPrompt}
+              item={postItem}
+              nearby={nearby}
+              ballot={postBallot}
+              moment="postgame"
+              venue={venue}
+              away={couchIds}
+              onExplore={() => setExploring("postgame")}
+            />
+          )}
+          {leavingPrompt && <ChoiceVote night={night} prompt={leavingPrompt} />}
+        </div>
+      ) : undefined;
     stops.push({
       id: "after",
       label: over ? "What's next" : "After",
       time: "After the horn",
-      value: voteValue(afterItem),
-      muted: afterItem.leaders.length === 0,
-      sub: afterItem.voters > 0 ? votesLine(afterItem) : undefined,
-      needs: afterPrompts.length > 0 && needsMyVote(afterItem),
-      action:
-        afterPrompts.length > 0
-          ? {
-              label: over ? "Vote on the next stop" : "Vote",
-              open: open === "after",
-              onClick: () => toggle("after"),
-            }
-          : undefined,
-      body:
-        afterPrompts.length > 0 ? (
-          <div className="flex flex-col gap-8">
-            {afterPrompts.map((p) => (
-              <ChoiceVote key={p.prompt.id} night={night} prompt={p} />
-            ))}
-          </div>
-        ) : undefined,
+      value: voteValue(postItem?.leaders.length ? postItem : afterItem),
+      muted:
+        (postItem?.leaders.length ? postItem : afterItem).leaders.length === 0,
+      sub:
+        (postItem?.voters ? postItem : afterItem).voters > 0
+          ? votesLine(postItem?.voters ? postItem : afterItem)
+          : "Where do we go after? Real places, hours from Atlas.",
+      photo: postPlace?.image?.url,
+      needs: Boolean(
+        (postPrompt && postItem && needsMyVote(postItem)) ||
+        (leavingPrompt && needsMyVote(afterItem)),
+      ),
+      featured: Boolean(afterBody) && over,
+      action: afterBody
+        ? {
+            label: over ? "Vote on the next stop" : "Plan the after",
+            open: open === "after",
+            onClick: () => toggle("after"),
+          }
+        : undefined,
+      body: afterBody,
     });
   }
 
   const now = currentStop(live.phase.id);
   const next = whatsNext(live, anchor);
+  const exploringPrompt =
+    exploring === "pregame"
+      ? dinnerPrompt
+      : exploring === "postgame"
+        ? postPrompt
+        : undefined;
 
   return (
     <>
@@ -463,13 +510,15 @@ function GamePlan({
         )}
       </section>
 
-      {exploring && dinnerPrompt && (
+      {exploring && exploringPrompt && (
         <ExploreSheet
           night={night}
-          prompt={dinnerPrompt}
+          prompt={exploringPrompt}
           nearby={nearby}
+          ballot={exploring === "pregame" ? dinnerBallot : postBallot}
           venue={venue}
-          onClose={() => setExploring(false)}
+          moment={exploring}
+          onClose={() => setExploring(null)}
         />
       )}
     </>
@@ -497,7 +546,7 @@ function StopRow({
   last: boolean;
 }) {
   const Icon = stop.value === "From the couch" ? Sofa : ICON[stop.id];
-  const open = stop.action?.open ?? false;
+  const open = stop.featured ? true : (stop.action?.open ?? false);
   const bodyId = `stop-${stop.id}-detail`;
   return (
     <li className="relative">
@@ -552,6 +601,11 @@ function StopRow({
                 {stop.sub && (
                   <p className="mt-0.5 text-[13.5px] leading-snug text-white/60">
                     {stop.sub}
+                  </p>
+                )}
+                {stop.sub2 && (
+                  <p className="mt-0.5 text-[13.5px] leading-snug text-white/60">
+                    {stop.sub2}
                   </p>
                 )}
               </div>
@@ -660,254 +714,7 @@ function whatsNext(live: LiveExperience, anchor: Date): string | null {
   }
 }
 
-// ------------------------------------------------------------ meet up
-
-/**
- * Where we meet, asked once: the group's vote among real meeting spots (and
- * "where we eat" is the default nobody has to vote for), and the host's
- * official time and gate at the arena when they set one.
- */
-function MeetUp({
-  night,
-  prompt,
-  seats,
-  point,
-}: {
-  night: SharedNight;
-  prompt?: LivePrompt;
-  seats: SeatsState;
-  point: MeetingPoint;
-}) {
-  const official = seats.view?.available && seats.view.meetup;
-  const host = seats.view?.role === "host";
-  return (
-    <div className="flex flex-col gap-4">
-      {prompt && (
-        <div>
-          <p className="mb-2.5 text-[14px] leading-snug text-white/70">
-            {prompt.locked
-              ? "Voting's closed. This is what the group decided."
-              : "Pick somewhere everyone can find. Once dinner's decided, we'll suggest meeting there."}
-          </p>
-          <ChoiceVote night={night} prompt={prompt} bare />
-        </div>
-      )}
-      {seats.view?.available && (official || host) && (
-        <LightPanel>
-          <OfficialMeetup seats={seats} />
-          {host && !official && (
-            <p className="px-5 pb-3 text-[13px] leading-snug text-[#0b1220]/60">
-              Make it official and everyone sees one time and one place
-              {point.source !== "none" && point.value !== NOT_DECIDED
-                ? ` (suggested: ${point.value})`
-                : ""}
-              .
-            </p>
-          )}
-        </LightPanel>
-      )}
-    </div>
-  );
-}
-
 // ------------------------------------------------------------ the votes
-
-function placeFor(
-  label: string,
-  places: readonly NearbyPlace[] | undefined,
-): NearbyPlace | undefined {
-  return (
-    places?.find((p) => p.name === label) ??
-    places?.find((p) => sameName(p.name, label))
-  );
-}
-
-/**
- * The ballot as this person sees it, and how to put a place on it. A card's
- * "Add & vote" is two writes: nominate (the same as ever), then — once the
- * ballot has it — vote for it. The second waits for the first to show up in
- * the tally; a nomination that is refused never shows up, and is forgotten.
- */
-function useBallot(night: SharedNight, prompt: LivePrompt) {
-  const mine = prompt.myResponse?.value;
-  const top = Math.max(0, ...prompt.tally.map((o) => o.voters.length));
-  const tied = prompt.tally.filter((o) => o.voters.length === top).length > 1;
-  const onBallot = useMemo(
-    () => new Map(prompt.tally.map((o) => [o.label, o])),
-    [prompt.tally],
-  );
-  const toVote = useRef(new Set<string>());
-  const [adding, setAdding] = useState<readonly string[]>([]);
-  useEffect(() => {
-    for (const name of toVote.current) {
-      const option = onBallot.get(name);
-      if (!option) continue;
-      toVote.current.delete(name);
-      if (mine !== option.optionId)
-        night.respond(prompt.prompt.id, option.optionId);
-    }
-    // `night` is new every render; the ballot is what this waits on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onBallot, mine, prompt.prompt.id]);
-  const vote = (place: NearbyPlace) => {
-    const existing = onBallot.get(place.name);
-    if (existing) {
-      night.respond(prompt.prompt.id, existing.optionId);
-      return;
-    }
-    toVote.current.add(place.name);
-    setAdding((now) => [...now, place.name]);
-    void night
-      .send({ type: "nominate", promptId: DINNER, atlasId: place.atlasId })
-      .finally(() =>
-        setTimeout(() => {
-          toVote.current.delete(place.name);
-          setAdding((now) => now.filter((n) => n !== place.name));
-        }, 3000),
-      );
-  };
-  const standing = (option: (typeof prompt.tally)[number]) =>
-    top > 0 && option.voters.length === top
-      ? tied
-        ? ("tied" as const)
-        : ("leading" as const)
-      : undefined;
-  const statusOf = (place: NearbyPlace) => {
-    const option = onBallot.get(place.name);
-    if (option) return mine === option.optionId ? "mine" : "on-ballot";
-    return adding.includes(place.name) ? "pending" : "new";
-  };
-  return { mine, onBallot, adding, vote, standing, statusOf };
-}
-
-/** How many good bets sit under a short ballot. */
-const FIRST_LOOK = 3;
-
-/**
- * **Where we eat: one vote.** Every option the same compact row — places
- * people added (their own photograph, the walk), names somebody typed, and
- * the concourse — each one tap to vote. Under a short ballot, the best places
- * nobody has added yet, one tap to add and vote. Explore has the rest, as
- * Passport's full cards.
- */
-function DinnerVote({
-  night,
-  prompt,
-  nearby,
-  onExplore,
-}: {
-  night: SharedNight;
-  prompt: LivePrompt;
-  nearby: NearbyState;
-  onExplore: () => void;
-}) {
-  const { live } = night;
-  const canVote = Boolean(live.me) && prompt.open;
-  const ballot = useBallot(night, prompt);
-  const person = (id?: string) =>
-    live.participants.find((p) => p.id === id)?.name;
-  // Real places first; the concourse, the zero-effort answer, last.
-  const options = [
-    ...prompt.tally.filter((o) => o.optionId !== CONCOURSE),
-    ...prompt.tally.filter((o) => o.optionId === CONCOURSE),
-  ];
-  const real = options.filter((o) => o.optionId !== CONCOURSE).length;
-  const everything = nearby.data?.places ?? [];
-  const bets = canVote
-    ? everything
-        .filter(
-          (p) =>
-            !ballot.onBallot.has(p.name) && p.gameDay?.reading !== "not-on",
-        )
-        .slice(0, Math.max(0, FIRST_LOOK - real))
-    : [];
-  const lock = live.definition.phases.find(
-    (p) => p.id === prompt.prompt.locksAtPhaseId,
-  );
-
-  return (
-    <section
-      id={`vote-${DINNER}`}
-      aria-label={prompt.prompt.question}
-      className="scroll-mt-20"
-    >
-      <p className="mb-2.5 text-[14px] leading-snug text-white/70">
-        {prompt.locked
-          ? "Voting's closed. This is what the group decided."
-          : `One tap to vote.${lock ? ` Closes ${clockAt(new Date(live.definition.anchorAt), lock.offsetMinutes)}` : ""}`}
-      </p>
-      <ul className="flex flex-col gap-2" aria-label="On the vote">
-        {options.map((option) => (
-          <li key={option.optionId}>
-            <BallotRow
-              label={option.label}
-              detail={option.detail}
-              emoji={option.emoji}
-              place={placeFor(option.label, nearby.data?.places)}
-              voters={option.voters}
-              share={option.share}
-              standing={ballot.standing(option)}
-              chosen={ballot.mine === option.optionId}
-              canVote={canVote}
-              onVote={() => night.respond(prompt.prompt.id, option.optionId)}
-              addedBy={option.addedBy ? person(option.addedBy) : undefined}
-            />
-          </li>
-        ))}
-      </ul>
-
-      {nearby.state === "loading" && canVote && (
-        <p className="mt-3 text-[13.5px] text-white/60" role="status">
-          Asking Atlas what&apos;s near the arena…
-        </p>
-      )}
-      {bets.length > 0 && (
-        <>
-          <p className="mt-4 mb-2 text-[12px] font-bold tracking-[0.12em] text-white/55 uppercase">
-            Good bets nearby · tap to add &amp; vote
-          </p>
-          <ul className="flex flex-col gap-2" aria-label="Good bets nearby">
-            {bets.map((place) => (
-              <li key={place.atlasId}>
-                <BallotRow
-                  label={place.name}
-                  place={place}
-                  voters={[]}
-                  share={0}
-                  chosen={false}
-                  canVote={canVote && ballot.statusOf(place) !== "pending"}
-                  onVote={() => ballot.vote(place)}
-                  voteLabel={`Add ${place.name} and vote`}
-                />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {canVote && (
-        <button
-          type="button"
-          onClick={onExplore}
-          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white/[0.07] px-4 text-[15px] font-bold text-white ring-1 ring-white/15 transition hover:bg-white/[0.12]"
-        >
-          <Compass className="h-4 w-4" aria-hidden />
-          {everything.length > 0
-            ? `Explore ${everything.length} places near the arena`
-            : "Explore places near the arena"}
-        </button>
-      )}
-
-      {canVote && prompt.prompt.openToSuggestions && (
-        <AddYourOwn
-          label="Somewhere else? Type a name"
-          placeholder="Somewhere else?"
-          onAdd={(label) => night.addOption(prompt.prompt.id, label)}
-        />
-      )}
-    </section>
-  );
-}
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -928,43 +735,67 @@ function ExploreSheet({
   night,
   prompt,
   nearby,
+  ballot,
   venue,
+  moment,
   onClose,
 }: {
   night: SharedNight;
   prompt: LivePrompt;
   nearby: NearbyState;
+  ballot: Ballot;
   venue: string;
+  moment: Moment;
   onClose: () => void;
 }) {
   const { live } = night;
   const canVote = Boolean(live.me) && prompt.open;
-  const ballot = useBallot(night, prompt);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
+  const [query, setQuery] = useState("");
   const close = useRef<HTMLButtonElement>(null);
   const everything = nearby.data?.places ?? [];
-  const real = prompt.tally.filter((o) => o.optionId !== CONCOURSE);
+  // After the game the ballot also holds ideas that are not places ("Keep
+  // going", "We're cooked"): they live on the plan, not in a place browser.
+  const real = prompt.tally.filter(
+    (o) =>
+      o.optionId !== CONCOURSE &&
+      (moment === "pregame" || placeFor(o.label, everything)),
+  );
+  const needle = query.trim().toLowerCase();
   const rest = everything
     .filter((p) => !ballot.onBallot.has(p.name))
     .filter((p) =>
       filter === "all" ? true : filter === "drink" ? drinks(p) : !drinks(p),
+    )
+    .filter(
+      (p) =>
+        !needle ||
+        `${p.name} ${p.subtype ?? ""} ${p.blurb ?? ""}`
+          .toLowerCase()
+          .includes(needle),
     );
   const person = (id?: string) =>
     live.participants.find((p) => p.id === id)?.name;
 
+  // The page re-renders every few seconds; the sheet must not take focus
+  // back each time, so the effect runs once and reads the latest `onClose`.
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
   useEffect(() => {
     close.current?.focus();
     const was = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = was;
       window.removeEventListener("keydown", onKey);
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div
@@ -981,10 +812,11 @@ function ExploreSheet({
               className={`${styles.wide} text-[22px] leading-tight`}
             >
               Near {venue}
+              {moment === "postgame" ? " · after the game" : ""}
             </h2>
             <p className="text-[13px] text-white/60">
               {everything.length > 0
-                ? `${everything.length} places a short walk away · via Passport & Atlas`
+                ? `${everything.length} places a short walk away · via Passport Discovery & Atlas`
                 : "What Passport knows a short walk away"}
             </p>
           </div>
@@ -1019,6 +851,19 @@ function ExploreSheet({
               {f.label}
             </button>
           ))}
+        </div>
+        <div className="mx-auto max-w-2xl px-4 pb-3">
+          <label className="flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-4 ring-1 ring-white/15 focus-within:ring-white/40">
+            <Search className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search places near the arena"
+              placeholder="Search by name or kind of place"
+              className="min-w-0 flex-1 bg-transparent text-[16px] text-white outline-none placeholder:text-white/45"
+            />
+          </label>
         </div>
       </div>
 
@@ -1096,7 +941,9 @@ function ExploreSheet({
           )}
           {nearby.data && everything.length > 0 && rest.length === 0 && (
             <p className="text-[14.5px] text-white/70">
-              Everything here is already on the vote.
+              {needle || filter !== "all"
+                ? "Nothing near the arena matches that. Try another word, or type the place on the plan."
+                : "Everything here is already on the vote."}
             </p>
           )}
           <ul className="flex flex-col gap-4">
@@ -1283,92 +1130,4 @@ function ChoiceVote({
       )}
     </section>
   );
-}
-
-function AddYourOwn({
-  placeholder,
-  label = placeholder,
-  onAdd,
-}: {
-  placeholder: string;
-  /** The accessible name, when the placeholder is shortened to fit. */
-  label?: string;
-  onAdd: (label: string) => void;
-}) {
-  const [draft, setDraft] = useState("");
-  return (
-    <form
-      className="mt-3 flex gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!draft.trim()) return;
-        onAdd(draft.trim());
-        setDraft("");
-      }}
-    >
-      <input
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        maxLength={80}
-        placeholder={placeholder}
-        aria-label={label}
-        className="min-h-12 min-w-0 flex-1 rounded-2xl bg-white/[0.07] px-4 text-[16px] text-white ring-1 ring-white/15 outline-none placeholder:text-white/45 focus:ring-white/40"
-      />
-      <button
-        type="submit"
-        disabled={!draft.trim()}
-        className="inline-flex min-h-12 items-center gap-1.5 rounded-2xl bg-white px-4 text-[15px] font-bold text-[#0b1220] disabled:opacity-40"
-      >
-        <Plus className="h-4 w-4" />
-        Add
-      </button>
-    </form>
-  );
-}
-
-// ------------------------------------------------------------ the places
-
-/**
- * Food and drink near the arena, asked for once per page and kept: the list
- * does not change while somebody is looking at it, and the vote's photographs
- * come from it.
- */
-function useNearby(slug: string, enabled: boolean) {
-  const [data, setData] = useState<Nearby | null>(null);
-  const [failed, setFailed] = useState(false);
-  // Atlas's first corpus read after a cold start can take 8-19 s and can fail;
-  // ask again once on our own, then leave "Try again" to the person.
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    if (!enabled || data) return;
-    let current = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    fetch(`/hockey/api/occasions/${slug}/nearby`, { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then((body: Nearby) => current && setData(body))
-      .catch(() => {
-        if (!current) return;
-        setFailed(true);
-        if (attempt === 0) timer = setTimeout(() => setAttempt(1), 4000);
-      });
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [enabled, data, slug, attempt]);
-
-  const state: "idle" | "loading" | "failed" | "ready" = !enabled
-    ? "idle"
-    : data
-      ? "ready"
-      : failed
-        ? "failed"
-        : "loading";
-  const retry = () => {
-    setData(null);
-    setFailed(false);
-    setAttempt((n) => n + 1);
-  };
-  return { data, state, retry };
 }

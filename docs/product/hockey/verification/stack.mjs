@@ -303,6 +303,14 @@ async function start() {
     );
   }
 
+  // The Crew: GPS hints, squad summons, snack runs. HOCKEY_CREW=0 starts
+  // without it (Arena Mode as it was before this migration).
+  if (process.env.HOCKEY_ARENA !== "0" && process.env.HOCKEY_CREW !== "0") {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "crew-migration.sql"), "utf8"),
+    );
+  }
+
   // Declare your team + the Chirp Room (2026-10-23). HOCKEY_CHIRP=0 starts
   // without it, to see the night as production has it before it is applied.
   if (process.env.HOCKEY_CHIRP !== "0") {

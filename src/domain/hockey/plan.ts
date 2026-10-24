@@ -15,7 +15,6 @@ import type { NightRows } from "./night";
  */
 const PLAN_PROMPTS = [
   { id: "pregame-spot", label: "Eating" },
-  { id: "meet-spot", label: "Meeting" },
   { id: "hard-out", label: "Leaving" },
 ] as const;
 

@@ -180,17 +180,22 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   ).toBeVisible();
 
   // The meeting point, under "Meet up".
+  // (Since 2026-10-24 the host's meeting point overrides the pregame winner.)
   await openDecision(host.page, "Meeting point");
   await meetUp(host.page)
-    .getByRole("button", { name: "Set a meeting point" })
+    .getByRole("button", { name: "Override the meeting point" })
     .click();
-  const meet = host.page.getByRole("form", { name: "Meeting point" });
-  await meet.getByLabel("Gate").selectOption("10");
-  await meet.getByLabel("Where exactly").fill("Outside, by the doors");
-  await meet.getByLabel("Time").fill("18:15");
-  await meet.getByRole("button", { name: "Save" }).click();
+  const meet = host.page.getByRole("form", {
+    name: "Override the meeting point",
+  });
+  await meet.getByLabel("Gate", { exact: true }).selectOption("10");
+  await meet
+    .getByLabel("Where exactly (optional)", { exact: true })
+    .fill("Outside, by the doors");
+  await meet.getByLabel("Time", { exact: true }).fill("18:15");
+  await meet.getByRole("button", { name: "Make it official" }).click();
   await expect(
-    meetUp(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    meetUp(host.page).getByText("Gate 10 · Outside, by the doors · 6:15 p.m."),
   ).toBeVisible();
 
   // It survives a reload.
@@ -204,7 +209,7 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   ).toBeVisible();
   await openDecision(host.page, "Meeting point");
   await expect(
-    meetUp(host.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    meetUp(host.page).getByText("Gate 10 · Outside, by the doors · 6:15 p.m."),
   ).toBeVisible();
 
   // -------------------------------------------------- invite the guest
@@ -240,10 +245,10 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   ).toHaveCount(0);
   await openDecision(guest.page, "Meeting point");
   await expect(
-    meetUp(guest.page).getByText("Gate 10 · Outside, by the doors · 6:15pm"),
+    meetUp(guest.page).getByText("Gate 10 · Outside, by the doors · 6:15 p.m."),
   ).toBeVisible();
   await expect(
-    meetUp(guest.page).getByRole("button", { name: "Change it" }),
+    meetUp(guest.page).getByRole("button", { name: /meeting point/i }),
   ).toHaveCount(0);
   await openDecision(guest.page, "Our seats");
 
