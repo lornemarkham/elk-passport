@@ -220,7 +220,8 @@ export function driveHoursIn(matched: string): number | undefined {
 
 const KID =
   /\b(kids?|child|children|toddlers?|son|daughter|niece|nephew|grandkids?|grandchild(?:ren)?|little ones?)\b/;
-const GROUP = /\b(friends|group|crew|mates|the gang|buddies|colleagues)\b/;
+const GROUP =
+  /\b(friends|group|crew|mates|the gang|buddies|colleagues|co-?workers|workmates|teammates|our team|the team|the office|(?:two|three|four|five|six|seven|eight|nine|ten|\d+) of us|(?:group|party|table) (?:of|for) (?:three|four|five|six|seven|eight|nine|ten|\d+)|(?:three|four|five|six|seven|eight|nine|ten|[3-9]|\d\d) (?:people|coworkers|co-workers|colleagues|friends|adults))\b/;
 const ALONE = /\b(alone|by myself|on my own|solo|just me)\b/;
 
 /** A partner or a date. "Couple" alone, as in "a couple of hours", is not. */
@@ -263,9 +264,59 @@ export const WALKING_KM = 2;
 const TOLERANCE =
   /\b(?:within|under|up to|less than|no more than|at most|max(?:imum)?|happy to|willing to|don'?t mind|(?:is |it'?s )?ok(?:ay)? to|fine to|can|could|maybe|about|around)\b/;
 
-/** Somewhere close, said any way. */
+/** Somewhere close, said any way — including from where they are staying. */
 const NEAR =
-  /\b(nearby|near me|near here|close by|close to (?:here|home)|around here|not far|not too far|local|don'?t want to (?:drive|go|travel) (?:far|too far|much)|no (?:long )?drive|not much driving|less driving|walking distance)\b/;
+  /\b(nearby|near me|near here|close by|close to (?:here|home)|around here|not far|not too far|local|don'?t want to (?:drive|go|travel) (?:far|too far|much)|no (?:long )?drive|not much driving|less driving|walking distance|(?:near|around|close to|by|next to|from) (?:my|our|the) (?:hotel|venue|conference|office|airbnb|place))\b/;
+
+/** Minutes on foot, said the ways people say it. */
+const WALK_MINUTES: Readonly<Record<string, number>> = {
+  five: 5,
+  ten: 10,
+  fifteen: 15,
+  twenty: 20,
+  "twenty-five": 25,
+  thirty: 30,
+  "half an hour": 30,
+  "an hour": 60,
+};
+
+/**
+ * **A walk somebody will make, as a limit** — "within a 20-minute walk",
+ * "ten minutes' walk", "walking distance", "a short walk". Read before
+ * anything else so the minutes are never taken for a drive or for how long
+ * the day is, and "walk" is never taken for a hike. Kilometres at 5 km/h, the
+ * usual walking pace — a product judgement, like `WALKING_KM`.
+ */
+const WALK_SPAN =
+  /\b(?:within\s+|under\s+|less than\s+|no more than\s+|up to\s+|about\s+)?(?:an?\s+)?(\d+|five|ten|fifteen|twenty|twenty-five|thirty|half an hour|an hour)[-\s]*(?:minutes?'?|mins?'?)?[-\s]*(?:of\s+)?walk(?:ing)?(?:\s+(?:away|distance))?\b/;
+const WALKING =
+  /\b(?:within\s+)?(?:walking distance|walkable|on foot|a short walk|a quick walk|a few minutes' walk|steps (?:from|away))\b/;
+
+export function walkIn(text: string): {
+  readonly km?: number;
+  readonly rest: string;
+} {
+  const span = WALK_SPAN.exec(text);
+  if (span) {
+    const said = span[1]!;
+    const minutes = /^\d/.test(said) ? Number(said) : WALK_MINUTES[said];
+    if (minutes !== undefined && minutes > 0 && minutes <= 90)
+      return {
+        km: Math.max(0.5, Math.round((minutes / 12) * 10) / 10),
+        rest: text.replace(span[0], " "),
+      };
+  }
+  const walking = WALKING.exec(text);
+  if (walking) return { km: WALKING_KM, rest: text.replace(walking[0], " ") };
+  return { rest: text };
+}
+
+/**
+ * Meals said as a time, not as a wish: "after dinner" is the evening and
+ * asks for no restaurant. Taken out before the activity is read.
+ */
+const MEAL_AS_TIME =
+  /\b(?:after|before|post)[-\s](?:dinner|supper|lunch|breakfast|brunch|the sessions?|sessions?|work|the conference)\b/g;
 
 /** "not hiking", "no museums", "anything but the beach". */
 const NEGATED =
@@ -377,8 +428,10 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   const lowered = (unknownPlace ? said.split(unknownPlace).join(" ") : said)
     .toLowerCase()
     .replace(/[’']/g, "'");
+  // **A walk first**: its minutes are a distance, not a drive or a day.
+  const walk = walkIn(lowered);
   // **Said no to first**, so "outside but not hiking" never chooses hiking.
-  const { avoid, rest: text } = negations(lowered);
+  const { avoid, rest: text } = negations(walk.rest);
 
   // **A drive they will make is a limit; "worth the drive" is a lens.**
   // "Happy to drive an hour", "within 20 minutes" and — in answer to *how
@@ -424,7 +477,7 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
     ? ("afternoon" as const)
     : /\bmorning\b/.test(text)
       ? ("morning" as const)
-      : /\b(evening|tonight|after dinner|after supper|after work|night out)\b/.test(
+      : /\b(evening|tonight|dinner|supper|after work|after the sessions?|night out|nightcap|cocktails)\b/.test(
             text,
           )
         ? ("evening" as const)
@@ -472,11 +525,7 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   // `readBrief` turns "nearby" into 15 km for a day plan. Discovery keeps the
   // wish and the number apart: a stated number is a radius, "nearby" is a
   // wish that needs somewhere to measure from before it can become one.
-  const statedKm = /\d+(?:\.\d+)?\s*km\b/.test(text)
-    ? brief.withinKm
-    : /\bwalking distance\b|\bwalkable\b|\bon foot\b/.test(text)
-      ? WALKING_KM
-      : undefined;
+  const statedKm = /\d+(?:\.\d+)?\s*km\b/.test(text) ? brief.withinKm : walk.km;
   const near = NEAR.test(lowered) || undefined;
 
   const different = DIFFERENT.test(text);
@@ -517,7 +566,10 @@ export function readAsk(said: string, context: ReadContext): DiscoveryAsk {
   // A town's name is a place, not a thing to do: "Salmon" Arm is not salmon.
   const townBare = brief.town?.name.replace(/,\s*BC$/i, "").toLowerCase();
   const doing = activityIn(
-    townBare ? text.split(townBare).join(" ") : text,
+    (townBare ? text.split(townBare).join(" ") : text).replace(
+      MEAL_AS_TIME,
+      " ",
+    ),
   )?.key;
   const gentle = GENTLE.test(text);
   const free = asksForFree(text);
@@ -575,7 +627,13 @@ export function readBack(
   if (ask.free) out.push("free");
   if (ask.gentle) out.push("easy going");
   if (ask.hours !== undefined)
-    out.push(ask.hours === 1 ? "an hour" : `${ask.hours} hours`);
+    out.push(
+      ask.hours === 1
+        ? "an hour"
+        : ask.hours < 1
+          ? `${Math.round(ask.hours * 60)} minutes`
+          : `${ask.hours} hours`,
+    );
   if (ask.company === "child")
     out.push(
       ask.childAge !== undefined

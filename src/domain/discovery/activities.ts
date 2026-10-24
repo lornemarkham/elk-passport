@@ -175,6 +175,9 @@ export type ActivityKey =
   | "wineries"
   | "breweries"
   | "eat"
+  | "coffee"
+  | "restaurants"
+  | "bars"
   | "markets"
   | "spa"
   | "picnics"
@@ -870,28 +873,92 @@ export const ACTIVITIES: readonly Activity[] = [
   {
     key: "eat",
     label: "Eat & drink",
-    words: [
-      "eat",
-      "food",
-      "for lunch",
-      "for dinner",
-      "dinner out",
-      "brunch",
-      "for breakfast",
-      "coffee",
-      "cafe",
-      "café",
-      "restaurant",
-      "restaurants",
-      "ice cream",
-      "bakery",
-      "a bite",
-    ],
+    words: ["eat", "food", "ice cream", "bakery", "a bite", "something to eat"],
     subtype:
-      /\b(restaurant|caf[eé]|coffee|bakery|bistro|food truck|pub|bar|ice cream|eatery|diner|pizzeria|dining event|food festival)\b/,
+      /\b(restaurant|caf[eé]s?|coffee|espresso|tea ?(room|house|shop)|bakery|bistro|food truck|pub|bar|lounge|tavern|taproom|brew ?pub|gastropub|nightclub|night club|speakeasy|ice cream|eatery|diner|pizzeria|steakhouse|brasserie|trattoria|izakaya|ramen|sushi|noodle|dim sum|grill|kitchen|food hall|dining event|food festival)\b/,
     not: /\b(crawl|wine bar)\b/,
     tags: ["everyday", "date"],
     groups: ["food"],
+  },
+  // **Coffee, a meal, a drink** — three different questions a visitor in a
+  // city asks, and one "Eat & drink" answered all three with whatever was
+  // nearest: a bar for "coffee", a café for "dinner" (Vancouver launch,
+  // 2026-10-24). Each is still evidenced only by Atlas's own subtype.
+  {
+    key: "coffee",
+    label: "Coffee & cafés",
+    words: [
+      "coffee",
+      "coffees",
+      "a coffee",
+      "cafe",
+      "cafes",
+      "café",
+      "cafés",
+      "coffee shop",
+      "coffee shops",
+      "espresso",
+      "latte",
+      "tea",
+    ],
+    subtype: /\b(caf[eé]s?|coffee|espresso|tea ?(room|house|shop)|bakery)\b/,
+    tags: ["everyday", "gentle", "indoor"],
+    groups: ["food"],
+    within: "eat",
+  },
+  {
+    key: "restaurants",
+    label: "Restaurants",
+    words: [
+      "dinner",
+      "for dinner",
+      "dinner out",
+      "grab dinner",
+      "lunch",
+      "for lunch",
+      "brunch",
+      "breakfast",
+      "for breakfast",
+      "a meal",
+      "restaurant",
+      "restaurants",
+      "somewhere to eat",
+      "place to eat",
+      "eat out",
+    ],
+    subtype:
+      /\b(restaurant|bistro|eatery|diner|pizzeria|steakhouse|brasserie|trattoria|izakaya|ramen|sushi|noodle|dim sum|grill|kitchen|food hall)\b/,
+    not: /\b(fast food|take ?out only)\b/,
+    tags: ["everyday", "date", "indoor"],
+    groups: ["food"],
+    within: "eat",
+  },
+  {
+    key: "bars",
+    label: "Bars & pubs",
+    words: [
+      "bar",
+      "bars",
+      "pub",
+      "pubs",
+      "a drink",
+      "drinks",
+      "cocktail",
+      "cocktails",
+      "a pint",
+      "pints",
+      "happy hour",
+      "nightcap",
+      "lounge",
+      "nightlife",
+    ],
+    subtype:
+      /\b(bar|pub|lounge|tavern|taproom|brew ?pub|gastropub|nightclub|night club|speakeasy)\b/,
+    not: /\b(coffee|espresso|juice|salad|snack|oyster|sushi|wine)\s+bar\b|\bcrawl\b/,
+    tags: ["evening", "adult", "indoor", "date"],
+    groups: ["food"],
+    within: "eat",
+    related: ["breweries"],
   },
   {
     key: "markets",

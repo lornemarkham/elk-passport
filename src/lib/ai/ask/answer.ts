@@ -31,7 +31,7 @@ import {
   type Activity,
   type ActivityTag,
 } from "@/domain/discovery/activities";
-import { driveSpan, type DiscoveryAsk } from "./read";
+import { driveSpan, WALKING_KM, type DiscoveryAsk } from "./read";
 import { memoizeByObject } from "@/lib/memoizeByObject";
 
 /**
@@ -175,6 +175,8 @@ const NUMBER_WORDS = [
 const hoursPhrase = (hours: number): string => {
   if (hours === 0.5) return "Half an hour";
   if (hours === 1) return "An hour";
+  // "45 minutes" is said in minutes, not as "0.75 hours".
+  if (hours < 1) return `${Math.round(hours * 60)} minutes`;
   const word = Number.isInteger(hours) ? NUMBER_WORDS[hours] : undefined;
   return `${word ?? hours} hours`;
 };
@@ -515,6 +517,8 @@ function rarity(reference: readonly Experience[]) {
 interface Scoring extends AnswerContext {
   /** Whether anything in the pool does the activity they named. */
   readonly doingHere?: boolean;
+  /** The origin is somewhere a person walks between things (`walkable`). */
+  readonly dense?: boolean;
   readonly shownKinds?: ReadonlySet<string>;
   readonly shownActivities?: ReadonlySet<string>;
 }
@@ -736,6 +740,21 @@ function score(
       // saying all ages or beginners is the evidence; the count of things
       // to do is Atlas's own list.
       if (verbs.length >= 3) value += 2;
+      // **Somewhere a table of coworkers goes** — a pub, a bowling alley,
+      // a show, a climbing gym — by Atlas's word for it, evenings first.
+      const together = GROUP_ACTIVITIES.find(
+        (key) => activityEvidence(experience, activityByKey(key)!).length > 0,
+      );
+      if (together) {
+        value += ask.partOfDay === "evening" ? 4 : 3;
+        if (reasons.length === 0)
+          reasons.push(
+            evidenceLine(
+              experience,
+              activityEvidence(experience, activityByKey(together)!),
+            ),
+          );
+      }
       const everyone =
         audience(experience, "all-ages") ?? audience(experience, "beginner");
       if (everyone) {
@@ -749,11 +768,21 @@ function score(
       fits =
         verbs.length >= 3 ||
         everyone !== undefined ||
+        together !== undefined ||
         experience.kind === "Event";
       break;
     }
     default:
       break;
+  }
+
+  // **The evening, said** — "tonight", "after dinner", "drinks". What
+  // Passport groups as an evening thing (a show, a bar, live music) comes up;
+  // a park or a trail goes down, not out. Ordering only: no card claims an
+  // hour Atlas did not publish.
+  if (ask.partOfDay === "evening" && ask.lens !== "drive") {
+    if (taggedEvidence(experience, "evening")) value += 3;
+    else if (taggedEvidence(experience, "outdoor")) value -= 2;
   }
 
   // **Easy going.** Gentle things up, thrills and long hikes down, and a
@@ -912,13 +941,19 @@ function score(
   // for a fact nobody knows.
   const km = distanceTo(experience, context.origin);
   if (km !== undefined && ask.lens !== "drive") {
+    // In a city centre "near" is a walk and everywhere else is a few km —
+    // the same words mean a different circle where things are close together.
     const reach =
       ask.withinKm ??
       (ask.driveMinutes !== undefined
         ? Math.max(5, ask.driveMinutes * 0.8)
         : ask.near
-          ? 15
-          : 30);
+          ? context.dense
+            ? WALKING_KM
+            : 15
+          : context.dense
+            ? 5
+            : 30);
     const pull = ask.lens === "on" ? 6 : 4;
     value += pull * (1 - Math.min(km / reach, 1));
     if (km > reach) value -= 3 * Math.min((km - reach) / reach, 1);
@@ -1103,12 +1138,57 @@ const dayWord = (day: string, today: string): string => {
 function circleFor(
   ask: DiscoveryAsk,
   context: AnswerContext,
+  dense = false,
 ): number | undefined {
   if (ask.hours === undefined || ask.lens === "drive") return undefined;
   if (!context.origin || ask.withinKm !== undefined) return undefined;
   if (ask.driveMinutes !== undefined) return undefined;
+  // **Forty-five minutes downtown is a walk.** Where there is plenty within
+  // walking distance, an hour or less stays inside it rather than inside the
+  // 15 km a day plan of that length would drive.
+  if (dense && ask.hours <= 1) return WALKING_KM;
+  if (dense && ask.hours <= 2) return 5;
   return defaultRadiusKm(ask.hours);
 }
+
+/** How many measured places inside `WALKING_KM` make an origin walkable. */
+const WALKABLE_COUNT = 25;
+
+/**
+ * **Somewhere a person walks between things** — a city centre rather than a
+ * valley town: at least `WALKABLE_COUNT` places Atlas measured within
+ * walking distance. Measured from the pool, never from a town's name, so a
+ * downtown Atlas knows little about is not treated as one.
+ */
+function walkable(
+  candidates: readonly Experience[],
+  origin: Point | undefined,
+): boolean {
+  if (!origin) return false;
+  let close = 0;
+  for (const e of candidates) {
+    const km = distanceTo(e, origin);
+    if (km !== undefined && km <= WALKING_KM && ++close >= WALKABLE_COUNT)
+      return true;
+  }
+  return false;
+}
+
+/** Where a group of grown-ups goes together, in Passport's activity keys. */
+const GROUP_ACTIVITIES = [
+  "bars",
+  "breweries",
+  "bowling",
+  "escape-rooms",
+  "games",
+  "comedy",
+  "live-music",
+  "theatre",
+  "climbing",
+  "sports",
+  "hockey",
+  "restaurants",
+] as const;
 
 /**
  * Atlas's routed driving minutes for a place; 0 where it has none, which never
@@ -1203,6 +1283,7 @@ function framing(
   ask: DiscoveryAsk,
   context: AnswerContext,
   overSpan = 0,
+  circle = circleFor(ask, context),
 ): { heading: string; note: string } {
   // "Vernon, BC" is a picker label; a heading says "Vernon".
   const from = context.originLabel?.replace(/,\s*BC$/, "");
@@ -1264,7 +1345,7 @@ function framing(
         heading: from
           ? `${hours}, close to ${from === "where you are" ? "you" : from}`
           : `${hours} — where I'd start`,
-        note: `Close by${circleFor(ask, context) !== undefined ? ` — inside ${circleFor(ask, context)} km in a straight line —` : ""} and different from each other. How long each usually takes is Atlas's reading where it has one, and anything it says runs longer than ${hours.toLowerCase()} is left out. Make a day of it for an order and a printable plan.`,
+        note: `Close by${circle !== undefined ? ` — inside ${circle} km in a straight line${circle <= WALKING_KM ? ", a walk" : ""} —` : ""} and different from each other. How long each usually takes is Atlas's reading where it has one, and anything it says runs longer than ${hours.toLowerCase()} is left out. Make a day of it for an order and a printable plan.`,
       };
     }
     case "on": {
@@ -1452,7 +1533,15 @@ export function answerAsk(
   // **A few hours should fit inside themselves** — the same stated circle
   // `/go` plans a day of that length inside, so the two pages agree. Only
   // what Atlas measured past it leaves; what it could not place stays.
-  const circle = circleFor(ask, context);
+  const dense = walkable(candidates, context.origin);
+  // **Downtown, somewhere Atlas cannot place is not offered.** Among
+  // hundreds of measured places a walk away, an unplaced bistro is far more
+  // likely to be in Kelowna than around the corner.
+  if (dense)
+    candidates = candidates.filter(
+      (e) => distanceTo(e, context.origin) !== undefined,
+    );
+  const circle = circleFor(ask, context, dense);
   if (circle !== undefined) {
     candidates = candidates.filter(
       (e) => (distanceTo(e, context.origin) ?? 0) <= circle,
@@ -1471,6 +1560,7 @@ export function answerAsk(
 
   const scoring: Scoring = {
     ...context,
+    dense,
     doingHere: candidates.some(doer),
     ...(shownBefore.length > 0
       ? {
@@ -1548,7 +1638,7 @@ export function answerAsk(
       text: `I don't know where ${ask.unknownPlace} is yet, so nothing is measured from there. Pick the nearest town and distances count.`,
     });
 
-  const framed = framing(ask, context, overSpan);
+  const framed = framing(ask, context, overSpan, circle);
   const activity = activityByKey(ask.doing);
   const doingFound =
     !activity ||

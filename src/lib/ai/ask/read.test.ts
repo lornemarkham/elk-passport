@@ -302,3 +302,68 @@ describe("a place named that Passport cannot locate", () => {
     });
   });
 });
+
+/**
+ * **A Vancouver visitor's questions** (Vancouver launch, 2026-10-24): a
+ * coffee, a meal and a drink are three questions, a walk is a distance, and
+ * the hotel is somewhere to be near.
+ */
+describe("a visitor downtown", () => {
+  it("'Where should we grab dinner?' is restaurants, in the evening", () => {
+    expect(read("Where should we grab dinner?")).toMatchObject({
+      doing: "restaurants",
+      partOfDay: "evening",
+    });
+  });
+
+  it("'Show me cool bars within walking distance' is bars, a walk away — not hiking", () => {
+    const ask = read("Show me cool bars within walking distance.");
+    expect(ask).toMatchObject({ doing: "bars", withinKm: 2 });
+  });
+
+  it("'Something fun within a 20-minute walk' is 1.7 km and no drive, no hike", () => {
+    const ask = read("Something fun within a 20-minute walk");
+    expect(ask.withinKm).toBe(1.7);
+    expect(ask.doing).toBeUndefined();
+    expect(ask.driveMinutes).toBeUndefined();
+    expect(ask.hours).toBeUndefined();
+  });
+
+  it("'Find somewhere for coffee and a walk' is coffee", () => {
+    expect(read("Find somewhere for coffee and a walk.").doing).toBe("coffee");
+  });
+
+  it("'Something fun after dinner' is the evening, and no restaurant", () => {
+    const ask = read("Something fun after dinner.");
+    expect(ask.partOfDay).toBe("evening");
+    expect(ask.doing).toBeUndefined();
+  });
+
+  it("'What can five coworkers do tonight?' is a group, tonight", () => {
+    expect(read("What can five coworkers do tonight?")).toMatchObject({
+      company: "group",
+      on: today,
+      partOfDay: "evening",
+    });
+  });
+
+  it("'What's good near my hotel?' is a wish to stay close", () => {
+    expect(read("What's good near my hotel?").near).toBe(true);
+  });
+
+  it("'Great coffee near JW Marriott Parq' measures from the Parq", () => {
+    const ask = read("Great coffee near JW Marriott Parq");
+    expect(ask).toMatchObject({ doing: "coffee", townId: "jw-marriott-parq" });
+    expect(ask.unknownPlace).toBeUndefined();
+  });
+
+  it("'We have 45 minutes before our next session' is said back in minutes", () => {
+    const ask = read("We have 45 minutes before our next session.");
+    expect(ask.hours).toBe(0.75);
+    expect(readBack(ask, { today })).toContain("45 minutes");
+  });
+
+  it("'downtown Kelowna' is still Kelowna", () => {
+    expect(read("Coffee in downtown Kelowna").townId).toBe("kelowna");
+  });
+});

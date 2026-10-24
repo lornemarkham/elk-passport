@@ -59,6 +59,19 @@ export const VANCOUVER_PLACES: readonly CuratedPlace[] = [
     source: { osm: osm("way/24705904"), checked: CHECKED },
   },
 
+  {
+    // Sycle Summit's venue (Oct 26–29, 2026). Checked against OpenStreetMap
+    // and Wikidata (Q111392022) on 2026-10-24.
+    id: "curated:vancouver:jw-marriott-parq",
+    name: "JW Marriott Parq Vancouver",
+    kind: "venue",
+    address: "39 Smithe Street",
+    neighbourhood: "Stadium District",
+    at: [49.27539, -123.11277],
+    blurb: "The hotel at Parq, between BC Place and the Cambie Bridge.",
+    source: { osm: osm("node/5304513656"), checked: "2026-10-24" },
+  },
+
   // ----------------------------------------------------------- restaurants
   {
     id: "curated:vancouver:chambar",

@@ -1039,3 +1039,43 @@ describe("the rest of the page listens to the conversation", () => {
     expect(fits(subject("Far", { km: 80 }))).toBe(true);
   });
 });
+
+/**
+ * **Downtown is a walk** (Vancouver launch, 2026-10-24). Where Atlas has
+ * placed plenty within walking distance, "near" and "an hour" mean the
+ * blocks around the origin, and somewhere Atlas cannot place is not offered.
+ */
+describe("a walkable origin", () => {
+  const downtown = () => [
+    ...Array.from({ length: 30 }, (_, i) =>
+      subject(`Café ${i}`, { subtype: "cafe", km: 0.2 + i * 0.05 }),
+    ),
+    subject("Far café", { subtype: "cafe", km: 9 }),
+    subject("Unplaced café", { subtype: "cafe", km: null }),
+  ];
+
+  it("keeps an hour inside a walk and leaves out what it cannot place", () => {
+    const answer = answerAsk(downtown(), ask("Coffee, we have 45 minutes"), {
+      ...context,
+    });
+    const titles = answer.picks.map((p) => p.experience.title);
+    expect(titles.length).toBeGreaterThan(0);
+    expect(titles).not.toContain("Far café");
+    expect(titles).not.toContain("Unplaced café");
+    expect(answer.heading).toMatch(/^45 minutes/);
+    expect(answer.note).toContain("inside 2 km");
+  });
+
+  it("does not shrink the circle where little is within walking distance", () => {
+    const sparse = [
+      subject("Café near", { subtype: "cafe", km: 1 }),
+      subject("Café out of town", { subtype: "cafe", km: 9 }),
+    ];
+    const answer = answerAsk(sparse, ask("Coffee, we have 45 minutes"), {
+      ...context,
+    });
+    expect(answer.picks.map((p) => p.experience.title)).toContain(
+      "Café out of town",
+    );
+  });
+});

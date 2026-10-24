@@ -64,13 +64,13 @@ const DAY3 = shift(DAY1, 2);
 const details = {
   name: "Sycle Vancouver 2026",
   kind: "conference",
-  tagline: "Three days on the waterfront: strategy, customers, and the team.",
+  tagline: "Three days downtown: strategy, customers, and the team.",
   welcome:
     "Welcome to Vancouver. Everything you need for the next three days is here — the agenda, who's arriving when, and the best of the city a short walk from the venue.",
   place: { label: "Vancouver", townId: "vancouver" },
   venue: {
-    name: "Vancouver Convention Centre West",
-    address: "1055 Canada Place, Vancouver",
+    name: "JW Marriott Parq Vancouver",
+    address: "39 Smithe Street, Vancouver",
   },
   timeZone: "America/Vancouver",
   startsOn: DAY1,

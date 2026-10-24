@@ -41,6 +41,11 @@ export interface DiscoveryTown extends OctoberPlace {
    * subject; this says only which area the **reader** is standing in.
    */
   readonly area: string;
+  /**
+   * Other names a person uses for it — "the Parq", "Gastown" — read the same
+   * way as the name. Lower case.
+   */
+  readonly aliases?: readonly string[];
 }
 
 const OKANAGAN: readonly DiscoveryTown[] = OCTOBER_PLACES.map((place) => ({
@@ -131,18 +136,135 @@ const METRO_VANCOUVER: readonly DiscoveryTown[] = [
   },
 ];
 
+/**
+ * **Vancouver's neighbourhoods, and the conference hotel** (Vancouver launch,
+ * 2026-10-24). A visitor downtown is not "in Vancouver" the way somebody in
+ * Lumby is in Lumby: the city centre holds 1,500 of Atlas's subjects inside
+ * 2 km, and "coffee near the hotel" means a few blocks, not a municipal
+ * centre. Each point is Wikidata's P625 for the item named beside it, checked
+ * 2026-10-24, not recalled.
+ */
+const VANCOUVER_NEIGHBOURHOODS: readonly DiscoveryTown[] = [
+  // Q111392022 — 39 Smithe St, beside BC Place; Sycle Summit's venue.
+  {
+    id: "jw-marriott-parq",
+    name: "JW Marriott Parq, Vancouver",
+    latitude: 49.2752,
+    longitude: -123.1134,
+    area: "Metro Vancouver",
+    aliases: [
+      "jw marriott parq",
+      "jw marriott",
+      "the parq",
+      "parq vancouver",
+      "parq",
+      "bc place",
+      "rogers arena",
+    ],
+  },
+  // Q1076204
+  {
+    id: "downtown-vancouver",
+    name: "Downtown Vancouver",
+    latitude: 49.2842,
+    longitude: -123.121,
+    area: "Metro Vancouver",
+    aliases: ["downtown vancouver"],
+  },
+  // Q1495636
+  {
+    id: "gastown",
+    name: "Gastown, Vancouver",
+    latitude: 49.2847,
+    longitude: -123.111,
+    area: "Metro Vancouver",
+    aliases: ["gastown"],
+  },
+  // Q8047455
+  {
+    id: "yaletown",
+    name: "Yaletown, Vancouver",
+    latitude: 49.2756,
+    longitude: -123.1208,
+    area: "Metro Vancouver",
+    aliases: ["yaletown"],
+  },
+  // Q866741
+  {
+    id: "chinatown-vancouver",
+    name: "Chinatown, Vancouver",
+    latitude: 49.28,
+    longitude: -123.0994,
+    area: "Metro Vancouver",
+    aliases: ["chinatown"],
+  },
+  // Q1076122
+  {
+    id: "west-end-vancouver",
+    name: "West End, Vancouver",
+    latitude: 49.285,
+    longitude: -123.134,
+    area: "Metro Vancouver",
+    aliases: ["english bay", "davie village"],
+  },
+  // Q4176992
+  {
+    id: "coal-harbour",
+    name: "Coal Harbour, Vancouver",
+    latitude: 49.2931,
+    longitude: -123.126,
+    area: "Metro Vancouver",
+    aliases: ["coal harbour", "coal harbor"],
+  },
+  // Q1231423
+  {
+    id: "granville-island",
+    name: "Granville Island, Vancouver",
+    latitude: 49.2714,
+    longitude: -123.135,
+    area: "Metro Vancouver",
+    aliases: ["granville island"],
+  },
+  // Q4179275
+  {
+    id: "kitsilano",
+    name: "Kitsilano, Vancouver",
+    latitude: 49.2667,
+    longitude: -123.1667,
+    area: "Metro Vancouver",
+    aliases: ["kitsilano"],
+  },
+  // Q6922863
+  {
+    id: "mount-pleasant-vancouver",
+    name: "Mount Pleasant, Vancouver",
+    latitude: 49.26,
+    longitude: -123.108,
+    area: "Metro Vancouver",
+    aliases: ["mount pleasant"],
+  },
+];
+
 /** Every town, grouped so a picker can show the two regions apart. */
 export const TOWN_GROUPS: readonly {
   readonly area: string;
   readonly towns: readonly DiscoveryTown[];
 }[] = [
   { area: "Okanagan", towns: OKANAGAN },
-  { area: "Metro Vancouver", towns: METRO_VANCOUVER },
+  {
+    area: "Metro Vancouver",
+    towns: [
+      METRO_VANCOUVER[0]!,
+      ...VANCOUVER_NEIGHBOURHOODS,
+      ...METRO_VANCOUVER.slice(1),
+    ],
+  },
 ];
 
 export const DISCOVERY_TOWNS: readonly DiscoveryTown[] = [
   ...OKANAGAN,
   ...METRO_VANCOUVER,
+  ...VANCOUVER_NEIGHBOURHOODS,
 ];
 
 const BY_ID = new Map(DISCOVERY_TOWNS.map((t) => [t.id, t] as const));

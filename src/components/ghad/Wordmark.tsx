@@ -44,7 +44,12 @@ export function Wordmark({
         className={`ghad-display block font-extrabold tracking-[-0.045em] text-[#111] uppercase ${type}`}
       >
         {lines === 1 ? (
-          "Go have a day"
+          // One line in a bar — except on the narrowest phones, where a
+          // folded mark is what lets Saved and Experiences fit beside it.
+          <>
+            Go have
+            <br className="min-[400px]:hidden" /> a day
+          </>
         ) : (
           <>
             Go have

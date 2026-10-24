@@ -303,10 +303,11 @@ const PLACE_CUE = String.raw`(?:in|near|from|around|at|to|out of|outside(?: of)?
 
 export function townIn(text: string): DiscoveryTown | undefined {
   const lower = text.toLowerCase();
-  const named = DISCOVERY_TOWNS.map((t) => ({
-    town: t,
-    bare: t.name.replace(/,\s*BC$/i, "").toLowerCase(),
-  }))
+  const named = DISCOVERY_TOWNS.flatMap((t) =>
+    [t.name.replace(/,\s*BC$/i, "").toLowerCase(), ...(t.aliases ?? [])].map(
+      (bare) => ({ town: t, bare }),
+    ),
+  )
     .filter(({ bare }) =>
       new RegExp(
         `${AMBIGUOUS_TOWNS.has(bare) ? `\\b${PLACE_CUE}` : ""}\\b${escape(bare)}\\b`,
