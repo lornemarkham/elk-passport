@@ -180,11 +180,17 @@ export function AdventurePeople({
           {confirmLeave ? (
             <span className="inline-flex items-center gap-2">
               Leave this one?
-              <Button size="lg" variant="destructive" onClick={leave}>
+              <Button
+                size="lg"
+                className="h-11 rounded-full px-4 text-sm"
+                variant="destructive"
+                onClick={leave}
+              >
                 Yes, leave
               </Button>
               <Button
                 size="lg"
+                className="h-11 rounded-full px-4 text-sm"
                 variant="ghost"
                 onClick={() => setConfirmLeave(false)}
               >
@@ -194,6 +200,7 @@ export function AdventurePeople({
           ) : (
             <Button
               size="lg"
+              className="h-11 rounded-full px-4 text-sm"
               variant="ghost"
               onClick={() => setConfirmLeave(true)}
             >
@@ -209,12 +216,18 @@ export function AdventurePeople({
             Invite people — send them a link
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button size="lg" onClick={() => makeLink(false)} disabled={busy}>
+            <Button
+              size="lg"
+              className="h-11 rounded-full px-4 text-sm"
+              onClick={() => makeLink(false)}
+              disabled={busy}
+            >
               <Link2 className="h-4 w-4" aria-hidden />
               Link for one person
             </Button>
             <Button
               size="lg"
+              className="h-11 rounded-full px-4 text-sm"
               variant="outline"
               onClick={() => makeLink(true)}
               disabled={busy}
@@ -231,7 +244,12 @@ export function AdventurePeople({
               >
                 {fresh.url}
               </code>
-              <Button size="lg" variant="ghost" onClick={() => copy(fresh.url)}>
+              <Button
+                size="lg"
+                className="h-11 rounded-full px-4 text-sm"
+                variant="ghost"
+                onClick={() => copy(fresh.url)}
+              >
                 <Copy className="h-4 w-4" aria-hidden />
                 Copy
               </Button>

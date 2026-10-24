@@ -135,7 +135,7 @@ export function AdventureCard({
           />
           <span className="text-xs font-semibold text-[var(--gh-ink-soft)]">
             {kindLabel(adventure.kind)}
-            {adventure.role === "participant" ? " · joined" : ""}
+            {adventure.role === "participant" ? " · Joined" : ""}
           </span>
         </div>
         <h3 className="ghad-display mt-2 text-2xl leading-tight font-extrabold tracking-[-0.02em] text-[var(--gh-ink)]">

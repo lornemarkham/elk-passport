@@ -54,8 +54,8 @@ export function TodayPanel({
   useEffect(() => {
     try {
       const stored = JSON.parse(window.localStorage.getItem(key) ?? "[]");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from this device
       if (Array.isArray(stored))
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from this device, after hydration
         setDone(stored.filter((s) => typeof s === "string"));
     } catch {
       // Nothing kept on this device; start from the first stop.

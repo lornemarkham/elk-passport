@@ -8,7 +8,11 @@
  * `/api/adventures`, and photographs each surface at phone and desktop widths.
  * Atlas is `atlas-standin.mjs` serving a saved production feed body.
  *
- *   node docs/product/adventures/verification/shoot.mjs <port> <out-dir> [label]
+ *   node docs/product/adventures/verification/shoot.mjs <port> <out-dir> [label] [--sketch]
+ *
+ * `--sketch` starts the adventures the way the guided start does (ADR 012):
+ * with a sentence, so the days arrive with Passport's suggestions on them.
+ * It also starts one dated today, for the day-of view, and shoots the guide.
  *
  * Nothing here talks to a real Supabase project or a real Atlas.
  */
@@ -16,8 +20,9 @@ import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
-const [port = "3126", out = "/tmp/adventure-shots", label = "shot"] =
-  process.argv.slice(2);
+const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const sketching = process.argv.includes("--sketch");
+const [port = "3126", out = "/tmp/adventure-shots", label = "shot"] = args;
 const base = `http://localhost:${port}`;
 fs.mkdirSync(out, { recursive: true });
 
@@ -44,7 +49,9 @@ function weekend() {
 }
 
 const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const context = await browser.newContext({
+  viewport: { width: 1280, height: 900 },
+});
 const page = await context.newPage();
 
 const email = `shots-${Date.now().toString(36)}@example.test`;
@@ -53,17 +60,25 @@ await page.getByRole("tab", { name: "Sign Up" }).click();
 await page.getByLabel("Email address").fill(email);
 await page.getByLabel("Password", { exact: true }).fill("a-whole-weekend-9");
 await page.getByRole("button", { name: "Create account" }).click();
-await page.waitForURL((u) => !u.pathname.startsWith("/auth"), { timeout: 30_000 });
+await page.waitForURL((u) => !u.pathname.startsWith("/auth"), {
+  timeout: 30_000,
+});
 
 const [sat, sun] = weekend();
+const today = new Date().toLocaleDateString("en-CA", {
+  timeZone: "America/Vancouver",
+});
 const seeded = await page.evaluate(
-  async ({ saved, sat, sun }) => {
+  async ({ saved, sat, sun, today, sketching }) => {
     const post = (url, body) =>
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+      }).then(async (r) => ({
+        status: r.status,
+        body: await r.json().catch(() => ({})),
+      }));
     const board = await post("/api/boards", { name: "Saved" });
     for (const experienceId of saved)
       await post(`/api/boards/${board.body.id}/items`, { experienceId });
@@ -75,10 +90,31 @@ const seeded = await page.evaluate(
       destinationTownId: "kelowna",
       destinationLabel: "Kelowna",
       atlasRefs: saved.slice(0, 3),
+      ...(sketching
+        ? {
+            sketch: {
+              say: "something adventurous, good food and drink, the two of us",
+            },
+          }
+        : {}),
     });
-    return { board: board.status, adventure };
+    const todays = sketching
+      ? await post("/api/adventures", {
+          kind: "day",
+          title: "Kelowna today",
+          startsOn: today,
+          endsOn: null,
+          destinationTownId: "kelowna",
+          destinationLabel: "Kelowna",
+          sketch: {
+            say: "get outside, with the kids, youngest is 6",
+            childAge: 6,
+          },
+        })
+      : null;
+    return { board: board.status, adventure, todays };
   },
-  { saved: SAVED, sat, sun },
+  { saved: SAVED, sat, sun, today, sketching },
 );
 console.log("seeded", JSON.stringify(seeded));
 const id = seeded.adventure.body.id;
@@ -88,8 +124,15 @@ const pages = [
   ["adventures", "/adventures"],
   ["adventure", `/adventures/${id}`],
   ["new", "/adventures/new"],
+  ...(sketching
+    ? [
+        ["today", `/adventures/${seeded.todays.body.id}`],
+        ["guide", `/adventures/${id}/guide`],
+      ]
+    : []),
 ];
 for (const [width, device] of [
+  [320, "phone320"],
   [390, "phone"],
   [1280, "desktop"],
 ]) {
@@ -102,5 +145,8 @@ for (const [width, device] of [
     console.log(file);
   }
 }
-fs.writeFileSync(path.join(out, `${label}-account.json`), JSON.stringify({ email, id, sat, sun }));
+fs.writeFileSync(
+  path.join(out, `${label}-account.json`),
+  JSON.stringify({ email, id, sat, sun }),
+);
 await browser.close();

@@ -159,7 +159,7 @@ export function readChange(
   const fewer = FEWER.test(rest.toLowerCase());
   for (const [pattern, words] of SYNONYMS) rest = rest.replace(pattern, words);
   // "make  more adventurous" once the day is lifted out → "make it more adventurous".
-  rest = rest.replace(/^make\s+(?=more|less|it\b)/i, "make it ").trim();
+  rest = rest.replace(/^make\s+(?=more\b|less\b)/i, "make it ").trim();
 
   return {
     kind: "revise",

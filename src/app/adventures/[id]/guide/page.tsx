@@ -173,9 +173,9 @@ export default async function GuidePage({
               </h2>
               <ul className="mt-3 space-y-2 text-base">
                 <li>
-                  <strong>Kept</strong> stops are decided.{" "}
-                  <strong>Suggested</strong> ones are Passport&apos;s idea until
-                  somebody keeps them.
+                  <strong>Kept</strong> stops are decided. Everything else is{" "}
+                  <strong>not decided yet</strong> — a saved place somebody
+                  brought, or Passport&apos;s suggestion.
                 </li>
                 <li>
                   Hours and prices are{" "}
@@ -257,7 +257,9 @@ export default async function GuidePage({
                                   : ""}
                                 {item.status === "confirmed"
                                   ? " · kept"
-                                  : " · suggested"}
+                                  : item.origin === "passport"
+                                    ? " · Passport's suggestion"
+                                    : " · not decided yet"}
                               </p>
                               <h3 className="ghad-display text-2xl font-extrabold">
                                 {nameOf(item.atlasRef, item.label)}

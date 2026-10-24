@@ -191,7 +191,9 @@ export function CreateAdventure({
         </span>
       </legend>
       {hint && (
-        <p className="mt-1 ml-8 text-base text-[var(--gh-ink-soft)]">{hint}</p>
+        <p className="mt-1 text-base text-[var(--gh-ink-soft)] sm:ml-8">
+          {hint}
+        </p>
       )}
       <div className="mt-4 sm:ml-8">{children}</div>
     </fieldset>

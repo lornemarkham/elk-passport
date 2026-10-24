@@ -423,6 +423,12 @@ node docs/product/group-adventures/verification/stack.mjs stop
 
 - `ATLAS_API_URL` must be set: its default, `localhost:3000`, is another service
   on Metatron.
+- **ADR 012 (2026-10-23)** adds `extraordinary.spec.ts` (the brief's scenarios
+  A–F, 320/375/390 px, touch targets, keyboard; `E2E_ATLAS_DOWN=1` against a
+  server with no Atlas for the last one) and `src/lib/adventures/origin.stack.test.ts`
+  (suggestions, Undo, swap, and the `origin` column's RLS). `stack.mjs` applies
+  the origin migration too; `ADVENTURES_WITHOUT_ORIGIN=1` leaves it out to prove
+  the fallback. See `docs/product/adventures/RELEASE.md`.
 - The boards-claim suite applies the fix to the stack, so its "hole" half runs
   only on a freshly started stack.
 

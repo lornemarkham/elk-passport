@@ -19,7 +19,7 @@ import { Picture } from "../Picture";
 import { pillClass, SectionHeading, toneFor } from "../kit";
 import { Between, DayTravel } from "./Legs";
 import { ChangeBox, type ChangeHandle } from "./ChangeBox";
-import { StopCard } from "./StopCard";
+import { Answers, StopCard } from "./StopCard";
 import { SavedSuggestions } from "./SavedSuggestions";
 import { TodayPanel } from "./TodayPanel";
 import { useAdventure } from "./useAdventure";
@@ -452,10 +452,32 @@ function IdeaCard({
         <p className="ghad-display text-lg leading-tight font-extrabold">
           {name}
         </p>
+        <p className="text-xs font-bold text-[var(--gh-ink-soft)]">
+          {item.status === "confirmed"
+            ? "Kept"
+            : item.mine
+              ? "Your idea"
+              : "From the group"}
+        </p>
         {item.note && (
           <p className="text-sm text-[var(--gh-ink-soft)]">{item.note}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
+          {isOwner && item.status === "proposed" && days.length === 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                act(
+                  () => call(path, "PATCH", { status: "confirmed" }),
+                  `Kept ${name}.`,
+                )
+              }
+              className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[var(--gh-forest)] px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Keep
+            </button>
+          )}
           {isOwner &&
             days.slice(0, 3).map((d) => (
               <button
@@ -494,6 +516,7 @@ function IdeaCard({
             </button>
           )}
         </div>
+        <Answers item={item} name={name} busy={busy} act={act} call={call} />
       </div>
     </article>
   );

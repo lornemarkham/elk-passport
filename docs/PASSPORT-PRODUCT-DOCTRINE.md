@@ -620,6 +620,28 @@ From the owner's _Complete Saved & Adventures_ brief, recorded in
 - Choosing something for an adventure does not change what it is on Saved;
   the Want / Plan / Lived vocabulary (§15.14) stays open.
 
+### Adventures start full, and are shaped where they live (decided 2026-10-23)
+
+From the owner's _Make Adventures Extraordinary_ brief, recorded in
+[ADR 012](architecture/decisions/012-adventures-start-full.md), with the
+agreed experience in
+[`product/adventures/EXPERIENCE.md`](product/adventures/EXPERIENCE.md):
+
+- **The journey is DISCOVER → SAVE → DREAM → BUILD → GO → REMEMBER → DO IT
+  AGAIN** — this doctrine's loop (§2), said the way a person would.
+- **Saved is the home of someone's possibilities**: their next adventure
+  first, then their adventures, then the places they saved. _Create an
+  adventure_ is the largest action on it.
+- **Never a blank adventure.** Creating one asks where, when, who, what kind
+  of day and anything important, and sketches every day from real Atlas
+  places with the Day Builder's own engine — still one planner. Manual stays
+  possible. What Passport sketched is a suggestion until someone keeps it.
+- **An adventure is changed in words where it lives** (_"make Saturday more
+  adventurous"_), with a preview before anything is written and an Undo
+  after. Kept stops never move. Not a chatbot (§3).
+- **On the day it leads with what's next**, quietly (§2.7, §6). **It has a
+  printable guide** on the Fishing With Emi skeleton, and **Do it again**.
+
 ---
 
 ## 10. Experiences — an explicit open architectural question
@@ -878,6 +900,10 @@ certainty. Do not invent an answer here to make the document feel finished.
    _Answered narrowly for adventures (ADR 010, 2026-10-21): a day of an
    adventure is shaped in Go Have a Day and saved back; a weekend is shaped
    a day at a time. What SHAPE looks like beyond that stays open._
+   _Amended for adventures (ADR 012, 2026-10-23): a day can also be shaped on
+   the adventure itself — in words, with a preview and an Undo, or by Keep ·
+   Replace · Move · Remove — using the same engine; Go Have a Day stays the
+   full workbench._
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
    _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
@@ -886,6 +912,10 @@ certainty. Do not invent an answer here to make the document feel finished.
    results first, then at most one question beneath them — how much time, how
    far, how old, in that order and only where unknown — and no more than two
    questions in a conversation. The helper beyond that box stays open._
+   _Answered narrowly for adventures (ADR 012, 2026-10-23): starting an
+   adventure is the ask — its days are sketched unless the person turns that
+   off — and inside an adventure they opened, Passport may offer places they
+   saved. Discovery and Saved still offer nothing unasked._
 6. **How the Passport helper manifests.** Inline? Ambient? Something else? Not
    assumed to be a chatbot. (§4) _Discovery's sentence box (ADR 005) is one
    inline answer to this — a remembered conversation with no persona — not the

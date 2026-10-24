@@ -116,3 +116,10 @@ describe("the guided start, as one sentence", () => {
     expect(brief.withinMinutes).toBe(30);
   });
 });
+
+describe("a sentence that already says it", () => {
+  it("is not given a second 'it'", () => {
+    const change = readChange("Make it cheaper", WEEKEND);
+    expect(change.kind === "revise" && change.said).toBe("Make it cheaper");
+  });
+});

@@ -385,7 +385,12 @@ async function reviseOneDay(
     brief = reviseBrief(before, said);
     heard = heardIn(before, brief);
     // An empty day asked to be filled needs no change to be heard.
-    if (n === 0 && heard.length === 0) heard = ["A first sketch of the day."];
+    if (
+      n === 0 &&
+      heard.length === 0 &&
+      /\b(sketch|fill|plan|build|suggest|surprise)\b/i.test(said)
+    )
+      heard = ["A first sketch of the day."];
     if (fewer && n > 1) {
       count = n - 1;
       heard = [...heard, "One stop fewer."];

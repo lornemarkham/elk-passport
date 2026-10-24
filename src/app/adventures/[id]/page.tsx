@@ -28,6 +28,7 @@ import { atlasStopsFor, type AtlasStops } from "@/lib/adventures/atlas-names";
 import { dayDetails, type DayDetail } from "@/lib/adventures/propose";
 import { todayIn } from "@/lib/adventures/overview";
 import { loadSaved } from "@/lib/data/loadSaved";
+import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { kindLabel } from "@/lib/adventures/kinds";
 import {
   adventureStatus,
@@ -112,21 +113,23 @@ export default async function AdventurePage({
         ...(view.hockey?.arenaAtlasRef ? [view.hockey.arenaAtlasRef] : []),
       ]
     : [];
-  const [stops, details] = await Promise.all([
+  const [stops, details, atlasUp] = await Promise.all([
     refs.length > 0
       ? atlasStopsFor(refs)
       : Promise.resolve<AtlasStops>({ names: {}, experiences: {} }),
     view
       ? dayDetails(view).catch(() => null)
       : Promise.resolve({} as Record<string, DayDetail>),
+    // The same cached read every Discovery surface makes: if it fails, Atlas
+    // is down, and the page says so instead of offering what it can't do.
+    view
+      ? listDiscoveryCandidates()
+          .then(() => true)
+          .catch(() => false)
+      : Promise.resolve(true),
   ]);
   const { names: atlasNames, experiences } = stops;
-  // Atlas answered for nothing the plan points at: say so, keep everything manual.
-  const atlasDown =
-    details === null ||
-    (refs.length > 0 &&
-      Object.keys(experiences).length === 0 &&
-      Object.keys(atlasNames).length === 0);
+  const atlasDown = !atlasUp || details === null;
   const today = todayIn(view?.timeZone ?? null);
 
   const ordered = view
