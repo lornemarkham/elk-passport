@@ -375,3 +375,48 @@ describe("a store that shows a member only some of the rows", () => {
     expect(home?.people.visible).toEqual([]);
   });
 });
+
+describe("the agenda", () => {
+  it("is published by organisers only, and survives a details edit that doesn't mention it", async () => {
+    const { deps } = world();
+    const id = await sycle(deps);
+    const agenda = [
+      {
+        day: "2026-10-24",
+        start: "09:00",
+        end: "10:00",
+        title: "Opening keynote",
+      },
+    ];
+    const published = await svc.updateConference(deps, ORG, id, {
+      ...SYCLE_VANCOUVER_2026,
+      agenda,
+    });
+    expect(published.ok && published.conference.agenda?.[0]?.title).toBe(
+      "Opening keynote",
+    );
+    // The details form sends no agenda: it stays.
+    const edited = await svc.updateConference(deps, ORG, id, {
+      ...SYCLE_VANCOUVER_2026,
+      tagline: "See you there",
+      venue: { name: "Vancouver Convention Centre West" },
+    });
+    expect(edited.ok && edited.conference.agenda?.length).toBe(1);
+    expect(edited.ok && edited.conference.venue?.name).toBe(
+      "Vancouver Convention Centre West",
+    );
+    // An empty list clears it.
+    const cleared = await svc.updateConference(deps, ORG, id, {
+      ...SYCLE_VANCOUVER_2026,
+      agenda: [],
+    });
+    expect(cleared.ok && cleared.conference.agenda).toBeUndefined();
+    // A stranger can't publish one.
+    expect(
+      await svc.updateConference(deps, STRANGER, id, {
+        ...SYCLE_VANCOUVER_2026,
+        agenda,
+      }),
+    ).toMatchObject({ ok: false });
+  });
+});

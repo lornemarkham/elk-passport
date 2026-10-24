@@ -29,10 +29,10 @@ export default async function InvitePage({
   if (!landing?.conference)
     return (
       <div className="mx-auto max-w-[560px] px-5 pt-16">
-        <h1 className="text-[32px] leading-none font-black">
+        <h1 className="text-[32px] leading-none font-semibold">
           This invitation has stopped working.
         </h1>
-        <p className="mt-3 text-black/60">
+        <p className="text-cf-slate mt-3">
           {landing?.state === "expired"
             ? "It ran out of time."
             : "Ask whoever sent it for a fresh one."}{" "}

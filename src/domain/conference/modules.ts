@@ -71,11 +71,10 @@ export const MODULES: readonly ConferenceModule[] = [
   },
   {
     id: "schedule",
-    label: "Schedule",
-    promise: "What's on, and the thing everyone's talking about.",
+    label: "Agenda",
+    promise: "What's on today, what's next, and where to be.",
     workstream: "passport-events",
-    status: "proposed",
-    prototype: "lane/boards gathering: the hockey game, awaiting confirmation",
+    status: "built",
   },
 ];
 

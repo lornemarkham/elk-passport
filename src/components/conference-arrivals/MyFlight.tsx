@@ -67,17 +67,17 @@ export function MyFlight({
 
   if (mine && !editing)
     return (
-      <div className="rounded-2xl bg-black/5 p-4">
+      <div className="bg-cf-sand rounded-2xl p-4">
         <p className="text-[17px] font-bold">
           {mine.flight}
           {mine.from ? ` from ${mine.from}` : ""} · {mine.date}
         </p>
-        <p className="text-[15px] text-black/60">
+        <p className="text-cf-slate text-[15px]">
           {mine.lands
             ? `Lands ${mine.lands.slice(0, 10)} at ${mine.lands.slice(11, 16)}, scheduled.`
             : `No landing time given.`}
         </p>
-        <p className="mt-1 text-[15px] text-black/60">
+        <p className="text-cf-slate mt-1 text-[15px]">
           {mine.shared
             ? `Shared with ${conferenceName} as ${you.displayName}.`
             : "Only you can see it."}
@@ -145,7 +145,7 @@ export function MyFlight({
           required
         />
       </label>
-      <p id="flight-hint" className="-mt-3 text-[13px] text-black/50">
+      <p id="flight-hint" className="text-cf-mist -mt-3 text-[13px]">
         The flight that lands in {place}. Ticket says &ldquo;operated by&rdquo;
         another airline? Use their number: it&apos;s what the aircraft calls
         itself.
@@ -166,7 +166,7 @@ export function MyFlight({
       <label className="block">
         <span className="text-[15px] font-semibold">
           Lands in {place}{" "}
-          <span className="font-normal text-black/50">(optional)</span>
+          <span className="text-cf-mist font-normal">(optional)</span>
         </span>
         <input
           className={`${field} mt-1`}
@@ -177,7 +177,7 @@ export function MyFlight({
           name="lands"
         />
       </label>
-      <p id="lands-hint" className="-mt-3 text-[13px] text-black/50">
+      <p id="lands-hint" className="text-cf-mist -mt-3 text-[13px]">
         From your booking, {airport} local time. Everyone sees it marked
         &ldquo;scheduled&rdquo;: it&apos;s your word, not the airline&apos;s.
       </p>
@@ -185,7 +185,7 @@ export function MyFlight({
       <label className="block">
         <span className="text-[15px] font-semibold">
           Flying from{" "}
-          <span className="font-normal text-black/50">
+          <span className="text-cf-mist font-normal">
             (airport code, optional)
           </span>
         </span>
@@ -201,12 +201,12 @@ export function MyFlight({
           name="from"
         />
       </label>
-      <p id="from-hint" className="-mt-3 text-[13px] text-black/50">
+      <p id="from-hint" className="text-cf-mist -mt-3 text-[13px]">
         Helps Passport be sure it&apos;s your plane.
       </p>
       <Problem>{issue("from")}</Problem>
 
-      <label className="flex items-start gap-3 rounded-2xl border border-black/10 p-4">
+      <label className="border-cf-line flex items-start gap-3 rounded-2xl border p-4">
         <input
           type="checkbox"
           className="mt-1 h-5 w-5"
@@ -218,7 +218,7 @@ export function MyFlight({
           <span className="block text-[16px] font-bold">
             Share my flight with {conferenceName}
           </span>
-          <span className="block text-[14px] text-black/60">
+          <span className="text-cf-slate block text-[14px]">
             Everyone in it will see your name, flight number, route and your
             aircraft&apos;s live position. It also shows your name on the{" "}
             {conferenceName} home page. Nobody outside it sees anything.

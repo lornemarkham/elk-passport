@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { conferenceSetup } from "@/lib/conference/config";
 import { deps, readIdentity } from "@/lib/conference/request";
@@ -8,13 +7,25 @@ import {
   DangerPanel,
   MembersPanel,
 } from "@/components/conference/AdminPanels";
+import { AgendaEditor } from "@/components/conference/AgendaEditor";
 import { Closed } from "@/components/conference/Closed";
 import { DetailsForm } from "@/components/conference/DetailsForm";
-import { Section } from "@/components/conference/ui";
+import { PageHead, Panel, PanelHead, wrap } from "@/components/conference/kit";
 
 export const dynamic = "force-dynamic";
 
-/** **The organiser's dashboard.** Ways in first, because a new conference has none. */
+const SECTIONS = [
+  ["access", "Ways in"],
+  ["agenda", "Agenda"],
+  ["details", "Details"],
+  ["members", "People"],
+] as const;
+
+/**
+ * **The organiser's settings.** Ways in first, because a new conference has
+ * none; then the agenda, the details (venue included) and the people. It is
+ * the only place administrative forms live — the overview has none.
+ */
 export default async function AdminPage({
   params,
 }: {
@@ -32,22 +43,57 @@ export default async function AdminPage({
   const { view } = result;
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 pt-10">
-      <Link
-        href={`/conferences/${id}`}
-        className="text-[15px] text-black/55 underline"
+    <>
+      <PageHead
+        eyebrow="For organisers"
+        title="Organiser settings"
+        lede="Who can get in, what's on, and what people see. Only organisers can open this page."
       >
-        ← {view.conference.name}
-      </Link>
-      <h1 className="mt-3 text-[36px] leading-none font-black tracking-[-0.03em]">
-        Organiser settings
-      </h1>
-      <AccessPanel view={view} />
-      <MembersPanel view={view} />
-      <Section title="Details">
-        <DetailsForm conferenceId={id} initial={view.conference} />
-      </Section>
-      <DangerPanel conferenceId={id} name={view.conference.name} />
-    </div>
+        <nav
+          aria-label="Settings sections"
+          className="mt-6 flex flex-wrap gap-2"
+        >
+          {SECTIONS.map(([anchor, label]) => (
+            <a
+              key={anchor}
+              href={`#${anchor}`}
+              className="border-cf-line text-cf-slate hover:border-cf-ink/30 hover:text-cf-ink rounded-full border bg-white px-3.5 py-1.5 text-[13px] font-semibold transition"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+      </PageHead>
+      <div className={wrap}>
+        <div className="max-w-[880px] space-y-6 pt-6 pb-20">
+          <Panel className="p-5 sm:p-7">
+            <div id="access" className="scroll-mt-24" />
+            <PanelHead eyebrow="Ways in" title="Invite people" />
+            <AccessPanel view={view} />
+          </Panel>
+          <Panel className="p-5 sm:p-7">
+            <div id="agenda" className="scroll-mt-24" />
+            <PanelHead eyebrow="Agenda" title="What's on" />
+            <p className="text-cf-slate mt-1 mb-5 text-[14px]">
+              Times are in {view.conference.timeZone.replace(/_/g, " ")}.
+              Everyone sees changes straight away.
+            </p>
+            <AgendaEditor conferenceId={id} details={view.conference} />
+          </Panel>
+          <Panel className="p-5 sm:p-7">
+            <div id="details" className="scroll-mt-24" />
+            <PanelHead eyebrow="Details" title="The conference" />
+            <div className="mt-5">
+              <DetailsForm conferenceId={id} initial={view.conference} />
+            </div>
+          </Panel>
+          <Panel className="p-5 sm:p-7">
+            <div id="members" className="scroll-mt-24" />
+            <MembersPanel view={view} />
+            <DangerPanel conferenceId={id} name={view.conference.name} />
+          </Panel>
+        </div>
+      </div>
+    </>
   );
 }

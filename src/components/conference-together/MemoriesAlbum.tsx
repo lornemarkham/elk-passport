@@ -62,21 +62,21 @@ export function MemoriesAlbum({
   };
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 pb-16">
+    <div className="mx-auto max-w-[1180px] px-5 pb-16 *:max-w-[820px] sm:px-8">
       {album.you.canAdd ? (
         <section
-          className="mt-6 rounded-3xl border-2 border-black p-5"
+          className="border-cf-line mt-6 rounded-2xl border bg-white p-5 shadow-[0_1px_2px_rgba(23,24,27,0.04)]"
           aria-label="Add a photo"
         >
           <label className="block text-[14px] font-bold">
             What&apos;s happening in it?{" "}
-            <span className="font-normal text-black/55">(optional)</span>
+            <span className="text-cf-mist font-normal">(optional)</span>
             <input
               value={caption}
               maxLength={140}
               onChange={(e) => setCaption(e.target.value)}
               placeholder="Sunrise on the seawall"
-              className="mt-1 w-full rounded-xl border border-black/15 px-4 py-3 text-[16px] font-normal"
+              className="border-cf-line mt-1 w-full rounded-xl border px-4 py-3 text-[16px] font-normal"
             />
           </label>
           {album.plans.length ? (
@@ -85,7 +85,7 @@ export function MemoriesAlbum({
               <select
                 value={planId}
                 onChange={(e) => setPlanId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-black/15 px-3 py-3 text-[16px] font-normal"
+                className="border-cf-line mt-1 w-full rounded-xl border px-3 py-3 text-[16px] font-normal"
               >
                 <option value="">Not from a plan</option>
                 {album.plans.map((p) => (
@@ -114,14 +114,14 @@ export function MemoriesAlbum({
           >
             {busy ? "Adding…" : "📷 Add a photo"}
           </label>
-          <p className="mt-2 text-[13px] text-black/50">
+          <p className="text-cf-mist mt-2 text-[13px]">
             Everyone in the conference sees it ({album.room} spaces left). Only
             you, or an organiser, can take it down.
           </p>
           <Problem>{problem}</Problem>
         </section>
       ) : (
-        <p className="mt-6 rounded-2xl bg-black/[0.04] p-4 text-[15px] text-black/65">
+        <p className="bg-cf-sand text-cf-slate mt-6 rounded-2xl p-4 text-[15px]">
           To add photos, choose a name and to be seen on the{" "}
           <Link href={`/conferences/${conferenceId}#you`} className="underline">
             conference page
@@ -156,7 +156,7 @@ export function MemoriesAlbum({
               <button
                 type="button"
                 onClick={() => setOpen(p.id)}
-                className="block w-full overflow-hidden rounded-2xl bg-black/5 text-left"
+                className="bg-cf-sand block w-full overflow-hidden rounded-2xl text-left"
                 aria-label={`Photo by ${p.by.name}${p.caption ? `: ${p.caption}` : ""}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- private bytes from a members-only route */}
@@ -166,7 +166,7 @@ export function MemoriesAlbum({
                   loading="lazy"
                   className="aspect-square w-full object-cover"
                 />
-                <span className="block truncate px-2 py-1.5 text-[12px] text-black/60">
+                <span className="text-cf-slate block truncate px-2 py-1.5 text-[12px]">
                   {p.reactions.map((r) => `${r.emoji}${r.count}`).join(" ")}{" "}
                   {p.caption || p.by.name}
                 </span>
@@ -175,7 +175,7 @@ export function MemoriesAlbum({
           ))}
         </ul>
       ) : (
-        <p className="mt-8 text-[16px] text-black/55">
+        <p className="text-cf-mist mt-8 text-[16px]">
           No photos yet. The first one is the hardest; the second is the group
           shot.
         </p>

@@ -13,7 +13,7 @@ import type { Map as MlMap, Marker } from "maplibre-gl";
  * you are), and where upcoming plans meet. Nothing is interpolated or
  * guessed between updates.
  */
-const STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const STYLE = "https://tiles.openfreemap.org/styles/positron";
 
 export interface MapPerson {
   readonly memberId: string;
@@ -78,7 +78,7 @@ export function PeopleMap({
         el.className = "flex flex-col items-center";
         const dot = document.createElement("span");
         dot.className =
-          "flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-white text-[13px] font-black text-white shadow-lg";
+          "flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-white text-[13px] font-semibold text-white shadow-lg";
         dot.style.background = p.you ? "#1d4ed8" : accent;
         dot.textContent = p.you ? "You" : initials(p.name);
         const tag = document.createElement("span");
@@ -130,7 +130,7 @@ export function PeopleMap({
   return (
     <div
       ref={box}
-      className="h-[46vh] min-h-[280px] w-full overflow-hidden rounded-3xl bg-black/5"
+      className="bg-cf-sand h-[46vh] min-h-[280px] w-full overflow-hidden rounded-3xl"
       role="img"
       aria-label={`Map: ${people.length} ${people.length === 1 ? "person" : "people"} sharing where they are`}
     />
