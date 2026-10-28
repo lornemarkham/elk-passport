@@ -1,5 +1,54 @@
 # Release 2026-10-28 — Fairview 3: No More Crystal Balls
 
+> ## Storage changed (evening of 2026-10-28): no Supabase, no SQL
+>
+> Fairview 3 no longer touches Supabase. **Everything below that mentions
+> the migration, `fairview3_*` functions, the SQL editor, or the presenter key
+> in the database (§2 Storage/Presenter protection, §4 step 1, §5, §6 owner
+> step 1, the Supabase rows of §3) is superseded by this box.** The two
+> migrations and `supabaseStore.ts` are deleted (they were never applied).
+>
+> **How it works now.** A Vercel function keeps nothing between requests, so
+> the room lives in one small temporary Redis reached over HTTPS with plain
+> `fetch` (`src/lib/fairview3/redisStore.ts`; no library, no new dependency,
+> no schema, keys expire 48 h after the last write). Upstash's REST API; the
+> names Vercel's KV/Upstash integration injects work too. A snapshot is one
+> pipelined round trip, shared per instance for 600 ms. Audience, stage and
+> console are unchanged. `middleware.ts` now skips `/fairview3` and
+> `/api/fairview3/` so the Supabase session refresh is not on the show's path.
+>
+> **In production there is no silent fallback.** Without the Redis variables
+> or the presenter key the API answers 503 `not-ready` and says which one is
+> missing; it never quietly uses per-instance memory.
+>
+> **Owner steps (replace §4 steps 1 and 2).** Three Vercel env vars on the
+> project that serves `gohaveaday.com`, Production:
+>
+> 1. Create a free Upstash Redis (Vercel → Storage → Upstash Redis, or
+>    upstash.com), copy the REST URL and token.
+> 2. `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the `KV_REST_API_*`
+>    pair the integration adds for you), and
+>    `FAIRVIEW3_PRESENTER_KEY` = a long key of your choosing. There is **no
+>    default key in production**.
+> 3. Push `main` and deploy (as §4 step 2), **after** the env vars are set.
+> 4. Verify with §4 step 3 (phone + laptop). Pill says **live**; if it says
+>    "doors open soon" the message from `/api/fairview3/live` names what is
+>    missing.
+>
+> **Measured here (Metatron, fake Upstash REST server, `next start` x2).**
+> Two independent server processes sharing one store: presenter on A, vote on
+> B, tally visible on A. Load, 150 phones, 30 s: 1,968 polls, 150 votes, 30
+> questions, 438 upvotes, 150 showdown votes, **0 errors**, 150/150 votes
+> counted. `e2e/fairview3.spec.ts` 5/5 on the production build. Store tests
+> (27) pass against both memory and the Redis store
+> (`FV3_TEST_STORE=redis`). Full vitest 3903 passed. **Not measured:** a real
+> Upstash (no credentials here); expect ~20-50 ms per store round trip, six
+> commands per snapshot per instance per 0.6 s.
+>
+> **Free-tier note.** Upstash free tier is a monthly command allowance; one
+> hour of 150 phones through a handful of instances is well inside it, but
+> if the plan is pay-as-you-go-only the cost is cents.
+
 A one-morning live show for ~140 Sycle phones, built inside Passport as
 three public routes and one SQL migration. **Candidate:** local `main` on
 Metatron, the commit that adds this file (parent `83bc669`, which is also

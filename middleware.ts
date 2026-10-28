@@ -101,6 +101,6 @@ export const config = {
     // the dev HMR websocket lives under `_next` too, and running a cookie
     // refresh across its upgrade request silently breaks hot reload — which
     // presents as a Suspense boundary that never resolves, not as an error.
-    "/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)",
+    "/((?!_next/|fairview3|api/fairview3/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)",
   ],
 };

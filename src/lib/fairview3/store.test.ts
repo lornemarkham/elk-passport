@@ -8,11 +8,27 @@ import {
 import {
   applyAction,
   initialState,
-  memoryFairview3,
+  memoryFairview3 as realMemoryFairview3,
   normalizeState,
   parsePresenterAction,
 } from "./store";
 import { leaderOf } from "./show";
+import { redisFairview3 } from "./redisStore";
+import { fakeUpstashFetch } from "./fakeRedis";
+
+/**
+ * The same suite runs against both stores: `FV3_TEST_STORE=redis` swaps the
+ * memory store for the Redis one talking to an in-process fake Upstash.
+ */
+const memoryFairview3 = (key: string, now?: () => Date) =>
+  process.env.FV3_TEST_STORE === "redis"
+    ? redisFairview3(
+        { url: "http://fake", token: "t" },
+        key,
+        now,
+        fakeUpstashFetch(),
+      )
+    : realMemoryFairview3(key, now);
 
 const P1 = "11111111-1111-4111-8111-111111111111";
 const P2 = "22222222-2222-4222-8222-222222222222";

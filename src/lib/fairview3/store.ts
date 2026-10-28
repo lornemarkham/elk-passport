@@ -18,16 +18,15 @@ import {
   QA_MAX_PER_PARTICIPANT,
 } from "./show";
 import { feedbackFingerprint } from "./sanitize";
-import { supabaseFairview3 } from "./supabaseStore";
+import { redisEnv, redisFairview3 } from "./redisStore";
 
 /**
  * **Where the live show lives.**
  *
  * One state row the presenter edits, one vote per participant per question,
- * one feedback row per submission. Memory for development and tests, Postgres
- * through security-definer functions otherwise (see the migration: the
- * public anon key can call the functions and touch nothing else, and the
- * presenter's key is checked inside the database, not in a route handler).
+ * one feedback row per submission. Memory for development and tests, a small
+ * temporary Redis over HTTP in production (see `redisStore.ts`). The presenter's
+ * key comes from the environment and is checked in the store, not the page.
  */
 
 export type VoteStatus = "closed" | "open" | "revealed";
@@ -594,17 +593,44 @@ export function memoryFairview3(
 
 const g = globalThis as unknown as { __fairview3Store?: Fairview3Store };
 
-/** The one store for this process: Supabase when configured, memory otherwise. */
+/** Everything refuses, with the reason, so a misconfigured deploy says so. */
+const notReadyStore = (why: string): Fairview3Store => {
+  const fail = async (): Promise<never> => {
+    throw new NotReady(why);
+  };
+  return {
+    snapshot: fail,
+    presence: fail,
+    vote: fail,
+    feedback: fail,
+    ask: fail,
+    upvote: fail,
+    presenterOk: fail,
+    presenter: fail,
+    inbox: fail,
+  };
+};
+
+/**
+ * The one store for this process. Redis (Upstash REST) when configured. Memory
+ * only when asked for (`FAIRVIEW3_STORE=memory`) or outside production: a
+ * serverless instance forgets between requests, so in production memory would
+ * look fine and split the room across instances. Better to say "not ready".
+ */
 export const fairview3Store = (): Fairview3Store => {
   if (g.__fairview3Store) return g.__fairview3Store;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const forced = process.env.FAIRVIEW3_STORE;
-  const useSupabase =
-    forced !== "memory" && !!url && !!anon && /^https?:\/\//.test(url);
-  g.__fairview3Store = useSupabase
-    ? supabaseFairview3(url!, anon!)
-    : memoryFairview3(process.env.FAIRVIEW3_PRESENTER_KEY || "merlin");
+  const production = process.env.NODE_ENV === "production";
+  const forcedMemory = process.env.FAIRVIEW3_STORE === "memory";
+  const key =
+    process.env.FAIRVIEW3_PRESENTER_KEY || (production ? "" : "merlin");
+  const redis = forcedMemory ? null : redisEnv();
+  g.__fairview3Store = !key
+    ? notReadyStore("FAIRVIEW3_PRESENTER_KEY is not set")
+    : redis
+      ? redisFairview3(redis, key)
+      : forcedMemory || !production
+        ? memoryFairview3(key)
+        : notReadyStore("UPSTASH_REDIS_REST_URL / _TOKEN are not set");
   return g.__fairview3Store;
 };
 
