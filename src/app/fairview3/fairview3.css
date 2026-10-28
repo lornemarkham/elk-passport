@@ -1,0 +1,188 @@
+/* Fairview 3 — No More Crystal Balls. Scoped to .fv3; nothing else wears it. */
+
+.fv3 {
+  --fv3-ink: #06041a;
+  --fv3-fuchsia: #ff2bd6;
+  --fv3-cyan: #22e3ff;
+  --fv3-amber: #ffb400;
+  --fv3-emerald: #2cff9a;
+  --fv3-violet: #8b5cff;
+  color: #fff;
+  background:
+    radial-gradient(
+      1200px 700px at 10% -10%,
+      rgba(139, 92, 255, 0.35),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at 110% 10%,
+      rgba(255, 43, 214, 0.28),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 700px at 50% 120%,
+      rgba(34, 227, 255, 0.22),
+      transparent 60%
+    ),
+    var(--fv3-ink);
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+.fv3-display {
+  font-family: var(--font-ghad), var(--font-jakarta), system-ui, sans-serif;
+  font-variation-settings: "wdth" 118;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.fv3-display-tight {
+  font-family: var(--font-ghad), var(--font-jakarta), system-ui, sans-serif;
+  font-variation-settings: "wdth" 100;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.fv3-serious {
+  background: #050308;
+}
+
+.fv3-glow-text {
+  text-shadow:
+    0 0 24px rgba(255, 43, 214, 0.55),
+    0 0 60px rgba(139, 92, 255, 0.35);
+}
+
+.fv3-electric {
+  background: linear-gradient(100deg, #ff2bd6 0%, #ffb400 45%, #22e3ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes fv3-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(3deg);
+  }
+}
+.fv3-float {
+  animation: fv3-float 4s ease-in-out infinite;
+}
+
+@keyframes fv3-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+.fv3-pulse {
+  animation: fv3-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes fv3-dash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+.fv3-dash {
+  stroke-dasharray: 10 10;
+  animation: fv3-dash 1.2s linear infinite;
+}
+
+@keyframes fv3-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+.fv3-shimmer {
+  background: linear-gradient(
+    90deg,
+    #ff2bd6,
+    #ffb400,
+    #22e3ff,
+    #2cff9a,
+    #ff2bd6
+  );
+  background-size: 200% 100%;
+  animation: fv3-shimmer 6s linear infinite;
+}
+
+@keyframes fv3-headbang {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(-12deg) translateY(6px);
+  }
+  75% {
+    transform: rotate(12deg) translateY(6px);
+  }
+}
+.fv3-headbang {
+  animation: fv3-headbang 0.5s ease-in-out infinite;
+}
+
+@keyframes fv3-flicker {
+  0%,
+  19%,
+  21%,
+  23%,
+  25%,
+  54%,
+  56%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  24%,
+  55% {
+    opacity: 0.4;
+  }
+}
+.fv3-flicker {
+  animation: fv3-flicker 3s linear infinite;
+}
+
+@keyframes fv3-spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.fv3-spin-slow {
+  animation: fv3-spin-slow 18s linear infinite;
+}
+
+.fv3-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  border-radius: 1.25rem;
+}
+
+.fv3 ::selection {
+  background: #ff2bd6;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fv3 *,
+  .fv3 *::before,
+  .fv3 *::after {
+    animation: none !important;
+  }
+}
