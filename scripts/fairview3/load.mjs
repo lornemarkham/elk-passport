@@ -13,7 +13,14 @@ const phones = Number(process.argv[3] ?? 140);
 const seconds = Number(process.argv[4] ?? 30);
 const key = process.env.FAIRVIEW3_PRESENTER_KEY ?? "merlin";
 
-const lat = { live: [], vote: [], presence: [] };
+const lat = {
+  live: [],
+  vote: [],
+  presence: [],
+  ask: [],
+  upvote: [],
+  showdown: [],
+};
 let errors = 0;
 const errorKinds = new Map();
 const uuid = () => crypto.randomUUID();
@@ -67,12 +74,15 @@ const phoneRuns = Array.from({ length: phones }, async (_, i) => {
     post("/api/fairview3/presence", { participant: id }),
   );
   let voted = false;
+  let showdownVoted = false;
+  let asked = false;
+  let upvotes = 0;
   while (Date.now() < stopAt) {
     const r = await timed("live", () =>
       fetch(`${base}/api/fairview3/live`, { cache: "no-store" }),
     );
-    if (r?.ok && !voted) {
-      const snap = await r.json();
+    const snap = r?.ok ? await r.json() : null;
+    if (snap && !voted) {
       if (snap.state.questions.q1 === "open") {
         await new Promise((res) => setTimeout(res, Math.random() * 4000));
         const v = await timed("vote", () =>
@@ -85,6 +95,41 @@ const phoneRuns = Array.from({ length: phones }, async (_, i) => {
         voted = !!v?.ok;
       }
     }
+    // Hot Seat: one phone in five asks; every phone upvotes up to three.
+    if (snap) {
+      if (i % 5 === 0 && !asked && Date.now() > stopAt - seconds * 700) {
+        asked = true;
+        await timed("ask", () =>
+          post("/api/fairview3/qa", {
+            participant: id,
+            name: `Exec ${i}`,
+            body: `Question number ${i}: how do we know it is working?`,
+          }),
+        );
+      }
+      if (upvotes < 3 && snap.qa?.length) {
+        const q = snap.qa[Math.floor(Math.random() * snap.qa.length)];
+        upvotes += 1;
+        await timed("upvote", () =>
+          post("/api/fairview3/qa/upvote", {
+            participant: id,
+            id: q.id,
+            on: true,
+          }),
+        );
+      }
+      if (!showdownVoted && snap.state.questions.q4 === "open") {
+        await new Promise((res) => setTimeout(res, Math.random() * 3000));
+        const v = await timed("showdown", () =>
+          post("/api/fairview3/vote", {
+            participant: id,
+            question: "q4",
+            option: i % 3,
+          }),
+        );
+        showdownVoted = !!v?.ok;
+      }
+    }
     await new Promise((res) => setTimeout(res, 1800 + Math.random() * 400));
   }
 });
@@ -93,6 +138,10 @@ setTimeout(async () => {
   opened = true;
   await presenter({ type: "question", question: "q1", status: "open" });
 }, 6000);
+setTimeout(
+  () => presenter({ type: "question", question: "q4", status: "open" }),
+  Math.max(9000, seconds * 1000 - 12000),
+);
 setTimeout(
   () => presenter({ type: "question", question: "q1", status: "revealed" }),
   Math.max(8000, seconds * 1000 - 4000),
@@ -115,13 +164,18 @@ console.log(
   `errors=${errors}${errorKinds.size ? " " + JSON.stringify([...errorKinds]) : ""}`,
 );
 console.log(
+  `showdown=${JSON.stringify(snap.tallies.q4)} questions=${snap.qa.length} upvotes=${snap.qa.reduce((a, q) => a + q.votes, 0)} live-bytes=${JSON.stringify(snap).length}`,
+);
+console.log(
   `participants=${snap.participants} votes=${snap.tallies.q1.reduce((a, b) => a + b, 0)} tallies=${JSON.stringify(snap.tallies.q1)}`,
 );
 const expectedVotes = phones;
 if (
   errors > 0 ||
   snap.participants < phones ||
-  snap.tallies.q1.reduce((a, b) => a + b, 0) < expectedVotes
+  snap.tallies.q1.reduce((a, b) => a + b, 0) < expectedVotes ||
+  snap.tallies.q4.reduce((a, b) => a + b, 0) < expectedVotes ||
+  snap.qa.length < Math.floor(phones / 5)
 ) {
   console.log("RESULT: FAIL");
   process.exit(1);

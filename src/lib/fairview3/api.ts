@@ -42,7 +42,7 @@ export async function presenterKey(): Promise<string | null> {
 
 const g = globalThis as unknown as {
   __fv3RateLimits?: Record<
-    "participant" | "feedback" | "ip" | "login" | "presenter",
+    "participant" | "feedback" | "qa" | "ip" | "login" | "presenter",
     ReturnType<typeof rateLimiter>
   >;
 };
@@ -56,11 +56,17 @@ const g = globalThis as unknown as {
  */
 export const limits = () =>
   (g.__fv3RateLimits ??= {
-    // Three questions, a change of mind each, plus presence pings.
-    participant: rateLimiter({ limits: [{ max: 40, windowMs: 60_000 }] }),
+    // Four ballots and a change of mind each, upvotes, presence pings.
+    participant: rateLimiter({ limits: [{ max: 90, windowMs: 60_000 }] }),
     feedback: rateLimiter({
       limits: [
         { max: 6, windowMs: 60_000 },
+        { max: 20, windowMs: 3_600_000 },
+      ],
+    }),
+    qa: rateLimiter({
+      limits: [
+        { max: 5, windowMs: 60_000 },
         { max: 20, windowMs: 3_600_000 },
       ],
     }),
@@ -76,7 +82,7 @@ export const limits = () =>
  */
 export function guardPublicPost(
   request: Request,
-  which: "participant" | "feedback" | "login" | "presenter",
+  which: "participant" | "feedback" | "qa" | "login" | "presenter",
   participant?: string,
 ): Response | null {
   if (!isSameOrigin(request)) return crossSiteRefused();

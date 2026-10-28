@@ -55,3 +55,31 @@ export function rememberVote(question: string, option: number): void {
 export function forgetVotes(): void {
   window.localStorage.removeItem(VOTES);
 }
+
+const NAME = "fv3:name";
+const UPVOTES = "fv3:upvotes";
+
+/** The display name this phone last used for the Hot Seat. */
+export const myName = (): string =>
+  typeof window === "undefined"
+    ? ""
+    : (window.localStorage.getItem(NAME) ?? "");
+
+export const rememberName = (name: string): void =>
+  window.localStorage.setItem(NAME, name);
+
+/** The Hot Seat questions this phone has upvoted, so a reload shows them. */
+export function myUpvotes(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw: unknown = JSON.parse(
+      window.localStorage.getItem(UPVOTES) ?? "[]",
+    );
+    return Array.isArray(raw) ? raw.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export const rememberUpvotes = (ids: string[]): void =>
+  window.localStorage.setItem(UPVOTES, JSON.stringify(ids));

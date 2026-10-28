@@ -152,3 +152,73 @@ lands — the stage only ever shows approved rows.
 The routes are additive; reverting the commit removes them. The tables and
 functions are harmless to leave; to remove: `drop function` each
 `fairview3_*` and `drop table` each `passport_fairview3_*`.
+
+## 6. Addendum — Executive Hot Seat + the musical showdown
+
+Same three routes, no new application. Sections are now sixteen: **Hot Seat**
+and **Showdown** sit between _Challenge us_ and _Finale_.
+
+**Hot Seat** (`HotSeat.tsx`, `/api/fairview3/qa`, `/qa/upvote`). A display
+name and a question, no account (the phone's UUID is the only identity).
+The 🔥 pill on every phone section opens it, so the box is open all show.
+Screened like feedback (no emails, links, phone numbers, patient
+identifiers; names too), five per phone, duplicates refused. The room sees
+every question that is not hidden and upvotes (one per phone, toggles);
+**the stage shows only the question the presenter selects** — nothing
+unmoderated reaches the projector. Presenter: _Show on stage_, _Mark
+answered_ (clears the stage), _Hide_, _Put back_. No code path writes or
+suggests an answer, and none calls a model.
+
+_Decision recorded, not hidden:_ questions are visible on phones before a
+person has read them (otherwise they cannot be upvoted). The guard is the
+screen + _Hide_; the stage is the moderated surface.
+
+**Showdown** (`Showdown.tsx`). Ballot `q4`: Heavy Metal / Outlaw Country /
+Electro Swing, one vote per phone (changeable while open), live totals and
+percentages on phones and stage. Console: open, close, reveal, **announce
+the winner** (stored in the state row so a late vote cannot flip it; a tie
+or an empty ballot shows a manual pick — the room's tie is not ours to
+break), _Go to the finale_.
+
+**Three audio slots** (`fairview3-metal`, `-country`, `-electroswing`). No
+audio is generated or shipped. A slot plays, in order: the URL set in the
+console (Finale desk, per slot, saved without a rebuild), else
+`public/fairview3/audio/<slot>.mp3`. The console shows ✓/✗ and the duration
+per slot. The stage mounts all three with `preload="auto"` and plays only
+the chosen one. Missing file → "isn't loaded yet" plus the lyrics, never a
+crash. Lyrics default to the shared story; each slot can carry its own.
+Playback: the presenter presses _Start_; nothing plays on load or on its
+own; if the browser wants a click on the stage first, the play button on
+the stage is that click. Stage has play/pause, a progress bar with
+duration, volume (presenter's slider and a local one) and fullscreen.
+
+**Owner steps added** (after §4 step 1):
+
+1. SQL editor, once, after the first migration:
+   `supabase/migrations/20261028120000_passport_fairview3_hotseat_showdown.sql`
+   (idempotent; keeps the presenter key and any live state).
+2. Put the three finished files in `public/fairview3/audio/` as
+   `fairview3-metal.mp3`, `fairview3-country.mp3`,
+   `fairview3-electroswing.mp3` and ship, **or** paste hosted https URLs in
+   the Finale desk — no redeploy.
+3. Rehearse: reach _Showdown_, open, vote, close, announce, _Go to the
+   finale_, _Start_. Then **Reset all**.
+
+Until step 1 runs, the old sections keep working (the app fills an
+old-shape state), but asking a question answers 503 `not-ready`, a showdown
+vote is refused, and the presenter's new buttons (select, announce, per-slot
+audio) fail. Apply both migrations before the show.
+
+**Measured (Metatron, 2026-10-28):** `tsc` clean; `eslint` 0 errors; prettier
+clean; `vitest` 3903 passed / 38 skipped; `npm run build` ok;
+`e2e/fairview3.spec.ts` 5/5 on the memory store **and** 5/5 on the real
+Supabase path (private Postgres+PostgREST stack, both migrations applied);
+the Hot Seat spec proves an unselected question never appears on the stage;
+the showdown spec plays a silent test WAV through the stage player and
+checks the missing-slot path. Load, 140 phones × 40 s on the Supabase path
+including 28 questions, 402 upvotes and a 140-vote showdown: **0 errors**,
+live p99 25 ms. anon still cannot read any table (42501) or set the key.
+The full Playwright suite was **not** re-run for this addendum (only the
+Fairview 3 spec); the change adds files and edits only `fairview3` code.
+**Not done from here:** push, deploy, production SQL, production URL check
+(`CLAUDE.local.md`: never deploy; push disabled).

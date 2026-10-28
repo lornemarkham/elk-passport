@@ -7,8 +7,10 @@ import {
   ANTHEM_TITLE,
   KNOW_LADDER,
   TEAMS,
+  trackById,
   type Question,
   type Team,
+  type TrackId,
 } from "@/lib/fairview3/show";
 import type { Snapshot, VoteStatus } from "@/lib/fairview3/store";
 import { Qr } from "./Qr";
@@ -818,10 +820,19 @@ export function ChallengeStage({ snapshot }: { snapshot: Snapshot }) {
 
 /* -------------------------------------------------------------- finale */
 
-export function FinaleHeader({ mode }: { mode: Mode }) {
+export function FinaleHeader({
+  mode,
+  trackId,
+}: {
+  mode: Mode;
+  trackId: TrackId | null;
+}) {
+  const track = trackId ? trackById(trackId) : null;
   return (
     <>
-      <Kicker className="text-fuchsia-300">The Fairview 3 anthem</Kicker>
+      <Kicker className="text-fuchsia-300">
+        {track ? `${track.label} · the winning sound` : ANTHEM_SUBTITLE}
+      </Kicker>
       <motion.h1
         variants={rise}
         className={`fv3-display fv3-glow-text mt-2 ${mode === "stage" ? "text-[5.5vw]" : "text-[15vw] leading-[0.9]"}`}
@@ -832,7 +843,7 @@ export function FinaleHeader({ mode }: { mode: Mode }) {
         variants={rise}
         className={`fv3-display-tight mt-2 ${mode === "stage" ? "text-[1.8vw]" : "text-xl"} text-white/70`}
       >
-        {ANTHEM_SUBTITLE} 🤘
+        {track ? track.blurb : ANTHEM_SUBTITLE}
       </motion.p>
     </>
   );

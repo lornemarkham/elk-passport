@@ -7,14 +7,22 @@ import {
   QUESTIONS,
   SECTIONS,
   SECTION_IDS,
+  TRACKS,
+  defaultAudioPath,
+  leaderOf,
   questionForSection,
   sectionIndex,
+  trackById,
+  type QaStatus,
   type SectionId,
+  type TrackId,
 } from "@/lib/fairview3/show";
 import type {
   Feedback,
   Inbox,
   PresenterAction,
+  ShowState,
+  Snapshot,
   VoteStatus,
 } from "@/lib/fairview3/store";
 import { useLive } from "./useLive";
@@ -199,7 +207,11 @@ function Console({ onOut }: { onOut: () => void }) {
       }
       await Promise.all([
         refresh(),
-        a.type === "moderate" ? loadInbox() : Promise.resolve(),
+        a.type === "moderate" ||
+        a.type === "qa-moderate" ||
+        a.type === "qa-select"
+          ? loadInbox()
+          : Promise.resolve(),
       ]);
       return true;
     },
@@ -230,6 +242,13 @@ function Console({ onOut }: { onOut: () => void }) {
         <span>
           <b className="text-white">{inbox?.counts.pending ?? 0}</b> feedback to
           review
+        </span>
+        <span>·</span>
+        <span>
+          <b className="text-white" data-testid="presenter-qa-count">
+            {inbox?.qa.filter((q) => q.status === "visible").length ?? 0}
+          </b>{" "}
+          questions waiting
         </span>
         {flash && <span className="text-amber-300">{flash}</span>}
         <button
@@ -307,7 +326,7 @@ function Console({ onOut }: { onOut: () => void }) {
           Voting
         </p>
         <ul className="mt-3 flex flex-col gap-3">
-          {QUESTIONS.map((q) => {
+          {QUESTIONS.filter((q) => q.id !== "q4").map((q) => {
             const status: VoteStatus = state?.questions[q.id] ?? "closed";
             const total =
               snapshot?.tallies[q.id].reduce((a, b) => a + b, 0) ?? 0;
@@ -379,16 +398,19 @@ function Console({ onOut }: { onOut: () => void }) {
         </ul>
       </section>
 
+      {/* Hot Seat */}
+      <QaDesk inbox={inbox} state={state} act={act} go={go} />
+
+      {/* Showdown */}
+      {snapshot && state && (
+        <ShowdownDesk snapshot={snapshot} state={state} act={act} go={go} />
+      )}
+
       {/* Feedback */}
       <FeedbackDesk inbox={inbox} act={act} />
 
       {/* Finale */}
-      <FinaleDesk
-        started={state?.finale.started ?? false}
-        audioUrl={state?.finale.audioUrl ?? null}
-        lyrics={state?.finale.lyrics ?? null}
-        act={act}
-      />
+      {state && <FinaleDesk state={state} act={act} />}
 
       {/* Danger */}
       <section className="fv3-card px-5 py-5">
@@ -396,7 +418,7 @@ function Console({ onOut }: { onOut: () => void }) {
           Reset (asks first)
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {(["votes", "feedback", "all"] as const).map((what) => (
+          {(["votes", "feedback", "qa", "all"] as const).map((what) => (
             <button
               key={what}
               type="button"
@@ -504,79 +526,371 @@ function FeedbackDesk({ inbox, act }: { inbox: Inbox | null; act: Act }) {
   );
 }
 
-function FinaleDesk({
-  started,
-  audioUrl,
-  lyrics,
+function QaDesk({
+  inbox,
+  state,
   act,
+  go,
 }: {
-  started: boolean;
-  audioUrl: string | null;
-  lyrics: string | null;
+  inbox: Inbox | null;
+  state: ShowState | undefined;
   act: Act;
+  go: (s: SectionId) => Promise<boolean>;
 }) {
-  const [url, setUrl] = useState(audioUrl ?? "");
-  const [words, setWords] = useState(lyrics ?? "");
-  const [open, setOpen] = useState(false);
-  // When the saved URL changes under us (another console, a reset), show it.
-  const [seenUrl, setSeenUrl] = useState(audioUrl);
-  if (seenUrl !== audioUrl) {
-    setSeenUrl(audioUrl);
-    setUrl(audioUrl ?? "");
-  }
+  const [tab, setTab] = useState<QaStatus>("visible");
+  const selected = state?.qa.selected ?? null;
+  const all = inbox?.qa ?? [];
+  const rows = all.filter((q) => q.status === tab);
+  const count = (s: QaStatus) => all.filter((q) => q.status === s).length;
   return (
-    <section className="fv3-card px-5 py-5">
-      <p className="text-xs tracking-widest text-white/50 uppercase">
-        The metal finale
+    <section className="fv3-card px-5 py-5" data-testid="qa-desk">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="mr-2 text-xs tracking-widest text-white/50 uppercase">
+          Executive Hot Seat
+        </p>
+        {(["visible", "answered", "hidden"] as const).map((s) => (
+          <Btn
+            key={s}
+            on={tab === s}
+            onClick={() => setTab(s)}
+            testId={`qa-tab-${s}`}
+          >
+            {s === "visible" ? "waiting" : s} {count(s)}
+          </Btn>
+        ))}
+        {state?.section !== "hotseat" && (
+          <button
+            type="button"
+            className="ml-auto text-xs text-white/60 underline"
+            onClick={() => go("hotseat")}
+          >
+            jump to its section
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-white/50">
+        Only the question you select reaches the stage. You answer it, out loud.
+        Nothing is written for you.
       </p>
+      <ul className="mt-3 flex flex-col gap-2" data-testid="qa-inbox">
+        {rows.length === 0 && (
+          <li className="text-sm text-white/50">Nothing here.</li>
+        )}
+        {rows.map((q) => (
+          <li
+            key={q.id}
+            className={`rounded-xl px-4 py-3 ${q.id === selected ? "bg-amber-300/15 ring-2 ring-amber-300" : "bg-white/5"}`}
+            data-testid="qa-row"
+          >
+            <p className="text-xs tracking-widest text-white/40 uppercase">
+              {q.name} · ▲ {q.votes}
+              {q.id === selected && " · ON THE STAGE"}
+            </p>
+            <p className="text-white">{q.body}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {q.status === "visible" &&
+                (q.id === selected ? (
+                  <Btn
+                    on={false}
+                    onClick={() => act({ type: "qa-select", id: null })}
+                    testId="qa-clear"
+                  >
+                    Take off the stage
+                  </Btn>
+                ) : (
+                  <Btn
+                    on={false}
+                    onClick={() => act({ type: "qa-select", id: q.id })}
+                    testId="qa-show"
+                  >
+                    Show on stage
+                  </Btn>
+                ))}
+              {q.status !== "answered" && q.status !== "hidden" && (
+                <Btn
+                  on={false}
+                  onClick={() =>
+                    act({ type: "qa-moderate", id: q.id, status: "answered" })
+                  }
+                  testId="qa-answered"
+                >
+                  Mark answered
+                </Btn>
+              )}
+              {q.status !== "hidden" && (
+                <Btn
+                  on={false}
+                  onClick={() =>
+                    act({ type: "qa-moderate", id: q.id, status: "hidden" })
+                  }
+                  testId="qa-hide"
+                >
+                  Hide
+                </Btn>
+              )}
+              {q.status !== "visible" && (
+                <Btn
+                  on={false}
+                  onClick={() =>
+                    act({ type: "qa-moderate", id: q.id, status: "visible" })
+                  }
+                  testId="qa-restore"
+                >
+                  Put back
+                </Btn>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ShowdownDesk({
+  snapshot,
+  state,
+  act,
+  go,
+}: {
+  snapshot: Snapshot;
+  state: ShowState;
+  act: Act;
+  go: (s: SectionId) => Promise<boolean>;
+}) {
+  const status: VoteStatus = state.questions.q4;
+  const tally = snapshot.tallies.q4;
+  const total = tally.reduce((a, b) => a + b, 0);
+  const leader = leaderOf(tally);
+  const { announced, winner } = state.showdown;
+  const set = (s: VoteStatus) =>
+    act({ type: "question", question: "q4", status: s });
+  // A tie or an empty ballot has no leader; the presenter picks.
+  const pick = (id: TrackId) =>
+    act({ type: "showdown", announced: true, winner: id });
+  return (
+    <section className="fv3-card px-5 py-5" data-testid="showdown-desk">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="mr-2 text-xs tracking-widest text-white/50 uppercase">
+          The musical showdown
+        </p>
+        <span
+          className="rounded-full bg-black/40 px-2 py-0.5 text-xs text-white/70"
+          data-testid="status-q4"
+        >
+          {status} · {total} votes
+        </span>
+        {state.section !== "showdown" && (
+          <button
+            type="button"
+            className="ml-auto text-xs text-white/60 underline"
+            onClick={() => go("showdown")}
+          >
+            jump to its section
+          </button>
+        )}
+      </div>
+      <ul className="mt-3 flex flex-col gap-1">
+        {TRACKS.map((t) => {
+          const n = tally[t.option] ?? 0;
+          const pct = total ? Math.round((n / total) * 100) : 0;
+          const lead = status !== "open" && leader === t.id;
+          return (
+            <li
+              key={t.id}
+              className={`flex items-center justify-between rounded-lg px-3 py-2 ${lead || winner === t.id ? "bg-white/15 ring-1 ring-white" : "bg-white/5"}`}
+              data-testid={`desk-${t.id}`}
+            >
+              <span className="font-bold">
+                {t.emoji} {t.label}
+                {lead && " 👑"}
+              </span>
+              <span className="tabular-nums">
+                {pct}% · {n}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       <div className="mt-3 flex flex-wrap gap-2">
+        <Btn
+          on={status === "open"}
+          onClick={() => set("open")}
+          testId="open-q4"
+        >
+          Open voting
+        </Btn>
+        <Btn
+          on={status === "closed"}
+          onClick={() => set("closed")}
+          testId="close-q4"
+        >
+          Close voting
+        </Btn>
+        <Btn
+          on={status === "revealed"}
+          onClick={() => set("revealed")}
+          testId="reveal-q4"
+        >
+          Reveal results
+        </Btn>
+        <Btn
+          on={announced}
+          onClick={() =>
+            leader
+              ? pick(leader)
+              : act({ type: "showdown", announced: !announced })
+          }
+          testId="announce"
+        >
+          {announced ? "Winner announced ✓" : "Announce the winner"}
+        </Btn>
+      </div>
+      {!leader && status !== "open" && (
+        <div className="mt-3" data-testid="tiebreak">
+          <p className="text-sm text-amber-300">
+            {total === 0 ? "No votes yet." : "It's a tie."} Pick the winner
+            yourself:
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {TRACKS.map((t) => (
+              <Btn
+                key={t.id}
+                on={winner === t.id}
+                onClick={() => pick(t.id)}
+                testId={`pick-${t.id}`}
+              >
+                {t.label}
+              </Btn>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => act({ type: "finale", started: !started })}
-          className={`rounded-full px-5 py-3 font-black ${started ? "bg-red-500 text-white" : "fv3-shimmer text-black"}`}
-          data-testid="finale-toggle"
+          disabled={!winner}
+          onClick={async () => {
+            if (!winner) return;
+            await act({ type: "finale", track: winner, started: false });
+            await go("finale");
+          }}
+          className="fv3-shimmer rounded-full px-5 py-3 font-black text-black disabled:opacity-30"
+          data-testid="to-finale"
         >
-          {started ? "■ Stop the anthem" : "🤘 Start the anthem"}
+          Go to the finale{winner ? ` · ${trackById(winner).label}` : ""}
         </button>
-        <span className="self-center text-sm text-white/60">
-          {audioUrl
-            ? "Audio file set."
-            : "No audio yet — the stage shows the ready state."}
+        <span className="text-xs text-white/50">
+          Then press Start on the finale desk. Nothing plays by itself.
         </span>
       </div>
-      <label className="mt-4 block text-sm text-white/70" htmlFor="fv3-audio">
-        Song file URL (https, mp3/m4a). Saved without a rebuild.
-      </label>
-      <div className="mt-1 flex gap-2">
+    </section>
+  );
+}
+
+type Probe = { status: "checking" | "ok" | "missing"; duration: number };
+
+/** Does this URL load as audio, and how long is it? Asked of the browser itself. */
+function useProbe(url: string): Probe {
+  const [probe, setProbe] = useState<{ url: string } & Probe>({
+    url: "",
+    status: "checking",
+    duration: 0,
+  });
+  useEffect(() => {
+    const a = new Audio();
+    a.preload = "metadata";
+    a.onloadedmetadata = () =>
+      setProbe({ url, status: "ok", duration: a.duration });
+    a.onerror = () => setProbe({ url, status: "missing", duration: 0 });
+    a.src = url;
+    return () => {
+      a.onloadedmetadata = null;
+      a.onerror = null;
+      a.removeAttribute("src");
+    };
+  }, [url]);
+  return probe.url === url ? probe : { status: "checking", duration: 0 };
+}
+
+const mmss = (s: number) =>
+  `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+function SlotRow({
+  id,
+  state,
+  act,
+}: {
+  id: TrackId;
+  state: ShowState;
+  act: Act;
+}) {
+  const t = trackById(id);
+  const cfg = state.finale.tracks[id];
+  const [url, setUrl] = useState(cfg.audioUrl ?? "");
+  const [words, setWords] = useState(cfg.lyrics ?? "");
+  const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState(cfg.audioUrl);
+  if (seen !== cfg.audioUrl) {
+    setSeen(cfg.audioUrl);
+    setUrl(cfg.audioUrl ?? "");
+  }
+  const probe = useProbe(cfg.audioUrl ?? defaultAudioPath(id));
+  return (
+    <li className="rounded-xl bg-white/5 px-4 py-3" data-testid={`slot-${id}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-bold">
+          {t.emoji} {t.label}
+        </span>
+        <code className="text-xs text-white/50">{t.slot}</code>
+        <span
+          className="ml-auto rounded-full bg-black/40 px-2 py-0.5 text-xs"
+          data-testid={`slot-status-${id}`}
+          data-status={probe.status}
+        >
+          {probe.status === "ok"
+            ? `✓ ready · ${mmss(probe.duration)}`
+            : probe.status === "checking"
+              ? "checking…"
+              : "✗ no audio yet"}
+        </span>
+      </div>
+      <div className="mt-2 flex gap-2">
         <input
-          id="fv3-audio"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://…/no-more-crystal-balls.mp3"
+          aria-label={`${t.label} audio URL`}
+          placeholder={`${defaultAudioPath(id)} (default; or paste an https URL)`}
           className="w-full rounded-xl bg-black/40 px-4 py-2 text-white ring-1 ring-white/20 focus:outline-none"
-          data-testid="audio-url"
+          data-testid={`audio-url-${id}`}
         />
         <Btn
           on={false}
-          onClick={() => act({ type: "finale", audioUrl: url.trim() || null })}
-          testId="audio-save"
+          onClick={() =>
+            act({ type: "track", track: id, audioUrl: url.trim() || null })
+          }
+          testId={`audio-save-${id}`}
         >
           Save
         </Btn>
       </div>
       <button
         type="button"
-        className="mt-3 text-sm text-white/60 underline"
+        className="mt-2 text-sm text-white/60 underline"
         onClick={() => setOpen((o) => !o)}
       >
-        {open ? "Hide lyrics editor" : "Edit lyrics"}
+        {open
+          ? "Hide lyrics"
+          : cfg.lyrics
+            ? "Edit lyrics (custom)"
+            : "Edit lyrics (default story)"}
       </button>
       {open && (
         <div className="mt-2">
           <textarea
             value={words}
             onChange={(e) => setWords(e.target.value)}
-            rows={10}
+            rows={8}
             placeholder={ANTHEM_LYRICS}
             className="w-full rounded-xl bg-black/40 px-4 py-2 font-mono text-sm text-white ring-1 ring-white/20 focus:outline-none"
           />
@@ -584,7 +898,7 @@ function FinaleDesk({
             <Btn
               on={false}
               onClick={() =>
-                act({ type: "finale", lyrics: words.trim() || null })
+                act({ type: "track", track: id, lyrics: words.trim() || null })
               }
             >
               Save lyrics
@@ -593,7 +907,7 @@ function FinaleDesk({
               on={false}
               onClick={() => {
                 setWords("");
-                void act({ type: "finale", lyrics: null });
+                void act({ type: "track", track: id, lyrics: null });
               }}
             >
               Use the default
@@ -601,6 +915,68 @@ function FinaleDesk({
           </div>
         </div>
       )}
+    </li>
+  );
+}
+
+function FinaleDesk({ state, act }: { state: ShowState; act: Act }) {
+  const { started, track, volume } = state.finale;
+  const id = track ?? state.showdown.winner;
+  return (
+    <section className="fv3-card px-5 py-5" data-testid="finale-desk">
+      <p className="text-xs tracking-widest text-white/50 uppercase">
+        The finale
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm text-white/70">Song:</span>
+        {TRACKS.map((t) => (
+          <Btn
+            key={t.id}
+            on={id === t.id}
+            onClick={() => act({ type: "finale", track: t.id })}
+            testId={`finale-track-${t.id}`}
+          >
+            {t.label}
+          </Btn>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={!id}
+          onClick={() => act({ type: "finale", started: !started })}
+          className={`rounded-full px-5 py-3 font-black disabled:opacity-30 ${started ? "bg-red-500 text-white" : "fv3-shimmer text-black"}`}
+          data-testid="finale-toggle"
+        >
+          {started
+            ? "❚❚ Pause"
+            : `${id ? trackById(id).emoji : "▶"} Start ${id ? trackById(id).label : "the song"}`}
+        </button>
+        <label className="flex items-center gap-2 text-sm text-white/70">
+          Volume
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            defaultValue={volume}
+            key={volume}
+            onChange={(e) =>
+              void act({ type: "finale", volume: Number(e.target.value) })
+            }
+            data-testid="presenter-volume"
+          />
+        </label>
+        <span className="text-xs text-white/50">
+          The stage plays it. If the browser wants a click first, press play on
+          the stage once.
+        </span>
+      </div>
+      <ul className="mt-4 flex flex-col gap-2">
+        {TRACKS.map((t) => (
+          <SlotRow key={t.id} id={t.id} state={state} act={act} />
+        ))}
+      </ul>
     </section>
   );
 }

@@ -12,6 +12,8 @@ import {
 } from "@/lib/fairview3/show";
 import { initialState, type Snapshot } from "@/lib/fairview3/store";
 import { Finale } from "./Finale";
+import { HotSeatPhone } from "./HotSeat";
+import { ShowdownPhone } from "./Showdown";
 import { myVotes, participantId, rememberVote } from "./participant";
 import {
   Curtain,
@@ -59,6 +61,7 @@ export function Audience() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [pid]);
 
+  const [askOpen, setAskOpen] = useState(false);
   const state = snapshot?.state ?? initialState();
   const section = state.section;
   const team = teamForSection(section);
@@ -83,7 +86,7 @@ export function Audience() {
           {team && <TeamSection team={team} mode="phone" />}
           {section === "parallel" && <Parallel mode="phone" />}
           {section === "know" && <Know mode="phone" />}
-          {question && snapshot && pid && (
+          {question && section !== "showdown" && snapshot && pid && (
             <Ballot
               question={question}
               snapshot={snapshot}
@@ -92,11 +95,46 @@ export function Audience() {
             />
           )}
           {section === "challenge" && pid && <Challenge pid={pid} />}
-          {section === "finale" && (
-            <Finale mode="phone" finale={state.finale} />
+          {section === "hotseat" && snapshot && pid && (
+            <HotSeatPhone pid={pid} snapshot={snapshot} refresh={refresh} />
           )}
+          {section === "showdown" && snapshot && pid && (
+            <ShowdownPhone snapshot={snapshot} pid={pid} refresh={refresh} />
+          )}
+          {section === "finale" && <Finale mode="phone" state={state} />}
         </motion.div>
       </AnimatePresence>
+      {/* The Hot Seat is open all show, not only when the presenter reaches it. */}
+      {snapshot && pid && section !== "hotseat" && (
+        <button
+          type="button"
+          onClick={() => setAskOpen(true)}
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-20 rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-black shadow-lg"
+          data-testid="hotseat-open"
+        >
+          🔥 Ask a question
+        </button>
+      )}
+      {askOpen && snapshot && pid && section !== "hotseat" && (
+        <div
+          className="fixed inset-0 z-30 overflow-y-auto bg-[#06041a]"
+          role="dialog"
+          aria-label="Executive Hot Seat"
+          data-testid="hotseat-sheet"
+        >
+          <button
+            type="button"
+            onClick={() => setAskOpen(false)}
+            className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-40 rounded-full bg-white/15 px-4 py-1.5 text-sm font-bold text-white backdrop-blur"
+            data-testid="hotseat-close"
+          >
+            ← Back to the show
+          </button>
+          <div className="pt-8">
+            <HotSeatPhone pid={pid} snapshot={snapshot} refresh={refresh} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -22,6 +22,8 @@ export const SECTION_IDS = [
   "vote-2",
   "vote-3",
   "challenge",
+  "hotseat",
+  "showdown",
   "finale",
 ] as const;
 
@@ -30,10 +32,76 @@ export type SectionId = (typeof SECTION_IDS)[number];
 export const isSectionId = (s: unknown): s is SectionId =>
   typeof s === "string" && (SECTION_IDS as readonly string[]).includes(s);
 
-export const QUESTION_IDS = ["q1", "q2", "q3"] as const;
+export const QUESTION_IDS = ["q1", "q2", "q3", "q4"] as const;
 export type QuestionId = (typeof QUESTION_IDS)[number];
 export const isQuestionId = (s: unknown): s is QuestionId =>
   typeof s === "string" && (QUESTION_IDS as readonly string[]).includes(s);
+
+/** The musical showdown: three songs, one story, the room picks the sound. */
+export const TRACK_IDS = ["metal", "country", "electroswing"] as const;
+export type TrackId = (typeof TRACK_IDS)[number];
+export const isTrackId = (s: unknown): s is TrackId =>
+  typeof s === "string" && (TRACK_IDS as readonly string[]).includes(s);
+
+export interface Track {
+  readonly id: TrackId;
+  /** The audio slot's name; the file is `<slot>.mp3` unless a URL is set. */
+  readonly slot: string;
+  /** Its position on the showdown ballot (option index of question q4). */
+  readonly option: number;
+  readonly label: string;
+  readonly blurb: string;
+  readonly emoji: string;
+  readonly finaleKicker: string;
+}
+
+export const TRACKS: readonly Track[] = [
+  {
+    id: "metal",
+    slot: "fairview3-metal",
+    option: 0,
+    label: "HEAVY METAL",
+    blurb: "Loud guitars. No mercy.",
+    emoji: "🤘",
+    finaleKicker: "Loud guitars. No mercy.",
+  },
+  {
+    id: "country",
+    slot: "fairview3-country",
+    option: 1,
+    label: "OUTLAW COUNTRY",
+    blurb: "Boots, grit and questionable decisions.",
+    emoji: "🤠",
+    finaleKicker: "Boots, grit and questionable decisions.",
+  },
+  {
+    id: "electroswing",
+    slot: "fairview3-electroswing",
+    option: 2,
+    label: "ELECTRO SWING",
+    blurb: "Vintage swagger, brass and dance-floor chaos.",
+    emoji: "🎺",
+    finaleKicker: "Vintage swagger, brass and dance-floor chaos.",
+  },
+];
+
+export const trackById = (id: TrackId): Track =>
+  TRACKS.find((t) => t.id === id)!;
+
+/** Where a slot's file lives when the presenter has not set a URL. */
+export const defaultAudioPath = (id: TrackId): string =>
+  `/fairview3/audio/${trackById(id).slot}.mp3`;
+
+/**
+ * The leader of a tally, or `null` when nobody has voted or two tracks share
+ * the top (the presenter then picks; the room's tie is not ours to break).
+ */
+export function leaderOf(tally: readonly number[]): TrackId | null {
+  const top = Math.max(0, ...tally);
+  if (top === 0) return null;
+  const leaders = TRACKS.filter((t) => (tally[t.option] ?? 0) === top);
+  return leaders.length === 1 ? leaders[0]!.id : null;
+}
 
 export interface Question {
   readonly id: QuestionId;
@@ -77,6 +145,12 @@ export const QUESTIONS: readonly Question[] = [
     options: ["Absolutely", "Yes, but it will be challenging", "Show me how"],
     note: "Delivering both is our commitment. This was never a popularity vote.",
   },
+  {
+    id: "q4",
+    section: "showdown",
+    prompt: "HOW SHOULD FAIRVIEW 3 ROCK THE HOUSE?",
+    options: TRACKS.map((t) => t.label),
+  },
 ];
 
 export const questionById = (id: QuestionId): Question =>
@@ -97,6 +171,14 @@ export const isFeedbackPromptId = (s: unknown): s is FeedbackPromptId =>
   typeof s === "string" && FEEDBACK_PROMPTS.some((p) => p.id === s);
 
 export const FEEDBACK_MAX_CHARS = 280;
+
+/** Executive Hot Seat: questions from the room, answered live by the team. */
+export const QA_MAX_CHARS = 280;
+export const QA_NAME_MAX_CHARS = 32;
+export const QA_MAX_PER_PARTICIPANT = 5;
+export type QaStatus = "visible" | "answered" | "hidden";
+export const isQaStatus = (s: unknown): s is QaStatus =>
+  s === "visible" || s === "answered" || s === "hidden";
 export const FEEDBACK_MAX_PER_PARTICIPANT = 6;
 
 export interface Team {
@@ -305,7 +387,17 @@ export const SECTIONS: readonly SectionMeta[] = [
     label: "Challenge us",
     cue: "Approve feedback as it lands; it shows on the stage.",
   },
-  { id: "finale", label: "Finale", cue: "Start the anthem." },
+  {
+    id: "hotseat",
+    label: "Hot Seat",
+    cue: "Select a question to put it on the stage. Answer it live. Mark it answered.",
+  },
+  {
+    id: "showdown",
+    label: "Showdown",
+    cue: "Open voting, close, reveal, announce the winner. Then the finale.",
+  },
+  { id: "finale", label: "Finale", cue: "Start the winning song." },
 ];
 
 export const sectionIndex = (id: SectionId): number => SECTION_IDS.indexOf(id);

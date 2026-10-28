@@ -1,16 +1,37 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AskOutcome,
   Fairview3Store,
   Feedback,
   FeedbackOutcome,
   Inbox,
   PresenterAction,
-  ShowState,
+  QaItem,
+  QaRow,
   Snapshot,
+  UpvoteOutcome,
   VoteOutcome,
 } from "./store";
-import { emptyTallies, initialState, NotReady } from "./store";
-import type { QuestionId } from "./show";
+import { emptyTallies, normalizeState, NotReady } from "./store";
+import type { QaStatus, QuestionId } from "./show";
+
+interface RawQa {
+  id: string;
+  name: string;
+  body: string;
+  status: string;
+  votes: number;
+  at: string;
+  participant_id?: string;
+}
+const qaItem = (q: RawQa): QaItem => ({
+  id: q.id,
+  name: q.name,
+  body: q.body,
+  status: q.status as QaStatus,
+  votes: Number(q.votes ?? 0),
+  at: q.at,
+});
 
 /**
  * The show in Postgres, entirely through `fairview3_*` functions. The anon key
@@ -43,18 +64,6 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
     return data as T;
   }
 
-  const stateFrom = (raw: unknown): ShowState => {
-    const base = initialState();
-    if (!raw || typeof raw !== "object") return base;
-    const s = raw as Partial<ShowState>;
-    return {
-      section: s.section ?? base.section,
-      questions: { ...base.questions, ...(s.questions ?? {}) },
-      finale: { ...base.finale, ...(s.finale ?? {}) },
-      rev: typeof s.rev === "number" ? s.rev : 0,
-    };
-  };
-
   return {
     async snapshot(): Promise<Snapshot> {
       const raw = await rpc<{
@@ -62,6 +71,7 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
         participants: number;
         tallies: Partial<Record<QuestionId, number[]>>;
         feedback: { id: string; prompt: string; body: string }[] | null;
+        qa: RawQa[] | null;
         at: string;
       }>("fairview3_snapshot", {});
       const tallies = emptyTallies();
@@ -71,7 +81,7 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
           tallies[q] = tallies[q].map((_, i) => Number(got[i] ?? 0));
       }
       return {
-        state: stateFrom(raw.state),
+        state: normalizeState(raw.state),
         participants: Number(raw.participants ?? 0),
         tallies,
         feedback: (raw.feedback ?? []).map((f) => ({
@@ -79,6 +89,7 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
           prompt: f.prompt as Feedback["prompt"],
           body: f.body,
         })),
+        qa: (raw.qa ?? []).map(qaItem),
         at: raw.at ?? new Date().toISOString(),
       };
     },
@@ -97,6 +108,20 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
         p_participant: id,
         p_prompt: prompt,
         p_body: body,
+      });
+    },
+    async ask(id, name, body) {
+      return rpc<AskOutcome>("fairview3_qa_ask", {
+        p_participant: id,
+        p_name: name,
+        p_body: body,
+      });
+    },
+    async upvote(id, questionId, on) {
+      return rpc<UpvoteOutcome>("fairview3_qa_upvote", {
+        p_participant: id,
+        p_question: questionId,
+        p_on: on,
       });
     },
     async presenterOk(key) {
@@ -118,6 +143,7 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
           status: string;
           at: string;
         }[];
+        qa: RawQa[] | null;
       } | null>("fairview3_inbox", { p_key: key });
       if (!raw) return null;
       const feedback: Feedback[] = raw.feedback.map((f) => ({
@@ -130,7 +156,11 @@ export function supabaseFairview3(url: string, anon: string): Fairview3Store {
       }));
       const counts = { pending: 0, approved: 0, hidden: 0 };
       for (const f of feedback) counts[f.status] += 1;
-      return { feedback, counts };
+      const qa: QaRow[] = (raw.qa ?? []).map((q) => ({
+        ...qaItem(q),
+        participantId: q.participant_id ?? "",
+      }));
+      return { feedback, counts, qa };
     },
   };
 }

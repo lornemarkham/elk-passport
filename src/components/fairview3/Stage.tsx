@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { questionForSection, teamForSection } from "@/lib/fairview3/show";
 import { initialState } from "@/lib/fairview3/store";
 import { Finale } from "./Finale";
+import { HotSeatStage } from "./HotSeat";
+import { ShowdownStage } from "./Showdown";
 import {
   ChallengeStage,
   Curtain,
@@ -55,15 +57,19 @@ export function Stage() {
           {team && <TeamSection team={team} mode="stage" />}
           {section === "parallel" && <Parallel mode="stage" />}
           {section === "know" && <Know mode="stage" />}
-          {question && snapshot && (
+          {question && section !== "showdown" && snapshot && (
             <VoteStage question={question} snapshot={snapshot} />
           )}
           {section === "challenge" && snapshot && (
             <ChallengeStage snapshot={snapshot} />
           )}
-          {section === "finale" && (
-            <Finale mode="stage" finale={state.finale} />
+          {section === "hotseat" && snapshot && (
+            <HotSeatStage snapshot={snapshot} />
           )}
+          {section === "showdown" && snapshot && (
+            <ShowdownStage snapshot={snapshot} />
+          )}
+          {section === "finale" && <Finale mode="stage" state={state} />}
         </motion.div>
       </AnimatePresence>
     </main>

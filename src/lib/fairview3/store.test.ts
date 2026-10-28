@@ -3,8 +3,16 @@ import {
   feedbackFingerprint,
   isParticipantId,
   screenFeedback,
+  screenName,
 } from "./sanitize";
-import { applyAction, memoryFairview3, parsePresenterAction } from "./store";
+import {
+  applyAction,
+  initialState,
+  memoryFairview3,
+  normalizeState,
+  parsePresenterAction,
+} from "./store";
+import { leaderOf } from "./show";
 
 const P1 = "11111111-1111-4111-8111-111111111111";
 const P2 = "22222222-2222-4222-8222-222222222222";
@@ -125,16 +133,24 @@ describe("memory store: presenter", () => {
     expect((await s.inbox("key"))!.counts.pending).toBe(0);
   });
 
-  it("finale fields patch independently", async () => {
+  it("finale and track fields patch independently", async () => {
     const s = memoryFairview3("key");
-    await s.presenter("key", { type: "finale", audioUrl: "https://x.y/a.mp3" });
+    await s.presenter("key", {
+      type: "track",
+      track: "country",
+      audioUrl: "https://x.y/a.mp3",
+    });
+    await s.presenter("key", { type: "finale", track: "country", volume: 0.5 });
     await s.presenter("key", { type: "finale", started: true });
     const { finale } = (await s.snapshot()).state;
-    expect(finale).toEqual({
-      started: true,
+    expect(finale.started).toBe(true);
+    expect(finale.track).toBe("country");
+    expect(finale.volume).toBe(0.5);
+    expect(finale.tracks.country).toEqual({
       audioUrl: "https://x.y/a.mp3",
       lyrics: null,
     });
+    expect(finale.tracks.metal.audioUrl).toBeNull();
   });
 });
 
@@ -152,12 +168,20 @@ describe("parsePresenterAction", () => {
     ).toEqual({ type: "question", question: "q2", status: "open" });
     expect(
       parsePresenterAction({
-        type: "finale",
-        started: true,
+        type: "track",
+        track: "country",
         audioUrl: "",
         lyrics: "la",
       }),
-    ).toEqual({ type: "finale", started: true, audioUrl: null, lyrics: "la" });
+    ).toEqual({
+      type: "track",
+      track: "country",
+      audioUrl: null,
+      lyrics: "la",
+    });
+    expect(
+      parsePresenterAction({ type: "finale", started: true, track: "metal" }),
+    ).toEqual({ type: "finale", started: true, track: "metal" });
     expect(
       parsePresenterAction({ type: "moderate", id: "abc", status: "hidden" }),
     ).toEqual({ type: "moderate", id: "abc", status: "hidden" });
@@ -187,11 +211,16 @@ describe("parsePresenterAction", () => {
       }),
     ).toBeNull();
     expect(
-      parsePresenterAction({ type: "finale", audioUrl: "javascript:alert(1)" }),
+      parsePresenterAction({
+        type: "track",
+        track: "metal",
+        audioUrl: "javascript:alert(1)",
+      }),
     ).toBeNull();
     expect(
       parsePresenterAction({
-        type: "finale",
+        type: "track",
+        track: "metal",
         audioUrl: "http://insecure/a.mp3",
       }),
     ).toBeNull();
@@ -206,16 +235,7 @@ describe("parsePresenterAction", () => {
   });
 
   it("applyAction ignores moderation (it is not state) and bumps rev otherwise", () => {
-    const base = {
-      section: "curtain" as const,
-      questions: {
-        q1: "closed" as const,
-        q2: "closed" as const,
-        q3: "closed" as const,
-      },
-      finale: { started: false, audioUrl: null, lyrics: null },
-      rev: 3,
-    };
+    const base = { ...initialState(), rev: 3 };
     expect(
       applyAction(base, { type: "moderate", id: "x", status: "approved" }),
     ).toBe(base);
@@ -252,5 +272,171 @@ describe("screenFeedback", () => {
     expect(isParticipantId(P1)).toBe(true);
     expect(isParticipantId("not-a-uuid")).toBe(false);
     expect(isParticipantId("11111111-1111-1111-1111-111111111111")).toBe(false);
+  });
+});
+
+const open = (s: ReturnType<typeof memoryFairview3>, question: "q4") =>
+  s.presenter("key", { type: "question", question, status: "open" });
+
+describe("memory store: Hot Seat", () => {
+  it("shows a question to the room, never hidden ones, and keeps participants out", async () => {
+    const s = memoryFairview3("key");
+    expect(await s.ask(P1, "Pat", "How will we measure referrals?")).toBe("ok");
+    expect(await s.ask(P2, "Sam", "What is the Pro migration date?")).toBe(
+      "ok",
+    );
+    let snap = await s.snapshot();
+    expect(snap.qa).toHaveLength(2);
+    expect(JSON.stringify(snap)).not.toContain(P1);
+    const id = snap.qa[0]!.id;
+    await s.presenter("key", { type: "qa-moderate", id, status: "hidden" });
+    snap = await s.snapshot();
+    expect(snap.qa.map((q) => q.id)).not.toContain(id);
+    expect((await s.inbox("key"))!.qa).toHaveLength(2);
+  });
+
+  it("orders by upvotes, one per phone, and takes them back", async () => {
+    const s = memoryFairview3("key");
+    await s.ask(P1, "Pat", "First question here");
+    await s.ask(P1, "Pat", "Second question here");
+    const [a, b] = (await s.snapshot()).qa;
+    expect(await s.upvote(P1, b!.id, true)).toBe("ok");
+    expect(await s.upvote(P1, b!.id, true)).toBe("ok");
+    expect(await s.upvote(P2, b!.id, true)).toBe("ok");
+    let snap = await s.snapshot();
+    expect(snap.qa[0]).toMatchObject({ id: b!.id, votes: 2 });
+    await s.upvote(P1, b!.id, false);
+    await s.upvote(P2, b!.id, false);
+    await s.upvote(P2, a!.id, true);
+    snap = await s.snapshot();
+    expect(snap.qa[0]).toMatchObject({ id: a!.id, votes: 1 });
+    expect(await s.upvote(P1, "no-such-question", true)).toBe("missing");
+  });
+
+  it("refuses duplicates and more than five per phone", async () => {
+    const s = memoryFairview3("key");
+    expect(await s.ask(P1, "Pat", "Same question?")).toBe("ok");
+    expect(await s.ask(P1, "Pat", "same   question")).toBe("duplicate");
+    for (let i = 0; i < 4; i++) await s.ask(P1, "Pat", `Question number ${i}`);
+    expect(await s.ask(P1, "Pat", "One too many")).toBe("too-many");
+  });
+
+  it("only the presenter selects; answering or hiding clears the stage", async () => {
+    const s = memoryFairview3("key");
+    await s.ask(P1, "Pat", "Why now?");
+    const id = (await s.snapshot()).qa[0]!.id;
+    expect(await s.presenter("nope", { type: "qa-select", id })).toBe(false);
+    expect((await s.snapshot()).state.qa.selected).toBeNull();
+    await s.presenter("key", { type: "qa-select", id });
+    expect((await s.snapshot()).state.qa.selected).toBe(id);
+    await s.presenter("key", { type: "qa-moderate", id, status: "answered" });
+    const snap = await s.snapshot();
+    expect(snap.state.qa.selected).toBeNull();
+    expect(snap.qa[0]!.status).toBe("answered");
+    // A hidden question cannot be put on the stage.
+    await s.presenter("key", { type: "qa-moderate", id, status: "hidden" });
+    await s.presenter("key", { type: "qa-select", id });
+    expect((await s.snapshot()).state.qa.selected).toBeNull();
+  });
+
+  it("reset qa leaves votes alone", async () => {
+    const s = memoryFairview3("key");
+    await open(s, "q4");
+    await s.vote(P1, "q4", 2);
+    await s.ask(P1, "Pat", "A question");
+    await s.presenter("key", { type: "reset", what: "qa" });
+    const snap = await s.snapshot();
+    expect(snap.qa).toHaveLength(0);
+    expect(snap.tallies.q4).toEqual([0, 0, 1]);
+  });
+});
+
+describe("memory store: musical showdown", () => {
+  it("counts one vote per phone over three tracks and finds the leader", async () => {
+    const s = memoryFairview3("key");
+    expect(await s.vote(P1, "q4", 0)).toBe("closed");
+    await open(s, "q4");
+    await s.vote(P1, "q4", 1);
+    await s.vote(P1, "q4", 2);
+    await s.vote(P2, "q4", 2);
+    expect(await s.vote(P2, "q4", 3)).toBe("bad-option");
+    const { tallies } = await s.snapshot();
+    expect(tallies.q4).toEqual([0, 0, 2]);
+    expect(leaderOf(tallies.q4)).toBe("electroswing");
+    expect(leaderOf([1, 1, 0])).toBeNull();
+    expect(leaderOf([0, 0, 0])).toBeNull();
+  });
+
+  it("announces a fixed winner and resets with the votes", async () => {
+    const s = memoryFairview3("key");
+    await s.presenter("key", {
+      type: "showdown",
+      announced: true,
+      winner: "country",
+    });
+    expect((await s.snapshot()).state.showdown).toEqual({
+      announced: true,
+      winner: "country",
+    });
+    await s.presenter("key", { type: "reset", what: "votes" });
+    expect((await s.snapshot()).state.showdown.announced).toBe(false);
+  });
+});
+
+describe("Hot Seat and showdown wire format", () => {
+  it("parses the new actions and refuses bad ones", () => {
+    expect(parsePresenterAction({ type: "qa-select", id: null })).toEqual({
+      type: "qa-select",
+      id: null,
+    });
+    expect(
+      parsePresenterAction({ type: "qa-moderate", id: "x", status: "bad" }),
+    ).toBeNull();
+    expect(parsePresenterAction({ type: "track", track: "polka" })).toBeNull();
+    expect(
+      parsePresenterAction({
+        type: "track",
+        track: "metal",
+        audioUrl: "http://x/a.mp3",
+      }),
+    ).toBeNull();
+    expect(
+      parsePresenterAction({
+        type: "track",
+        track: "metal",
+        audioUrl: "/fairview3/audio/a.mp3",
+      }),
+    ).not.toBeNull();
+    expect(parsePresenterAction({ type: "finale", volume: 2 })).toBeNull();
+    expect(
+      parsePresenterAction({ type: "showdown", winner: "polka" }),
+    ).toBeNull();
+    expect(parsePresenterAction({ type: "reset", what: "qa" })).not.toBeNull();
+  });
+
+  it("fills a legacy state to shape", () => {
+    const old = {
+      section: "finale",
+      questions: { q1: "open" },
+      finale: { started: true, audioUrl: "https://x/a.mp3", lyrics: "words" },
+      rev: 9,
+    };
+    const s = normalizeState(old);
+    expect(s.questions).toEqual({
+      q1: "open",
+      q2: "closed",
+      q3: "closed",
+      q4: "closed",
+    });
+    expect(s.finale.tracks.metal).toEqual({ audioUrl: null, lyrics: null });
+    expect(s.qa.selected).toBeNull();
+    expect(s.rev).toBe(9);
+  });
+
+  it("screens display names", () => {
+    expect(screenName("  Pat  Lee ")).toEqual({ ok: true, body: "Pat Lee" });
+    expect(screenName("")).toEqual({ ok: true, body: "Anonymous" });
+    expect(screenName("pat@example.com").ok).toBe(false);
+    expect(screenName("x".repeat(40)).ok).toBe(false);
   });
 });
