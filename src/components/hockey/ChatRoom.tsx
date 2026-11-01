@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Send, SmilePlus } from "lucide-react";
+import {
+  Camera,
+  CornerDownRight,
+  Megaphone,
+  Reply,
+  Send,
+  SmilePlus,
+  X,
+} from "lucide-react";
 import { personColor } from "@/experience-lab/ui/atoms";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import type { Moment, Participant } from "@/experience-lab/core/types";
@@ -12,6 +20,12 @@ import {
   type ChirpLevel,
   type ChirpRoom,
 } from "@/domain/hockey/chirp";
+import {
+  announcementsOf,
+  quoteOf,
+  type Announcement,
+} from "@/domain/hockey/announce";
+import { AnnouncementCard } from "./Announcements";
 import { ChirpSomeone } from "./ChirpSomeone";
 import { FanAvatar as Avatar, FanTag } from "./FanTag";
 import styles from "./hockey.module.css";
@@ -27,6 +41,11 @@ const REACTIONS = ["🚨", "😂", "🔥", "🙅", "❤️"];
  * type (and a 16 px box, so an iPhone does not zoom when you tap it),
  * reactions you can hit, the goal horn one tap away. Passport's own lines
  * stay lines, never bubbles: it is the room, not a person in it.
+ *
+ * Since 2026-11-01: **reply** to one line (↩ on any line; the reply quotes
+ * it), every line carries its time, and the host's **announcements** are
+ * cards in the conversation as well as the banner over the page
+ * (`announce.ts`).
  */
 export function ChatRoom({
   live,
@@ -37,9 +56,12 @@ export function ChatRoom({
   isHost = false,
   onLook,
   onSetChirp,
+  announceOn = false,
+  onAnnounce,
+  onRetract,
 }: {
   live: LiveExperience;
-  onSay: (text: string) => void;
+  onSay: (text: string, replyTo?: string) => void;
   onReact: (momentId: string, emoji: string) => void;
   /** The night's id, for asking Chirp Bot for chirps. */
   slug?: string;
@@ -49,10 +71,16 @@ export function ChatRoom({
   /** Opened the chat — Chirp Bot may have a pregame question due. */
   onLook?: () => void;
   onSetChirp?: (on: boolean, level?: ChirpLevel) => void;
+  /** Announcements are on (announce-migration.sql); the host may post one. */
+  announceOn?: boolean;
+  onAnnounce?: () => void;
+  onRetract?: (momentId: string) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [chirping, setChirping] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const announcements = announcementsOf(live.moments, live.participants);
   const person = (id?: string) =>
     id ? live.participants.find((p) => p.id === id) : undefined;
   const bot = Boolean(chirp?.available && chirp.on);
@@ -84,35 +112,97 @@ export function ChatRoom({
     )
     .slice(0, 40);
 
+  // Anything on the page a reply can point at: people's lines and Chirp Bot's.
+  const quotable = (id: string) => {
+    const m = live.moments.find((x) => x.id === id);
+    if (m) {
+      return {
+        name: person(m.by)?.name ?? "Somebody",
+        text: m.kind === "photo" ? "📷 a photo" : m.text,
+      };
+    }
+    const b = (chirp?.lines ?? []).find((x) => x.id === id);
+    return b ? { name: CHIRP_BOT.name, text: b.text } : undefined;
+  };
+  const reply = (id: string) => {
+    setReplyTo(id);
+    requestAnimationFrame(() => input.current?.focus());
+  };
+  const replying = replyTo ? quotable(replyTo) : undefined;
+
   return (
     <div className="flex flex-col gap-5">
       {live.me && (
         <form
-          className="flex gap-2"
+          className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            onSay(draft);
+            onSay(draft, replyTo ?? undefined);
             setDraft("");
+            setReplyTo(null);
           }}
         >
-          <input
-            ref={input}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            maxLength={500}
-            placeholder="Say something to the group"
-            aria-label="Say something to the group"
-            className="min-h-12 min-w-0 flex-1 rounded-full bg-white/[0.08] px-5 text-[16px] text-white ring-1 ring-white/15 outline-none placeholder:text-white/50 focus:ring-white/45"
-          />
-          <button
-            type="submit"
-            disabled={!draft.trim()}
-            aria-label="Send"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ffd84d] text-[#0b1220] transition active:scale-95 disabled:opacity-35"
-          >
-            <Send className="h-5 w-5" />
-          </button>
+          {replying && (
+            <div
+              data-replying
+              className="flex items-center gap-2 rounded-2xl bg-white/[0.06] px-3.5 py-2 text-[13.5px] text-white/75 ring-1 ring-white/10"
+            >
+              <CornerDownRight className="h-4 w-4 shrink-0 text-[#ffd84d]" />
+              <span className="min-w-0 flex-1 truncate">
+                Replying to{" "}
+                <strong className="text-white">{replying.name}</strong>
+                {replying.text ? ` — ${quoteOf(replying.text, 60)}` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setReplyTo(null)}
+                aria-label="Stop replying"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/60 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              ref={input}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              maxLength={500}
+              placeholder={
+                replying
+                  ? `Reply to ${replying.name}`
+                  : "Say something to the group"
+              }
+              aria-label="Say something to the group"
+              className="min-h-12 min-w-0 flex-1 rounded-full bg-white/[0.08] px-5 text-[16px] text-white ring-1 ring-white/15 outline-none placeholder:text-white/50 focus:ring-white/45"
+            />
+            <button
+              type="submit"
+              disabled={!draft.trim()}
+              aria-label="Send"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ffd84d] text-[#0b1220] transition active:scale-95 disabled:opacity-35"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
         </form>
+      )}
+
+      {live.me && isHost && announceOn && onAnnounce && (
+        <div className="-mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onAnnounce}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#ffd84d]/15 px-4 text-[15px] font-bold text-[#ffd84d] ring-1 ring-[#ffd84d]/50 transition active:scale-95"
+          >
+            <Megaphone className="h-4 w-4" />
+            Announce a change
+          </button>
+          <span className="text-[13px] text-white/50">
+            Venue, meeting spot, time. Stays up until everyone&apos;s seen it.
+          </span>
+        </div>
       )}
 
       {live.me && bot && slug && others.length > 0 && (
@@ -151,16 +241,35 @@ export function ChatRoom({
       )}
 
       <ul className="flex flex-col gap-4">
-        {timeline.map((item) =>
-          item.bot ? (
-            <BotLineView
-              key={item.line.id}
-              line={item.line}
-              me={live.me}
-              people={live.participants}
-              onReact={onReact}
-            />
-          ) : (
+        {timeline.map((item) => {
+          if (item.bot)
+            return (
+              <BotLineView
+                key={item.line.id}
+                line={item.line}
+                me={live.me}
+                people={live.participants}
+                onReact={onReact}
+                onReply={live.me ? () => reply(item.line.id) : undefined}
+              />
+            );
+          const a: Announcement | undefined =
+            item.moment.kind === "announce"
+              ? announcements.find((x) => x.id === item.moment.id)
+              : undefined;
+          if (a)
+            return (
+              <AnnouncementCard
+                key={a.id}
+                a={a}
+                me={live.me}
+                people={live.participants}
+                isHost={isHost}
+                onAck={(id) => onReact(id, "✅")}
+                onRetract={onRetract}
+              />
+            );
+          return (
             <Line
               key={item.moment.id}
               moment={item.moment}
@@ -168,9 +277,13 @@ export function ChatRoom({
               me={live.me}
               people={live.participants}
               onReact={onReact}
+              onReply={live.me ? () => reply(item.moment.id) : undefined}
+              quoted={
+                item.moment.replyTo ? quotable(item.moment.replyTo) : undefined
+              }
             />
-          ),
-        )}
+          );
+        })}
       </ul>
 
       {isHost && chirp?.available && onSetChirp && (
@@ -232,11 +345,13 @@ function BotLineView({
   me,
   people,
   onReact,
+  onReply,
 }: {
   line: BotLine;
   me: Participant | null;
   people: readonly Participant[];
   onReact: (momentId: string, emoji: string) => void;
+  onReply?: () => void;
 }) {
   return (
     <li className={`${styles.pop} flex gap-3`} data-chirp-bot={line.kind}>
@@ -258,6 +373,7 @@ function BotLineView({
             <span className="text-[11.5px] font-semibold tracking-wide text-white/50 uppercase">
               {line.tone === "opinion" ? "Hot take · opinion" : "Satire"}
             </span>
+            <Stamp at={line.at} />
           </p>
           <p className="text-[16px] leading-snug [overflow-wrap:anywhere] text-white">
             {line.text}
@@ -292,9 +408,24 @@ function BotLineView({
           me={me}
           people={people}
           onReact={onReact}
+          onReply={onReply}
         />
       </div>
     </li>
+  );
+}
+
+/** The time a line was said, small, in the phone's own zone. */
+function Stamp({ at }: { at: string }) {
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return null;
+  return (
+    <time
+      dateTime={at}
+      className="ml-auto text-[11.5px] font-medium text-white/40 tabular-nums"
+    >
+      {d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}
+    </time>
   );
 }
 
@@ -304,12 +435,17 @@ function Line({
   me,
   people,
   onReact,
+  onReply,
+  quoted,
 }: {
   moment: Moment;
   who?: Participant;
   me: Participant | null;
   people: readonly Participant[];
   onReact: (momentId: string, emoji: string) => void;
+  onReply?: () => void;
+  /** The line this one answers, when it is still on the page. */
+  quoted?: { name: string; text?: string };
 }) {
   if (moment.kind === "voice") {
     return (
@@ -363,6 +499,19 @@ function Line({
             >
               <span className="truncate">{who.name}</span>
               <FanTag personId={who.id} />
+              <Stamp at={moment.at} />
+            </p>
+          )}
+          {quoted && (
+            <p
+              data-quote
+              className="mt-1 mb-1.5 flex items-start gap-1.5 rounded-xl border-l-2 border-[#ffd84d]/70 bg-white/[0.05] px-2.5 py-1.5 text-[13.5px] leading-snug text-white/70"
+            >
+              <CornerDownRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#ffd84d]/80" />
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                <strong className="text-white/85">{quoted.name}</strong>
+                {quoted.text ? ` ${quoteOf(quoted.text)}` : ""}
+              </span>
             </p>
           )}
           <p className="text-[16px] leading-snug [overflow-wrap:anywhere] text-white">
@@ -378,6 +527,7 @@ function Line({
           me={me}
           people={people}
           onReact={onReact}
+          onReply={onReply}
         />
       </div>
     </li>
@@ -391,12 +541,14 @@ function Reactions({
   me,
   people,
   onReact,
+  onReply,
 }: {
   momentId: string;
   reactions: Readonly<Record<string, readonly string[]>>;
   me: Participant | null;
   people: readonly Participant[];
   onReact: (momentId: string, emoji: string) => void;
+  onReply?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const reactions = Object.entries(all).filter(([, ids]) => ids.length > 0);
@@ -429,6 +581,16 @@ function Reactions({
             className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 ring-1 ring-white/15 transition hover:text-white"
           >
             <SmilePlus className="h-4 w-4" />
+          </button>
+        )}
+        {me && onReply && (
+          <button
+            type="button"
+            onClick={onReply}
+            aria-label="Reply"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 ring-1 ring-white/15 transition hover:text-white"
+          >
+            <Reply className="h-4 w-4" />
           </button>
         )}
         {open &&

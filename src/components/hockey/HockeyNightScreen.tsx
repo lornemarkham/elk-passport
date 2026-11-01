@@ -22,6 +22,12 @@ import {
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
 import { teamByAbbr } from "@/domain/hockey/fans";
 import { gameWhen } from "@/domain/hockey/countdown";
+import { announcementsOf, pendingFor } from "@/domain/hockey/announce";
+import {
+  AnnounceSheet,
+  AnnouncementBanner,
+  useDismissed,
+} from "./Announcements";
 import { ChatRoom } from "./ChatRoom";
 import { TeamMoment, WelcomeCard, useWelcomeDismissed } from "./Identity";
 import { FansProvider } from "./FanTag";
@@ -67,6 +73,23 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
   const { live, definition, state, role } = night;
   const [toyBoxOpen, setToyBoxOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
+  // The host's announcements, in front of everything until seen (`announce.ts`).
+  const announcements = useMemo(
+    () => announcementsOf(live.moments, live.participants),
+    [live.moments, live.participants],
+  );
+  const [dismissed, dismiss] = useDismissed(state.slug);
+  const pending = pendingFor(announcements, live.me?.id ?? null, dismissed);
+  const banner = live.me && pending.length > 0 && (
+    <AnnouncementBanner
+      pending={pending}
+      me={live.me}
+      people={live.participants}
+      onAck={(id) => night.react(id, "✅")}
+      onDismiss={dismiss}
+    />
+  );
   const { chirp } = night;
   const myTeam = live.me ? (chirp.fans[live.me.id] ?? null) : null;
   const crowd = night.crowd;
@@ -126,6 +149,8 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
     live.participants,
     tab === "chat",
   );
+  // "Rogers Arena, Vancouver" → the city, for a map search of a place name.
+  const city = definition.whereLine?.split(",").at(-1)?.trim();
   // At the arena, peeking at the chat in a period is for that look only:
   // one tap puts the phone away again.
   const peekingNow = periods && !couch && peeking === live.phase.id;
@@ -203,6 +228,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
 
         {!showSetup && quiet && (
           <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
+            {banner}
             <QuietMode live={live} />
             {live.me && (
               <button
@@ -232,7 +258,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                   aria-hidden
                   className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#ffd84d] align-middle"
                 />
-                {mention} mentioned you
+                {mention}
               </p>
             )}
             {/* Arena Mode stays reachable in a period: the herd, the
@@ -255,6 +281,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
               aria-labelledby={`tab-${tab}`}
               className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
             >
+              {banner && <div className="mb-5">{banner}</div>}
               {peekingNow && (
                 <button
                   type="button"
@@ -322,6 +349,9 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                     isHost={role === "host"}
                     onLook={night.chirpLook}
                     onSetChirp={night.setChirp}
+                    announceOn={night.announceOn}
+                    onAnnounce={() => setAnnouncing(true)}
+                    onRetract={(id) => void night.retract(id)}
                   />
                 </section>
               )}
@@ -359,6 +389,14 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
             lockPhaseId={nextPhaseId}
             onAdd={night.addToy}
             onClose={() => setToyBoxOpen(false)}
+          />
+        )}
+
+        {announcing && live.me && role === "host" && (
+          <AnnounceSheet
+            city={city}
+            onSend={night.announce}
+            onClose={() => setAnnouncing(false)}
           />
         )}
 
@@ -458,7 +496,14 @@ function subscribeSeen(onChange: () => void) {
  */
 function useUnread(
   slug: string,
-  moments: readonly { at: string; kind: string; by?: string; text?: string }[],
+  moments: readonly {
+    id: string;
+    at: string;
+    kind: string;
+    by?: string;
+    text?: string;
+    replyTo?: string;
+  }[],
   me: { readonly id: string; readonly name: string } | undefined,
   people: readonly { readonly id: string; readonly name: string }[],
   looking: boolean,
@@ -479,7 +524,20 @@ function useUnread(
 
   if (seen === null || looking) return { count: 0, mention: null };
   const fresh = moments.filter(
-    (m) => m.kind === "note" && m.by && m.by !== me?.id && m.at > seen,
+    (m) =>
+      (m.kind === "note" || m.kind === "photo" || m.kind === "announce") &&
+      m.by &&
+      m.by !== me?.id &&
+      m.at > seen,
   );
-  return { count: fresh.length, mention: mentioner(fresh, me, people) };
+  // A reply to something I said is worth a glance, like my name is.
+  const mine = new Set(moments.filter((m) => m.by === me?.id).map((m) => m.id));
+  const replied = fresh.find((m) => m.replyTo && mine.has(m.replyTo));
+  const named = mentioner(fresh, me, people);
+  const mention = named
+    ? `${named} mentioned you`
+    : replied
+      ? `${people.find((p) => p.id === replied.by)?.name ?? "Somebody"} replied to you`
+      : null;
+  return { count: fresh.length, mention };
 }

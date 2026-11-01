@@ -107,6 +107,8 @@ export interface NightSnapshot {
   readonly crowd: Crowd;
   /** Challenges, the jury, team reactions, the mission ledger (`challenges.ts`). */
   readonly play: PlayRoom;
+  /** Announcements and replies are on (announce-migration.sql, `announce.ts`). */
+  readonly announce: boolean;
 }
 
 export class NightError extends Error {
@@ -142,6 +144,8 @@ type Rows = NightRows & {
   readonly chirpAvailable: boolean;
   /** alive-migration.sql is applied (`watching` exists). */
   readonly watchingAvailable: boolean;
+  /** announce-migration.sql is applied (`reply_to`, `tag`, `href` exist). */
+  readonly announceAvailable: boolean;
 };
 
 /**
@@ -155,8 +159,14 @@ async function rowsFor(
   id: string,
   viewer: string,
 ): Promise<Rows | null> {
-  for (const level of ["alive", "chirp", "none"] as const) {
-    const rows = await rowsWith(db, id, level !== "none", level === "alive");
+  for (const level of ["announce", "alive", "chirp", "none"] as const) {
+    const rows = await rowsWith(
+      db,
+      id,
+      level !== "none",
+      level === "alive" || level === "announce",
+      level === "announce",
+    );
     // Sealed picks stay sealed whatever the database's reveal rule is.
     if (rows !== "missing") return rows && sealedFor(rows, viewer);
   }
@@ -168,6 +178,7 @@ async function rowsWith(
   id: string,
   chirp: boolean,
   watching = false,
+  announce = false,
 ): Promise<Rows | null | "missing"> {
   if (!UUID.test(id)) return null;
   const { data: occasion, error } = await db
@@ -208,7 +219,9 @@ async function rowsWith(
     of("passport_occasion_responses", "prompt_id, user_id, value, answered_at"),
     of(
       "passport_occasion_moments",
-      chirp ? `${MOMENT_COLUMNS}, bot_key, bot_line, bot_sig` : MOMENT_COLUMNS,
+      chirp
+        ? `${MOMENT_COLUMNS}, bot_key, bot_line, bot_sig${announce ? ", reply_to, tag, href" : ""}`
+        : MOMENT_COLUMNS,
     )
       .order("at", { ascending: false })
       .limit(200),
@@ -226,7 +239,8 @@ async function rowsWith(
     cues,
     consents,
   ]) {
-    if ((chirp || watching) && missingColumn(r.error)) return "missing";
+    if ((chirp || watching || announce) && missingColumn(r.error))
+      return "missing";
     if (r.error) throw new NightError(r.error.message, 500);
   }
 
@@ -235,6 +249,7 @@ async function rowsWith(
   return {
     chirpAvailable: chirp,
     watchingAvailable: watching,
+    announceAvailable: announce,
     play,
     occasion: occasion as unknown as NightRows["occasion"],
     members: members.data as unknown as NightRows["members"],
@@ -314,6 +329,7 @@ export async function loadNight(
     chirp: chirpRoomOf(rows, rows.chirpAvailable, facts),
     crowd: crowdOf(rows),
     play: rows.play ? { available: true, ...rows.play } : NO_PLAY,
+    announce: rows.announceAvailable,
   };
 }
 
@@ -775,6 +791,20 @@ export async function act(
     }
 
     case "say": {
+      // A reply names a line on this night the person can see; anything
+      // else is posted as a plain line rather than refused, because what
+      // they typed is the point. Before announce-migration.sql there is no
+      // column to put it in, so it is a plain line too.
+      const replyTo =
+        action.replyTo &&
+        rows.announceAvailable &&
+        rows.moments.some(
+          (m) =>
+            m.id === action.replyTo &&
+            ["note", "photo", "chirp", "announce"].includes(m.kind),
+        )
+          ? action.replyTo
+          : undefined;
       const { data, error } = await db
         .from("passport_occasion_moments")
         .insert({
@@ -782,6 +812,7 @@ export async function act(
           actor_id: user.id,
           kind: "note",
           text: action.text,
+          ...(replyTo ? { reply_to: replyTo } : {}),
         })
         .select("id")
         .single();
@@ -793,6 +824,38 @@ export async function act(
         const momentId = data.id as string;
         after(() => chirpOnSay(db, rows, user.id, action.text, momentId));
       }
+      break;
+    }
+
+    case "announce": {
+      if (!rows.announceAvailable)
+        throw new NightError("Announcements aren't switched on here yet.", 409);
+      if (me.role !== "host")
+        throw new NightError("Only the host can announce something.", 403);
+      const { error } = await db.from("passport_occasion_moments").insert({
+        occasion_id: id,
+        actor_id: user.id,
+        kind: "announce",
+        tag: action.tag,
+        text: action.text,
+        ...(action.href ? { href: action.href } : {}),
+      });
+      fail(error, "announcing");
+      break;
+    }
+
+    case "retract": {
+      if (me.role !== "host")
+        throw new NightError("Only the host can take that down.", 403);
+      const target = rows.moments.find((m) => m.id === action.momentId);
+      if (!target || target.kind !== "announce")
+        throw new NightError("That isn't an announcement.", 404);
+      const { error } = await db
+        .from("passport_occasion_moments")
+        .delete()
+        .eq("id", action.momentId)
+        .eq("occasion_id", id);
+      fail(error, "taking it down");
       break;
     }
 

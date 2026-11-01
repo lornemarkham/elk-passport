@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AnnounceTag } from "@/domain/hockey/announce";
 import { liveExperience, withResponse } from "@/experience-lab/core/engine";
 import type { ToyInput } from "@/experience-lab/core/toybox";
 import type {
@@ -40,6 +41,8 @@ export interface NightSnapshot {
    * reading back every earlier night every five seconds would be absurd.
    */
   readonly series?: SeriesView;
+  /** Announcements and replies are on (announce-migration.sql). Older servers send none. */
+  readonly announce?: boolean;
 }
 
 /** How often the page asks what everybody else did. Only while it is being looked at. */
@@ -207,9 +210,27 @@ export function useSharedNight(initial: NightSnapshot) {
         me ? withResponse(s, promptId, me, value, new Date().toISOString()) : s,
       ),
 
-    say: (text: string) => {
-      if (text.trim()) void send({ type: "say", text: text.trim() });
+    say: (text: string, replyTo?: string) => {
+      if (!text.trim()) return;
+      void send({
+        type: "say",
+        text: text.trim(),
+        ...(replyTo && /^[0-9a-f-]{36}$/.test(replyTo) ? { replyTo } : {}),
+      });
     },
+
+    /** The host's "CHANGE OF PLANS!" (`announce.ts`). Says what went wrong. */
+    announce: (input: { tag: AnnounceTag; text: string; href?: string }) =>
+      post({
+        type: "announce",
+        tag: input.tag,
+        text: input.text.trim(),
+        ...(input.href?.trim() ? { href: input.href.trim() } : {}),
+      }),
+
+    retract: (momentId: string) => send({ type: "retract", momentId }),
+
+    announceOn: snapshot.announce ?? false,
 
     react: (momentId: string, emoji: string) => {
       // Passport's own lines (the vault opening) are not rows anybody can react to.

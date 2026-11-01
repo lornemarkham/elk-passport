@@ -142,7 +142,7 @@ export interface ResponseRow {
 export interface MomentRow {
   readonly id: string;
   readonly actor_id: string;
-  readonly kind: "note" | "join" | "photo" | "chirp";
+  readonly kind: "note" | "join" | "photo" | "chirp" | "announce";
   readonly text: string | null;
   readonly emoji: string | null;
   readonly at: string;
@@ -150,6 +150,10 @@ export interface MomentRow {
   readonly bot_key?: string | null;
   readonly bot_line?: string | null;
   readonly bot_sig?: string | null;
+  /** Replies and announcements (`announce.ts`), when announce-migration.sql is applied. */
+  readonly reply_to?: string | null;
+  readonly tag?: string | null;
+  readonly href?: string | null;
 }
 
 export interface ReactionRow {
@@ -637,6 +641,9 @@ export function composeNight(
       by: m.actor_id,
       text: m.text ?? undefined,
       emoji: m.emoji ?? undefined,
+      ...(m.reply_to ? { replyTo: m.reply_to } : {}),
+      ...(m.tag ? { tag: m.tag } : {}),
+      ...(m.href ? { href: m.href } : {}),
     }));
 
   const reactions: Record<string, Record<string, string[]>> = {};

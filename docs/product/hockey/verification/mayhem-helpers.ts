@@ -28,8 +28,10 @@ export interface Person {
 }
 
 export interface Snapshot {
+  announce?: boolean;
   state: {
     meId: string;
+    moments?: { id: string; text?: string; replyTo?: string; kind: string }[];
     addedPrompts: {
       id: string;
       family?: string;
