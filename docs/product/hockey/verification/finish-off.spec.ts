@@ -33,7 +33,7 @@ test("no photos table, no NHL: the night still works", async ({ page }) => {
   await page.goto("/hockey");
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
-  if (/\/hockey\/?$/.test(page.url()))
+  if (new URL(page.url()).pathname === "/hockey")
     await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   const email = `finish-off-${stamp}@example.test`;

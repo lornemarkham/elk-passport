@@ -47,7 +47,7 @@ async function phone(browser: Browser, width: number) {
 async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
-  if (/\/hockey\/?$/.test(page.url()))
+  if (new URL(page.url()).pathname === "/hockey")
     await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(`${who}-${stamp}@example.test`);
@@ -219,7 +219,7 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   ).toBeVisible();
 
   // -------------------------------------------------- invite the guest
-  await host.page.getByRole("button", { name: "Invite" }).click();
+  await host.page.getByRole("button", { name: "Invite", exact: true }).click();
   await host.page.getByLabel("Who the invitation is for").fill("Maya");
   await host.page.getByRole("button", { name: "Make a link" }).click();
   const invitePath = new URL(

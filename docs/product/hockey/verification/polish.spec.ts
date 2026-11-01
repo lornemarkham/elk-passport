@@ -31,7 +31,7 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   await page.goto("/hockey");
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
-  if (/\/hockey\/?$/.test(page.url()))
+  if (new URL(page.url()).pathname === "/hockey")
     await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(`polish-${stamp}@example.test`);

@@ -32,7 +32,7 @@ const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
-  if (/\/hockey\/?$/.test(page.url()))
+  if (new URL(page.url()).pathname === "/hockey")
     await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
@@ -113,7 +113,7 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
   );
   await expect(lorne.page.getByText("1 in")).toBeVisible();
 
-  await lorne.page.getByRole("button", { name: "Invite" }).click();
+  await lorne.page.getByRole("button", { name: "Invite", exact: true }).click();
   await lorne.page.getByLabel("Who the invitation is for").fill("Maya");
   await lorne.page.getByRole("button", { name: "Make a link" }).click();
   const invitePath = new URL(
@@ -259,12 +259,12 @@ test("real places to vote on, picks by thumb, a reveal, and the next one", async
   ).toBeVisible();
   await reveal.getByRole("button", { name: "Flip them all" }).click();
   await expect(
-    reveal.getByRole("button", { name: "Lorne: 1–1" }),
+    reveal.getByRole("button", { name: /^Lorne: .*1–1/ }),
   ).toBeVisible();
   // Maya called the score exactly; the engine says so, with the points.
-  await expect(reveal.getByRole("button", { name: "Maya: 3–2" })).toContainText(
-    /Called it \+5/,
-  );
+  await expect(
+    reveal.getByRole("button", { name: /^Maya: .*3–2/ }),
+  ).toContainText(/Called it \+5/);
 
   // ------------------------------------------ the morning after: again
   await moveStart(nightId, minutes(-16 * 60));

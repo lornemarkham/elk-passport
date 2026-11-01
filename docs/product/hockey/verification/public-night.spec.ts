@@ -71,7 +71,12 @@ test("a new host picks a Leafs game from the league's list", async ({
   test.setTimeout(120_000);
   const page = await phone(browser);
   await page.goto("/hockey");
+  // Hydrated first: the link is re-rendered once, and a click during that is lost.
+  await expect(
+    page.getByRole("heading", { name: "Hockey is better with your crew." }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+  await expect(page).toHaveURL(/\/auth\?next=%2Fhockey/);
   await signUp(page, "pat");
   await expect(
     page.getByRole("heading", { name: /Nothing on yet/ }),
@@ -152,7 +157,12 @@ test("the trophy is the group's own, on the board and the shelf", async () => {
 test("a stranger with the id gets a 404", async ({ browser }) => {
   const page = await phone(browser);
   await page.goto("/hockey");
+  // Hydrated first: the link is re-rendered once, and a click during that is lost.
+  await expect(
+    page.getByRole("heading", { name: "Hockey is better with your crew." }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+  await expect(page).toHaveURL(/\/auth\?next=%2Fhockey/);
   await signUp(page, "stranger");
   await expect(
     page.getByRole("heading", { name: /Nothing on yet/ }),
