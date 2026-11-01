@@ -269,7 +269,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                   <WelcomeCard
                     me={live.me}
                     people={live.participants}
-                    matchup={`${away} at ${home}`}
+                    matchup={`${home} vs ${away}`}
                     when={gameWhen(new Date(definition.anchorAt))}
                     venue={definition.kicker.split(" · ")[0]}
                     team={myTeam}

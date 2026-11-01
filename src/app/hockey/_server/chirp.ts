@@ -42,6 +42,7 @@ import {
 import { isTeamAbbr, teamByName } from "@/domain/hockey/fans";
 import { modulesOf } from "@/domain/hockey/modules";
 import { matchupOf } from "@/domain/hockey/teams";
+import { scoreWords } from "@/domain/hockey/score";
 import {
   SYCLE_HOCKEY_NIGHT,
   settledPlay,
@@ -264,6 +265,8 @@ export function chirpRoomOf(
   };
   const views = challengeViews(rows);
   const actual = finalCalled(rows);
+  // Tonight's two teams, home first — the order every pick is stored in.
+  const sides = gameOf(rows);
   const pointsOf = (id: string) =>
     facts.leader?.id === id ? facts.leader.points : undefined;
 
@@ -288,7 +291,8 @@ export function chirpRoomOf(
             claimHolds,
             pointsOf,
             challengeOf: (cid) => views.get(cid),
-            finalScore: actual ? `${actual[0]}–${actual[1]}` : undefined,
+            finalScore: actual ? scoreWords(actual, sides) : undefined,
+            sides,
           }),
         )
         .filter((line): line is BotLine => line !== null)
@@ -333,8 +337,8 @@ async function post(
 }
 
 function gameOf(rows: NightRows): GameContext {
-  const opponent = rows.occasion.details.opponent;
-  const subtitle = `Canucks vs ${typeof opponent === "string" ? opponent : "Away"}`;
+  const { home, opponent } = rows.occasion.details;
+  const subtitle = `${typeof home === "string" ? home : SYCLE_HOCKEY_NIGHT.details.home} vs ${typeof opponent === "string" ? opponent : "Away"}`;
   return matchupOf(subtitle);
 }
 

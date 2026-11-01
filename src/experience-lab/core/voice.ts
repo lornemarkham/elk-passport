@@ -38,7 +38,11 @@ function valueKey(value: unknown): string {
 
 function labelFor(prompt: Prompt, value: unknown): string {
   if (prompt.kind === "pair" && Array.isArray(value)) {
-    return `${value[0]}–${value[1]}`;
+    // Both sides named, so "5–0" can never be read the wrong way round.
+    const [home, away] = prompt.pairLabels ?? [];
+    return home && away
+      ? `${home} ${value[0]}–${value[1]} ${away}`
+      : `${value[0]}–${value[1]}`;
   }
   if (prompt.kind === "boolean") return value ? "yes" : "no";
   const option = prompt.options?.find((o) => o.id === value);

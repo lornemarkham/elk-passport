@@ -83,7 +83,8 @@ describe("the reveal", () => {
   const people = [{ id: "u1", name: "Maya" }];
 
   it("says an answer the way you would say it", () => {
-    expect(answerText(prompt("final-score"), [4, 2])).toBe("4–2");
+    // The fixture's labels are Canucks / Flames; a score names both codes.
+    expect(answerText(prompt("final-score"), [4, 2])).toBe("VAN 4–2 CGY");
     expect(answerText(prompt("overtime"), false)).toBe("No");
     expect(answerText(prompt("total-goals"), 6)).toBe("6 goals");
     expect(answerText(prompt("first-team"), "canucks")).toBe("Canucks");

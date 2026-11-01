@@ -743,7 +743,7 @@ describe("drama and the receipts", () => {
     const worst = spectacularlyWrong(
       liveExperience(definition, state, at(170)),
     );
-    expect(worst).toMatchObject({ pick: "1–7", actual: "3–2" });
+    expect(worst).toMatchObject({ pick: "VAN 1–7 MIN", actual: "VAN 3–2 MIN" });
     expect(worst?.participant.name).toBe("Lorne");
   });
 });

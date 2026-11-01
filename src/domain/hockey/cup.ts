@@ -13,6 +13,7 @@ import {
 } from "./challenges";
 import { teamByAbbr } from "./fans";
 import { answerText } from "./reveal";
+import { scoreWords, sidesOf } from "./score";
 
 /**
  * **The Sycle Cup: who leads, why, and whether anybody may say "champion".**
@@ -122,7 +123,7 @@ export function spectacularlyWrong(
   return {
     participant: who,
     pick: answerText(p.prompt, worst.value),
-    actual: `${h}–${a}`,
+    actual: scoreWords([h, a], sidesOf(p.prompt)),
   };
 }
 

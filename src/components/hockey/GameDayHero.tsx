@@ -8,7 +8,7 @@ import { relativeTime } from "@/experience-lab/core/phase";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import { ACTS, actOf, nextPhase } from "@/domain/hockey/acts";
 import { countdown, gameWhen } from "@/domain/hockey/countdown";
-import { answerText } from "@/domain/hockey/reveal";
+import { scoreWords } from "@/domain/hockey/score";
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
 import type { GameView } from "@/app/hockey/_server/game";
 import { NhlBoard } from "./NhlBoard";
@@ -54,10 +54,15 @@ export function GameDayHero({
   const now = useClock(anchor);
 
   const final = live.prompts.find((p) => p.prompt.id === "final-score");
-  const finalScore =
-    final?.prompt.resolution !== undefined && final.showResolution
-      ? answerText(final.prompt, final.prompt.resolution)
+  // The called score, as stored: [home, away]. Said with both codes
+  // (`score.ts`) wherever it is a sentence; drawn beside each code here.
+  const finalPair =
+    final?.prompt.resolution !== undefined &&
+    final.showResolution &&
+    Array.isArray(final.prompt.resolution)
+      ? (final.prompt.resolution as readonly number[])
       : null;
+  const finalScore = finalPair ? scoreWords(finalPair, { home, away }) : null;
 
   const venue = definition.whereLine ?? definition.kicker;
   const matchup = useRef<HTMLDivElement>(null);
@@ -155,7 +160,7 @@ export function GameDayHero({
               {act.id === "during" && <InGame live={live} anchor={anchor} />}
               {act.id === "after" && (
                 <Final
-                  score={finalScore}
+                  score={finalPair}
                   home={homeKit.abbr}
                   away={awayKit.abbr}
                   phaseLabel={live.phase.label}
@@ -474,13 +479,13 @@ function Final({
   phaseLabel,
   onGoAgain,
 }: {
-  score: string | null;
+  score: readonly number[] | null;
   home: string;
   away: string;
   phaseLabel: string;
   onGoAgain?: () => void;
 }) {
-  const [h, a] = score ? score.split("–") : [];
+  const [h, a] = score ?? [];
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-black/35 px-4 py-3">

@@ -36,6 +36,7 @@ import {
   type LibraryLine,
 } from "./chirp-library";
 import { pairKey, rivalry, teamByAbbr, teamsMentioned } from "./fans";
+import { pairFromKey, scoreWords, type ScoreSides } from "./score";
 
 /**
  * **Chirp Bot — the chat's heckler, in the night's own conversation.**
@@ -314,8 +315,10 @@ export function renderBotRow(
     readonly pointsOf?: (userId: string) => number | undefined;
     /** A PLAY challenge as the rows have it now (`chal`/`took`/`oracle`/`ruled`). */
     readonly challengeOf?: (id: string) => ChallengeView | undefined;
-    /** The called final score, "4–3", for the spectacularly wrong pick. */
+    /** The called final score, "VAN 4–3 MIN", for the spectacularly wrong pick. */
     readonly finalScore?: string;
+    /** Tonight's two teams, so a pick is read "VAN 5–0 MIN", never "5–0". */
+    readonly sides?: ScoreSides | null;
   },
 ): BotLine | null {
   if (!row.bot_key || !row.bot_line) return null;
@@ -367,14 +370,14 @@ export function renderBotRow(
   if (claims && !subject) return null;
   const vars: Record<string, string> = { name: subject?.name ?? "Someone" };
   if (kind === "picks") {
-    const score = /^(\d{1,2})-(\d{1,2})$/.exec(parts[3] ?? "");
+    const score = pairFromKey(parts[3]);
     if (!score) return null;
-    vars.pick = `${score[1]}–${score[2]}`;
+    vars.pick = scoreWords(score, ctx.sides);
   }
   if (kind === "worst") {
-    const score = /^(\d{1,2})-(\d{1,2})$/.exec(parts[3] ?? "");
+    const score = pairFromKey(parts[3]);
     if (!score || !ctx.finalScore) return null;
-    vars.pick = `${score[1]}–${score[2]}`;
+    vars.pick = scoreWords(score, ctx.sides);
     vars.actual = ctx.finalScore;
   }
   if (kind === "final" || kind === "lead") {

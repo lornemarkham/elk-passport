@@ -195,9 +195,11 @@ export function suggestedCalls(
 ): Record<string, { value: ResponseValue; words: string }> {
   if (!game || game.state !== "final") return {};
   const out: Record<string, { value: ResponseValue; words: string }> = {
+    // Home first, as the night stores every pick; both codes said, so the
+    // host reads "VAN 2–4 MIN" and not a pair of numbers to guess at.
     "final-score": {
       value: [game.home.score, game.away.score],
-      words: `${game.home.score}–${game.away.score}`,
+      words: `${game.home.abbrev} ${game.home.score}–${game.away.score} ${game.away.abbrev}`,
     },
     overtime: {
       value: game.ending !== "REG",
