@@ -246,7 +246,38 @@ contract (`schemas.ts`, `domains/`, `supabase/migrations/`, layout, shell,
 
 ## 6. Test results
 
-_(filled in from the run on this tree — see the end of this file)_
+Local stack: real GoTrue sign-ups, PostgREST under production's grants,
+embedded Postgres, every Hockey migration applied (including
+`announce-migration.sql`), the 2026-10-23 production Atlas body as the
+Atlas stand-in, the league stubbed (the recorded Kraken game for the
+older specs; the synthetic schedule for `public-night`).
+
+| Gate                                                                                                                                                                                                                    | Result                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `npx tsc --noEmit`                                                                                                                                                                                                      | clean                                                                                                       |
+| `npx eslint .`                                                                                                                                                                                                          | 0 errors, 41 warnings (the baseline's; none in Hockey)                                                      |
+| `npx prettier --check .`                                                                                                                                                                                                | clean                                                                                                       |
+| `npx vitest run`                                                                                                                                                                                                        | **3,950 passed**, 38 skipped (new: score 13, announce 8, public-night 9, runup 8, chirp-runup 4, fantasy 5) |
+| `npm run build`                                                                                                                                                                                                         | ok (stack env and placeholder env)                                                                          |
+| **New specs:** `announce` (2 phones, 6 steps), `public-night` (6 steps), `announce-off` (no migration)                                                                                                                  | 6/6 · 6/6 · see below                                                                                       |
+| **Regression, every Hockey spec:** alive, chirp, arena-mode, finish, finish-play, mobile ×3, modules, multi-night, plan-and-results, plan-pregame, bet-button, mayhem, polish, redesign, restaurant-photos, seats, crew | all pass (36 in the main pass; the 8 whose expectations my changes moved pass on rerun)                     |
+| `acceptance` (synthetic Atlas)                                                                                                                                                                                          | 1/1                                                                                                         |
+| **New attack suite** `announce-attack.mjs` (PostgREST + real JWTs)                                                                                                                                                      | **30/30**                                                                                                   |
+| Attacks: rls, seats, arena, crew, mayhem                                                                                                                                                                                | all pass · 35/35 · 78/78 · 93/93 · all pass                                                                 |
+| `announce-migration.sql` rehearsal                                                                                                                                                                                      | preflight NOT APPLIED → apply → apply (no change) → APPLIED → rollback → NOT APPLIED → apply → APPLIED      |
+| `npx playwright test` (whole repo, placeholder env, critic Atlas mock)                                                                                                                                                  | _see the addendum at the end_                                                                               |
+
+**Spec changes this made, and why.** Signed-out `/hockey` is the front
+door now, so every spec's sign-up helper clicks its one button first (a
+first version matched `/auth?next=/hockey` as the front door and hung two
+specs; it checks the path now). The start form stopped suggesting an
+opponent once 25 October passed, so thirteen specs that relied on the
+suggestion now name "Wild" — they would have failed on `main` as of 26
+October regardless. Score expectations say both codes; the welcome card
+reads home first; "Invite" and the matchup line are matched exactly,
+because the run-up and welcome cards repeat them. One known flake, not
+touched: `mobile.spec` at 390 sometimes counts the hidden 1×1 photo
+input as a tap target (MAYHEM §8); it passed on rerun.
 
 ## 7. Production deployment status
 

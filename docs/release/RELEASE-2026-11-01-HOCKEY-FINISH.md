@@ -28,7 +28,12 @@ Canucks at home.
 
 ## 2. Gates (this tree)
 
-_(filled in after the run — see the product report §6)_
+tsc clean · eslint 0 errors (41 baseline warnings) · prettier clean ·
+vitest 3,950 passed / 38 skipped · build ok · every Hockey spec on the
+real stack passes (new `announce` 6/6, `public-night` 6/6; acceptance
+1/1) · attacks: announce 30/30, rls, seats 35/35, arena 78/78, crew 93/93,
+mayhem · migration rehearsal apply/apply/rollback/apply. The whole-repo
+Playwright run and `announce-off` are in the product report's addendum.
 
 ## 3. Database (production `frllwwxesxbmmaadzfaf`)
 
