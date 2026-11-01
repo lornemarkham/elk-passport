@@ -20,6 +20,10 @@ test.skip(!process.env.CHIRP_OFF, "needs a stack started with HOCKEY_CHIRP=0");
 const stamp = Date.now().toString(36);
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (/\/hockey\/?$/.test(page.url()))
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page
     .getByLabel("Email address")

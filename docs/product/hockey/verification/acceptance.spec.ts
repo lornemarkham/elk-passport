@@ -23,6 +23,10 @@ const stamp = Date.now().toString(36);
 const emailFor = (who: string) => `${who}-${stamp}@example.test`;
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (/\/hockey\/?$/.test(page.url()))
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -62,6 +66,8 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   // ---------------------------------------------------------- the host
   const lorne = await person(browser);
   await lorne.page.goto("/hockey");
+  // The public front door, then sign-in with the way back to /hockey.
+  await lorne.page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await expect(lorne.page).toHaveURL(/\/auth\?next=%2Fhockey/);
   await signUp(lorne.page, "lorne");
   await expect(lorne.page.getByText(/Nothing on yet/)).toBeVisible();
