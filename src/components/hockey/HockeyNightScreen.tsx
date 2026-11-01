@@ -209,6 +209,7 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
             nhl={nhl}
             onInvite={() => choose("group", "guest-list")}
             onGoAgain={() => choose("plan", "run-it-back")}
+            onCallIt={() => choose("play", "call-it")}
           />
 
           {showSetup && (
@@ -320,6 +321,9 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
                     blocks={byTab.plan}
                     couch={couch}
                     onImGoing={() => night.setWatching("arena")}
+                    onGo={(room, anchor) => {
+                      if (room !== "plan") choose(room, anchor);
+                    }}
                   />
                 )}
                 {tab === "play" && (

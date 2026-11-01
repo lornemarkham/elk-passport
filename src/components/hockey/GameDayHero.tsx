@@ -35,6 +35,7 @@ export function GameDayHero({
   nhl,
   onInvite,
   onGoAgain,
+  onCallIt,
 }: {
   live: LiveExperience;
   role: "host" | "guest";
@@ -44,6 +45,8 @@ export function GameDayHero({
   nhl?: GameView | null;
   onInvite?: () => void;
   onGoAgain?: () => void;
+  /** The host, after the horn: jump to Call it. */
+  onCallIt?: () => void;
 }) {
   const { definition } = live;
   const { home, away } = matchupOf(definition.subtitle);
@@ -161,6 +164,12 @@ export function GameDayHero({
               {act.id === "after" && (
                 <Final
                   score={finalPair}
+                  leagueSays={
+                    role === "host"
+                      ? nhl?.suggestions?.["final-score"]?.words
+                      : undefined
+                  }
+                  onCallIt={onCallIt}
                   home={homeKit.abbr}
                   away={awayKit.abbr}
                   phaseLabel={live.phase.label}
@@ -474,12 +483,17 @@ function InGame({ live, anchor }: { live: LiveExperience; anchor: Date }) {
 
 function Final({
   score,
+  leagueSays,
+  onCallIt,
   home,
   away,
   phaseLabel,
   onGoAgain,
 }: {
   score: readonly number[] | null;
+  /** The league's final, when it has one and the host has not called it yet. */
+  leagueSays?: string;
+  onCallIt?: () => void;
   home: string;
   away: string;
   phaseLabel: string;
@@ -509,6 +523,18 @@ function Final({
           </span>
         )}
       </div>
+      {!score && leagueSays && onCallIt && (
+        <button
+          type="button"
+          onClick={onCallIt}
+          className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-[#ffd84d] px-4 text-left text-[15px] font-bold text-[#0b1220]"
+        >
+          <span>
+            The league has it {leagueSays}. Call it so the Cup counts.
+          </span>
+          <span aria-hidden>→</span>
+        </button>
+      )}
       {onGoAgain && (
         <button
           type="button"

@@ -38,6 +38,7 @@ import { nextGameAfter } from "@/domain/hockey/schedule";
 import { Directions, SeatsEditor, seatsSummary, useSeats } from "./OurSeats";
 import { ArenaDoor, isRogersArena } from "./arena/ArenaDoor";
 import { RunItBack } from "./RunItBack";
+import { RunUp } from "./RunUp";
 import {
   BallotVenueCard,
   NearbyVenueCard,
@@ -91,12 +92,15 @@ export function PlanTab({
   blocks,
   couch = false,
   onImGoing,
+  onGo,
 }: {
   night: SharedNight;
   blocks: readonly Block[];
   /** This person is watching from the couch: no meetup, seats or walk. */
   couch?: boolean;
   onImGoing?: () => void;
+  /** Open another room (the run-up card's one-tap items). */
+  onGo?: (room: "plan" | "play" | "chat" | "group", anchor?: string) => void;
 }) {
   const { live } = night;
   const morning = AFTER_THE_NIGHT.has(live.phase.id);
@@ -122,6 +126,7 @@ export function PlanTab({
     <div className="flex flex-col gap-8">
       {/* The morning after, the next night leads and the plan is history. */}
       {morning && runItBack}
+      {onGo && <RunUp night={night} onGo={onGo} />}
       <GamePlan
         night={night}
         blocks={blocks}
