@@ -1,0 +1,115 @@
+/*
+ * Go Have a Christmas — the season, in Go Have a Day's own palette.
+ *
+ * GHAD's forest, berry, sun and cream are already Christmas colours; this
+ * deepens them for night scenes and adds candlelight. Everything decorative
+ * is CSS (no stock photos posing as places): pictures of real things come
+ * only from Atlas, labelled by `Picture`.
+ */
+
+.page {
+  --xm-pine: #0f3b2b;
+  --xm-pine-deep: #082319;
+  --xm-berry: #b3242f;
+  --xm-berry-soft: #f7e3e1;
+  --xm-gold: #e3a83b;
+  --xm-candle: #ffd98a;
+  --xm-snow: #fbf6ec;
+  background: var(--xm-snow);
+  color: var(--gh-ink);
+}
+
+/* The night sky behind the hero: deep pine, a glow of candlelight, stars. */
+.night {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(
+      120% 70% at 85% 0%,
+      rgb(255 217 138 / 0.28),
+      transparent 60%
+    ),
+    radial-gradient(90% 60% at 0% 100%, rgb(179 36 47 / 0.35), transparent 65%),
+    linear-gradient(180deg, var(--xm-pine-deep), var(--xm-pine));
+}
+
+.night::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.55;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent),
+    radial-gradient(1px 1px at 32% 8%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 58% 22%, #fff, transparent),
+    radial-gradient(1px 1px at 72% 12%, #fff, transparent),
+    radial-gradient(2px 2px at 88% 30%, var(--xm-candle), transparent),
+    radial-gradient(1px 1px at 22% 42%, #fff, transparent),
+    radial-gradient(1px 1px at 46% 36%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 92% 52%, #fff, transparent);
+}
+
+/* A row of fairy lights along the bottom of a dark band. */
+.lights {
+  height: 14px;
+  background-image: radial-gradient(
+    circle at 7px 7px,
+    var(--xm-candle) 0 3.5px,
+    transparent 4.5px
+  );
+  background-size: 28px 14px;
+  filter: drop-shadow(0 0 6px rgb(255 217 138 / 0.8));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lights {
+    animation: twinkle 3.2s ease-in-out infinite alternate;
+  }
+  .pop {
+    animation: pop 900ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A celebration: a star that arrives once. Reduced motion: it is just there. */
+@keyframes pop {
+  0% {
+    transform: scale(0.4) rotate(-20deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+.ticket {
+  background:
+    radial-gradient(circle at 0 50%, transparent 10px, #fff 10.5px) left / 51%
+      100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 10px, #fff 10.5px) right /
+      51% 100% no-repeat;
+  filter: drop-shadow(0 6px 18px rgb(8 35 25 / 0.12));
+}
+
+.stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--xm-berry) 0 10px,
+    #fff 10px 20px
+  );
+}
