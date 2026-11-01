@@ -32,8 +32,11 @@ tsc clean · eslint 0 errors (41 baseline warnings) · prettier clean ·
 vitest 3,950 passed / 38 skipped · build ok · every Hockey spec on the
 real stack passes (new `announce` 6/6, `public-night` 6/6; acceptance
 1/1) · attacks: announce 30/30, rls, seats 35/35, arena 78/78, crew 93/93,
-mayhem · migration rehearsal apply/apply/rollback/apply. The whole-repo
-Playwright run and `announce-off` are in the product report's addendum.
+mayhem · migration rehearsal apply/apply/rollback/apply · `announce-off`
+1/1 · whole-repo Playwright 245 passed / 10 failed / 8 skipped: 4 on the
+recorded baseline, 2 the Experiences-nav Hockey test (updated, 12/12 on
+rerun), 4 environmental (card-titles ×2, fairview3, creative originals)
+that touch no Hockey route — the product report §6 says why.
 
 ## 3. Database (production `frllwwxesxbmmaadzfaf`)
 

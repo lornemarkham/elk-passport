@@ -235,7 +235,8 @@ moments), `nhl.ts`, `schedule.ts`, `chirp.ts`, `chirp-library.ts`,
 `HostGame`, `PlanTab`, `PlanBoards`, `CallIt`, `Cup`, `CupRoll`,
 `RunItBack`, `play/CupBoard`, `verification/{stack.mjs,playwright.config.ts,mayhem-helpers.ts}`.
 
-**Outside my lane** (named, minimal): `src/experience-lab/core/types.ts`
+**Outside my lane** (named, minimal): `e2e/experiences-nav.spec.ts` (the
+Hockey link's test, §6), `src/experience-lab/core/types.ts`
 (additive: `Moment` kind `announce` and `replyTo/tag/href`;
 `ExperienceDefinition.timeZone`), `src/experience-lab/core/voice.ts`
 (a pair is said with its labels), `docs/PASSPORT-PRODUCT-DOCTRINE.md` (one
@@ -265,7 +266,22 @@ older specs; the synthetic schedule for `public-night`).
 | **New attack suite** `announce-attack.mjs` (PostgREST + real JWTs)                                                                                                                                                      | **30/30**                                                                                                   |
 | Attacks: rls, seats, arena, crew, mayhem                                                                                                                                                                                | all pass · 35/35 · 78/78 · 93/93 · all pass                                                                 |
 | `announce-migration.sql` rehearsal                                                                                                                                                                                      | preflight NOT APPLIED → apply → apply (no change) → APPLIED → rollback → NOT APPLIED → apply → APPLIED      |
-| `npx playwright test` (whole repo, placeholder env, critic Atlas mock)                                                                                                                                                  | _see the addendum at the end_                                                                               |
+| `announce-off` (stack started without `announce-migration.sql`, `HOCKEY_ANNOUNCE=0`)                                                                                                                                    | 1/1 — no Announce button, API 409, lines still post                                                         |
+| `npx playwright test` (whole repo, `next start`, placeholder env, critic Atlas mock, `E2E_ATLAS=1`)                                                                                                                     | **245 passed, 10 failed, 8 skipped** — see below                                                            |
+
+**The whole-repo run's ten failures.** Four are the recorded baseline
+(core-loop:26, october:554/570, conference-mobile:23). Two were
+`experiences-nav:90` (desktop and phone), which expected the Experiences
+bar's Hockey link to land on sign-in; it lands on the public front door
+now, whose button carries the sign-in with the way back — the test was
+updated to say so and passes 12/12 on rerun (`e2e/experiences-nav.spec.ts`,
+outside this lane, named in §5). Four are environmental on this machine
+and not Hockey's: `card-titles` ×2 wait for a production corpus card
+("Pumpkin Patch") the critic fixture serves differently, `fairview3` needs
+its own SQL on a database this run does not have, and `creative:198`
+looks for originals that only exist on the Mac (recorded in memory
+before this mission). These four were not re-verified against a clean
+tree here; none of them opens a Hockey route.
 
 **Spec changes this made, and why.** Signed-out `/hockey` is the front
 door now, so every spec's sign-up helper clicks its one button first (a
