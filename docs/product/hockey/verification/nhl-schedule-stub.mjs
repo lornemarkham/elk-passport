@@ -35,7 +35,15 @@ let id = 2026029000;
 for (let n = 1; n <= 21; n += 1) {
   const home = TEAMS[n % TEAMS.length];
   const away = TEAMS[(n + 1) % TEAMS.length];
-  const start = new Date(Date.UTC(day(n).getUTCFullYear(), day(n).getUTCMonth(), day(n).getUTCDate(), 2, 0));
+  const start = new Date(
+    Date.UTC(
+      day(n).getUTCFullYear(),
+      day(n).getUTCMonth(),
+      day(n).getUTCDate(),
+      2,
+      0,
+    ),
+  );
   games.push({
     id: id++,
     season: 20262027,
@@ -83,22 +91,52 @@ function landing(g) {
             {
               periodDescriptor: { number: 1, periodType: "REG" },
               goals: [
-                { isHome: false, teamAbbrev: { default: g.awayTeam.abbrev }, name: { default: "A. Visitor" }, timeInPeriod: "04:10" },
+                {
+                  isHome: false,
+                  teamAbbrev: { default: g.awayTeam.abbrev },
+                  name: { default: "A. Visitor" },
+                  timeInPeriod: "04:10",
+                },
               ],
             },
             {
               periodDescriptor: { number: 2, periodType: "REG" },
               goals: [
-                { isHome: false, teamAbbrev: { default: g.awayTeam.abbrev }, name: { default: "B. Visitor" }, timeInPeriod: "07:00" },
-                { isHome: true, teamAbbrev: { default: g.homeTeam.abbrev }, name: { default: "C. Home" }, timeInPeriod: "12:00" },
+                {
+                  isHome: false,
+                  teamAbbrev: { default: g.awayTeam.abbrev },
+                  name: { default: "B. Visitor" },
+                  timeInPeriod: "07:00",
+                },
+                {
+                  isHome: true,
+                  teamAbbrev: { default: g.homeTeam.abbrev },
+                  name: { default: "C. Home" },
+                  timeInPeriod: "12:00",
+                },
               ],
             },
             {
               periodDescriptor: { number: 3, periodType: "REG" },
               goals: [
-                { isHome: false, teamAbbrev: { default: g.awayTeam.abbrev }, name: { default: "D. Visitor" }, timeInPeriod: "01:00" },
-                { isHome: false, teamAbbrev: { default: g.awayTeam.abbrev }, name: { default: "E. Visitor" }, timeInPeriod: "09:30" },
-                { isHome: true, teamAbbrev: { default: g.homeTeam.abbrev }, name: { default: "F. Home" }, timeInPeriod: "15:00" },
+                {
+                  isHome: false,
+                  teamAbbrev: { default: g.awayTeam.abbrev },
+                  name: { default: "D. Visitor" },
+                  timeInPeriod: "01:00",
+                },
+                {
+                  isHome: false,
+                  teamAbbrev: { default: g.awayTeam.abbrev },
+                  name: { default: "E. Visitor" },
+                  timeInPeriod: "09:30",
+                },
+                {
+                  isHome: true,
+                  teamAbbrev: { default: g.homeTeam.abbrev },
+                  name: { default: "F. Home" },
+                  timeInPeriod: "15:00",
+                },
               ],
             },
           ],

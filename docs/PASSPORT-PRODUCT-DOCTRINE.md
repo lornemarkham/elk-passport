@@ -716,6 +716,15 @@ Discovery's purpose. Each link opens the existing route (`/conferences`,
 `/hockey`, `/october`) and each experience keeps its own access rules; the bar
 grants nothing.
 
+_Hockey Night opened its front door 2026-11-01_ (owner brief "Hockey Night —
+finish the experience", recorded in
+`docs/product/hockey/FINISH-THE-EXPERIENCE.md`): `/hockey` is public when
+signed out — what the thing is and one button — and a signed-in person can
+start a night on any of the league's games, in any arena, not only a Canucks
+home game. Every night is still invitation-only; the public page says nothing
+about any of them. This settles reachability for Hockey; it does not answer
+§15.1 (theme or composition) or §15.12 (how group experiences work).
+
 ---
 
 ## 11. Current near-term direction
