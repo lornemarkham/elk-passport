@@ -663,7 +663,7 @@ test("Operation Mayhem: three people, one rivalry, one Cup", async ({
   await expect(cup).toContainText("34 points · verified");
   await expect(
     lorne.page.getByRole("region", { name: "Spectacularly wrong" }),
-  ).toContainText("Alex called it 4–1. It finished 2–4.");
+  ).toContainText("Alex called it VAN 4–1 MIN. It finished VAN 2–4 MIN.");
   await shot(lorne.page, "30-after-champion", false);
   await shot(lorne.page, "31-after-play-full");
   await shot(sam.page, "32-after-sam");
@@ -672,7 +672,7 @@ test("Operation Mayhem: three people, one rivalry, one Cup", async ({
   const ruled = await botLine(alex.page, "ruled", lorne.id);
   expect(ruled.text).toMatch(/Lorne/);
   const worst = await botLine(alex.page, "worst", alex.id);
-  expect(worst.text).toContain("4–1");
+  expect(worst.text).toContain("VAN 4–1 MIN");
   await openTab(alex.page, "Chat");
   await shot(alex.page, "33-chat-after");
 

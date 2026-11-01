@@ -22,7 +22,14 @@ import {
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
 import { teamByAbbr } from "@/domain/hockey/fans";
 import { gameWhen } from "@/domain/hockey/countdown";
+import { announcementsOf, pendingFor } from "@/domain/hockey/announce";
+import {
+  AnnounceSheet,
+  AnnouncementBanner,
+  useDismissed,
+} from "./Announcements";
 import { ChatRoom } from "./ChatRoom";
+import { CupNameProvider } from "./CupName";
 import { TeamMoment, WelcomeCard, useWelcomeDismissed } from "./Identity";
 import { FansProvider } from "./FanTag";
 import { TeamPicker } from "./TeamPicker";
@@ -67,6 +74,23 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
   const { live, definition, state, role } = night;
   const [toyBoxOpen, setToyBoxOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
+  // The host's announcements, in front of everything until seen (`announce.ts`).
+  const announcements = useMemo(
+    () => announcementsOf(live.moments, live.participants),
+    [live.moments, live.participants],
+  );
+  const [dismissed, dismiss] = useDismissed(state.slug);
+  const pending = pendingFor(announcements, live.me?.id ?? null, dismissed);
+  const banner = live.me && pending.length > 0 && (
+    <AnnouncementBanner
+      pending={pending}
+      me={live.me}
+      people={live.participants}
+      onAck={(id) => night.react(id, "✅")}
+      onDismiss={dismiss}
+    />
+  );
   const { chirp } = night;
   const myTeam = live.me ? (chirp.fans[live.me.id] ?? null) : null;
   const crowd = night.crowd;
@@ -126,6 +150,8 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
     live.participants,
     tab === "chat",
   );
+  // "Rogers Arena, Vancouver" → the city, for a map search of a place name.
+  const city = definition.whereLine?.split(",").at(-1)?.trim();
   // At the arena, peeking at the chat in a period is for that look only:
   // one tap puts the phone away again.
   const peekingNow = periods && !couch && peeking === live.phase.id;
@@ -166,239 +192,261 @@ export function HockeyNightScreen({ initial }: { initial: NightSnapshot }) {
 
   return (
     <FansProvider value={chirp.fans}>
-      <main
-        className={`${styles.page} min-h-dvh pb-32 text-white`}
-        style={
-          {
-            "--home": teamColours(home).primary,
-            "--away": teamColours(away).primary,
-          } as React.CSSProperties
-        }
-      >
-        <GameDayHero
-          live={live}
-          role={role}
-          myPicks={myPicks}
-          nhl={nhl}
-          onInvite={() => choose("group", "guest-list")}
-          onGoAgain={() => choose("plan", "run-it-back")}
-        />
+      <CupNameProvider value={night.cupName}>
+        <main
+          className={`${styles.page} min-h-dvh pb-32 text-white`}
+          style={
+            {
+              "--home": teamColours(home).primary,
+              "--away": teamColours(away).primary,
+            } as React.CSSProperties
+          }
+        >
+          <GameDayHero
+            live={live}
+            role={role}
+            myPicks={myPicks}
+            nhl={nhl}
+            onInvite={() => choose("group", "guest-list")}
+            onGoAgain={() => choose("plan", "run-it-back")}
+            onCallIt={() => choose("play", "call-it")}
+          />
 
-        {showSetup && (
-          <div className="mx-auto max-w-2xl px-4 pt-6">
-            <CuratorSetup
-              title={definition.title}
-              onDone={night.setBrief}
-              onSkip={() =>
-                night.setBrief({
-                  audience: "Coworkers",
-                  vibe: "Social",
-                  edge: 1,
-                  appetite: "some",
-                })
-              }
-            />
-          </div>
-        )}
+          {showSetup && (
+            <div className="mx-auto max-w-2xl px-4 pt-6">
+              <CuratorSetup
+                title={definition.title}
+                onDone={night.setBrief}
+                onSkip={() =>
+                  night.setBrief({
+                    audience: "Coworkers",
+                    vibe: "Social",
+                    edge: 1,
+                    appetite: "some",
+                  })
+                }
+              />
+            </div>
+          )}
 
-        {!showSetup && quiet && (
-          <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
-            <QuietMode live={live} />
-            {live.me && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPeeking(live.phase.id);
-                  setTab("chat");
-                }}
-                className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-5 text-[15px] font-bold text-white ring-1 ring-white/15"
-              >
-                At a whistle? Open the chat
-                {unread > 0 && (
-                  <span
-                    aria-label={`${unread} new`}
-                    className="rounded-full bg-[#ffd84d] px-2 text-[13px] text-[#0b1220]"
-                  >
-                    {unread}
-                  </span>
-                )}
-              </button>
-            )}
-            {/* Subtle: only what is worth a glance at a whistle — somebody
-                said your name. Everything else waits in the count. */}
-            {live.me && mention && (
-              <p className="-mt-4 text-center text-[13px] text-white/60">
-                <span
-                  aria-hidden
-                  className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#ffd84d] align-middle"
-                />
-                {mention} mentioned you
-              </p>
-            )}
-            {/* Arena Mode stays reachable in a period: the herd, the
-              washrooms and the beer line are most needed when the phone
-              is otherwise put away. */}
-            {live.me && !couch && isRogersArena(definition.kicker) && (
-              <ArenaDoor slug={night.state.slug} />
-            )}
-            <PlanSummary night={night} couch={couch} />
-            <Memories night={night} />
-          </div>
-        )}
-
-        {!showSetup && !quiet && (
-          <>
-            <div
-              ref={panel}
-              id={`panel-${tab}`}
-              role="tabpanel"
-              aria-labelledby={`tab-${tab}`}
-              className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
-            >
-              {peekingNow && (
+          {!showSetup && quiet && (
+            <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6">
+              {banner}
+              <QuietMode live={live} />
+              {live.me && (
                 <button
                   type="button"
-                  onClick={() => setPeeking(null)}
-                  className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-4 text-[14px] font-bold text-white ring-1 ring-white/15"
+                  onClick={() => {
+                    setPeeking(live.phase.id);
+                    setTab("chat");
+                  }}
+                  className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-5 text-[15px] font-bold text-white ring-1 ring-white/15"
                 >
-                  ← Phones away — back to the game
+                  At a whistle? Open the chat
+                  {unread > 0 && (
+                    <span
+                      aria-label={`${unread} new`}
+                      className="rounded-full bg-[#ffd84d] px-2 text-[13px] text-[#0b1220]"
+                    >
+                      {unread}
+                    </span>
+                  )}
                 </button>
               )}
-              {live.me && unsettled && !welcomed && (
-                <div className="mb-6">
-                  <WelcomeCard
-                    me={live.me}
-                    people={live.participants}
-                    matchup={`${away} at ${home}`}
-                    when={gameWhen(new Date(definition.anchorAt))}
-                    venue={definition.kicker.split(" · ")[0]}
-                    team={myTeam}
-                    watching={watching}
-                    teamsOn={chirp.available}
-                    couchOn={Boolean(crowd?.available)}
-                    onPickTeam={() => setPicking(true)}
-                    onWatching={night.setWatching}
-                    onDismiss={dismissWelcome}
+              {/* Subtle: only what is worth a glance at a whistle — somebody
+                said your name. Everything else waits in the count. */}
+              {live.me && mention && (
+                <p className="-mt-4 text-center text-[13px] text-white/60">
+                  <span
+                    aria-hidden
+                    className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#ffd84d] align-middle"
                   />
-                </div>
+                  {mention}
+                </p>
               )}
-              {tab === "plan" && (
-                <PlanTab
-                  night={night}
-                  blocks={byTab.plan}
-                  couch={couch}
-                  onImGoing={() => night.setWatching("arena")}
-                />
+              {/* Arena Mode stays reachable in a period: the herd, the
+              washrooms and the beer line are most needed when the phone
+              is otherwise put away. */}
+              {live.me && !couch && isRogersArena(definition.kicker) && (
+                <ArenaDoor slug={night.state.slug} />
               )}
-              {tab === "play" && (
-                <PlayTab
-                  night={night}
-                  blocks={byTab.play}
-                  nhl={nhl}
-                  onOpenToyBox={() => setToyBoxOpen(true)}
-                  onPickTeam={
-                    chirp.available ? () => setPicking(true) : undefined
-                  }
-                  onOpenChat={() => choose("chat")}
-                />
-              )}
-              {tab === "chat" && (
-                <section aria-labelledby="chat-title">
-                  <h2
-                    id="chat-title"
-                    className={`${styles.wide} text-[28px] leading-none text-white`}
-                  >
-                    {byTab.chat[0]?.title ?? "The night"}
-                  </h2>
-                  <p className="mt-2 mb-4 text-[15px] text-white/70">
-                    Everyone on this night, and nobody else.
-                  </p>
-                  <ChatRoom
-                    live={live}
-                    onSay={night.say}
-                    onReact={night.react}
-                    slug={state.slug}
-                    chirp={chirp}
-                    isHost={role === "host"}
-                    onLook={night.chirpLook}
-                    onSetChirp={night.setChirp}
-                  />
-                </section>
-              )}
-              {tab === "group" && (
-                <GroupTab
-                  night={night}
-                  onPickTeam={
-                    chirp.available ? () => setPicking(true) : undefined
-                  }
-                />
-              )}
+              <PlanSummary night={night} couch={couch} />
+              <Memories night={night} />
             </div>
+          )}
 
-            <NightTabs
-              current={tab}
-              onChange={(t) => choose(t)}
-              badges={badges}
-              arenaHref={
-                live.me && !couch && isRogersArena(definition.kicker)
-                  ? `/hockey/${night.state.slug}/arena`
-                  : undefined
-              }
+          {!showSetup && !quiet && (
+            <>
+              <div
+                ref={panel}
+                id={`panel-${tab}`}
+                role="tabpanel"
+                aria-labelledby={`tab-${tab}`}
+                className="mx-auto max-w-2xl scroll-mt-3 px-4 pt-5"
+              >
+                {banner && <div className="mb-5">{banner}</div>}
+                {peekingNow && (
+                  <button
+                    type="button"
+                    onClick={() => setPeeking(null)}
+                    className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-4 text-[14px] font-bold text-white ring-1 ring-white/15"
+                  >
+                    ← Phones away — back to the game
+                  </button>
+                )}
+                {live.me && unsettled && !welcomed && (
+                  <div className="mb-6">
+                    <WelcomeCard
+                      me={live.me}
+                      people={live.participants}
+                      matchup={`${home} vs ${away}`}
+                      when={gameWhen(
+                        new Date(definition.anchorAt),
+                        definition.timeZone,
+                      )}
+                      venue={definition.kicker.split(" · ")[0]}
+                      team={myTeam}
+                      watching={watching}
+                      teamsOn={chirp.available}
+                      couchOn={Boolean(crowd?.available)}
+                      onPickTeam={() => setPicking(true)}
+                      onWatching={night.setWatching}
+                      onDismiss={dismissWelcome}
+                    />
+                  </div>
+                )}
+                {tab === "plan" && (
+                  <PlanTab
+                    night={night}
+                    blocks={byTab.plan}
+                    couch={couch}
+                    onImGoing={() => night.setWatching("arena")}
+                    onGo={(room, anchor) => {
+                      if (room !== "plan") choose(room, anchor);
+                    }}
+                  />
+                )}
+                {tab === "play" && (
+                  <PlayTab
+                    night={night}
+                    blocks={byTab.play}
+                    nhl={nhl}
+                    onOpenToyBox={() => setToyBoxOpen(true)}
+                    onPickTeam={
+                      chirp.available ? () => setPicking(true) : undefined
+                    }
+                    onOpenChat={() => choose("chat")}
+                  />
+                )}
+                {tab === "chat" && (
+                  <section aria-labelledby="chat-title">
+                    <h2
+                      id="chat-title"
+                      className={`${styles.wide} text-[28px] leading-none text-white`}
+                    >
+                      {byTab.chat[0]?.title ?? "The night"}
+                    </h2>
+                    <p className="mt-2 mb-4 text-[15px] text-white/70">
+                      Everyone on this night, and nobody else.
+                    </p>
+                    <ChatRoom
+                      live={live}
+                      onSay={night.say}
+                      onReact={night.react}
+                      slug={state.slug}
+                      chirp={chirp}
+                      isHost={role === "host"}
+                      onLook={night.chirpLook}
+                      onSetChirp={night.setChirp}
+                      announceOn={night.announceOn}
+                      onAnnounce={() => setAnnouncing(true)}
+                      onRetract={(id) => void night.retract(id)}
+                    />
+                  </section>
+                )}
+                {tab === "group" && (
+                  <GroupTab
+                    night={night}
+                    onPickTeam={
+                      chirp.available ? () => setPicking(true) : undefined
+                    }
+                  />
+                )}
+              </div>
+
+              <NightTabs
+                current={tab}
+                onChange={(t) => choose(t)}
+                badges={badges}
+                arenaHref={
+                  live.me && !couch && isRogersArena(definition.kicker)
+                    ? `/hockey/${night.state.slug}/arena`
+                    : undefined
+                }
+              />
+            </>
+          )}
+
+          {toyBoxOpen && live.me && (
+            <ToyBox
+              definition={definition}
+              edge={live.edge}
+              appetite={state.brief?.appetite ?? "some"}
+              people={live.participants}
+              me={live.me}
+              phaseId={live.phase.id}
+              lockPhaseId={nextPhaseId}
+              onAdd={night.addToy}
+              onClose={() => setToyBoxOpen(false)}
             />
-          </>
-        )}
+          )}
 
-        {toyBoxOpen && live.me && (
-          <ToyBox
-            definition={definition}
-            edge={live.edge}
-            appetite={state.brief?.appetite ?? "some"}
-            people={live.participants}
-            me={live.me}
-            phaseId={live.phase.id}
-            lockPhaseId={nextPhaseId}
-            onAdd={night.addToy}
-            onClose={() => setToyBoxOpen(false)}
-          />
-        )}
+          {announcing && live.me && role === "host" && (
+            <AnnounceSheet
+              city={city}
+              onSend={night.announce}
+              onClose={() => setAnnouncing(false)}
+            />
+          )}
 
-        {picking && live.me && (
-          <TeamPicker
-            current={myTeam}
-            onPick={(team) => {
-              night.setTeam(team);
-              setPicking(false);
-              if (team && team !== myTeam) setMoment(team);
-            }}
-            onClose={() => setPicking(false)}
-          />
-        )}
+          {picking && live.me && (
+            <TeamPicker
+              current={myTeam}
+              onPick={(team) => {
+                night.setTeam(team);
+                setPicking(false);
+                if (team && team !== myTeam) setMoment(team);
+              }}
+              onClose={() => setPicking(false)}
+            />
+          )}
 
-        {moment && live.me && teamByAbbr(moment) && (
-          <TeamMoment
-            team={teamByAbbr(moment)!}
-            person={live.me}
-            onDone={() => setMoment(null)}
-          />
-        )}
+          {moment && live.me && teamByAbbr(moment) && (
+            <TeamMoment
+              team={teamByAbbr(moment)!}
+              person={live.me}
+              onDone={() => setMoment(null)}
+            />
+          )}
 
-        {night.error && (
-          <div
-            role="alert"
-            className="fixed inset-x-0 bottom-24 z-50 mx-auto w-fit max-w-[90vw] rounded-full bg-white px-4 py-2.5 text-[14px] text-black shadow-lg"
-          >
-            {night.error}
-            <button
-              type="button"
-              className="ml-3 min-h-8 text-black/60"
-              onClick={night.clearError}
-              aria-label="Dismiss"
+          {night.error && (
+            <div
+              role="alert"
+              className="fixed inset-x-0 bottom-24 z-50 mx-auto w-fit max-w-[90vw] rounded-full bg-white px-4 py-2.5 text-[14px] text-black shadow-lg"
             >
-              ✕
-            </button>
-          </div>
-        )}
-      </main>
+              {night.error}
+              <button
+                type="button"
+                className="ml-3 min-h-8 text-black/60"
+                onClick={night.clearError}
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </main>
+      </CupNameProvider>
     </FansProvider>
   );
 }
@@ -458,7 +506,14 @@ function subscribeSeen(onChange: () => void) {
  */
 function useUnread(
   slug: string,
-  moments: readonly { at: string; kind: string; by?: string; text?: string }[],
+  moments: readonly {
+    id: string;
+    at: string;
+    kind: string;
+    by?: string;
+    text?: string;
+    replyTo?: string;
+  }[],
   me: { readonly id: string; readonly name: string } | undefined,
   people: readonly { readonly id: string; readonly name: string }[],
   looking: boolean,
@@ -479,7 +534,20 @@ function useUnread(
 
   if (seen === null || looking) return { count: 0, mention: null };
   const fresh = moments.filter(
-    (m) => m.kind === "note" && m.by && m.by !== me?.id && m.at > seen,
+    (m) =>
+      (m.kind === "note" || m.kind === "photo" || m.kind === "announce") &&
+      m.by &&
+      m.by !== me?.id &&
+      m.at > seen,
   );
-  return { count: fresh.length, mention: mentioner(fresh, me, people) };
+  // A reply to something I said is worth a glance, like my name is.
+  const mine = new Set(moments.filter((m) => m.by === me?.id).map((m) => m.id));
+  const replied = fresh.find((m) => m.replyTo && mine.has(m.replyTo));
+  const named = mentioner(fresh, me, people);
+  const mention = named
+    ? `${named} mentioned you`
+    : replied
+      ? `${people.find((p) => p.id === replied.by)?.name ?? "Somebody"} replied to you`
+      : null;
+  return { count: fresh.length, mention };
 }

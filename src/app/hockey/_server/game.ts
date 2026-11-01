@@ -3,11 +3,15 @@ import type { PassportUser } from "@/lib/auth/currentUser";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   findScheduled,
+  nextWeekOf,
   readGame,
+  readScheduled,
+  readUpcoming,
   suggestedCalls,
   type NhlGame,
+  type ScheduledGame,
 } from "@/domain/hockey/nhl";
-import { ZONE } from "@/domain/hockey/schedule";
+import { ZONE, zoneOr } from "@/domain/hockey/schedule";
 import { NightError } from "./night";
 
 /**
@@ -63,19 +67,25 @@ export async function gameFor(
   if (!occasion || !me) throw new NightError("Not found.", 404);
 
   const startsAt = occasion.starts_at as string;
-  const opponent = String(
-    (occasion.details as { opponent?: string } | null)?.opponent ?? "",
-  );
+  const details = (occasion.details ?? {}) as {
+    opponent?: string;
+    nhlGameId?: number;
+    timeZone?: string;
+  };
+  const opponent = String(details.opponent ?? "");
+  const gameId =
+    typeof details.nhlGameId === "number" ? details.nhlGameId : undefined;
   // Close to puck drop the answer changes by the minute; far from it, not at all.
   const near = now.getTime() >= new Date(startsAt).getTime() - 30 * 60_000;
   try {
-    const date = new Intl.DateTimeFormat("en-CA", { timeZone: ZONE }).format(
-      new Date(startsAt),
-    );
+    const date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: zoneOr(details.timeZone ?? ZONE),
+    }).format(new Date(startsAt));
     const entry = findScheduled(
       await getJson(`/v1/schedule/${date}`, near ? 60 : 900),
       startsAt,
       opponent,
+      gameId,
     ) as { id: number } | null;
     if (!entry) return { available: false };
     const raw = near
@@ -97,5 +107,59 @@ export async function gameFor(
       error instanceof Error ? error.message : error,
     );
     return { available: false };
+  }
+}
+
+/** How far ahead the start form looks. Three weeks is a month's worth of invitations. */
+const WEEKS_AHEAD = 3;
+
+/**
+ * **The games a night can be built on**: the league's schedule for the next
+ * few weeks, regular season and playoffs, not yet started. Cached for a
+ * quarter of an hour. The league down means an empty list and `available:
+ * false`, and the form falls back to setting a game by hand.
+ */
+export async function upcomingGames(
+  now = new Date(),
+): Promise<{ available: boolean; games: ScheduledGame[] }> {
+  try {
+    let date: string | null = new Intl.DateTimeFormat("en-CA", {
+      timeZone: ZONE,
+    }).format(now);
+    const games: ScheduledGame[] = [];
+    const seen = new Set<number>();
+    for (let week = 0; week < WEEKS_AHEAD && date; week += 1) {
+      const body: unknown = await getJson(`/v1/schedule/${date}`, 900);
+      for (const g of readUpcoming(body, now)) {
+        if (!seen.has(g.id)) {
+          seen.add(g.id);
+          games.push(g);
+        }
+      }
+      date = nextWeekOf(body);
+    }
+    return { available: true, games };
+  } catch (error) {
+    console.error(
+      "[hockey] nhl schedule",
+      error instanceof Error ? error.message : error,
+    );
+    return { available: false, games: [] };
+  }
+}
+
+/** One game by the league's id, from its own record; null when the league has no such game. */
+export async function scheduledGameById(
+  id: number,
+): Promise<ScheduledGame | null> {
+  if (!Number.isInteger(id) || id <= 0) return null;
+  try {
+    return readScheduled(await getJson(`/v1/gamecenter/${id}/landing`, 900));
+  } catch (error) {
+    console.error(
+      "[hockey] nhl game",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
   }
 }

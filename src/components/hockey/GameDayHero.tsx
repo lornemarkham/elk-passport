@@ -8,7 +8,7 @@ import { relativeTime } from "@/experience-lab/core/phase";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import { ACTS, actOf, nextPhase } from "@/domain/hockey/acts";
 import { countdown, gameWhen } from "@/domain/hockey/countdown";
-import { answerText } from "@/domain/hockey/reveal";
+import { scoreWords } from "@/domain/hockey/score";
 import { matchupOf, teamColours } from "@/domain/hockey/teams";
 import type { GameView } from "@/app/hockey/_server/game";
 import { NhlBoard } from "./NhlBoard";
@@ -35,6 +35,7 @@ export function GameDayHero({
   nhl,
   onInvite,
   onGoAgain,
+  onCallIt,
 }: {
   live: LiveExperience;
   role: "host" | "guest";
@@ -44,6 +45,8 @@ export function GameDayHero({
   nhl?: GameView | null;
   onInvite?: () => void;
   onGoAgain?: () => void;
+  /** The host, after the horn: jump to Call it. */
+  onCallIt?: () => void;
 }) {
   const { definition } = live;
   const { home, away } = matchupOf(definition.subtitle);
@@ -54,10 +57,15 @@ export function GameDayHero({
   const now = useClock(anchor);
 
   const final = live.prompts.find((p) => p.prompt.id === "final-score");
-  const finalScore =
-    final?.prompt.resolution !== undefined && final.showResolution
-      ? answerText(final.prompt, final.prompt.resolution)
+  // The called score, as stored: [home, away]. Said with both codes
+  // (`score.ts`) wherever it is a sentence; drawn beside each code here.
+  const finalPair =
+    final?.prompt.resolution !== undefined &&
+    final.showResolution &&
+    Array.isArray(final.prompt.resolution)
+      ? (final.prompt.resolution as readonly number[])
       : null;
+  const finalScore = finalPair ? scoreWords(finalPair, { home, away }) : null;
 
   const venue = definition.whereLine ?? definition.kicker;
   const matchup = useRef<HTMLDivElement>(null);
@@ -132,7 +140,7 @@ export function GameDayHero({
           >
             <MapPin className="h-4 w-4 shrink-0 opacity-80" />
             <span className="truncate">
-              {definition.kicker} · {gameWhen(anchor)}
+              {definition.kicker} · {gameWhen(anchor, definition.timeZone)}
             </span>
           </div>
         </div>
@@ -155,7 +163,13 @@ export function GameDayHero({
               {act.id === "during" && <InGame live={live} anchor={anchor} />}
               {act.id === "after" && (
                 <Final
-                  score={finalScore}
+                  score={finalPair}
+                  leagueSays={
+                    role === "host"
+                      ? nhl?.suggestions?.["final-score"]?.words
+                      : undefined
+                  }
+                  onCallIt={onCallIt}
                   home={homeKit.abbr}
                   away={awayKit.abbr}
                   phaseLabel={live.phase.label}
@@ -469,18 +483,23 @@ function InGame({ live, anchor }: { live: LiveExperience; anchor: Date }) {
 
 function Final({
   score,
+  leagueSays,
+  onCallIt,
   home,
   away,
   phaseLabel,
   onGoAgain,
 }: {
-  score: string | null;
+  score: readonly number[] | null;
+  /** The league's final, when it has one and the host has not called it yet. */
+  leagueSays?: string;
+  onCallIt?: () => void;
   home: string;
   away: string;
   phaseLabel: string;
   onGoAgain?: () => void;
 }) {
-  const [h, a] = score ? score.split("–") : [];
+  const [h, a] = score ?? [];
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-black/35 px-4 py-3">
@@ -504,6 +523,18 @@ function Final({
           </span>
         )}
       </div>
+      {!score && leagueSays && onCallIt && (
+        <button
+          type="button"
+          onClick={onCallIt}
+          className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-[#ffd84d] px-4 text-left text-[15px] font-bold text-[#0b1220]"
+        >
+          <span>
+            The league has it {leagueSays}. Call it so the Cup counts.
+          </span>
+          <span aria-hidden>→</span>
+        </button>
+      )}
       {onGoAgain && (
         <button
           type="button"

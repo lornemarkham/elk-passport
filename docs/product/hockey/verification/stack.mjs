@@ -354,6 +354,13 @@ async function start() {
       fs.readFileSync(path.join(here, "..", "mayhem-migration.sql"), "utf8"),
     );
   }
+  // Announcements and replies (2026-11-01). Needs chirp. HOCKEY_ANNOUNCE=0
+  // starts without it — the chat must work as before, with no announcements.
+  if (process.env.HOCKEY_CHIRP !== "0" && process.env.HOCKEY_ANNOUNCE !== "0") {
+    await sql(
+      fs.readFileSync(path.join(here, "..", "announce-migration.sql"), "utf8"),
+    );
+  }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator@127.0.0.1:${PG_PORT}/postgres`,

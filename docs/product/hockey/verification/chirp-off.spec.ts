@@ -20,6 +20,10 @@ test.skip(!process.env.CHIRP_OFF, "needs a stack started with HOCKEY_CHIRP=0");
 const stamp = Date.now().toString(36);
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (new URL(page.url()).pathname === "/hockey")
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page
     .getByLabel("Email address")
@@ -40,6 +44,8 @@ test("no migration: the night and its chat work, with no teams and no Chirp Bot"
   await page.goto("/hockey");
   await signUp(page, "host");
   await page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await page.getByLabel("Opponent").fill("Wild");
   await page.getByRole("button", { name: "Start it" }).click();
   await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const night = page.url().split("/").pop()!;

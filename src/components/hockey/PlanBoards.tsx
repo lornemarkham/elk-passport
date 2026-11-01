@@ -383,8 +383,18 @@ export function VenueBoard({
               </ul>
             </>
           )}
+          {nearby.data?.outage?.startsWith("Passport hasn't measured") &&
+            places.length === 0 &&
+            canVote && (
+              <p className="mt-3 rounded-2xl bg-white/[0.06] px-4 py-3 text-[14.5px] text-white/80">
+                {nearby.data.outage} Type a place below instead; it counts just
+                the same.
+              </p>
+            )}
           {(nearby.state === "failed" ||
-            (nearby.data?.outage && places.length === 0)) &&
+            (nearby.data?.outage &&
+              !nearby.data.outage.startsWith("Passport hasn't measured") &&
+              places.length === 0)) &&
             canVote && (
               <p className="mt-3 rounded-2xl bg-white/[0.06] px-4 py-3 text-[14.5px] text-white/80">
                 Passport can&apos;t reach its map of the city right now. Type a

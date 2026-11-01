@@ -28,8 +28,11 @@ export interface Person {
 }
 
 export interface Snapshot {
+  announce?: boolean;
   state: {
     meId: string;
+    slug: string;
+    moments?: { id: string; text?: string; replyTo?: string; kind: string }[];
     addedPrompts: {
       id: string;
       family?: string;
@@ -37,6 +40,8 @@ export interface Snapshot {
     }[];
   };
   definition: {
+    subtitle?: string;
+    kicker?: string;
     prompts: { id: string; scoring?: { points: number; label?: string } }[];
   };
   chirp: {
@@ -66,6 +71,10 @@ export function setNight(id: string) {
 }
 
 export async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (new URL(page.url()).pathname === "/hockey")
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);

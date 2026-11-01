@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-11-01 — finish the experience: [`FINISH-THE-EXPERIENCE.md`](FINISH-THE-EXPERIENCE.md)** (after the real night of 25 October: a score always names its teams — "VAN 2–4 MIN" — with a regression suite on the league's record; host announcements kept in front of everyone until Got it!, and chat replies; `/hockey` is a public front door and a night can be any of the league's games in any arena; the run-up card and Chirp Bot's one line per stage of the week; the trophy takes the group's name; a mini-fantasy reader proven on the real boxscore; needs `announce-migration.sql`).
+
 **2026-10-24 — The Bet button: [`BET-BUTTON.md`](BET-BUTTON.md)** (the Bet sheet no longer steals focus on every poll, closes from the backdrop only when the press began there, says a refusal inside the sheet, cannot send twice, confirms "Thrown at …", and the sender's card reads Waiting → Accepted / Passed; two-account + RLS spec `verification/bet-button.spec.ts`; no SQL change).
 
 **2026-10-23 — Operation Mayhem, PLAY rebuilt around people: [`MAYHEM.md`](MAYHEM.md)** (enemy territory from real allegiances; challenges — bets settled by the host's call, defend / commentate / hot take judged by a jury of the others, prophecies — accepted or passed privately across accounts; picks as game cards and a vault instead of padlocks; a drawn Sycle Cup, identical on every phone, with a verified-only champion; secret missions confirmed by their mastermind through a shared ledger; Chirp Bot on challenges thrown, taken and decided; needs `mayhem-migration.sql` after night; screens in `mayhem/`).

@@ -54,7 +54,7 @@ export function CallIt({
   const suggested = callable.filter((p) => nhl?.suggestions?.[p.prompt.id]);
 
   return (
-    <section aria-label="Call it">
+    <section id="call-it" aria-label="Call it" className="scroll-mt-4">
       <SectionHead
         title="Call it"
         subtitle={

@@ -269,11 +269,24 @@ export interface Moment {
   readonly id: string;
   readonly at: string;
   readonly kind:
-    "voice" | "join" | "photo" | "note" | "result" | "award" | "decision";
+    | "voice"
+    | "join"
+    | "photo"
+    | "note"
+    | "result"
+    | "award"
+    | "decision"
+    /** The host's word, kept in front of everyone until they've seen it. */
+    | "announce";
   /** Undefined = Passport said it. */
   readonly by?: string;
   readonly text?: string;
   readonly emoji?: string;
+  /** A reply: the moment it answers. */
+  readonly replyTo?: string;
+  /** An announcement: what kind of change ("venue", "time"…) and a link. */
+  readonly tag?: string;
+  readonly href?: string;
   /** Emoji → participant ids. Reactions are the lowest-effort way to be present. */
   readonly reactions?: Readonly<Record<string, readonly string[]>>;
   /** Marks a moment worth keeping in the recap. */
@@ -347,6 +360,8 @@ export interface ExperienceDefinition {
   readonly palette: readonly [string, string];
   /** ISO. Everything temporal is relative to this. */
   readonly anchorAt: string;
+  /** IANA zone the anchor is read in ("America/Vancouver"); absent = the fixture's. */
+  readonly timeZone?: string;
   readonly whereLine?: string;
   readonly hostId: string;
   /**

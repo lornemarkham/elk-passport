@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { GameChoice } from "@/domain/hockey/schedule";
+import { zoneOr, type GameChoice } from "@/domain/hockey/schedule";
 import { editionLabel } from "@/domain/hockey/edition";
 import type { Cup } from "@/domain/hockey/series";
 import { CupRoll } from "./CupRoll";
@@ -14,20 +14,24 @@ interface Night {
   readonly startsAt: string;
   readonly role: "host" | "guest";
   readonly members: number;
+  readonly home: string;
   readonly opponent: string;
+  readonly venue: string;
+  readonly timeZone?: string;
+  readonly cup?: string;
   readonly series: string;
   readonly edition: number;
   readonly over: boolean;
 }
 
-const when = (iso: string) =>
+const when = (iso: string, timeZone?: string) =>
   new Date(iso).toLocaleString("en-CA", {
     weekday: "short",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/Vancouver",
+    timeZone: zoneOr(timeZone),
   });
 
 function NightCard({ night }: { night: Night }) {
@@ -45,9 +49,11 @@ function NightCard({ night }: { night: Night }) {
           </span>
         )}
       </p>
-      <p className="mt-0.5 text-[14px] text-white/70">vs {night.opponent}</p>
+      <p className="mt-0.5 text-[14px] text-white/70">
+        {night.home} vs {night.opponent} · {night.venue}
+      </p>
       <p className="mt-1 text-[13px] text-white/55">
-        {when(night.startsAt)} · {night.members} in ·{" "}
+        {when(night.startsAt, night.timeZone)} · {night.members} in ·{" "}
         {night.role === "host" ? "you're hosting" : "you're invited"}
       </p>
     </Link>
@@ -88,6 +94,13 @@ export function NightsShelf({
         <h1 className="mt-1 font-serif text-[32px] leading-tight">
           {nights.length ? `Your nights, ${name}.` : `Nothing on yet, ${name}.`}
         </h1>
+        {nights.length === 0 && (
+          <p className="mt-2 text-[15px] leading-snug text-white/70">
+            Hockey is better with your crew. Pick a game, start the night, send
+            one link per friend. The questions, the picks, the Cup and the
+            awards come with it.
+          </p>
+        )}
         {gone && (
           <p role="status" className="mt-3 text-[14px] text-white/60">
             That night isn&apos;t yours to see any more.
@@ -110,12 +123,12 @@ export function NightsShelf({
         )}
 
         <div className="mt-8 rounded-2xl border border-dashed border-white/20 p-5">
-          <p className="text-[16px] font-medium">Sycle Hockey Night</p>
+          <p className="text-[16px] font-medium">Start a Hockey Night</p>
           {starting ? (
             <>
               <p className="mt-1 mb-4 text-[14px] text-white/55">
-                Pick the game, start it, then invite people one link at a time.
-                The questions, the toy box and the awards come with it.
+                Any NHL game, any arena. Start it, then invite people one link
+                at a time.
               </p>
               <StartNight suggestion={suggestion} name={name} cta="Start it" />
             </>
@@ -139,7 +152,7 @@ export function NightsShelf({
         {cups.map((cup) => (
           <section
             key={cup.series}
-            aria-label="The Sycle Cup"
+            aria-label={`The ${cup.name ?? "Sycle Cup"}`}
             className="mt-10"
           >
             <CupRoll cup={cup} />

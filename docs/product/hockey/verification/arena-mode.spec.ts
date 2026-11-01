@@ -59,6 +59,10 @@ async function phone(
 }
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (new URL(page.url()).pathname === "/hockey")
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(email(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -163,6 +167,8 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   await host.page.goto("/hockey");
   await signUp(host.page, "host");
   await host.page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await host.page.getByLabel("Opponent").fill("Wild");
   await host.page.getByRole("button", { name: "Start it" }).click();
   await expect(host.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = new URL(host.page.url()).pathname.split("/").pop()!;

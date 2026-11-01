@@ -35,7 +35,7 @@ export function CupRoll({ cup, currentId }: { cup: Cup; currentId?: string }) {
   return (
     <div className="rounded-2xl border border-amber-200/20 bg-[linear-gradient(160deg,oklch(0.32_0.06_80/0.35),transparent_60%)] p-4">
       <p className="text-[12px] tracking-wide text-amber-100/60 uppercase">
-        🏆 The Sycle Cup
+        🏆 The {cup.name ?? "Sycle Cup"}
       </p>
       <p className="mt-1.5 text-[17px] leading-snug font-semibold text-white">
         {holder.length === 0
