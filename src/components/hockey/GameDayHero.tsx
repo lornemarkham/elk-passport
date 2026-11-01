@@ -137,7 +137,7 @@ export function GameDayHero({
           >
             <MapPin className="h-4 w-4 shrink-0 opacity-80" />
             <span className="truncate">
-              {definition.kicker} · {gameWhen(anchor)}
+              {definition.kicker} · {gameWhen(anchor, definition.timeZone)}
             </span>
           </div>
         </div>

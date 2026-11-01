@@ -11,6 +11,9 @@ import {
   LINE_STORYLINE,
   NO_TEAM_CHIRPS,
   PICKS_LINES,
+  RUNUP_CHIRP_LINES,
+  RUNUP_FINAL_LINES,
+  RUNUP_RIVALRY_LINES,
   PROMPTS,
   PROMPT_BY_ID,
   RIVAL_CHIRPS,
@@ -37,6 +40,7 @@ import {
 } from "./chirp-library";
 import { pairKey, rivalry, teamByAbbr, teamsMentioned } from "./fans";
 import { pairFromKey, scoreWords, type ScoreSides } from "./score";
+import { runupStage } from "./runup";
 
 /**
  * **Chirp Bot — the chat's heckler, in the night's own conversation.**
@@ -88,7 +92,8 @@ export type BotKind =
   | "took"
   | "oracle"
   | "ruled"
-  | "worst";
+  | "worst"
+  | "runup";
 
 /**
  * **How much Chirp Bot talks**, the host's call (`details.chirpLevel`).
@@ -210,6 +215,7 @@ export function kindOfKey(key: string): BotKind | null {
     case "rivalry":
     case "prompt":
     case "lastcall":
+    case "runup":
     case "couch":
     case "picks":
     case "final":
@@ -237,6 +243,7 @@ const LINES_FOR: Readonly<Record<BotKind, readonly string[]>> = {
   rivalry: ["o.rv."],
   prompt: ["p."],
   lastcall: ["l."],
+  runup: ["ru."],
   couch: ["cw."],
   picks: ["pk."],
   final: ["fv."],
@@ -319,6 +326,10 @@ export function renderBotRow(
     readonly finalScore?: string;
     /** Tonight's two teams, so a pick is read "VAN 5–0 MIN", never "5–0". */
     readonly sides?: ScoreSides | null;
+    /** What this group calls its trophy; the Sycle Cup when unsaid. */
+    readonly cupName?: string;
+    /** Calendar days to puck drop, for the run-up's lines. */
+    readonly daysOut?: number;
   },
 ): BotLine | null {
   if (!row.bot_key || !row.bot_line) return null;
@@ -368,7 +379,10 @@ export function renderBotRow(
 
   const subject = claims ? ctx.fans.get(parts[2]) : actor;
   if (claims && !subject) return null;
-  const vars: Record<string, string> = { name: subject?.name ?? "Someone" };
+  const vars: Record<string, string> = {
+    name: subject?.name ?? "Someone",
+    cup: ctx.cupName ?? "Sycle Cup",
+  };
   if (kind === "picks") {
     const score = pairFromKey(parts[3]);
     if (!score) return null;
@@ -379,6 +393,11 @@ export function renderBotRow(
     if (!score || !ctx.finalScore) return null;
     vars.pick = scoreWords(score, ctx.sides);
     vars.actual = ctx.finalScore;
+  }
+  if (kind === "runup") {
+    vars.home = ctx.sides?.home ?? "the home side";
+    vars.away = ctx.sides?.away ?? "the visitors";
+    vars.days = String(ctx.daysOut ?? "");
   }
   if (kind === "final" || kind === "lead") {
     const points = ctx.pointsOf?.(parts[2]);
@@ -715,6 +734,56 @@ export function lastCallPlan(input: {
     input.seed,
     input.now.toISOString().slice(0, 10),
   );
+  return line ? { key, line: line.id } : null;
+}
+
+/**
+ * The run-up (`runup.ts`): when a night enters the rivalry, chirp or final
+ * stage of its week, one line saying what that stretch is for — once per
+ * stage, with two or more people in, and only once somebody has said
+ * something since Chirp Bot last spoke of the week, so an empty room is not
+ * lectured. Library only: these state no facts.
+ */
+export function runupPlan(input: {
+  readonly now: Date;
+  readonly startsAt: string;
+  readonly timeZone: string;
+  readonly members: number;
+  readonly rows: readonly BotRow[];
+  readonly lastHumanNoteAt: string | null;
+  readonly seed: number;
+}): BotPlan | null {
+  if (input.members < 2) return null;
+  const { stage, daysOut: days } = runupStage(
+    input.now,
+    input.startsAt,
+    input.timeZone,
+  );
+  const pool =
+    stage === "rivalry"
+      ? RUNUP_RIVALRY_LINES
+      : stage === "chirp"
+        ? RUNUP_CHIRP_LINES
+        : stage === "final"
+          ? RUNUP_FINAL_LINES
+          : null;
+  if (!pool) return null;
+  const key = `runup:${gameStamp(input.startsAt)}:${stage}`;
+  const mine = input.rows.filter((r) => r.bot_key?.startsWith("runup:"));
+  if (mine.some((r) => r.bot_key === key)) return null;
+  const latest = mine
+    .map((r) => r.at)
+    .sort()
+    .at(-1);
+  if (latest && !(input.lastHumanNoteAt && input.lastHumanNoteAt > latest))
+    return null;
+  const line = chooseLine(
+    [pool],
+    usedLines(input.rows),
+    input.seed,
+    input.now.toISOString().slice(0, 10),
+  );
+  void days;
   return line ? { key, line: line.id } : null;
 }
 

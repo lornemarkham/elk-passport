@@ -47,13 +47,58 @@ import type {
 export const TEMPLATE = "sycle-hockey-night";
 
 export interface NightDetails {
+  /** Tonight's home team, by nickname. The first number of every score is theirs. */
   readonly home: string;
+  /** The visitors, by nickname. */
   readonly opponent: string;
   readonly opponentEmoji: string;
   readonly venue: string;
   readonly city: string;
-  /** [lat, lng] of the venue, for distances to anywhere the group nominates. */
-  readonly venueAt: readonly [number, number];
+  /**
+   * [lat, lng] of the venue, for distances to anywhere the group nominates.
+   * Known for Rogers Arena only; a night at any other arena has none, and
+   * nothing is measured from the wrong building (`venuePoint`).
+   */
+  readonly venueAt?: readonly [number, number];
+  /** The league's three-letter codes, when the night came from its schedule. */
+  readonly homeAbbr?: string;
+  readonly awayAbbr?: string;
+  /** The league's game id: the exact game, never a guess by date and name. */
+  readonly nhlGameId?: number;
+  /** The arena's time zone (IANA), for "7:00 p.m." to mean the arena's. */
+  readonly timeZone?: string;
+  /** What the group's trophy is called. Absent means the Sycle Cup. */
+  readonly cup?: string;
+}
+
+/** Where the night is, when Passport knows: Rogers Arena's point, or nothing. */
+export function venuePoint(
+  details: Partial<NightDetails>,
+): readonly [number, number] | undefined {
+  if (details.venueAt) return details.venueAt;
+  const venue = details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue;
+  return venue === SYCLE_HOCKEY_NIGHT.details.venue
+    ? SYCLE_HOCKEY_NIGHT.details.venueAt
+    : undefined;
+}
+
+/** The night's details with the Sycle defaults behind them — and no coordinates for an arena Passport has not measured. */
+export function detailsOf(
+  stored: Partial<NightDetails> | null | undefined,
+): NightDetails {
+  const merged = { ...SYCLE_HOCKEY_NIGHT.details, ...(stored ?? {}) };
+  const at = venuePoint(stored ?? {});
+  const { venueAt: _dropped, ...rest } = merged;
+  void _dropped;
+  return at ? { ...rest, venueAt: at } : rest;
+}
+
+/** The trophy's name: the Sycle Cup, unless the night named its own. */
+export function cupNameOf(
+  details: Partial<NightDetails> | null | undefined,
+): string {
+  const cup = details?.cup?.trim();
+  return cup && cup.length <= 40 ? cup : "Sycle Cup";
 }
 
 /**
@@ -358,7 +403,9 @@ function plansPrompt(): Prompt {
 export const MEET_PROMPT_ID = "meet-spot";
 
 export function meetingPrompt(details: NightDetails): Prompt[] {
-  const near = curatedNear(VANCOUVER_PLACES, details.venueAt, {
+  const at = venuePoint(details);
+  if (!at) return [];
+  const near = curatedNear(VANCOUVER_PLACES, at, {
     kinds: ["meeting"],
     withinKm: 1,
   });
@@ -465,10 +512,7 @@ export function composeNight(
   const { occasion } = rows;
   const on = modulesOf(occasion.details);
   const games = on.has("games");
-  const details: NightDetails = {
-    ...SYCLE_HOCKEY_NIGHT.details,
-    ...occasion.details,
-  };
+  const details: NightDetails = detailsOf(occasion.details);
   const edition = editionOf(occasion);
   const memberIds = new Set(rows.members.map((m) => m.user_id));
   const isMember = (id: string | null | undefined) =>
@@ -602,6 +646,7 @@ export function composeNight(
         : details.venue,
     whereLine: `${details.venue}, ${details.city}`,
     anchorAt: new Date(occasion.starts_at).toISOString(),
+    timeZone: details.timeZone,
     hostId: occasion.host_id,
     // It is a Sunday. The fixture's headline was written for a Friday.
     phases: hockeyNight.phases.map((p) =>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { modulesValue } from "@/domain/hockey/actions";
 import { asMember } from "../../_server/respond";
+import { scheduledGameById } from "../../_server/game";
 import { NightError, createSycleNight, myNights } from "../../_server/night";
 
 export const dynamic = "force-dynamic";
@@ -12,22 +13,36 @@ export function GET() {
 const StartSchema = z.object({
   name: z.string().max(40).optional(),
   game: z
-    .object({
-      opponent: z.string().max(40),
-      // Converted from the arena's wall clock in the host's browser.
-      startsAt: z.string().datetime(),
-    })
+    .union([
+      z.object({
+        opponent: z.string().max(40),
+        // Converted from the arena's wall clock in the host's browser.
+        startsAt: z.string().datetime(),
+      }),
+      // One of the league's games, picked from its schedule (`/hockey/api/games`).
+      z.object({ nhlGameId: z.number().int().positive() }),
+    ])
     .optional(),
+  cup: z.string().trim().min(1).max(40).optional(),
   after: z.string().uuid().optional(),
   modules: modulesValue.optional(),
 });
 
-/** Start a Sycle Hockey Night — a new one, or the next one. Whoever starts it hosts it. */
+/** Start a Hockey Night — a new one, or the next one. Whoever starts it hosts it. */
 export function POST(request: Request) {
   return asMember(async (user) => {
     const body = StartSchema.safeParse(await request.json().catch(() => ({})));
     // A malformed "run it back" must not quietly become a brand-new night.
     if (!body.success) throw new NightError("That isn't a night.", 422);
-    return { id: await createSycleNight(user, body.data) };
+    const { game, ...rest } = body.data;
+    if (game && "nhlGameId" in game) {
+      const scheduled = await scheduledGameById(game.nhlGameId);
+      if (!scheduled)
+        throw new NightError("The league has no such game right now.", 422);
+      return {
+        id: await createSycleNight(user, { ...rest, game: { scheduled } }),
+      };
+    }
+    return { id: await createSycleNight(user, { ...rest, game }) };
   });
 }

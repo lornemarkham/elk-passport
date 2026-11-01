@@ -8,10 +8,12 @@
  *
  * Three rules keep that honest:
  *
- * - **Matched, not assumed.** A night is tied to an NHL game only when a
- *   Canucks home game starts within a few hours of the night's puck drop and
- *   the opponent's name agrees. Anything else is "no game found", and the
- *   page says nothing rather than something about the wrong game.
+ * - **Matched, not assumed.** A night started from the league's schedule
+ *   carries the game's own id and is tied to exactly that game. A night set
+ *   by hand is tied to an NHL game only when a Canucks home game starts
+ *   within a few hours of the night's puck drop and the opponent's name
+ *   agrees. Anything else is "no game found", and the page says nothing
+ *   rather than something about the wrong game.
  * - **Suggestions are not results.** The league's answers fill in what the
  *   host may call; the host still taps to call it, and can change any of it.
  * - **No marks.** No logos or crests; the page names teams by words and
@@ -47,7 +49,7 @@ export interface NhlGame {
   readonly ending?: "REG" | "OT" | "SO";
 }
 
-/** The Canucks' abbreviation; only home games are hosted. */
+/** The Canucks' abbreviation: the home side of a night set by hand. */
 export const HOME_ABBREV = "VAN";
 
 interface Name {
@@ -56,6 +58,7 @@ interface Name {
 interface ScheduleTeam {
   readonly abbrev?: string;
   readonly commonName?: Name;
+  readonly placeName?: Name;
   readonly score?: number;
 }
 interface ScheduleGame {
@@ -63,28 +66,121 @@ interface ScheduleGame {
   readonly startTimeUTC: string;
   readonly homeTeam: ScheduleTeam;
   readonly awayTeam: ScheduleTeam;
+  readonly venue?: Name;
+  readonly venueTimezone?: string;
+  readonly gameState?: string;
+  readonly gameType?: number;
 }
 
-/** The schedule's entry for this night's game, or null when none fits. */
+/**
+ * One game on the league's schedule, as a night can be built on it: the
+ * two sides by code, nickname and place, the arena by name, its zone, and
+ * the league's id. No coordinates: the league publishes none, and Passport
+ * does not invent them (`night.ts venuePoint`).
+ */
+export interface ScheduledGame {
+  readonly id: number;
+  readonly startsAt: string;
+  readonly home: {
+    readonly abbr: string;
+    readonly name: string;
+    readonly place: string;
+  };
+  readonly away: {
+    readonly abbr: string;
+    readonly name: string;
+    readonly place: string;
+  };
+  readonly venue: string;
+  readonly timeZone: string;
+  /** "FUT" / "PRE" before the game, "LIVE"/"CRIT" during, "OFF"/"FINAL" after. */
+  readonly state: string;
+  /** 1 preseason, 2 regular season, 3 playoffs. */
+  readonly gameType: number;
+}
+
+/** A schedule entry or a game landing, read as a `ScheduledGame`; null when it is not one. */
+export function readScheduled(entry: unknown): ScheduledGame | null {
+  const g = entry as ScheduleGame | null;
+  if (
+    !g ||
+    typeof g.id !== "number" ||
+    typeof g.startTimeUTC !== "string" ||
+    !g.homeTeam?.abbrev ||
+    !g.awayTeam?.abbrev
+  )
+    return null;
+  const side = (t: ScheduleTeam) => ({
+    abbr: t.abbrev ?? "",
+    name: t.commonName?.default ?? t.abbrev ?? "",
+    place: t.placeName?.default ?? "",
+  });
+  return {
+    id: g.id,
+    startsAt: new Date(g.startTimeUTC).toISOString(),
+    home: side(g.homeTeam),
+    away: side(g.awayTeam),
+    venue: g.venue?.default ?? "",
+    timeZone: g.venueTimezone ?? "",
+    state: g.gameState ?? "",
+    gameType: g.gameType ?? 0,
+  };
+}
+
+/**
+ * The games still ahead in a schedule week: regular season and playoffs,
+ * not yet started, soonest first. Preseason is left out — rosters are not
+ * the real ones, and nobody plans a night around it.
+ */
+export function readUpcoming(schedule: unknown, now: Date): ScheduledGame[] {
+  const week = (schedule as { gameWeek?: { games?: unknown[] }[] })?.gameWeek;
+  if (!Array.isArray(week)) return [];
+  return week
+    .flatMap((d) => d.games ?? [])
+    .map(readScheduled)
+    .filter((g): g is ScheduledGame => g !== null)
+    .filter(
+      (g) =>
+        (g.gameType === 2 || g.gameType === 3) &&
+        (g.state === "FUT" || g.state === "PRE") &&
+        Date.parse(g.startsAt) > now.getTime(),
+    )
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
+/** The next week the league lists, to walk the schedule forward. */
+export function nextWeekOf(schedule: unknown): string | null {
+  const next = (schedule as { nextStartDate?: unknown })?.nextStartDate;
+  return typeof next === "string" && /^\d{4}-\d{2}-\d{2}$/.test(next)
+    ? next
+    : null;
+}
+
+/**
+ * The schedule's entry for this night's game, or null when none fits. With
+ * the league's id (a night started from the schedule) it is that game and
+ * no other; without one, a Canucks home game by opponent and time.
+ */
 export function findScheduled(
   schedule: unknown,
   startsAt: string,
   opponent: string,
+  gameId?: number,
 ): unknown | null {
   const week = (schedule as { gameWeek?: { games?: ScheduleGame[] }[] })
     ?.gameWeek;
   if (!Array.isArray(week)) return null;
+  const games = week.flatMap((d) => d.games ?? []);
+  if (gameId !== undefined) return games.find((g) => g.id === gameId) ?? null;
   const at = new Date(startsAt).getTime();
   if (Number.isNaN(at)) return null;
   const wanted = opponent.trim().toLowerCase();
-  const matches = week
-    .flatMap((d) => d.games ?? [])
-    .filter(
-      (g) =>
-        g.homeTeam?.abbrev === HOME_ABBREV &&
-        g.awayTeam?.commonName?.default?.toLowerCase() === wanted &&
-        Math.abs(new Date(g.startTimeUTC).getTime() - at) <= 4 * 3600e3,
-    );
+  const matches = games.filter(
+    (g) =>
+      g.homeTeam?.abbrev === HOME_ABBREV &&
+      g.awayTeam?.commonName?.default?.toLowerCase() === wanted &&
+      Math.abs(new Date(g.startTimeUTC).getTime() - at) <= 4 * 3600e3,
+  );
   return matches.length === 1 ? matches[0] : null;
 }
 
@@ -93,10 +189,11 @@ export function findGameId(
   schedule: unknown,
   startsAt: string,
   opponent: string,
+  gameId?: number,
 ): number | null {
   return (
-    (findScheduled(schedule, startsAt, opponent) as ScheduleGame | null)?.id ??
-    null
+    (findScheduled(schedule, startsAt, opponent, gameId) as ScheduleGame | null)
+      ?.id ?? null
   );
 }
 

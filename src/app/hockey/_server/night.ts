@@ -37,6 +37,7 @@ import {
 import { isTeamAbbr } from "@/domain/hockey/fans";
 import { cupStatus } from "@/domain/hockey/cup";
 import { NO_CROWD, isWatching, type Crowd } from "@/domain/hockey/crowd";
+import type { ScheduledGame } from "@/domain/hockey/nhl";
 import {
   chirpOnArrival,
   chirpOnCouch,
@@ -62,6 +63,7 @@ import { editionOf, seriesOf } from "@/domain/hockey/edition";
 import {
   ZONE,
   chooseGame,
+  chooseScheduledGame,
   isOver,
   type GameRequest,
 } from "@/domain/hockey/schedule";
@@ -74,6 +76,8 @@ import {
 } from "@/domain/hockey/series";
 import {
   SYCLE_HOCKEY_NIGHT,
+  cupNameOf,
+  venuePoint,
   composeNight,
   rulesFor,
   settledPlay,
@@ -109,6 +113,8 @@ export interface NightSnapshot {
   readonly play: PlayRoom;
   /** Announcements and replies are on (announce-migration.sql, `announce.ts`). */
   readonly announce: boolean;
+  /** What this group calls its trophy (`night.ts cupNameOf`). */
+  readonly cupName: string;
 }
 
 export class NightError extends Error {
@@ -330,6 +336,7 @@ export async function loadNight(
     crowd: crowdOf(rows),
     play: rows.play ? { available: true, ...rows.play } : NO_PLAY,
     announce: rows.announceAvailable,
+    cupName: cupNameOf(rows.occasion.details),
   };
 }
 
@@ -376,7 +383,11 @@ export interface NightSummary {
   readonly startsAt: string;
   readonly role: "host" | "guest";
   readonly members: number;
+  readonly home: string;
   readonly opponent: string;
+  readonly venue: string;
+  readonly timeZone?: string;
+  readonly cup?: string;
   readonly series: string;
   readonly edition: number;
   readonly over: boolean;
@@ -415,7 +426,11 @@ export async function myNights(user: PassportUser): Promise<NightSummary[]> {
       startsAt: o.starts_at as string,
       role: mine.find((m) => m.occasion_id === o.id)?.role as "host" | "guest",
       members: (everyone ?? []).filter((m) => m.occasion_id === o.id).length,
+      home: night.details.home ?? SYCLE_HOCKEY_NIGHT.details.home,
       opponent: night.details.opponent ?? SYCLE_HOCKEY_NIGHT.details.opponent,
+      venue: night.details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue,
+      ...(night.details.cup ? { cup: night.details.cup } : {}),
+      ...(night.details.timeZone ? { timeZone: night.details.timeZone } : {}),
       series: seriesOf(night),
       edition: editionOf(night),
       over: isOver(o.starts_at as string, now),
@@ -508,17 +523,26 @@ export async function myCups(
   const series = [...new Set(mine.filter((n) => n.over).map((n) => n.series))];
   const now = new Date();
   const cups = await Promise.all(
-    series.map(async (s) =>
-      sycleCup(s, await seriesNights(user, s, mine), now),
-    ),
+    series.map(async (s) => {
+      const cup = sycleCup(s, await seriesNights(user, s, mine), now);
+      const named = mine
+        .filter((n) => n.series === s && n.cup)
+        .sort((a, b) => b.edition - a.edition)[0];
+      return named?.cup ? { ...cup, name: named.cup } : cup;
+    }),
   );
   return cups.filter((c) => c.nights.some((n) => n.status !== "upcoming"));
 }
 
 export interface StartRequest {
   readonly name?: string;
-  /** Absent: the night M216 was for. */
-  readonly game?: GameRequest;
+  /**
+   * Absent: the night M216 was for. By hand: a Canucks home game. From the
+   * schedule: one of the league's games, already looked up by the route.
+   */
+  readonly game?: GameRequest | { readonly scheduled: ScheduledGame };
+  /** What this group calls its trophy. Absent: the Sycle Cup. */
+  readonly cup?: string;
   /** "Run it back": the night this one follows. */
   readonly after?: string;
   /** Absent: everything on, or — running it back — whatever last time had. */
@@ -542,12 +566,21 @@ export async function createSycleNight(
 
   let startsAt: string = SYCLE_HOCKEY_NIGHT.startsAt;
   let details: OccasionRow["details"] = SYCLE_HOCKEY_NIGHT.details;
-  if (request.game) {
+  let title: string = SYCLE_HOCKEY_NIGHT.title;
+  if (request.game && "scheduled" in request.game) {
+    // One of the league's games: any two teams, any arena.
+    const chosen = chooseScheduledGame(request.game.scheduled, now);
+    if (!chosen.ok) throw new NightError(chosen.problem, 422);
+    startsAt = chosen.startsAt;
+    details = chosen.details;
+    title = "Hockey Night";
+  } else if (request.game) {
     const chosen = chooseGame(request.game, now);
     if (!chosen.ok) throw new NightError(chosen.problem, 422);
     startsAt = chosen.startsAt;
     details = chosen.details;
   }
+  if (request.cup) details = { ...details, cup: request.cup };
 
   if (request.after) {
     const previous = await loadNight(user, request.after);
@@ -572,9 +605,12 @@ export async function createSycleNight(
       ...details,
       series: last.series,
       edition,
+      // The run's trophy keeps its name.
+      ...(previous.definition && last.cup ? { cup: last.cup } : {}),
       // Same night again means the same modules, unless the starter said.
       modules: request.modules ? undefined : previous.modules,
     };
+    title = last.title;
   }
   if (request.modules) {
     details = { ...details, modules: storedModules(request.modules) };
@@ -583,7 +619,7 @@ export async function createSycleNight(
   const look = defaultLook(user.id);
   const { data, error } = await db.rpc("passport_create_occasion", {
     p_template: SYCLE_HOCKEY_NIGHT.template,
-    p_title: SYCLE_HOCKEY_NIGHT.title,
+    p_title: title,
     p_starts_at: startsAt,
     p_details: details,
     p_display_name: cleanName(
@@ -1242,8 +1278,16 @@ async function placesNear(
   occasion: NightRows["occasion"],
   onBallot: readonly string[] = [],
 ): Promise<Nearby> {
-  const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
+  const venue = venuePoint(occasion.details);
   const venueName = occasion.details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue;
+  if (!venue) {
+    // An arena Passport has not measured: no distances, no places, said so.
+    return {
+      places: [],
+      venue: { name: venueName, inAtlas: false },
+      outage: `Passport hasn't measured ${venueName} yet, so it can't say what's near it.`,
+    } as unknown as Nearby;
+  }
   const { day, weekday } = gameDayOf(occasion.starts_at);
   const { candidates, outage } = await listDiscoveryCandidates(undefined, day)
     .then((candidates) => ({ candidates, outage: undefined }))
@@ -1448,6 +1492,9 @@ export async function changeGame(
         ...((current?.details as Record<string, unknown> | null) ?? {}),
         opponent: chosen.details.opponent,
         opponentEmoji: chosen.details.opponentEmoji,
+        // Set by hand now: the league's id and codes no longer describe it.
+        nhlGameId: undefined,
+        awayAbbr: undefined,
       },
     })
     .eq("id", id)

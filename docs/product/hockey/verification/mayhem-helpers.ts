@@ -31,6 +31,7 @@ export interface Snapshot {
   announce?: boolean;
   state: {
     meId: string;
+    slug: string;
     moments?: { id: string; text?: string; replyTo?: string; kind: string }[];
     addedPrompts: {
       id: string;
@@ -39,6 +40,8 @@ export interface Snapshot {
     }[];
   };
   definition: {
+    subtitle?: string;
+    kicker?: string;
     prompts: { id: string; scoring?: { points: number; label?: string } }[];
   };
   chirp: {

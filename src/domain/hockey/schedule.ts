@@ -1,4 +1,5 @@
 import { SYCLE_HOCKEY_NIGHT, type NightDetails } from "./night";
+import type { ScheduledGame } from "./nhl";
 
 /**
  * **Which game.** The one thing a host has to say to start a night.
@@ -10,10 +11,11 @@ import { SYCLE_HOCKEY_NIGHT, type NightDetails } from "./night";
  * opponent and a different puck drop, which is exactly how the lab described
  * a next edition ("the same definition with a later anchor").
  *
- * Home games only, on purpose. "What's near the arena?" measures from the
- * venue's coordinates, and Passport knows exactly one arena's. An away game
- * would need a venue nobody has measured, and a distance from the wrong
- * building is worse than no distance.
+ * Set by hand, a night is a Canucks home game: "What's near the arena?"
+ * measures from the venue's coordinates, and Passport knows exactly one
+ * arena's. Picked from the league's schedule (`chooseScheduledGame`, since
+ * 2026-11-01), a night can be any game in any arena; it simply measures
+ * nothing from a building nobody has measured.
  */
 
 export const ZONE = "America/Vancouver";
@@ -56,11 +58,11 @@ export const OPPONENTS: readonly { name: string; emoji: string }[] = [
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** Minutes east of UTC that Vancouver keeps at this instant (−420 or −480). */
-function offsetAt(instant: Date): number {
+/** Minutes east of UTC that a zone keeps at this instant (Vancouver: −420 or −480). */
+function offsetAt(instant: Date, timeZone: string = ZONE): number {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
-      timeZone: ZONE,
+      timeZone,
       hourCycle: "h23",
       year: "numeric",
       month: "2-digit",
@@ -103,12 +105,33 @@ export function vancouverWallClock(iso: string): {
   date: string;
   time: string;
 } {
+  return wallClock(iso, ZONE);
+}
+
+/** The instant → what a clock in `timeZone` says: `{ date, time }`. */
+export function wallClock(
+  iso: string,
+  timeZone: string,
+): { date: string; time: string } {
   const at = new Date(iso);
-  const local = new Date(at.getTime() + offsetAt(at) * 60_000);
+  const local = new Date(
+    at.getTime() + offsetAt(at, zoneOr(timeZone)) * 60_000,
+  );
   return {
     date: local.toISOString().slice(0, 10),
     time: local.toISOString().slice(11, 16),
   };
+}
+
+/** A zone Intl knows, else the arena Passport knows. */
+export function zoneOr(timeZone: string | undefined): string {
+  if (!timeZone) return ZONE;
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+    return timeZone;
+  } catch {
+    return ZONE;
+  }
 }
 
 /** What the start form holds: the arena's wall clock, as a host types it. */
@@ -173,6 +196,51 @@ export function chooseGame(
       ...SYCLE_HOCKEY_NIGHT.details,
       opponent: known?.name ?? opponent,
       opponentEmoji: known?.emoji ?? "🏒",
+    },
+  };
+}
+
+/**
+ * A night built on one of the league's games: both sides by name, the arena
+ * and its zone from the league, the game's own id so the live score is that
+ * game's and no other. Coordinates only where Passport has measured the
+ * arena (`night.ts venuePoint`): nothing is ever measured from the wrong
+ * building. Regular season and playoffs only; the game must be ahead.
+ */
+export function chooseScheduledGame(
+  game: ScheduledGame,
+  now: Date,
+):
+  | { ok: true; startsAt: string; details: NightDetails }
+  | { ok: false; problem: string } {
+  const at = new Date(game.startsAt);
+  if (Number.isNaN(at.getTime()))
+    return { ok: false, problem: "That isn't a date and time." };
+  if (at.getTime() <= now.getTime())
+    return { ok: false, problem: "That game has already started." };
+  if (at.getTime() > now.getTime() + HORIZON_DAYS * 86_400_000)
+    return { ok: false, problem: "That's further out than any schedule." };
+  if (game.gameType !== 2 && game.gameType !== 3)
+    return { ok: false, problem: "Preseason doesn't count. Pick a real one." };
+  if (!game.home.name || !game.away.name)
+    return { ok: false, problem: "The league hasn't said who's playing." };
+  const known = OPPONENTS.find((o) => o.name === game.away.name);
+  const rogers =
+    game.home.abbr === "VAN" || game.venue === SYCLE_HOCKEY_NIGHT.details.venue;
+  return {
+    ok: true,
+    startsAt: at.toISOString(),
+    details: {
+      home: game.home.name,
+      opponent: game.away.name,
+      opponentEmoji: known?.emoji ?? "🏒",
+      venue: game.venue || `${game.home.place} home arena`,
+      city: game.home.place || SYCLE_HOCKEY_NIGHT.details.city,
+      ...(rogers ? { venueAt: SYCLE_HOCKEY_NIGHT.details.venueAt } : {}),
+      homeAbbr: game.home.abbr,
+      awayAbbr: game.away.abbr,
+      nhlGameId: game.id,
+      timeZone: zoneOr(game.timeZone),
     },
   };
 }

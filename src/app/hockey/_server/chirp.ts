@@ -14,6 +14,7 @@ import {
   organicAllowed,
   organicPlan,
   promptPlan,
+  runupPlan,
   readChatter,
   renderBotRow,
   welcomePlan,
@@ -42,9 +43,12 @@ import {
 import { isTeamAbbr, teamByName } from "@/domain/hockey/fans";
 import { modulesOf } from "@/domain/hockey/modules";
 import { matchupOf } from "@/domain/hockey/teams";
+import { daysOut } from "@/domain/hockey/runup";
+import { zoneOr } from "@/domain/hockey/schedule";
 import { scoreWords } from "@/domain/hockey/score";
 import {
   SYCLE_HOCKEY_NIGHT,
+  cupNameOf,
   settledPlay,
   templatePrompts,
   type NightRows,
@@ -293,6 +297,12 @@ export function chirpRoomOf(
             challengeOf: (cid) => views.get(cid),
             finalScore: actual ? scoreWords(actual, sides) : undefined,
             sides,
+            cupName: cupNameOf(rows.occasion.details),
+            daysOut: daysOut(
+              new Date(),
+              rows.occasion.starts_at,
+              zoneOr(rows.occasion.details.timeZone),
+            ),
           }),
         )
         .filter((line): line is BotLine => line !== null)
@@ -533,6 +543,17 @@ export async function chirpOnLook(
       seed: seed(),
     });
     if (plan) await post(db, rows.occasion.id, userId, plan);
+    // The week's stage, once: what this stretch of the run-up is for.
+    const stage = runupPlan({
+      now,
+      startsAt,
+      timeZone: zoneOr(rows.occasion.details.timeZone),
+      members,
+      rows: bots,
+      lastHumanNoteAt,
+      seed: seed(),
+    });
+    if (stage) await post(db, rows.occasion.id, userId, stage);
   } catch (error) {
     console.warn("[hockey] chirp bot (look):", error);
   }

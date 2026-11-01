@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCupName } from "./CupName";
 import Link from "next/link";
 import { History, Repeat } from "lucide-react";
 import { Surface } from "@/experience-lab/ui/atoms";
@@ -29,6 +30,7 @@ export function LastTime({
   live: LiveExperience;
   className?: string;
 }) {
+  const cupName = useCupName();
   const lineage = series.lastTime;
   if (!lineage) return null;
   // Only ever somebody on tonight's page; `lastTime` already made sure.
@@ -45,7 +47,7 @@ export function LastTime({
         </p>
         <p className="mt-2 text-[15px] font-semibold text-white">
           {champion
-            ? `${champion.emoji} ${champion.name} is defending the Sycle Cup.`
+            ? `${champion.emoji} ${champion.name} is defending the ${cupName}.`
             : lineage.callback}
         </p>
         {champion && (

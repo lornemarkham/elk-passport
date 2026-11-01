@@ -4,7 +4,8 @@ import { useState } from "react";
 import {
   OPPONENTS,
   toRequest,
-  vancouverWallClock,
+  wallClock,
+  zoneOr,
 } from "@/domain/hockey/schedule";
 import { matchupOf } from "@/domain/hockey/teams";
 import type { SharedNight } from "./useSharedNight";
@@ -25,8 +26,8 @@ export function HostGame({ night }: { night: SharedNight }) {
   const { definition, state } = night;
   const started =
     new Date(definition.anchorAt).getTime() <= night.live.now.getTime();
-  const { away } = matchupOf(definition.subtitle);
-  const clock = vancouverWallClock(definition.anchorAt);
+  const { home, away } = matchupOf(definition.subtitle);
+  const clock = wallClock(definition.anchorAt, zoneOr(definition.timeZone));
   const [opponent, setOpponent] = useState(away);
   const [date, setDate] = useState(clock.date);
   const [time, setTime] = useState(clock.time);
@@ -89,7 +90,7 @@ export function HostGame({ night }: { night: SharedNight }) {
           }}
         >
           <label className="block text-[13px] text-white/60">
-            Canucks vs
+            {home} vs
             <input
               value={opponent}
               onChange={(e) => setOpponent(e.target.value)}

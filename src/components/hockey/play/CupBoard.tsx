@@ -13,6 +13,7 @@ import {
 } from "@/domain/hockey/challenges";
 import type { CupStatus } from "@/domain/hockey/cup";
 import { FanAvatar, TeamChip, useFan } from "../FanTag";
+import { engravingOf, useCupName } from "../CupName";
 import { Trophy } from "./Trophy";
 import styles from "../hockey.module.css";
 
@@ -57,6 +58,7 @@ export function CupBoard({
   const me = live.me?.id ?? null;
   const table = live.standings;
   const n = live.participants.length;
+  const cupName = useCupName();
   const [first, second] = table;
   const tied = Boolean(first && second && first.points === second.points);
   const champion =
@@ -66,13 +68,17 @@ export function CupBoard({
   return (
     <section aria-labelledby="cup-title" className="relative">
       <div className="flex items-end gap-4">
-        <Trophy size={78} glow={Boolean(champion)} />
+        <Trophy
+          size={78}
+          glow={Boolean(champion)}
+          engraving={engravingOf(cupName)}
+        />
         <div className="min-w-0 pb-1">
           <h2
             id="cup-title"
             className={`${styles.display} text-[40px] leading-[0.85] text-white`}
           >
-            The Sycle Cup
+            The {cupName}
           </h2>
           <p className="mt-1.5 text-[15px] leading-snug text-white/75">
             {COUNT_WORDS[n] ?? n} {n === 1 ? "competitor" : "competitors"}. One
@@ -84,7 +90,7 @@ export function CupBoard({
       {champion && <Champion standing={champion} second={second} live={live} />}
       {sharedTitle && (
         <p className="mt-4 rounded-2xl bg-[#ffd84d]/15 px-4 py-3 text-[15px] font-bold text-white">
-          🏆 The Sycle Cup is shared:{" "}
+          🏆 The {cupName} is shared:{" "}
           {table
             .filter((s) => s.points === first!.points)
             .map((s) => s.participant.name)
@@ -284,6 +290,7 @@ function Champion({
   live: LiveExperience;
 }) {
   const team = useFan(standing.participant.id);
+  const cupName = useCupName();
   const primary = team?.colours.primary ?? "#ffd84d";
   const secondary = team?.colours.secondary ?? "#0b1220";
   void live;
@@ -311,7 +318,7 @@ function Champion({
         />
       ))}
       <p className="text-[12px] font-extrabold tracking-[0.2em] text-[#ffd84d] uppercase">
-        Sycle Cup champion
+        {cupName} champion
       </p>
       <div className="mt-2 flex items-center gap-4">
         <span className={styles.crest}>

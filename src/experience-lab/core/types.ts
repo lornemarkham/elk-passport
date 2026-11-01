@@ -360,6 +360,8 @@ export interface ExperienceDefinition {
   readonly palette: readonly [string, string];
   /** ISO. Everything temporal is relative to this. */
   readonly anchorAt: string;
+  /** IANA zone the anchor is read in ("America/Vancouver"); absent = the fixture's. */
+  readonly timeZone?: string;
   readonly whereLine?: string;
   readonly hostId: string;
   /**

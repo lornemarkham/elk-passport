@@ -919,8 +919,17 @@ function ExploreSheet({
               </p>
             </div>
           )}
+          {nearby.data?.outage?.startsWith("Passport hasn't measured") &&
+            everything.length === 0 && (
+              <p className="rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
+                {nearby.data.outage} Type a place on the plan instead — it
+                counts just the same.
+              </p>
+            )}
           {(nearby.state === "failed" ||
-            (nearby.data?.outage && everything.length === 0)) && (
+            (nearby.data?.outage &&
+              !nearby.data.outage.startsWith("Passport hasn't measured") &&
+              everything.length === 0)) && (
             <p className="rounded-2xl bg-white/[0.06] px-4 py-3.5 text-[15px] text-white/80">
               Passport can&apos;t reach its map of the city right now. Type a
               place on the plan instead — it counts just the same.{" "}

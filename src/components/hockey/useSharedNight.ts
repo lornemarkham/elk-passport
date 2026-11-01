@@ -43,6 +43,8 @@ export interface NightSnapshot {
   readonly series?: SeriesView;
   /** Announcements and replies are on (announce-migration.sql). Older servers send none. */
   readonly announce?: boolean;
+  /** What this group calls its trophy. Older servers send none: the Sycle Cup. */
+  readonly cupName?: string;
 }
 
 /** How often the page asks what everybody else did. Only while it is being looked at. */
@@ -231,6 +233,7 @@ export function useSharedNight(initial: NightSnapshot) {
     retract: (momentId: string) => send({ type: "retract", momentId }),
 
     announceOn: snapshot.announce ?? false,
+    cupName: snapshot.cupName ?? "Sycle Cup",
 
     react: (momentId: string, emoji: string) => {
       // Passport's own lines (the vault opening) are not rows anybody can react to.
