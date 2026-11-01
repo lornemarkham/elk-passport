@@ -44,6 +44,8 @@ test("no migration: the night and its chat work, with no teams and no Chirp Bot"
   await page.goto("/hockey");
   await signUp(page, "host");
   await page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await page.getByLabel("Opponent").fill("Wild");
   await page.getByRole("button", { name: "Start it" }).click();
   await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const night = page.url().split("/").pop()!;

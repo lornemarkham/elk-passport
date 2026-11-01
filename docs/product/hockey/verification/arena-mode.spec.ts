@@ -167,6 +167,8 @@ test("Arena Mode: three friends, a stranger, the window, privacy and quests", as
   await host.page.goto("/hockey");
   await signUp(host.page, "host");
   await host.page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await host.page.getByLabel("Opponent").fill("Wild");
   await host.page.getByRole("button", { name: "Start it" }).click();
   await expect(host.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = new URL(host.page.url()).pathname.split("/").pop()!;

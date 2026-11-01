@@ -38,6 +38,8 @@ test("real places lead; the concourse is the easy way out; no logo passes for a 
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByLabel("Your name").fill("Pat");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await page.getByLabel("Opponent").fill("Wild");
   await page.getByRole("button", { name: "Start it" }).click();
   await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   await page.getByRole("button", { name: /Skip/ }).click();

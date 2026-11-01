@@ -43,6 +43,8 @@ test("before the migration: the map works, check-ins say they're off", async ({
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await page.getByLabel("Opponent").fill("Wild");
   await page.getByRole("button", { name: "Start it" }).click();
   await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = new URL(page.url()).pathname.split("/").pop()!;

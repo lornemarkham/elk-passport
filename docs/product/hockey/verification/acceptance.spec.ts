@@ -72,6 +72,8 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await signUp(lorne.page, "lorne");
   await expect(lorne.page.getByText(/Nothing on yet/)).toBeVisible();
   await lorne.page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await lorne.page.getByLabel("Opponent").fill("Wild");
   await lorne.page.getByRole("button", { name: "Start it" }).click();
   await expect(lorne.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightUrl = lorne.page.url();

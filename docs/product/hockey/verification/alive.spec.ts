@@ -231,7 +231,7 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
   // The welcome, not a setup screen: the game, and the two questions.
   const welcome = lorne.page.getByRole("region", { name: /game night/ });
   await expect(welcome).toBeVisible();
-  await expect(welcome).toContainText("Wild at Canucks");
+  await expect(welcome).toContainText("Canucks vs Wild");
   await shot(lorne.page, "01-host-welcome");
 
   // ============================================== WHO DO YOU BLEED FOR? (host)

@@ -96,6 +96,8 @@ for (const width of [320, 375, 390]) {
     await expect(page.getByText(/Nothing on yet/)).toBeVisible();
     await audit("shelf");
     await page.getByLabel("Your name").fill("Pat");
+    // The form no longer suggests an opponent once the Sycle night has passed.
+    await page.getByLabel("Opponent").fill("Wild");
     await page.getByRole("button", { name: "Start it" }).click();
     await expect(page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
     await page.getByRole("button", { name: /Skip/ }).click();

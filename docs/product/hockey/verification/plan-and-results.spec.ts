@@ -97,6 +97,8 @@ test("the plan follows the vote, ties are honest, and only the host calls the re
   await lorne.page.goto("/hockey");
   await signUp(lorne.page, "lorne");
   await lorne.page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await lorne.page.getByLabel("Opponent").fill("Wild");
   await lorne.page.getByRole("button", { name: "Start it" }).click();
   await expect(lorne.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = lorne.page.url().split("/").pop()!;
