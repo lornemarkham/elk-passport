@@ -31,6 +31,12 @@ export interface AdventureKind {
   readonly joinVisibility: AdventureVisibility;
   /** The typed extension table this kind writes, if any. */
   readonly extension?: "hockey";
+  /**
+   * Where one of these lives, when its Experience composes the adventure
+   * itself (`/christmas/adventure/<id>`). Absent: `/adventures/<id>`.
+   * Membership, invitations and the plan are still the core's.
+   */
+  readonly home?: string;
 }
 
 export const ADVENTURE_KINDS: readonly AdventureKind[] = [
@@ -71,6 +77,13 @@ export const ADVENTURE_KINDS: readonly AdventureKind[] = [
     blurb: "Several days, one plan, a day at a time.",
     joinVisibility: "members",
   },
+  {
+    id: "christmas",
+    label: "Christmas Adventure",
+    blurb: "Markets, lights and the people you love, planned together.",
+    joinVisibility: "members",
+    home: "/christmas/adventure",
+  },
 ];
 
 /**
@@ -84,6 +97,11 @@ export const KIND_PATTERN = /^[a-z][a-z0-9-]{1,39}$/;
 
 export function adventureKind(id: string): AdventureKind | undefined {
   return ADVENTURE_KINDS.find((kind) => kind.id === id);
+}
+
+/** Where an adventure opens: its Experience's home, else the generic page. */
+export function adventureHref(kind: string, id: string): string {
+  return `${adventureKind(kind)?.home ?? "/adventures"}/${encodeURIComponent(id)}`;
 }
 
 /**

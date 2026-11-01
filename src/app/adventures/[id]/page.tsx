@@ -29,7 +29,8 @@ import { dayDetails, type DayDetail } from "@/lib/adventures/propose";
 import { todayIn } from "@/lib/adventures/overview";
 import { loadSaved } from "@/lib/data/loadSaved";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
-import { kindLabel } from "@/lib/adventures/kinds";
+import { adventureKind, kindLabel } from "@/lib/adventures/kinds";
+import { redirect } from "next/navigation";
 import {
   adventureStatus,
   momentLabel,
@@ -98,6 +99,10 @@ export default async function AdventurePage({
       failed = true;
     }
   }
+  // An Experience that composes its own adventure page (Christmas) opens
+  // there; links, joins and Saved cards all arrive here first.
+  const home = view ? adventureKind(view.kind)?.home : undefined;
+  if (view && home) redirect(`${home}/${encodeURIComponent(view.id)}`);
 
   const saved = view ? await loadSaved().catch(() => null) : null;
   const held = new Set(

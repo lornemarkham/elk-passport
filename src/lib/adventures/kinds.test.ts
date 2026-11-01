@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVENTURE_KINDS,
+  adventureHref,
   adventureKind,
   KIND_PATTERN,
   kindLabel,
@@ -16,7 +17,14 @@ describe("adventure kinds", () => {
       "birthday",
       "weekend",
       "trip",
+      "christmas",
     ]);
+  });
+
+  it("opens an adventure at its Experience's home, else the generic page", () => {
+    expect(adventureHref("christmas", "abc")).toBe("/christmas/adventure/abc");
+    expect(adventureHref("weekend", "abc")).toBe("/adventures/abc");
+    expect(adventureHref("ski-day", "a b")).toBe("/adventures/a%20b");
   });
 
   it("every declared id satisfies the database CHECK, and ids are unique", () => {

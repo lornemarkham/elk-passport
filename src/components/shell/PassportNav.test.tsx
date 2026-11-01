@@ -149,7 +149,7 @@ describe("experiences", () => {
     expect(screen.queryByTestId("passport-experiences")).toBeNull();
   });
 
-  it("opens to the three existing routes, in the stated order", () => {
+  it("opens to the existing routes, in the stated order", () => {
     at("/discovery");
     openRow();
     const button = screen.getByTestId("passport-nav-experiences");
@@ -157,12 +157,15 @@ describe("experiences", () => {
     const row = screen.getByRole("navigation", { name: "Experiences" });
     expect(button).toHaveAttribute("aria-controls", row.id);
     const links = screen
-      .getAllByRole("link", { name: /Conference|Hockey Night|October/ })
+      .getAllByRole("link", {
+        name: /Conference|Hockey Night|October|Christmas/,
+      })
       .map((a) => [a.textContent?.trim(), a.getAttribute("href")]);
     expect(links).toEqual([
       ["Conference", "/conferences"],
       ["Hockey Night", "/hockey"],
       ["October", "/october"],
+      ["Christmas", "/christmas"],
     ]);
   });
 
