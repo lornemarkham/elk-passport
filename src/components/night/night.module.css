@@ -1,9 +1,19 @@
 /* Date Night: warm paper under the photographs, and motion that stays out
    of the way (physics-of-passport: slow, settling, never bouncy). */
+/* The Markham Adventure: a field journal. Forest, charcoal, warm cream,
+   burnt orange and campfire amber (mission 485). */
 .night {
+  --n-forest: #1f3a2e;
+  --n-ink: #1c1b18;
+  --n-cream: #f3ebdd;
+  --n-paper: #fbf7ef;
+  --n-ember: #c2571a;
+  --n-amber: #e8a33d;
+  color: var(--n-ink);
   background:
-    radial-gradient(120% 60% at 50% 0%, #fff7f1 0%, transparent 60%), #fbf4ef;
-  --gh-cream: #f6e9e1;
+    radial-gradient(120% 50% at 50% 0%, #f8f1e4 0%, transparent 60%),
+    var(--n-cream);
+  --gh-cream: var(--n-cream);
 }
 
 .film {

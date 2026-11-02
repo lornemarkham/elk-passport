@@ -1,3 +1,5 @@
+import type { Evening } from "./evenings";
+
 /**
  * **A Date Night built on the shared adventure core.**
  *
@@ -38,6 +40,10 @@ export interface NightConfig {
   readonly mysteryAtlasIds: readonly string[];
   /** The day itself, when the night has one. */
   readonly day?: NightDay;
+  /** The evenings it opens on, as choices (mission 485). */
+  readonly evenings?: readonly Evening[];
+  /** Who the invitation is for, said on the owner's own page only. */
+  readonly partnerName?: string;
 }
 
 // ------------------------------------------------------------------ the day

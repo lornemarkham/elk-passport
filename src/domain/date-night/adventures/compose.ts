@@ -1,5 +1,5 @@
 import { daylightAt } from "@/domain/environment/daylight";
-import { zonedInstant } from "@/domain/date-night/conditions";
+import { wallMinutes, zonedInstant } from "@/domain/date-night/conditions";
 import { writeDayQuery } from "@/lib/domains/integration/dayQuery";
 import type { DayOption, Mood, NightDay, Phase } from "./types";
 
@@ -64,7 +64,7 @@ export const DEFAULT_ANSWERS: DayAnswers = {
 export const START_AT: Readonly<Record<When, number>> = {
   day: 11 * 60 + 30,
   afternoon: 13 * 60 + 30,
-  evening: 16 * 60 + 30,
+  evening: 17 * 60,
 };
 
 /** The evening ends here unless somebody says otherwise. */
@@ -102,19 +102,7 @@ export function sunsetOf(day: NightDay): number | undefined {
     day.longitude,
     zonedInstant(day.on, 12, day.timeZone),
   );
-  return light ? localMinutes(light.sunset, day.timeZone) : undefined;
-}
-
-function localMinutes(at: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    hourCycle: "h23",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(at);
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value);
-  return get("hour") * 60 + get("minute");
+  return light ? wallMinutes(light.sunset, day.timeZone) : undefined;
 }
 
 /** "11:30am" — the way the Day Builder's sentence reader takes a time. */

@@ -59,69 +59,106 @@ async function noSideways(page: Page) {
 const idea = (page: Page, title: string) =>
   page.getByTestId("idea").filter({ hasText: title });
 
+const evening = (page: Page, title: string) =>
+  page.getByTestId("evening").filter({ hasText: title });
+
 test("Lorne invites Jess; both plan, pack and see each other", async ({
   browser,
 }) => {
-  test.setTimeout(360_000);
+  test.setTimeout(420_000);
   const lorne = await phone(browser);
   await lorne.goto("/datenight");
-  // The front door says nothing about whose night it is, or when, or where.
-  await expect(lorne.locator("main")).not.toContainText("Monday");
+  // The front door says when, but nothing about who or where.
+  await expect(lorne.getByTestId("when")).toContainText("November 2");
+  await expect(lorne.getByTestId("when")).toContainText("Around 5 PM");
   await expect(lorne.locator("main")).not.toContainText("Vernon");
   await expect(lorne.locator("main")).not.toContainText("Jess");
-  await lorne.getByRole("link", { name: "Sign in to begin" }).click();
+  await expect(lorne.locator("main")).not.toContainText("Kal");
+  await shot(lorne, "00-front-door");
+  await lorne.getByRole("link", { name: "Let's find some trouble" }).click();
   await signUp(lorne, "lorne");
   await lorne.goto("/datenight");
-  await shot(lorne, "00-front-door");
-  await lorne.getByRole("button", { name: "Open our adventure" }).click();
+  await lorne.getByRole("button", { name: "Let's find some trouble" }).click();
   await lorne.waitForURL(/\/night\//);
   await expect(
-    lorne.getByRole("heading", { level: 1, name: "The Markham Adventure ❤️" }),
+    lorne.getByRole("heading", { level: 1, name: "The Markham Adventure" }),
   ).toBeVisible();
+
+  // No questionnaire: the three evenings (and a surprise) are right there,
+  // within the first two phone screens.
+  const cards = lorne.getByTestId("evening");
+  await expect(cards).toHaveCount(4);
+  for (const title of [
+    "Into the Wild",
+    "Crazy Creek Escape",
+    "Cold Water, Warm Fire",
+  ])
+    await expect(
+      lorne.getByRole("tab", { name: new RegExp(title) }),
+    ).toBeVisible();
+  const top = await cards.first().boundingBox();
+  expect(top!.y).toBeLessThan(844 * 2);
+  await expect(evening(lorne, "Crazy Creek Escape")).toContainText(
+    "Jess's Pick",
+  );
+  await expect(lorne.getByTestId("day-questions")).toBeHidden();
   await expect(lorne.getByTestId("idea")).toHaveCount(6);
-  await expect(lorne.getByTestId("story-stop")).toHaveCount(0);
   await expect(lorne.getByTestId("packing").getByRole("checkbox")).toHaveCount(
     7,
   );
   await noSideways(lorne);
-  await shot(lorne, "01-lorne-questions");
+  await shot(lorne, "01-lorne-choices");
 
-  // Five quick answers make the day: a real place per beat, in an order
-  // that keeps the lake in daylight and dinner at dinner time.
-  await expect(lorne.getByTestId("day-questions")).toBeVisible();
-  await lorne.getByRole("button", { name: "Make our day" }).click();
-  const story = lorne.getByTestId("story-stop");
-  await expect(story).toHaveCount(4);
-  await expect(lorne.getByTestId("story-remember")).toBeVisible();
-  await expect(story.nth(1)).toContainText("Kalamalka Lake Park");
-  await expect(story.nth(3)).toContainText("The Edge Restaurant");
-  await expect(lorne.getByTestId("countdown")).toBeVisible();
-  // The shared journey has the same day, with times and the way between.
-  await expect(lorne.getByTestId("plan-item")).toHaveCount(4);
-  await noSideways(lorne);
-  await shot(lorne, "01-lorne-day");
+  const plan = lorne.getByTestId("evening-plan");
+  // Into the Wild: last light at a real place, scouting, no hunting after dark.
+  await evening(lorne, "Into the Wild").getByTestId("choose-evening").click();
+  await expect(plan).toContainText("Into the Wild");
+  await expect(plan).toContainText("Silver Star Foothills");
+  await expect(plan).toContainText("Sunset 5:33 pm");
+  await expect(plan).toContainText("legal hunting ends at 6:33pm");
+  await expect(lorne.getByTestId("plan-item")).toHaveCount(1);
+  await shot(lorne, "02-into-the-wild");
 
-  // "Another" swaps one beat and leaves the rest alone.
-  await story.nth(3).getByTestId("show-another").click();
-  await expect(story.nth(3)).toContainText("BNA Brewing");
-  await expect(story.nth(1)).toContainText("Kalamalka Lake Park");
-  // A mood changes the whole shape, still in a sensible order.
-  await lorne
-    .getByTestId("moods")
-    .getByRole("button", { name: "More playful" })
+  // Jess's pick isn't in Atlas: named and checked, not invented as a stop.
+  await evening(lorne, "Crazy Creek Escape")
+    .getByTestId("choose-evening")
     .click();
-  await expect(story.nth(2)).toContainText("Lincoln Lanes");
+  await expect(plan).toContainText("Crazy Creek Hot Pools");
+  await expect(plan).toContainText("Open till 10");
+  await expect(lorne.getByTestId("plan-item")).toHaveCount(0);
+  await shot(lorne, "03-crazy-creek");
+
+  // Surprise: the composer's real places, after dark-safe.
+  await evening(lorne, "Surprise Us").getByTestId("choose-evening").click();
+  await expect(plan).toContainText("Passport's surprise");
+  await expect(lorne.getByTestId("plan-item").first()).toBeAttached();
+
+  // Cold Water, Warm Fire: the dip before sunset, dinner, a fire.
+  await evening(lorne, "Cold Water, Warm Fire")
+    .getByTestId("choose-evening")
+    .click();
+  await expect(plan).toContainText("The dip at Kal Beach");
+  await expect(plan).toContainText("Dinner at BNA Brewing");
+  await expect(lorne.getByTestId("beat")).toHaveCount(5);
+  await expect(lorne.getByTestId("plan-item")).toHaveCount(2);
   await lorne.reload();
-  await expect(lorne.getByTestId("story-stop").nth(2)).toContainText(
-    "Lincoln Lanes",
+  await expect(lorne.getByTestId("evening-plan")).toContainText(
+    "Cold Water, Warm Fire",
   );
+  await expect(lorne.getByTestId("countdown")).toBeVisible();
+  await noSideways(lorne);
+  await shot(lorne, "04-cold-water-plan");
+
+  // Advanced planning is still there, tucked away: the shared journey.
+  await lorne.getByText("Times, travel, changes & the printable guide").click();
+  await expect(lorne.getByTestId("plan-item").first()).toBeVisible();
 
   // King Eddie is Lorne's own idea: it must not claim to be verified.
   await expect(idea(lorne, "King Eddie")).toContainText("Not in Atlas");
   await expect(idea(lorne, "King Eddie")).toContainText("never swim alone");
 
   // The invitation: copied text carries the words and one private link.
-  await lorne.getByRole("button", { name: "Send the invitation" }).click();
+  await lorne.getByRole("button", { name: "Invite Jess" }).click();
   await expect
     .poll(() => lorne.evaluate(() => navigator.clipboard.readText()), {
       timeout: 10_000,
@@ -155,14 +192,22 @@ test("Lorne invites Jess; both plan, pack and see each other", async ({
   await jess.getByRole("button", { name: "I'm in — join" }).click();
   await jess.waitForURL(/\/night\//);
   await expect(idea(jess, "King Eddie")).toBeVisible();
-  // Jess opens straight onto the day, and can answer each stop.
-  await expect(jess.getByTestId("story-stop")).toHaveCount(4);
-  await expect(jess.getByTestId("show-another")).toHaveCount(0);
+  // Jess opens straight onto the plan Lorne picked, and can answer each stop.
+  await expect(jess.getByTestId("evening-plan")).toContainText(
+    "Cold Water, Warm Fire",
+  );
+  await expect(jess.getByText("Plan it yourself, stop by stop")).toHaveCount(0);
+  await jess.getByText("Times, travel, changes & the printable guide").click();
   const firstStop = jess
     .getByTestId("plan-item")
     .first()
     .getByRole("group", { name: /Your answer on/ });
   await firstStop.getByRole("button", { name: "I'm in" }).click();
+  // She can't change the plan, but she can push for her pick.
+  await evening(jess, "Crazy Creek Escape")
+    .getByRole("button", { name: "Suggest this one" })
+    .click();
+  await expect(idea(jess, "Let's do Crazy Creek Escape")).toBeVisible();
   await shot(jess, "02b-jess-day");
 
   // The link was for one person: the stranger cannot use it too.
@@ -192,7 +237,7 @@ test("Lorne invites Jess; both plan, pack and see each other", async ({
   await lorne
     .getByRole("button", { name: /Let Passport pick a mystery/ })
     .click();
-  await expect(lorne.getByTestId("idea")).toHaveCount(8);
+  await expect(lorne.getByTestId("idea")).toHaveCount(9);
 
   // Packing: Jess ticks, adds; Lorne sees it, with her name.
   const jessPack = jess.getByTestId("packing");
@@ -216,8 +261,8 @@ test("Lorne invites Jess; both plan, pack and see each other", async ({
   await expect(
     idea(jess, "King Eddie").getByRole("button", { name: "Maybe" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(jess.getByTestId("story-stop").nth(2)).toContainText(
-    "Lincoln Lanes",
+  await expect(jess.getByTestId("evening-plan")).toContainText(
+    "Cold Water, Warm Fire",
   );
   await shot(jess, "03-jess-board");
   await shot(lorne, "04-lorne-board-after");

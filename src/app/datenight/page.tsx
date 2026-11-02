@@ -1,38 +1,56 @@
 import type { Metadata } from "next";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { MARKHAM } from "@/domain/date-night/adventures/markham";
+import { PHOTOS } from "@/domain/date-night/adventures/evenings";
 import { currentUser } from "@/lib/auth/currentUser";
 import { OpenNight } from "@/components/night/OpenNight";
-import { atlasStopsFor } from "@/lib/adventures/atlas-names";
-
-/** Kalamalka Lake Park: a landscape, chosen because it says nothing about anyone. */
-const BACKDROP = "d3c70f99-3412-46d2-87f8-45e4854b7d48";
+import { todayIn } from "@/lib/adventures/overview";
 
 export const metadata: Metadata = {
-  title: "The Markham Adventure ❤️",
+  title: "The Markham Adventure",
   robots: { index: false },
 };
 
+/** "Tomorrow", "Tonight", or nothing once it's past. */
+function soon(on: string, today: string): string | null {
+  const days = Math.round(
+    (Date.parse(`${on}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) /
+      86_400_000,
+  );
+  return days === 1 ? "Tomorrow" : days === 0 ? "Tonight" : null;
+}
+
 /**
- * The front door of the Markham Adventure. It shows nothing private: a
- * title and a button. The adventure itself is made for you when you press it
- * (signed in), and is yours alone until you invite somebody.
+ * The front door of the Markham Adventure: a landscape, the title, when,
+ * and one button. Nothing private — no names, no place. The adventure itself
+ * is made for you when you press it (signed in), and is yours alone until
+ * you invite somebody.
  */
 export default async function DateNightPage() {
-  const [user, stops] = await Promise.all([
-    currentUser().catch(() => null),
-    atlasStopsFor([BACKDROP]).catch(() => null),
-  ]);
-  const backdrop = stops?.experiences[BACKDROP];
+  const user = await currentUser().catch(() => null);
+  const day = MARKHAM.day!;
+  const when = soon(day.on, todayIn(day.timeZone));
+  const date = new Date(`${day.on}T12:00:00Z`).toLocaleDateString("en-CA", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
   return (
     <>
       <PassportNav displayName={user?.displayName ?? null} />
       <OpenNight
         slug={MARKHAM.slug}
-        title={MARKHAM.title}
-        tagline="An adventure for two. Private until you invite someone."
+        title="The Markham Adventure"
+        lines={[
+          when
+            ? `${when}, we disappear for a little while.`
+            : "We disappear for a little while.",
+          MARKHAM.tagline,
+        ]}
+        when={[date, "Around 5 PM"]}
         signedIn={user !== null}
-        {...(backdrop ? { backdrop } : {})}
+        backdrop={PHOTOS.dusk}
       />
     </>
   );
