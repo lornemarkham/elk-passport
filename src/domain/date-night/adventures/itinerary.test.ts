@@ -182,7 +182,7 @@ describe("hand edits", () => {
       position: i,
     }));
     const back = planFromItems(items, eddie, day)!;
-    expect(back.map(({ id: _id, ...s }) => s)).toEqual(warm);
+    expect(back.map((s) => ({ ...s, id: undefined }))).toEqual(warm);
     expect(planFromItems([{ ...items[0]!, at: null }], eddie, day)).toBeNull();
   });
 });

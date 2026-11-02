@@ -176,7 +176,6 @@ export function NightBoard({
   const sunset = sunsetMinutes;
   const isOwner = view.role === "owner";
   const others = view.members.filter((m) => !m.isYou);
-  const otherName = others[0]?.displayName ?? null;
   const ownerName =
     view.members.find((m) => m.role === "owner" && !m.isYou)?.displayName ??
     null;
@@ -374,8 +373,9 @@ export function NightBoard({
             const next = changeStop(plan, i, patch, sunset, evening, day).map(
               (s, j) => {
                 if (j !== i || patch.title === stop.title) return s;
-                const { key: _key, ...own } = s;
-                return own;
+                return Object.fromEntries(
+                  Object.entries(s).filter(([name]) => name !== "key"),
+                ) as unknown as PlanStop;
               },
             );
             void save(next, label, `Changed ${patch.title}.`);
@@ -881,9 +881,15 @@ export function NightBoard({
             isOwner={isOwner}
             busy={choosing}
             compact={plan !== null}
-            homeOf={(e) =>
-              e.composed ? undefined : homeAt(templatePlan(e, sunset, day))
-            }
+            timesOf={(e) => {
+              const stops =
+                plan && e.id === evening?.id
+                  ? plan
+                  : e.composed
+                    ? null
+                    : templatePlan(e, sunset, day);
+              return stops?.length ? [stops[0]!.at, homeAt(stops)!] : undefined;
+            }}
             onChoose={(e) => void choose(e)}
           />
           {confirm && (

@@ -20,12 +20,20 @@ import {
   startNight,
   tickPacking,
 } from "./night";
+import { savePlan } from "./plan";
+import { sunsetOf } from "@/domain/date-night/adventures/compose";
+import { eveningOf } from "@/domain/date-night/adventures/evenings";
+import {
+  instantOf,
+  templatePlan,
+} from "@/domain/date-night/adventures/itinerary";
 
 /**
  * **The Markham Adventure against a real database**: real GoTrue accounts,
  * real PostgREST, real Postgres with the migrations applied twice. Lorne
- * starts it, invites Jess with a one-person link, both vote, suggest, pack and
- * share a memory; a stranger gets nothing. Every refusal is Postgres'.
+ * starts it and saves the itinerary, invites Jess with a one-person link;
+ * Jess adds her own stop, both pack and share a memory; a stranger gets
+ * nothing. Every refusal is Postgres'.
  *
  *   node docs/product/date-night/verification/stack.mjs start
  *   DATE_NIGHT_STACK_ENV=~/passport/scratch/date-night-stack/env \
@@ -71,9 +79,37 @@ describe.skipIf(!ENV_FILE)("The Markham Adventure (real stack)", () => {
     expect(await startNight(lorne.db, lorne.id, "Lorne", MARKHAM)).toBe(id);
     const first = (await adventureFor(lorne.db, id, lorne.id))!;
     expect(first.kind).toBe("date-night-plan");
-    expect(first.items.map((i) => i.label)).toEqual(
-      MARKHAM.activities.map((a) => a.title),
+    // No loose ideas any more: the night opens on its adventures.
+    expect(first.items).toEqual([]);
+
+    // Lorne chooses King Eddie Lake: its stops become the day, in order.
+    const day = MARKHAM.day!;
+    const eddie = eveningOf("king-eddie")!;
+    const stops = templatePlan(eddie, sunsetOf(day)!, day);
+    const write = {
+      label: eddie.title,
+      stops: stops.map((s) => ({
+        title: s.title,
+        line: s.line,
+        at: s.at,
+        ...(s.atlasRef ? { atlasRef: s.atlasRef } : {}),
+      })),
+      base: [],
+    };
+    await savePlan(lorne.db, id, lorne.id, day, write);
+    const planned = (await adventureFor(lorne.db, id, lorne.id))!;
+    expect(planned.destinationLabel).toBe("King Eddie Lake");
+    const onDay = planned.items
+      .filter((i) => i.onDay === day.on)
+      .sort((a, b) => a.position - b.position);
+    expect(onDay.map((i) => i.label)).toEqual(stops.map((s) => s.title));
+    expect(Date.parse(onDay[0]!.startsAt!)).toBe(
+      Date.parse(instantOf(day, stops[0]!.at)),
     );
+    // A stranger can't write it.
+    await expect(
+      savePlan(mallory.db, id, mallory.id, day, write),
+    ).rejects.toBeInstanceOf(Refused);
     expect((await packingOf(lorne.db, id)).map((p) => p.label)).toEqual([
       ...MARKHAM.packing,
     ]);
@@ -82,7 +118,7 @@ describe.skipIf(!ENV_FILE)("The Markham Adventure (real stack)", () => {
     expect(await adventureFor(mallory.db, id, mallory.id)).toBeNull();
     expect(await packingOf(mallory.db, id)).toEqual([]);
     await expect(addPacking(mallory.db, id, mallory.id, "x")).rejects.toThrow();
-    const itemId = first.items[0]!.id;
+    const itemId = onDay[0]!.id;
     await expect(
       respond(mallory.db, id, itemId, mallory.id, "in"),
     ).rejects.toThrow();
@@ -136,6 +172,29 @@ describe.skipIf(!ENV_FILE)("The Markham Adventure (real stack)", () => {
       updateItem(jess.db, id, itemId, { status: "confirmed" }),
     ).rejects.toThrow();
     await updateItem(lorne.db, id, itemId, { status: "confirmed" });
+
+    // Jess can't rewrite the plan, but she can add her own stop to the day,
+    // and change only that.
+    await expect(
+      savePlan(jess.db, id, jess.id, day, write),
+    ).rejects.toBeInstanceOf(Refused);
+    const pie = await addItem(jess.db, id, jess.id, {
+      atlasRef: null,
+      label: "Pie from the bakery",
+      note: null,
+      status: "proposed",
+      onDay: day.on,
+      startsAt: instantOf(day, 19 * 60 + 50),
+    });
+    await updateItem(jess.db, id, pie, { label: "Pie, two forks" });
+    await expect(
+      updateItem(jess.db, id, onDay[1]!.id, { label: "Mine now" }),
+    ).rejects.toThrow();
+    expect(
+      (await adventureFor(lorne.db, id, lorne.id))!.items.find(
+        (i) => i.id === pie,
+      ),
+    ).toMatchObject({ onDay: day.on, label: "Pie, two forks" });
 
     // Packing: either ticks, with a name; only owner or adder removes.
     const packing = await packingOf(jess.db, id);

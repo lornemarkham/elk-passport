@@ -918,6 +918,9 @@ certainty. Do not invent an answer here to make the document feel finished.
    the adventure itself — in words, with a preview and an Undo, or by Keep ·
    Replace · Move · Remove — using the same engine; Go Have a Day stays the
    full workbench._
+   _Narrowly again for one Date Night (2026-11-02, §15.12): a night whose
+   stops are mostly not Atlas places is shaped as a timed itinerary laid out
+   around the sunset, edited in place in words or by hand._
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
    _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
@@ -1005,6 +1008,16 @@ certainty. Do not invent an answer here to make the document feel finished.
     place Atlas lacks (Crazy Creek) is named and checked by hand, never
     invented as a stop. Whether "pick from a few evenings" is how every
     Experience should open is still open.
+    _Informed again 2026-11-02 by Date Night, finished_
+    (`docs/product/date-night/FINISH-THE-EXPERIENCE.md`, mission 487): the
+    night is one adventure with one itinerary. The adventures come first, as
+    cards; choosing one writes its stops — places Atlas holds and things it
+    doesn't (a forest road, a fire, a lake) — as the adventure's own day, and
+    every change after that (the other ending, a sentence, Change · Move ·
+    Remove · Add) edits that same day. A sentence is read deterministically
+    with the Day Builder's clock readers and the night's checked places, and
+    previewed before it is applied. The second planner, the second itinerary
+    and the loose idea vote are gone. One composition.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

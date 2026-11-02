@@ -20,7 +20,7 @@ export function EveningChooser({
   isOwner,
   busy,
   compact,
-  homeOf,
+  timesOf,
   onChoose,
 }: {
   readonly evenings: readonly Evening[];
@@ -29,8 +29,8 @@ export function EveningChooser({
   readonly busy: string | null;
   /** A plan exists: the cards step back. */
   readonly compact: boolean;
-  /** When each adventure gets you home, as it would be laid out today. */
-  readonly homeOf: (e: Evening) => number | undefined;
+  /** When each adventure leaves and gets you home: the chosen one as planned. */
+  readonly timesOf: (e: Evening) => readonly [number, number] | undefined;
   readonly onChoose: (e: Evening) => void;
 }) {
   const ordered =
@@ -49,7 +49,7 @@ export function EveningChooser({
       {ordered.map((e, i) => {
         const on = chosen?.id === e.id;
         const surprise = Boolean(e.composed);
-        const home = homeOf(e);
+        const times = timesOf(e);
         const label =
           busy === e.id
             ? "Packing the truck…"
@@ -137,11 +137,10 @@ export function EveningChooser({
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" aria-hidden /> {e.where}
                 </span>
-                {!surprise && (
+                {times && (
                   <span className="inline-flex items-center gap-1">
                     <Clock3 className="h-3.5 w-3.5" aria-hidden />
-                    {clock(e.leaveAt)}
-                    {home !== undefined ? ` – ${clock(home)}` : ""}
+                    {clock(times[0])} – {clock(times[1])}
                   </span>
                 )}
               </p>
