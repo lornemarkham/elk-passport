@@ -34,7 +34,7 @@ import type { ItemView } from "@/lib/adventures/store";
 import { cn } from "@/lib/utils";
 import styles from "./night.module.css";
 
-const WINE = "#5b1a2b";
+const WINE = "#1f3a2e";
 
 async function send(url: string, method: string, body: unknown) {
   const response = await fetch(url, {
@@ -80,6 +80,7 @@ export function DayStory({
   experiences,
   planned,
   otherName,
+  planLabel,
 }: {
   readonly adventureId: string;
   readonly isOwner: boolean;
@@ -93,6 +94,11 @@ export function DayStory({
   /** The adventure has this day (dates set). */
   readonly planned: boolean;
   readonly otherName: string | null;
+  /**
+   * What the adventure is called once this composer has made its day, so
+   * the evening it replaces stops claiming to be the plan.
+   */
+  readonly planLabel?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -120,11 +126,11 @@ export function DayStory({
     }
     setBusy(true);
     try {
-      if (!planned)
+      if (!planned || planLabel)
         await send(`/api/adventures/${adventureId}`, "PATCH", {
           startsOn: day.on,
           destinationTownId: day.townId,
-          destinationLabel: day.area,
+          destinationLabel: planLabel ?? day.area,
         });
       await send(`/api/adventures/${adventureId}/days`, "POST", {
         query: composed.query,
@@ -271,7 +277,7 @@ export function DayStory({
                     href={directions(e, title)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#5b1a2b] px-4 text-sm font-bold text-white"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[var(--n-forest)] px-4 text-sm font-bold text-white"
                   >
                     <Navigation className="h-4 w-4" aria-hidden /> Take us
                   </a>
@@ -353,7 +359,7 @@ export function DayStory({
                 key={label}
                 onClick={() => save(next, {})}
                 disabled={busy}
-                className="min-h-11 rounded-full bg-white px-4 text-sm font-bold ring-1 ring-black/10 hover:ring-[#5b1a2b]/40 disabled:opacity-50"
+                className="min-h-11 rounded-full bg-white px-4 text-sm font-bold ring-1 ring-black/10 hover:ring-[var(--n-forest)]/40 disabled:opacity-50"
               >
                 {label}
               </button>
@@ -361,7 +367,7 @@ export function DayStory({
             <button
               onClick={() => setAsking(true)}
               disabled={busy}
-              className="min-h-11 rounded-full px-4 text-sm font-bold text-[#5b1a2b] underline-offset-4 hover:underline"
+              className="min-h-11 rounded-full px-4 text-sm font-bold text-[var(--n-forest)] underline-offset-4 hover:underline"
             >
               Start over
             </button>
@@ -409,7 +415,7 @@ function Chips<T extends string | number>({
               className={cn(
                 "min-h-11 rounded-full px-4 text-sm font-bold ring-1 transition",
                 on
-                  ? "bg-[#5b1a2b] text-white ring-[#5b1a2b]"
+                  ? "bg-[var(--n-forest)] text-white ring-[var(--n-forest)]"
                   : "bg-white ring-black/15",
               )}
             >
@@ -452,7 +458,7 @@ function Questions({
       className="space-y-6 rounded-[28px] bg-white p-5 shadow-[0_20px_50px_-30px_rgba(60,10,25,0.6)] ring-1 ring-black/5 sm:p-7"
     >
       <div>
-        <p className="text-xs font-bold tracking-[0.18em] text-[#5b1a2b] uppercase">
+        <p className="text-xs font-bold tracking-[0.18em] text-[var(--n-forest)] uppercase">
           Five quick ones
         </p>
         <h2 className="ghad-display mt-1 text-3xl font-extrabold">
@@ -525,7 +531,7 @@ function Questions({
         <button
           disabled={busy || answers.moods.length === 0}
           data-testid="make-our-day"
-          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#5b1a2b] px-6 text-base font-bold text-white shadow-lg disabled:opacity-50"
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-forest)] px-6 text-base font-bold text-white shadow-lg disabled:opacity-50"
         >
           <Sparkles className="h-4 w-4" aria-hidden />
           {busy ? "Building it…" : "Make our day"}

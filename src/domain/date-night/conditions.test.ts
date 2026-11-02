@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Environment } from "@/domain/environment/types";
-import { dayForecast, sunlightFor, zonedInstant } from "./conditions";
+import {
+  clockTime,
+  dayForecast,
+  legalOffset,
+  sunlightFor,
+  zonedInstant,
+} from "./conditions";
+import { sunsetOf } from "./adventures/compose";
+import { TOMORROW } from "./adventures/tomorrow";
 import { LORNE_AND_JESS as night } from "./nights/lorne-and-jess";
 
 describe("Date Night conditions", () => {
@@ -25,8 +33,36 @@ describe("Date Night conditions", () => {
 
   it("computes sunset for the area — arithmetic, always available", () => {
     const light = sunlightFor(night)!;
-    expect(light.sunset).toMatch(/^[45]:\d\d pm$/);
-    expect(light.sunrise).toMatch(/^[678]:\d\d am$/);
+    expect(light.sunset).toMatch(/^\d:\d\d pm$/);
+    expect(light.sunrise).toMatch(/^\d:\d\d am$/);
+  });
+
+  // BC stays on UTC−7 from 1 Nov 2026 (the province's announcement; tzdata
+  // 2026c). Sunset in Coldstream on Monday 2 Nov is 00:32–00:33 UTC on the
+  // 3rd by NOAA's published solar algorithm, worked independently of
+  // daylight.ts (M485). On the wall that is 5:33 pm, never 4:33.
+  it("puts Monday's sunset at 5:33 pm on the wall", () => {
+    expect(sunsetOf(TOMORROW)).toBe(17 * 60 + 33);
+    expect(
+      clockTime(new Date("2026-11-03T00:33:00Z"), "America/Vancouver"),
+    ).toBe("5:33 pm");
+  });
+
+  it("keeps BC's legal time when the runtime's tz database is stale", () => {
+    // A runtime that predates 2026c still believes in PST (UTC−8).
+    const stale = (at: Date) =>
+      at.getTime() >= Date.UTC(2026, 10, 1, 9) ? -480 : -420;
+    const monday = new Date("2026-11-03T00:33:00Z");
+    expect(legalOffset(monday, "America/Vancouver", stale)).toBe(-420);
+    // Before the change, the runtime is asked and believed.
+    expect(
+      legalOffset(new Date("2026-10-15T12:00:00Z"), "America/Vancouver", stale),
+    ).toBe(-420);
+    // Other zones are the runtime's business.
+    expect(legalOffset(monday, "America/Toronto", () => -300)).toBe(-300);
+    expect(
+      zonedInstant("2026-11-02", 17, "America/Vancouver").toISOString(),
+    ).toBe("2026-11-03T00:00:00.000Z");
   });
 
   const hour = (

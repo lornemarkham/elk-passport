@@ -32,11 +32,8 @@ const THEMES: readonly (readonly [string, string, string])[] = [
 
 export function NextDates({ townId }: { townId: string | null }) {
   return (
-    <section
-      id="next"
-      className="mx-auto mt-14 max-w-5xl scroll-mt-16 px-4 sm:px-6"
-    >
-      <p className="text-xs font-bold tracking-[0.2em] text-[#9f3a4f] uppercase">
+    <section id="next" className="mt-4 scroll-mt-16">
+      <p className="text-xs font-bold tracking-[0.2em] text-[var(--n-ember,#c2571a)] uppercase">
         Next time
       </p>
       <h2 className="ghad-display mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -50,22 +47,19 @@ export function NextDates({ townId }: { townId: string | null }) {
         className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"
         data-testid="next-dates"
       >
-        {THEMES.map(([emoji, title, sentence]) => (
+        {THEMES.map(([, title, sentence]) => (
           <li key={title}>
             <Link
               href={`/discovery?${new URLSearchParams({
                 ask: sentence,
                 ...(townId ? { at: townId } : {}),
               }).toString()}`}
-              className="group flex h-full min-h-28 flex-col justify-between rounded-3xl bg-white p-4 ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg"
+              className="group flex h-full min-h-20 flex-col justify-end rounded-3xl bg-white/80 p-4 ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg"
             >
-              <span className="text-3xl" aria-hidden>
-                {emoji}
-              </span>
               <span className="mt-3 flex items-end justify-between gap-2 text-[15px] leading-tight font-bold">
                 {title}
                 <ArrowUpRight
-                  className="h-4 w-4 shrink-0 text-[#9f3a4f] opacity-60 transition group-hover:opacity-100"
+                  className="h-4 w-4 shrink-0 text-[var(--n-ember,#c2571a)] opacity-60 transition group-hover:opacity-100"
                   aria-hidden
                 />
               </span>
@@ -75,7 +69,7 @@ export function NextDates({ townId }: { townId: string | null }) {
       </ul>
       <Link
         href="/saved"
-        className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-[#5b1a2b] underline-offset-4 hover:underline"
+        className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-[var(--n-forest,#1f3a2e)] underline-offset-4 hover:underline"
       >
         Open Saved →
       </Link>

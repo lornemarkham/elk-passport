@@ -16,7 +16,10 @@ test("the Christmas page opens on the season and leads somewhere real", async ({
 }) => {
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", { level: 1, name: /Markets, lights, Santa/ }),
+    page.getByRole("heading", {
+      level: 1,
+      name: /make some Christmas memories/,
+    }),
   ).toBeVisible();
   await expect(page.getByTestId("countdown")).toBeVisible();
   if (WITH_ATLAS) {
@@ -32,6 +35,21 @@ test("the Christmas page opens on the season and leads somewhere real", async ({
   );
   if (WITH_ATLAS)
     await expect(page.getByTestId("find-card").first()).toBeVisible();
+});
+
+test("a sentence becomes a plan, kept as said", async ({ page }) => {
+  await page.goto("/christmas");
+  await page
+    .getByRole("textbox", { name: /What does your Christmas look like/ })
+    .fill("We have Saturday afternoon, two kids and $100");
+  await page.getByTestId("say-it-go").click();
+  // Signed out, the planner asks to sign in and carries the sentence through.
+  await expect(page).toHaveURL(/\/christmas\/plan\?shape=family-day/);
+  await expect(page).toHaveURL(/who=family/);
+  await expect(page.getByTestId("plan-sign-in")).toHaveAttribute(
+    "href",
+    /%2524100/,
+  );
 });
 
 test("refining is a plain form, and the URL keeps every answer", async ({

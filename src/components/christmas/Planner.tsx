@@ -65,6 +65,7 @@ export function Planner({
   initialAges,
   initialPeople,
   initialTitle,
+  initialExtra,
   picks,
   saved,
 }: {
@@ -76,6 +77,8 @@ export function Planner({
   readonly initialAges: readonly number[];
   readonly initialPeople?: number;
   readonly initialTitle?: string;
+  /** The sentence somebody said on the Christmas page, kept as said. */
+  readonly initialExtra?: string;
   readonly picks: readonly PlanPick[];
   readonly saved: readonly PlanPick[];
 }) {
@@ -93,7 +96,7 @@ export function Planner({
   const [people, setPeople] = useState(
     initialPeople ? String(initialPeople) : "",
   );
-  const [extra, setExtra] = useState("");
+  const [extra, setExtra] = useState(initialExtra ?? "");
   const [title, setTitle] = useState(initialTitle ?? "");
   const [sketch, setSketch] = useState(true);
   const [busy, setBusy] = useState(false);

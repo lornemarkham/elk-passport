@@ -12,10 +12,26 @@ import type { DateNight } from "./types";
  * says nothing about tomorrow evening.
  */
 
-/** The instant a local wall-clock hour falls on, in an IANA zone. */
-export function zonedInstant(on: string, hour: number, timeZone: string): Date {
-  const [y, m, d] = on.split("-").map(Number);
-  const guess = Date.UTC(y!, m! - 1, d!, hour);
+/**
+ * **Legal time, not whatever tz database the runtime happens to carry.**
+ *
+ * British Columbia stopped changing its clocks: the spring-forward of
+ * 8 March 2026 was the last, and from 1 November 2026 the province stays on
+ * UTC−7 all year (tzdata 2026c records it). A server or a phone with an older
+ * tz database still believes BC falls back to UTC−8 that night, and then
+ * says Monday's sunset is 4:33 pm when the clock on the wall will say 5:33.
+ * So the rule is written down here, once, and checked against the runtime's
+ * own answer rather than trusting it.
+ */
+const STAYS_PUT: Readonly<
+  Record<string, { readonly from: number; readonly offset: number }>
+> = {
+  // 2026-11-01 02:00 PDT, the moment BC would otherwise have fallen back.
+  "America/Vancouver": { from: Date.UTC(2026, 10, 1, 9), offset: -7 * 60 },
+};
+
+/** What the runtime's Intl says the zone's offset is, in minutes from UTC. */
+export function runtimeOffset(at: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     hourCycle: "h23",
@@ -24,29 +40,54 @@ export function zonedInstant(on: string, hour: number, timeZone: string): Date {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).formatToParts(new Date(guess));
+  }).formatToParts(at);
   const get = (type: string) =>
     Number(parts.find((p) => p.type === type)?.value);
   const shown = Date.UTC(
     get("year"),
     get("month") - 1,
     get("day"),
-    get("hour"),
+    get("hour") % 24,
     get("minute"),
   );
-  return new Date(guess - (shown - guess));
+  return Math.round(
+    (shown - Math.floor(at.getTime() / 60_000) * 60_000) / 60_000,
+  );
 }
 
+/** The legal offset of `timeZone` at `at`, in minutes from UTC. */
+export function legalOffset(
+  at: Date,
+  timeZone: string,
+  runtime: (at: Date, timeZone: string) => number = runtimeOffset,
+): number {
+  const rule = STAYS_PUT[timeZone];
+  if (rule && at.getTime() >= rule.from) return rule.offset;
+  return runtime(at, timeZone);
+}
+
+/** Wall-clock minutes after local midnight at `at`. */
+export function wallMinutes(at: Date, timeZone: string): number {
+  const local = new Date(at.getTime() + legalOffset(at, timeZone) * 60_000);
+  return local.getUTCHours() * 60 + local.getUTCMinutes();
+}
+
+/** The instant a local wall-clock hour falls on, in an IANA zone. */
+export function zonedInstant(on: string, hour: number, timeZone: string): Date {
+  const [y, m, d] = on.split("-").map(Number);
+  const guess = Date.UTC(y!, m! - 1, d!, hour);
+  // Twice: the offset at the guess decides the instant, and the instant may
+  // sit on the other side of a change from the guess.
+  const first = guess - legalOffset(new Date(guess), timeZone) * 60_000;
+  return new Date(guess - legalOffset(new Date(first), timeZone) * 60_000);
+}
+
+/** "5:33 pm", on the wall in `timeZone`. */
 export function clockTime(at: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
-    .format(at)
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ");
+  const minutes = wallMinutes(at, timeZone);
+  const h = Math.floor(minutes / 60);
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(minutes % 60).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 }
 
 export interface Sunlight {

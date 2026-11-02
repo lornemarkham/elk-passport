@@ -26,17 +26,13 @@ import {
   zonedInstant,
 } from "@/domain/date-night/conditions";
 import { daylightAt } from "@/domain/environment/daylight";
-import { cardPictures } from "@/lib/media/cardPicture";
-import type { Experience } from "@/domain/experience/types";
+import { sunsetOf } from "@/domain/date-night/adventures/compose";
+import { eveningOf } from "@/domain/date-night/adventures/evenings";
 
 export const metadata: Metadata = {
   title: "The Markham Adventure ❤️",
   robots: { index: false },
 };
-
-/** A real photograph of the place, not an illustration of the kind of place. */
-const realPhoto = (e: Experience | undefined): boolean =>
-  Boolean(e && cardPictures(e)[0] && !cardPictures(e)[0]!.label);
 
 /**
  * **A Date Night** — the core's adventure (members, invitations, ideas, the
@@ -71,7 +67,6 @@ export default async function NightPage({
       <>
         <PassportNav displayName={session?.user.displayName ?? null} />
         <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
-          <p className="text-4xl">🧭</p>
           <h1 className="text-2xl font-bold">
             {failed
               ? "Couldn't open this just now"
@@ -109,6 +104,7 @@ export default async function NightPage({
       ...view.items.flatMap((i) => (i.atlasRef ? [i.atlasRef] : [])),
       // The night opens on its own landscape until the day has pictures.
       ...(day ? day.options.map((o) => o.atlasRef) : []),
+      ...(config?.evenings ?? []).flatMap((id) => eveningOf(id)?.stops ?? []),
     ]),
   ];
   const sharing = await sharingOn(db, id).catch(() => false);
@@ -147,25 +143,9 @@ export default async function NightPage({
         zonedInstant(day.on, 12, day.timeZone),
       )
     : undefined;
-  const onDay = day
-    ? view.items
-        .filter((i) => i.onDay === day.on && i.atlasRef)
-        .sort((a, b) => a.position - b.position)
-        .map((i) => i.atlasRef!)
-    : [];
-  // The outdoor beat makes the best cover: the lake, not the parking lot.
-  const outdoors = new Set(
-    day?.options.filter((o) => o.phase === "explore").map((o) => o.atlasRef),
-  );
-  const hero =
-    [
-      ...onDay.filter((r) => outdoors.has(r)),
-      ...onDay,
-      ...outdoors,
-      ...(day?.options.map((o) => o.atlasRef) ?? []),
-    ]
-      .map((ref) => experiences[ref])
-      .find(realPhoto) ?? undefined;
+  // Legal time: BC stays on UTC−7 from 1 Nov 2026, whatever tz database
+  // this runtime carries (conditions.ts).
+  const sunsetMinutes = day ? sunsetOf(day) : undefined;
 
   return (
     <>
@@ -187,7 +167,7 @@ export default async function NightPage({
         {...(light && day
           ? { sunset: clockTime(light.sunset, day.timeZone) }
           : {})}
-        {...(hero ? { hero } : {})}
+        {...(sunsetMinutes !== undefined ? { sunsetMinutes } : {})}
       />
     </>
   );
