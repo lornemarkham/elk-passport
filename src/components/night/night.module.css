@@ -6,6 +6,10 @@
   --gh-cream: #f6e9e1;
 }
 
+.film {
+  pointer-events: none;
+}
+
 .drift {
   transform: scale(1.06);
   animation: drift 26s ease-in-out infinite alternate;
@@ -39,5 +43,9 @@
   .drift,
   .rise {
     animation: none;
+  }
+  /* A still fire instead of a moving one. */
+  .film {
+    display: none;
   }
 }

@@ -305,12 +305,15 @@ export function NightBoard({
         ...(config?.invitation ?? ["Help me plan our adventure."]),
         url,
       ].join("\n\n");
-      if (navigator.share) {
+      // Copied first, always: if the share sheet is dismissed or missing,
+      // the invitation is still in hand.
+      const copied = await navigator.clipboard
+        .writeText(text)
+        .then(() => true)
+        .catch(() => false);
+      if (navigator.share)
         await navigator.share({ text }).catch(() => undefined);
-      } else {
-        await navigator.clipboard.writeText(text).catch(() => undefined);
-        toast.success("Invitation copied. Send it to them.");
-      }
+      else if (copied) toast.success("Invitation copied. Send it to them.");
       router.refresh();
     } catch {
       toast.error("Couldn't make the invitation. Try again.");

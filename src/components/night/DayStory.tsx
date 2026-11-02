@@ -32,6 +32,7 @@ import {
 import type { DayDetail } from "@/lib/adventures/propose";
 import type { ItemView } from "@/lib/adventures/store";
 import { cn } from "@/lib/utils";
+import styles from "./night.module.css";
 
 const WINE = "#5b1a2b";
 
@@ -291,12 +292,27 @@ export function DayStory({
         })}
         <li
           data-testid="story-remember"
-          className="relative flex w-[82vw] max-w-[340px] shrink-0 snap-center flex-col justify-end overflow-hidden rounded-[28px] bg-[radial-gradient(120%_80%_at_50%_100%,#f59e0b_0%,#b4411b_28%,#3b0f1f_62%,#12060b_100%)] p-6 text-white shadow-[0_20px_50px_-25px_rgba(60,10,25,0.55)]"
+          className="relative isolate flex min-h-[520px] w-[82vw] max-w-[340px] shrink-0 snap-center flex-col justify-end overflow-hidden rounded-[28px] bg-[radial-gradient(120%_80%_at_50%_100%,#f59e0b_0%,#b4411b_28%,#3b0f1f_62%,#12060b_100%)] p-6 text-white shadow-[0_20px_50px_-25px_rgba(60,10,25,0.55)]"
         >
+          {/* ELK's own generated campfire loop: a feeling, not a place. */}
+          <video
+            className={`absolute inset-0 -z-10 h-full w-full object-cover opacity-70 ${styles.film}`}
+            src="/video/discovery/campfire-summer.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden
+          />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#12060b] via-[#12060b]/55 to-transparent" />
           <Flame
             className="absolute top-6 left-6 h-8 w-8 text-amber-300"
             aria-hidden
           />
+          <p className="absolute top-7 right-5 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white/80 uppercase">
+            Illustration
+          </p>
           <p className="text-[11px] font-bold tracking-[0.18em] text-white/80 uppercase">
             {dayItems.length + 1} · Remember
           </p>
