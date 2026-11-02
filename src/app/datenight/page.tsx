@@ -14,7 +14,7 @@ export const metadata: Metadata = {
  * title and a button. The adventure itself is made for you when you press it
  * (signed in), and is yours alone until you invite somebody.
  */
-export default async function MarkhamPage() {
+export default async function DateNightPage() {
   const user = await currentUser().catch(() => null);
   return (
     <>

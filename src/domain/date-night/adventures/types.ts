@@ -24,7 +24,7 @@ export interface NightActivity {
 }
 
 export interface NightConfig {
-  /** The vanity path and the registry key: `/markham`. */
+  /** The vanity path and the registry key: `/datenight`. */
   readonly slug: string;
   readonly title: string;
   /** The adventure's own title in the database. */

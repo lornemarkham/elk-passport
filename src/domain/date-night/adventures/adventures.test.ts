@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nightConfig, pickMystery } from ".";
 
 describe("night configs", () => {
-  const markham = nightConfig("markham")!;
+  const markham = nightConfig("datenight")!;
 
   it("holds the brief's six activities and seven packing items", () => {
     expect(markham.activities.map((a) => a.id)).toHaveLength(6);

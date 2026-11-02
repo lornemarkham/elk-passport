@@ -13,7 +13,7 @@ import type { NightConfig } from "./types";
  * ids Date Night's invitation uses, `nights/lorne-and-jess.ts`).
  */
 export const MARKHAM: NightConfig = {
-  slug: "markham",
+  slug: "datenight",
   title: "The Markham Adventure ❤️",
   adventureTitle: "The Markham Adventure ❤️",
   tagline: "A questionable adventure, for two.",

@@ -58,10 +58,10 @@ test("Lorne invites Jess; both plan, pack and see each other", async ({
   browser,
 }) => {
   const lorne = await phone(browser);
-  await lorne.goto("/markham");
+  await lorne.goto("/datenight");
   await lorne.getByRole("link", { name: "Sign in to begin" }).click();
   await signUp(lorne, "lorne");
-  await lorne.goto("/markham");
+  await lorne.goto("/datenight");
   await shot(lorne, "00-front-door");
   await lorne.getByRole("button", { name: "Open our adventure" }).click();
   await lorne.waitForURL(/\/night\//);

@@ -1,7 +1,7 @@
 # The Markham Adventure ❤️ — release steps (operator)
 
 Nothing here has been run against production. Built on the shared adventure
-core: kind `date-night-plan`, pages `/markham` (front door) and `/night/<id>`.
+core: kind `date-night-plan`, pages `/datenight` (front door) and `/night/<id>`.
 Config: `src/domain/date-night/adventures/markham.ts`.
 
 1. Supabase SQL editor (Passport project), in order, each guarded and safe twice:
@@ -10,7 +10,7 @@ Config: `src/domain/date-night/adventures/markham.ts`.
      Without them the app still works: the page says packing / memories "aren't
      switched on yet".
 2. Deploy `main` (push to GitHub main).
-3. Lorne signs in on gohaveaday.com, opens `/markham`, taps **Open our adventure**,
+3. Lorne signs in on gohaveaday.com, opens `/datenight`, taps **Open our adventure**,
    then **Send the invitation** and sends the text to Jess.
 4. Jess opens the link, taps **Sign in to join** (email + password, or Google),
    then **I'm in**.
@@ -23,3 +23,12 @@ The older anonymous `/lorne-and-jess` questionnaire is untouched.
 Verify locally: `docs/product/date-night/verification/markham.spec.ts` (two
 phones) and `src/lib/date-night/night.stack.test.ts` (real RLS), both against
 `stack.mjs start`.
+
+## Rename (mission: Date Night — get it live)
+
+The public entry is now `/datenight` (was `/markham`; nothing was ever deployed
+there). The registry slug is `datenight`. Lineage: GitHub main `ef8a89c` →
+`0feb0fa` (Date Night, anonymous `/lorne-and-jess` + its migration
+`20261102000000`) → `5da3ee3` (this adventure) → the rename commit. All
+fast-forwards; no force-push needed. Migration `20261102000000` rides along and
+is only needed for the older `/lorne-and-jess` page.
