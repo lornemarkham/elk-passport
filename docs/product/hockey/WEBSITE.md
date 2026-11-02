@@ -12,7 +12,12 @@ Release, or say exactly why not.
 
 **Where:** `feature/hockey` on Metatron, fast-forwarded first onto GitHub
 `main` `137def4` (which already contained every earlier Hockey commit and the
-Date Night / Lorne & Jess release). **Not pushed, not deployed:** this clone
+Date Night / Lorne & Jess release), then GitHub `main` `a47e611`
+(Christmas improvements, the rebuilt Markham Adventure) merged in on
+2 November — no conflicts, no Hockey file touched; on the merged tree
+tsc, prettier, eslint (0 errors) and vitest (4065) are clean and a fresh
+production build passes public-site, public-night, acceptance and mobile.
+**Not pushed, not deployed:** this clone
 cannot push and never deploys (`CLAUDE.local.md`). §8 is the owner's path.
 
 ---
