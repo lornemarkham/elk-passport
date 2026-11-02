@@ -19,12 +19,18 @@ import {
   satisfies,
   type Challenge,
 } from "@/domain/christmas/challenges";
+import type {
+  ChallengePick,
+  ChallengePlace,
+} from "@/domain/christmas/challengePicks";
 import {
   recapLine,
   recapOf,
   type Moment,
   type MomentKind,
 } from "@/domain/christmas/recap";
+import { useRouter } from "next/navigation";
+import { MapPin, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { shrinkPhoto } from "./photo";
 import styles from "./christmas.module.css";
@@ -49,8 +55,11 @@ export function Together({
   enabled,
   againHref,
   done,
+  picks = [],
 }: {
   readonly adventureId: string;
+  /** The dares that lead for this adventure, with real places (`pickChallenges`). */
+  readonly picks?: readonly ChallengePick[];
   readonly initial: readonly Moment[];
   readonly enabled: boolean;
   /** "Go have another": a new Christmas plan seeded with this one's places. */
@@ -120,6 +129,18 @@ export function Together({
   );
   const finishedBy = (id: string) =>
     recap.challenges.find((c) => c.id === id)?.by ?? [];
+  // A few dares lead; the rest wait one tap away rather than as a wall.
+  const leading: readonly ChallengePick[] =
+    picks.length > 0
+      ? picks
+      : CHALLENGES.slice(0, 3).map((challenge) => ({
+          challenge,
+          why: "",
+          places: [],
+        }));
+  const rest = CHALLENGES.filter(
+    (c) => !leading.some((p) => p.challenge.id === c.id),
+  );
 
   return (
     <>
@@ -148,66 +169,38 @@ export function Together({
           </p>
         )}
         <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {CHALLENGES.map((c) => {
-            const by = finishedBy(c.id);
-            const mine = finishedByMe.has(c.id);
-            return (
-              <li
-                key={c.id}
-                className={cn(
-                  "flex flex-col gap-3 rounded-[22px] p-5",
-                  by.length
-                    ? "bg-[#0f3b2b] text-white"
-                    : "bg-white ring-1 ring-black/5",
-                )}
-                data-testid={`challenge-${c.id}`}
-              >
-                <div className="flex gap-3">
-                  <span
-                    className={cn("text-3xl", celebrate === c.id && styles.pop)}
-                    aria-hidden
-                  >
-                    {celebrate === c.id ? "🌟" : c.emoji}
-                  </span>
-                  <div>
-                    <p className="ghad-display text-lg leading-tight font-extrabold">
-                      {c.title}
-                    </p>
-                    <p
-                      className={cn(
-                        "mt-1 text-sm",
-                        by.length
-                          ? "text-white/80"
-                          : "text-[var(--gh-ink-soft)]",
-                      )}
-                    >
-                      {c.dare}
-                    </p>
-                  </div>
-                </div>
-                {by.length > 0 && (
-                  <p className="text-sm font-semibold text-[#ffd98a]">
-                    Done by {by.join(", ")}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setDraft({ kind: "challenge", challenge: c })}
-                  className={cn(
-                    "mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-bold",
-                    by.length
-                      ? "bg-white/15 text-white hover:bg-white/25"
-                      : "bg-[#b3242f] text-white hover:brightness-110",
-                  )}
-                  data-testid="do-challenge"
-                >
-                  {mine ? <Check className="h-4 w-4" aria-hidden /> : null}
-                  {mine ? "Share another" : "We did it"}
-                </button>
-              </li>
-            );
-          })}
+          {leading.map((pick) => (
+            <ChallengeCard
+              key={pick.challenge.id}
+              adventureId={adventureId}
+              pick={pick}
+              by={finishedBy(pick.challenge.id)}
+              mine={finishedByMe.has(pick.challenge.id)}
+              celebrating={celebrate === pick.challenge.id}
+              onDo={() =>
+                setDraft({ kind: "challenge", challenge: pick.challenge })
+              }
+            />
+          ))}
         </ul>
+        <details className="mt-4" data-testid="more-challenges">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
+            More dares ({rest.length})
+          </summary>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {rest.map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                adventureId={adventureId}
+                pick={{ challenge, why: "", places: [] }}
+                by={finishedBy(challenge.id)}
+                mine={finishedByMe.has(challenge.id)}
+                celebrating={celebrate === challenge.id}
+                onDo={() => setDraft({ kind: "challenge", challenge })}
+              />
+            ))}
+          </ul>
+        </details>
       </section>
 
       <section id="memories" className="scroll-mt-20" data-testid="memories">
@@ -529,5 +522,129 @@ function ShareSheet({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * One dare: why it fits this adventure, real places to do it where Atlas
+ * holds them (each one tap onto the plan), and the share that finishes it.
+ */
+function ChallengeCard({
+  adventureId,
+  pick,
+  by,
+  mine,
+  celebrating,
+  onDo,
+}: {
+  readonly adventureId: string;
+  readonly pick: ChallengePick;
+  readonly by: readonly string[];
+  readonly mine: boolean;
+  readonly celebrating: boolean;
+  readonly onDo: () => void;
+}) {
+  const c = pick.challenge;
+  const router = useRouter();
+  const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
+  async function add(place: ChallengePlace) {
+    const response = await fetch(`/api/adventures/${adventureId}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ atlasRef: place.id, note: c.title }),
+    }).catch(() => null);
+    if (!response?.ok) return toast.error("Couldn't add it. Try again.");
+    setAdded((a) => new Set([...a, place.id]));
+    toast.success(`${place.title} is in the ideas.`);
+    router.refresh();
+  }
+  return (
+    <li
+      className={cn(
+        "flex flex-col gap-3 rounded-[22px] p-5",
+        by.length ? "bg-[#0f3b2b] text-white" : "bg-white ring-1 ring-black/5",
+      )}
+      data-testid={`challenge-${c.id}`}
+    >
+      <div className="flex gap-3">
+        <span className={cn("text-3xl", celebrating && styles.pop)} aria-hidden>
+          {celebrating ? "🌟" : c.emoji}
+        </span>
+        <div>
+          <p className="ghad-display text-lg leading-tight font-extrabold">
+            {c.title}
+          </p>
+          {pick.why && (
+            <p className="mt-0.5 text-sm font-semibold text-[#b3242f]">
+              {pick.why}
+            </p>
+          )}
+          <p
+            className={cn(
+              "mt-1 text-sm",
+              by.length ? "text-white/80" : "text-[var(--gh-ink-soft)]",
+            )}
+          >
+            {c.dare}
+          </p>
+        </div>
+      </div>
+      {pick.places.length > 0 && (
+        <ul className="space-y-2" data-testid="challenge-places">
+          {pick.places.map((place) => (
+            <li
+              key={place.id}
+              className={cn(
+                "rounded-2xl p-3 text-sm",
+                by.length ? "bg-white/10" : "bg-[#fbf6ec]",
+              )}
+            >
+              <p className="font-bold">{place.title}</p>
+              <p className="flex items-center gap-1 opacity-80">
+                <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {place.km !== undefined ? `${place.km} km · ` : ""}
+                {place.because}
+              </p>
+              {added.has(place.id) ? (
+                <p className="mt-1 font-semibold">Added to the ideas ✓</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void add(place)}
+                  className="mt-1 inline-flex min-h-11 items-center gap-1 font-semibold underline"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Add to the plan
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {pick.gap && (
+        <p className="text-sm opacity-80" data-testid="challenge-gap">
+          {pick.gap}
+        </p>
+      )}
+      {by.length > 0 && (
+        <p className="text-sm font-semibold text-[#ffd98a]">
+          Done by {by.join(", ")}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onDo}
+        className={cn(
+          "mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-bold",
+          by.length
+            ? "bg-white/15 text-white hover:bg-white/25"
+            : "bg-[#b3242f] text-white hover:brightness-110",
+        )}
+        data-testid="do-challenge"
+      >
+        {mine ? <Check className="h-4 w-4" aria-hidden /> : null}
+        {mine ? "Share another" : "We did it — share it"}
+      </button>
+    </li>
   );
 }

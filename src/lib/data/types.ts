@@ -620,6 +620,18 @@ export type ScheduleReading = "on" | "not-on" | "conflicting" | "unknown";
 
 export interface CandidateSchedule {
   readonly stated: "stated" | "unknown";
+  /**
+   * The publisher's own sentences about when it is open, as Atlas holds
+   * them — "Mon: 9:00 AM – 6:00 PM · … · Sun: Closed". Read by
+   * `domain/occasion/hours.ts` (which quotes what it finds) and shown as
+   * a place's hours by `domain/occasion/ideas.ts`.
+   */
+  readonly statements?: readonly {
+    readonly text: string;
+    readonly scope?: string;
+    readonly weekdays?: readonly string[];
+    readonly closedWeekdays?: readonly string[];
+  }[];
   readonly onDate?: {
     readonly date: string;
     readonly reading: ScheduleReading;

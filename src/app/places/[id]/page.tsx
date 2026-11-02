@@ -73,7 +73,12 @@ export default async function PlacePage({
   const back = one(query.back)
     ? safeNext(one(query.back)!, "/discovery")
     : undefined;
-  const detail = await getPlaceDetail(id);
+  // The detail and the place index are independent reads of Atlas; asking
+  // for both at once makes the page wait for the slower, not for the sum.
+  const [detail, allPlaces] = await Promise.all([
+    getPlaceDetail(id),
+    listPlaces(),
+  ]);
 
   if (!detail) {
     notFound();
@@ -116,9 +121,7 @@ export default async function PlacePage({
   // fatal — the same defensive discipline as before, now for the one case
   // that genuinely means something (a stale reference), not for load Passport
   // was creating itself.
-  const placesById = new Map(
-    (await listPlaces()).map((p) => [p.id, p] as const),
-  );
+  const placesById = new Map(allPlaces.map((p) => [p.id, p] as const));
   // Stored connections and geometry-derived destinations resolve through the
   // same index: a destination Atlas measured within reach needs its full
   // record for a card exactly as a stored neighbour does.

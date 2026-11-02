@@ -41,6 +41,14 @@ async function shot(page: Page, name: string, fullPage = false) {
   await page.screenshot({ path: path.join(SHOTS, `${name}.png`), fullPage });
 }
 
+/** A dare, whether it leads or waits under "More dares". */
+async function dare(page: Page, id: string) {
+  const card = page.getByTestId(`challenge-${id}`);
+  if (!(await card.isVisible()))
+    await page.getByTestId("more-challenges").locator("summary").click();
+  return card;
+}
+
 async function signUp(page: Page, who: string) {
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
@@ -197,16 +205,13 @@ test("a family discovers, plans, shares, lives and remembers a Christmas", async
   await expect(firstStop).toContainText("1 in");
 
   // A challenge in words…
-  await b.getByTestId("challenge-carol").getByTestId("do-challenge").click();
+  await (await dare(b, "carol")).getByTestId("do-challenge").click();
   await b.getByTestId("moment-text").fill("Jingle Bells in the car, all of it");
   await b.getByTestId("moment-send").click();
   await expect(b.getByTestId("challenge-carol")).toContainText("Done by");
   await expect(b.getByTestId("tally")).toContainText("1");
   // …one that needs a photo, which words alone don't finish…
-  await b
-    .getByTestId("challenge-best-lights")
-    .getByTestId("do-challenge")
-    .click();
+  await (await dare(b, "best-lights")).getByTestId("do-challenge").click();
   await expect(b.getByTestId("moment-send")).toBeDisabled();
   await b.getByTestId("photo-input").setInputFiles(PHOTO);
   await expect(b.getByAltText("Your photo")).toBeVisible();

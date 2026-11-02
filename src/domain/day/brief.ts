@@ -16,6 +16,13 @@ import {
   type PartOfDay,
 } from "./intent";
 
+import {
+  mergeOccasion,
+  readOccasion,
+  withoutOccasionPhrases,
+  type Occasion,
+} from "@/domain/occasion/occasion";
+
 export { stem };
 
 /**
@@ -108,6 +115,13 @@ export interface DayBrief {
    * plan never reads as though it took care of it.
    */
   readonly cautions?: readonly string[];
+  /**
+   * **The occasion** — the moods and the concrete things named in passing
+   * ("romantic", "cozy", "mulled wine", "Christmas lights"). Passport's
+   * reading of the words, from a closed set (`domain/occasion`). It ranks,
+   * composes and explains; it never removes a place.
+   */
+  readonly occasion?: Occasion;
 }
 
 export type Party = "solo" | "couple" | "family" | "friends";
@@ -410,7 +424,10 @@ export function readBrief(
 
   const avoid = [...new Set([...avoidIn(text), ...(fallback.avoid ?? [])])];
   const setAside = fallback.setAside ?? [];
-  const interests = activitiesIn(text).filter(
+  // "Mulled wine" is a warm drink, not a winery: the occasion's own phrases
+  // are read as the occasion and kept out of the activity reading.
+  const occasion = mergeOccasion(fallback.occasion, readOccasion(text));
+  const interests = activitiesIn(withoutOccasionPhrases(text)).filter(
     (word) =>
       !avoid.some((a) => sameThing(a, word)) &&
       !setAside.some((a) => a === word),
@@ -469,6 +486,7 @@ export function readBrief(
     ...(startsNow ? { startsNow: true } : {}),
     ...(avoid.length > 0 ? { avoid } : {}),
     ...(cautions.length > 0 ? { cautions } : {}),
+    ...(occasion ? { occasion } : {}),
   };
 }
 
@@ -620,8 +638,11 @@ export function reviseBrief(
     };
   }
 
+  const occasion = mergeOccasion(next.occasion, readOccasion(text));
+  if (occasion) next = { ...next, occasion };
+
   // Only this sentence's own "no" stops a word counting as a wish.
-  const more = activitiesIn(text).filter(
+  const more = activitiesIn(withoutOccasionPhrases(text)).filter(
     (w) => !avoid.some((a) => sameThing(a, w)),
   );
   if (more.length > 0) {

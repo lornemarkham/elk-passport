@@ -288,7 +288,7 @@ describe("Christmas Discovery", () => {
 describe("Christmas plans", () => {
   it("says the sentence the Day Builder reads", () => {
     expect(sayFor({ shape: shapeById("family-day"), youngest: 4 })).toBe(
-      "take it easy, good food and drink, with the kids, youngest is 4",
+      "a Christmas day, take it easy, good food and drink, with the kids, youngest is 4",
     );
     expect(
       sayFor({
@@ -296,7 +296,7 @@ describe("Christmas plans", () => {
         party: "friends",
         extra: "home by 9",
       }),
-    ).toBe("this evening, good food and drink, with friends, home by 9");
+    ).toBe("a Christmas evening, good food and drink, with friends, home by 9");
   });
 
   it("puts a dated find on its day and reports one dated outside the plan", () => {
