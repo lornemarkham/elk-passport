@@ -209,6 +209,73 @@ test("two phones, one snow day", async ({ browser }) => {
   expect(own.headers()["content-type"]).toMatch(/^image\/(jpeg|png)$/);
   await shot(lorne, "12-shared-memories");
 
+  // ---------------------------------------------------------- points
+  // Jess already has points (her photo); a challenge adds to them, and
+  // Lorne's phone shows the new total.
+  const jessRow = (page: Page) =>
+    page
+      .getByTestId("standings")
+      .locator("ol > li")
+      .filter({ hasText: "Jess" });
+  const ptsOf = async (page: Page) =>
+    Number((await jessRow(page).textContent())!.match(/(\d+) pts/)![1]);
+  await tab(lorne, "Challenges");
+  await expect(jessRow(lorne)).toContainText("pts");
+  const before = await ptsOf(lorne);
+  await tab(jess, "Challenges");
+  await jess
+    .getByRole("button", { name: /^Mark done:/ })
+    .first()
+    .click();
+  await expect(
+    jess.getByRole("button", { name: /^Undo:/ }).first(),
+  ).toBeVisible();
+  await expect(async () =>
+    expect(await ptsOf(lorne)).toBeGreaterThan(before),
+  ).toPass({ timeout: 20_000 });
+  const points = await ptsOf(lorne);
+
+  // ------------------------------- a new session finds all of it again
+  // A fresh browser, nothing carried over: only the database remembers.
+  const again = await phone(browser);
+  await again.goto(dayUrl);
+  await again
+    .getByRole("main")
+    .getByRole("link", { name: "Sign in", exact: true })
+    .click();
+  await again.waitForURL(/\/auth/);
+  await again.getByRole("tab", { name: "Log In" }).click();
+  await again.getByLabel("Email address").fill(emailFor("jess"));
+  await again.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await again.getByRole("button", { name: "Log in" }).click();
+  await again.waitForURL(dayUrl);
+  await expect(again.getByTestId("you-are")).toHaveText("You are Jess");
+  await tab(again, "Plan");
+  await expect(
+    again.getByTestId("topic-mountain").getByText("LOCKED IN"),
+  ).toBeVisible();
+  await tab(again, "Crew");
+  await expect(again.getByTestId("chat-messages")).toContainText(
+    "Bringing the hot chocolate",
+  );
+  await expect(again.getByTestId("chat-messages")).toContainText(
+    "Leaving at 7:45 sharp",
+  );
+  await tab(again, "Get ready");
+  const kept = again
+    .getByTestId("predictions")
+    .locator("li")
+    .filter({ hasText: "group photo at the top" });
+  await expect(kept.getByRole("button").first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await tab(again, "Memories");
+  await expect(again.getByTestId("photos").locator("img")).toHaveCount(1);
+  await tab(again, "Challenges");
+  await expect(jessRow(again)).toContainText(`${points} pts`);
+  await again.context().close();
+
   // ------------------------------------- strangers and signed-out visitors
   const mallory = await phone(browser);
   await mallory.goto("/auth");
