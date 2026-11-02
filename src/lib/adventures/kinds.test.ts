@@ -5,6 +5,7 @@ import {
   KIND_PATTERN,
   kindLabel,
   PLANNING_KINDS,
+  STARTABLE_KINDS,
 } from "./kinds";
 
 describe("adventure kinds", () => {
@@ -16,6 +17,7 @@ describe("adventure kinds", () => {
       "birthday",
       "weekend",
       "trip",
+      "date-night",
     ]);
   });
 
@@ -35,6 +37,11 @@ describe("adventure kinds", () => {
   it("Saved plans days, weekends and trips — not games or conferences", () => {
     expect(PLANNING_KINDS).toEqual(["day", "weekend", "trip"]);
     for (const id of PLANNING_KINDS) expect(adventureKind(id)).toBeDefined();
+  });
+
+  it("Date Night is made by its own setup, not offered in the start menu", () => {
+    expect(adventureKind("date-night")?.label).toBe("Date Night");
+    expect(STARTABLE_KINDS.map((k) => k.id)).not.toContain("date-night");
   });
 
   it("names a kind it does not know rather than refusing to render it", () => {
