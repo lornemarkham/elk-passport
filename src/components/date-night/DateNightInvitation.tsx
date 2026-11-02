@@ -473,9 +473,11 @@ function Conditions({
           {forecast.lowC !== undefined && forecast.highC !== undefined
             ? ` · ${Math.round(forecast.lowC)}° to ${Math.round(forecast.highC)}°C`
             : ""}
-          {forecast.wettestChance !== undefined
-            ? ` · up to ${forecast.wettestChance}% chance of precipitation`
-            : ""}{" "}
+          {forecast.wettestChance === undefined
+            ? ""
+            : forecast.wettestChance === 0
+              ? " · 0% chance of precipitation"
+              : ` · up to ${forecast.wettestChance}% chance of precipitation`}{" "}
           <span className={styles.muted}>
             ({forecast.covers}, {forecast.source}
             {forecast.city ? ` for ${forecast.city}` : ""})
