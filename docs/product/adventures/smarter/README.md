@@ -101,7 +101,7 @@ the real place, keeps "Go ice skating" as its note, and replaces a text-only
 idea. Also works for bowling, snowshoeing, movies, wine tasting, spas,
 swimming… — anything Discovery's activity vocabulary (ADR 007) recognises.
 
-**C — family Christmas day, youngest 6, Sat Dec 12**: Centennial Outdoor Rink
+**C — family Christmas day, youngest 6, Sat Dec 12**: Priest Valley Arena
 → Farmhouse Pizza → Big White's Twinkling Trail (_"Atlas dates it to this
 day"_); no bars, wineries or distilleries; dares: get on the ice, rank the hot
 chocolate, a holiday treat — no "holding hands" line, no Santa question

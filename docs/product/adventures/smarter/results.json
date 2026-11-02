@@ -2,7 +2,7 @@
   "A": {
     "plan": [
       {
-        "heard": "Passport heard: romantic, cozy, festive, snowy · something warm to drink · Christmas lights · snow · a good dinnerSomething warm to drink — nowhere near Vernon that Atlas knows is both open that evening and lists it.Christmas lights — Atlas has no light display listed near Vernon for that day. Many towns switch theirs on in late November; Passport won't guess a street.Snow — that's usually before the snow season here, so nothing in this plan depends on it.Hours — Atlas has no evening hours for these stops. A quick call ahead is worth it.",
+        "heard": "Passport heard: romantic, cozy, festive · something warm to drink · Christmas lights · snow · a good dinnerSomething warm to drink — nowhere near Vernon that Atlas knows is both open that evening and lists it.Christmas lights — Atlas has no light display listed near Vernon for that day. Many towns switch theirs on in late November; Passport won't guess a street.Snow — that's usually before the snow season here, so nothing in this plan depends on it.Hours — Atlas has no evening hours for these stops. A quick call ahead is worth it.",
         "stops": [
           {
             "name": "Midtown Bistro",
@@ -96,7 +96,7 @@
   "D": {
     "plan": [
       {
-        "heard": "Passport heard: lively, snowy · snow",
+        "heard": "Passport heard: lively · snow",
         "stops": [
           {
             "name": "SilverStar Mountain Resort",
