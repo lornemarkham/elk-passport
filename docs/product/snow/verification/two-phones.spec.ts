@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 /**
@@ -10,7 +11,8 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  * and a signed-out visitor cannot open it.
  */
 const SHOTS = path.resolve(__dirname, "screenshots");
-const PASSWORD = "powder-day-forever-7";
+// A fresh password per run: nothing credential-shaped is committed.
+const PASSWORD = `pd-${randomBytes(12).toString("base64url")}`;
 const stamp = Date.now().toString(36);
 const emailFor = (who: string) => `${who}-snow-${stamp}@example.test`;
 

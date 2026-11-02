@@ -50,7 +50,7 @@
  * talks to any real Supabase project.
  */
 import { spawn, execFileSync } from "node:child_process";
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import net from "node:net";
@@ -67,7 +67,22 @@ const PG_PORT = 56939;
 const AUTH_PORT = 56941;
 const REST_PORT = 56942;
 const PROXY_PORT = 56931;
-const JWT_SECRET = "adventures-local-only-secret-not-for-anything-real";
+/**
+ * This stack's JWT secret: generated on first use and kept in the stack
+ * directory (0600), so every command run against one stack agrees, and no
+ * fixed secret is committed (the release runner refuses credential-shaped
+ * strings).
+ */
+const JWT_SECRET = (() => {
+  const file = path.join(STACK, "jwt-secret");
+  try {
+    return fs.readFileSync(file, "utf8").trim();
+  } catch {}
+  fs.mkdirSync(STACK, { recursive: true });
+  const secret = randomBytes(32).toString("hex");
+  fs.writeFileSync(file, `${secret}\n`, { mode: 0o600 });
+  return secret;
+})();
 const SITE_URL = process.env.SITE_URL ?? "http://localhost:3132";
 
 const pgBin = path.join(
