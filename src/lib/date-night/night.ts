@@ -70,7 +70,9 @@ export async function startNight(
     destinationLabel: null,
     destinationTownId: null,
   });
-  for (const a of config.activities)
+  // A night that opens on whole adventures plans one itinerary; its old
+  // list of loose ideas would only repeat them (mission 487).
+  for (const a of config.evenings ? [] : config.activities)
     await addItem(db, id, me, {
       atlasRef: a.atlasRef ?? null,
       label: a.title,

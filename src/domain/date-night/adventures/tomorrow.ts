@@ -27,7 +27,7 @@ import type { NightDay } from "./types";
 export const TOMORROW: NightDay = {
   on: "2026-11-02",
   townId: "coldstream",
-  area: "Vernon & Coldstream",
+  area: "Vernon, North Okanagan",
   latitude: 50.2245,
   longitude: -119.2505,
   timeZone: "America/Vancouver",

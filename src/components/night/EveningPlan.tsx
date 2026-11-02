@@ -1,241 +1,389 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
-import { ChevronDown, Navigation, Sunset } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Car,
+  ChevronDown,
+  Navigation,
+  Pencil,
+  Plus,
+  Sunset,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { Picture } from "@/components/adventures/Picture";
 import type { Experience } from "@/domain/experience/types";
-import type { NightDay } from "@/domain/date-night/adventures";
-import {
-  composeDay,
-  DEFAULT_ANSWERS,
-  readAnswers,
-  spokenClock,
-  swapsOf,
-} from "@/domain/date-night/adventures/compose";
 import {
   directionsTo,
-  PHOTOS,
-  type Beat,
   type Evening,
 } from "@/domain/date-night/adventures/evenings";
-import type { DayDetail } from "@/lib/adventures/propose";
-import type { ItemView } from "@/lib/adventures/store";
+import {
+  clock,
+  endingOf,
+  fixedAt,
+  homeAt,
+  type PlanStop,
+  type Warning,
+} from "@/domain/date-night/adventures/itinerary";
 import { cardPictures } from "@/lib/media/cardPicture";
 import { cn } from "@/lib/utils";
-
-/** "5:00" with the pm said once, small, like a trail sign. */
-function Clock({ minutes }: { minutes: number }) {
-  const said = spokenClock(Math.round(minutes / 5) * 5);
-  const [, time, half] = said.match(/^(\d+(?::\d\d)?)(am|pm)$/) ?? [];
-  return (
-    <span className="tabular-nums">
-      {time?.includes(":") ? time : `${time}:00`}
-      <span className="ml-0.5 text-[11px] font-bold uppercase opacity-70">
-        {half}
-      </span>
-    </span>
-  );
-}
 
 const realPhoto = (e: Experience | undefined): boolean =>
   Boolean(e && cardPictures(e)[0] && !cardPictures(e)[0]!.label);
 
-/**
- * The beats of the day Passport (or the owner, in the details) composed: the
- * shared day's own places in order, between leaving and getting home.
- */
-function composedBeats(
-  day: NightDay,
-  dayItems: readonly ItemView[],
-  ask: string | null,
-  detail: DayDetail | undefined,
-  experiences: Readonly<Record<string, Experience>>,
-): Beat[] {
-  const stops = dayItems.flatMap((i) => (i.atlasRef ? [i.atlasRef] : []));
-  const composed = composeDay(
-    day,
-    readAnswers(ask) ?? DEFAULT_ANSWERS,
-    swapsOf(day, stops),
-  );
-  const options = new Map(day.options.map((o) => [o.atlasRef, o]));
-  const beats: Beat[] = [
-    {
-      at: composed.startAt,
-      title: "Off we go",
-      line: "Warm layers, a thermos, no particular hurry.",
-    },
-  ];
-  let last = composed.startAt;
-  stops.forEach((ref, index) => {
-    const option = options.get(ref);
-    const at =
-      detail?.stops[ref]?.arrive ??
-      composed.stops.find((s) => s.option.atlasRef === ref)?.arrive ??
-      last + 30;
-    last = Math.max(
-      at,
-      detail?.stops[ref]?.leave ??
-        composed.stops.find((s) => s.option.atlasRef === ref)?.leave ??
-        at,
-    );
-    beats.push({
-      at,
-      title:
-        dayItems.find((i) => i.atlasRef === ref)?.label ??
-        experiences[ref]?.title ??
-        option?.title ??
-        "A place Atlas knows",
-      line: option?.line ?? detail?.stops[ref]?.because ?? "",
-      atlasRef: ref,
-      ...(index === 0 ? { main: true as const } : {}),
-    });
-  });
-  beats.push({
-    at: last + 20,
-    title: day.finale.title,
-    line: day.finale.line,
-  });
-  return beats.sort((a, b) => a.at - b.at);
+/** "1 h 40", "45 min". */
+function length(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h} h ${m}` : `${h} h`;
+}
+
+export interface StopFields {
+  readonly title: string;
+  readonly line: string;
+  readonly minutes: number;
+}
+
+export interface PlanActions {
+  readonly move: (index: number, direction: -1 | 1) => void;
+  readonly remove: (index: number) => void;
+  readonly change: (index: number, patch: StopFields) => void;
+  readonly add: (stop: StopFields, after: number) => void;
+  readonly ending: (id: string) => void;
 }
 
 /**
- * **The evening, as a short timeline** — leave, food, the drive, the main
- * thing, something warm, home. Not a planner: the times, legs and changes
- * live in the shared journey, one tap down.
+ * **Our adventure — the schedule.** The one itinerary: time, what, where, a
+ * line, directions where they help. The owner changes any stop (Change ·
+ * Move · Remove) and adds; the other person adds their own and changes what
+ * they added. An adventure with two endings offers them here, as a way to
+ * customise this adventure (not choose another). What the times get wrong —
+ * a hunt after legal hours, a dip after dark — is said on the stop.
  */
 export function EveningPlan({
   evening,
-  day,
+  stops,
   sunset,
-  dayItems,
-  ask,
-  detail,
+  warnings,
   experiences,
+  isOwner,
+  busy,
+  next,
+  actions,
 }: {
   readonly evening: Evening | undefined;
-  readonly day: NightDay;
+  readonly stops: readonly PlanStop[];
   readonly sunset: number;
-  readonly dayItems: readonly ItemView[];
-  readonly ask: string | null;
-  readonly detail: DayDetail | undefined;
+  readonly warnings: readonly Warning[];
   readonly experiences: Readonly<Record<string, Experience>>;
+  readonly isOwner: boolean;
+  readonly busy: boolean;
+  /** On the day: the stop that's now or next. */
+  readonly next?: number;
+  readonly actions: PlanActions;
 }) {
-  const beats =
-    evening && evening.id !== "surprise"
-      ? evening.beats(sunset)
-      : composedBeats(day, dayItems, ask, detail, experiences);
-  const title =
-    evening?.id === "surprise"
-      ? "Passport's surprise"
-      : (evening?.title ?? "Our own plan");
-  const photo = evening?.photo ?? PHOTOS.campfire;
+  const [open, setOpen] = useState<number | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
+  const title = evening?.composed
+    ? "Passport's surprise"
+    : (evening?.title ?? "Our own plan");
+  const photo = evening?.photo;
+  const endings = evening?.endings ?? [];
+  const onEnding = endingOf(stops, evening);
+  const home = homeAt(stops);
 
   return (
     <div data-testid="evening-plan">
-      <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-ember)] uppercase">
-        The plan
-      </p>
-      <h2 className="ghad-display mt-1 text-[40px] leading-[0.92] font-extrabold tracking-tight uppercase sm:text-5xl">
-        {title}
-      </h2>
-      <p className="mt-3 inline-flex items-center gap-2 text-[15px] text-[var(--n-ink)]/70">
-        <Sunset className="h-4 w-4 text-[var(--n-ember)]" aria-hidden />
-        Sunset {spokenClock(sunset).replace(/(am|pm)$/, " $1")}. Back whenever.
-      </p>
+      <div className="relative isolate overflow-hidden rounded-[28px] bg-[var(--n-ink)] px-5 pt-16 pb-5 text-white">
+        {photo && (
+          <Image
+            src={photo.src}
+            alt=""
+            fill
+            sizes="(min-width: 640px) 672px, 100vw"
+            className="-z-10 object-cover opacity-60"
+          />
+        )}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[var(--n-ink)] via-[var(--n-ink)]/60 to-transparent" />
+        <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-amber)] uppercase">
+          Our adventure
+        </p>
+        <h2 className="ghad-display mt-1 text-[38px] leading-[0.92] font-extrabold tracking-tight uppercase sm:text-5xl">
+          {title}
+        </h2>
+        <p
+          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] font-semibold text-white/85"
+          data-testid="plan-summary"
+        >
+          <span>Leave {clock(stops[0]!.at)}</span>
+          <span className="inline-flex items-center gap-1">
+            <Sunset className="h-4 w-4" aria-hidden /> Sunset {clock(sunset)}
+          </span>
+          {home !== undefined && <span>Home about {clock(home)}</span>}
+        </p>
+      </div>
 
-      <ol className="relative mt-7" aria-label="The evening, start to finish">
-        <span
-          aria-hidden
-          className="absolute top-3 bottom-3 left-[73px] w-px bg-[var(--n-forest)]/20"
-        />
-        {beats.map((beat) => {
-          const e = beat.atlasRef ? experiences[beat.atlasRef] : undefined;
-          const lat = e?.location?.latitude;
-          const lng = e?.location?.longitude;
-          const href = beat.directions
-            ? directionsTo(beat.directions)
-            : lat !== undefined && lng !== undefined
-              ? directionsTo(`${lat},${lng}`)
-              : beat.atlasRef
-                ? directionsTo(`${beat.title}, ${day.area}, BC`)
-                : null;
-          return (
-            <li
-              key={`${beat.at}-${beat.title}`}
-              data-testid="beat"
-              className="relative grid grid-cols-[60px_28px_1fr] gap-x-0 pb-7 last:pb-0"
-            >
-              <p className="pt-0.5 text-right text-[17px] font-bold text-[var(--n-ink)]">
-                <Clock minutes={beat.at} />
-              </p>
-              <span
-                aria-hidden
-                className={cn(
-                  "relative z-10 mt-1.5 ml-[7px] h-3.5 w-3.5 rounded-full ring-4 ring-[var(--n-cream)]",
-                  beat.main ? "bg-[var(--n-ember)]" : "bg-[var(--n-forest)]",
-                )}
-              />
-              <div className="min-w-0">
-                <h3
+      {endings.length > 1 && (
+        <fieldset className="mt-4" data-testid="endings">
+          <legend className="text-xs font-extrabold tracking-[0.18em] text-[var(--n-ink)]/55 uppercase">
+            Customize this adventure · how it ends
+          </legend>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {endings.map((e) => {
+              const on = onEnding?.id === e.id;
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={busy || !isOwner || on}
+                  onClick={() => actions.ending(e.id)}
                   className={cn(
-                    "leading-tight font-extrabold text-[var(--n-ink)]",
-                    beat.main ? "ghad-display text-2xl" : "text-[17px]",
+                    "min-h-16 rounded-2xl px-3 py-2.5 text-left ring-1 transition disabled:cursor-default",
+                    on
+                      ? "bg-[var(--n-forest)] text-[var(--n-cream)] ring-[var(--n-forest)]"
+                      : "bg-white ring-black/10",
                   )}
                 >
-                  {beat.title}
-                </h3>
-                {beat.line && (
-                  <p className="mt-1 text-[15px] leading-snug text-[var(--n-ink)]/75">
-                    {beat.line}
-                  </p>
+                  <span className="block text-[15px] font-extrabold">
+                    {e.title}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-[12.5px] leading-snug",
+                      on ? "text-white/80" : "text-[var(--n-ink)]/60",
+                    )}
+                  >
+                    {e.line}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+
+      <ol className="mt-5" aria-label="The adventure, start to finish">
+        {stops.map((stop, i) => {
+          const e = stop.atlasRef ? experiences[stop.atlasRef] : undefined;
+          const lat = e?.location?.latitude;
+          const lng = e?.location?.longitude;
+          const href = stop.directions
+            ? directionsTo(stop.directions)
+            : lat !== undefined && lng !== undefined
+              ? directionsTo(`${lat},${lng}`)
+              : stop.atlasRef && stop.where
+                ? directionsTo(`${stop.where}, Vernon, BC`)
+                : null;
+          const mayChange = isOwner || stop.mine === true;
+          const said = warnings.filter((w) => w.stop === i);
+          const isOpen = open === i;
+          return (
+            <li key={stop.id ?? `${i}-${stop.title}`} data-testid="beat">
+              {stop.travel > 0 && (
+                <p className="flex items-center gap-2 py-1 pl-[66px] text-[12.5px] font-semibold text-[var(--n-ink)]/50">
+                  <Car className="h-3.5 w-3.5" aria-hidden />{" "}
+                  {length(stop.travel)} drive
+                </p>
+              )}
+              <div
+                className={cn(
+                  "grid grid-cols-[58px_1fr] gap-x-2 rounded-2xl py-2 pr-1",
+                  next === i &&
+                    "bg-[var(--n-amber)]/20 ring-1 ring-[var(--n-amber)]",
                 )}
-                {beat.main && (
-                  <div className="relative mt-3 aspect-[16/10] overflow-hidden rounded-2xl">
-                    {realPhoto(e) ? (
+              >
+                <p className="pt-0.5 text-right text-[15px] leading-tight font-extrabold text-[var(--n-ink)] tabular-nums">
+                  {clock(stop.at).replace(/ (am|pm)$/, "")}
+                  <span className="block text-[10px] font-bold uppercase opacity-60">
+                    {clock(stop.at).slice(-2)}
+                  </span>
+                </p>
+                <div className="min-w-0 border-l-2 border-[var(--n-forest)]/15 pl-3">
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-[16.5px] leading-tight font-extrabold text-[var(--n-ink)]">
+                        {stop.title}
+                      </h3>
+                      <p className="mt-0.5 text-[12.5px] font-semibold text-[var(--n-ink)]/55">
+                        {[
+                          stop.where && stop.where !== stop.title
+                            ? stop.where
+                            : null,
+                          stop.minutes > 0 ? length(stop.minutes) : null,
+                          stop.by ? `added by ${stop.by}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                    {stop.atlasRef && realPhoto(e) && (
                       <Picture
                         experience={e}
-                        fallbackTitle={beat.title}
-                        className="h-full w-full"
-                      />
-                    ) : (
-                      <Image
-                        src={photo.src}
-                        alt={photo.alt}
-                        fill
-                        sizes="(min-width: 640px) 560px, 80vw"
-                        className="object-cover"
+                        fallbackTitle=""
+                        showLabel={false}
+                        className="h-12 w-12 shrink-0 rounded-xl"
                       />
                     )}
+                    {mayChange && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpen(isOpen ? null : i);
+                          setEditing(null);
+                        }}
+                        aria-expanded={isOpen}
+                        aria-label={`Edit ${stop.title}`}
+                        data-testid="edit-stop"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--n-forest)] hover:bg-black/5"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden />
+                      </button>
+                    )}
                   </div>
-                )}
-                {href && (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-bold text-[var(--n-forest)] underline-offset-4 hover:underline"
-                  >
-                    <Navigation className="h-4 w-4" aria-hidden /> Directions
-                  </a>
-                )}
+                  {stop.line && (
+                    <p className="mt-1 text-[14.5px] leading-snug text-[var(--n-ink)]/75">
+                      {stop.line}
+                    </p>
+                  )}
+                  {said.map((w) => (
+                    <p
+                      key={w.line}
+                      data-testid="stop-warning"
+                      className="mt-1.5 flex items-start gap-1.5 text-[13px] font-semibold text-[#9a3b10]"
+                    >
+                      <TriangleAlert
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                        aria-hidden
+                      />
+                      {w.line}
+                    </p>
+                  ))}
+                  {href && (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex min-h-10 items-center gap-1.5 text-[13.5px] font-bold text-[var(--n-forest)] underline-offset-4 hover:underline"
+                    >
+                      <Navigation className="h-3.5 w-3.5" aria-hidden />{" "}
+                      Directions
+                    </a>
+                  )}
+                  {isOpen && editing !== i && (
+                    <div
+                      role="group"
+                      aria-label={`Change ${stop.title}`}
+                      className="mt-2 grid grid-cols-4 gap-1.5"
+                    >
+                      <Tool
+                        label="Change"
+                        onClick={() => setEditing(i)}
+                        disabled={busy}
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden />
+                      </Tool>
+                      <Tool
+                        label="Earlier"
+                        onClick={() => actions.move(i, -1)}
+                        disabled={
+                          busy || !isOwner || fixedAt(stops, i) || i <= 1
+                        }
+                      >
+                        <ArrowUp className="h-4 w-4" aria-hidden />
+                      </Tool>
+                      <Tool
+                        label="Later"
+                        onClick={() => actions.move(i, 1)}
+                        disabled={
+                          busy ||
+                          !isOwner ||
+                          fixedAt(stops, i) ||
+                          i + 1 >= stops.length ||
+                          fixedAt(stops, i + 1)
+                        }
+                      >
+                        <ArrowDown className="h-4 w-4" aria-hidden />
+                      </Tool>
+                      <Tool
+                        label="Remove"
+                        onClick={() => {
+                          setOpen(null);
+                          actions.remove(i);
+                        }}
+                        disabled={busy || fixedAt(stops, i)}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Tool>
+                    </div>
+                  )}
+                  {editing === i && (
+                    <StopForm
+                      initial={stop}
+                      submit="Save"
+                      busy={busy}
+                      onCancel={() => setEditing(null)}
+                      onSubmit={(patch) => {
+                        setEditing(null);
+                        setOpen(null);
+                        actions.change(i, patch);
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </li>
           );
         })}
       </ol>
 
-      {evening?.otherwise && (
-        <p className="mt-7 rounded-2xl bg-[var(--n-amber)]/20 p-4 text-[15px] leading-snug text-[var(--n-ink)]">
-          {evening.otherwise(sunset)}
+      {adding ? (
+        <div className="mt-3 rounded-2xl bg-white p-4 ring-1 ring-black/10">
+          <StopForm
+            initial={{ title: "", line: "", minutes: 30 }}
+            submit="Add it"
+            busy={busy}
+            withPlace={stops}
+            onCancel={() => setAdding(false)}
+            onSubmit={(stop, after) => {
+              setAdding(false);
+              actions.add(stop, after ?? stops.length - 1);
+            }}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          data-testid="add-stop"
+          disabled={busy}
+          className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[var(--n-forest)]/40 font-bold text-[var(--n-forest)] disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" aria-hidden /> Add something
+        </button>
+      )}
+
+      {warnings.some((w) => w.stop === undefined) && (
+        <p className="mt-3 text-[13px] font-semibold text-[#9a3b10]">
+          {warnings
+            .filter((w) => w.stop === undefined)
+            .map((w) => w.line)
+            .join(" ")}
         </p>
       )}
 
       {evening && evening.checks.length > 0 && (
         <details className="group mt-4 rounded-2xl bg-white/70 ring-1 ring-black/5">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-[15px] font-bold">
-            Before you go
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[15px] font-bold">
+            Before you go:{" "}
+            {evening.checks.map((c) => c.label.toLowerCase()).join(", ")}
             <ChevronDown
-              className="h-4 w-4 transition group-open:rotate-180"
+              className="h-4 w-4 shrink-0 transition group-open:rotate-180"
               aria-hidden
             />
           </summary>
@@ -259,5 +407,135 @@ export function EveningPlan({
         </details>
       )}
     </div>
+  );
+}
+
+function Tool({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex min-h-12 flex-col items-center justify-center rounded-xl bg-[var(--n-forest)]/[0.07] text-[12px] font-bold text-[var(--n-forest)] disabled:opacity-35"
+    >
+      {children}
+      {label}
+    </button>
+  );
+}
+
+function StopForm({
+  initial,
+  submit,
+  busy,
+  withPlace,
+  onCancel,
+  onSubmit,
+}: {
+  initial: StopFields;
+  submit: string;
+  busy: boolean;
+  /** Adding: say where it goes. */
+  withPlace?: readonly PlanStop[];
+  onCancel: () => void;
+  onSubmit: (stop: StopFields, after: number | undefined) => void;
+}) {
+  const [title, setTitle] = useState(initial.title);
+  const [line, setLine] = useState(initial.line);
+  const [minutes, setMinutes] = useState(String(initial.minutes));
+  const last = withPlace
+    ? withPlace[withPlace.length - 1]?.key === "home"
+      ? withPlace.length - 2
+      : withPlace.length - 1
+    : 0;
+  const [after, setAfter] = useState(String(last));
+  const n = Math.max(0, Math.min(600, Math.round(Number(minutes) || 0)));
+  return (
+    <form
+      className="mt-2 grid gap-2"
+      data-testid="stop-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!title.trim()) return;
+        onSubmit(
+          { title: title.trim(), line: line.trim(), minutes: n },
+          withPlace ? Number(after) : undefined,
+        );
+      }}
+    >
+      <label className="grid gap-1 text-[13px] font-bold">
+        What
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={120}
+          required
+          placeholder="Hot chocolate at the lookout"
+          className="min-h-12 rounded-xl border border-black/15 bg-white px-3 text-base font-normal"
+        />
+      </label>
+      <label className="grid gap-1 text-[13px] font-bold">
+        Details
+        <input
+          value={line}
+          onChange={(e) => setLine(e.target.value)}
+          maxLength={300}
+          placeholder="Where, what to bring"
+          className="min-h-12 rounded-xl border border-black/15 bg-white px-3 text-base font-normal"
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="grid gap-1 text-[13px] font-bold">
+          Minutes
+          <input
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+            inputMode="numeric"
+            className="min-h-12 rounded-xl border border-black/15 bg-white px-3 text-base font-normal"
+          />
+        </label>
+        {withPlace && (
+          <label className="grid gap-1 text-[13px] font-bold">
+            After
+            <select
+              value={after}
+              onChange={(e) => setAfter(e.target.value)}
+              className="min-h-12 rounded-xl border border-black/15 bg-white px-2 text-base font-normal"
+            >
+              {withPlace.slice(0, last + 1).map((s, i) => (
+                <option key={s.id ?? i} value={i}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button
+          disabled={busy || !title.trim()}
+          className="min-h-12 flex-1 rounded-full bg-[var(--n-forest)] font-bold text-white disabled:opacity-50"
+        >
+          {submit}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="min-h-12 rounded-full px-5 font-bold text-[var(--n-ink)]/70 ring-1 ring-black/10"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

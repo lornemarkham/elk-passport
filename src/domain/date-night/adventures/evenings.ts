@@ -1,43 +1,46 @@
-import { writeDayQuery } from "@/lib/domains/integration/dayQuery";
 import { spokenClock } from "./compose";
-import type { NightDay } from "./types";
 
 /**
- * **Three evenings and a surprise — Monday 2 November 2026, leaving about 5.**
+ * **The adventures the Markham Adventure opens on — Monday 2 November 2026,
+ * from Vernon.**
  *
- * The Markham Adventure opens on choices, not a questionnaire (mission 485).
- * Each evening is a short, honest shape for the night: leave, pick up food,
- * the drive, the main thing, something warm, home. The words are ours. Every
- * fact was checked on 2026-11-01, and says where it came from:
+ * Each one is a short list of stops, not a script: what you do, for how
+ * long, how far the drive before it, and whether it has to wait for the
+ * sunset. `itinerary.ts` lays them out against the day's real sunset and
+ * writes them as the adventure's own day (one item per stop), and every
+ * change after that — a tap, a sentence, the other ending — edits that same
+ * list. The words are ours. Every fact was checked on 2026-11-01 and says
+ * where it came from:
  *
  * - **Sunset** is arithmetic (`sunsetOf`), 5:33 pm on the wall: BC stays on
- *   UTC−7 from 1 November 2026 (`conditions.ts`). Each evening is laid out
- *   around it, so the outdoor part happens in the light.
+ *   UTC−7 from 1 November 2026 (`conditions.ts`).
+ * - **King Edward Lake** ("King Eddie") is not in Atlas. OpenStreetMap puts
+ *   it at 50.1508, −119.2187, about 1,357 m up (Open-Meteo elevation), in
+ *   the Central Okanagan regional district south-east of Coldstream. OSRM
+ *   routes it 22 km and about 40 minutes from downtown Vernon, the last part
+ *   on the King Edward Forest Service Road (gravel). The plan says 50.
  * - **Grouse.** The 2026–2028 Hunting and Trapping Regulations Synopsis:
- *   dusky, ruffed and spruce grouse open Sept 10 – Nov 30 in MUs 8-1 to 8-15
- *   and 8-21 to 8-26 (Vernon is 8-26), 5 a day; game may not be hunted from
- *   one hour after sunset (6:33 pm on Monday). Civil twilight ends about
- *   6:05, so a 5 pm start can only scout. Hunting needs a 2:30 start; that's
- *   said, not planned.
+ *   dusky, ruffed and spruce grouse are open in Region 8 until November 30,
+ *   5 a day; no hunting of game from one hour after sunset (6:33 pm on
+ *   Monday), general prohibition 38. A hunt needs daylight, which is why
+ *   King Eddie leaves at 2:15, not 5.
+ * - **Fire.** The BC Wildfire Service lifted the Kamloops Fire Centre's
+ *   campfire ban at noon on 3 September 2026; Category 1 campfires have
+ *   been allowed since. Nothing here promises tonight: the check says to
+ *   look again before lighting.
+ * - **Cold water.** Nobody has measured the lake. At 1,357 m in November it
+ *   may be near freezing or iced at the edges, so the dip is optional,
+ *   short, never alone, and never after dark.
  * - **Crazy Creek Hot Pools** (Malakwa) isn't in Atlas. Its own site
- *   (crazycreekresort.com, read 2026-11-01): hot pools and cold plunge open
- *   every day of the year, 9 am–10 pm, adults only 9–10 pm, single dip
- *   $19.95. The food truck runs May long weekend to Thanksgiving, so in
- *   November dinner comes with you. About 112 km and 1½ hours from Coldstream
- *   by 97A and Highway 1 (OSRM, 2026-11-01).
+ *   (crazycreekresort.com, read 2026-11-01): open every day 9 am–10 pm,
+ *   adults only 9–10, single dip $19.95; no food in November. About 112 km
+ *   and 1½ hours by 97A and Highway 1 (OSRM).
  * - **BNA Brewing, Vernon** (1714 Kalamalka Lake Road): Atlas has it open
  *   Sun–Thu 4–10 pm, and BNA's own site said so on 1 November.
- * - **Fires** are never promised: the Kamloops Fire Centre's restrictions
- *   decide, and the evening says to check.
- *
- * Choosing one is an ordinary change to the shared adventure (ADR 012):
- * the owner's `PATCH` names it (`destinationLabel`), and the Atlas places it
- * uses become the day through `POST /api/adventures/[id]/days`, so the
- * journey, directions, travel legs and printable guide all carry on.
  */
 
 export type EveningId =
-  "into-the-wild" | "crazy-creek" | "cold-water" | "surprise";
+  "king-eddie" | "crazy-creek" | "cold-water" | "surprise";
 
 /** A real, openly licensed photograph, credited where it's shown. */
 export interface Photo {
@@ -50,17 +53,60 @@ export interface Photo {
   readonly page: string;
 }
 
-export interface Beat {
-  /** Minutes after local midnight. */
-  readonly at: number;
+/** What a sentence can point at: "more time at the lake", "skip the swim". */
+export type StopTag =
+  | "leave"
+  | "drive"
+  | "hunt"
+  | "explore"
+  | "lake"
+  | "swim"
+  | "sunset"
+  | "fire"
+  | "food"
+  | "dinner"
+  | "stars"
+  | "pools"
+  | "fun"
+  | "home";
+
+/**
+ * **One stop of an adventure, before it has a time.** `minutes` is how long
+ * the plan gives it; `travel` the drive before it. A `stretch` stop is the
+ * one that gives and takes time so a stop that waits for the light (`sunset`)
+ * still happens at sunset.
+ */
+export interface StopTemplate {
+  /** Stable within the adventure; how a stored stop finds its rules again. */
+  readonly key: string;
   readonly title: string;
   readonly line: string;
-  /** The Atlas place this beat is at, when it's one. */
-  readonly atlasRef?: string;
+  readonly minutes: number;
+  /** The least it can shrink to when time runs short. */
+  readonly least?: number;
+  readonly travel?: number;
+  /** Gives or takes time to keep the next sunset stop on time. */
+  readonly stretch?: true;
+  /** Starts no earlier than this many minutes before sunset. */
+  readonly beforeSunset?: number;
+  /** Must be over by this many minutes after sunset (it needs the light). */
+  readonly byAfterSunset?: number;
+  readonly where?: string;
   /** A destination for the maps link. */
   readonly directions?: string;
-  /** The main event: the timeline makes it bigger. */
+  readonly atlasRef?: string;
+  readonly tags: readonly StopTag[];
   readonly main?: true;
+  /** Fine to drop; said so on the stop. */
+  readonly optional?: true;
+}
+
+/** "Stay wild" or "Warm ending": the same day, finished two ways. */
+export interface Ending {
+  readonly id: string;
+  readonly title: string;
+  readonly line: string;
+  readonly stops: readonly StopTemplate[];
 }
 
 /** One thing to check before going. Short; a link where there is one. */
@@ -73,29 +119,33 @@ export interface Check {
 export interface Evening {
   readonly id: EveningId;
   readonly title: string;
+  /** Older names the adventure may still carry in the database. */
+  readonly aliases?: readonly string[];
   /** "Jess's Pick". */
   readonly pick?: string;
   readonly line: string;
+  readonly where: string;
   readonly drive: string;
   readonly highlights: readonly string[];
   readonly photo: Photo;
-  /** Atlas places the shared day keeps, in order. Empty: none in Atlas. */
-  readonly stops: readonly string[];
-  readonly beats: (sunset: number) => readonly Beat[];
+  /** Minutes after midnight the plan leaves home. */
+  readonly leaveAt: number;
+  readonly stops: readonly StopTemplate[];
+  /** Ways to finish it; the first is the default. */
+  readonly endings?: readonly Ending[];
   readonly checks: readonly Check[];
-  /** The other way to do it, when there is one worth saying. */
-  readonly otherwise?: (sunset: number) => string;
+  /** Composed from Atlas at the moment it's chosen (`compose.ts`). */
+  readonly composed?: true;
 }
 
-export const LEAVE = 17 * 60;
-
-const SILVER_STAR_FOOTHILLS = "65c5da2d-099f-4ffb-a4cd-d5ab79c12701";
+const KING_EDWARD_LAKE = "50.1508,-119.2187";
+const KING_EDWARD_FSR = "50.1912,-119.1766";
 const KAL_BEACH = "6931f16a-d8d9-4707-8780-86ba87ed5941";
-const BNA = "0ff70057-6723-47bb-8f05-2c6dec38dead";
+export const BNA = "0ff70057-6723-47bb-8f05-2c6dec38dead";
 
 const FIRE: Check = {
   label: "Fire",
-  line: "A fire only if the Kamloops Fire Centre allows it tonight. Otherwise the stove does the cooking.",
+  line: "Category 1 campfires have been allowed in the Kamloops Fire Centre since 3 September. Check again on the day before you light anything, keep it small, and drown it cold.",
   href: "https://www2.gov.bc.ca/gov/content/safety/wildfire-status/prevention/fire-bans-and-restrictions",
 };
 const ROADS: Check = {
@@ -157,73 +207,163 @@ export const PHOTOS = {
   },
 } as const satisfies Record<string, Photo>;
 
+/** The dinner the warm ending starts from; `say.ts` may swap it. */
+export const WARM_DINNER: StopTemplate = {
+  key: "dinner",
+  title: "Dinner at BNA Brewing",
+  line: "Warm, loud in a good way, food and a pint. Open from 4.",
+  minutes: 90,
+  least: 60,
+  travel: 45,
+  where: "1714 Kalamalka Lake Rd, Vernon",
+  atlasRef: BNA,
+  tags: ["dinner", "food"],
+};
+
 export const EVENINGS: readonly Evening[] = [
   {
-    id: "into-the-wild",
-    title: "Into the Wild",
-    line: "Snacks, a full tank and the forest roads above the valley. Last light, a camp-stove dinner somewhere beautiful, hot chocolate and stars.",
-    drive: "15 min to the first view",
+    id: "king-eddie",
+    title: "King Eddie Lake",
+    aliases: ["Into the Wild"],
+    line: "Up the forest road for grouse in the afternoon light, a wander round the lake, a dip if you dare, and the sun going down over the water.",
+    where: "King Edward Lake, above Coldstream",
+    drive: "40–50 min up the King Edward FSR",
     highlights: [
-      "Last light at the Foothills",
-      "Scout the grouse country",
-      "Dinner on the camp stove",
-      "Hot chocolate & stars",
+      "Grouse in the afternoon light",
+      "The lake to yourselves",
+      "Sunset at the water",
+      "Fire & stars, or a warm dinner",
     ],
     photo: PHOTOS.backcountry,
-    stops: [SILVER_STAR_FOOTHILLS],
-    beats: (sunset) => [
+    leaveAt: 14 * 60 + 15,
+    stops: [
       {
-        at: LEAVE,
-        title: "Load up and go",
-        line: "Stove, kettle, cocoa, chairs, headlamps, the warm jackets.",
+        key: "leave",
+        title: "Leave Vernon",
+        line: "Licence, shotgun cased, blaze orange, warm layers, chairs, firewood, the thermos.",
+        minutes: 0,
+        where: "Home",
+        tags: ["leave"],
       },
       {
-        at: LEAVE + 5,
-        title: "Grab food & snacks",
-        line: "Whatever cooks on one burner. Something sweet for later.",
-      },
-      {
-        at: Math.min(LEAVE + 25, sunset - 10),
-        title: "Last light at the Silver Star Foothills",
-        line: `Sun's down at ${spokenClock(sunset)}. Be at the view for it.`,
-        atlasRef: SILVER_STAR_FOOTHILLS,
+        key: "grouse",
+        title: "Grouse along the King Edward FSR",
+        line: "Walk the edges of the cut blocks and the quiet spurs. Slow and sharp-eyed.",
+        minutes: 100,
+        least: 45,
+        travel: 40,
+        stretch: true,
+        byAfterSunset: 0,
+        where: "King Edward Forest Service Road",
+        directions: KING_EDWARD_FSR,
+        tags: ["hunt", "explore", "drive"],
         main: true,
       },
       {
-        at: sunset + 15,
-        title: "Backroad scouting",
-        line: "Up the forest roads, slowly. Where's the snow line, which gates are open, where the grouse cover looks good for a daylight trip.",
+        key: "lake",
+        title: "Explore King Edward Lake",
+        line: "Find your spot on the shore. About 1,360 m up, so it's colder than town.",
+        minutes: 30,
+        least: 15,
+        travel: 10,
+        where: "King Edward Lake",
+        directions: KING_EDWARD_LAKE,
+        tags: ["lake", "explore"],
       },
       {
-        at: sunset + 75,
-        title: "Dinner somewhere beautiful",
-        line: "A safe pull-out with a view. Camp stove, headlamps, the good snacks.",
+        key: "dip",
+        title: "A quick dip, if you dare",
+        line: "In together, out in under a minute, straight into dry clothes. Skip it if there's ice.",
+        minutes: 10,
+        where: "King Edward Lake",
+        tags: ["swim", "lake"],
+        byAfterSunset: 0,
+        optional: true,
       },
       {
-        at: sunset + 120,
-        title: "Hot chocolate & stars",
-        line: "Engine off, lights off, look up.",
-      },
-      {
-        at: sunset + 180,
-        title: "Home",
-        line: "A fire if it's allowed. Name the best moment.",
+        key: "sunset",
+        title: "Sunset by the lake",
+        line: "Chairs out, thermos open, watch it go.",
+        minutes: 20,
+        least: 10,
+        beforeSunset: 10,
+        where: "King Edward Lake",
+        tags: ["sunset", "lake"],
       },
     ],
-    otherwise: (sunset) =>
-      `Grouse is the point? Leave at 2:30 instead. The season's open in Region 8 until November 30, but legal hunting ends at ${spokenClock(sunset + 60)}, an hour after sunset, and it's too dark to see a bird well before that. A 5 o'clock start is for scouting.`,
+    endings: [
+      {
+        id: "wild",
+        title: "Stay wild",
+        line: "Fire, warm food and stars at the lake, then home.",
+        stops: [
+          {
+            key: "fire",
+            title: "Fire & warm food by the lake",
+            line: "A small fire if it's allowed, the stove if it isn't. Something hot, something sweet.",
+            minutes: 75,
+            least: 30,
+            where: "King Edward Lake",
+            tags: ["fire", "food", "lake"],
+          },
+          {
+            key: "stars",
+            title: "Stars",
+            line: "Fire down, lights off, look up.",
+            minutes: 30,
+            least: 10,
+            where: "King Edward Lake",
+            tags: ["stars", "lake"],
+          },
+          {
+            key: "home",
+            title: "Home",
+            line: "Slowly down the gravel in the dark. Name the best moment.",
+            minutes: 0,
+            travel: 50,
+            where: "Home",
+            tags: ["home"],
+          },
+        ],
+      },
+      {
+        id: "warm",
+        title: "Warm ending",
+        line: "Drive back down toward Vernon for a cozy dinner.",
+        stops: [
+          WARM_DINNER,
+          {
+            key: "home",
+            title: "Home",
+            line: "Full, warm, slightly smug.",
+            minutes: 0,
+            travel: 10,
+            where: "Home",
+            tags: ["home"],
+          },
+        ],
+      },
+    ],
     checks: [
       {
         label: "Hunting",
-        line: "Hunting licence in your pocket and the 2026–2028 synopsis for Region 8. No hunting from an hour after sunset.",
+        line: "Grouse is open in Region 8 until November 30, 5 a day. Licence in your pocket, and no hunting from an hour after sunset (6:33 pm Monday). Check the No Shooting Areas near Coldstream.",
         href: "https://www2.gov.bc.ca/gov/content/sports-culture/recreation/fishing-hunting/hunting/regulations-synopsis",
       },
       FIRE,
       {
-        label: "Access",
-        line: "Forest roads can be gated, rutted or snowed in. Turn around early, and tell someone where you're going.",
+        label: "The road",
+        line: "The King Edward FSR is gravel and the lake is about 1,000 m above town. Snow or ice is possible in November. Turn around early, and tell someone where you're going.",
       },
-      ROADS,
+      {
+        label: "Cold water",
+        line: "Nobody has checked the water. Never alone, never after dark, no diving, shoes on, a minute at most. Skip it if either of you has a heart condition.",
+      },
+      {
+        label: "Weather",
+        line: "Environment Canada's forecast is for Vernon. The lake is about 1,000 m higher and will likely be colder.",
+        href: "https://weather.gc.ca/en/location/index.html?coords=50.267,-119.272",
+      },
     ],
   },
   {
@@ -231,6 +371,7 @@ export const EVENINGS: readonly Evening[] = [
     title: "Crazy Creek Escape",
     pick: "Jess's Pick",
     line: "A scenic drive past Mara and Shuswap lakes to hot pools in the cedars below Crazy Creek Falls. Dinner to go, a long soak, a cozy drive home.",
+    where: "Crazy Creek Hot Pools, Malakwa",
     drive: "About 1½ hours each way",
     highlights: [
       "Two hot pools & a cold plunge",
@@ -239,40 +380,47 @@ export const EVENINGS: readonly Evening[] = [
       "Dinner on the road",
     ],
     photo: PHOTOS.crazyCreek,
-    stops: [],
-    beats: (sunset) => [
+    leaveAt: 17 * 60,
+    stops: [
       {
-        at: LEAVE,
+        key: "leave",
         title: "Swimsuits on under the sweaters",
         line: "Towels, flip-flops, a thermos of hot chocolate, a toque each.",
+        minutes: 0,
+        where: "Home",
+        tags: ["leave"],
       },
       {
-        at: LEAVE + 10,
+        key: "food",
         title: "Dinner to go in Vernon",
         line: "There's no food at the pools in November. Pick up something good on the way out.",
+        minutes: 15,
+        least: 10,
+        travel: 10,
+        where: "Vernon",
+        tags: ["food", "dinner"],
       },
       {
-        at: LEAVE + 20,
-        title: "The drive north",
-        line: `97A past Enderby and Mara Lake, then east on Highway 1 from Sicamous. Sunset's at ${spokenClock(sunset)}, somewhere along the lake.`,
-      },
-      {
-        at: LEAVE + 110,
+        key: "pools",
         title: "Crazy Creek Hot Pools",
         line: "Two hot pools and a cold plunge in the cedars. $19.95 each for a dip. Open till 10.",
+        minutes: 120,
+        least: 45,
+        travel: 90,
+        where: "6162 Trans-Canada Hwy, Malakwa",
         directions:
           "Crazy Creek Hot Pools Resort, 6162 Trans-Canada Hwy, Malakwa, BC",
+        tags: ["pools", "swim"],
         main: true,
       },
       {
-        at: 20 * 60 + 45,
-        title: "Hot chocolate for the road",
-        line: "Or stay for the adults-only hour, 9 to 10, and get home late.",
-      },
-      {
-        at: 22 * 60 + 15,
+        key: "home",
         title: "Home",
-        line: "Warm, loose and slightly smug.",
+        line: "Hot chocolate for the road. Warm, loose and slightly smug.",
+        minutes: 0,
+        travel: 95,
+        where: "Home",
+        tags: ["home"],
       },
     ],
     checks: [
@@ -283,7 +431,7 @@ export const EVENINGS: readonly Evening[] = [
       },
       {
         label: "Highway",
-        line: "Two hours of it after dark, home. Check DriveBC for 97A and Highway 1, and winter tires.",
+        line: "Over an hour and a half of it after dark, home. Check DriveBC for 97A and Highway 1, and winter tires.",
         href: "https://www.drivebc.ca/",
       },
     ],
@@ -292,7 +440,8 @@ export const EVENINGS: readonly Evening[] = [
     id: "cold-water",
     title: "Cold Water, Warm Fire",
     line: "A screaming-cold dip in Kal Lake before the sun goes, then dry clothes, hot chocolate, dinner and a fire at home.",
-    drive: "2 min to the lake",
+    where: "Kal Beach, Coldstream",
+    drive: "Minutes from home",
     highlights: [
       "A dip in Kalamalka Lake",
       "Sunset from the beach",
@@ -300,36 +449,52 @@ export const EVENINGS: readonly Evening[] = [
       "A fire & marshmallows",
     ],
     photo: PHOTOS.kalamalka,
-    stops: [KAL_BEACH, BNA],
-    beats: (sunset) => [
+    leaveAt: 17 * 60,
+    stops: [
       {
-        at: LEAVE,
+        key: "leave",
         title: "Layers on, towels in",
         line: "Swimsuits underneath, water shoes, the big towels, the car heater on.",
+        minutes: 0,
+        where: "Home",
+        tags: ["leave"],
       },
       {
-        at: LEAVE + 5,
+        key: "dip",
         title: "The dip at Kal Beach",
         line: "In together, out in a minute or two. While it's still light.",
+        minutes: 15,
+        travel: 5,
         atlasRef: KAL_BEACH,
+        where: "Kal Beach",
+        tags: ["swim", "lake"],
+        byAfterSunset: 0,
         main: true,
       },
       {
-        at: LEAVE + 20,
+        key: "sunset",
         title: "Warm up, watch the sun go",
-        line: `Dry clothes, hot chocolate from the thermos, sunset at ${spokenClock(sunset)}.`,
+        line: "Dry clothes, hot chocolate from the thermos.",
+        minutes: 25,
+        least: 10,
+        beforeSunset: 10,
+        where: "Kal Beach",
+        tags: ["sunset", "lake"],
       },
       {
-        at: sunset + 20,
-        title: "Dinner at BNA Brewing",
+        ...WARM_DINNER,
+        travel: 5,
         line: "Five minutes up Kalamalka Lake Road. Open from 4.",
-        atlasRef: BNA,
-        directions: "BNA Brewing, 1714 Kalamalka Lake Road, Vernon, BC",
       },
       {
-        at: sunset + 120,
+        key: "fire",
         title: "A fire at home",
         line: "If it's allowed. Blanket, marshmallows, the cold-plunge story told twice.",
+        minutes: 60,
+        least: 20,
+        travel: 10,
+        where: "Home",
+        tags: ["fire", "home"],
       },
     ],
     checks: [
@@ -338,45 +503,39 @@ export const EVENINGS: readonly Evening[] = [
         line: "Never alone and never after dark. No diving, no drinks first, shoes on. In for a minute or two, then straight into dry clothes. Skip it if either of you has a heart condition.",
       },
       FIRE,
+      ROADS,
     ],
   },
   {
     id: "surprise",
     title: "Surprise Us",
     line: "Passport picks the evening from real places near home, open on a Monday night. No peeking.",
+    where: "Somewhere near home",
     drive: "Close to home",
     highlights: ["Real places", "Open tonight", "A little mischief"],
     photo: PHOTOS.sunset,
+    leaveAt: 17 * 60,
     stops: [],
-    beats: () => [],
     checks: [],
+    composed: true,
   },
 ];
-
-export const THREE = EVENINGS.filter((e) => e.id !== "surprise");
 
 export const eveningOf = (id: string | null | undefined): Evening | undefined =>
   EVENINGS.find((e) => e.id === id);
 
-/** Which evening an adventure is on: the owner's choice, by its name. */
+/** Which adventure the night is on: the owner's choice, by its name. */
 export const eveningNamed = (
   label: string | null | undefined,
-): Evening | undefined => EVENINGS.find((e) => e.title === label);
-
-/** The shared day for an evening with places in Atlas. */
-export function eveningQuery(evening: Evening, day: NightDay): string | null {
-  if (evening.stops.length === 0) return null;
-  const query = writeDayQuery({
-    stops: [...evening.stops],
-    say: `${evening.title.toLowerCase()}, an evening for the two of us, leave at ${spokenClock(LEAVE)}`,
-    at: day.townId,
-    on: day.on,
-    mins: {},
-    rain: {},
-  });
-  return `${query}&evening=${evening.id}`;
-}
+): Evening | undefined =>
+  label
+    ? EVENINGS.find((e) => e.title === label || e.aliases?.includes(label))
+    : undefined;
 
 export function directionsTo(destination: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 }
+
+/** "2:15 pm", for a card. */
+export const clockSaid = (minutes: number): string =>
+  spokenClock(Math.round(minutes / 5) * 5).replace(/(am|pm)$/, " $1");

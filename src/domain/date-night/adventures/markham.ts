@@ -20,7 +20,7 @@ export const MARKHAM: NightConfig = {
   tagline: "Two people. One vehicle. No particular hurry.",
   invitation: [
     "Monday's taken. You're coming with me. ❤️",
-    "Tomorrow we disappear for a little while. Into the wild, your hot pools, or a very cold lake and a warm fire. The details are negotiable. Your company isn't.",
+    "Tomorrow we disappear for a little while. King Eddie Lake, your hot pools, or a very cold lake and a warm fire. The details are negotiable. Your company isn't.",
     "Come and make it ours.",
   ],
   activities: [
@@ -79,7 +79,7 @@ export const MARKHAM: NightConfig = {
     "Good attitude",
   ],
   day: TOMORROW,
-  evenings: ["into-the-wild", "crazy-creek", "cold-water", "surprise"],
+  evenings: ["king-eddie", "crazy-creek", "cold-water", "surprise"],
   partnerName: "Jess",
   mysteryAtlasIds: [
     "d3c70f99-3412-46d2-87f8-45e4854b7d48", // Kalamalka Lake Park

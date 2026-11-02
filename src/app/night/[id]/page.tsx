@@ -15,17 +15,10 @@ import { nightForTitle } from "@/domain/date-night/adventures";
 import { packingOf, type PackingView } from "@/lib/date-night/night";
 import { momentsOf, sharingOn } from "@/app/christmas/_server/together";
 import type { Moment } from "@/domain/christmas/recap";
-import { dayDetails, type DayDetail } from "@/lib/adventures/propose";
 import { todayIn } from "@/lib/adventures/overview";
-import { loadSaved } from "@/lib/data/loadSaved";
-import { savedFor } from "@/lib/adventures/fit";
 import { environmentFor } from "@/lib/environment/reading";
-import {
-  clockTime,
-  dayForecast,
-  zonedInstant,
-} from "@/domain/date-night/conditions";
-import { daylightAt } from "@/domain/environment/daylight";
+import { dayForecast, wallMinutes } from "@/domain/date-night/conditions";
+import type { StoredStop } from "@/domain/date-night/adventures/itinerary";
 import { sunsetOf } from "@/domain/date-night/adventures/compose";
 import { eveningOf } from "@/domain/date-night/adventures/evenings";
 
@@ -102,9 +95,13 @@ export default async function NightPage({
   const refs = [
     ...new Set([
       ...view.items.flatMap((i) => (i.atlasRef ? [i.atlasRef] : [])),
-      // The night opens on its own landscape until the day has pictures.
+      // The night's own Atlas places: pictures and directions for any stop.
       ...(day ? day.options.map((o) => o.atlasRef) : []),
-      ...(config?.evenings ?? []).flatMap((id) => eveningOf(id)?.stops ?? []),
+      ...(config?.evenings ?? []).flatMap((id) =>
+        (eveningOf(id)?.stops ?? []).flatMap((s) =>
+          s.atlasRef ? [s.atlasRef] : [],
+        ),
+      ),
     ]),
   ];
   const sharing = await sharingOn(db, id).catch(() => false);
@@ -116,36 +113,41 @@ export default async function NightPage({
         longitude: day.longitude,
       }
     : null;
-  const [stops, packing, moments, details, saved, environments] =
-    await Promise.all([
-      atlasStopsFor(refs).catch(() => null),
-      packingOf(db, id).catch(() => null as PackingView[] | null),
-      sharing
-        ? momentsOf(db, id, session.user.id).catch(() => [] as Moment[])
-        : Promise.resolve([] as Moment[]),
-      dayDetails(view).catch(() => null as Record<string, DayDetail> | null),
-      loadSaved().catch(() => null),
-      area ? environmentFor([area]) : Promise.resolve(new Map()),
-    ]);
-  const atlasNames = stops?.names ?? {};
-  const experiences = stops?.experiences ?? {};
-  // Mission 482's reading: saved places that fit this day first.
-  const savedHere =
-    saved?.status === "ok"
-      ? savedFor(view, saved.experiences)
-      : { fits: [], elsewhere: [] };
+  const [stops, packing, moments, environments] = await Promise.all([
+    atlasStopsFor(refs).catch(() => null),
+    packingOf(db, id).catch(() => null as PackingView[] | null),
+    sharing
+      ? momentsOf(db, id, session.user.id).catch(() => [] as Moment[])
+      : Promise.resolve([] as Moment[]),
+    area ? environmentFor([area]) : Promise.resolve(new Map()),
+  ]);
   const forecast =
     day && area ? dayForecast(environments.get(area.id), day) : undefined;
-  const light = day
-    ? daylightAt(
-        day.latitude,
-        day.longitude,
-        zonedInstant(day.on, 12, day.timeZone),
-      )
-    : undefined;
+  const timeZone = view.timeZone ?? day?.timeZone ?? "America/Vancouver";
   // Legal time: BC stays on UTC−7 from 1 Nov 2026, whatever tz database
   // this runtime carries (conditions.ts).
-  const sunsetMinutes = day ? sunsetOf(day) : undefined;
+  const sunsetMinutes = (day ? sunsetOf(day) : undefined) ?? 17 * 60 + 33;
+  const dayStops: StoredStop[] = day
+    ? view.items
+        .filter((i) => i.onDay === day.on)
+        .map((i) => ({
+          id: i.id,
+          label: i.label,
+          note: i.note,
+          atlasRef: i.atlasRef,
+          at: i.startsAt ? wallMinutes(new Date(i.startsAt), timeZone) : null,
+          position: i.position,
+          // `addedBy` is a member id; people see a name.
+          ...(i.mine
+            ? {}
+            : {
+                by:
+                  view.members.find((m) => m.memberId === i.addedBy)
+                    ?.displayName ?? "one of you",
+              }),
+          mine: i.mine,
+        }))
+    : [];
 
   return (
     <>
@@ -156,18 +158,13 @@ export default async function NightPage({
         packing={packing}
         moments={moments}
         sharing={sharing}
-        atlasNames={atlasNames}
-        experiences={experiences}
+        experiences={stops?.experiences ?? {}}
         config={config}
-        details={details ?? {}}
-        saved={savedHere}
-        today={todayIn(view.timeZone ?? day?.timeZone ?? null)}
-        atlasDown={stops === null || details === null}
+        dayStops={dayStops}
+        today={todayIn(timeZone)}
+        now={wallMinutes(new Date(), timeZone)}
+        sunsetMinutes={sunsetMinutes}
         {...(forecast ? { forecast } : {})}
-        {...(light && day
-          ? { sunset: clockTime(light.sunset, day.timeZone) }
-          : {})}
-        {...(sunsetMinutes !== undefined ? { sunsetMinutes } : {})}
       />
     </>
   );
