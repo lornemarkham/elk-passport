@@ -169,7 +169,16 @@ export function layOut(
     if (diff > 0 || diff < -5) {
       let j = anchor - 1;
       while (j >= 0 && !ruleOf(evening, out[j]!, day).stretch) j--;
-      const giver = j >= 0 ? out[j]! : diff > 0 ? out[anchor - 1]! : null;
+      // With no stretch stop, the stop before waits — but never a cold
+      // dip, which is never lengthened: the nearest stop before it waits
+      // instead, even if that's leaving (SHARED-ADVENTURE.md).
+      const cold = (k: number) => {
+        const tags = ruleOf(evening, out[k]!, day).tags;
+        return tags.includes("swim") && !tags.includes("pools");
+      };
+      let waits = anchor - 1;
+      while (waits > 0 && cold(waits)) waits--;
+      const giver = j >= 0 ? out[j]! : diff > 0 ? out[waits]! : null;
       if (giver) {
         const least = j >= 0 ? ruleOf(evening, giver, day).least : 0;
         giver.minutes = Math.max(least, giver.minutes + diff);
@@ -410,9 +419,25 @@ export function planFromItems(
       template?.key ?? (option ? optionKey(option.atlasRef) : undefined);
     return { item, template, key };
   });
+  // The drive before a stop: its own, plus the drives of any of the
+  // adventure's stops dropped between it and the one before (the road to
+  // the lake is still driven when the wander there is skipped).
+  const order = evening ? [...evening.stops, ...(ending?.stops ?? [])] : [];
+  const travelAt = (i: number): number => {
+    const template = keyed[i]?.template;
+    if (!template || i === 0) return 0;
+    const to = order.indexOf(template);
+    const from = keyed[i - 1]?.template
+      ? order.indexOf(keyed[i - 1]!.template!)
+      : -1;
+    if (to < 0 || from < 0 || from >= to) return template.travel ?? 0;
+    return order
+      .slice(from + 1, to + 1)
+      .reduce((t, x) => t + (x.travel ?? 0), 0);
+  };
   return keyed.map(({ item, template, key }, i) => {
     const next = keyed[i + 1];
-    const nextTravel = next?.template?.travel ?? 0;
+    const nextTravel = next ? travelAt(i + 1) : 0;
     // A stop somebody added in between keeps a sensible length until the
     // owner's next change lays the night out again.
     const minutes = next
@@ -429,7 +454,7 @@ export function planFromItems(
       line: template?.title === item.label ? template.line : (item.note ?? ""),
       at: item.at!,
       minutes,
-      travel: previous ? (template?.travel ?? 0) : 0,
+      travel: previous ? travelAt(i) : 0,
       ...(item.atlasRef ? { atlasRef: item.atlasRef } : {}),
       ...(template?.where ? { where: template.where } : {}),
       ...(template?.directions ? { directions: template.directions } : {}),

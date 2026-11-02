@@ -1,5 +1,9 @@
 # Date Night
 
+> Latest: [`SHARED-ADVENTURE.md`](SHARED-ADVENTURE.md) (2026-11-02): five
+> rooms behind a bottom bar, leave-time options, plays to text, and the
+> packing panel that says why it's off.
+
 A personal invitation to an adventure. The first one is **Lorne ❤️ Jess, 2
 November 2026**, at `gohaveaday.com/lorne-and-jess`. Owner brief: "Date Night —
 Lorne & Jess" (2026-11-01).

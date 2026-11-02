@@ -97,6 +97,8 @@ export interface StopTemplate {
   readonly atlasRef?: string;
   readonly tags: readonly StopTag[];
   readonly main?: true;
+  /** What a person calls it in passing: "the hunt", "the pools". */
+  readonly short?: string;
   /** Fine to drop; said so on the stop. */
   readonly optional?: true;
   /** The place closes then (minutes after midnight): the stop ends by it. */
@@ -269,6 +271,7 @@ export const EVENINGS: readonly Evening[] = [
         directions: KING_EDWARD_FSR,
         tags: ["hunt", "explore", "drive"],
         main: true,
+        short: "the hunt",
       },
       {
         key: "lake",
@@ -425,6 +428,7 @@ export const EVENINGS: readonly Evening[] = [
           "Crazy Creek Hot Pools Resort, 6162 Trans-Canada Hwy, Malakwa, BC",
         tags: ["pools", "swim"],
         main: true,
+        short: "the pools",
         closesAt: 22 * 60,
         romance: {
           endAt: 22 * 60,
@@ -490,6 +494,7 @@ export const EVENINGS: readonly Evening[] = [
         tags: ["swim", "lake"],
         byAfterSunset: 0,
         main: true,
+        short: "the dip",
       },
       {
         key: "sunset",

@@ -24,6 +24,10 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  * name), the other adventures fold behind Change adventure, the plan marks
  * what a change touched and Undo puts it back, and Together opens on a
  * personal invitation.
+ *
+ * The shared-adventure mission (SHARED-ADVENTURE.md) puts the page in five rooms (Adventure · Change it ·
+ * Together · Memories · Invite) behind a bottom bar, so each step first
+ * opens the room it happens in (`room`).
  */
 
 const SHOTS = process.env.SHOTS_DIR ?? path.resolve(__dirname, "screenshots");
@@ -49,10 +53,16 @@ async function phone(browser: Browser) {
     reducedMotion: "reduce",
     permissions: ["clipboard-read", "clipboard-write"],
   });
-  // Headless Chromium has a share sheet nobody can tap; the copy is what
-  // the test reads, so the sheet is taken away.
+  // Headless Chromium has a share sheet nobody can tap: a stand-in keeps
+  // what was shared, and the copy made first is what the test reads.
   await context.addInitScript(() => {
-    Object.defineProperty(navigator, "share", { value: undefined });
+    const shared: string[] = [];
+    Object.defineProperty(window, "__shared", { value: shared });
+    Object.defineProperty(navigator, "share", {
+      value: async (data: { text?: string }) => {
+        shared.push(data.text ?? "");
+      },
+    });
   });
   return context.newPage();
 }
@@ -88,8 +98,18 @@ const beat = (page: Page, title: string) =>
 const titles = (page: Page) =>
   page.getByTestId("beat").locator("h3").allTextContents();
 
+/** Open one of the page's rooms from the bar, as a thumb would. */
+async function room(
+  page: Page,
+  name: "Adventure" | "Change it" | "Together" | "Memories" | "Invite",
+) {
+  const tab = page.getByRole("tab", { name: new RegExp(`^${name}`) });
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+}
+
 async function settle(page: Page) {
-  await expect(page.getByTestId("evening-plan")).toBeVisible();
+  await expect(page.getByTestId("evening-plan")).toHaveCount(1);
   await expect(page.locator("main[data-busy]")).toHaveCount(0);
 }
 
@@ -223,14 +243,17 @@ test("Date Night: choose, customise, say it, edit, together", async ({
 
   // ----------------------------------------------------------------- C
   // Said, previewed, applied, shown, undone — and said again.
+  await room(lorne, "Change it");
   await say(lorne, "Let's leave earlier and get home by eight.");
   await expect(lorne.getByTestId("plan-summary")).toContainText("1:45 pm");
   await expect(lorne.getByTestId("plan-summary")).toContainText("8:00 pm");
   await expect(lorne.getByTestId("change-done")).toContainText(
     "Leave at 1:45 pm",
   );
+  await room(lorne, "Adventure");
   await expect(lorne.getByTestId("stop-changed").first()).toBeVisible();
   await shot(lorne, "04a-what-changed", false);
+  await room(lorne, "Change it");
   await writes(lorne, () => lorne.getByTestId("change-undo").click());
   await expect(lorne.getByTestId("plan-summary")).toContainText("2:15 pm");
   await say(lorne, "Let's leave earlier and get home by eight.");
@@ -252,6 +275,7 @@ test("Date Night: choose, customise, say it, edit, together", async ({
 
   // ----------------------------------------------------------------- D
   // Add.
+  await room(lorne, "Adventure");
   await lorne.getByTestId("add-stop").click();
   const form = lorne.getByTestId("stop-form");
   await form.getByLabel("What").fill("Hot chocolate at the lookout");
@@ -303,6 +327,7 @@ test("Date Night: choose, customise, say it, edit, together", async ({
   await shot(lorne, "06-edited");
 
   // ----------------------------------------------------------------- E
+  await room(lorne, "Invite");
   await expect(lorne.getByTestId("invite-card")).toContainText(
     "Come on an adventure with me.",
   );
@@ -361,6 +386,7 @@ test("Date Night: choose, customise, say it, edit, together", async ({
   );
   await expect(beat(jess, "Pie from the Swiss bakery")).toBeVisible();
   // And a sentence, sent to Lorne as a suggestion.
+  await room(jess, "Change it");
   await jess.getByTestId("change-input").fill("More time at the lake");
   await jess.getByTestId("change-submit").click();
   await writes(
@@ -384,6 +410,7 @@ test("Date Night: choose, customise, say it, edit, together", async ({
   await settle(lorne);
   await expect(lorne.getByTestId("together-card")).toContainText("is in.");
   await expect(lorne.getByTestId("names")).toContainText("jess-mk-");
+  await room(lorne, "Together");
   await expect(lorne.getByTestId("suggestion").first()).toContainText(
     /From jess-mk-/,
   );
@@ -408,10 +435,10 @@ test("Date Night: choose, customise, say it, edit, together", async ({
   await jess.reload();
   await settle(jess);
   await expect(beat(jess, "Explore King Edward Lake")).toContainText("1 h");
-  await expect(beat(jess, "Pie from the Swiss bakery")).toBeVisible();
+  await expect(beat(jess, "Pie from the Swiss bakery")).toHaveCount(1);
 
-  // Packing: Jess ticks; Lorne sees it.
-  await jess.getByTestId("packing-panel").locator("summary").click();
+  // Packing: Jess ticks; Lorne sees it. Together opens with the list out.
+  await room(jess, "Together");
   await writes(
     jess,
     () =>
@@ -422,7 +449,7 @@ test("Date Night: choose, customise, say it, edit, together", async ({
     /\/packing\//,
   );
   await lorne.reload();
-  await lorne.getByTestId("packing-panel").locator("summary").click();
+  await room(lorne, "Together");
   await expect(
     lorne.getByTestId("packing").getByRole("checkbox", { name: /Chairs/ }),
   ).toHaveAttribute("aria-checked", "true");
@@ -434,6 +461,7 @@ test("Date Night: choose, customise, say it, edit, together", async ({
   // ----------------------------------------------------------------- F
   for (const page of [lorne, jess]) {
     await settle(page);
+    await room(page, "Adventure");
     await noSideways(page);
     // The plan starts on the first screen's scroll; nothing competes above it.
     await page.evaluate(() => window.scrollTo(0, 0));

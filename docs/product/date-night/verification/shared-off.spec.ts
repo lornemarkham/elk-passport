@@ -29,14 +29,26 @@ test("packing and memories say they're off, and the night still works", async ({
   await page.waitForURL(/\/night\//);
 
   for (const id of ["packing-panel", "memories-panel"]) {
+    // Each panel lives in its own room (SHARED-ADVENTURE.md).
+    await page
+      .getByRole("tab", {
+        name: id === "packing-panel" ? /^Together/ : /^Memories/,
+      })
+      .click();
     const panel = page.getByTestId(id);
     await expect(panel).toHaveAttribute("data-off", "true");
     await expect(panel).toContainText("Not switched on yet");
+    // The owner is told why, with the database's own code.
+    if (id === "packing-panel")
+      await expect(page.getByTestId("packing-panel-why")).toContainText(
+        "migration hasn't run",
+      );
     await expect(panel.locator("summary")).toHaveCount(0);
   }
   await expect(page.getByTestId("invite-card")).not.toContainText("packs");
 
   // Planning doesn't depend on them.
+  await page.getByRole("tab", { name: /^Adventure/ }).click();
   await page
     .getByTestId("evening")
     .filter({ hasText: "King Eddie Lake" })
@@ -46,6 +58,7 @@ test("packing and memories say they're off, and the night still works", async ({
   if (process.env.SHOTS === "1") {
     const dir = process.env.SHOTS_DIR ?? path.resolve(__dirname, "screenshots");
     fs.mkdirSync(dir, { recursive: true });
+    await page.getByRole("tab", { name: /^Together/ }).click();
     await page.getByTestId("packing-panel").scrollIntoViewIfNeeded();
     await page.screenshot({
       path: path.join(dir, "markham-13-shared-off.png"),

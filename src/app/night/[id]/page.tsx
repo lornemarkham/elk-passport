@@ -12,7 +12,7 @@ import {
 } from "@/lib/adventures/store";
 import { atlasStopsFor } from "@/lib/adventures/atlas-names";
 import { nightForTitle } from "@/domain/date-night/adventures";
-import { packingOf, type PackingView } from "@/lib/date-night/night";
+import { readPacking } from "@/lib/date-night/night";
 import { momentsOf, sharingOn } from "@/app/christmas/_server/together";
 import type { Moment } from "@/domain/christmas/recap";
 import { todayIn } from "@/lib/adventures/overview";
@@ -21,6 +21,7 @@ import { dayForecast, wallMinutes } from "@/domain/date-night/conditions";
 import type { StoredStop } from "@/domain/date-night/adventures/itinerary";
 import { sunsetOf } from "@/domain/date-night/adventures/compose";
 import { eveningOf } from "@/domain/date-night/adventures/evenings";
+import { hideUnopened } from "@/domain/date-night/plays";
 
 export const metadata: Metadata = {
   title: "Just us ❤️",
@@ -35,10 +36,15 @@ export const metadata: Metadata = {
  */
 export default async function NightPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ p?: string | string[] }>;
 }) {
   const { id } = await params;
+  const { p } = await searchParams;
+  // A texted link opens one play (`?p=`): only an item id is accepted.
+  const focus = typeof p === "string" && /^[0-9a-f-]{36}$/i.test(p) ? p : null;
   const session = await adventureSession();
 
   let view: AdventureView | null = null;
@@ -77,7 +83,7 @@ export default async function NightPage({
           <Link
             href={
               !session
-                ? `/auth?next=${encodeURIComponent(`/night/${id}`)}`
+                ? `/auth?next=${encodeURIComponent(`/night/${id}${focus ? `?p=${focus}` : ""}`)}`
                 : "/"
             }
             className="bg-primary text-primary-foreground rounded-full px-5 py-2.5 text-sm font-medium"
@@ -92,6 +98,18 @@ export default async function NightPage({
   const db = session.db;
   const config = nightForTitle(view.title) ?? null;
   const day = config?.day;
+  const zone = view.timeZone ?? day?.timeZone ?? "America/Vancouver";
+  // A note that hasn't opened never reaches the other person's browser.
+  if (day)
+    view = {
+      ...view,
+      items: hideUnopened(
+        view.items,
+        day.on,
+        todayIn(zone),
+        wallMinutes(new Date(), zone),
+      ),
+    };
   const refs = [
     ...new Set([
       ...view.items.flatMap((i) => (i.atlasRef ? [i.atlasRef] : [])),
@@ -115,7 +133,7 @@ export default async function NightPage({
     : null;
   const [stops, packing, moments, environments] = await Promise.all([
     atlasStopsFor(refs).catch(() => null),
-    packingOf(db, id).catch(() => null as PackingView[] | null),
+    readPacking(db, id),
     sharing
       ? momentsOf(db, id, session.user.id).catch(() => [] as Moment[])
       : Promise.resolve([] as Moment[]),
@@ -155,7 +173,8 @@ export default async function NightPage({
       <NightBoard
         view={view}
         invites={invites}
-        packing={packing}
+        packing={packing.items}
+        packingTrouble={packing.trouble}
         moments={moments}
         sharing={sharing}
         experiences={stops?.experiences ?? {}}
@@ -164,6 +183,7 @@ export default async function NightPage({
         today={todayIn(timeZone)}
         now={wallMinutes(new Date(), timeZone)}
         sunsetMinutes={sunsetMinutes}
+        focus={focus}
         {...(forecast ? { forecast } : {})}
       />
     </>

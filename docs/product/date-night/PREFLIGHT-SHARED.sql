@@ -62,3 +62,40 @@ SELECT table_name, privilege_type
  WHERE grantee = 'authenticated' AND table_schema = 'public'
    AND table_name IN ('passport_adventure_packing', 'passport_adventure_moments')
  ORDER BY 1, 2;
+
+-- ============================================================================
+-- G. "Packing says it isn't switched on, but the table is there."
+--    (SHARED-ADVENTURE.md, 2026-11-02). Read-only. The page now names the
+--    reason on the owner's packing panel, with the database's code; these
+--    rows say the same thing from the inside.
+--    Expect: exists true, rls true, authenticated_select true,
+--    authenticated_insert true, authenticated_delete true,
+--    authenticated_update_checked true, policies 4, members_fn true.
+SELECT to_regclass('public.passport_adventure_packing') IS NOT NULL AS exists,
+       (SELECT relrowsecurity FROM pg_class
+         WHERE oid = to_regclass('public.passport_adventure_packing')) AS rls,
+       has_table_privilege('authenticated', 'public.passport_adventure_packing', 'SELECT') AS authenticated_select,
+       has_table_privilege('authenticated', 'public.passport_adventure_packing', 'INSERT') AS authenticated_insert,
+       has_table_privilege('authenticated', 'public.passport_adventure_packing', 'DELETE') AS authenticated_delete,
+       has_column_privilege('authenticated', 'public.passport_adventure_packing', 'checked_at', 'UPDATE') AS authenticated_update_checked,
+       (SELECT count(*) FROM pg_policies WHERE schemaname = 'public'
+         AND tablename = 'passport_adventure_packing') AS policies,
+       has_function_privilege('authenticated', 'public.passport_is_adventure_member(text)', 'EXECUTE') AS members_fn;
+
+-- H. The columns the app reads. Expect all eight:
+--    id, adventure_id, label, position, added_by, checked_by, checked_at,
+--    created_at. A missing one is the "doesn't match the migration" case.
+SELECT column_name, data_type
+  FROM information_schema.columns
+ WHERE table_schema = 'public' AND table_name = 'passport_adventure_packing'
+ ORDER BY ordinal_position;
+
+-- The remedies (these WRITE; run only the one the panel or G/H points at):
+--
+--   PGRST205 on the panel, G all true  → the API's schema cache is stale:
+--       NOTIFY pgrst, 'reload schema';
+--   42501 on the panel, G has a false  → the grants didn't land; re-run
+--       supabase/migrations/20261102100000_passport_adventure_packing.sql
+--       (guarded, safe twice), then the NOTIFY above.
+--   42703 / mismatch, H is short       → the table isn't this migration's.
+--       Stop and ask: don't drop a table with people's lists in it.

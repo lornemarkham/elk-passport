@@ -26,6 +26,10 @@ import { EveningPlan, type PlanActions } from "./EveningPlan";
 import { MakeItOurs, type MakeItOursHandle } from "./MakeItOurs";
 import { NextDates } from "./NextDates";
 import { NightMemories } from "./NightMemories";
+import { LeaveTime } from "./LeaveTime";
+import { NightNav, isRoom, type Room } from "./NightNav";
+import { Plays, type DecidePair, type OpenAt } from "./Plays";
+import { sendText } from "./share";
 import styles from "./night.module.css";
 import type { Experience } from "@/domain/experience/types";
 import type { Mood, NightConfig } from "@/domain/date-night/adventures";
@@ -35,7 +39,20 @@ import type {
   InviteView,
   ItemView,
 } from "@/lib/adventures/store";
-import type { PackingView } from "@/lib/date-night/night";
+import type { PackingTrouble, PackingView } from "@/lib/date-night/night";
+import {
+  encodeAnswer,
+  encodePlay,
+  isPlayNote,
+  labelOf,
+  playsOf,
+  waitingOn,
+  type AnswerBody,
+  type PlayBody,
+  type PlayView,
+  type Theme,
+} from "@/domain/date-night/plays";
+import type { DepartureOption } from "@/domain/date-night/adventures/departure";
 import type { DayForecast } from "@/domain/date-night/conditions";
 import {
   composeDay,
@@ -48,6 +65,7 @@ import {
   PHOTOS,
   type Evening,
 } from "@/domain/date-night/adventures/evenings";
+import { ruleOf } from "@/domain/date-night/adventures/itinerary";
 import {
   justUs,
   namesOf,
@@ -137,6 +155,7 @@ export function NightBoard({
   view,
   invites,
   packing,
+  packingTrouble = null,
   moments,
   sharing,
   experiences,
@@ -146,10 +165,15 @@ export function NightBoard({
   now,
   forecast,
   sunsetMinutes,
+  focus = null,
 }: {
   view: AdventureView;
   invites: readonly InviteView[];
   packing: readonly PackingView[] | null;
+  /** Why the list couldn't be read, exactly (`readPacking`). */
+  packingTrouble?: { kind: PackingTrouble; code: string | null } | null;
+  /** A play a texted link opened (`?p=`). */
+  focus?: string | null;
   moments: readonly Moment[];
   sharing: boolean;
   experiences: Record<string, Experience>;
@@ -506,7 +530,12 @@ export function NightBoard({
 
   const seeded = new Set((config?.activities ?? []).map((a) => a.title));
   const asks = view.items.filter(
-    (i) => !i.onDay && i.label && !i.atlasRef && !seeded.has(i.label),
+    (i) =>
+      !i.onDay &&
+      i.label &&
+      !i.atlasRef &&
+      !seeded.has(i.label) &&
+      !isPlayNote(i.note),
   );
 
   async function invite() {
@@ -519,16 +548,12 @@ export function NightBoard({
       );
       const body = await response.json();
       const url = `${window.location.origin}${body.path}`;
-      const text = [...invitationLines, url].join("\n\n");
-      // Copied first, always: if the share sheet is dismissed or missing,
-      // the invitation is still in hand.
-      const copied = await navigator.clipboard
-        .writeText(text)
-        .then(() => true)
-        .catch(() => false);
-      if (navigator.share)
-        await navigator.share({ text }).catch(() => undefined);
-      else if (copied) toast.success("Invitation copied. Send it to them.");
+      // The phone's share sheet, else a new text, else a copy (`share.ts`).
+      const sent = await sendText(invitationLines.join("\n\n"), url);
+      if (sent === "copied")
+        toast.success(
+          `Invitation copied. Paste it into your texts to ${partner}.`,
+        );
       startRefresh(() => router.refresh());
     } catch {
       toast.error("Couldn't make the invitation. Try again.");
@@ -598,6 +623,189 @@ export function NightBoard({
       toast.error("Couldn't clear that. Try again.");
     }
   }
+
+  // ------------------------------------------------------------- playing
+
+  const plays = useMemo(() => playsOf(view.items), [view.items]);
+  const waiting = waitingOn(plays).length;
+  /** Who a text goes to: the invited person, or whoever planned it. */
+  const textee = isOwner
+    ? (others[0]?.displayName ?? partner)
+    : (ownerName ?? "them");
+  /** Their invitation, made once and reused while they haven't joined. */
+  const inviteLink = useRef<string | null>(null);
+
+  async function linkTo(playId: string): Promise<string | null> {
+    const target = `/night/${encodeURIComponent(view.id)}?p=${playId}`;
+    const origin = window.location.origin;
+    if (!isOwner || others.length > 0) return `${origin}${target}`;
+    // Not in yet: the link is their invitation, and it lands on this.
+    try {
+      if (!inviteLink.current) {
+        const response = await call(
+          `/api/adventures/${view.id}/invites`,
+          "POST",
+          { label: `For ${partner}` },
+        );
+        inviteLink.current = (await response.json()).path as string;
+        startRefresh(() => router.refresh());
+      }
+      return `${origin}${inviteLink.current}?next=${encodeURIComponent(target)}`;
+    } catch {
+      return null;
+    }
+  }
+
+  async function createPlay(body: PlayBody): Promise<string | null> {
+    setSaving("play");
+    try {
+      const response = await call(`/api/adventures/${view.id}/items`, "POST", {
+        label: labelOf(body),
+        note: encodePlay({ ...body, t: Date.now() }),
+      });
+      const { id } = (await response.json()) as { id: string };
+      startRefresh(() => router.refresh());
+      return id;
+    } catch {
+      toast.error("That didn't save. Try again.");
+      return null;
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function answerPlay(
+    play: PlayView,
+    body: Omit<AnswerBody, "to" | "t">,
+  ): Promise<boolean> {
+    setSaving("answer");
+    try {
+      await call(`/api/adventures/${view.id}/items`, "POST", {
+        label: "An answer",
+        note: encodeAnswer({ ...body, to: play.id, t: Date.now() }),
+      });
+      startRefresh(() => router.refresh());
+      return true;
+    } catch {
+      toast.error("That didn't save. Try again.");
+      return false;
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function removePlay(play: PlayView) {
+    try {
+      await call(`/api/adventures/${view.id}/items/${play.id}`, "DELETE");
+      startRefresh(() => router.refresh());
+    } catch {
+      toast.error("Couldn't take that back. Try again.");
+    }
+  }
+
+  /** What a "You decide" choice does to the plan, when the owner applies it. */
+  async function applyChoice(what: string) {
+    const [kind, id] = what.split(":");
+    if (kind === "ending" && id && actions) {
+      actions.ending(id);
+      go("adventure");
+    } else if (kind === "evening") {
+      const e = evenings.find((x) => x.id === id);
+      if (e) await choose(e);
+      go("adventure");
+    }
+  }
+
+  // ---------------------------------------------------------- leave time
+
+  async function useDeparture(option: DepartureOption, leaveAt: number) {
+    if (option.evening && option.evening.id !== evening?.id) {
+      setConfirm(null);
+      const ok = await save(
+        [...option.stops],
+        option.evening.title,
+        `${option.evening.title}, leaving at ${clock(option.stops[0]!.at)}.`,
+      );
+      if (ok) go("adventure");
+      return ok;
+    }
+    const ok = await save(
+      [...option.stops],
+      label,
+      `Leaving at ${clock(leaveAt)}. ${option.title}.`,
+    );
+    if (ok) go("adventure");
+    return ok;
+  }
+
+  // --------------------------------------------------------------- rooms
+
+  const [room, setRoom] = useState<Room>(() =>
+    focus ? "together" : today > (day?.on ?? today) ? "memories" : "adventure",
+  );
+  /** Plays opened from the Adventure room's teaser start their composer. */
+  const [start, setStart] = useState<"pick" | "dare" | "decide" | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const h = window.location.hash.slice(1);
+      if (isRoom(h)) setRoom(h);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    window.addEventListener("popstate", read);
+    return () => {
+      window.removeEventListener("hashchange", read);
+      window.removeEventListener("popstate", read);
+    };
+  }, []);
+  function go(to: Room) {
+    setRoom(to);
+    if (window.location.hash !== `#${to}`)
+      window.history.pushState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#${to}`,
+      );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /** What the night is about, so the decks can be about it too. */
+  const themes = useMemo(() => {
+    const out = new Set<Theme>();
+    for (const s of plan ?? []) {
+      if (!day) break;
+      for (const t of ruleOf(evening, s, day).tags)
+        if (["hunt", "lake", "swim", "pools", "fire", "dinner"].includes(t))
+          out.add(t as Theme);
+    }
+    return out;
+  }, [plan, evening, day]);
+
+  const pairs: DecidePair[] = [
+    ...(evening?.endings && evening.endings.length > 1
+      ? [
+          {
+            a: evening.endings[0]!.title,
+            b: evening.endings[1]!.title,
+            apply: [
+              `ending:${evening.endings[0]!.id}`,
+              `ending:${evening.endings[1]!.id}`,
+            ] as const,
+          },
+        ]
+      : []),
+    ...evenings
+      .filter((e) => !e.composed && evening && e.id !== evening.id)
+      .slice(0, 2)
+      .map((e) => ({
+        a: evening!.title,
+        b: e.title,
+        apply: [`evening:${evening!.id}`, `evening:${e.id}`] as const,
+      })),
+    { a: "Dessert first", b: "Dessert after" },
+    { a: "Phones in the glovebox", b: "One photo each, then away" },
+    { a: "Your playlist", b: "My playlist" },
+  ];
 
   const packed = (packing ?? []).filter((p) =>
     p.id in ticks ? ticks[p.id] : p.checked,
@@ -777,6 +985,32 @@ export function NightBoard({
       title="What we're bringing"
       testId="packing-panel"
       off={packing === null}
+      open
+      offSaid={
+        // PGRST205 is the same answer whether the table is missing or the
+        // API's cache predates it, so "unseen" stays "not switched on yet".
+        packingTrouble?.kind === "refused" ||
+        packingTrouble?.kind === "mismatch"
+          ? "Not switched on properly"
+          : packingTrouble?.kind === "unavailable"
+            ? "Can't open it right now"
+            : undefined
+      }
+      offDetail={
+        packingTrouble && isOwner
+          ? {
+              missing: "The packing table isn't in the database yet.",
+              unseen:
+                "The database's API can't see the packing table. Either its migration hasn't run, or it has and the API's schema cache needs a reload: NOTIFY pgrst, 'reload schema';",
+              refused:
+                "The packing table is there, but signed-in people aren't allowed to read it: the migration's GRANTs are missing.",
+              mismatch:
+                "The packing table doesn't match the migration: a column or function it needs is missing.",
+              unavailable: "The database didn't answer. Try again in a moment.",
+            }[packingTrouble.kind] +
+            (packingTrouble.code ? ` (${packingTrouble.code})` : "")
+          : undefined
+      }
       meta={
         packing && packing.length > 0
           ? `${packed} of ${packing.length} packed`
@@ -877,7 +1111,7 @@ export function NightBoard({
       title="Our memories"
       testId="memories-panel"
       off={!sharing}
-      open={phase === "after"}
+      open
       meta={moments.length > 0 ? String(moments.length) : undefined}
     >
       <p className="mb-3 text-[14px] text-[var(--n-ink)]/65">
@@ -909,8 +1143,63 @@ export function NightBoard({
     </Panel>
   );
 
+  const compact = room !== "adventure";
+  const opensAt: OpenAt[] = [
+    { at: "now", said: "now" },
+    ...(leave !== undefined ? [{ at: leave, said: "when we leave" }] : []),
+    { at: Math.round(sunset), said: "at sunset" },
+    ...(home !== undefined ? [{ at: home, said: "when we're home" }] : []),
+  ];
+  const badges: Partial<Record<Room, number>> = {
+    together: waiting,
+    ...(isOwner && others.length === 0 ? { invite: 1 } : {}),
+  };
+  const teaser = (
+    <div
+      className="rounded-[24px] bg-[var(--n-forest)] p-4 text-[var(--n-cream)] sm:p-5"
+      data-testid="play-teaser"
+    >
+      <p className="text-[11px] font-extrabold tracking-[0.2em] text-[var(--n-amber)] uppercase">
+        {waiting > 0 ? `${waiting} waiting for you` : `Before it even starts`}
+      </p>
+      <p className="mt-1 font-[family-name:var(--font-fraunces)] text-[22px] leading-tight italic">
+        {waiting > 0
+          ? `${textee} sent you something.`
+          : `Get ${textee} excited. Text something.`}
+      </p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {(
+          [
+            ["pick", "⚖️", "This or That"],
+            ["dare", "🔥", "Challenge"],
+            ["decide", "🫵", "You Decide"],
+          ] as const
+        ).map(([id, emoji, title]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setStart(id);
+              go("together");
+            }}
+            className="min-h-14 rounded-2xl bg-white/10 px-2 text-[13px] font-bold ring-1 ring-white/15"
+          >
+            <span aria-hidden className="block text-[18px]">
+              {emoji}
+            </span>
+            {title}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <main className={`pb-24 ${styles.night}`} data-busy={busy || undefined}>
+    <main
+      className={`pb-[calc(84px+env(safe-area-inset-bottom))] md:pb-24 ${styles.night}`}
+      data-busy={busy || undefined}
+      data-room={room}
+    >
       {/* ------------------------------------------------------ A. HERO */}
       <header className="relative isolate overflow-hidden bg-[var(--n-ink)] text-white">
         <div className="absolute inset-0 -z-10" aria-hidden>
@@ -925,7 +1214,11 @@ export function NightBoard({
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,20,16,0.55)_0%,rgba(20,20,16,0.05)_35%,rgba(20,20,16,0.7)_72%,var(--n-ink)_100%)]" />
         </div>
         <div
-          className={`mx-auto flex max-w-5xl flex-col justify-end px-5 pt-24 pb-8 sm:px-8 ${plan ? "min-h-[54svh]" : "min-h-[62svh]"}`}
+          className={`mx-auto flex max-w-5xl flex-col justify-end px-5 sm:px-8 ${
+            compact
+              ? "min-h-[26svh] pt-16 pb-5"
+              : `pt-24 pb-8 ${plan ? "min-h-[54svh]" : "min-h-[62svh]"}`
+          }`}
         >
           <p
             className={`text-xs font-extrabold tracking-[0.24em] text-[var(--n-amber)] uppercase ${styles.rise}`}
@@ -933,13 +1226,17 @@ export function NightBoard({
             {day ? fullDate(day.on) : "Date night"}
           </p>
           <h1
-            className={`ghad-display mt-3 max-w-3xl text-[clamp(2.4rem,11vw,6rem)] leading-[0.88] font-extrabold tracking-tight text-balance uppercase ${styles.rise}`}
+            className={`ghad-display mt-3 max-w-3xl leading-[0.88] font-extrabold tracking-tight text-balance uppercase ${styles.rise} ${
+              compact
+                ? "text-[clamp(1.9rem,8vw,3.5rem)]"
+                : "text-[clamp(2.4rem,11vw,6rem)]"
+            }`}
             data-testid="night-title"
           >
             {title}
           </h1>
           <p
-            className={`mt-4 max-w-xl font-[family-name:var(--font-fraunces)] text-xl text-white/90 italic ${styles.rise}`}
+            className={`mt-4 max-w-xl font-[family-name:var(--font-fraunces)] text-xl text-white/90 italic ${styles.rise} ${compact ? "hidden md:block" : ""}`}
           >
             {plan && evening ? (
               <>
@@ -977,7 +1274,7 @@ export function NightBoard({
             )}
           </p>
           <div
-            className="mt-4 flex flex-wrap gap-2 text-sm font-semibold"
+            className={`mt-4 flex-wrap gap-2 text-sm font-semibold ${compact ? "hidden md:flex" : "flex"}`}
             data-testid="conditions"
           >
             {day && (
@@ -1020,139 +1317,171 @@ export function NightBoard({
         </div>
       </header>
 
-      <nav
-        aria-label="This adventure"
-        className="sticky top-0 z-20 border-b border-black/5 bg-[var(--n-cream)]/95 backdrop-blur"
-      >
-        <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 sm:px-5">
-          {(plan
-            ? [
-                ["#plan", "Our adventure"],
-                ["#ours", "Just say it"],
-                ["#together", "Together"],
-              ]
-            : [
-                ["#evenings", "Adventures"],
-                ["#together", "Together"],
-              ]
-          ).map(([href, text]) => (
-            <a
-              key={href}
-              href={href}
-              className="inline-flex min-h-12 shrink-0 items-center rounded-full px-4 text-sm font-bold hover:bg-black/5"
-            >
-              {text}
-            </a>
-          ))}
-        </div>
-      </nav>
+      <NightNav current={room} onChange={go} badges={badges} />
 
-      {/* ------------------------------------- B. CHOOSE OUR ADVENTURE */}
-      {day && evenings.length > 0 && !plan && (
-        <section
-          id="evenings"
-          className="mx-auto mt-8 max-w-5xl scroll-mt-16 px-4 sm:px-6"
-        >
-          <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-ember)] uppercase">
-            {evenings.length} ways to spend it
+      {/* ------------------------------------------- ROOM: ADVENTURE */}
+      <div id="room-adventure" role="tabpanel" hidden={room !== "adventure"}>
+        {/* ------------------------------------- B. CHOOSE OUR ADVENTURE */}
+        {day && evenings.length > 0 && !plan && (
+          <section
+            id="evenings"
+            className="mx-auto mt-8 max-w-5xl scroll-mt-16 px-4 sm:px-6"
+          >
+            <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-ember)] uppercase">
+              {evenings.length} ways to spend it
+            </p>
+            <h2 className="ghad-display mt-1 mb-5 text-[30px] leading-[0.95] font-extrabold tracking-tight uppercase sm:text-5xl">
+              Choose our adventure
+            </h2>
+            <EveningChooser
+              evenings={evenings}
+              chosen={undefined}
+              isOwner={isOwner}
+              busy={choosing}
+              mode="choose"
+              timesOf={timesOf}
+              onChoose={(e) => void choose(e)}
+            />
+          </section>
+        )}
+
+        {/* ------------------------------------------- C. OUR ADVENTURE */}
+        {plan && day && actions && (
+          <section
+            id="plan"
+            className="mx-auto mt-8 max-w-2xl scroll-mt-16 px-4 sm:px-6"
+          >
+            <EveningPlan
+              evening={evening}
+              stops={plan}
+              sunset={sunset}
+              warnings={warnings}
+              experiences={experiences}
+              isOwner={isOwner}
+              busy={busy}
+              day={day}
+              changed={changed}
+              {...(forecast ? { forecast } : {})}
+              {...(nextStop !== undefined ? { next: nextStop } : {})}
+              actions={actions}
+              onLeave={() => go("change")}
+              chooserOpen={chooserOpen || confirm !== null}
+              onToggleChooser={() => {
+                setChooserOpen((o) => !(o || confirm !== null));
+                setConfirm(null);
+              }}
+              chooser={
+                evenings.length > 1 ? (
+                  <>
+                    {replacePreview}
+                    <EveningChooser
+                      evenings={evenings}
+                      chosen={evening}
+                      isOwner={isOwner}
+                      busy={choosing}
+                      mode="change"
+                      timesOf={timesOf}
+                      onChoose={(e) => void choose(e)}
+                    />
+                  </>
+                ) : undefined
+              }
+            />
+          </section>
+        )}
+
+        {plan && (
+          <div className="mx-auto mt-8 max-w-2xl px-4 sm:px-6">{teaser}</div>
+        )}
+      </div>
+
+      {/* ---------------------------------------------- ROOM: CHANGE IT */}
+      <div
+        id="room-change"
+        role="tabpanel"
+        hidden={room !== "change"}
+        className="mx-auto mt-8 max-w-2xl space-y-8 px-4 sm:px-6"
+      >
+        {plan && day ? (
+          <>
+            <LeaveTime
+              stops={plan}
+              evening={evening}
+              day={day}
+              sunset={sunset}
+              forecast={forecast}
+              isOwner={isOwner}
+              busy={busy}
+              ownerName={ownerName}
+              onUse={useDeparture}
+              onSuggest={suggest}
+            />
+            <div id="ours">
+              <MakeItOurs
+                handle={ours}
+                stops={plan}
+                evening={evening}
+                day={day}
+                sunset={sunset}
+                isOwner={isOwner}
+                ownerName={ownerName}
+                busy={busy}
+                canUndo={isOwner && previous !== null}
+                onApply={(next) =>
+                  save(next, label, "Done. The plan's changed.")
+                }
+                onUndo={() => void undo()}
+                onSuggest={suggest}
+              />
+            </div>
+            {evenings.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setChooserOpen(true);
+                  go("adventure");
+                }}
+                className="inline-flex min-h-12 items-center gap-2 rounded-full px-5 font-bold text-[var(--n-forest)] ring-1 ring-[var(--n-forest)]/25"
+              >
+                A different adventure altogether
+              </button>
+            )}
+          </>
+        ) : (
+          <p className="rounded-[24px] bg-[var(--n-paper)] p-5 text-[15px] ring-1 ring-black/5">
+            Choose an adventure first; then you can change when you leave and
+            say what you&apos;d like different.
           </p>
-          <h2 className="ghad-display mt-1 mb-5 text-[30px] leading-[0.95] font-extrabold tracking-tight uppercase sm:text-5xl">
-            Choose our adventure
-          </h2>
-          <EveningChooser
-            evenings={evenings}
-            chosen={undefined}
-            isOwner={isOwner}
-            busy={choosing}
-            mode="choose"
-            timesOf={timesOf}
-            onChoose={(e) => void choose(e)}
-          />
-        </section>
-      )}
+        )}
+      </div>
 
-      {/* ------------------------------------------- C. OUR ADVENTURE */}
-      {plan && day && actions && (
-        <section
-          id="plan"
-          className="mx-auto mt-8 max-w-2xl scroll-mt-16 px-4 sm:px-6"
-        >
-          <EveningPlan
-            evening={evening}
-            stops={plan}
-            sunset={sunset}
-            warnings={warnings}
-            experiences={experiences}
-            isOwner={isOwner}
+      {/* ---------------------------------------------- ROOM: TOGETHER */}
+      <section
+        id="room-together"
+        role="tabpanel"
+        hidden={room !== "together"}
+        aria-label="Together"
+        className="mx-auto mt-8 max-w-2xl space-y-6 px-4 sm:px-6"
+      >
+        <div id="together" className="scroll-mt-16 space-y-3">
+          <Plays
+            key={start ?? "plays"}
+            plays={plays}
+            partner={textee}
+            themes={themes}
+            pairs={pairs}
+            opensAt={opensAt}
+            focus={focus}
             busy={busy}
-            day={day}
-            changed={changed}
-            {...(forecast ? { forecast } : {})}
-            {...(nextStop !== undefined ? { next: nextStop } : {})}
-            actions={actions}
-            chooserOpen={chooserOpen || confirm !== null}
-            onToggleChooser={() => {
-              setChooserOpen((o) => !(o || confirm !== null));
-              setConfirm(null);
-            }}
-            chooser={
-              evenings.length > 1 ? (
-                <>
-                  {replacePreview}
-                  <EveningChooser
-                    evenings={evenings}
-                    chosen={evening}
-                    isOwner={isOwner}
-                    busy={choosing}
-                    mode="change"
-                    timesOf={timesOf}
-                    onChoose={(e) => void choose(e)}
-                  />
-                </>
-              ) : undefined
-            }
-          />
-        </section>
-      )}
-
-      {/* ------------------------------------------------ D. JUST SAY IT */}
-      {plan && day && (
-        <div className="mx-auto mt-10 max-w-2xl px-4 sm:px-6">
-          <MakeItOurs
-            handle={ours}
-            stops={plan}
-            evening={evening}
-            day={day}
-            sunset={sunset}
             isOwner={isOwner}
-            ownerName={ownerName}
-            busy={busy}
-            canUndo={isOwner && previous !== null}
-            onApply={(next) => save(next, label, "Done. The plan's changed.")}
-            onUndo={() => void undo()}
-            onSuggest={suggest}
+            start={start}
+            create={createPlay}
+            answer={answerPlay}
+            remove={removePlay}
+            apply={applyChoice}
+            linkTo={linkTo}
           />
         </div>
-      )}
-
-      {/* ------------------------------------------------- E. TOGETHER */}
-      <section
-        id="together"
-        className="mx-auto mt-12 max-w-2xl scroll-mt-16 space-y-3 px-4 sm:px-6"
-      >
-        <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-ember)] uppercase">
-          {phase === "after"
-            ? "Remember"
-            : phase === "during"
-              ? "Out there"
-              : "Before we go"}
-        </p>
-        <h2 className="ghad-display text-[30px] leading-[0.95] font-extrabold tracking-tight uppercase">
-          Together
-        </h2>
-        {phase === "after" && memoriesPanel}
-        {inviteCard}
-        {togetherCard}
         {asks.length > 0 && (
           <ul className="space-y-2" data-testid="suggestions">
             {asks.map((item) => {
@@ -1186,7 +1515,8 @@ export function NightBoard({
                           onClick={() =>
                             picked
                               ? void choose(picked)
-                              : ours.current?.ask(item.label ?? "")
+                              : (go("change"),
+                                ours.current?.ask(item.label ?? ""))
                           }
                           className="min-h-11 rounded-full bg-[var(--n-forest)] px-5 text-sm font-bold text-white"
                         >
@@ -1210,15 +1540,46 @@ export function NightBoard({
             })}
           </ul>
         )}
-        {phase !== "after" && packingPanel}
-        {phase !== "after" && memoriesPanel}
-        {phase === "after" && packingPanel}
-        {peoplePanel}
+        {packingPanel}
+      </section>
+
+      {/* ---------------------------------------------- ROOM: MEMORIES */}
+      <section
+        id="room-memories"
+        role="tabpanel"
+        hidden={room !== "memories"}
+        aria-label="Memories"
+        className="mx-auto mt-8 max-w-2xl space-y-3 px-4 sm:px-6"
+      >
+        <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-ember)] uppercase">
+          {phase === "after"
+            ? "Remember"
+            : phase === "during"
+              ? "Out there"
+              : "For later"}
+        </p>
+        <h2 className="ghad-display text-[30px] leading-[0.95] font-extrabold tracking-tight uppercase">
+          Our memories
+        </h2>
+        {memoriesPanel}
         {phase === "after" && (
           <Panel icon={RotateCcw} title="Do it again">
             <NextDates townId={day?.townId ?? view.destinationTownId} />
           </Panel>
         )}
+      </section>
+
+      {/* ------------------------------------------------ ROOM: INVITE */}
+      <section
+        id="room-invite"
+        role="tabpanel"
+        hidden={room !== "invite"}
+        aria-label="Invite"
+        className="mx-auto mt-8 max-w-2xl space-y-3 px-4 sm:px-6"
+      >
+        {inviteCard}
+        {togetherCard}
+        {peoplePanel}
       </section>
     </main>
   );
@@ -1235,6 +1596,8 @@ function Panel({
   title,
   meta,
   off = false,
+  offSaid = "Not switched on yet",
+  offDetail,
   open = false,
   testId,
   id,
@@ -1244,6 +1607,10 @@ function Panel({
   title: string;
   meta?: string | undefined;
   off?: boolean;
+  /** What an off panel says, when it isn't simply "not switched on yet". */
+  offSaid?: string | undefined;
+  /** Why, exactly, for the owner (`readPacking`). */
+  offDetail?: string | undefined;
   open?: boolean;
   testId?: string;
   id?: string;
@@ -1267,15 +1634,25 @@ function Panel({
   if (off)
     return (
       <div
-        className="flex min-h-16 items-center justify-between gap-3 rounded-[24px] bg-white/40 px-4 text-[15px] font-bold text-[var(--n-ink)]/60 ring-1 ring-black/5"
+        className="rounded-[24px] bg-white/40 px-4 text-[15px] font-bold text-[var(--n-ink)]/60 ring-1 ring-black/5"
         data-testid={testId}
         data-off="true"
         id={id}
       >
-        {head}
-        <span className="shrink-0 rounded-full bg-black/5 px-3 py-1 text-[12px] font-semibold">
-          Not switched on yet
-        </span>
+        <div className="flex min-h-16 items-center justify-between gap-3">
+          {head}
+          <span className="shrink-0 rounded-full bg-black/5 px-3 py-1 text-[12px] font-semibold">
+            {offSaid}
+          </span>
+        </div>
+        {offDetail && (
+          <p
+            className="pb-4 text-[12.5px] leading-snug font-medium"
+            data-testid={testId ? `${testId}-why` : undefined}
+          >
+            {offDetail}
+          </p>
+        )}
       </div>
     );
   return (

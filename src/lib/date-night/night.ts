@@ -20,25 +20,82 @@ import {
 
 type Db = SupabaseClient;
 
-/** The packing table is not there yet (migration unapplied). */
+/**
+ * **Why the packing list can't be read**, said precisely. Mission 495 turned
+ * every failure into "Not switched on yet"; in production, with the table
+ * applied, that hid the real reason (SHARED-ADVENTURE.md). Each kind has its own
+ * remedy:
+ *
+ * - `missing` — Postgres has no such table: the migration hasn't run.
+ * - `unseen` — PostgREST can't see it (`PGRST205`): either the table is
+ *   missing or its schema cache predates the migration. If the table is
+ *   there, `NOTIFY pgrst, 'reload schema';` fixes it.
+ * - `refused` — permission denied (`42501`): the table is there without the
+ *   migration's grants to `authenticated`.
+ * - `mismatch` — a column or function the list needs isn't there: the table
+ *   was made from something other than this migration.
+ * - `unavailable` — anything else; the database couldn't be asked.
+ */
+export type PackingTrouble =
+  "missing" | "unseen" | "refused" | "mismatch" | "unavailable";
+
+const MISMATCH = new Set(["42703", "42883", "PGRST204", "PGRST200"]);
+
+export function packingTrouble(error: {
+  code?: string | null;
+  message?: string | null;
+}): PackingTrouble {
+  const code = error.code ?? "";
+  const message = error.message ?? "";
+  if (code === "42P01" || /relation "?[\w.]+"? does not exist/i.test(message))
+    return "missing";
+  if (code === "PGRST205" || /could not find the table/i.test(message))
+    return "unseen";
+  if (code === "42501" || /permission denied/i.test(message)) return "refused";
+  if (
+    MISMATCH.has(code) ||
+    /(column|function) .* does not exist/i.test(message)
+  )
+    return "mismatch";
+  return "unavailable";
+}
+
+/** The packing table can't be used: missing, or unseen by the API. */
 export class PackingOff extends Error {
-  constructor() {
+  constructor(
+    readonly trouble: PackingTrouble = "missing",
+    readonly code: string | null = null,
+  ) {
     super("The packing list isn't switched on yet.");
     this.name = "PackingOff";
   }
 }
 
-const MISSING = new Set(["PGRST205", "42P01"]);
 const REFUSAL = new Set(["42501", "PGRST116", "23503", "28000"]);
 
 function raise(error: { code?: string; message: string }): never {
-  if (
-    (error.code && MISSING.has(error.code)) ||
-    /does not exist|could not find the table/i.test(error.message)
-  )
-    throw new PackingOff();
+  const trouble = packingTrouble(error);
+  if (trouble === "missing" || trouble === "unseen")
+    throw new PackingOff(trouble, error.code ?? null);
   if (error.code && REFUSAL.has(error.code)) throw new Refused();
   throw new Unavailable(error.message);
+}
+
+/** Said in the server log, where an operator can read it; never a secret. */
+function logTrouble(
+  what: string,
+  error: {
+    code?: string | null;
+    message?: string | null;
+    hint?: string | null;
+  },
+) {
+  console.error(`[date-night] ${what}`, {
+    trouble: packingTrouble(error),
+    code: error.code ?? null,
+    message: error.message ?? null,
+    hint: error.hint ?? null,
+  });
 }
 
 /**
@@ -117,39 +174,80 @@ async function seedPacking(
   if (error) raise(error);
 }
 
+/** The list, or exactly why it couldn't be read. Never throws. */
+export interface PackingRead {
+  readonly items: PackingView[] | null;
+  readonly trouble: {
+    readonly kind: PackingTrouble;
+    readonly code: string | null;
+  } | null;
+}
+
+export async function readPacking(db: Db, id: string): Promise<PackingRead> {
+  try {
+    const [items, members] = await Promise.all([
+      db
+        .from("passport_adventure_packing")
+        .select("id, label, checked_by, checked_at")
+        .eq("adventure_id", id)
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true }),
+      db
+        .from("passport_adventure_members")
+        .select("user_id, display_name")
+        .eq("adventure_id", id),
+    ]);
+    if (items.error) {
+      logTrouble("packing list can't be read", items.error);
+      return {
+        items: null,
+        trouble: {
+          kind: packingTrouble(items.error),
+          code: items.error.code ?? null,
+        },
+      };
+    }
+    // Names are a nicety: the list still opens without them.
+    if (members.error) logTrouble("packing names can't be read", members.error);
+    const names = new Map(
+      (
+        (members.data as
+          { user_id: string; display_name: string | null }[] | null) ?? []
+      ).map((m) => [m.user_id, m.display_name?.trim() || "Guest"]),
+    );
+    return {
+      items: (
+        (items.data as {
+          id: string;
+          label: string;
+          checked_by: string | null;
+          checked_at: string | null;
+        }[]) ?? []
+      ).map((row) => ({
+        id: row.id,
+        label: row.label,
+        checked: row.checked_at !== null,
+        checkedBy: row.checked_by
+          ? (names.get(row.checked_by) ?? "One of you")
+          : null,
+      })),
+      trouble: null,
+    };
+  } catch (error) {
+    logTrouble("packing list can't be reached", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { items: null, trouble: { kind: "unavailable", code: null } };
+  }
+}
+
 export async function packingOf(db: Db, id: string): Promise<PackingView[]> {
-  const [items, members] = await Promise.all([
-    db
-      .from("passport_adventure_packing")
-      .select("id, label, checked_by, checked_at")
-      .eq("adventure_id", id)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true }),
-    db
-      .from("passport_adventure_members")
-      .select("user_id, display_name")
-      .eq("adventure_id", id),
-  ]);
-  if (items.error) raise(items.error);
-  if (members.error) raise(members.error);
-  const names = new Map(
-    (
-      (members.data as { user_id: string; display_name: string | null }[]) ?? []
-    ).map((m) => [m.user_id, m.display_name?.trim() || "Guest"]),
-  );
-  return (
-    (items.data as {
-      id: string;
-      label: string;
-      checked_by: string | null;
-      checked_at: string | null;
-    }[]) ?? []
-  ).map((row) => ({
-    id: row.id,
-    label: row.label,
-    checked: row.checked_at !== null,
-    checkedBy: row.checked_by ? (names.get(row.checked_by) ?? "Someone") : null,
-  }));
+  const read = await readPacking(db, id);
+  if (read.items) return read.items;
+  const { kind, code } = read.trouble!;
+  if (kind === "missing" || kind === "unseen") throw new PackingOff(kind, code);
+  if (kind === "refused") throw new Refused();
+  throw new Unavailable(`packing: ${kind}${code ? ` (${code})` : ""}`);
 }
 
 export async function addPacking(
