@@ -54,9 +54,25 @@ const OCTOBER_FROM_LABS = [
   ["sketchbook", "sketchbook"],
 ] as const;
 
+/** Date Night short paths → slugs. Mirrors each night's `vanityPath`. */
+export const DATE_NIGHT_PATHS = [
+  ["/lorne-and-jess", "lorne-and-jess"],
+] as const;
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(import.meta.dirname),
+  },
+  /**
+   * A Date Night's own short path is a rewrite onto the one engine route, not
+   * a copy (src/domain/date-night/nights/; `vanity.test.ts` keeps the two in
+   * step).
+   */
+  async rewrites() {
+    return DATE_NIGHT_PATHS.flatMap(([from, slug]) => [
+      { source: from, destination: `/date-night/${slug}` },
+      { source: `${from}/answers`, destination: `/date-night/${slug}/answers` },
+    ]);
   },
   async redirects() {
     return [

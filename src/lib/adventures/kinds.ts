@@ -37,6 +37,11 @@ export interface AdventureKind {
    * Membership, invitations and the plan are still the core's.
    */
   readonly home?: string;
+  /**
+   * False for a kind something else creates (Date Night's operator setup),
+   * so Passport's own "start an adventure" menu does not offer it.
+   */
+  readonly startable?: false;
 }
 
 export const ADVENTURE_KINDS: readonly AdventureKind[] = [
@@ -84,6 +89,15 @@ export const ADVENTURE_KINDS: readonly AdventureKind[] = [
     joinVisibility: "members",
     home: "/christmas/adventure",
   },
+  {
+    // Made by `passport_date_night_setup`, not from Passport's start menu:
+    // its invitation is answered without signing in (src/domain/date-night).
+    id: "date-night",
+    label: "Date Night",
+    blurb: "An invitation, their ideas and yours, and one great day.",
+    joinVisibility: "members",
+    startable: false,
+  },
 ];
 
 /**
@@ -93,6 +107,11 @@ export const ADVENTURE_KINDS: readonly AdventureKind[] = [
 export const PLANNING_KINDS: readonly string[] = ["day", "weekend", "trip"];
 
 /** Same rule as the database's CHECK, so a bad kind fails before Postgres. */
+/** The kinds a person may start from Passport's own menu. */
+export const STARTABLE_KINDS: readonly AdventureKind[] = ADVENTURE_KINDS.filter(
+  (kind) => kind.startable !== false,
+);
+
 export const KIND_PATTERN = /^[a-z][a-z0-9-]{1,39}$/;
 
 export function adventureKind(id: string): AdventureKind | undefined {

@@ -979,6 +979,13 @@ certainty. Do not invent an answer here to make the document feel finished.
     person's own schedule is a convenience on their device, never a gate to
     knowing where to be; a programme is the organiser's data, imported,
     never code. Still one composition.
+    _Informed 2026-11-01 by Date Night_ (`docs/product/date-night/README.md`):
+    a personal invitation that one person answers **without signing in**
+    (picks, their own ideas, places, a message), readable only by the
+    person who planned it. It is built on the adventure core (kind
+    `date-night`), with the no-sign-in answers as its own extension. This is
+    one composition. Whether invitations in general may be answered without
+    an account is still open.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

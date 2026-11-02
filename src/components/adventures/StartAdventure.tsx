@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ADVENTURE_KINDS } from "@/lib/adventures/kinds";
+import { STARTABLE_KINDS } from "@/lib/adventures/kinds";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  */
 export function StartAdventure() {
   const router = useRouter();
-  const [kind, setKind] = useState(ADVENTURE_KINDS[0].id);
+  const [kind, setKind] = useState(STARTABLE_KINDS[0].id);
   const [title, setTitle] = useState("");
   const [startsOn, setStartsOn] = useState("");
   const [destination, setDestination] = useState("");
@@ -77,7 +77,7 @@ export function StartAdventure() {
       <fieldset>
         <legend className="mb-2 text-sm font-medium">What is it?</legend>
         <div className="flex flex-wrap gap-2">
-          {ADVENTURE_KINDS.map((k) => (
+          {STARTABLE_KINDS.map((k) => (
             <button
               key={k.id}
               type="button"
@@ -95,7 +95,7 @@ export function StartAdventure() {
           ))}
         </div>
         <p className="text-muted-foreground mt-2 text-sm">
-          {ADVENTURE_KINDS.find((k) => k.id === kind)?.blurb}
+          {STARTABLE_KINDS.find((k) => k.id === kind)?.blurb}
         </p>
       </fieldset>
 
