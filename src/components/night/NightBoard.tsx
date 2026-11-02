@@ -410,7 +410,7 @@ export function NightBoard({
         adventureId={view.id}
         isOwner={isOwner}
         day={day}
-        evenings={config.evenings}
+        evenings={config.evenings.flatMap((id) => eveningOf(id) ?? [])}
         chosen={evening}
         hasDay={onDay.length > 0}
         ownerName={

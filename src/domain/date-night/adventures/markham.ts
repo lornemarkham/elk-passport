@@ -1,4 +1,3 @@
-import { EVENINGS } from "./evenings";
 import { TOMORROW } from "./tomorrow";
 import type { NightConfig } from "./types";
 
@@ -80,7 +79,7 @@ export const MARKHAM: NightConfig = {
     "Good attitude",
   ],
   day: TOMORROW,
-  evenings: EVENINGS,
+  evenings: ["into-the-wild", "crazy-creek", "cold-water", "surprise"],
   partnerName: "Jess",
   mysteryAtlasIds: [
     "d3c70f99-3412-46d2-87f8-45e4854b7d48", // Kalamalka Lake Park

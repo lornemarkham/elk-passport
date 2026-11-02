@@ -27,6 +27,7 @@ import {
 } from "@/domain/date-night/conditions";
 import { daylightAt } from "@/domain/environment/daylight";
 import { sunsetOf } from "@/domain/date-night/adventures/compose";
+import { eveningOf } from "@/domain/date-night/adventures/evenings";
 
 export const metadata: Metadata = {
   title: "The Markham Adventure ❤️",
@@ -103,7 +104,7 @@ export default async function NightPage({
       ...view.items.flatMap((i) => (i.atlasRef ? [i.atlasRef] : [])),
       // The night opens on its own landscape until the day has pictures.
       ...(day ? day.options.map((o) => o.atlasRef) : []),
-      ...(config?.evenings ?? []).flatMap((e) => e.stops),
+      ...(config?.evenings ?? []).flatMap((id) => eveningOf(id)?.stops ?? []),
     ]),
   ];
   const sharing = await sharingOn(db, id).catch(() => false);
