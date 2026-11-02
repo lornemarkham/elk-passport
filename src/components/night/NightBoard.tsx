@@ -3,9 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Camera, Check, Plus, Share2, Sparkles, Trash2 } from "lucide-react";
+import {
+  Camera,
+  Check,
+  CloudSun,
+  Heart,
+  Plus,
+  Share2,
+  Sparkles,
+  Sunset,
+  Trash2,
+} from "lucide-react";
 import { AdventurePeople } from "@/components/adventures/AdventurePeople";
 import { Picture } from "@/components/adventures/Picture";
+import { AdventureJourney } from "@/components/adventures/journey/AdventureJourney";
+import { DayStory } from "./DayStory";
+import { NextDates } from "./NextDates";
+import styles from "./night.module.css";
 import { shrinkPhoto } from "@/components/christmas/photo";
 import type { Experience } from "@/domain/experience/types";
 import type {
@@ -20,7 +34,8 @@ import type {
 } from "@/lib/adventures/store";
 import type { ResponseValue } from "@/lib/adventures/rules";
 import type { PackingView } from "@/lib/date-night/night";
-import { planOf, type Vote } from "@/domain/date-night/adventures/plan";
+import type { DayDetail } from "@/lib/adventures/propose";
+import type { DayForecast } from "@/domain/date-night/conditions";
 
 const POLL_MS = 15_000;
 
@@ -42,22 +57,59 @@ async function call(url: string, method: string, body?: unknown) {
 
 function Section({
   id,
+  kicker,
   title,
   note,
+  wide,
   children,
 }: {
   id: string;
+  kicker?: string;
   title: string;
   note?: string;
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="mx-auto mt-10 max-w-2xl px-4">
-      <h2 className="text-2xl font-extrabold tracking-tight">{title}</h2>
-      {note && <p className="text-muted-foreground mt-1 text-sm">{note}</p>}
-      <div className="mt-4">{children}</div>
+    <section
+      id={id}
+      className={`mx-auto mt-14 scroll-mt-16 px-4 sm:px-6 ${wide ? "max-w-5xl" : "max-w-2xl"}`}
+    >
+      {kicker && (
+        <p className="text-xs font-bold tracking-[0.2em] text-[#9f3a4f] uppercase">
+          {kicker}
+        </p>
+      )}
+      <h2 className="ghad-display mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">
+        {title}
+      </h2>
+      {note && (
+        <p className="mt-2 max-w-xl text-[15px] text-[var(--gh-ink-soft)]">
+          {note}
+        </p>
+      )}
+      <div className="mt-5">{children}</div>
     </section>
   );
+}
+
+const fullDate = (on: string) =>
+  new Date(`${on}T12:00:00Z`).toLocaleDateString("en-CA", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+function countdown(on: string, today: string): string {
+  const days = Math.round(
+    (Date.parse(`${on}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) /
+      86_400_000,
+  );
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days > 1) return `In ${days} days`;
+  return "Relive it";
 }
 
 /**
@@ -75,6 +127,13 @@ export function NightBoard({
   atlasNames,
   experiences,
   config,
+  details,
+  saved,
+  today,
+  atlasDown,
+  forecast,
+  sunset,
+  hero,
 }: {
   view: AdventureView;
   invites: readonly InviteView[];
@@ -84,6 +143,14 @@ export function NightBoard({
   atlasNames: Record<string, string>;
   experiences: Record<string, Experience>;
   config: NightConfig | null;
+  details: Record<string, DayDetail>;
+  saved: readonly Experience[];
+  today: string;
+  atlasDown: boolean;
+  forecast?: DayForecast;
+  sunset?: string;
+  /** The picture the night opens on: a real photo of where it goes. */
+  hero?: Experience;
 }) {
   const router = useRouter();
   const [mine, setMine] = useState<Record<string, ResponseValue | null>>({});
@@ -123,14 +190,16 @@ export function NightBoard({
           : null;
   };
 
-  const votes: Vote[] = view.items.map((item) => ({
-    id: item.id,
-    confirmed: item.status === "confirmed",
-    yours: yours(item),
-    theirs: theirs(item),
-  }));
-  const plan = planOf(votes);
-  const byId = new Map(view.items.map((i) => [i.id, i]));
+  const day = config?.day ?? null;
+  const onDay = day
+    ? view.items
+        .filter((i) => i.onDay === day.on)
+        .sort((a, b) => a.position - b.position)
+    : [];
+  const ideas = view.items.filter((i) => !i.onDay);
+  const dayAsk = day
+    ? (view.days.find((d) => d.onDay === day.on)?.ask ?? null)
+    : null;
 
   async function vote(item: ItemView, value: ResponseValue) {
     const next = yours(item) === value ? null : value;
@@ -180,17 +249,6 @@ export function NightBoard({
       toast.error("Passport is out of surprises for now.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function lock(item: ItemView, confirmed: boolean) {
-    try {
-      await call(`/api/adventures/${view.id}/items/${item.id}`, "PATCH", {
-        status: confirmed ? "confirmed" : "proposed",
-      });
-      router.refresh();
-    } catch {
-      toast.error("Only the person who started it can lock the plan.");
     }
   }
 
@@ -266,52 +324,134 @@ export function NightBoard({
   ).length;
 
   return (
-    <main className="pb-24">
-      <header className="bg-gradient-to-b from-[#3b0f1f] via-[#7a2a2a] to-[#e9a15b] px-5 pt-10 pb-12 text-center text-white">
-        <p className="text-4xl" aria-hidden>
-          🧭❤️
-        </p>
-        <h1 className="mx-auto mt-3 max-w-md text-4xl leading-tight font-extrabold text-balance">
-          {view.title}
-        </h1>
-        <p className="mt-2 text-white/85">
-          {config?.tagline ?? "A questionable adventure."}
-        </p>
-        <p className="mt-4 text-sm text-white/80">
-          {view.members
-            .map((m) => (m.isYou ? "You" : m.displayName))
-            .join(" ❤️ ")}
-        </p>
-        <nav className="mt-5 flex flex-wrap justify-center gap-2 text-sm font-semibold">
+    <main className={`pb-24 ${styles.night}`}>
+      <header className="relative isolate overflow-hidden bg-[#12060b] text-white">
+        <div className="absolute inset-0 -z-10" aria-hidden>
+          <Picture
+            experience={hero}
+            fallbackTitle=""
+            tone="#3b0f1f"
+            priority
+            showLabel={false}
+            className={`h-full w-full ${styles.drift}`}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(18,6,11,0.45)_0%,rgba(18,6,11,0.1)_38%,rgba(18,6,11,0.82)_78%,#12060b_100%)]" />
+        </div>
+        <div className="mx-auto flex min-h-[82svh] max-w-5xl flex-col justify-end px-5 pt-24 pb-10 sm:px-8">
+          <p
+            className={`text-xs font-bold tracking-[0.24em] text-white/80 uppercase ${styles.rise}`}
+          >
+            {day ? `${fullDate(day.on)} · ${day.area}` : "Date night"}
+          </p>
+          <h1
+            className={`ghad-display mt-3 max-w-3xl text-5xl leading-[0.95] font-extrabold tracking-tight text-balance sm:text-7xl ${styles.rise}`}
+          >
+            {view.title}
+          </h1>
+          <p
+            className={`mt-4 max-w-xl text-lg text-white/90 sm:text-xl ${styles.rise}`}
+          >
+            {config?.tagline ?? "An adventure for two."}
+          </p>
+          <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-white/85">
+            {view.members.map((m, i) => (
+              <span key={m.memberId} className="inline-flex items-center gap-2">
+                {i > 0 && (
+                  <Heart
+                    className="h-3.5 w-3.5 fill-rose-400 text-rose-400"
+                    aria-label="and"
+                  />
+                )}
+                {m.isYou ? "You" : m.displayName}
+              </span>
+            ))}
+            {others.length === 0 && (
+              <span className="inline-flex items-center gap-2 text-white/60">
+                <Heart className="h-3.5 w-3.5" aria-hidden /> your favourite
+                person
+              </span>
+            )}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2 text-sm font-semibold">
+            {day && (
+              <span
+                className="rounded-full bg-rose-500/90 px-3.5 py-1.5"
+                data-testid="countdown"
+              >
+                {countdown(day.on, today)}
+              </span>
+            )}
+            {forecast && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 backdrop-blur"
+                title={`${forecast.source}, ${forecast.covers}`}
+              >
+                <CloudSun className="h-4 w-4" aria-hidden />
+                {[
+                  forecast.highC !== undefined
+                    ? `High ${Math.round(forecast.highC)}°`
+                    : null,
+                  forecast.words[0] ?? null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            )}
+            {sunset && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 backdrop-blur">
+                <Sunset className="h-4 w-4" aria-hidden /> Sunset {sunset}
+              </span>
+            )}
+          </div>
+          {hero && (
+            <p className="mt-6 text-[11px] text-white/55">
+              Photo: {hero.title}
+            </p>
+          )}
+        </div>
+      </header>
+
+      <nav
+        aria-label="This date"
+        className="sticky top-0 z-20 border-b border-black/5 bg-[#fbf4ef]/95 backdrop-blur"
+      >
+        <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 sm:px-5">
           {[
-            ["#ideas", "Ideas"],
-            ["#plan", "Our plan"],
+            ["#day", "The day"],
+            ...(onDay.length > 0 ? [["#details", "Details"]] : []),
+            ["#ideas", "Wild ideas"],
             ["#packing", "Packing"],
             ["#memories", "Memories"],
+            ["#next", "Next time"],
           ].map(([href, label]) => (
             <a
               key={href}
               href={href}
-              className="rounded-full bg-black/25 px-4 py-2"
+              className="inline-flex min-h-12 shrink-0 items-center rounded-full px-4 text-sm font-bold hover:bg-black/5"
             >
               {label}
             </a>
           ))}
-        </nav>
-      </header>
+        </div>
+      </nav>
 
       {isOwner && others.length === 0 && (
-        <div className="mx-auto mt-6 max-w-2xl px-4">
-          <div className="rounded-3xl border border-[#7a2a2a]/20 bg-[#fff6ee] p-5 text-center">
-            <p className="font-bold">Waiting on your favourite person</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              This makes a private link that works once, with the invitation
-              attached.
-            </p>
+        <div className="mx-auto mt-8 max-w-5xl px-4 sm:px-6">
+          <div className="flex flex-col items-start gap-4 rounded-[28px] bg-[#3b0f1f] p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="ghad-display text-2xl font-extrabold">
+                Somebody&apos;s missing.
+              </p>
+              <p className="mt-1 max-w-md text-sm text-white/75">
+                One private link, good for one person, with the invitation
+                attached. Only the two of you will ever see this page.
+              </p>
+            </div>
             <button
               onClick={invite}
               disabled={busy}
-              className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#7a2a2a] px-6 font-bold text-white disabled:opacity-60"
+              data-testid="send-invitation"
+              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white px-6 font-bold text-[#3b0f1f] disabled:opacity-60"
             >
               <Share2 className="h-4 w-4" aria-hidden /> Send the invitation
             </button>
@@ -319,17 +459,77 @@ export function NightBoard({
         </div>
       )}
 
+      {day && (
+        <Section
+          id="day"
+          wide
+          kicker="Start · Explore · Experience · Unwind · Remember"
+          title={onDay.length > 0 ? "The day" : "Let's make a day of it"}
+          note={
+            onDay.length > 0
+              ? "Swipe through it. Every stop is a real place. Swap anything, change the mood, or say what you want in the details below."
+              : undefined
+          }
+        >
+          <DayStory
+            adventureId={view.id}
+            isOwner={isOwner}
+            day={day}
+            dayItems={onDay}
+            ask={dayAsk}
+            detail={details[day.on]}
+            experiences={experiences}
+            planned={view.startsOn === day.on}
+            otherName={otherName}
+          />
+        </Section>
+      )}
+
+      {day && onDay.length > 0 && (
+        <Section
+          id="details"
+          wide
+          kicker="The fine print"
+          title="Details, travel & changes"
+          note="Drive times, hours and directions for each stop. Say I'm in, Maybe or Out, keep what you love, or ask for a change in your own words."
+        >
+          <AdventureJourney
+            adventureId={view.id}
+            isOwner={isOwner}
+            items={onDay}
+            atlasNames={atlasNames}
+            experiences={experiences}
+            startsOn={view.startsOn}
+            endsOn={view.endsOn}
+            days={view.days}
+            details={details}
+            townId={view.destinationTownId}
+            today={today}
+            saved={saved}
+            atlasDown={atlasDown}
+            examples={[
+              "One more stop",
+              "Find somewhere cozy for a drink",
+              "Make it more adventurous",
+              "Keep everything within 20 minutes",
+              "Home by 9",
+            ]}
+          />
+        </Section>
+      )}
+
       <Section
         id="ideas"
-        title="Ideas"
+        kicker="For this one, or the next"
+        title="Wild ideas"
         note={
           otherName
-            ? `Vote on each. You'll see what ${otherName} thinks, too.`
-            : "Vote on each. Your favourite person votes when they join."
+            ? `The things that might not fit Monday. Vote, and you'll see what ${otherName} thinks.`
+            : "The things that might not fit Monday. Vote now; your favourite person votes when they join."
         }
       >
-        <ul className="grid gap-4">
-          {view.items.map((item) => {
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {ideas.map((item) => {
             const activity = item.label
               ? activities.get(item.label)
               : undefined;
@@ -354,7 +554,7 @@ export function NightBoard({
                   <Picture
                     experience={experience}
                     fallbackTitle={title}
-                    tone="#7a2a2a"
+                    tone="#5b1a2b"
                     className="h-40 w-full"
                   />
                 ) : (
@@ -393,7 +593,7 @@ export function NightBoard({
                         className={`min-h-12 rounded-2xl border text-sm font-bold transition ${
                           mineNow === v.value
                             ? v.value === "in"
-                              ? "border-[#7a2a2a] bg-[#7a2a2a] text-white"
+                              ? "border-[#5b1a2b] bg-[#5b1a2b] text-white"
                               : v.value === "maybe"
                                 ? "border-amber-500 bg-amber-100"
                                 : "border-slate-500 bg-slate-200"
@@ -432,7 +632,7 @@ export function NightBoard({
           />
           <button
             disabled={busy || !idea.trim()}
-            className="inline-flex min-h-12 items-center gap-1 rounded-2xl bg-[#7a2a2a] px-4 font-bold text-white disabled:opacity-50"
+            className="inline-flex min-h-12 items-center gap-1 rounded-2xl bg-[#5b1a2b] px-4 font-bold text-white disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden /> Add
           </button>
@@ -441,7 +641,7 @@ export function NightBoard({
           <button
             onClick={mystery}
             disabled={busy}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#7a2a2a] font-bold text-[#7a2a2a] disabled:opacity-50"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#5b1a2b] font-bold text-[#5b1a2b] disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" aria-hidden /> Let Passport pick a
             mystery
@@ -450,66 +650,8 @@ export function NightBoard({
       </Section>
 
       <Section
-        id="plan"
-        title="Our plan"
-        note="Built from your votes: what you both love first. The host can lock things in."
-      >
-        {plan.locked.length + plan.bothIn.length + plan.leaning.length === 0 ? (
-          <p className="text-muted-foreground rounded-2xl bg-black/5 p-4 text-sm">
-            Nothing yet. Vote on the ideas and the plan builds itself.
-          </p>
-        ) : (
-          <div className="grid gap-4" data-testid="plan">
-            {(
-              [
-                ["Locked in ✅", plan.locked],
-                ["You both love these ❤️", plan.bothIn],
-                ["Leaning that way", plan.leaning],
-              ] as const
-            ).map(([heading, ids]) =>
-              ids.length === 0 ? null : (
-                <div key={heading}>
-                  <h3 className="text-sm font-bold tracking-wide text-[#7a2a2a] uppercase">
-                    {heading}
-                  </h3>
-                  <ul className="mt-2 grid gap-2">
-                    {ids.map((id) => {
-                      const item = byId.get(id)!;
-                      const name =
-                        item.label ??
-                        atlasNames[item.atlasRef ?? ""] ??
-                        "A place";
-                      return (
-                        <li
-                          key={id}
-                          className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 ring-1 ring-black/10"
-                        >
-                          <span className="font-semibold">{name}</span>
-                          {isOwner && (
-                            <button
-                              onClick={() =>
-                                lock(item, item.status !== "confirmed")
-                              }
-                              className="min-h-10 rounded-full border px-3 text-xs font-bold"
-                            >
-                              {item.status === "confirmed"
-                                ? "Unlock"
-                                : "Lock it in"}
-                            </button>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ),
-            )}
-          </div>
-        )}
-      </Section>
-
-      <Section
         id="packing"
+        kicker="Don't forget"
         title="Packing list"
         note={
           packing
@@ -540,7 +682,7 @@ export function NightBoard({
                       <span
                         className={`flex h-6 w-6 items-center justify-center rounded-full border ${
                           checked
-                            ? "border-[#7a2a2a] bg-[#7a2a2a] text-white"
+                            ? "border-[#5b1a2b] bg-[#5b1a2b] text-white"
                             : ""
                         }`}
                       >
@@ -579,7 +721,7 @@ export function NightBoard({
               />
               <button
                 disabled={!bring.trim()}
-                className="min-h-12 rounded-2xl bg-[#7a2a2a] px-4 font-bold text-white disabled:opacity-50"
+                className="min-h-12 rounded-2xl bg-[#5b1a2b] px-4 font-bold text-white disabled:opacity-50"
               >
                 Add
               </button>
@@ -590,7 +732,9 @@ export function NightBoard({
 
       <Memories adventureId={view.id} moments={moments} sharing={sharing} />
 
-      <div id="people" className="mx-auto mt-10 max-w-2xl px-4">
+      <NextDates townId={day?.townId ?? view.destinationTownId} />
+
+      <div id="people" className="mx-auto mt-14 max-w-2xl px-4 sm:px-6">
         <AdventurePeople
           adventureId={view.id}
           isOwner={isOwner}
@@ -652,8 +796,9 @@ function Memories({
   return (
     <Section
       id="memories"
+      kicker="Remember"
       title="Memories"
-      note="Photos and words, afterwards. Only the two of you can see them."
+      note="The photo from the lake. The best line of the day. Only the two of you can see these."
     >
       {!sharing ? (
         <p className="text-muted-foreground rounded-2xl bg-black/5 p-4 text-sm">
@@ -708,7 +853,7 @@ function Memories({
               </label>
               <button
                 disabled={busy || (!words.trim() && !photo)}
-                className="min-h-12 rounded-2xl bg-[#7a2a2a] px-5 font-bold text-white disabled:opacity-50"
+                className="min-h-12 rounded-2xl bg-[#5b1a2b] px-5 font-bold text-white disabled:opacity-50"
               >
                 Share
               </button>

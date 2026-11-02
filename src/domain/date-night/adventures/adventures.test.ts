@@ -7,7 +7,7 @@ describe("night configs", () => {
   it("holds the brief's six activities and seven packing items", () => {
     expect(markham.activities.map((a) => a.id)).toHaveLength(6);
     expect(markham.packing).toHaveLength(7);
-    expect(markham.invitation[0]).toContain("questionable adventure");
+    expect(markham.invitation[0]).toContain("Monday");
   });
 
   it("claims no Atlas place it has not verified", () => {

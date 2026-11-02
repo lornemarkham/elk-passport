@@ -1,3 +1,4 @@
+import { TOMORROW } from "./tomorrow";
 import type { NightConfig } from "./types";
 
 /**
@@ -16,11 +17,11 @@ export const MARKHAM: NightConfig = {
   slug: "datenight",
   title: "The Markham Adventure ❤️",
   adventureTitle: "The Markham Adventure ❤️",
-  tagline: "A questionable adventure, for two.",
+  tagline: "Monday. Cold water, a warm fire, and you.",
   invitation: [
-    "You've been invited on a questionable adventure. ❤️",
-    "Possible activities include mountain roads, freezing water, excellent snacks, and spending time with your favourite person.",
-    "Help me plan our adventure.",
+    "Monday's taken. You're coming with me. ❤️",
+    "Honey, a very cold lake, something strong, dinner with a view and a fire after. The details are negotiable. Your company isn't.",
+    "Come and make it ours.",
   ],
   activities: [
     {
@@ -77,6 +78,7 @@ export const MARKHAM: NightConfig = {
     "Good tunes",
     "Good attitude",
   ],
+  day: TOMORROW,
   mysteryAtlasIds: [
     "d3c70f99-3412-46d2-87f8-45e4854b7d48", // Kalamalka Lake Park
     "2479e5c4-0493-4217-af06-9293d75419c5", // Rattlesnake Point
