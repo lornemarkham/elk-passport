@@ -303,26 +303,34 @@ export function CrewTab(p: TabProps) {
 
       <Card className="space-y-3">
         <h2 className="text-xl font-extrabold">Announcements</h2>
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (act({ type: "announce", id: newId(), by: me.id, text: update }))
-              setUpdate("");
-          }}
-        >
-          <input
-            className={`${field} flex-1`}
-            value={update}
-            onChange={(e) => setUpdate(e.target.value)}
-            placeholder="Lifts open at 9. Meet at the deck at 8:40."
-            aria-label="Post an update"
-            maxLength={200}
-          />
-          <button className={btn} type="submit">
-            Post
-          </button>
-        </form>
+        {!shared || shared.isOwner ? (
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (
+                act({ type: "announce", id: newId(), by: me.id, text: update })
+              )
+                setUpdate("");
+            }}
+          >
+            <input
+              className={`${field} flex-1`}
+              value={update}
+              onChange={(e) => setUpdate(e.target.value)}
+              placeholder="Lifts open at 9. Meet at the deck at 8:40."
+              aria-label="Post an update"
+              maxLength={200}
+            />
+            <button className={btn} type="submit">
+              Post
+            </button>
+          </form>
+        ) : (
+          <p className="text-sm text-[var(--sn-frost)]">
+            The host posts announcements. Say anything else in the chat.
+          </p>
+        )}
         <ul className="space-y-2" data-testid="announcements">
           {day.announcements.length === 0 && (
             <li className="text-sm text-[var(--sn-frost)]">

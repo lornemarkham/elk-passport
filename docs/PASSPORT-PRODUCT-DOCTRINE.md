@@ -966,6 +966,12 @@ certainty. Do not invent an answer here to make the document feel finished.
     [ADR 011](architecture/decisions/011-find-my-people.md) — share where
     they are, opt-in and for a limited time. That is one composition for one
     kind of group; the general question stays open.
+    _Informed 2026-11-02 by Powder Day_ (`docs/product/snow/SHARING.md`): a
+    snow day is a group that plans a day on separate phones — options and
+    one vote each, the host locking the choice, chat, predictions and
+    challenges whose points everyone sees alike — and whose announcements
+    and shared photos are the adventure core's (ADR 014), not its own. One
+    composition; the general question stays open.
     _Informed again 2026-10-23 by the executive overhaul_
     (`docs/products/go-have-a-conference/EXECUTIVE.md`): a conference's
     overview leads with what matters at this point of the trip — before,

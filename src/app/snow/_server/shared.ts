@@ -27,12 +27,21 @@ import {
  * role here and no AI call: a change is `plan()` (pure) and some inserts.
  *
  * The kind is `snow-day`. Membership, invitations, title and date are the
- * adventure core's; everything else is `passport_snow_*`
+ * adventure core's, and so (ADR 014) are the host's announcements
+ * (`passport_adventure_notices`) and the crew's shared photos and moments
+ * (`passport_adventure_moments`). Everything else is `passport_snow_*`
  * (supabase/migrations/20261103000000_passport_snow.sql).
  */
 type Db = SupabaseClient;
 
 export const SNOW_KIND = "snow-day";
+
+/** The core's notice kinds Snow writes (open vocabulary, ADR 014). */
+const NOTICE_UPDATE = "snow-update";
+const NOTICE_CHANGE = "snow-change";
+/** How much of the core's tables one poll reads. */
+const NOTICES = 60;
+const MOMENTS = 300;
 
 /** Why a change was not made, in words a person can read. */
 export type Outcome =
@@ -182,11 +191,9 @@ const TABLES = {
   proposals: "id, user_id, topic, label, detail, source, created_at",
   votes: "user_id, proposal_id",
   decisions: "topic, proposal_id",
-  posts: "id, user_id, kind, body, created_at",
+  posts: "id, user_id, body, created_at",
   challenges: "id, user_id, title, created_at",
   completions: "user_id, challenge_id, completed_at",
-  // Not `photo`: a poll must not carry every picture. Photos have a route.
-  moments: "id, user_id, kind, body, created_at",
   predictions: "id, user_id, body, outcome, created_at",
   guesses: "prediction_id, user_id, says",
   checkins: "user_id, spot, checked_in_at",
@@ -224,6 +231,20 @@ export async function loadDay(
     ...Object.entries(TABLES).map(([table, columns]) =>
       db.from(`passport_snow_${table}`).select(columns).eq("adventure_id", id),
     ),
+    db
+      .from("passport_adventure_notices")
+      .select("id, user_id, kind, headline, created_at, ended_at")
+      .eq("adventure_id", id)
+      .order("created_at", { ascending: false })
+      .limit(NOTICES),
+    // Not `photo`: a poll must not carry every picture. Photos have a route.
+    db
+      .from("passport_adventure_moments")
+      .select("id, user_id, kind, body, created_at")
+      .eq("adventure_id", id)
+      .in("kind", ["photo", "moment"])
+      .order("created_at", { ascending: true })
+      .limit(MOMENTS),
   ]);
   for (const r of [adventure, members, day, people, ...rest]) check(r.error);
 
@@ -235,12 +256,15 @@ export async function loadDay(
   if (!mine) throw new Refused();
 
   const names = Object.keys(TABLES);
+  const [notices, moments] = rest.splice(names.length);
   const rows = {
     adventure: adventure.data,
     members: memberRows,
     day: day.data,
     people: people.data ?? [],
     ...Object.fromEntries(names.map((n, i) => [n, rest[i].data ?? []])),
+    notices: notices.data ?? [],
+    moments: moments.data ?? [],
   } as unknown as SharedRows;
 
   return {
@@ -250,6 +274,8 @@ export async function loadDay(
   };
 }
 
+const RASTER = /^data:image\/(?:jpeg|png|webp);base64,/;
+
 /** One picture, as a data URL — members only, because Postgres asks as them. */
 export async function photoOf(
   db: Db,
@@ -257,7 +283,7 @@ export async function photoOf(
   photoId: string,
 ): Promise<string> {
   const { data, error } = await db
-    .from("passport_snow_moments")
+    .from("passport_adventure_moments")
     .select("photo")
     .eq("adventure_id", id)
     .eq("id", photoId)
@@ -265,7 +291,10 @@ export async function photoOf(
     .maybeSingle();
   check(error);
   const photo = (data as { photo: string | null } | null)?.photo;
-  if (!photo) throw new Refused();
+  // The core's table takes any text; Snow serves rasters only. Postgres's
+  // snow guard enforces this on insert, and this is the second wall for a
+  // row written another way.
+  if (!photo || !RASTER.test(photo)) throw new Refused();
   return photo;
 }
 
@@ -336,7 +365,7 @@ async function settle(db: Db, id: string, ops: readonly Op[]) {
       setWhen = true;
       startsOn = op.date;
       meetTime = op.meetTime;
-    } else if (op.k === "post") notice = op.text;
+    } else if (op.k === "post") notice = op.text.slice(0, 120);
   }
   check(
     (
@@ -431,12 +460,36 @@ async function write(
     case "decide":
       return settle(db, id, [op]);
     case "post":
+      if (op.kind !== "chat") {
+        // The host's announcement: the core's notice. Owner only, by the
+        // core's policy; "Got it" is not asked, because Snow's screens
+        // have nowhere to say it.
+        return check(
+          (
+            await db.from("passport_adventure_notices").insert({
+              adventure_id: id,
+              kind: op.kind === "change" ? NOTICE_CHANGE : NOTICE_UPDATE,
+              headline: op.text.slice(0, 120),
+              ask_ack: false,
+            })
+          ).error,
+        );
+      }
       return check(
         (
           await db
             .from("passport_snow_posts")
-            .insert({ adventure_id: id, kind: op.kind, body: op.text })
+            .insert({ adventure_id: id, kind: "chat", body: op.text })
         ).error,
+      );
+    case "unnotice":
+      return changed(
+        await db
+          .from("passport_adventure_notices")
+          .delete()
+          .eq("adventure_id", id)
+          .eq("id", op.id)
+          .select("id"),
       );
     case "unpost":
       return check(
@@ -477,7 +530,7 @@ async function write(
     case "photo":
       return check(
         (
-          await db.from("passport_snow_moments").insert({
+          await db.from("passport_adventure_moments").insert({
             adventure_id: id,
             kind: "photo",
             body: op.caption,
@@ -489,19 +542,18 @@ async function write(
       return check(
         (
           await db
-            .from("passport_snow_moments")
+            .from("passport_adventure_moments")
             .insert({ adventure_id: id, kind: "moment", body: op.text })
         ).error,
       );
     case "unmoment":
-      return check(
-        (
-          await db
-            .from("passport_snow_moments")
-            .delete()
-            .eq("adventure_id", id)
-            .eq("id", op.id)
-        ).error,
+      return changed(
+        await db
+          .from("passport_adventure_moments")
+          .delete()
+          .eq("adventure_id", id)
+          .eq("id", op.id)
+          .select("id"),
       );
     case "checkin":
       if (op.spot !== null)

@@ -46,6 +46,7 @@ const rows = (over: Partial<SharedRows> = {}): SharedRows => ({
   votes: [],
   decisions: [],
   posts: [],
+  notices: [],
   challenges: [],
   completions: [],
   moments: [],
@@ -82,7 +83,6 @@ describe("assemble", () => {
           {
             id: "c1",
             user_id: U.gone,
-            kind: "chat",
             body: "from someone who left",
             created_at: NOW,
           },
@@ -103,37 +103,47 @@ describe("assemble", () => {
     expect(JSON.stringify(day)).not.toMatch(/user-/);
   });
 
-  it("splits announcements (newest first) from chat (oldest first)", () => {
+  it("splits the host's notices (newest first, ended ones gone) from chat (oldest first)", () => {
     const day = assemble(
       rows({
         posts: [
           {
             id: "1",
             user_id: U.lorne,
-            kind: "chat",
             body: "one",
             created_at: "2026-12-20T10:00:00Z",
           },
           {
+            id: "4",
+            user_id: U.jess,
+            body: "two",
+            created_at: "2026-12-20T10:03:00Z",
+          },
+        ],
+        notices: [
+          {
             id: "2",
             user_id: U.lorne,
-            kind: "announcement",
-            body: "older",
+            kind: "snow-update",
+            headline: "older",
             created_at: "2026-12-20T10:01:00Z",
+            ended_at: null,
           },
           {
             id: "3",
             user_id: U.lorne,
-            kind: "change",
-            body: "newer",
+            kind: "snow-change",
+            headline: "newer",
             created_at: "2026-12-20T10:02:00Z",
+            ended_at: null,
           },
           {
-            id: "4",
-            user_id: U.jess,
-            kind: "chat",
-            body: "two",
-            created_at: "2026-12-20T10:03:00Z",
+            id: "5",
+            user_id: U.lorne,
+            kind: "snow-update",
+            headline: "withdrawn",
+            created_at: "2026-12-20T10:04:00Z",
+            ended_at: "2026-12-20T10:05:00Z",
           },
         ],
       }),
@@ -229,6 +239,40 @@ describe("plan: who may do what", () => {
     expect(mine).toMatchObject({
       ok: true,
       ops: [{ k: "vote", topic: "mountain", proposalId: "p1" }],
+    });
+  });
+
+  it("lets only the host announce (the core's notices); everyone else chats", () => {
+    const announce = (by: string): Action => ({
+      type: "announce",
+      id: "a",
+      by,
+      text: "Lifts open at 9",
+    });
+    expect(plan(base, announce("m-jess"), guest, NOW)).toEqual({
+      ok: false,
+      reason: "Only the host can do that.",
+    });
+    expect(plan(base, announce("m-jess"), host, NOW)).toEqual({
+      ok: false,
+      reason: "You can only do that as yourself.",
+    });
+    expect(plan(base, announce("m-lorne"), host, NOW)).toMatchObject({
+      ok: true,
+      ops: [{ k: "post", kind: "announcement", text: "Lifts open at 9" }],
+    });
+    expect(plan(base, { type: "unannounce", id: "a" }, guest, NOW).ok).toBe(
+      false,
+    );
+    const chat = plan(
+      base,
+      { type: "say", id: "s", by: "m-jess", text: "Running late" },
+      guest,
+      NOW,
+    );
+    expect(chat).toMatchObject({
+      ok: true,
+      ops: [{ k: "post", kind: "chat", text: "Running late" }],
     });
   });
 

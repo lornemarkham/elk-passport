@@ -14,7 +14,7 @@ HAVE ANOTHER — and puts its weight on the second half (LIVE, REMEMBER).
 | ----------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Discover    | `/snow`, `/snow/mountains` | Mountain imagery, one primary action. Atlas ski areas when connected, Passport's short list beside them, distance, skill guidance |
 | Plan        | Day → **Plan**             | Date, mountain, getting there, meeting points, tickets, meals, après: options, one vote each, lock-in, last-minute change notice  |
-| Build crew  | Day → **Crew**             | Who, what they ride, level, rentals, notes; announcements; share the plan                                                         |
+| Build crew  | Day → **Crew**             | Who, what they ride, level, rentals, notes; host announcements (the core's notices); share the plan                               |
 | Hype        | Day → **Get ready**        | Countdown, reminders that fit how close it is, per-person gear list, **Call it** predictions, optional drive-up playlist          |
 | Challenges  | Day → **Challenges**       | 11 vetted challenges + crew-written ones, level-aware, each with a safety line                                                    |
 | Competition | Day → **Challenges**       | Standings and playful awards (incl. **Called It**), derived from what happened; right predictions are +3 each, max 5              |

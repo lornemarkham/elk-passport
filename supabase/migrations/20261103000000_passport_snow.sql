@@ -5,10 +5,12 @@
 -- release (2026-11-02) by the contracts integration, with three integrity
 -- fixes from release review: start and lock-in are single transactions
 -- (passport_snow_start, passport_snow_decide) and photos are raster only.
--- Requires 20261021000000_passport_adventures.sql and nothing else: it does
--- not touch the Hockey, Date Night, Christmas or packing tables. Preflight
--- and rollback stay in docs/product/snow/ (shared-preflight.sql,
--- shared-rollback.sql).
+-- Requires 20261021000000_passport_adventures.sql AND
+-- 20261101000000_passport_adventure_together.sql (ADR 014: announcements and
+-- shared photos/moments are the core's, and Snow uses them instead of its
+-- own). It does not touch the Hockey, Date Night, Christmas or packing
+-- tables. Preflight and rollback stay in docs/product/snow/
+-- (shared-preflight.sql, shared-rollback.sql).
 --
 -- WHAT THIS IS
 --
@@ -17,10 +19,16 @@
 -- hashed single-use-or-many invitations, the owner/participant split, the
 -- title and the date. This file adds only what a snow day has that the core
 -- does not: each person's level and gear, the crew's options and their
--- votes, the owner's decisions, chat and announcements, challenges and
--- completions (which is where points come from — they are derived, never
--- stored), predictions and guesses, check-ins, packing, ideas for the next
--- one, a playlist, and shared moments and photos.
+-- votes, the owner's decisions, crew chat, challenges and completions (which
+-- is where points come from — they are derived, never stored), predictions
+-- and guesses, check-ins, packing, ideas for the next one, and a playlist.
+--
+-- ADR 014 (owner decision 2026-11-01): the host's announcements — including
+-- the "plan changed" notice — are rows of passport_adventure_notices, and
+-- the crew's photos and moments are rows of passport_adventure_moments.
+-- Snow stores neither itself. The only Snow object that touches a core table
+-- is passport_snow_moment_guard, a trigger that acts on `snow-day`
+-- adventures alone and returns every other kind's row untouched.
 --
 -- Every table is keyed by adventure_id and cascades with it. People are
 -- never addressed by user id outside the database: the server maps user_id
@@ -34,8 +42,9 @@
 --     (`passport_is_snow_member`). A stranger, a member of someone else's
 --     snow day, and a member of a Hockey Night all get nothing.
 --   * You write only rows that are yours (user_id = auth.uid()). The owner
---     alone writes the day's facts and decisions, and posts "change" notices.
---     You delete what you added; the owner may delete anything in their day.
+--     alone writes the day's facts and decisions, and announces (the core's
+--     notices policy: owner only). You delete what you added; the owner may
+--     delete anything in their day.
 --   * One vote per person per topic, one completion per person per
 --     challenge, one guess per person per prediction: primary keys, not
 --     application promises. A vote can only point at an option of the same
@@ -46,15 +55,20 @@
 --     app cannot store a novel or a thousand photos.
 --   * When a membership goes (left, or removed by the owner) everything that
 --     person contributed as THEIR OWN DATA goes with it: level and gear,
---     votes, completions, guesses, check-in, packing, idea votes, moments and
---     photos. What they added to the shared plan (options, chat, challenges,
---     predictions, ideas, songs) stays, shown as "Someone".
+--     votes, completions, guesses, check-in, packing, idea votes, and the
+--     photos and moments they shared and their "Got it"s on the core's
+--     tables (snow days only: for any other kind the core's rule, that shared
+--     moments stay, is untouched). What they added to the shared plan
+--     (options, chat, challenges, predictions, ideas, songs, announcements)
+--     stays, shown as "Someone".
 --   * A change that touches several rows (starting a day; locking a choice,
---     moving the date and posting the "plan changed" notice) is one
+--     moving the date and announcing "plan changed") is one
 --     function call, one transaction: passport_snow_start, passport_snow_decide.
---   * Photos are base64 JPEG text capped at 700,000 characters (Hockey's
---     ceiling), at most 16 a day, shrunk in the browser first. They are
---     served to members only, by a route that asks Postgres as the caller.
+--   * Photos are base64 raster text (jpeg, png, webp — never SVG) capped at
+--     700,000 characters (the core's ceiling), at most 16 a day and six adds
+--     a minute per person, enforced for snow days by
+--     passport_snow_moment_guard. They are served to members only, by a route
+--     that asks Postgres as the caller.
 --
 -- HOW TO APPLY
 --
@@ -126,13 +140,12 @@ CREATE TABLE IF NOT EXISTS public.passport_snow_decisions (
     REFERENCES public.passport_snow_proposals (id, adventure_id, topic) ON DELETE CASCADE
 );
 
--- Chat and announcements, one stream. 'change' is the notice that a settled
--- plan moved; only the owner posts one.
+-- Crew chat. Announcements are the core's notices (ADR 014), not rows here.
 CREATE TABLE IF NOT EXISTS public.passport_snow_posts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   adventure_id text NOT NULL REFERENCES public.passport_adventures(id) ON DELETE CASCADE,
   user_id uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
-  kind text NOT NULL CHECK (kind IN ('chat', 'announcement', 'change')),
+  kind text NOT NULL CHECK (kind = 'chat'),
   body text NOT NULL CHECK (char_length(btrim(body)) BETWEEN 1 AND 200),
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -157,23 +170,6 @@ CREATE TABLE IF NOT EXISTS public.passport_snow_completions (
   completed_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (adventure_id, user_id, challenge_id)
 );
-
--- A moment (words) or a photo (words + a small JPEG), shared with the crew.
-CREATE TABLE IF NOT EXISTS public.passport_snow_moments (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  adventure_id text NOT NULL REFERENCES public.passport_adventures(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
-  kind text NOT NULL CHECK (kind IN ('moment', 'photo')),
-  body text NOT NULL DEFAULT '' CHECK (char_length(body) <= 200),
-  -- Raster only: an SVG is a document that can run script, and the photo
-  -- route serves these bytes from Passport's own origin.
-  photo text CHECK (photo IS NULL OR (photo ~ '^data:image/(jpeg|png|webp);base64,' AND char_length(photo) <= 700000)),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  CHECK ((kind = 'photo') = (photo IS NOT NULL)),
-  CHECK (kind = 'photo' OR char_length(btrim(body)) >= 1)
-);
-CREATE INDEX IF NOT EXISTS passport_snow_moments_by_adventure
-  ON public.passport_snow_moments (adventure_id, created_at);
 
 CREATE TABLE IF NOT EXISTS public.passport_snow_predictions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -297,20 +293,47 @@ begin
   return new;
 end $$;
 
-/** Photos: sixteen a day, and a person adds at most six a minute. */
-CREATE OR REPLACE FUNCTION public.passport_snow_moment_cap()
+/**
+ * Photos and moments are the core's (passport_adventure_moments, ADR 014).
+ * For a snow day only, this keeps Snow's rules on them: kind 'photo' or
+ * 'moment'; a photo is a raster data URL (never SVG: the photo route serves
+ * these bytes from Passport's own origin), at most sixteen a day and six adds
+ * a minute per person; a moment is words. Any other kind of adventure is
+ * returned untouched, so Christmas and Hockey keep exactly the core's rules.
+ */
+CREATE OR REPLACE FUNCTION public.passport_snow_moment_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 declare
   v_count integer;
-  v_max integer := case when new.kind = 'photo' then 16 else 300 end;
+  v_max integer;
 begin
+  -- Not a snow day of yours: not this trigger's business. (Row-level
+  -- security refuses a stranger on its own, with the core's own error, so
+  -- this says nothing about whether a day exists.)
+  if not passport_is_snow_member(new.adventure_id) then
+    return new;
+  end if;
+  if new.kind not in ('photo', 'moment') then
+    raise exception 'not a snow moment' using errcode = '23514';
+  end if;
+  if new.kind = 'photo' then
+    if new.photo is null or new.photo !~ '^data:image/(jpeg|png|webp);base64,' then
+      raise exception 'photos are raster images' using errcode = '23514';
+    end if;
+  elsif new.photo is not null or char_length(btrim(coalesce(new.body, ''))) < 1 then
+    raise exception 'a moment is words' using errcode = '23514';
+  end if;
+  if char_length(coalesce(new.body, '')) > 200 then
+    raise exception 'too long' using errcode = '23514';
+  end if;
+  v_max := case when new.kind = 'photo' then 16 else 300 end;
   perform pg_advisory_xact_lock(hashtext('snow:' || new.adventure_id));
-  select count(*) into v_count from passport_snow_moments
+  select count(*) into v_count from passport_adventure_moments
     where adventure_id = new.adventure_id and kind = new.kind;
   if v_count >= v_max then
     raise exception 'snow day full' using errcode = 'P0001', hint = 'full';
   end if;
-  select count(*) into v_count from passport_snow_moments
+  select count(*) into v_count from passport_adventure_moments
     where adventure_id = new.adventure_id and user_id = new.user_id
       and created_at > now() - interval '1 minute';
   if v_count >= 6 then
@@ -333,7 +356,14 @@ begin
   delete from passport_snow_checkins    where adventure_id = old.adventure_id and user_id = old.user_id;
   delete from passport_snow_packed      where adventure_id = old.adventure_id and user_id = old.user_id;
   delete from passport_snow_idea_votes  where adventure_id = old.adventure_id and user_id = old.user_id;
-  delete from passport_snow_moments     where adventure_id = old.adventure_id and user_id = old.user_id;
+  -- The core's tables: a snow day's members take what they shared with them.
+  if exists (select 1 from passport_adventures a
+             where a.id = old.adventure_id and a.kind = 'snow-day') then
+    delete from passport_adventure_moments
+      where adventure_id = old.adventure_id and user_id = old.user_id;
+    delete from passport_adventure_notice_acks
+      where adventure_id = old.adventure_id and user_id = old.user_id;
+  end if;
   return old;
 end $$;
 
@@ -368,9 +398,11 @@ end $$;
 
 /**
  * The host settles the plan: lock (or unlock) one topic, set the day's date
- * and meeting time, and post the "plan changed" notice — all of it, or none.
+ * and meeting time, and announce "plan changed" (a core notice) — all of it, or none.
  * Any part may be absent: p_topic NULL skips the decision, p_set_when false
- * leaves the date alone, p_notice NULL posts nothing.
+ * leaves the date alone, p_notice NULL announces nothing. The notice is the
+ * core's: owner only, headline at most 120 characters (longer is refused
+ * and the whole change is rolled back).
  */
 CREATE OR REPLACE FUNCTION public.passport_snow_decide(
   p_adventure text,
@@ -410,8 +442,8 @@ begin
   end if;
 
   if p_notice is not null then
-    insert into passport_snow_posts (adventure_id, kind, body)
-    values (p_adventure, 'change', p_notice);
+    insert into passport_adventure_notices (adventure_id, kind, headline, ask_ack)
+    values (p_adventure, 'snow-change', p_notice, false);
   end if;
 end $$;
 
@@ -451,9 +483,9 @@ DO $$ BEGIN
     CREATE TRIGGER passport_snow_songs_cap BEFORE INSERT ON public.passport_snow_songs
       FOR EACH ROW EXECUTE FUNCTION public.passport_snow_cap(30, 0);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'passport_snow_moments_cap') THEN
-    CREATE TRIGGER passport_snow_moments_cap BEFORE INSERT ON public.passport_snow_moments
-      FOR EACH ROW EXECUTE FUNCTION public.passport_snow_moment_cap();
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'passport_snow_moment_guard') THEN
+    CREATE TRIGGER passport_snow_moment_guard BEFORE INSERT ON public.passport_adventure_moments
+      FOR EACH ROW EXECUTE FUNCTION public.passport_snow_moment_guard();
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'passport_snow_members_gone') THEN
     CREATE TRIGGER passport_snow_members_gone AFTER DELETE ON public.passport_adventure_members
@@ -471,7 +503,7 @@ DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'days', 'people', 'proposals', 'votes', 'decisions', 'posts', 'challenges',
-    'completions', 'moments', 'predictions', 'guesses', 'checkins', 'packed',
+    'completions', 'predictions', 'guesses', 'checkins', 'packed',
     'ideas', 'idea_votes', 'songs']
   LOOP
     EXECUTE format('ALTER TABLE public.passport_snow_%s ENABLE ROW LEVEL SECURITY', t);
@@ -494,7 +526,7 @@ REVOKE ALL ON FUNCTION public.passport_is_snow_member(text) FROM anon, public;
 REVOKE ALL ON FUNCTION public.passport_is_snow_owner(text) FROM anon, public;
 REVOKE ALL ON FUNCTION public.passport_snow_touch() FROM anon, public, authenticated;
 REVOKE ALL ON FUNCTION public.passport_snow_cap() FROM anon, public, authenticated;
-REVOKE ALL ON FUNCTION public.passport_snow_moment_cap() FROM anon, public, authenticated;
+REVOKE ALL ON FUNCTION public.passport_snow_moment_guard() FROM anon, public, authenticated;
 REVOKE ALL ON FUNCTION public.passport_snow_member_gone() FROM anon, public, authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_is_snow_member(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_is_snow_owner(text) TO authenticated;
@@ -549,7 +581,7 @@ END $$;
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['proposals', 'challenges', 'predictions', 'ideas', 'songs', 'moments']
+  FOREACH t IN ARRAY ARRAY['proposals', 'challenges', 'predictions', 'ideas', 'songs']
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS passport_snow_%s_member_add ON public.passport_snow_%s', t, t);
     EXECUTE format('CREATE POLICY passport_snow_%s_member_add ON public.passport_snow_%s FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() AND passport_is_snow_member(adventure_id))', t, t);
@@ -558,13 +590,12 @@ BEGIN
   END LOOP;
 END $$;
 
--- Chat and announcements: any member posts as themselves; 'change' is the
--- owner's. You delete yours; the owner deletes any.
+-- Chat: any member posts as themselves. You delete yours; the owner deletes
+-- any. (Announcements are the core's notices: the owner's alone.)
 DROP POLICY IF EXISTS passport_snow_posts_member_add ON public.passport_snow_posts;
 CREATE POLICY passport_snow_posts_member_add ON public.passport_snow_posts
   FOR INSERT TO authenticated WITH CHECK (
-    user_id = auth.uid() AND passport_is_snow_member(adventure_id)
-    AND (kind IN ('chat', 'announcement') OR passport_is_snow_owner(adventure_id)));
+    user_id = auth.uid() AND passport_is_snow_member(adventure_id));
 DROP POLICY IF EXISTS passport_snow_posts_remove ON public.passport_snow_posts;
 CREATE POLICY passport_snow_posts_remove ON public.passport_snow_posts
   FOR DELETE TO authenticated USING (

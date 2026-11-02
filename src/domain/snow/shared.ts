@@ -80,10 +80,20 @@ export interface SharedRows {
     readonly topic: string;
     readonly proposal_id: string;
   }[];
+  /** Crew chat (`passport_snow_posts`). */
   readonly posts: readonly (Authored & {
     readonly id: string;
-    readonly kind: "chat" | "announcement" | "change";
     readonly body: string;
+  })[];
+  /**
+   * The host's announcements — the core's `passport_adventure_notices`
+   * (ADR 014). `snow-change` is the "plan changed" notice.
+   */
+  readonly notices: readonly (Authored & {
+    readonly id: string;
+    readonly kind: string;
+    readonly headline: string;
+    readonly ended_at: string | null;
   })[];
   readonly challenges: readonly (Authored & {
     readonly id: string;
@@ -94,11 +104,12 @@ export interface SharedRows {
     readonly challenge_id: string;
     readonly completed_at: string;
   }[];
+  /** Shared photos and moments — the core's `passport_adventure_moments`. */
   readonly moments: readonly {
     readonly id: string;
     readonly user_id: string;
-    readonly kind: "moment" | "photo";
-    readonly body: string;
+    readonly kind: string;
+    readonly body: string | null;
     readonly created_at: string;
   }[];
   readonly predictions: readonly (Authored & {
@@ -189,25 +200,23 @@ export function assemble(rows: SharedRows): SnowDay {
   for (const d of rows.decisions)
     if (known.has(d.proposal_id)) chosen[d.topic as Topic] = d.proposal_id;
 
-  const posts = [...rows.posts].sort(byTime);
-  const announcements: Announcement[] = posts
-    .filter((p) => p.kind !== "chat")
+  const announcements: Announcement[] = [...rows.notices]
+    .filter((n) => !n.ended_at)
+    .sort(byTime)
     .reverse()
-    .map((p) => ({
-      id: p.id,
-      by: who(p.user_id),
-      text: p.body,
-      at: p.created_at,
-      kind: p.kind === "change" ? "change" : "announcement",
+    .map((n) => ({
+      id: n.id,
+      by: who(n.user_id),
+      text: n.headline,
+      at: n.created_at,
+      kind: n.kind === "snow-change" ? "change" : "announcement",
     }));
-  const chat = posts
-    .filter((p) => p.kind === "chat")
-    .map((p) => ({
-      id: p.id,
-      by: who(p.user_id),
-      text: p.body,
-      at: p.created_at,
-    }));
+  const chat = [...rows.posts].sort(byTime).map((p) => ({
+    id: p.id,
+    by: who(p.user_id),
+    text: p.body,
+    at: p.created_at,
+  }));
 
   const moments = [...rows.moments].sort(byTime);
   const photos: Photo[] = moments
@@ -215,7 +224,7 @@ export function assemble(rows: SharedRows): SnowDay {
     .map((m) => ({
       id: m.id,
       personId: who(m.user_id),
-      caption: m.body,
+      caption: m.body ?? "",
       src: photoPath(rows.adventure.id, m.id),
       at: m.created_at,
     }));
@@ -290,7 +299,7 @@ export function assemble(rows: SharedRows): SnowDay {
       .map((m) => ({
         id: m.id,
         personId: who(m.user_id),
-        text: m.body,
+        text: m.body ?? "",
         at: m.created_at,
       })),
     checkIns: rows.checkins
@@ -345,11 +354,13 @@ export type Op =
       readonly proposalId: string | null;
     }
   | {
+      /** `chat` is a Snow row; the other two are core notices (ADR 014). */
       readonly k: "post";
       readonly kind: "chat" | "announcement" | "change";
       readonly text: string;
     }
   | { readonly k: "unpost"; readonly id: string }
+  | { readonly k: "unnotice"; readonly id: string }
   | { readonly k: "challenge"; readonly title: string }
   | {
       readonly k: "complete";
@@ -445,11 +456,13 @@ export function plan(
       if (!mine(action.personId)) return refuse(ONLY_YOU);
       break;
     case "announce":
+      // The core's rule for notices: the host announces, everyone else
+      // answers in chat.
+      if (!who.isOwner) return refuse(ONLY_HOST);
       if (!mine(action.by)) return refuse(ONLY_YOU);
       break;
     case "unannounce":
-      if (!authorOrHost(day.announcements.find((a) => a.id === action.id)?.by))
-        return refuse(NOT_YOURS);
+      if (!who.isOwner) return refuse(ONLY_HOST);
       break;
     case "pack":
     case "complete":
@@ -556,7 +569,7 @@ function opsFor(before: SnowDay, after: SnowDay, a: Action): Op[] {
         { k: "post", kind: "announcement", text: after.announcements[0]!.text },
       ];
     case "unannounce":
-      return [{ k: "unpost", id: a.id }];
+      return [{ k: "unnotice", id: a.id }];
     case "say":
       return [{ k: "post", kind: "chat", text: after.chat.at(-1)!.text }];
     case "unsay":

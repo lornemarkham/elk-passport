@@ -160,6 +160,17 @@ test("two phones, one snow day", async ({ browser }) => {
   );
   await shot(jess, "11-shared-chat");
 
+  // ------------------------------------------------ the host announces
+  // ADR 014: announcements are the core's notices — the host's alone. Jess
+  // has no form for one; she answers in chat. What Lorne posts reaches her.
+  await expect(jess.getByLabel("Post an update")).toHaveCount(0);
+  await lorne.getByLabel("Post an update").fill("Lifts open at 9");
+  await lorne.getByRole("button", { name: "Post", exact: true }).click();
+  await expect(jess.getByTestId("announcements")).toContainText(
+    "Lifts open at 9",
+    { timeout: 20_000 },
+  );
+
   // -------------------------------------------- a prediction and a photo
   await tab(lorne, "Get ready");
   await lorne
@@ -257,6 +268,9 @@ test("two phones, one snow day", async ({ browser }) => {
   await tab(again, "Crew");
   await expect(again.getByTestId("chat-messages")).toContainText(
     "Bringing the hot chocolate",
+  );
+  await expect(again.getByTestId("announcements")).toContainText(
+    "Lifts open at 9",
   );
   await expect(again.getByTestId("chat-messages")).toContainText(
     "Leaving at 7:45 sharp",

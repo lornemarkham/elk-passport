@@ -493,10 +493,18 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
       .from("passport_snow_posts")
       .insert({ adventure_id: id, kind: "chat", body: "hello" });
     expect(stranger.error).not.toBeNull();
-    const notice = await jess.db
+    // Announcements are the core's notices, and the core's rule is the
+    // owner's alone: a crew member cannot announce, even calling Postgres.
+    const notice = await jess.db.from("passport_adventure_notices").insert({
+      adventure_id: id,
+      kind: "snow-change",
+      headline: "CHANGE OF PLANS",
+    });
+    expect(notice.error?.code).toBe("42501");
+    const asChat = await jess.db
       .from("passport_snow_posts")
       .insert({ adventure_id: id, kind: "change", body: "CHANGE OF PLANS" });
-    expect(notice.error?.code).toBe("42501");
+    expect(asChat.error?.code).toBe("23514");
     const decide = await jess.db
       .from("passport_snow_decisions")
       .upsert({ adventure_id: id, topic: "meals", proposal_id: bigWhite.id });
@@ -511,7 +519,6 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
       "proposals",
       "votes",
       "completions",
-      "moments",
       "people",
       "predictions",
       "guesses",
@@ -522,8 +529,25 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
         .eq("adventure_id", id);
       expect({ table, rows: read.data }).toEqual({ table, rows: [] });
     }
+    // The core's tables hold this day's notices and photos: a stranger gets
+    // none of them, and neither does a signed-out visitor.
+    for (const table of ["notices", "moments"]) {
+      const read = await mallory.db
+        .from(`passport_adventure_${table}`)
+        .select("*")
+        .eq("adventure_id", id);
+      expect({ table, rows: read.data }).toEqual({ table, rows: [] });
+    }
+    const strangerPhoto = await mallory.db
+      .from("passport_adventure_moments")
+      .insert({ adventure_id: id, kind: "moment", body: "let me in" });
+    expect(strangerPhoto.error?.code).toBe("42501");
     const anon = await client().from("passport_snow_posts").select("*");
     expect(anon.data ?? []).toEqual([]);
+    const anonCore = await client()
+      .from("passport_adventure_moments")
+      .select("*");
+    expect(anonCore.data ?? []).toEqual([]);
     // The tables hold no way to re-attribute a row or move it to another day.
     const rehome = await jess.db
       .from("passport_snow_predictions")
@@ -617,29 +641,61 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
       );
     expect((await choose(bigWhite.id, "c1")).ok).toBe(true);
 
-    // The host is out of posts for this minute, so the "plan changed" notice
-    // cannot be stored — and so the mountain must not move either.
-    for (let i = 0; i < 20; i++)
-      await act(
-        lorne.db,
-        id,
-        lorne.id,
-        { type: "say", id: "x", by: l.me, text: `line ${i}` },
-        NOW,
-      );
-    expect(await choose(silver.id, "c2")).toEqual({
-      ok: false,
-      reason: "Easy — give it a few seconds.",
+    // A lock-in whose "plan changed" notice cannot be stored must not move
+    // the mountain either. (Postgres refuses a headline over the core's 120.)
+    const refused = await lorne.db.rpc("passport_snow_decide", {
+      p_adventure: id,
+      p_topic: "mountain",
+      p_proposal: silver.id,
+      p_set_when: true,
+      p_starts_on: "2027-02-02",
+      p_meet_time: null,
+      p_notice: "x".repeat(121),
     });
+    expect(refused.error?.code).toBe("23514");
     const j = await loadDay(jess.db, id, jess.id);
     expect(j.day.chosen.mountain).toBe(bigWhite.id);
+    expect(j.day.date).toBeUndefined();
     expect(j.day.announcements.filter((a) => a.kind === "change")).toEqual([]);
+
+    // Through the app the same move lands whole: the lock, and one notice —
+    // the core's, so Jess sees it as a plan change.
+    expect((await choose(silver.id, "c2")).ok).toBe(true);
+    const moved = await loadDay(jess.db, id, jess.id);
+    expect(moved.day.chosen.mountain).toBe(silver.id);
+    expect(
+      moved.day.announcements.filter((a) => a.kind === "change"),
+    ).toHaveLength(1);
+    const core = await lorne.db
+      .from("passport_adventure_notices")
+      .select("kind, ask_ack")
+      .eq("adventure_id", id);
+    expect(core.data).toEqual([{ kind: "snow-change", ask_ack: false }]);
+
+    // Chat is limited per person per minute, and a refused line says so.
+    for (let i = 0; i < 20; i++)
+      await act(
+        jess.db,
+        id,
+        jess.id,
+        { type: "say", id: "x", by: j.me, text: `line ${i}` },
+        NOW,
+      );
+    expect(
+      await act(
+        jess.db,
+        id,
+        jess.id,
+        { type: "say", id: "x", by: j.me, text: "one too many" },
+        NOW,
+      ),
+    ).toEqual({ ok: false, reason: "Easy — give it a few seconds." });
 
     // Only the host settles the plan, even calling Postgres directly.
     const sneaky = await jess.db.rpc("passport_snow_decide", {
       p_adventure: id,
       p_topic: "mountain",
-      p_proposal: silver.id,
+      p_proposal: bigWhite.id,
       p_set_when: true,
       p_starts_on: "2027-01-01",
       p_meet_time: null,
@@ -647,23 +703,56 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
     });
     expect(sneaky.error?.code).toBe("42501");
     expect((await loadDay(jess.db, id, jess.id)).day.chosen.mountain).toBe(
-      bigWhite.id,
+      silver.id,
     );
 
     // An SVG is a document that can run script: Postgres will not hold one.
-    const svg = await jess.db.from("passport_snow_moments").insert({
+    // Photos live on the core's table; Snow's guard holds them to rasters.
+    const svg = await jess.db.from("passport_adventure_moments").insert({
       adventure_id: id,
       kind: "photo",
       body: "",
       photo: "data:image/svg+xml;base64,PHN2Zy8+",
     });
     expect(svg.error?.code).toBe("23514");
-    const jpeg = await jess.db.from("passport_snow_moments").insert({
+    const jpeg = await jess.db.from("passport_adventure_moments").insert({
       adventure_id: id,
       kind: "photo",
       body: "",
       photo: "data:image/jpeg;base64,/9j/2w==",
     });
     expect(jpeg.error).toBeNull();
+
+    // The guard is a snow-day rule only: a day of any other kind keeps the
+    // core's own, so Christmas and Hockey are not changed by this release.
+    const other = await createAdventure(lorne.db, {
+      kind: "christmas",
+      title: "Not snow",
+      displayName: "Lorne",
+      startsOn: null,
+      endsOn: null,
+      timeZone: null,
+      destinationLabel: null,
+      destinationTownId: null,
+    });
+    const elsewhere = await lorne.db.from("passport_adventure_moments").insert({
+      adventure_id: other,
+      kind: "tradition",
+      body: "core rules",
+    });
+    expect(elsewhere.error).toBeNull();
+
+    // Leaving takes what you shared on a snow day; the host's notice stays.
+    await act(jess.db, id, jess.id, { type: "removePerson", id: j.me }, NOW);
+    const left = await lorne.db
+      .from("passport_adventure_moments")
+      .select("id")
+      .eq("adventure_id", id);
+    expect(left.data).toEqual([]);
+    const kept = await lorne.db
+      .from("passport_adventure_notices")
+      .select("id")
+      .eq("adventure_id", id);
+    expect(kept.data).toHaveLength(1);
   }, 60_000);
 });
