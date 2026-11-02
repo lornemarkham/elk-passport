@@ -31,7 +31,7 @@ async function shrink(file: File): Promise<string> {
 }
 
 /** Memories and recap: what happened, in the order you'd tell it. */
-export function MemoriesTab({ day, me, act }: TabProps) {
+export function MemoriesTab({ day, me, act, shared }: TabProps) {
   const [moment, setMoment] = useState("");
   const [idea, setIdea] = useState("");
   const [note, setNote] = useState<string | null>(null);
@@ -163,8 +163,9 @@ export function MemoriesTab({ day, me, act }: TabProps) {
           />
         </label>
         <p className="text-xs text-[var(--sn-frost)]">
-          Kept on this phone (up to {LIMITS.photos}), shrunk to fit. They
-          aren&apos;t uploaded and aren&apos;t in a shared plan link.
+          {shared
+            ? `Shared with this crew only (up to ${LIMITS.photos} a day), shrunk to fit. Anyone you remove from the day takes their own photos with them.`
+            : `Kept on this phone (up to ${LIMITS.photos}), shrunk to fit. They aren't uploaded and aren't in a shared plan link.`}
         </p>
         <ul
           className="grid grid-cols-2 gap-2 sm:grid-cols-3"

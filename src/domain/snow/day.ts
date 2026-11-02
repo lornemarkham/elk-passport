@@ -79,6 +79,13 @@ export interface Announcement {
   readonly kind: "announcement" | "change";
 }
 
+export interface ChatMessage {
+  readonly id: string;
+  readonly by: string;
+  readonly text: string;
+  readonly at: string;
+}
+
 export interface Completion {
   readonly challengeId: string;
   readonly personId: string;
@@ -142,6 +149,8 @@ export interface SnowDay {
   readonly playlist: readonly { id: string; title: string; by: string }[];
   readonly ideas: readonly Idea[];
   readonly predictions: readonly Prediction[];
+  /** The crew's group chat, oldest first. Only a shared day has one. */
+  readonly chat: readonly ChatMessage[];
 }
 
 export const LIMITS = {
@@ -153,6 +162,7 @@ export const LIMITS = {
   ideas: 12,
   playlist: 30,
   predictions: 12,
+  chat: 100,
 } as const;
 
 export function newDay(input: {
@@ -181,6 +191,7 @@ export function newDay(input: {
     playlist: [],
     ideas: [],
     predictions: [],
+    chat: [],
   };
 }
 
@@ -219,7 +230,9 @@ export type Action =
   | { type: "predict"; id: string; text: string; by: string }
   | { type: "removePrediction"; id: string }
   | { type: "guess"; id: string; personId: string; says: boolean | null }
-  | { type: "settle"; id: string; outcome: boolean | null };
+  | { type: "settle"; id: string; outcome: boolean | null }
+  | { type: "say"; id: string; by: string; text: string }
+  | { type: "unsay"; id: string };
 
 export type Result = { ok: true; day: SnowDay } | { ok: false; reason: string };
 
@@ -512,9 +525,7 @@ export function applyAction(day: SnowDay, action: Action, now: string): Result {
       if (!has(day, action.photo.personId))
         return no("They aren't in this crew.");
       if (day.photos.length >= LIMITS.photos)
-        return no(
-          `This device keeps ${LIMITS.photos} photos per day. Remove one first.`,
-        );
+        return no(`A day keeps ${LIMITS.photos} photos. Remove one first.`);
       return ok({
         ...day,
         photos: [
@@ -658,6 +669,23 @@ export function applyAction(day: SnowDay, action: Action, now: string): Result {
         }),
       });
     }
+    case "say": {
+      const text = clean(action.text, 200);
+      if (!text) return no("Write something first.");
+      if (!has(day, action.by)) return no("Only the crew can chat.");
+      return ok({
+        ...day,
+        chat: [
+          ...day.chat,
+          { id: action.id, by: action.by, text, at: now },
+        ].slice(-LIMITS.chat),
+      });
+    }
+    case "unsay":
+      return ok({
+        ...day,
+        chat: day.chat.filter((m) => m.id !== action.id),
+      });
   }
 }
 
@@ -712,6 +740,18 @@ export function isPacked(day: SnowDay, personId: string, itemId: string) {
 
 // ------------------------------------------------------------ persistence
 
+/**
+ * Photos of a shared day are not inlined: the document carries a path the
+ * server answers only to members (src/app/snow/api/[id]/photo/[photo]).
+ */
+export const SHARED_PHOTO = "/snow/api/";
+
+/**
+ * Which kind of day an id names. A day made together is an adventure, whose
+ * ids are 32 hex characters; one kept on a phone has a short local id.
+ */
+export const isSharedId = (id: string) => /^[a-f0-9]{32}$/.test(id);
+
 /** Parse a stored or shared day, or `null` if it is not one. Never throws. */
 export function parseDay(raw: unknown): SnowDay | null {
   if (!raw || typeof raw !== "object") return null;
@@ -748,12 +788,17 @@ export function parseDay(raw: unknown): SnowDay | null {
     customChallenges: arr(d.customChallenges),
     completions: arr<Completion>(d.completions),
     photos: arr<Photo>(d.photos).filter(
-      (p) => typeof p?.src === "string" && p.src.startsWith("data:image/"),
+      (p) =>
+        typeof p?.src === "string" &&
+        (p.src.startsWith("data:image/") || p.src.startsWith(SHARED_PHOTO)),
     ),
     moments: arr<Moment>(d.moments),
     checkIns: arr<CheckIn>(d.checkIns),
     playlist: arr(d.playlist),
     ideas: arr<Idea>(d.ideas),
+    chat: arr<ChatMessage>(d.chat).filter(
+      (m) => m && typeof m.id === "string" && typeof m.text === "string",
+    ),
     predictions: arr<Prediction>(d.predictions).filter(
       (p) =>
         p &&

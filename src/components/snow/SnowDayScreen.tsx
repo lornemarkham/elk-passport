@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { chosenFor, type Person } from "@/domain/snow/day";
+import { chosenFor, isSharedId, type Person } from "@/domain/snow/day";
 import { countdownToDay, phaseOf, type Phase } from "@/domain/snow/prep";
-import { useSnowDay } from "./store";
+import { useSharedSnowDay, useSnowDay, type DayState } from "./store";
 import { TABS, type TabKey } from "./tabs";
 import { Card, SoftLink, btn, field, styles } from "./kit";
 import { PlanTab } from "./PlanTab";
@@ -50,8 +50,25 @@ function useOnline() {
   return online;
 }
 
+/**
+ * A day kept on this phone, or a day shared between phones. They are the
+ * same screen over two sources: the id says which (a shared day is an
+ * adventure, whose ids are 32 hex characters).
+ */
 export function SnowDayScreen({ id }: { id: string }) {
-  const { day, status, act, problem, clearProblem, me, setMe } = useSnowDay(id);
+  return isSharedId(id) ? <SharedDay id={id} /> : <LocalDay id={id} />;
+}
+
+function LocalDay({ id }: { id: string }) {
+  return <DayScreen id={id} state={useSnowDay(id)} />;
+}
+
+function SharedDay({ id }: { id: string }) {
+  return <DayScreen id={id} state={useSharedSnowDay(id)} />;
+}
+
+function DayScreen({ id, state }: { id: string; state: DayState }) {
+  const { day, status, act, problem, clearProblem, me, setMe, shared } = state;
   const now = useNow();
   const online = useOnline();
   const [tab, setTab] = useState<TabKey | null>(null);
@@ -69,6 +86,32 @@ export function SnowDayScreen({ id }: { id: string }) {
     return (
       <main className="mx-auto max-w-3xl px-5 pt-28">Opening your day…</main>
     );
+  if (status === "signin")
+    return (
+      <main className="mx-auto max-w-xl space-y-4 px-5 pt-28 pb-24">
+        <h1 className="text-3xl font-black">Sign in to open this snow day</h1>
+        <p className={styles.muted}>
+          A day shared with your crew belongs to everyone in it, so Passport
+          needs to know who you are before it shows you theirs.
+        </p>
+        <Link
+          className={`${styles.go} inline-flex min-h-12 items-center rounded-full px-6 uppercase`}
+          href={`/auth?next=${encodeURIComponent(`/snow/day/${id}`)}`}
+        >
+          Sign in
+        </Link>
+      </main>
+    );
+  if (status === "down" && !day)
+    return (
+      <main className="mx-auto max-w-xl space-y-4 px-5 pt-28 pb-24">
+        <h1 className="text-3xl font-black">Can&apos;t reach the crew</h1>
+        <p className={styles.muted}>
+          This day lives online so everyone sees the same thing. No signal, or
+          Passport is having a moment. It will open as soon as it can.
+        </p>
+      </main>
+    );
   if (status === "missing" || !day)
     return (
       <main className="mx-auto max-w-xl space-y-4 px-5 pt-28 pb-24">
@@ -76,9 +119,9 @@ export function SnowDayScreen({ id }: { id: string }) {
           This day isn&apos;t on this phone
         </h1>
         <p className={styles.muted}>
-          Snow days are kept on the device that made them. If a friend sent you
-          a link, open that link; if you made it on another phone, it&apos;s
-          there.
+          {shared
+            ? "It may not exist, or you may not be in it. Ask the host for a fresh invite link."
+            : "Snow days made without an account are kept on the device that made them. If a friend sent you a link, open that link; if you made it on another phone, it's there."}
         </p>
         <SoftLink href="/snow/new">Start a new one</SoftLink>
       </main>
@@ -110,7 +153,14 @@ export function SnowDayScreen({ id }: { id: string }) {
       </main>
     );
 
-  const props = { day, me: meP, act, today, now };
+  const props = {
+    day,
+    me: meP,
+    act,
+    today,
+    now,
+    shared: shared ? { id, isOwner: shared.isOwner } : undefined,
+  };
 
   return (
     <main className="mx-auto max-w-3xl px-4 pt-20 pb-28 sm:px-5">
@@ -121,7 +171,13 @@ export function SnowDayScreen({ id }: { id: string }) {
             data-testid="connectivity"
             className={`${online ? styles.live : styles.static} rounded-full px-2.5 py-1 tracking-normal normal-case`}
           >
-            {online ? "Online" : "Offline — your day still works here"}
+            {online
+              ? shared
+                ? "Online — shared with the crew"
+                : "Online"
+              : shared
+                ? "Offline — changes won't reach the crew yet"
+                : "Offline — your day still works here"}
           </span>
         </p>
         <h1
@@ -223,21 +279,25 @@ export function SnowDayScreen({ id }: { id: string }) {
       </div>
 
       <footer className="mt-10 flex flex-wrap items-center gap-3 text-sm text-[var(--sn-frost)]">
-        <label className="flex items-center gap-2">
-          You are
-          <select
-            className={`${field} !w-auto`}
-            value={meP.id}
-            onChange={(e) => setMe(e.target.value)}
-            aria-label="Who is using this phone"
-          >
-            {day.people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {shared ? (
+          <p data-testid="you-are">You are {meP.name}</p>
+        ) : (
+          <label className="flex items-center gap-2">
+            You are
+            <select
+              className={`${field} !w-auto`}
+              value={meP.id}
+              onChange={(e) => setMe(e.target.value)}
+              aria-label="Who is using this phone"
+            >
+              {day.people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <Link href="/snow" className="underline">
           All snow days
         </Link>

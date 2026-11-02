@@ -89,3 +89,20 @@ blocked, unchanged: shared multi-phone crew (needs a `snow-day` kind + migration
 from the contracts lane), nav entry (shell), real-Atlas pass, cold-start offline,
 cross-phone photo sharing. Nothing was deployed; release status is "gated, local
 commit, not pushed".
+
+## Addendum — Powder Day shared persistence, 2026-11-01
+
+A snow day can now be shared between phones. See `SHARING.md`.
+
+- **Built:** `docs/product/snow/shared-migration.sql` (+ preflight, rollback);
+  `src/domain/snow/shared.ts` (pure: rows → day, action → who may / which rows,
+  request parser); `src/app/snow/_server/shared.ts` and `src/app/snow/api/*`
+  (start, read, change, invite, join, photo); UI: start "together", join by
+  link, group chat, invite link, polling. Group chat is new (`say` action).
+- **Verified:** a real two-account integration test against a local
+  GoTrue + PostgREST + Postgres (`shared.stack.test.ts`), and two browser
+  contexts on that stack (`verification/two-phones.spec.ts`).
+- **Not verified:** anything against the real Supabase project; the migration
+  has not been applied anywhere real.
+- **Outside my lane:** none. Proposed for the contracts lane: the migration,
+  the `snow-day` kind label, the nav entry.

@@ -15,11 +15,12 @@ import { personName } from "@/domain/snow/day";
 import { shareFragment } from "@/domain/snow/recap";
 import type { TabProps } from "./tabs";
 import { newId } from "./store";
+import { ChatCard } from "./ChatCard";
 import { Card, btn, btnOn, field, styles } from "./kit";
 
 /** Crew: who is in, how they ride, what everyone should know. */
 export function CrewTab(p: TabProps) {
-  const { day, me, act } = p;
+  const { day, me, act, shared } = p;
   const [name, setName] = useState("");
   const [discipline, setDiscipline] = useState<Discipline>("ski");
   const [ability, setAbility] = useState<Ability>("beginner");
@@ -27,6 +28,32 @@ export function CrewTab(p: TabProps) {
   const [note, setNote] = useState("");
   const [update, setUpdate] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+
+  async function inviteCrew() {
+    if (!shared) return;
+    try {
+      const res = await fetch(`/snow/api/${shared.id}/invite`, {
+        method: "POST",
+      });
+      const body = (await res.json().catch(() => ({}))) as { token?: string };
+      if (!res.ok || !body.token)
+        return setCopied(
+          res.status === 404
+            ? "Only the host can make the invite link."
+            : "Couldn't make a link just now. Try again.",
+        );
+      const url = `${location.origin}/snow/join?t=${body.token}`;
+      if (navigator.share) await navigator.share({ title: day.title, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setCopied(
+          "Invite link copied. It works for up to 24 people over two weeks.",
+        );
+      }
+    } catch {
+      setCopied("Couldn't share from here. Try again from the same phone.");
+    }
+  }
 
   async function sharePlan() {
     const url = `${location.origin}/snow/join#${shareFragment(day)}`;
@@ -84,7 +111,7 @@ export function CrewTab(p: TabProps) {
                   {x.note && <p className="text-sm">{x.note}</p>}
                 </div>
                 <div className="flex gap-2">
-                  {x.discipline !== "apres" && (
+                  {x.discipline !== "apres" && (!shared || x.id === me.id) && (
                     <select
                       className={`${field} !w-auto`}
                       value={x.ability}
@@ -104,15 +131,20 @@ export function CrewTab(p: TabProps) {
                       ))}
                     </select>
                   )}
-                  {x.id !== day.people[0].id && (
-                    <button
-                      className={btn}
-                      aria-label={`Remove ${x.name}`}
-                      onClick={() => act({ type: "removePerson", id: x.id })}
-                    >
-                      ✕
-                    </button>
-                  )}
+                  {x.id !== day.people[0].id &&
+                    (!shared || shared.isOwner || x.id === me.id) && (
+                      <button
+                        className={btn}
+                        aria-label={
+                          shared && x.id === me.id
+                            ? "Leave this snow day"
+                            : `Remove ${x.name}`
+                        }
+                        onClick={() => act({ type: "removePerson", id: x.id })}
+                      >
+                        ✕
+                      </button>
+                    )}
                 </div>
               </div>
             </li>
@@ -120,129 +152,154 @@ export function CrewTab(p: TabProps) {
         </ul>
       </Card>
 
-      <Card className="space-y-3">
-        <h2 className="text-xl font-extrabold">Add someone</h2>
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (
-              act({
-                type: "addPerson",
-                person: {
-                  id: newId(),
-                  name,
-                  discipline,
-                  ability,
-                  ownGear,
-                  note: note || undefined,
-                },
-              })
-            ) {
-              setName("");
-              setNote("");
-            }
-          }}
-        >
-          <input
-            className={field}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name"
-            aria-label="Their name"
-            maxLength={30}
-          />
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label="Riding"
+      {shared && <ChatCard {...p} />}
+
+      {!shared && (
+        <Card className="space-y-3">
+          <h2 className="text-xl font-extrabold">Add someone</h2>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (
+                act({
+                  type: "addPerson",
+                  person: {
+                    id: newId(),
+                    name,
+                    discipline,
+                    ability,
+                    ownGear,
+                    note: note || undefined,
+                  },
+                })
+              ) {
+                setName("");
+                setNote("");
+              }
+            }}
           >
-            {DISCIPLINES.map((d) => (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={discipline === d}
-                onClick={() => setDiscipline(d)}
-                className={`${btn} ${discipline === d ? btnOn : ""}`}
-              >
-                {DISCIPLINE_LABEL[d]}
-              </button>
-            ))}
-          </div>
-          {discipline !== "apres" && (
+            <input
+              className={field}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name"
+              aria-label="Their name"
+              maxLength={30}
+            />
             <div
               className="flex flex-wrap gap-2"
               role="group"
-              aria-label="Level"
+              aria-label="Riding"
             >
-              {ABILITIES.map((a) => (
+              {DISCIPLINES.map((d) => (
                 <button
-                  key={a}
+                  key={d}
                   type="button"
-                  aria-pressed={ability === a}
-                  onClick={() => setAbility(a)}
-                  className={`${btn} ${ability === a ? btnOn : ""}`}
+                  aria-pressed={discipline === d}
+                  onClick={() => setDiscipline(d)}
+                  className={`${btn} ${discipline === d ? btnOn : ""}`}
                 >
-                  {ABILITY_LABEL[a]}
+                  {DISCIPLINE_LABEL[d]}
                 </button>
               ))}
             </div>
-          )}
-          <label className="flex items-center gap-2 text-sm">
+            {discipline !== "apres" && (
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-label="Level"
+              >
+                {ABILITIES.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    aria-pressed={ability === a}
+                    onClick={() => setAbility(a)}
+                    className={`${btn} ${ability === a ? btnOn : ""}`}
+                  >
+                    {ABILITY_LABEL[a]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={!ownGear}
+                onChange={(e) => setOwnGear(!e.target.checked)}
+                className="size-5"
+              />
+              Needs rental gear
+            </label>
             <input
-              type="checkbox"
-              checked={!ownGear}
-              onChange={(e) => setOwnGear(!e.target.checked)}
-              className="size-5"
+              className={field}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Anything we should know? (vegetarian, nervous on lifts…)"
+              aria-label="Note"
+              maxLength={80}
             />
-            Needs rental gear
-          </label>
-          <input
-            className={field}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Anything we should know? (vegetarian, nervous on lifts…)"
-            aria-label="Note"
-            maxLength={80}
-          />
-          <button
-            type="submit"
-            className={`${styles.go} min-h-12 rounded-full px-6 text-sm uppercase`}
-          >
-            Add to the crew
-          </button>
-        </form>
-      </Card>
+            <button
+              type="submit"
+              className={`${styles.go} min-h-12 rounded-full px-6 text-sm uppercase`}
+            >
+              Add to the crew
+            </button>
+          </form>
+        </Card>
+      )}
 
-      <Card className="space-y-3">
-        <h2 className="text-xl font-extrabold">Bring the crew in</h2>
-        <p className="text-sm text-[var(--sn-frost)]">
-          Send the plan to everyone. It opens as a copy on their phone, where
-          they add themselves. The plan travels inside the link, so nothing is
-          uploaded.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button className={btn} onClick={sharePlan}>
-            Share the plan
-          </button>
-          <Link
-            className={`${btn} inline-flex items-center`}
-            href={`/adventures/new?name=${encodeURIComponent(day.title)}`}
-          >
-            Make it a shared adventure
-          </Link>
-        </div>
-        {copied && (
-          <p role="status" className="text-sm">
-            {copied}
+      {shared ? (
+        <Card className="space-y-3">
+          <h2 className="text-xl font-extrabold">Bring the crew in</h2>
+          <p className="text-sm text-[var(--sn-frost)]">
+            {shared.isOwner
+              ? "Send the invite link. Everyone who opens it signs in, picks how they ride, and lands in this same day — votes, chat, points and photos are shared live."
+              : "Only the host can make invite links. Ask them, or have them send it again."}
           </p>
-        )}
-        <p className="text-xs text-[var(--sn-frost)]">
-          Copies don&apos;t merge yet — one live shared crew needs
-          Passport&apos;s account-based adventures. Group chat waits for that
-          too.
-        </p>
-      </Card>
+          {shared.isOwner && (
+            <button className={btn} onClick={inviteCrew}>
+              Invite the crew
+            </button>
+          )}
+          {copied && (
+            <p role="status" className="text-sm">
+              {copied}
+            </p>
+          )}
+        </Card>
+      ) : (
+        <Card className="space-y-3">
+          <h2 className="text-xl font-extrabold">Bring the crew in</h2>
+          <p className="text-sm text-[var(--sn-frost)]">
+            Send the plan to everyone. It opens as a copy on their phone, where
+            they add themselves. The plan travels inside the link, so nothing is
+            uploaded.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button className={btn} onClick={sharePlan}>
+              Share the plan
+            </button>
+            <Link
+              className={`${btn} inline-flex items-center`}
+              href={`/adventures/new?name=${encodeURIComponent(day.title)}`}
+            >
+              Make it a shared adventure
+            </Link>
+          </div>
+          {copied && (
+            <p role="status" className="text-sm">
+              {copied}
+            </p>
+          )}
+          <p className="text-xs text-[var(--sn-frost)]">
+            Copies don&apos;t merge yet — one live shared crew needs
+            Passport&apos;s account-based adventures. Group chat waits for that
+            too.
+          </p>
+        </Card>
+      )}
 
       <Card className="space-y-3">
         <h2 className="text-xl font-extrabold">Announcements</h2>

@@ -12,7 +12,7 @@ import {
 } from "@/domain/snow/ability";
 import { newDay } from "@/domain/snow/day";
 import { mountainById } from "@/domain/snow/mountains";
-import { newId, readDay, writeDay, writeMe } from "./store";
+import { newId, readDay, rememberSharedDay, writeDay, writeMe } from "./store";
 import { btn, btnOn, field, styles } from "./kit";
 
 /**
@@ -35,11 +35,91 @@ export function NewDay({
   const [discipline, setDiscipline] = useState<Discipline>("ski");
   const [ability, setAbility] = useState<Ability>("intermediate");
   const [error, setError] = useState<string | null>(null);
+  const [together, setTogether] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  /**
+   * Start it as a day every phone shares. Needs an account: who is in the
+   * crew, and whose votes are whose, has to be somebody.
+   */
+  async function startTogether(hostName: string, dayTitle: string) {
+    setBusy(true);
+    try {
+      const res = await fetch("/snow/api/days", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: dayTitle,
+          name: hostName,
+          discipline,
+          ability,
+          ownGear: true,
+        }),
+      });
+      if (res.status === 401) {
+        const back = new URLSearchParams();
+        for (const [k, v] of Object.entries({
+          mountain: mountainId,
+          atlas: atlasName,
+        }))
+          if (v) back.set(k, v);
+        router.push(
+          `/auth?next=${encodeURIComponent(`/snow/new${back.size ? `?${back}` : ""}`)}`,
+        );
+        return;
+      }
+      const made = (await res.json().catch(() => ({}))) as {
+        id?: string;
+        error?: string;
+      };
+      if (!res.ok || !made.id) {
+        setError(made.error ?? "Couldn't start a shared day just now.");
+        return;
+      }
+      rememberSharedDay(made.id, dayTitle);
+      const label = atlasName ?? mountain?.name;
+      if (label) {
+        // The mountain you came from goes on the list as the first option.
+        const seen = (await (await fetch(`/snow/api/${made.id}`)).json()) as {
+          me: string;
+        };
+        await fetch(`/snow/api/${made.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: {
+              type: "propose",
+              proposal: {
+                id: newId(),
+                topic: "mountain",
+                label,
+                detail: atlasName ? undefined : mountain?.region,
+                by: seen.me,
+                source: atlasName ? "atlas" : "passport-list",
+              },
+            },
+          }),
+        });
+      }
+      router.push(`/snow/day/${made.id}`);
+    } catch {
+      setError("No signal — a shared day needs one to start.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function start(e: React.FormEvent) {
     e.preventDefault();
     const hostName = name.trim();
     if (!hostName) return setError("What should the crew call you?");
+    if (together) {
+      const label = atlasName ?? mountain?.name;
+      return void startTogether(
+        hostName,
+        title || (label ? `${label} day` : "Our snow day"),
+      );
+    }
     const id = newId();
     const hostId = newId();
     const now = new Date().toISOString();
@@ -172,6 +252,21 @@ export function NewDay({
         </div>
       </fieldset>
 
+      {!again && (
+        <label className="flex items-start gap-3 rounded-xl border border-[var(--sn-line)] p-3 text-sm">
+          <input
+            type="checkbox"
+            checked={together}
+            onChange={(e) => setTogether(e.target.checked)}
+            className="mt-0.5 size-5"
+          />
+          <span>
+            <span className="font-semibold">Plan it together, live.</span>{" "}
+            Everyone joins from their own phone with an invite link, and votes,
+            chat, points and photos are shared. Needs a Passport account.
+          </span>
+        </label>
+      )}
       {error && (
         <p role="alert" className="text-sm font-semibold text-[var(--sn-glow)]">
           {error}
@@ -179,6 +274,7 @@ export function NewDay({
       )}
       <button
         type="submit"
+        disabled={busy}
         className={`${styles.go} min-h-14 w-full rounded-full text-lg uppercase`}
       >
         Create the day
