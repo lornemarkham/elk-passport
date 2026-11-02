@@ -1,5 +1,10 @@
 # The Markham Adventure, rebuilt (mission 485)
 
+> **Superseded in part by [`FINISH-THE-EXPERIENCE.md`](FINISH-THE-EXPERIENCE.md)
+> (mission 487):** one itinerary, the loose ideas and the two extra planners
+> removed, Into the Wild replaced by King Eddie Lake. The facts below still
+> stand.
+
 Monday 2 November 2026, Lorne and Jess, leaving about 5 PM. Builds on
 mission 484 (`LORNE-AND-JESS.md`, GitHub `main` 137def4). Same backend, same
 adventure core, no new tables, no new migration.
