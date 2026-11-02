@@ -14,12 +14,18 @@ export const metadata: Metadata = {
 };
 
 /** The landing for an invitation link. Works signed out; joins signed in. */
+/** A texted Date Night link lands on its play: nowhere else is accepted. */
+const NEXT = /^\/night\/[A-Za-z0-9_-]{1,64}(\?p=[0-9a-f-]{36})?$/i;
+
 export default async function JoinAdventurePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ next?: string | string[] }>;
 }) {
   const { token } = await params;
+  const { next } = await searchParams;
   const [described, user] = await Promise.all([
     TOKEN_PATTERN.test(token)
       ? visitorDb()
@@ -35,6 +41,7 @@ export default async function JoinAdventurePage({
       state={described?.state ?? "unknown"}
       kindLabel={described ? kindLabel(described.kind) : null}
       signedIn={user !== null}
+      next={typeof next === "string" && NEXT.test(next) ? next : null}
       invitation={
         described?.kind === "date-night-plan" ? MARKHAM.invitation : null
       }

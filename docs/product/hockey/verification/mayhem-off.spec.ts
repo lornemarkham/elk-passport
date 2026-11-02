@@ -58,7 +58,7 @@ test.skip(
 test("PLAY without the mayhem migration", async ({ browser }) => {
   test.setTimeout(180_000);
   const lornePage = await phone(browser);
-  await lornePage.goto("/hockey");
+  await lornePage.goto("/hockey/my-nights");
   await signUp(lornePage, "lorne");
   await lornePage.getByLabel("Your name").fill("Lorne");
   await lornePage.getByLabel("Opponent").fill("Wild");

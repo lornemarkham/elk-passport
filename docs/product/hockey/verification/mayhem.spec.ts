@@ -57,7 +57,7 @@ test("Operation Mayhem: three people, one rivalry, one Cup", async ({
 
   // ============================================================ the night
   const lornePage = await phone(browser);
-  await lornePage.goto("/hockey");
+  await lornePage.goto("/hockey/my-nights");
   await signUp(lornePage, "lorne");
   await lornePage.getByLabel("Your name").fill("Lorne");
   await lornePage.getByLabel("Opponent").fill("Wild");

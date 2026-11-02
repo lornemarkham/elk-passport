@@ -141,7 +141,7 @@ export function YouTonight({
                     `/hockey/api/occasions/${night.state.slug}/members/${me.id}`,
                     { method: "DELETE" },
                   );
-                  window.location.href = "/hockey";
+                  window.location.href = "/hockey/my-nights";
                 }}
               >
                 Leave

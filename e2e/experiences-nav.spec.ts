@@ -95,14 +95,17 @@ for (const [name, device] of [
       await page.goto("/");
       await page.getByTestId("passport-nav-experiences").click();
       await page.getByTestId("passport-experience-hockey").click();
-      // Since 2026-11-01 a signed-out /hockey is the public front door; its
-      // one button carries the sign-in, with the way back.
+      // Since 2026-11-01 /hockey is the public hockey site; its Create a
+      // Hockey Night button carries the sign-in, with the way back.
       await expect(page).toHaveURL(/\/hockey$/);
       await expect(
         page.getByRole("heading", { name: "Hockey is better with your crew." }),
       ).toBeVisible();
-      await page.getByRole("link", { name: "Start a Hockey Night" }).click();
-      await expect(page).toHaveURL(/\/auth\?next=%2Fhockey$/);
+      await page
+        .getByRole("link", { name: "Create a Hockey Night" })
+        .first()
+        .click();
+      await expect(page).toHaveURL(/\/auth\?next=%2Fhockey%2Fmy-nights/);
     });
 
     test("October opens October", async ({ page }) => {

@@ -224,7 +224,7 @@ export function clockFrom(spoken: string): number | undefined {
   return hour * 60 + minute;
 }
 
-const startIn = (text: string): number | undefined => {
+export const startIn = (text: string): number | undefined => {
   const m =
     text.match(
       new RegExp(
@@ -237,7 +237,7 @@ const startIn = (text: string): number | undefined => {
   return m?.[1] ? clockFrom(m[1]) : undefined;
 };
 
-const homeIn = (text: string): number | undefined => {
+export const homeIn = (text: string): number | undefined => {
   const m =
     text.match(
       new RegExp(

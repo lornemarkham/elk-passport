@@ -485,3 +485,12 @@
     animation: none;
   }
 }
+
+/* Date Night's bottom bar (SHARED-ADVENTURE.md): toasts sit above it on a phone,
+   never on top of it. */
+@media (max-width: 767px) {
+  body:has([data-testid="night-bottom-nav"])
+    [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+}

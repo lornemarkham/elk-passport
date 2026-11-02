@@ -21,6 +21,7 @@ export function JoinAdventure({
   signedIn,
   invitation = null,
   backdrop = null,
+  next = null,
 }: {
   token: string;
   state: "valid" | "revoked" | "expired" | "used-up" | "unknown";
@@ -30,11 +31,16 @@ export function JoinAdventure({
   invitation?: readonly string[] | null;
   /** A kind's own photograph to open on (a public, licensed landscape). */
   backdrop?: { readonly src: string; readonly credit: string } | null;
+  /**
+   * Where to land once joined: the thing the link was texted about (a Date
+   * Night play, `/night/<id>?p=<item>`). Checked by the page.
+   */
+  next?: string | null;
 }) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const here = `/adventures/join/${token}`;
+  const here = `/adventures/join/${token}${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   async function join() {
     setJoining(true);
@@ -54,7 +60,12 @@ export function JoinAdventure({
         return;
       }
       const { id } = await response.json();
-      router.replace(`/adventures/${id}`);
+      // Only somewhere inside the adventure just joined.
+      const inside =
+        next &&
+        (next === `/night/${encodeURIComponent(id)}` ||
+          next.startsWith(`/night/${encodeURIComponent(id)}?`));
+      router.replace(inside ? next : `/adventures/${id}`);
       router.refresh();
     } catch {
       setError("Couldn't join just now. Please try again.");
@@ -147,6 +158,15 @@ export function JoinAdventure({
             <p className="text-muted-foreground mt-1 text-sm">
               Ask whoever sent it for a new one.
             </p>
+            {next && (
+              <Link
+                href={next}
+                data-testid="already-in"
+                className="bg-primary text-primary-foreground mt-4 inline-block rounded-full px-4 py-2 text-sm font-medium"
+              >
+                Already in? Open it
+              </Link>
+            )}
           </>
         ) : (
           <>

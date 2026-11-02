@@ -1,5 +1,11 @@
 # The Markham Adventure ❤️ — release steps (operator)
 
+> **Superseded for packing and memories by mission 495** — see
+> [`MAGICAL.md`](MAGICAL.md), _Release_: a read-only preflight
+> (`PREFLIGHT-SHARED.sql`), the rehearsal on a stack with data, and the
+> order. The public title is now _Just us_; nights stored under the old
+> title are still found. Steps 3–4 below now read **Send it to Jess**.
+
 Nothing here has been run against production. Built on the shared adventure
 core: kind `date-night-plan`, pages `/datenight` (front door) and `/night/<id>`.
 Config: `src/domain/date-night/adventures/markham.ts`.

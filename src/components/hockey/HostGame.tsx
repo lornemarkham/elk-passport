@@ -60,7 +60,7 @@ export function HostGame({ night }: { night: SharedNight }) {
     const res = await fetch(`/hockey/api/occasions/${state.slug}`, {
       method: "DELETE",
     });
-    if (res.ok) window.location.href = "/hockey";
+    if (res.ok) window.location.href = "/hockey/my-nights";
     else {
       setMessage("Couldn't cancel it.");
       setSure(false);

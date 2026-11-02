@@ -2,9 +2,14 @@ import { TOMORROW } from "./tomorrow";
 import type { NightConfig } from "./types";
 
 /**
- * **The Markham Adventure ❤️ — Lorne and Jess, 2 November 2026.**
+ * **Just us ❤️ — the first Date Night, 2 November 2026, from Vernon.**
  *
- * The activities are Lorne's list as possibilities, not an itinerary.
+ * Mission 495 took the family name off the public page: it opens as "Tonight,
+ * just us" (`heading.ts`, from the day and the leave time) and the people on
+ * it are named beside the title from the adventure's own members. Nights made
+ * before that are stored as "The Markham Adventure ❤️" and are still this one.
+ *
+ * The activities are an older list of possibilities, not an itinerary.
  *
  * Atlas check (prod corpus snapshot of 2026-10-24, 10 MB): "King Eddie" is
  * NOT in Atlas — the only near match is the King Edward VII Fountain in
@@ -15,13 +20,14 @@ import type { NightConfig } from "./types";
  */
 export const MARKHAM: NightConfig = {
   slug: "datenight",
-  title: "The Markham Adventure ❤️",
-  adventureTitle: "The Markham Adventure ❤️",
+  title: "Just us ❤️",
+  adventureTitle: "Just us ❤️",
+  formerTitles: ["The Markham Adventure ❤️"],
   tagline: "Two people. One vehicle. No particular hurry.",
   invitation: [
-    "Monday's taken. You're coming with me. ❤️",
-    "Tomorrow we disappear for a little while. Into the wild, your hot pools, or a very cold lake and a warm fire. The details are negotiable. Your company isn't.",
-    "Come and make it ours.",
+    "Come on an adventure with me. ❤️",
+    "Just the two of us, for a little while. The details are negotiable. Your company isn't.",
+    "Say yes, and help me make it ours.",
   ],
   activities: [
     {
@@ -79,7 +85,7 @@ export const MARKHAM: NightConfig = {
     "Good attitude",
   ],
   day: TOMORROW,
-  evenings: ["into-the-wild", "crazy-creek", "cold-water", "surprise"],
+  evenings: ["king-eddie", "crazy-creek", "cold-water", "surprise"],
   partnerName: "Jess",
   mysteryAtlasIds: [
     "d3c70f99-3412-46d2-87f8-45e4854b7d48", // Kalamalka Lake Park

@@ -725,6 +725,18 @@ home game. Every night is still invitation-only; the public page says nothing
 about any of them. This settles reachability for Hockey; it does not answer
 §15.1 (theme or composition) or §15.12 (how group experiences work).
 
+_The front door became a hockey site 2026-11-01_ (owner brief "Mission 486 —
+Hockey website", recorded in `docs/product/hockey/WEBSITE.md`): `/hockey` is
+a public NHL site for everybody — the league's scores, schedule, standings,
+teams and statistics, read live and never invented — with Hockey Night built
+in as the thing to do next ("Make a night of it" on any game not yet
+started). A person's own nights moved to `/hockey/my-nights`. The Calgary
+Flames are featured as a stated editorial preference; league coverage stays
+neutral. Nights are still invitation-only and nothing about any of them is
+public. Whether the league's public data may be shown this way is an owner
+decision recorded there (§3), not settled by this paragraph; nor does it
+answer §15.1 or §15.12.
+
 _Christmas joined the menu 2026-11-01_ (release "Ship Hockey and
 Christmas"; `docs/product/christmas/README.md`): the Experiences item now
 opens to four — Conference, Hockey Night, October, Christmas — each still
@@ -924,6 +936,9 @@ certainty. Do not invent an answer here to make the document feel finished.
    the adventure itself — in words, with a preview and an Undo, or by Keep ·
    Replace · Move · Remove — using the same engine; Go Have a Day stays the
    full workbench._
+   _Narrowly again for one Date Night (2026-11-02, §15.12): a night whose
+   stops are mostly not Atlas places is shaped as a timed itinerary laid out
+   around the sunset, edited in place in words or by hand._
 5. **When to proactively ask for constraints.** How Passport judges the moment.
    (§4)
    _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
@@ -1017,6 +1032,38 @@ certainty. Do not invent an answer here to make the document feel finished.
     place Atlas lacks (Crazy Creek) is named and checked by hand, never
     invented as a stop. Whether "pick from a few evenings" is how every
     Experience should open is still open.
+    _Informed again 2026-11-02 by Date Night, finished_
+    (`docs/product/date-night/FINISH-THE-EXPERIENCE.md`, mission 487): the
+    night is one adventure with one itinerary. The adventures come first, as
+    cards; choosing one writes its stops — places Atlas holds and things it
+    doesn't (a forest road, a fire, a lake) — as the adventure's own day, and
+    every change after that (the other ending, a sentence, Change · Move ·
+    Remove · Add) edits that same day. A sentence is read deterministically
+    with the Day Builder's clock readers and the night's checked places, and
+    previewed before it is applied. The second planner, the second itinerary
+    and the loose idea vote are gone. One composition.
+    _Informed again 2026-11-02 by Date Night, made magical_
+    (`docs/product/date-night/MAGICAL.md`, mission 495): the same structure,
+    presented as invitations and a journey. Once an adventure is chosen it
+    is the page's star and the others fold behind Change adventure. The
+    title says when, from the leave time (an afternoon is not called a
+    night), and names come from the people on it, not from code. The
+    sentence reader says it reads by rules, not AI, and what it can't do; a
+    place Atlas hasn't checked is refused, never invented. A capability
+    whose table isn't applied says so instead of looking like it works. One
+    composition.
+    _Informed again 2026-11-02 by Date Night, shared_
+    (`docs/product/date-night/SHARED-ADVENTURE.md`): the two people play
+    before the night begins, and **texting is the channel, not an in-app
+    chat**. Passport makes small things worth sending (a This or That, a
+    challenge, a choice the other person makes, a note that opens at sunset),
+    and the texted link opens that exact thing, through the invitation if
+    they haven't joined yet. A new leave time is answered with honest ways to
+    spend it (shorter, more light for the main thing, the other ending, a
+    closer adventure, or the plan as it is with its warnings), never a
+    silent shift. One composition; whether "no chat, things to text" holds
+    for groups larger than two is open, and whether these small plays sit
+    under §6 or §14's "elaborate social games" is the owner's call.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

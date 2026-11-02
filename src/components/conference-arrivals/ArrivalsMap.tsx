@@ -2,7 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
-import type { Map as MlMap, Marker } from "maplibre-gl";
+import type { Map as MlMap, Marker, AllPaintProperties } from "maplibre-gl";
 import type { ArrivalRow } from "@/domain/conference-arrivals/board";
 import { greatCirclePath, ringAround } from "@/domain/conference-arrivals/geo";
 import type { Airport } from "@/domain/conference-arrivals/matching";
@@ -32,7 +32,7 @@ const RINGS_KM = [50, 150, 400];
 
 /** Repaint a few of the style's layers, if it has them. */
 function chart(m: MlMap) {
-  const paint = (id: string, prop: string, value: unknown) => {
+  const paint = (id: string, prop: keyof AllPaintProperties, value: string) => {
     if (m.getLayer(id)) m.setPaintProperty(id, prop, value);
   };
   paint("background", "background-color", "#0a0f17");

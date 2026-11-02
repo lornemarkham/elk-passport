@@ -8,6 +8,8 @@ human steps stand between this and sending invitations — see
 The night: **Sunday 25 October 2026, Canucks vs Wild, Rogers Arena, 7:00pm
 Pacific** (`2026-10-26T02:00Z`; PDT ends 1 November).
 
+**2026-11-01 — the public hockey website: [`WEBSITE.md`](WEBSITE.md)** (mission 486: `/hockey` is a public NHL site — tonight's games, the featured matchup, scores & schedule, standings, all 32 teams with schedules and stats, live from the league's public data, never invented — with **Create a Hockey Night** on the first phone screen and **Make a night of it** on every game not yet started; your nights moved to `/hockey/my-nights`; the Flames featured, the league neutral; cookieless counts from create-click to night created to invitation accepted; no SQL. **Owner decision before release: the NHL's terms of use (§3).**)
+
 **2026-11-01 — finish the experience: [`FINISH-THE-EXPERIENCE.md`](FINISH-THE-EXPERIENCE.md)** (after the real night of 25 October: a score always names its teams — "VAN 2–4 MIN" — with a regression suite on the league's record; host announcements kept in front of everyone until Got it!, and chat replies; `/hockey` is a public front door and a night can be any of the league's games in any arena; the run-up card and Chirp Bot's one line per stage of the week; the trophy takes the group's name; a mini-fantasy reader proven on the real boxscore; needs `announce-migration.sql`).
 
 **2026-10-24 — The Bet button: [`BET-BUTTON.md`](BET-BUTTON.md)** (the Bet sheet no longer steals focus on every poll, closes from the backdrop only when the press began there, says a refusal inside the sheet, cannot send twice, confirms "Thrown at …", and the sender's card reads Waiting → Accepted / Passed; two-account + RLS spec `verification/bet-button.spec.ts`; no SQL change).
@@ -71,7 +73,8 @@ run as titles, not points. Where the ideas came from and what was lost:
 ## Architecture
 
 ```
-/hockey                      your nights; "Start it" (+ your name)
+/hockey                      the public hockey site (WEBSITE.md); games, standings, teams below it
+/hockey/my-nights            your nights; "Start it" (+ your name) — was /hockey until 2026-11-01
 /hockey/[id]                 the night — HockeyNightScreen (the lab's ExperienceScreen, shared)
 /hockey/join/[token]         an invitation
 /hockey/api/occasions        GET mine · POST start
