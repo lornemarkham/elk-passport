@@ -725,6 +725,11 @@ home game. Every night is still invitation-only; the public page says nothing
 about any of them. This settles reachability for Hockey; it does not answer
 §15.1 (theme or composition) or §15.12 (how group experiences work).
 
+_Christmas joined the menu 2026-11-01_ (release "Ship Hockey and
+Christmas"; `docs/product/christmas/README.md`): the Experiences item now
+opens to four — Conference, Hockey Night, October, Christmas — each still
+opening its own route (`/christmas`) under its own access rules.
+
 ---
 
 ## 11. Current near-term direction
@@ -960,6 +965,14 @@ certainty. Do not invent an answer here to make the document feel finished.
     overview leads with what matters at this point of the trip — before,
     arrival day, during, after — from the organiser's published agenda and
     the plans colleagues made, kept visibly apart. Still one composition.
+    _Informed 2026-11-01 by Go Have a Christmas_
+    (`docs/product/christmas/README.md`): a group's host can announce a
+    change that leads the page until each member has it, and members can
+    share photos, traditions and finished challenges with the group. One
+    composition; the general question stays open. _Where shared memories
+    live is decided (owner, 2026-11-01, [ADR 014](architecture/decisions/014-adventure-notices-and-shared-moments.md)):_
+    memories a person explicitly shares with an adventure are visible to its
+    members and nobody else; personal memories stay private.
     _Informed again 2026-10-24 by Sycle Summit_
     (`docs/products/go-have-a-conference/SUMMIT.md`, ADR 013): during a
     conference Home is a companion that counts down to what's next; a

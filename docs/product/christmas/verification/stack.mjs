@@ -3,7 +3,7 @@
  * **A real, local, throwaway Supabase for Go Have a Christmas** — the
  * group-adventures stack (docs/product/group-adventures/verification/stack.mjs)
  * copied with its own ports (557xx) and directory, plus Christmas's proposed
- * together-migration.sql.
+ * the together migration (supabase/migrations/20261101000000_passport_adventure_together.sql).
  *
  * Original header follows.
  *
@@ -338,12 +338,15 @@ async function services({ fresh }) {
       await sql(origin);
     }
     // Christmas's proposal: announcements and shared moments on the core
-    // (docs/product/christmas/together-migration.sql), twice to prove it is
+    // (supabase/migrations/20261101000000_passport_adventure_together.sql), twice to prove it is
     // idempotent. CHRISTMAS_WITHOUT_TOGETHER=1 leaves it out — the state
     // production is in until the owner applies it.
     if (process.env.CHRISTMAS_WITHOUT_TOGETHER !== "1") {
       const together = fs.readFileSync(
-        path.join(repo, "docs/product/christmas/together-migration.sql"),
+        path.join(
+          repo,
+          "supabase/migrations/20261101000000_passport_adventure_together.sql",
+        ),
         "utf8",
       );
       await sql(together);

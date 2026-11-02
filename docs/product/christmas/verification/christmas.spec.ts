@@ -19,7 +19,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  *   +  Reduced motion: no snow. 320 px: nothing overflows.
  *
  * Real GoTrue accounts and Postgres RLS (stack.mjs, with
- * together-migration.sql applied). Atlas is the stand-in serving Atlas's
+ * the together migration (supabase/migrations/20261101000000_passport_adventure_together.sql) applied). Atlas is the stand-in serving Atlas's
  * real corpus of 2026-10-24 (atlas-candidates-2026-10-24.json.gz).
  *
  *   E2E_PORT=3131 npx playwright test -c docs/product/christmas/verification christmas.spec

@@ -12,7 +12,7 @@ import type {
  * **Announcements and shared moments, on the adventure core.**
  *
  * Reads and writes the tables proposed in
- * `docs/product/christmas/together-migration.sql`, always as the signed-in
+ * `supabase/migrations/20261101000000_passport_adventure_together.sql`, always as the signed-in
  * person (the core's rule: Postgres decides, this asks). Until that
  * migration is applied the tables do not exist, and every read here answers
  * `off` rather than failing — the page then says sharing isn't switched on,

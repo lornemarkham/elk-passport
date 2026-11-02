@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * **Before the owner applies together-migration.sql** — the state production
+ * **Before the owner applies the together migration** — the state production
  * is in. Christmas must still plan, vote and invite on the core, say plainly
  * that announcements and shared memories aren't switched on, and refuse
  * writes with a sentence rather than an error page.

@@ -52,7 +52,8 @@ named here and resolved by the owner's brief, not by the code.
 5. **The day of, the adventure leads with what's next.** On a date the
    adventure covers, the page opens on _Today's adventure_: the next stop,
    its published hours, directions, and _Done_. Done marks are kept on the
-   device only (where memories live is D-9, still open). It never notifies.
+   device only (where memories live is D-9 — answered 2026-11-01 for shared
+   memories only, ADR 014). It never notifies.
 6. **An adventure has a guide.** `/adventures/[id]/guide` is a printable
    keepsake: cover, each day's stops with why and what is published, what
    Passport could not check, and space to write what happened — the Fishing
@@ -74,5 +75,6 @@ named here and resolved by the owner's brief, not by the code.
   line. Opening hours are shown in the publisher's words; Passport does not
   claim a place is open unless Atlas states it for that date.
 - Still open: per-stop _did / loved_ (§15.14, D-2), where memories are kept
-  (D-9), a model's role (D-12, §15.13), who besides the owner may place
+  (D-9 — answered narrowly 2026-11-01 by ADR 014: what a person shares with
+  an adventure lives with it, visible to its members; the rest stays open), a model's role (D-12, §15.13), who besides the owner may place
   stops, and whether a group plan needs a commitment state (§2.6).

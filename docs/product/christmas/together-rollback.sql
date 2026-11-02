@@ -1,4 +1,4 @@
--- ROLLBACK for together-migration.sql (lane christmas, 2026-11-01).
+-- ROLLBACK for supabase/migrations/20261101000000_passport_adventure_together.sql (lane christmas, 2026-11-01).
 -- Removes announcements and shared memories, and EVERYTHING people shared in
 -- them — photos included. Export first if anything should be kept:
 --   select * from public.passport_adventure_moments;

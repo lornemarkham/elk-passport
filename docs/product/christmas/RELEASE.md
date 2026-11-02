@@ -27,37 +27,25 @@ on 2026-11-01 against a local stack; **nothing has touched production.**
 | `src/app/adventures/[id]/page.tsx` | an adventure whose kind declares a `home` redirects there — so invite joins, Saved cards and `/adventures` links reach the Christmas page |
 | `e2e/christmas.spec.ts`            | new, signed-out Christmas checks in the main Playwright gate                                                                              |
 
-### Proposed, not made (shared contracts)
+### Shared contracts — decided and integrated (2026-11-01)
 
-1. **Migration** — `docs/product/christmas/together-migration.sql`
-   (+ `together-preflight.sql`, `together-rollback.sql`). Core tables for
-   announcements and shared moments; reasoning in
-   `ADR-PROPOSED-adventure-notices-and-moments.md`. It answers D-9 narrowly
-   and says so — **an owner decision**, not a formality.
-2. **The Experiences menu** — `src/components/shell/PassportNav.tsx`:
-
-   ```ts
-   const EXPERIENCES = [
-     { href: "/conferences", label: "Conference", testId: "conference" },
-     { href: "/hockey", label: "Hockey Night", testId: "hockey" },
-     { href: "/october", label: "October", testId: "october" },
-     { href: "/christmas", label: "Christmas", testId: "christmas" },
-   ] as const;
-   ```
-
-   plus the matching row in `PassportNav.test.tsx` and doctrine §10. Until
-   then `/christmas` is reachable by URL only.
+1. **Migration** — accepted by the owner (D-9, decision 1 of the release
+   brief) and moved to
+   `supabase/migrations/20261101000000_passport_adventure_together.sql`
+   (preflight and rollback stay here: `together-preflight.sql`,
+   `together-rollback.sql`). Reasoning:
+   [ADR 014](../../architecture/decisions/014-adventure-notices-and-shared-moments.md).
+2. **The Experiences menu** — Christmas is the fourth entry in
+   `src/components/shell/PassportNav.tsx` (commit `0e5d8ac`), doctrine §10
+   updated.
 
 ## Owner steps, in order
 
-1. Merge `feature/christmas` (it touches no shared contract).
-2. Decide the D-9 proposal. **If yes:** run `together-preflight.sql` in the
-   Passport project's SQL editor (every row `ok`), then
-   `together-migration.sql` (after `20261021000000_passport_adventures.sql`,
-   which production already has). Never `supabase db push`. **If no:**
-   Christmas ships with sharing off — it says so on the page.
-3. Decide the Experiences menu change above.
-4. Deploy through the normal release process.
+The release record is
+[`docs/release/RELEASE-2026-11-01-HOCKEY-CHRISTMAS.md`](../../release/RELEASE-2026-11-01-HOCKEY-CHRISTMAS.md);
+its order supersedes this list. In short: SQL editor
+`together-preflight.sql` (every row `ok`) → the migration above → preflight
+again; never `supabase db push`; then the push.
 
 ### Smoke on production (after deploy)
 

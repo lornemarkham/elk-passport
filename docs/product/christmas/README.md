@@ -100,7 +100,7 @@ group's half.
   adventures core, unlike Hockey (its own tables) and October (a themed
   corpus). It does not make that the Experience contract.
 - **D-9 (where memories live) is proposed, not taken.** Shared memories need
-  the migration in [`together-migration.sql`](together-migration.sql), which
+  the migration in [`20261101000000_passport_adventure_together.sql`](../../../supabase/migrations/20261101000000_passport_adventure_together.sql), which
   states its decision out loud. Until it is applied, Christmas says sharing
   isn't switched on and everything the core does keeps working (verified:
   `christmas-off.spec.ts`).

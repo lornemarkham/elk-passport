@@ -1,9 +1,10 @@
 -- ============================================================================
--- PROPOSED MIGRATION — announcements and shared memories on the adventure core
+-- MIGRATION — announcements and shared memories on the adventure core
 -- Written on lane christmas (feature/christmas), 2026-11-01, for Go Have a
--- Christmas. NOT applied to any real project. NOT in supabase/migrations:
--- migrations are a shared contract, so this lane proposes it and the
--- contracts / integration owner moves it (docs/product/christmas/RELEASE.md).
+-- Christmas, as docs/product/christmas/together-migration.sql. Accepted by
+-- the owner 2026-11-01 (D-9, ADR 014) and moved here by the integration
+-- owner, unchanged below this header. Apply in the SQL editor (never
+-- `supabase db push`); preflight and rollback stay in docs/product/christmas/.
 --
 -- WHAT THIS IS
 --
@@ -26,10 +27,10 @@
 -- WHAT THIS DECIDES, OUT LOUD
 --
 -- ADR 012 left "where memories live" open (D-9) and kept Done marks on the
--- device. This proposes, for adventures only, that memories a person CHOOSES
+-- device. This decides (owner, 2026-11-01), for adventures only, that memories a person CHOOSES
 -- TO SHARE with their group live with the adventure, visible to its members
--- and nobody else. Done marks are untouched. If the owner prefers otherwise,
--- do not apply this; Christmas then says sharing is not switched on.
+-- and nobody else. Done marks are untouched. Until it is applied, Christmas
+-- says sharing is not switched on.
 --
 -- SECURITY MODEL (the core's, unchanged)
 --

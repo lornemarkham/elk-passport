@@ -1,9 +1,13 @@
-# Proposed ADR — Announcements and shared moments belong to the adventure core
+# 014 · Announcements and shared moments belong to the adventure core
 
-**Status:** PROPOSED by lane christmas (brief M470), 2026-11-01. Not
-accepted. When accepted, the integration owner gives it the next number in
-`docs/architecture/decisions/`, moves `together-migration.sql` into
-`supabase/migrations/`, and edits the doctrine as below.
+**Proposed:** 2026-11-01 by lane christmas (brief M470) · **Decided:**
+2026-11-01 by the owner (release brief "Ship Hockey and Christmas", owner
+decision 1: _"Memories explicitly shared with an adventure are visible to
+its authorized participants. Personal memories remain private."_) ·
+**Status:** accepted; integrated on `main`. The migration is
+`supabase/migrations/20261101000000_passport_adventure_together.sql`
+(applied in the SQL editor, never `db push`; preflight and rollback in
+`docs/product/christmas/`). The doctrine edits below are made.
 
 ## Context
 
@@ -46,12 +50,19 @@ Conference's in its own tables. ADR 012 kept Done marks on the device and left
 - Hockey and Snow can adopt announcements and moments without a migration
   of their own. Hockey's existing photos are not moved by this.
 - The store currently lives in `src/app/christmas/_server/together.ts` (lane
-  boundary). On acceptance it belongs in `src/lib/adventures/`, beside
-  `store.ts`, with the routes under `/api/adventures/[id]/…`.
+  boundary). It belongs in `src/lib/adventures/`, beside `store.ts`, with the
+  routes under `/api/adventures/[id]/…`. Not moved at acceptance: the
+  release brief said not to rewrite either experience, so the move is the
+  next change that touches it.
+- Hockey's announcements (2026-11-01, `announce-migration.sql`) were built
+  in the same week on Hockey's own `passport_occasion_moments` (kind
+  `announce`), not on these tables. Two announcement systems now exist, one
+  per group foundation; Hockey adopts these when it moves onto the core
+  (ADR 009). Named here rather than hidden.
 - Photos are base64 text in Postgres, as Hockey's are. Moving all group photos
   to object storage is a later, separate decision.
 
-## Doctrine edits on acceptance
+## Doctrine edits (made 2026-11-01)
 
 - §15.12, add: _"Informed 2026-11-01 by Go Have a Christmas
   (`docs/product/christmas/README.md`): a group's host can announce a change

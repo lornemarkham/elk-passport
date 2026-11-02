@@ -1,4 +1,4 @@
--- PREFLIGHT for together-migration.sql — read-only. Run first; every row
+-- PREFLIGHT for supabase/migrations/20261101000000_passport_adventure_together.sql — read-only. Run first; every row
 -- should say ok before applying.
 select 'adventures core present' as check,
   case when to_regclass('public.passport_adventures') is not null
