@@ -32,6 +32,9 @@ for (const width of [320, 375, 390]) {
         )) {
           const r = el.getBoundingClientRect();
           if (r.width === 0 || r.height === 0) continue;
+          // A visually hidden control (`sr-only`, 1×1) is not a tap: Memories'
+          // file input is opened by the full-width button beside it.
+          if (r.width <= 1 && r.height <= 1) continue;
           const style = getComputedStyle(el);
           if (style.visibility === "hidden") continue;
           if (r.height < 40 || r.width < 32) {
