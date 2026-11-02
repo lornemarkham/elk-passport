@@ -83,7 +83,7 @@ test("setup: bryan hosts, casey and drew join, ivy is a stranger", async ({
 }) => {
   test.setTimeout(300_000);
   const host = await phone(browser);
-  await host.goto("/hockey");
+  await host.goto("/hockey/my-nights");
   await signUp(host, "bryan");
   await host.getByLabel("Your name").fill("bryan.k.smith");
   await host.getByLabel("Opponent").fill("Wild");
@@ -123,7 +123,7 @@ test("setup: bryan hosts, casey and drew join, ivy is a stranger", async ({
   drew = await join("drew", "Drew");
 
   const stranger = await phone(browser);
-  await stranger.goto("/hockey");
+  await stranger.goto("/hockey/my-nights");
   await signUp(stranger, "ivy");
   await expect(stranger.getByLabel("Opponent")).toBeVisible();
   ivy = {

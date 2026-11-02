@@ -42,7 +42,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -205,7 +208,7 @@ test("one whole hockey night: invite, identity, game plan, picks, Chirp Bot, the
 
   // ============================================================ INVITATION
   const lornePage = await phone(browser);
-  await lornePage.goto("/hockey");
+  await lornePage.goto("/hockey/my-nights");
   await signUp(lornePage, "lorne");
   await lornePage.getByLabel("Your name").fill("Lorne");
   await lornePage.getByLabel("Opponent").fill("Wild");

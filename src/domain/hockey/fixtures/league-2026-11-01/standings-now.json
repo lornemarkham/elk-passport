@@ -1,0 +1,1226 @@
+{
+  "wildCardIndicator": true,
+  "standingsDateTimeUtc": "2026-11-02T04:27:45Z",
+  "standings": [
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 1,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 1,
+      "leagueSequence": 1,
+      "wildcardSequence": 0,
+      "gamesPlayed": 16,
+      "wins": 12,
+      "losses": 2,
+      "otLosses": 2,
+      "points": 26,
+      "pointPctg": 0.8125,
+      "goalFor": 63,
+      "goalAgainst": 36,
+      "goalDifferential": 27,
+      "l10Wins": 8,
+      "l10Losses": 1,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 4,
+      "placeName": {
+        "default": "Carolina",
+        "fr": "Caroline"
+      },
+      "teamName": {
+        "default": "Carolina Hurricanes",
+        "fr": "Hurricanes de la Caroline"
+      },
+      "teamCommonName": {
+        "default": "Hurricanes"
+      },
+      "teamAbbrev": {
+        "default": "CAR"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 1,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 1,
+      "leagueSequence": 2,
+      "wildcardSequence": 0,
+      "gamesPlayed": 15,
+      "wins": 11,
+      "losses": 2,
+      "otLosses": 2,
+      "points": 24,
+      "pointPctg": 0.8,
+      "goalFor": 64,
+      "goalAgainst": 44,
+      "goalDifferential": 20,
+      "l10Wins": 7,
+      "l10Losses": 2,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 3,
+      "placeName": {
+        "default": "Edmonton"
+      },
+      "teamName": {
+        "default": "Edmonton Oilers",
+        "fr": "Oilers d'Edmonton"
+      },
+      "teamCommonName": {
+        "default": "Oilers"
+      },
+      "teamAbbrev": {
+        "default": "EDM"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 2,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 1,
+      "leagueSequence": 3,
+      "wildcardSequence": 0,
+      "gamesPlayed": 16,
+      "wins": 10,
+      "losses": 3,
+      "otLosses": 3,
+      "points": 23,
+      "pointPctg": 0.71875,
+      "goalFor": 52,
+      "goalAgainst": 36,
+      "goalDifferential": 16,
+      "l10Wins": 6,
+      "l10Losses": 2,
+      "l10OtLosses": 2,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Minnesota"
+      },
+      "teamName": {
+        "default": "Minnesota Wild",
+        "fr": "Wild du Minnesota"
+      },
+      "teamCommonName": {
+        "default": "Wild"
+      },
+      "teamAbbrev": {
+        "default": "MIN"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 2,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 1,
+      "leagueSequence": 4,
+      "wildcardSequence": 0,
+      "gamesPlayed": 15,
+      "wins": 10,
+      "losses": 4,
+      "otLosses": 1,
+      "points": 21,
+      "pointPctg": 0.7,
+      "goalFor": 55,
+      "goalAgainst": 36,
+      "goalDifferential": 19,
+      "l10Wins": 7,
+      "l10Losses": 2,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Boston"
+      },
+      "teamName": {
+        "default": "Boston Bruins",
+        "fr": "Bruins de Boston"
+      },
+      "teamCommonName": {
+        "default": "Bruins"
+      },
+      "teamAbbrev": {
+        "default": "BOS"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 3,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 2,
+      "leagueSequence": 5,
+      "wildcardSequence": 0,
+      "gamesPlayed": 14,
+      "wins": 9,
+      "losses": 3,
+      "otLosses": 2,
+      "points": 20,
+      "pointPctg": 0.714286,
+      "goalFor": 48,
+      "goalAgainst": 42,
+      "goalDifferential": 6,
+      "l10Wins": 8,
+      "l10Losses": 1,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 5,
+      "placeName": {
+        "default": "Montréal"
+      },
+      "teamName": {
+        "default": "Montréal Canadiens",
+        "fr": "Canadiens de Montréal"
+      },
+      "teamCommonName": {
+        "default": "Canadiens"
+      },
+      "teamAbbrev": {
+        "default": "MTL"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 3,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 2,
+      "leagueSequence": 6,
+      "wildcardSequence": 0,
+      "gamesPlayed": 15,
+      "wins": 9,
+      "losses": 5,
+      "otLosses": 1,
+      "points": 19,
+      "pointPctg": 0.633333,
+      "goalFor": 53,
+      "goalAgainst": 44,
+      "goalDifferential": 9,
+      "l10Wins": 5,
+      "l10Losses": 4,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Vegas"
+      },
+      "teamName": {
+        "default": "Vegas Golden Knights",
+        "fr": "Golden Knights de Vegas"
+      },
+      "teamCommonName": {
+        "default": "Golden Knights"
+      },
+      "teamAbbrev": {
+        "default": "VGK"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 4,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 3,
+      "leagueSequence": 7,
+      "wildcardSequence": 0,
+      "gamesPlayed": 16,
+      "wins": 9,
+      "losses": 6,
+      "otLosses": 1,
+      "points": 19,
+      "pointPctg": 0.59375,
+      "goalFor": 52,
+      "goalAgainst": 51,
+      "goalDifferential": 1,
+      "l10Wins": 4,
+      "l10Losses": 5,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Ottawa"
+      },
+      "teamName": {
+        "default": "Ottawa Senators",
+        "fr": "Sénateurs d'Ottawa"
+      },
+      "teamCommonName": {
+        "default": "Senators",
+        "fr": "Sénateurs"
+      },
+      "teamAbbrev": {
+        "default": "OTT"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 5,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 4,
+      "leagueSequence": 8,
+      "wildcardSequence": 1,
+      "gamesPlayed": 13,
+      "wins": 8,
+      "losses": 3,
+      "otLosses": 2,
+      "points": 18,
+      "pointPctg": 0.692308,
+      "goalFor": 48,
+      "goalAgainst": 43,
+      "goalDifferential": 5,
+      "l10Wins": 6,
+      "l10Losses": 2,
+      "l10OtLosses": 2,
+      "streakCode": "OT",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Tampa Bay"
+      },
+      "teamName": {
+        "default": "Tampa Bay Lightning",
+        "fr": "Lightning de Tampa Bay"
+      },
+      "teamCommonName": {
+        "default": "Lightning"
+      },
+      "teamAbbrev": {
+        "default": "TBL"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 6,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 2,
+      "leagueSequence": 9,
+      "wildcardSequence": 0,
+      "gamesPlayed": 14,
+      "wins": 9,
+      "losses": 5,
+      "otLosses": 0,
+      "points": 18,
+      "pointPctg": 0.642857,
+      "goalFor": 48,
+      "goalAgainst": 40,
+      "goalDifferential": 8,
+      "l10Wins": 7,
+      "l10Losses": 3,
+      "l10OtLosses": 0,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "New Jersey"
+      },
+      "teamName": {
+        "default": "New Jersey Devils",
+        "fr": "Devils du New Jersey"
+      },
+      "teamCommonName": {
+        "default": "Devils"
+      },
+      "teamAbbrev": {
+        "default": "NJD"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 7,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 5,
+      "leagueSequence": 10,
+      "wildcardSequence": 2,
+      "gamesPlayed": 14,
+      "wins": 8,
+      "losses": 4,
+      "otLosses": 2,
+      "points": 18,
+      "pointPctg": 0.642857,
+      "goalFor": 44,
+      "goalAgainst": 39,
+      "goalDifferential": 5,
+      "l10Wins": 6,
+      "l10Losses": 4,
+      "l10OtLosses": 0,
+      "streakCode": "W",
+      "streakCount": 3,
+      "placeName": {
+        "default": "Florida",
+        "fr": "Floride"
+      },
+      "teamName": {
+        "default": "Florida Panthers",
+        "fr": "Panthers de la Floride"
+      },
+      "teamCommonName": {
+        "default": "Panthers"
+      },
+      "teamAbbrev": {
+        "default": "FLA"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 4,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 2,
+      "leagueSequence": 11,
+      "wildcardSequence": 0,
+      "gamesPlayed": 15,
+      "wins": 9,
+      "losses": 6,
+      "otLosses": 0,
+      "points": 18,
+      "pointPctg": 0.6,
+      "goalFor": 54,
+      "goalAgainst": 52,
+      "goalDifferential": 2,
+      "l10Wins": 6,
+      "l10Losses": 4,
+      "l10OtLosses": 0,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Utah"
+      },
+      "teamName": {
+        "default": "Utah Mammoth",
+        "fr": "Mammoth de l'Utah"
+      },
+      "teamCommonName": {
+        "default": "Mammoth"
+      },
+      "teamAbbrev": {
+        "default": "UTA"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 8,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 6,
+      "leagueSequence": 12,
+      "wildcardSequence": 3,
+      "gamesPlayed": 16,
+      "wins": 8,
+      "losses": 6,
+      "otLosses": 2,
+      "points": 18,
+      "pointPctg": 0.5625,
+      "goalFor": 60,
+      "goalAgainst": 53,
+      "goalDifferential": 7,
+      "l10Wins": 5,
+      "l10Losses": 4,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Toronto"
+      },
+      "teamName": {
+        "default": "Toronto Maple Leafs",
+        "fr": "Maple Leafs de Toronto"
+      },
+      "teamCommonName": {
+        "default": "Maple Leafs"
+      },
+      "teamAbbrev": {
+        "default": "TOR"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 5,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 3,
+      "leagueSequence": 13,
+      "wildcardSequence": 0,
+      "gamesPlayed": 14,
+      "wins": 8,
+      "losses": 5,
+      "otLosses": 1,
+      "points": 17,
+      "pointPctg": 0.607143,
+      "goalFor": 59,
+      "goalAgainst": 44,
+      "goalDifferential": 15,
+      "l10Wins": 5,
+      "l10Losses": 4,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 2,
+      "placeName": {
+        "default": "Colorado"
+      },
+      "teamName": {
+        "default": "Colorado Avalanche",
+        "fr": "Avalanche du Colorado"
+      },
+      "teamCommonName": {
+        "default": "Avalanche"
+      },
+      "teamAbbrev": {
+        "default": "COL"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 6,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 3,
+      "leagueSequence": 14,
+      "wildcardSequence": 0,
+      "gamesPlayed": 14,
+      "wins": 8,
+      "losses": 5,
+      "otLosses": 1,
+      "points": 17,
+      "pointPctg": 0.607143,
+      "goalFor": 52,
+      "goalAgainst": 52,
+      "goalDifferential": 0,
+      "l10Wins": 6,
+      "l10Losses": 3,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Seattle"
+      },
+      "teamName": {
+        "default": "Seattle Kraken",
+        "fr": "Kraken de Seattle"
+      },
+      "teamCommonName": {
+        "default": "Kraken"
+      },
+      "teamAbbrev": {
+        "default": "SEA"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 7,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 4,
+      "leagueSequence": 15,
+      "wildcardSequence": 1,
+      "gamesPlayed": 14,
+      "wins": 8,
+      "losses": 5,
+      "otLosses": 1,
+      "points": 17,
+      "pointPctg": 0.607143,
+      "goalFor": 38,
+      "goalAgainst": 31,
+      "goalDifferential": 7,
+      "l10Wins": 6,
+      "l10Losses": 3,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Dallas"
+      },
+      "teamName": {
+        "default": "Dallas Stars",
+        "fr": "Stars de Dallas"
+      },
+      "teamCommonName": {
+        "default": "Stars"
+      },
+      "teamAbbrev": {
+        "default": "DAL"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 9,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 7,
+      "leagueSequence": 16,
+      "wildcardSequence": 4,
+      "gamesPlayed": 14,
+      "wins": 7,
+      "losses": 4,
+      "otLosses": 3,
+      "points": 17,
+      "pointPctg": 0.607143,
+      "goalFor": 43,
+      "goalAgainst": 49,
+      "goalDifferential": -6,
+      "l10Wins": 5,
+      "l10Losses": 2,
+      "l10OtLosses": 3,
+      "streakCode": "W",
+      "streakCount": 3,
+      "placeName": {
+        "default": "Buffalo"
+      },
+      "teamName": {
+        "default": "Buffalo Sabres",
+        "fr": "Sabres de Buffalo"
+      },
+      "teamCommonName": {
+        "default": "Sabres"
+      },
+      "teamAbbrev": {
+        "default": "BUF"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 10,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 3,
+      "leagueSequence": 17,
+      "wildcardSequence": 0,
+      "gamesPlayed": 13,
+      "wins": 8,
+      "losses": 5,
+      "otLosses": 0,
+      "points": 16,
+      "pointPctg": 0.615385,
+      "goalFor": 44,
+      "goalAgainst": 42,
+      "goalDifferential": 2,
+      "l10Wins": 6,
+      "l10Losses": 4,
+      "l10OtLosses": 0,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Washington"
+      },
+      "teamName": {
+        "default": "Washington Capitals",
+        "fr": "Capitals de Washington"
+      },
+      "teamCommonName": {
+        "default": "Capitals"
+      },
+      "teamAbbrev": {
+        "default": "WSH"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 11,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 4,
+      "leagueSequence": 18,
+      "wildcardSequence": 5,
+      "gamesPlayed": 14,
+      "wins": 7,
+      "losses": 5,
+      "otLosses": 2,
+      "points": 16,
+      "pointPctg": 0.571429,
+      "goalFor": 40,
+      "goalAgainst": 39,
+      "goalDifferential": 1,
+      "l10Wins": 5,
+      "l10Losses": 3,
+      "l10OtLosses": 2,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "NY Islanders"
+      },
+      "teamName": {
+        "default": "New York Islanders",
+        "fr": "Islanders de New York"
+      },
+      "teamCommonName": {
+        "default": "Islanders"
+      },
+      "teamAbbrev": {
+        "default": "NYI"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 8,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 5,
+      "leagueSequence": 19,
+      "wildcardSequence": 2,
+      "gamesPlayed": 14,
+      "wins": 7,
+      "losses": 6,
+      "otLosses": 1,
+      "points": 15,
+      "pointPctg": 0.535714,
+      "goalFor": 44,
+      "goalAgainst": 42,
+      "goalDifferential": 2,
+      "l10Wins": 6,
+      "l10Losses": 4,
+      "l10OtLosses": 0,
+      "streakCode": "W",
+      "streakCount": 2,
+      "placeName": {
+        "default": "St. Louis"
+      },
+      "teamName": {
+        "default": "St. Louis Blues",
+        "fr": "Blues de St. Louis"
+      },
+      "teamCommonName": {
+        "default": "Blues"
+      },
+      "teamAbbrev": {
+        "default": "STL"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 12,
+      "divisionAbbrev": "A",
+      "divisionName": "Atlantic",
+      "divisionSequence": 8,
+      "leagueSequence": 20,
+      "wildcardSequence": 6,
+      "gamesPlayed": 14,
+      "wins": 6,
+      "losses": 5,
+      "otLosses": 3,
+      "points": 15,
+      "pointPctg": 0.535714,
+      "goalFor": 41,
+      "goalAgainst": 43,
+      "goalDifferential": -2,
+      "l10Wins": 5,
+      "l10Losses": 2,
+      "l10OtLosses": 3,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Detroit"
+      },
+      "teamName": {
+        "default": "Detroit Red Wings",
+        "fr": "Red Wings de Detroit"
+      },
+      "teamCommonName": {
+        "default": "Red Wings"
+      },
+      "teamAbbrev": {
+        "default": "DET"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 9,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 6,
+      "leagueSequence": 21,
+      "wildcardSequence": 3,
+      "gamesPlayed": 14,
+      "wins": 5,
+      "losses": 4,
+      "otLosses": 5,
+      "points": 15,
+      "pointPctg": 0.535714,
+      "goalFor": 42,
+      "goalAgainst": 47,
+      "goalDifferential": -5,
+      "l10Wins": 3,
+      "l10Losses": 3,
+      "l10OtLosses": 4,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Nashville"
+      },
+      "teamName": {
+        "default": "Nashville Predators",
+        "fr": "Predators de Nashville"
+      },
+      "teamCommonName": {
+        "default": "Predators"
+      },
+      "teamAbbrev": {
+        "default": "NSH"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 13,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 5,
+      "leagueSequence": 22,
+      "wildcardSequence": 7,
+      "gamesPlayed": 15,
+      "wins": 7,
+      "losses": 7,
+      "otLosses": 1,
+      "points": 15,
+      "pointPctg": 0.5,
+      "goalFor": 45,
+      "goalAgainst": 46,
+      "goalDifferential": -1,
+      "l10Wins": 3,
+      "l10Losses": 6,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 4,
+      "placeName": {
+        "default": "NY Rangers"
+      },
+      "teamName": {
+        "default": "New York Rangers",
+        "fr": "Rangers de New York"
+      },
+      "teamCommonName": {
+        "default": "Rangers"
+      },
+      "teamAbbrev": {
+        "default": "NYR"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 10,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 4,
+      "leagueSequence": 23,
+      "wildcardSequence": 4,
+      "gamesPlayed": 15,
+      "wins": 7,
+      "losses": 7,
+      "otLosses": 1,
+      "points": 15,
+      "pointPctg": 0.5,
+      "goalFor": 41,
+      "goalAgainst": 52,
+      "goalDifferential": -11,
+      "l10Wins": 4,
+      "l10Losses": 5,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "San Jose"
+      },
+      "teamName": {
+        "default": "San Jose Sharks",
+        "fr": "Sharks de San Jose"
+      },
+      "teamCommonName": {
+        "default": "Sharks"
+      },
+      "teamAbbrev": {
+        "default": "SJS"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 11,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 5,
+      "leagueSequence": 24,
+      "wildcardSequence": 5,
+      "gamesPlayed": 14,
+      "wins": 6,
+      "losses": 7,
+      "otLosses": 1,
+      "points": 13,
+      "pointPctg": 0.464286,
+      "goalFor": 49,
+      "goalAgainst": 53,
+      "goalDifferential": -4,
+      "l10Wins": 3,
+      "l10Losses": 6,
+      "l10OtLosses": 1,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Anaheim"
+      },
+      "teamName": {
+        "default": "Anaheim Ducks",
+        "fr": "Ducks d'Anaheim"
+      },
+      "teamCommonName": {
+        "default": "Ducks"
+      },
+      "teamAbbrev": {
+        "default": "ANA"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 12,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 6,
+      "leagueSequence": 25,
+      "wildcardSequence": 6,
+      "gamesPlayed": 14,
+      "wins": 6,
+      "losses": 8,
+      "otLosses": 0,
+      "points": 12,
+      "pointPctg": 0.428571,
+      "goalFor": 36,
+      "goalAgainst": 52,
+      "goalDifferential": -16,
+      "l10Wins": 6,
+      "l10Losses": 4,
+      "l10OtLosses": 0,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Calgary"
+      },
+      "teamName": {
+        "default": "Calgary Flames",
+        "fr": "Flames de Calgary"
+      },
+      "teamCommonName": {
+        "default": "Flames"
+      },
+      "teamAbbrev": {
+        "default": "CGY"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 14,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 6,
+      "leagueSequence": 26,
+      "wildcardSequence": 8,
+      "gamesPlayed": 14,
+      "wins": 5,
+      "losses": 7,
+      "otLosses": 2,
+      "points": 12,
+      "pointPctg": 0.428571,
+      "goalFor": 47,
+      "goalAgainst": 49,
+      "goalDifferential": -2,
+      "l10Wins": 3,
+      "l10Losses": 5,
+      "l10OtLosses": 2,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Pittsburgh"
+      },
+      "teamName": {
+        "default": "Pittsburgh Penguins",
+        "fr": "Penguins de Pittsburgh"
+      },
+      "teamCommonName": {
+        "default": "Penguins"
+      },
+      "teamAbbrev": {
+        "default": "PIT"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 15,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 7,
+      "leagueSequence": 27,
+      "wildcardSequence": 9,
+      "gamesPlayed": 16,
+      "wins": 4,
+      "losses": 8,
+      "otLosses": 4,
+      "points": 12,
+      "pointPctg": 0.375,
+      "goalFor": 35,
+      "goalAgainst": 54,
+      "goalDifferential": -19,
+      "l10Wins": 4,
+      "l10Losses": 4,
+      "l10OtLosses": 2,
+      "streakCode": "W",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Philadelphia",
+        "fr": "Philadelphie"
+      },
+      "teamName": {
+        "default": "Philadelphia Flyers",
+        "fr": "Flyers de Philadelphie"
+      },
+      "teamCommonName": {
+        "default": "Flyers"
+      },
+      "teamAbbrev": {
+        "default": "PHI"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 13,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 7,
+      "leagueSequence": 28,
+      "wildcardSequence": 7,
+      "gamesPlayed": 15,
+      "wins": 4,
+      "losses": 8,
+      "otLosses": 3,
+      "points": 11,
+      "pointPctg": 0.366667,
+      "goalFor": 34,
+      "goalAgainst": 54,
+      "goalDifferential": -20,
+      "l10Wins": 1,
+      "l10Losses": 7,
+      "l10OtLosses": 2,
+      "streakCode": "L",
+      "streakCount": 5,
+      "placeName": {
+        "default": "Winnipeg"
+      },
+      "teamName": {
+        "default": "Winnipeg Jets",
+        "fr": "Jets de Winnipeg"
+      },
+      "teamCommonName": {
+        "default": "Jets"
+      },
+      "teamAbbrev": {
+        "default": "WPG"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "E",
+      "conferenceName": "Eastern",
+      "conferenceSequence": 16,
+      "divisionAbbrev": "M",
+      "divisionName": "Metropolitan",
+      "divisionSequence": 8,
+      "leagueSequence": 29,
+      "wildcardSequence": 10,
+      "gamesPlayed": 12,
+      "wins": 5,
+      "losses": 7,
+      "otLosses": 0,
+      "points": 10,
+      "pointPctg": 0.416667,
+      "goalFor": 29,
+      "goalAgainst": 39,
+      "goalDifferential": -10,
+      "l10Wins": 4,
+      "l10Losses": 6,
+      "l10OtLosses": 0,
+      "streakCode": "L",
+      "streakCount": 2,
+      "placeName": {
+        "default": "Columbus"
+      },
+      "teamName": {
+        "default": "Columbus Blue Jackets",
+        "fr": "Blue Jackets de Columbus"
+      },
+      "teamCommonName": {
+        "default": "Blue Jackets"
+      },
+      "teamAbbrev": {
+        "default": "CBJ"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 14,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 7,
+      "leagueSequence": 30,
+      "wildcardSequence": 8,
+      "gamesPlayed": 13,
+      "wins": 4,
+      "losses": 7,
+      "otLosses": 2,
+      "points": 10,
+      "pointPctg": 0.384615,
+      "goalFor": 36,
+      "goalAgainst": 45,
+      "goalDifferential": -9,
+      "l10Wins": 4,
+      "l10Losses": 5,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Los Angeles"
+      },
+      "teamName": {
+        "default": "Los Angeles Kings",
+        "fr": "Kings de Los Angeles"
+      },
+      "teamCommonName": {
+        "default": "Kings"
+      },
+      "teamAbbrev": {
+        "default": "LAK"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 15,
+      "divisionAbbrev": "C",
+      "divisionName": "Central",
+      "divisionSequence": 8,
+      "leagueSequence": 31,
+      "wildcardSequence": 9,
+      "gamesPlayed": 14,
+      "wins": 4,
+      "losses": 9,
+      "otLosses": 1,
+      "points": 9,
+      "pointPctg": 0.321429,
+      "goalFor": 31,
+      "goalAgainst": 53,
+      "goalDifferential": -22,
+      "l10Wins": 3,
+      "l10Losses": 6,
+      "l10OtLosses": 1,
+      "streakCode": "OT",
+      "streakCount": 1,
+      "placeName": {
+        "default": "Chicago"
+      },
+      "teamName": {
+        "default": "Chicago Blackhawks",
+        "fr": "Blackhawks de Chicago"
+      },
+      "teamCommonName": {
+        "default": "Blackhawks"
+      },
+      "teamAbbrev": {
+        "default": "CHI"
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "conferenceAbbrev": "W",
+      "conferenceName": "Western",
+      "conferenceSequence": 16,
+      "divisionAbbrev": "P",
+      "divisionName": "Pacific",
+      "divisionSequence": 8,
+      "leagueSequence": 32,
+      "wildcardSequence": 10,
+      "gamesPlayed": 16,
+      "wins": 3,
+      "losses": 12,
+      "otLosses": 1,
+      "points": 7,
+      "pointPctg": 0.21875,
+      "goalFor": 47,
+      "goalAgainst": 72,
+      "goalDifferential": -25,
+      "l10Wins": 1,
+      "l10Losses": 8,
+      "l10OtLosses": 1,
+      "streakCode": "L",
+      "streakCount": 2,
+      "placeName": {
+        "default": "Vancouver"
+      },
+      "teamName": {
+        "default": "Vancouver Canucks",
+        "fr": "Canucks de Vancouver"
+      },
+      "teamCommonName": {
+        "default": "Canucks"
+      },
+      "teamAbbrev": {
+        "default": "VAN"
+      },
+      "date": "2026-11-01"
+    }
+  ]
+}

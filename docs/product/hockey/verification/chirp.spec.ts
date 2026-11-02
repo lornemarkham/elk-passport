@@ -31,7 +31,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -123,7 +126,7 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
 
   // ------------------------------------------------ the host starts a night
   const lorne = await person(browser);
-  await lorne.page.goto("/hockey");
+  await lorne.page.goto("/hockey/my-nights");
   await signUp(lorne.page, "lorne");
   await lorne.page.getByLabel("Your name").fill("Lorne");
   await lorne.page.getByLabel("Opponent").fill("Wild");
@@ -322,7 +325,7 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   ).toBe(404);
 
   const stranger = await person(browser);
-  await stranger.page.goto("/hockey");
+  await stranger.page.goto("/hockey/my-nights");
   await signUp(stranger.page, "stranger");
   await expect(stranger.page.getByLabel("Your name")).toBeVisible();
   expect((await chirps(stranger.page, samId)).status()).toBe(404);
@@ -471,7 +474,7 @@ test("declare your team, the Chirp Room, chirp someone — and the doors that st
   expect((await snapshot(sam.page, night)).chirp.fans[lorneId]).toBe("TOR");
 
   // A new night: the team comes along.
-  await lorne2.page.goto("/hockey");
+  await lorne2.page.goto("/hockey/my-nights");
   await lorne2.page
     .getByRole("button", { name: "Start another night" })
     .click();

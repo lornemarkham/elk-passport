@@ -36,7 +36,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -123,7 +126,7 @@ test("create, invite, join, vote, predict, share, game, recap, run it back", asy
 
   // ------------------------------------------------------ create (the host)
   const lorne = await person(browser);
-  await lorne.page.goto("/hockey");
+  await lorne.page.goto("/hockey/my-nights");
   await signUp(lorne.page, "lorne");
   await lorne.page.getByLabel("Your name").fill("Lorne");
   await lorne.page.getByLabel("Opponent").fill("Kraken");
@@ -258,7 +261,7 @@ test("create, invite, join, vote, predict, share, game, recap, run it back", asy
 
   // A stranger gets nothing: not the album, not the picture, not the game.
   const eve = await person(browser);
-  await eve.page.goto("/hockey");
+  await eve.page.goto("/hockey/my-nights");
   await signUp(eve.page, "eve");
   await eve.page.waitForURL(/\/hockey/);
   for (const url of [
@@ -479,7 +482,9 @@ test("create, invite, join, vote, predict, share, game, recap, run it back", asy
   await maya.page
     .getByRole("button", { name: "Yes, cancel the night" })
     .click();
-  await expect(maya.page).toHaveURL(/\/hockey(\?.*)?$/, { timeout: 15_000 });
+  await expect(maya.page).toHaveURL(/\/hockey\/my-nights(\?.*)?$/, {
+    timeout: 15_000,
+  });
   expect(
     (await maya.page.request.get(`/hockey/api/occasions/${next}`)).status(),
   ).toBe(404);

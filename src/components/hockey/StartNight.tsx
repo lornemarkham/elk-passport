@@ -40,6 +40,8 @@ export function StartNight({
   after,
   modules: initialModules = MODULE_IDS,
   cta,
+  gameId: chosenId,
+  via,
 }: {
   suggestion: GameChoice;
   name: string;
@@ -47,6 +49,10 @@ export function StartNight({
   /** What starts ticked: everything, or — running it back — last time's. */
   modules?: readonly ModuleId[];
   cta: string;
+  /** The league's id of a game chosen on a public page: picked when the list arrives. */
+  gameId?: number;
+  /** Which public page the person came from; sent with the start request, nothing else. */
+  via?: string;
 }) {
   const [games, setGames] = useState<ScheduledGame[] | null>(null);
   const [leagueDown, setLeagueDown] = useState(false);
@@ -79,6 +85,12 @@ export function StartNight({
         }
         setGames(body.games);
         if (body.games.length === 0) setByHand(true);
+        const wanted = body.games.find((g) => g.id === chosenId);
+        if (wanted) {
+          // Filter to the home side so the chosen game is in the visible list.
+          setTeam(wanted.home.abbr);
+          setGameId(wanted.id);
+        }
       })
       .catch(() => {
         if (gone) return;
@@ -89,7 +101,7 @@ export function StartNight({
     return () => {
       gone = true;
     };
-  }, []);
+  }, [chosenId]);
 
   const shown = useMemo(() => {
     const all = games ?? [];
@@ -129,6 +141,7 @@ export function StartNight({
         after,
         modules,
         ...(cup.trim() && !after ? { cup: cup.trim() } : {}),
+        ...(via ? { via } : {}),
       }),
     });
     const body = await res.json().catch(() => ({}));

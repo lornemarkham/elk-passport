@@ -166,7 +166,7 @@ test("setup: pat hosts, maya, dev and zed join", async ({ browser }) => {
       hasTouch: true,
     })
   ).newPage();
-  await host.goto("/hockey");
+  await host.goto("/hockey/my-nights");
   await signUp(host, "pat");
   await host.getByLabel("Your name").fill("Pat");
   await host.getByLabel("Opponent").fill("Wild");

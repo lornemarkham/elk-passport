@@ -91,7 +91,7 @@ export function useSharedNight(initial: NightSnapshot) {
       if (res.status === 404 || res.status === 401) {
         // Removed from the night, or signed out somewhere else. Either way
         // this page no longer has anything it is allowed to show.
-        window.location.href = "/hockey?gone=1";
+        window.location.href = "/hockey/my-nights?gone=1";
         return;
       }
       if (!res.ok) return;

@@ -725,6 +725,18 @@ home game. Every night is still invitation-only; the public page says nothing
 about any of them. This settles reachability for Hockey; it does not answer
 §15.1 (theme or composition) or §15.12 (how group experiences work).
 
+_The front door became a hockey site 2026-11-01_ (owner brief "Mission 486 —
+Hockey website", recorded in `docs/product/hockey/WEBSITE.md`): `/hockey` is
+a public NHL site for everybody — the league's scores, schedule, standings,
+teams and statistics, read live and never invented — with Hockey Night built
+in as the thing to do next ("Make a night of it" on any game not yet
+started). A person's own nights moved to `/hockey/my-nights`. The Calgary
+Flames are featured as a stated editorial preference; league coverage stays
+neutral. Nights are still invitation-only and nothing about any of them is
+public. Whether the league's public data may be shown this way is an owner
+decision recorded there (§3), not settled by this paragraph; nor does it
+answer §15.1 or §15.12.
+
 _Christmas joined the menu 2026-11-01_ (release "Ship Hockey and
 Christmas"; `docs/product/christmas/README.md`): the Experiences item now
 opens to four — Conference, Hockey Night, October, Christmas — each still

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { measure } from "../../_server/measure";
 import { asMember, bodyOf } from "../../_server/respond";
 import { NightError, redeemInvite } from "../../_server/night";
 
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
         410,
       );
     }
+    await measure("Hockey: invitation accepted");
     return { id };
   });
 }

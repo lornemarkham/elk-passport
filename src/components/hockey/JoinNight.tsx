@@ -69,7 +69,7 @@ export function JoinNight({
             </p>
             {signedIn && (
               <Link
-                href="/hockey"
+                href="/hockey/my-nights"
                 className="mt-6 inline-block text-[14px] text-white/70 underline"
               >
                 Your nights

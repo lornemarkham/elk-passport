@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { modulesValue } from "@/domain/hockey/actions";
+import { measure } from "../../_server/measure";
 import { asMember } from "../../_server/respond";
 import { scheduledGameById } from "../../_server/game";
 import { NightError, createSycleNight, myNights } from "../../_server/night";
@@ -26,6 +27,11 @@ const StartSchema = z.object({
   cup: z.string().trim().min(1).max(40).optional(),
   after: z.string().uuid().optional(),
   modules: modulesValue.optional(),
+  /** Which public hockey page the host came from (`CreateNightLink`); counted, never stored. */
+  via: z
+    .string()
+    .regex(/^[a-z-]{1,20}$/)
+    .optional(),
 });
 
 /** Start a Hockey Night — a new one, or the next one. Whoever starts it hosts it. */
@@ -34,15 +40,23 @@ export function POST(request: Request) {
     const body = StartSchema.safeParse(await request.json().catch(() => ({})));
     // A malformed "run it back" must not quietly become a brand-new night.
     if (!body.success) throw new NightError("That isn't a night.", 422);
-    const { game, ...rest } = body.data;
+    const { game, via, ...rest } = body.data;
+    const counted = (league: boolean) =>
+      measure("Hockey: night created", {
+        via: via ?? "direct",
+        league,
+        runBack: Boolean(rest.after),
+      });
     if (game && "nhlGameId" in game) {
       const scheduled = await scheduledGameById(game.nhlGameId);
       if (!scheduled)
         throw new NightError("The league has no such game right now.", 422);
-      return {
-        id: await createSycleNight(user, { ...rest, game: { scheduled } }),
-      };
+      const id = await createSycleNight(user, { ...rest, game: { scheduled } });
+      await counted(true);
+      return { id };
     }
-    return { id: await createSycleNight(user, { ...rest, game }) };
+    const id = await createSycleNight(user, { ...rest, game });
+    await counted(false);
+    return { id };
   });
 }

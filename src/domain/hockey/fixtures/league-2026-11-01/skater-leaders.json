@@ -1,0 +1,248 @@
+{
+  "assists": [
+    {
+      "id": 8478402,
+      "firstName": {
+        "default": "Connor"
+      },
+      "lastName": {
+        "default": "McDavid"
+      },
+      "sweaterNumber": 97,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "C",
+      "value": 30
+    },
+    {
+      "id": 8480803,
+      "firstName": {
+        "default": "Evan"
+      },
+      "lastName": {
+        "default": "Bouchard"
+      },
+      "sweaterNumber": 2,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "D",
+      "value": 18
+    },
+    {
+      "id": 8484153,
+      "firstName": {
+        "default": "Leo"
+      },
+      "lastName": {
+        "default": "Carlsson"
+      },
+      "sweaterNumber": 91,
+      "teamAbbrev": "ANA",
+      "teamName": {
+        "default": "Ducks"
+      },
+      "position": "C",
+      "value": 17
+    },
+    {
+      "id": 8477934,
+      "firstName": {
+        "default": "Leon"
+      },
+      "lastName": {
+        "default": "Draisaitl"
+      },
+      "sweaterNumber": 29,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "C",
+      "value": 16
+    },
+    {
+      "id": 8480800,
+      "firstName": {
+        "default": "Quinn"
+      },
+      "lastName": {
+        "default": "Hughes"
+      },
+      "sweaterNumber": 43,
+      "teamAbbrev": "MIN",
+      "teamName": {
+        "default": "Wild"
+      },
+      "position": "D",
+      "value": 16
+    }
+  ],
+  "goals": [
+    {
+      "id": 8478864,
+      "firstName": {
+        "default": "Kirill"
+      },
+      "lastName": {
+        "default": "Kaprizov"
+      },
+      "sweaterNumber": 97,
+      "teamAbbrev": "MIN",
+      "teamName": {
+        "default": "Wild"
+      },
+      "position": "L",
+      "value": 15
+    },
+    {
+      "id": 8477934,
+      "firstName": {
+        "default": "Leon"
+      },
+      "lastName": {
+        "default": "Draisaitl"
+      },
+      "sweaterNumber": 29,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "C",
+      "value": 12
+    },
+    {
+      "id": 8477476,
+      "firstName": {
+        "default": "Artturi"
+      },
+      "lastName": {
+        "default": "Lehkonen"
+      },
+      "sweaterNumber": 62,
+      "teamAbbrev": "COL",
+      "teamName": {
+        "default": "Avalanche"
+      },
+      "position": "L",
+      "value": 12
+    },
+    {
+      "id": 8479318,
+      "firstName": {
+        "default": "Auston"
+      },
+      "lastName": {
+        "default": "Matthews"
+      },
+      "sweaterNumber": 34,
+      "teamAbbrev": "TOR",
+      "teamName": {
+        "default": "Maple Leafs"
+      },
+      "position": "C",
+      "value": 11
+    },
+    {
+      "id": 8478398,
+      "firstName": {
+        "default": "Kyle"
+      },
+      "lastName": {
+        "default": "Connor"
+      },
+      "sweaterNumber": 81,
+      "teamAbbrev": "WPG",
+      "teamName": {
+        "default": "Jets"
+      },
+      "position": "L",
+      "value": 11
+    }
+  ],
+  "points": [
+    {
+      "id": 8478402,
+      "firstName": {
+        "default": "Connor"
+      },
+      "lastName": {
+        "default": "McDavid"
+      },
+      "sweaterNumber": 97,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "C",
+      "value": 39
+    },
+    {
+      "id": 8477934,
+      "firstName": {
+        "default": "Leon"
+      },
+      "lastName": {
+        "default": "Draisaitl"
+      },
+      "sweaterNumber": 29,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "C",
+      "value": 28
+    },
+    {
+      "id": 8480803,
+      "firstName": {
+        "default": "Evan"
+      },
+      "lastName": {
+        "default": "Bouchard"
+      },
+      "sweaterNumber": 2,
+      "teamAbbrev": "EDM",
+      "teamName": {
+        "default": "Oilers"
+      },
+      "position": "D",
+      "value": 26
+    },
+    {
+      "id": 8478864,
+      "firstName": {
+        "default": "Kirill"
+      },
+      "lastName": {
+        "default": "Kaprizov"
+      },
+      "sweaterNumber": 97,
+      "teamAbbrev": "MIN",
+      "teamName": {
+        "default": "Wild"
+      },
+      "position": "L",
+      "value": 25
+    },
+    {
+      "id": 8479318,
+      "firstName": {
+        "default": "Auston"
+      },
+      "lastName": {
+        "default": "Matthews"
+      },
+      "sweaterNumber": 34,
+      "teamAbbrev": "TOR",
+      "teamName": {
+        "default": "Maple Leafs"
+      },
+      "position": "C",
+      "value": 24
+    }
+  ]
+}
