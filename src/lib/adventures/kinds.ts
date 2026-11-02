@@ -108,6 +108,17 @@ export const ADVENTURE_KINDS: readonly AdventureKind[] = [
     home: "/night",
     startable: false,
   },
+  {
+    // Go Have A Snow Day, shared between phones (src/app/snow, migration
+    // 20261103000000_passport_snow.sql). Started from /snow, where the host's
+    // level and gear are written in the same transaction as the adventure.
+    id: "snow-day",
+    label: "Snow Day",
+    blurb: "A day on the mountain, with the crew.",
+    joinVisibility: "members",
+    home: "/snow/day",
+    startable: false,
+  },
 ];
 
 /**

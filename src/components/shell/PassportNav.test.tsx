@@ -158,7 +158,7 @@ describe("experiences", () => {
     expect(button).toHaveAttribute("aria-controls", row.id);
     const links = screen
       .getAllByRole("link", {
-        name: /Conference|Hockey Night|October|Christmas/,
+        name: /Conference|Hockey Night|October|Christmas|Snow Day/,
       })
       .map((a) => [a.textContent?.trim(), a.getAttribute("href")]);
     expect(links).toEqual([
@@ -166,6 +166,7 @@ describe("experiences", () => {
       ["Hockey Night", "/hockey"],
       ["October", "/october"],
       ["Christmas", "/christmas"],
+      ["Snow Day", "/snow"],
     ]);
   });
 

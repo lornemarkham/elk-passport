@@ -21,11 +21,13 @@ describe("adventure kinds", () => {
       "christmas",
       "date-night",
       "date-night-plan",
+      "snow-day",
     ]);
   });
 
   it("opens an adventure at its Experience's home, else the generic page", () => {
     expect(adventureHref("christmas", "abc")).toBe("/christmas/adventure/abc");
+    expect(adventureHref("snow-day", "abc")).toBe("/snow/day/abc");
     expect(adventureHref("weekend", "abc")).toBe("/adventures/abc");
     expect(adventureHref("ski-day", "a b")).toBe("/adventures/a%20b");
   });
@@ -51,6 +53,8 @@ describe("adventure kinds", () => {
   it("Date Night is made by its own setup, not offered in the start menu", () => {
     expect(adventureKind("date-night")?.label).toBe("Date Night");
     expect(STARTABLE_KINDS.map((k) => k.id)).not.toContain("date-night");
+    // A snow day starts on /snow, with the host's level in one transaction.
+    expect(STARTABLE_KINDS.map((k) => k.id)).not.toContain("snow-day");
   });
 
   it("names a kind it does not know rather than refusing to render it", () => {

@@ -48,7 +48,15 @@ Conference's in its own tables. ADR 012 kept Done marks on the device and left
 ## Consequences
 
 - Hockey and Snow can adopt announcements and moments without a migration
-  of their own. Hockey's existing photos are not moved by this.
+  of their own. **Snow adopted them 2026-11-02** (Powder Day, final
+  integration): the host's announcements and "plan changed" notices are
+  `passport_adventure_notices` (`snow-update`, `snow-change`), the crew's
+  photos and moments are `passport_adventure_moments` (`photo`, `moment`),
+  and `passport_snow_posts` is chat only. Snow's raster-only, per-day and
+  per-minute limits are a trigger on the core table that acts on `snow-day`
+  adventures alone. Snow members take what they shared with them on leaving
+  (Snow's rule, kept); every other kind keeps the core's. Detail:
+  `docs/product/snow/SHARING.md`. Hockey's existing photos are not moved by this.
 - The store currently lives in `src/app/christmas/_server/together.ts` (lane
   boundary). It belongs in `src/lib/adventures/`, beside `store.ts`, with the
   routes under `/api/adventures/[id]/…`. Not moved at acceptance: the
