@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/ghad/theme";
 import { Picture } from "@/components/adventures/Picture";
 import { AdventureCard } from "@/components/adventures/AdventureCard";
 import { Festive } from "@/components/christmas/Festive";
+import { SayIt } from "@/components/christmas/SayIt";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
 import { AtlasDown, Section, TownChips } from "@/components/christmas/parts";
@@ -97,7 +98,8 @@ export default async function ChristmasPage({
         (f.when.confidence === "dated" || f.when.confidence === "check"),
     )
     .sort((a, b) => (a.when.from ?? "").localeCompare(b.when.from ?? ""));
-  const lead = upcoming.find(hasPicture) ?? upcoming[0];
+  const lead =
+    upcoming.find(hasPicture) ?? live.find(hasPicture) ?? upcoming[0];
   const christmasCount = corpus.finds.filter((f) => f.reading.christmas).length;
   const datedCount = corpus.finds.filter(
     (f) => f.reading.christmas && f.when.confidence === "dated",
@@ -117,79 +119,77 @@ export default async function ChristmasPage({
         <PicksProvider planHref={`/christmas/plan${q}`}>
           <main className={`${styles.page} min-h-screen pb-28`}>
             <header className={styles.night}>
-              <div className="mx-auto grid max-w-6xl gap-8 px-4 pt-8 pb-10 sm:px-6 sm:pt-14 md:grid-cols-[1.2fr_1fr] md:items-end">
-                <div>
-                  <p className="text-sm font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
-                    Go Have a Christmas
-                  </p>
-                  <h1 className="ghad-display mt-3 text-[2.7rem] leading-[0.92] font-extrabold tracking-[-0.04em] text-balance sm:text-7xl">
-                    Markets, lights, Santa — and the people you love.
-                  </h1>
-                  <p
-                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-lg font-bold"
-                    data-testid="countdown"
+              {lead && (
+                <>
+                  <Picture
+                    experience={lead.experience}
+                    priority
+                    showLabel={false}
+                    fallbackTitle=""
+                    tone="#0f3b2b"
+                    className="absolute inset-0 -z-10 h-full w-full"
+                  />
+                  <div
+                    className="absolute inset-0 -z-10 bg-gradient-to-t from-[#082319] via-[#082319]/60 to-[#082319]/20"
+                    aria-hidden
+                  />
+                </>
+              )}
+              <div className="mx-auto flex min-h-[calc(100svh-5.5rem)] max-w-6xl flex-col justify-end px-4 pt-16 pb-8 sm:min-h-[36rem] sm:px-6 sm:pb-12">
+                <p className="text-sm font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
+                  Go Have a Christmas
+                </p>
+                <h1 className="ghad-display mt-3 max-w-3xl text-[3.4rem] leading-[0.9] font-extrabold tracking-[-0.045em] text-balance sm:text-8xl">
+                  Let&apos;s make some Christmas memories.
+                </h1>
+                <p
+                  className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-black/35 px-4 py-2 text-lg font-bold backdrop-blur"
+                  data-testid="countdown"
+                >
+                  <CalendarHeart
+                    className="h-5 w-5 text-[#ffd98a]"
+                    aria-hidden
+                  />
+                  {seasonLine(stage)}
+                </p>
+                <p className="mt-4 max-w-xl text-lg text-white/90">
+                  Markets, lights, hot chocolate and the people you love — real
+                  things
+                  {townName ? ` near ${townName}` : " near you"}, with the dates
+                  to prove it.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="#say-it"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 text-base font-bold text-[#082319] hover:brightness-105"
+                    data-testid="cta-plan"
                   >
-                    <CalendarHeart
-                      className="h-5 w-5 text-[#ffd98a]"
-                      aria-hidden
-                    />
-                    {seasonLine(stage)}
-                  </p>
-                  <p className="mt-4 max-w-xl text-lg text-white/85">
-                    Real Christmas things Atlas knows about
-                    {townName ? ` near ${townName}` : ""}. Pick the ones that
-                    make you grin, plan them with your people, go — and keep the
-                    memories.
-                  </p>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Link
-                      href={`/christmas/discover${q}`}
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 text-base font-bold text-[#082319] hover:brightness-105"
-                      data-testid="cta-discover"
-                    >
-                      <Compass className="h-5 w-5" aria-hidden />
-                      Find Christmas
-                      {townName ? ` near ${townName}` : " near me"}
-                    </Link>
-                    <Link
-                      href={`/christmas/plan${q}`}
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-6 text-base font-bold text-[#082319] hover:bg-[#fbf6ec]"
-                      data-testid="cta-plan"
-                    >
-                      Plan a Christmas adventure
-                      <ArrowRight className="h-5 w-5" aria-hidden />
-                    </Link>
-                  </div>
-                  <Festive className="mt-5" />
+                    Plan our Christmas
+                    <ArrowRight className="h-5 w-5" aria-hidden />
+                  </Link>
+                  <Link
+                    href={`/christmas/discover${q}`}
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/15 px-6 text-base font-bold backdrop-blur hover:bg-white/25"
+                    data-testid="cta-discover"
+                  >
+                    <Compass className="h-5 w-5" aria-hidden />
+                    Find Christmas
+                    {townName ? ` near ${townName}` : " near me"}
+                  </Link>
                 </div>
                 {lead && (
                   <Link
                     href={subjectHref(lead.experience.kind, lead.experience.id)}
-                    className="group relative block overflow-hidden rounded-[28px] ring-4 ring-white/10"
+                    className="mt-5 block w-fit max-w-full text-sm text-white/85 underline-offset-4 hover:underline"
                     data-testid="lead-find"
                   >
-                    <Picture
-                      experience={lead.experience}
-                      priority
-                      fallbackTitle={lead.experience.title}
-                      tone="#b3242f"
-                      className="aspect-[4/3] w-full transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-16">
-                      <p className="text-sm font-bold text-[#ffd98a]">
-                        Coming up · {CONFIDENCE_LABEL[lead.when.confidence]}
-                      </p>
-                      <p className="ghad-display text-2xl font-extrabold">
-                        {lead.experience.title}
-                      </p>
-                      {lead.when.line && (
-                        <p className="text-base text-white/85">
-                          {lead.when.line}
-                        </p>
-                      )}
-                    </div>
+                    <span className="font-bold text-[#ffd98a]">Pictured:</span>{" "}
+                    {lead.experience.title}
+                    {lead.when.line ? ` · ${lead.when.line}` : ""} ·{" "}
+                    {CONFIDENCE_LABEL[lead.when.confidence]}
                   </Link>
                 )}
+                <Festive className="mt-4" />
               </div>
               <div className={styles.lights} aria-hidden />
             </header>
@@ -202,32 +202,47 @@ export default async function ChristmasPage({
 
               {corpus.outage && <AtlasDown />}
 
+              <section id="say-it" className="scroll-mt-20">
+                <SayIt today={today} {...(ask.at ? { town: ask.at } : {})} />
+              </section>
+
               <Section
                 eyebrow="What kind of Christmas?"
                 title="Start with what makes you grin"
               >
                 <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {THEMES.map((theme) => {
-                    const count = live.filter((f) =>
+                    const here = live.filter((f) =>
                       f.reading.themes.includes(theme.id),
-                    ).length;
+                    );
+                    const cover = here.find(hasPicture);
                     return (
                       <li key={theme.id}>
                         <Link
                           href={`/christmas/discover?theme=${theme.id}${amp}`}
-                          className="flex h-full min-h-32 flex-col justify-between rounded-[24px] bg-white p-4 shadow-[0_6px_24px_rgba(8,35,25,0.07)] ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:ring-[#b3242f]/40 motion-reduce:transition-none"
+                          className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[24px] bg-[#0f3b2b] p-4 text-white shadow-[0_6px_24px_rgba(8,35,25,0.12)] transition hover:-translate-y-0.5 motion-reduce:transition-none"
                           data-testid={`theme-${theme.id}`}
                         >
-                          <span className="text-3xl" aria-hidden>
-                            {theme.emoji}
-                          </span>
-                          <span>
-                            <span className="ghad-display block text-lg leading-tight font-extrabold">
+                          {cover && (
+                            <Picture
+                              experience={cover.experience}
+                              showLabel={false}
+                              fallbackTitle=""
+                              tone="#0f3b2b"
+                              className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
+                            />
+                          )}
+                          <span
+                            className="absolute inset-0 bg-gradient-to-t from-[#082319]/90 via-[#082319]/30 to-transparent"
+                            aria-hidden
+                          />
+                          <span className="relative">
+                            <span className="ghad-display block text-xl leading-tight font-extrabold">
                               {theme.label}
                             </span>
-                            <span className="text-sm text-[var(--gh-ink-soft)]">
-                              {count > 0
-                                ? `${count} Atlas knows about`
+                            <span className="text-sm text-white/85">
+                              {here.length > 0
+                                ? `${here.length} Atlas knows about`
                                 : "None in Atlas yet"}
                             </span>
                           </span>
@@ -238,13 +253,13 @@ export default async function ChristmasPage({
                   <li>
                     <Link
                       href={`/christmas/discover${q}`}
-                      className="flex h-full min-h-32 flex-col justify-between rounded-[24px] bg-[#b3242f] p-4 text-white transition hover:brightness-110 motion-reduce:transition-none"
+                      className="flex aspect-[4/5] flex-col justify-end rounded-[24px] bg-[#b3242f] p-4 text-white transition hover:brightness-110 motion-reduce:transition-none"
                     >
-                      <span className="text-3xl" aria-hidden>
-                        🎁
-                      </span>
-                      <span className="ghad-display text-lg leading-tight font-extrabold">
+                      <span className="ghad-display text-xl leading-tight font-extrabold">
                         Show me everything
+                      </span>
+                      <span className="text-sm text-white/85">
+                        {live.length} to look at
                       </span>
                     </Link>
                   </li>
@@ -301,9 +316,10 @@ export default async function ChristmasPage({
                         className={`${styles.ticket} flex h-full flex-col gap-2 rounded-[22px] p-5 transition hover:-translate-y-0.5 motion-reduce:transition-none`}
                         data-testid={`shape-${shape.id}`}
                       >
-                        <span className="text-3xl" aria-hidden>
-                          {shape.emoji}
-                        </span>
+                        <span
+                          className="h-1.5 w-10 rounded-full bg-[#b3242f]"
+                          aria-hidden
+                        />
                         <span className="ghad-display text-lg leading-tight font-extrabold">
                           {shape.label}
                         </span>
@@ -327,9 +343,10 @@ export default async function ChristmasPage({
                       key={c.id}
                       className="flex w-[17rem] shrink-0 snap-start gap-3 rounded-[22px] bg-[#0f3b2b] p-5 text-white sm:w-auto"
                     >
-                      <span className="text-3xl" aria-hidden>
-                        {c.emoji}
-                      </span>
+                      <span
+                        className="mt-1 h-10 w-1.5 shrink-0 rounded-full bg-[#ffd98a]"
+                        aria-hidden
+                      />
                       <span>
                         <span className="ghad-display block text-lg leading-tight font-extrabold">
                           {c.title}

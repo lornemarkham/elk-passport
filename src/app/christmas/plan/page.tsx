@@ -54,6 +54,7 @@ export default async function ChristmasPlanPage({
         .filter((s) => ATLAS_REF.test(s)),
     ),
   ].slice(0, 12);
+  const say = typeof params.say === "string" ? params.say.slice(0, 200) : "";
   const name = typeof params.name === "string" ? params.name.slice(0, 120) : "";
   const session = await adventureSession();
   const here = `/christmas/plan${Object.keys(params).length ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : ""}`;
@@ -160,6 +161,7 @@ export default async function ChristmasPlanPage({
                 initialAges={ask.ages}
                 {...(ask.people ? { initialPeople: ask.people } : {})}
                 {...(name ? { initialTitle: name } : {})}
+                {...(say ? { initialExtra: say } : {})}
                 picks={picks}
                 saved={saved}
               />
