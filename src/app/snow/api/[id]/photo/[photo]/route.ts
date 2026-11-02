@@ -20,13 +20,18 @@ export async function GET(
   if ("response" in session) return session.response;
   return answer(async () => {
     const dataUrl = await photoOf(session.db, id, photo);
-    const m = /^data:(image\/[a-z+.-]+);base64,([\s\S]+)$/.exec(dataUrl);
+    // Raster only (Postgres says so too): an SVG served from this origin
+    // could run script.
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,([\s\S]+)$/.exec(
+      dataUrl,
+    );
     if (!m) return NextResponse.json({ error: "Not found." }, { status: 404 });
     return new NextResponse(Buffer.from(m[2], "base64"), {
       headers: {
         "Content-Type": m[1],
         "Cache-Control": "private, max-age=3600",
         "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
       },
     });
   });

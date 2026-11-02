@@ -65,7 +65,7 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
     const mallory = await signUp("mallory");
 
     // ---- crew and invitations
-    const id = await startDay(lorne.db, lorne.id, {
+    const id = await startDay(lorne.db, {
       title: "Powder Day",
       name: "Lorne",
       discipline: "ski",
@@ -548,5 +548,122 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
     expect(after.chat.map((m) => m.text)).toEqual(["Leaving at 7:45 sharp"]);
     expect(after.predictions[0].guesses).toEqual({ [l0.me]: false });
     await expect(loadDay(jess.db, id, jess.id)).rejects.toThrow();
+  }, 60_000);
+
+  it("changes the plan all at once or not at all, and takes raster photos only", async () => {
+    const lorne = await signUp("lorne");
+    const jess = await signUp("jess");
+    const host = {
+      name: "Lorne",
+      discipline: "ski",
+      ability: "advanced",
+      ownGear: true,
+    } as const;
+
+    // A start that Postgres refuses half way leaves no half-made day.
+    const mine = async () =>
+      (await lorne.db.from("passport_adventures").select("id")).data?.length;
+    const none = await mine();
+    const broken = await lorne.db.rpc("passport_snow_start", {
+      p_title: "Half a day",
+      p_display_name: "Lorne",
+      p_discipline: "sled",
+      p_ability: "advanced",
+      p_own_gear: true,
+      p_note: null,
+    });
+    expect(broken.error?.code).toBe("23514");
+    expect(await mine()).toBe(none);
+    const signedOut = await client().rpc("passport_snow_start", {
+      p_title: "x",
+      p_display_name: "x",
+      p_discipline: "ski",
+      p_ability: "advanced",
+      p_own_gear: true,
+      p_note: null,
+    });
+    expect(signedOut.error).not.toBeNull();
+
+    const id = await startDay(lorne.db, { title: "Atomic", ...host });
+    const l = await loadDay(lorne.db, id, lorne.id);
+    expect(l.day.people[0]).toMatchObject({
+      name: "Lorne",
+      ability: "advanced",
+    });
+    await joinDay(jess.db, jess.id, await inviteLink(lorne.db, id, lorne.id), {
+      name: "Jess",
+      ...rider,
+    });
+    for (const label of ["Big White", "Silver Star"])
+      await act(
+        lorne.db,
+        id,
+        lorne.id,
+        {
+          type: "propose",
+          proposal: { id: "x", topic: "mountain", label, by: l.me },
+        },
+        NOW,
+      );
+    const [bigWhite, silver] = (await loadDay(lorne.db, id, lorne.id)).day
+      .proposals;
+    const choose = (proposalId: string, changeId: string) =>
+      act(
+        lorne.db,
+        id,
+        lorne.id,
+        { type: "choose", topic: "mountain", proposalId, by: l.me, changeId },
+        NOW,
+      );
+    expect((await choose(bigWhite.id, "c1")).ok).toBe(true);
+
+    // The host is out of posts for this minute, so the "plan changed" notice
+    // cannot be stored — and so the mountain must not move either.
+    for (let i = 0; i < 20; i++)
+      await act(
+        lorne.db,
+        id,
+        lorne.id,
+        { type: "say", id: "x", by: l.me, text: `line ${i}` },
+        NOW,
+      );
+    expect(await choose(silver.id, "c2")).toEqual({
+      ok: false,
+      reason: "Easy — give it a few seconds.",
+    });
+    const j = await loadDay(jess.db, id, jess.id);
+    expect(j.day.chosen.mountain).toBe(bigWhite.id);
+    expect(j.day.announcements.filter((a) => a.kind === "change")).toEqual([]);
+
+    // Only the host settles the plan, even calling Postgres directly.
+    const sneaky = await jess.db.rpc("passport_snow_decide", {
+      p_adventure: id,
+      p_topic: "mountain",
+      p_proposal: silver.id,
+      p_set_when: true,
+      p_starts_on: "2027-01-01",
+      p_meet_time: null,
+      p_notice: null,
+    });
+    expect(sneaky.error?.code).toBe("42501");
+    expect((await loadDay(jess.db, id, jess.id)).day.chosen.mountain).toBe(
+      bigWhite.id,
+    );
+
+    // An SVG is a document that can run script: Postgres will not hold one.
+    const svg = await jess.db.from("passport_snow_moments").insert({
+      adventure_id: id,
+      kind: "photo",
+      body: "",
+      photo: "data:image/svg+xml;base64,PHN2Zy8+",
+    });
+    expect(svg.error?.code).toBe("23514");
+    const jpeg = await jess.db.from("passport_snow_moments").insert({
+      adventure_id: id,
+      kind: "photo",
+      body: "",
+      photo: "data:image/jpeg;base64,/9j/2w==",
+    });
+    expect(jpeg.error).toBeNull();
   }, 60_000);
 });

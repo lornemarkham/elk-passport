@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return badRequest("Pick a level and what you're riding.");
 
   return answer(async () => {
-    const id = await startDay(session.db, session.user.id, {
+    const id = await startDay(session.db, {
       title:
         (typeof b?.title === "string" ? clean(b.title, 60) : "") ||
         "Our snow day",

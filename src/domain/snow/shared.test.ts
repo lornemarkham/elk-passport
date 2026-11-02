@@ -521,4 +521,15 @@ describe("parseAction", () => {
       );
     }
   });
+
+  it("takes a raster photo only — an SVG can carry script", () => {
+    const photo = (src: string) => ({
+      type: "photo",
+      photo: { id: "p", personId: "m", caption: "", src, at: "" },
+    });
+    for (const ok of ["jpeg", "png", "webp"])
+      expect(parseAction(photo(`data:image/${ok};base64,AA==`))).not.toBeNull();
+    expect(parseAction(photo("data:image/svg+xml;base64,PHN2Zy8+"))).toBeNull();
+    expect(parseAction(photo("data:image/jpeg,raw"))).toBeNull();
+  });
 });

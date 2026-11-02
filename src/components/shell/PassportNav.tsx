@@ -93,6 +93,7 @@ const EXPERIENCES = [
   { href: "/hockey", label: "Hockey Night", testId: "hockey" },
   { href: "/october", label: "October", testId: "october" },
   { href: "/christmas", label: "Christmas", testId: "christmas" },
+  { href: "/snow", label: "Snow Day", testId: "snow" },
 ] as const;
 
 export function PassportNav({

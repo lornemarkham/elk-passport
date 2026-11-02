@@ -1,11 +1,14 @@
 -- ============================================================================
 -- MIGRATION — passport_snow_* (Powder Day, shared across phones)
--- Written on lane snow (feature/snow), 2026-11-01, for Powder Day mission
--- "enable real multi-phone experiences". PROPOSED for the contracts lane:
--- copy to supabase/migrations/<stamp>_passport_snow.sql unchanged below this
--- header. NOT applied to any real project. Requires
--- 20261021000000_passport_adventures.sql (applied in production) and nothing
--- else: it does not touch the Hockey, Date Night or Christmas tables.
+-- Written on lane snow (feature/snow), 2026-11-01, as
+-- docs/product/snow/shared-migration.sql. Moved here for the Powder Day
+-- release (2026-11-02) by the contracts integration, with three integrity
+-- fixes from release review: start and lock-in are single transactions
+-- (passport_snow_start, passport_snow_decide) and photos are raster only.
+-- Requires 20261021000000_passport_adventures.sql and nothing else: it does
+-- not touch the Hockey, Date Night, Christmas or packing tables. Preflight
+-- and rollback stay in docs/product/snow/ (shared-preflight.sql,
+-- shared-rollback.sql).
 --
 -- WHAT THIS IS
 --
@@ -46,6 +49,9 @@
 --     votes, completions, guesses, check-in, packing, idea votes, moments and
 --     photos. What they added to the shared plan (options, chat, challenges,
 --     predictions, ideas, songs) stays, shown as "Someone".
+--   * A change that touches several rows (starting a day; locking a choice,
+--     moving the date and posting the "plan changed" notice) is one
+--     function call, one transaction: passport_snow_start, passport_snow_decide.
 --   * Photos are base64 JPEG text capped at 700,000 characters (Hockey's
 --     ceiling), at most 16 a day, shrunk in the browser first. They are
 --     served to members only, by a route that asks Postgres as the caller.
@@ -56,7 +62,8 @@
 -- `supabase db push`; the project's migration history belongs to Atlas —
 -- supabase/README.md). Every statement is guarded: applying it twice changes
 -- nothing. Production grants nothing by default, so every grant is explicit.
--- Undo: shared-rollback.sql. Check: shared-preflight.sql.
+-- Undo: docs/product/snow/shared-rollback.sql. Check:
+-- docs/product/snow/shared-preflight.sql.
 -- ============================================================================
 
 -- ------------------------------------------------------------------ tables
@@ -158,7 +165,9 @@ CREATE TABLE IF NOT EXISTS public.passport_snow_moments (
   user_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
   kind text NOT NULL CHECK (kind IN ('moment', 'photo')),
   body text NOT NULL DEFAULT '' CHECK (char_length(body) <= 200),
-  photo text CHECK (photo IS NULL OR (photo LIKE 'data:image/%' AND char_length(photo) <= 700000)),
+  -- Raster only: an SVG is a document that can run script, and the photo
+  -- route serves these bytes from Passport's own origin.
+  photo text CHECK (photo IS NULL OR (photo ~ '^data:image/(jpeg|png|webp);base64,' AND char_length(photo) <= 700000)),
   created_at timestamptz NOT NULL DEFAULT now(),
   CHECK ((kind = 'photo') = (photo IS NOT NULL)),
   CHECK (kind = 'photo' OR char_length(btrim(body)) >= 1)
@@ -328,6 +337,84 @@ begin
   return old;
 end $$;
 
+-- ------------------------------------------------- changes that go together
+-- A change that touches more than one row is ONE transaction, so a phone
+-- that loses signal half way cannot leave a half-made day. Both functions
+-- are SECURITY INVOKER: every row is still written as the caller, through
+-- the same policies as a single insert.
+
+/**
+ * Start a shared snow day: the adventure (with the caller as owner), the
+ * day's row and the host's own level, or nothing at all.
+ */
+CREATE OR REPLACE FUNCTION public.passport_snow_start(
+  p_title text,
+  p_display_name text,
+  p_discipline text,
+  p_ability text,
+  p_own_gear boolean,
+  p_note text
+) RETURNS text LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+declare
+  v_id text;
+begin
+  v_id := passport_create_adventure('snow-day', p_title, p_display_name);
+  insert into passport_snow_days (adventure_id) values (v_id);
+  insert into passport_snow_people (adventure_id, user_id, discipline, ability, own_gear, note)
+  values (v_id, auth.uid(), p_discipline, p_ability, coalesce(p_own_gear, true),
+          nullif(btrim(p_note), ''));
+  return v_id;
+end $$;
+
+/**
+ * The host settles the plan: lock (or unlock) one topic, set the day's date
+ * and meeting time, and post the "plan changed" notice — all of it, or none.
+ * Any part may be absent: p_topic NULL skips the decision, p_set_when false
+ * leaves the date alone, p_notice NULL posts nothing.
+ */
+CREATE OR REPLACE FUNCTION public.passport_snow_decide(
+  p_adventure text,
+  p_topic text,
+  p_proposal uuid,
+  p_set_when boolean,
+  p_starts_on date,
+  p_meet_time text,
+  p_notice text
+) RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+begin
+  -- Said out loud: under RLS a refused DELETE or UPDATE is silent.
+  if not passport_is_snow_owner(p_adventure) then
+    raise exception 'only the host decides' using errcode = '42501';
+  end if;
+
+  if p_topic is not null then
+    if p_proposal is null then
+      delete from passport_snow_decisions
+        where adventure_id = p_adventure and topic = p_topic;
+    else
+      insert into passport_snow_decisions (adventure_id, topic, proposal_id)
+      values (p_adventure, p_topic, p_proposal)
+      on conflict (adventure_id, topic)
+        do update set proposal_id = excluded.proposal_id, decided_at = now();
+    end if;
+  end if;
+
+  if p_set_when then
+    update passport_adventures set starts_on = p_starts_on where id = p_adventure;
+    if not found then
+      raise exception 'only the host decides' using errcode = '42501';
+    end if;
+    insert into passport_snow_days (adventure_id, meet_time)
+    values (p_adventure, p_meet_time)
+    on conflict (adventure_id) do update set meet_time = excluded.meet_time;
+  end if;
+
+  if p_notice is not null then
+    insert into passport_snow_posts (adventure_id, kind, body)
+    values (p_adventure, 'change', p_notice);
+  end if;
+end $$;
+
 -- --------------------------------------------------------------- triggers
 
 DO $$ BEGIN
@@ -411,6 +498,10 @@ REVOKE ALL ON FUNCTION public.passport_snow_moment_cap() FROM anon, public, auth
 REVOKE ALL ON FUNCTION public.passport_snow_member_gone() FROM anon, public, authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_is_snow_member(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.passport_is_snow_owner(text) TO authenticated;
+REVOKE ALL ON FUNCTION public.passport_snow_start(text, text, text, text, boolean, text) FROM anon, public;
+REVOKE ALL ON FUNCTION public.passport_snow_decide(text, text, uuid, boolean, date, text, text) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.passport_snow_start(text, text, text, text, boolean, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.passport_snow_decide(text, text, uuid, boolean, date, text, text) TO authenticated;
 
 -- Owner-only facts: the day, and what is locked in.
 DROP POLICY IF EXISTS passport_snow_days_owner_write ON public.passport_snow_days;

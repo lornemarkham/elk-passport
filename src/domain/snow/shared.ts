@@ -612,6 +612,8 @@ export const isTopic = (t: unknown): t is Topic =>
 
 const str = (v: unknown, max = 400): v is string =>
   typeof v === "string" && v.length <= max;
+/** What a shared photo may be: a raster image, as the browser shrank it. */
+const PHOTO = /^data:image\/(?:jpeg|png|webp);base64,/;
 const obj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -749,7 +751,7 @@ export function parseAction(raw: unknown): Action | null {
         str(p.personId, 80) &&
         str(p.caption, 400) &&
         str(p.src, 700_000) &&
-        p.src.startsWith("data:image/")
+        PHOTO.test(p.src)
         ? {
             type: t,
             photo: {

@@ -4,7 +4,7 @@
  * Date Night's stack with its own ports (569xx) and directory
  * (~/passport/scratch/snow-stack, populated by copying bin/ and node_modules/
  * from another stack), applying the baseline, the adventures core, item
- * origin and docs/product/snow/shared-migration.sql twice. Original header
+ * origin and supabase/migrations/20261103000000_passport_snow.sql twice. Original header
  * follows.
  *
  * **A real, local, throwaway Supabase for Date Night** — Christmas's copy of
@@ -345,9 +345,19 @@ async function services({ fresh }) {
       await sql(origin);
       await sql(origin);
     }
+    // Everything else on the core that production gets before Snow (ADR 014
+    // together, Date Night, packing), so Snow is proven beside it, not alone.
+    for (const later of [
+      "20261101000000_passport_adventure_together.sql",
+      "20261102000000_passport_date_nights.sql",
+      "20261102100000_passport_adventure_packing.sql",
+    ])
+      await sql(
+        fs.readFileSync(path.join(repo, "supabase/migrations", later), "utf8"),
+      );
     // Powder Day's shared tables, twice: the second run must change nothing.
     const snow = fs.readFileSync(
-      path.join(repo, "docs/product/snow/shared-migration.sql"),
+      path.join(repo, "supabase/migrations/20261103000000_passport_snow.sql"),
       "utf8",
     );
     await sql(snow);

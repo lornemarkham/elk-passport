@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   Refused,
   Unavailable,
-  createAdventure,
   createInvite,
   describeInvite,
   redeemInvite,
@@ -29,7 +28,7 @@ import {
  *
  * The kind is `snow-day`. Membership, invitations, title and date are the
  * adventure core's; everything else is `passport_snow_*`
- * (docs/product/snow/shared-migration.sql).
+ * (supabase/migrations/20261103000000_passport_snow.sql).
  */
 type Db = SupabaseClient;
 
@@ -119,27 +118,23 @@ export interface HostInput {
   readonly note?: string;
 }
 
-/** Start a shared day. The caller becomes its owner and first rider. */
-export async function startDay(
-  db: Db,
-  me: string,
-  host: HostInput,
-): Promise<string> {
-  const id = await createAdventure(db, {
-    kind: SNOW_KIND,
-    title: host.title,
-    displayName: host.name,
-    startsOn: null,
-    endsOn: null,
-    timeZone: null,
-    destinationLabel: null,
-    destinationTownId: null,
+/**
+ * Start a shared day. The caller becomes its owner and first rider — the
+ * adventure, the day's row and the host's level in one transaction
+ * (`passport_snow_start`), so a dropped connection cannot leave half a day.
+ */
+export async function startDay(db: Db, host: HostInput): Promise<string> {
+  const { data, error } = await db.rpc("passport_snow_start", {
+    p_title: host.title,
+    p_display_name: host.name,
+    p_discipline: host.discipline,
+    p_ability: host.ability,
+    p_own_gear: host.ownGear,
+    p_note: host.note?.trim() ? host.note.trim().slice(0, 80) : null,
   });
-  check(
-    (await db.from("passport_snow_days").insert({ adventure_id: id })).error,
-  );
-  await saveProfile(db, id, me, host);
-  return id;
+  check(error);
+  if (typeof data !== "string") throw new Unavailable("no id came back");
+  return data;
 }
 
 async function saveProfile(
@@ -298,7 +293,11 @@ export async function act(
   if (!decided.ok) return { ok: false, reason: decided.reason };
 
   try {
-    for (const op of decided.ops) await write(db, id, me, before, op);
+    // Locking a choice, moving the date and telling the crew go together.
+    const together = decided.ops.filter(settles);
+    if (together.length > 0) await settle(db, id, together);
+    for (const op of decided.ops)
+      if (!settles(op)) await write(db, id, me, before, op);
   } catch (error) {
     if (error instanceof Declined) return { ok: false, reason: error.message };
     if (error instanceof Refused)
@@ -310,6 +309,48 @@ export async function act(
   );
   if (left) return { ok: true, view: null };
   return { ok: true, view: await loadDay(db, id, me) };
+}
+
+/** The host's plan changes that must land together or not at all. */
+function settles(op: Op): boolean {
+  return (
+    op.k === "decide" ||
+    op.k === "when" ||
+    (op.k === "post" && op.kind === "change")
+  );
+}
+
+/** One transaction: `passport_snow_decide` (supabase/migrations/20261103000000_passport_snow.sql). */
+async function settle(db: Db, id: string, ops: readonly Op[]) {
+  let topic: string | null = null;
+  let proposal: string | null = null;
+  let setWhen = false;
+  let startsOn: string | null = null;
+  let meetTime: string | null = null;
+  let notice: string | null = null;
+  for (const op of ops) {
+    if (op.k === "decide") {
+      topic = op.topic;
+      proposal = op.proposalId;
+    } else if (op.k === "when") {
+      setWhen = true;
+      startsOn = op.date;
+      meetTime = op.meetTime;
+    } else if (op.k === "post") notice = op.text;
+  }
+  check(
+    (
+      await db.rpc("passport_snow_decide", {
+        p_adventure: id,
+        p_topic: topic,
+        p_proposal: proposal,
+        p_set_when: setWhen,
+        p_starts_on: startsOn,
+        p_meet_time: meetTime,
+        p_notice: notice,
+      })
+    ).error,
+  );
 }
 
 async function write(
@@ -330,19 +371,7 @@ async function write(
           .select("id"),
       );
     case "when":
-      changed(
-        await db
-          .from("passport_adventures")
-          .update({ starts_on: op.date })
-          .eq("id", id)
-          .select("id"),
-      );
-      return put(
-        db,
-        "passport_snow_days",
-        { adventure_id: id },
-        { meet_time: op.meetTime },
-      );
+      return settle(db, id, [op]);
     case "challengesOn":
       return put(
         db,
@@ -400,22 +429,7 @@ async function write(
         ).error,
       );
     case "decide":
-      if (op.proposalId !== null)
-        return put(
-          db,
-          "passport_snow_decisions",
-          { adventure_id: id, topic: op.topic },
-          { proposal_id: op.proposalId, decided_at: new Date().toISOString() },
-        );
-      return check(
-        (
-          await db
-            .from("passport_snow_decisions")
-            .delete()
-            .eq("adventure_id", id)
-            .eq("topic", op.topic)
-        ).error,
-      );
+      return settle(db, id, [op]);
     case "post":
       return check(
         (

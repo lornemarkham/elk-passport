@@ -1,5 +1,5 @@
 -- ============================================================================
--- ROLLBACK for shared-migration.sql (passport_snow_*). Paste into the SQL
+-- ROLLBACK for 20261103000000_passport_snow.sql (passport_snow_*). Paste into the SQL
 -- editor. Drops ONLY Snow's own tables and functions; the adventure core and
 -- every other kind (Hockey Night, Date Night, Christmas, conference) are not
 -- touched. This DELETES every shared snow day's plan, votes, chat, points,
@@ -20,6 +20,8 @@ DROP TABLE IF EXISTS
   public.passport_snow_people, public.passport_snow_days
   CASCADE;
 
+DROP FUNCTION IF EXISTS public.passport_snow_decide(text, text, uuid, boolean, date, text, text);
+DROP FUNCTION IF EXISTS public.passport_snow_start(text, text, text, text, boolean, text);
 DROP FUNCTION IF EXISTS public.passport_snow_member_gone();
 DROP FUNCTION IF EXISTS public.passport_snow_moment_cap();
 DROP FUNCTION IF EXISTS public.passport_snow_cap();

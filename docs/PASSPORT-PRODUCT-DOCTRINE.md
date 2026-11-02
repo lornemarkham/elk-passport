@@ -730,6 +730,12 @@ Christmas"; `docs/product/christmas/README.md`): the Experiences item now
 opens to four — Conference, Hockey Night, October, Christmas — each still
 opening its own route (`/christmas`) under its own access rules.
 
+_Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
+verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
+Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs
+no account; a shared day is an invitation-only adventure of kind `snow-day`.
+This settles reachability for Snow; it does not answer §15.12.
+
 ---
 
 ## 11. Current near-term direction
