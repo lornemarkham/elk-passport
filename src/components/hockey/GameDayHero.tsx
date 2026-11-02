@@ -93,7 +93,7 @@ export function GameDayHero({
       )}
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pt-1">
         <Link
-          href="/hockey"
+          href="/hockey/my-nights"
           className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-1 text-[14px] text-white/75 transition hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />

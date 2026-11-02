@@ -1,0 +1,239 @@
+/*
+ * The public hockey site's look: a dark arena, white ice lines, team colours
+ * as the only colour that isn't ours. Scoped to the site; Hockey Night's own
+ * page keeps `hockey.module.css`.
+ *
+ * Archivo (`--font-ghad`, already loaded, with its width axis) set condensed
+ * and black for numbers and names, the way a scoreboard is.
+ */
+
+.site {
+  --night: #05080f;
+  --panel: #0c1220;
+  --line: rgba(255, 255, 255, 0.09);
+  --gold: #ffd84d;
+  --live: #ff4d4f;
+  min-height: 100dvh;
+  color: #fff;
+  background:
+    radial-gradient(
+      90% 50% at 50% -8%,
+      rgba(64, 104, 190, 0.28) 0%,
+      transparent 70%
+    ),
+    var(--night);
+}
+
+.site :is(h1, h2, h3) {
+  font-family:
+    var(--font-ghad), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+.display {
+  font-family:
+    var(--font-ghad), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 72%;
+  font-weight: 900;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+}
+
+.num {
+  font-family:
+    var(--font-ghad), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 80%;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--night) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--line);
+}
+
+.noScrollbar {
+  scrollbar-width: none;
+}
+.noScrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* A team's mark: its colours and its code, cut like a shoulder patch. No logo. */
+.mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  border-radius: 28%;
+  background: var(--primary);
+  color: var(--ink);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.16),
+    0 6px 18px -8px color-mix(in srgb, var(--primary) 80%, black);
+}
+.mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0 76%,
+    var(--secondary) 76% 86%,
+    transparent 86%
+  );
+  opacity: 0.95;
+}
+.mark > span {
+  position: relative;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 70%, black);
+}
+
+/* The big card: the two sides on a diagonal, rink lines over the ice. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--away) 92%, black) 0%,
+      color-mix(in srgb, var(--away) 70%, black) 49.7%,
+      color-mix(in srgb, var(--home) 70%, black) 50.3%,
+      color-mix(in srgb, var(--home) 92%, black) 100%
+    ),
+    var(--panel);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.2;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 64px,
+      rgba(255, 255, 255, 0.9) 65px 67px,
+      transparent 68px
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 2px),
+      #e03a3e calc(50% - 2px) calc(50% + 2px),
+      transparent calc(50% + 2px)
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(22% - 3px),
+      #3b6fd4 calc(22% - 3px) calc(22% + 3px),
+      transparent calc(22% + 3px) calc(78% - 3px),
+      #3b6fd4 calc(78% - 3px) calc(78% + 3px),
+      transparent calc(78% + 3px)
+    );
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.055),
+    rgba(255, 255, 255, 0.025)
+  );
+  border: 1px solid var(--line);
+}
+
+.liveDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--live);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 70%, transparent);
+  animation: pulse 1.6s ease-out infinite;
+}
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 70%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liveDot {
+    animation: none;
+  }
+}
+
+.cta {
+  background: var(--gold);
+  color: #0b1220;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
+}
+.cta:hover {
+  filter: brightness(1.06);
+}
+.cta:active {
+  transform: scale(0.98);
+}
+
+/* Standings: a sticky team column so a phone can slide the numbers. */
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  white-space: nowrap;
+}
+.table thead th {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+.featuredRow td {
+  background: color-mix(in srgb, #c8102e 16%, var(--panel));
+}
+.featuredRow .sticky {
+  background: color-mix(in srgb, #c8102e 16%, var(--panel));
+}

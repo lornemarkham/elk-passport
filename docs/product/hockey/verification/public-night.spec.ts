@@ -54,9 +54,11 @@ test("signed out, /hockey is a public front door that says nothing about any nig
   await expect(
     page.getByRole("heading", { name: "Hockey is better with your crew." }),
   ).toBeVisible();
+  // Since 2026-11-01 (public hockey site) the button goes to My Hockey
+  // Nights, which asks a stranger to sign in first.
   await expect(
-    page.getByRole("link", { name: "Start a Hockey Night" }),
-  ).toHaveAttribute("href", /^\/auth\?next=%2Fhockey$/);
+    page.getByRole("link", { name: "Create a Hockey Night" }).first(),
+  ).toHaveAttribute("href", /^\/hockey\/my-nights\?(game=\d+&)?via=/);
   const body = await page.content();
   expect(body).not.toContain("Sycle");
   expect(body).toContain('content="index, follow"');
@@ -75,8 +77,11 @@ test("a new host picks a Leafs game from the league's list", async ({
   await expect(
     page.getByRole("heading", { name: "Hockey is better with your crew." }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Start a Hockey Night" }).click();
-  await expect(page).toHaveURL(/\/auth\?next=%2Fhockey/);
+  await page
+    .getByRole("link", { name: "Create a Hockey Night" })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/auth\?next=%2Fhockey%2Fmy-nights/);
   await signUp(page, "pat");
   await expect(
     page.getByRole("heading", { name: /Nothing on yet/ }),
@@ -147,7 +152,7 @@ test("the trophy is the group's own, on the board and the shelf", async () => {
   ).toBeVisible();
   await expect(page.getByText("Sycle")).toHaveCount(0);
   await shot({ page }, "03-office-cup");
-  await page.goto("/hockey");
+  await page.goto("/hockey/my-nights");
   await expect(
     page.getByText("Maple Leafs vs Bruins · Scotiabank Arena"),
   ).toBeVisible();
@@ -161,8 +166,11 @@ test("a stranger with the id gets a 404", async ({ browser }) => {
   await expect(
     page.getByRole("heading", { name: "Hockey is better with your crew." }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Start a Hockey Night" }).click();
-  await expect(page).toHaveURL(/\/auth\?next=%2Fhockey/);
+  await page
+    .getByRole("link", { name: "Create a Hockey Night" })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/auth\?next=%2Fhockey%2Fmy-nights/);
   await signUp(page, "stranger");
   await expect(
     page.getByRole("heading", { name: /Nothing on yet/ }),
@@ -179,7 +187,7 @@ test("a stranger with the id gets a 404", async ({ browser }) => {
 
 test("by hand still works: a Canucks home game behind one link", async () => {
   const { page } = host;
-  await page.goto("/hockey");
+  await page.goto("/hockey/my-nights");
   await page.getByRole("button", { name: "Start another night" }).click();
   await page
     .getByRole("button", { name: /Set a Canucks home game by hand/ })

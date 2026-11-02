@@ -52,7 +52,7 @@ const banner = (p: Person) =>
 test("the night, two phones", async ({ browser }) => {
   test.setTimeout(240_000);
   const page = await phone(browser);
-  await page.goto("/hockey");
+  await page.goto("/hockey/my-nights");
   await signUp(page, "lorne");
   await page.getByLabel("Your name").fill("Lorne");
   await page.getByLabel("Opponent").fill("Wild");

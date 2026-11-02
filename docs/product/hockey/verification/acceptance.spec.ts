@@ -26,7 +26,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -66,9 +69,12 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   // ---------------------------------------------------------- the host
   const lorne = await person(browser);
   await lorne.page.goto("/hockey");
-  // The public front door, then sign-in with the way back to /hockey.
-  await lorne.page.getByRole("link", { name: "Start a Hockey Night" }).click();
-  await expect(lorne.page).toHaveURL(/\/auth\?next=%2Fhockey/);
+  // The public site, then sign-in with the way back to My Hockey Nights.
+  await lorne.page
+    .getByRole("link", { name: "Create a Hockey Night" })
+    .first()
+    .click();
+  await expect(lorne.page).toHaveURL(/\/auth\?next=%2Fhockey%2Fmy-nights/);
   await signUp(lorne.page, "lorne");
   await expect(lorne.page.getByText(/Nothing on yet/)).toBeVisible();
   await lorne.page.getByLabel("Your name").fill("Lorne");
@@ -415,7 +421,7 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
 
   // ------------------------------------------------ the uninvited
   const stranger = await person(browser);
-  await stranger.page.goto("/auth?next=/hockey");
+  await stranger.page.goto("/auth?next=/hockey/my-nights");
   await signUp(stranger.page, "stranger");
   await expect(stranger.page.getByText(/Nothing on yet/)).toBeVisible();
   const strangerNight = await stranger.page.goto(new URL(nightUrl).pathname);
@@ -448,7 +454,9 @@ test("Lorne starts Hockey Night, invites Maya, and they share one private night"
   await lorne.page.getByRole("button", { name: "Remove Maya" }).click();
   await lorne.page.getByRole("button", { name: "Remove", exact: true }).click();
   // Maya's open page notices on its next poll and leaves.
-  await expect(maya.page).toHaveURL(/\/hockey\?gone=1$/, { timeout: 15_000 });
+  await expect(maya.page).toHaveURL(/\/hockey\/my-nights\?gone=1$/, {
+    timeout: 15_000,
+  });
   await expect(
     maya.page.getByText("That night isn't yours to see any more."),
   ).toBeVisible();

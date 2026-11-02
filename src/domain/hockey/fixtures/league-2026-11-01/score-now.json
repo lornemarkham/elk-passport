@@ -1,0 +1,1091 @@
+{
+  "prevDate": "2026-10-31",
+  "currentDate": "2026-11-01",
+  "nextDate": "2026-11-02",
+  "gameWeek": [
+    {
+      "date": "2026-10-29",
+      "dayAbbrev": "THU",
+      "numberOfGames": 11
+    },
+    {
+      "date": "2026-10-30",
+      "dayAbbrev": "FRI",
+      "numberOfGames": 3
+    },
+    {
+      "date": "2026-10-31",
+      "dayAbbrev": "SAT",
+      "numberOfGames": 10
+    },
+    {
+      "date": "2026-11-01",
+      "dayAbbrev": "SUN",
+      "numberOfGames": 5
+    },
+    {
+      "date": "2026-11-02",
+      "dayAbbrev": "MON",
+      "numberOfGames": 4
+    },
+    {
+      "date": "2026-11-03",
+      "dayAbbrev": "TUE",
+      "numberOfGames": 11
+    },
+    {
+      "date": "2026-11-04",
+      "dayAbbrev": "WED",
+      "numberOfGames": 4
+    }
+  ],
+  "games": [
+    {
+      "id": 2026020227,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-11-01",
+      "venue": {
+        "default": "Lenovo Center"
+      },
+      "startTimeUTC": "2026-11-01T18:00:00Z",
+      "easternUTCOffset": "-05:00",
+      "venueUTCOffset": "-05:00",
+      "gameState": "OFF",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 52,
+        "name": {
+          "default": "Jets"
+        },
+        "abbrev": "WPG",
+        "score": 0,
+        "sog": 26
+      },
+      "homeTeam": {
+        "id": 12,
+        "name": {
+          "default": "Hurricanes"
+        },
+        "abbrev": "CAR",
+        "score": 7,
+        "sog": 32
+      },
+      "clock": {
+        "timeRemaining": "00:00",
+        "secondsRemaining": 0,
+        "running": false,
+        "inIntermission": false
+      },
+      "neutralSite": false,
+      "venueTimezone": "US/Eastern",
+      "period": 3,
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      },
+      "goals": [
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "05:16",
+          "name": {
+            "default": "S. Walker"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 2,
+          "homeScore": 1,
+          "awayScore": 0,
+          "strength": "sh"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "01:55",
+          "name": {
+            "default": "J. Välimäki",
+            "de": "J. Valimaki",
+            "es": "J. Valimaki",
+            "fr": "J. Valimaki"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 2,
+          "homeScore": 2,
+          "awayScore": 0,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "02:19",
+          "name": {
+            "default": "S. Aho"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 9,
+          "homeScore": 3,
+          "awayScore": 0,
+          "strength": "pp"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "07:41",
+          "name": {
+            "default": "S. Walker"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 3,
+          "homeScore": 4,
+          "awayScore": 0,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "09:09",
+          "name": {
+            "default": "L. Stankoven"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 10,
+          "homeScore": 5,
+          "awayScore": 0,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "06:53",
+          "name": {
+            "default": "M. Jankowski"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 8,
+          "homeScore": 6,
+          "awayScore": 0,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "08:38",
+          "name": {
+            "default": "J. Kotkaniemi"
+          },
+          "teamAbbrev": "CAR",
+          "goalsToDate": 4,
+          "homeScore": 7,
+          "awayScore": 0,
+          "strength": "ev"
+        }
+      ],
+      "tvBroadcasts": [
+        {
+          "id": 646,
+          "market": "H",
+          "countryCode": "US",
+          "network": "CARNHL",
+          "sequenceNumber": 1
+        },
+        {
+          "id": 754,
+          "market": "H",
+          "countryCode": "US",
+          "network": "HHN",
+          "sequenceNumber": 1
+        },
+        {
+          "id": 324,
+          "market": "N",
+          "countryCode": "US",
+          "network": "NHLN",
+          "sequenceNumber": 35
+        },
+        {
+          "id": 281,
+          "market": "N",
+          "countryCode": "CA",
+          "network": "TVAS",
+          "sequenceNumber": 120
+        },
+        {
+          "id": 292,
+          "market": "A",
+          "countryCode": "CA",
+          "network": "TSN3",
+          "sequenceNumber": 134
+        }
+      ]
+    },
+    {
+      "id": 2026020228,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-11-01",
+      "venue": {
+        "default": "Capital One Arena"
+      },
+      "startTimeUTC": "2026-11-01T20:30:00Z",
+      "easternUTCOffset": "-05:00",
+      "venueUTCOffset": "-05:00",
+      "gameState": "OFF",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 30,
+        "name": {
+          "default": "Wild"
+        },
+        "abbrev": "MIN",
+        "score": 5,
+        "sog": 29
+      },
+      "homeTeam": {
+        "id": 15,
+        "name": {
+          "default": "Capitals"
+        },
+        "abbrev": "WSH",
+        "score": 1,
+        "sog": 27
+      },
+      "clock": {
+        "timeRemaining": "00:00",
+        "secondsRemaining": 0,
+        "running": false,
+        "inIntermission": false
+      },
+      "neutralSite": false,
+      "venueTimezone": "US/Eastern",
+      "period": 3,
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      },
+      "goals": [
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "03:42",
+          "name": {
+            "default": "Q. Hughes"
+          },
+          "teamAbbrev": "MIN",
+          "goalsToDate": 5,
+          "homeScore": 0,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "05:27",
+          "name": {
+            "default": "M. McCarron"
+          },
+          "teamAbbrev": "MIN",
+          "goalsToDate": 2,
+          "homeScore": 0,
+          "awayScore": 2,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "19:54",
+          "name": {
+            "default": "J. Sourdif"
+          },
+          "teamAbbrev": "WSH",
+          "goalsToDate": 2,
+          "homeScore": 1,
+          "awayScore": 2,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "17:37",
+          "name": {
+            "default": "M. Shabanov"
+          },
+          "teamAbbrev": "MIN",
+          "goalsToDate": 5,
+          "homeScore": 1,
+          "awayScore": 3,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "19:02",
+          "name": {
+            "default": "K. Kaprizov"
+          },
+          "teamAbbrev": "MIN",
+          "goalsToDate": 15,
+          "homeScore": 1,
+          "awayScore": 4,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "19:35",
+          "name": {
+            "default": "D. Yurov"
+          },
+          "teamAbbrev": "MIN",
+          "goalsToDate": 5,
+          "homeScore": 1,
+          "awayScore": 5,
+          "strength": "pp"
+        }
+      ],
+      "tvBroadcasts": [
+        {
+          "id": 648,
+          "market": "A",
+          "countryCode": "US",
+          "network": "MINNHL",
+          "sequenceNumber": 1
+        },
+        {
+          "id": 758,
+          "market": "A",
+          "countryCode": "US",
+          "network": "Wild+",
+          "sequenceNumber": 1
+        },
+        {
+          "id": 282,
+          "market": "N",
+          "countryCode": "CA",
+          "network": "SN",
+          "sequenceNumber": 21,
+          "languageCode": "en",
+          "parentId": 282
+        },
+        {
+          "id": 281,
+          "market": "N",
+          "countryCode": "CA",
+          "network": "TVAS",
+          "sequenceNumber": 120
+        },
+        {
+          "id": 517,
+          "market": "H",
+          "countryCode": "US",
+          "network": "MNMT",
+          "sequenceNumber": 396
+        }
+      ]
+    },
+    {
+      "id": 2026020229,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-11-01",
+      "venue": {
+        "default": "Xfinity Mobile Arena"
+      },
+      "startTimeUTC": "2026-11-01T21:00:00Z",
+      "easternUTCOffset": "-05:00",
+      "venueUTCOffset": "-05:00",
+      "gameState": "OFF",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 68,
+        "name": {
+          "default": "Mammoth"
+        },
+        "abbrev": "UTA",
+        "score": 3,
+        "sog": 22
+      },
+      "homeTeam": {
+        "id": 4,
+        "name": {
+          "default": "Flyers"
+        },
+        "abbrev": "PHI",
+        "score": 6,
+        "sog": 21
+      },
+      "clock": {
+        "timeRemaining": "00:00",
+        "secondsRemaining": 0,
+        "running": false,
+        "inIntermission": false
+      },
+      "neutralSite": false,
+      "venueTimezone": "US/Eastern",
+      "period": 3,
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      },
+      "goals": [
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "12:49",
+          "name": {
+            "default": "M. Michkov",
+            "cs": "M. Mičkov",
+            "fi": "M. Mitshkov",
+            "sk": "M. Mičkov"
+          },
+          "teamAbbrev": "PHI",
+          "goalsToDate": 10,
+          "homeScore": 1,
+          "awayScore": 0,
+          "strength": "ev"
+        },
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "14:24",
+          "name": {
+            "default": "D. Simashev"
+          },
+          "teamAbbrev": "UTA",
+          "goalsToDate": 3,
+          "homeScore": 1,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "01:06",
+          "name": {
+            "default": "T. Konecny"
+          },
+          "teamAbbrev": "PHI",
+          "goalsToDate": 1,
+          "homeScore": 2,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "05:50",
+          "name": {
+            "default": "N. Cates"
+          },
+          "teamAbbrev": "PHI",
+          "goalsToDate": 2,
+          "homeScore": 3,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "01:02",
+          "name": {
+            "default": "C. Dvorak"
+          },
+          "teamAbbrev": "PHI",
+          "goalsToDate": 3,
+          "homeScore": 4,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "05:35",
+          "name": {
+            "default": "O. Bonk"
+          },
+          "teamAbbrev": "PHI",
+          "goalsToDate": 1,
+          "homeScore": 5,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "16:00",
+          "name": {
+            "default": "M. Sergachev",
+            "cs": "M. Sergačov",
+            "fi": "M. Sergatshov",
+            "sk": "M. Sergačov"
+          },
+          "teamAbbrev": "UTA",
+          "goalsToDate": 5,
+          "homeScore": 5,
+          "awayScore": 2,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "17:07",
+          "name": {
+            "default": "L. Cooley"
+          },
+          "teamAbbrev": "UTA",
+          "goalsToDate": 8,
+          "homeScore": 5,
+          "awayScore": 3,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "18:26",
+          "name": {
+            "default": "C. Knuble"
+          },
+          "teamAbbrev": "PHI",
+          "goalsToDate": 3,
+          "homeScore": 6,
+          "awayScore": 3,
+          "strength": "ev"
+        }
+      ],
+      "tvBroadcasts": [
+        {
+          "id": 783,
+          "market": "A",
+          "countryCode": "US",
+          "network": "Mammoth+",
+          "sequenceNumber": 1
+        },
+        {
+          "id": 284,
+          "market": "N",
+          "countryCode": "CA",
+          "network": "SN1",
+          "sequenceNumber": 113
+        },
+        {
+          "id": 558,
+          "market": "A",
+          "countryCode": "US",
+          "network": "Utah16",
+          "sequenceNumber": 381
+        },
+        {
+          "id": 322,
+          "market": "H",
+          "countryCode": "US",
+          "network": "NBCSP",
+          "sequenceNumber": 389
+        }
+      ]
+    },
+    {
+      "id": 2026020230,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-11-01",
+      "venue": {
+        "default": "Madison Square Garden"
+      },
+      "startTimeUTC": "2026-11-01T23:00:00Z",
+      "easternUTCOffset": "-05:00",
+      "venueUTCOffset": "-05:00",
+      "gameState": "OFF",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 22,
+        "name": {
+          "default": "Oilers"
+        },
+        "abbrev": "EDM",
+        "score": 4,
+        "sog": 25
+      },
+      "homeTeam": {
+        "id": 3,
+        "name": {
+          "default": "Rangers"
+        },
+        "abbrev": "NYR",
+        "score": 1,
+        "sog": 28
+      },
+      "clock": {
+        "timeRemaining": "00:00",
+        "secondsRemaining": 0,
+        "running": false,
+        "inIntermission": false
+      },
+      "neutralSite": false,
+      "venueTimezone": "America/New_York",
+      "period": 3,
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      },
+      "goals": [
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "00:50",
+          "name": {
+            "default": "C. McDavid"
+          },
+          "teamAbbrev": "EDM",
+          "goalsToDate": 9,
+          "homeScore": 0,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "06:19",
+          "name": {
+            "default": "C. Dach"
+          },
+          "teamAbbrev": "EDM",
+          "goalsToDate": 2,
+          "homeScore": 0,
+          "awayScore": 2,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "09:49",
+          "name": {
+            "default": "E. Bouchard"
+          },
+          "teamAbbrev": "EDM",
+          "goalsToDate": 8,
+          "homeScore": 0,
+          "awayScore": 3,
+          "strength": "pp"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "13:22",
+          "name": {
+            "default": "P. Dorofeyev",
+            "cs": "P. Dorofejev",
+            "fi": "P. Dorofejev",
+            "sk": "P. Dorofejev"
+          },
+          "teamAbbrev": "NYR",
+          "goalsToDate": 4,
+          "homeScore": 1,
+          "awayScore": 3,
+          "strength": "ev"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "19:20",
+          "name": {
+            "default": "C. Dach"
+          },
+          "teamAbbrev": "EDM",
+          "goalsToDate": 3,
+          "homeScore": 1,
+          "awayScore": 4,
+          "strength": "ev"
+        }
+      ],
+      "tvBroadcasts": [
+        {
+          "id": 324,
+          "market": "N",
+          "countryCode": "US",
+          "network": "NHLN",
+          "sequenceNumber": 35
+        },
+        {
+          "id": 282,
+          "market": "N",
+          "countryCode": "CA",
+          "network": "SN",
+          "sequenceNumber": 107,
+          "parentId": 282
+        },
+        {
+          "id": 281,
+          "market": "N",
+          "countryCode": "CA",
+          "network": "TVAS",
+          "sequenceNumber": 120
+        },
+        {
+          "id": 27,
+          "market": "H",
+          "countryCode": "US",
+          "network": "MSG",
+          "sequenceNumber": 417
+        }
+      ]
+    },
+    {
+      "id": 2026020231,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-11-01",
+      "venue": {
+        "default": "Honda Center"
+      },
+      "startTimeUTC": "2026-11-02T01:00:00Z",
+      "easternUTCOffset": "-05:00",
+      "venueUTCOffset": "-08:00",
+      "gameState": "OFF",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 9,
+        "name": {
+          "default": "Senators",
+          "fr": "Sénateurs"
+        },
+        "abbrev": "OTT",
+        "score": 3,
+        "sog": 22
+      },
+      "homeTeam": {
+        "id": 24,
+        "name": {
+          "default": "Ducks"
+        },
+        "abbrev": "ANA",
+        "score": 6,
+        "sog": 33
+      },
+      "clock": {
+        "timeRemaining": "00:00",
+        "secondsRemaining": 0,
+        "running": false,
+        "inIntermission": false
+      },
+      "neutralSite": false,
+      "venueTimezone": "America/Los_Angeles",
+      "period": 3,
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      },
+      "goals": [
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "06:00",
+          "name": {
+            "default": "P. Tomasino"
+          },
+          "teamAbbrev": "OTT",
+          "goalsToDate": 1,
+          "homeScore": 0,
+          "awayScore": 1,
+          "strength": "ev"
+        },
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "07:02",
+          "name": {
+            "default": "C. Giroux"
+          },
+          "teamAbbrev": "OTT",
+          "goalsToDate": 3,
+          "homeScore": 0,
+          "awayScore": 2,
+          "strength": "ev"
+        },
+        {
+          "period": 1,
+          "periodDescriptor": {
+            "number": 1,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "17:37",
+          "name": {
+            "default": "M. Amadio"
+          },
+          "teamAbbrev": "OTT",
+          "goalsToDate": 4,
+          "homeScore": 0,
+          "awayScore": 3,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "01:35",
+          "name": {
+            "default": "C. Gauthier"
+          },
+          "teamAbbrev": "ANA",
+          "goalsToDate": 5,
+          "homeScore": 1,
+          "awayScore": 3,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "03:33",
+          "name": {
+            "default": "J. Caulfield"
+          },
+          "teamAbbrev": "ANA",
+          "goalsToDate": 3,
+          "homeScore": 2,
+          "awayScore": 3,
+          "strength": "ev"
+        },
+        {
+          "period": 2,
+          "periodDescriptor": {
+            "number": 2,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "19:18",
+          "name": {
+            "default": "J. Caulfield"
+          },
+          "teamAbbrev": "ANA",
+          "goalsToDate": 4,
+          "homeScore": 3,
+          "awayScore": 3,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "01:50",
+          "name": {
+            "default": "C. Gauthier"
+          },
+          "teamAbbrev": "ANA",
+          "goalsToDate": 6,
+          "homeScore": 4,
+          "awayScore": 3,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "02:26",
+          "name": {
+            "default": "C. Gauthier"
+          },
+          "teamAbbrev": "ANA",
+          "goalsToDate": 7,
+          "homeScore": 5,
+          "awayScore": 3,
+          "strength": "pp"
+        },
+        {
+          "period": 3,
+          "periodDescriptor": {
+            "number": 3,
+            "periodType": "REG",
+            "maxRegulationPeriods": 3
+          },
+          "timeInPeriod": "15:19",
+          "name": {
+            "default": "R. McQueen"
+          },
+          "teamAbbrev": "ANA",
+          "goalsToDate": 2,
+          "homeScore": 6,
+          "awayScore": 3,
+          "strength": "pp"
+        }
+      ],
+      "tvBroadcasts": [
+        {
+          "id": 652,
+          "market": "H",
+          "countryCode": "US",
+          "network": "Prime Video",
+          "sequenceNumber": 117
+        },
+        {
+          "id": 294,
+          "market": "A",
+          "countryCode": "CA",
+          "network": "TSN5",
+          "sequenceNumber": 135
+        },
+        {
+          "id": 33,
+          "market": "A",
+          "countryCode": "CA",
+          "network": "RDS",
+          "sequenceNumber": 145
+        },
+        {
+          "id": 557,
+          "market": "H",
+          "countryCode": "US",
+          "network": "KTTV",
+          "sequenceNumber": 350
+        }
+      ]
+    }
+  ]
+}

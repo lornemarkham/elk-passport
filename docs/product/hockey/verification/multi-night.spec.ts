@@ -34,7 +34,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -147,7 +150,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
 
   // --------------------------------------------- Lorne hosts two nights
   const lorne = await person(browser);
-  await lorne.page.goto("/hockey");
+  await lorne.page.goto("/hockey/my-nights");
   await signUp(lorne.page, "lorne");
   await expect(lorne.page.getByText(/Nothing on yet/)).toBeVisible();
   await lorne.page.getByLabel("Your name").fill("Lorne");
@@ -160,7 +163,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   await shot(lorne.page, "1-kraken-before-desktop");
   const forMaya = await invite(lorne.page, "Maya");
 
-  await lorne.page.goto("/hockey");
+  await lorne.page.goto("/hockey/my-nights");
   await lorne.page.getByRole("button", { name: "Start another night" }).click();
   // The form refuses what it should before it accepts anything.
   await lorne.page.getByLabel("Opponent").fill("Canucks");
@@ -196,13 +199,13 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   expect((await maya.page.request.get(`/hockey/${oilers}`)).status()).toBe(404);
   expect((await get(maya.page, kraken)).status()).toBe(200);
 
-  await maya.page.goto("/hockey");
+  await maya.page.goto("/hockey/my-nights");
   await expect(maya.page.getByText("vs Kraken")).toBeVisible();
   await expect(maya.page.getByText("vs Oilers")).toHaveCount(0);
-  await sam.page.goto("/hockey");
+  await sam.page.goto("/hockey/my-nights");
   await expect(sam.page.getByText("vs Oilers")).toBeVisible();
   await expect(sam.page.getByText("vs Kraken")).toHaveCount(0);
-  await lorne.page.goto("/hockey");
+  await lorne.page.goto("/hockey/my-nights");
   const comingUp = lorne.page.getByRole("region", { name: "Coming up" });
   await expect(comingUp.getByText("vs Kraken")).toBeVisible();
   await expect(comingUp.getByText("vs Oilers")).toBeVisible();
@@ -332,7 +335,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   ).toHaveCount(0);
 
   // The shelf: three nights, one Cup, held by Maya.
-  await lorne.page.goto("/hockey");
+  await lorne.page.goto("/hockey/my-nights");
   await expect(
     lorne.page.getByRole("region", { name: "Coming up" }).getByText(/vs /),
   ).toHaveCount(2);
@@ -348,7 +351,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
 
   // ------------------------- Sam was at neither: nothing, anywhere
   expect((await get(sam.page, flames)).status()).toBe(404);
-  await sam.page.goto("/hockey");
+  await sam.page.goto("/hockey/my-nights");
   await expect(sam.page.getByText(/Sycle Cup/)).toHaveCount(0);
   await expect(sam.page.getByText(/Flames|Kraken/)).toHaveCount(0);
   // Nor can he run a night he was never at back into his own.

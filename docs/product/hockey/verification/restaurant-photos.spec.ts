@@ -33,11 +33,14 @@ for (const [label, viewport, mobile] of [
       hasTouch: mobile,
     });
     const page = await context.newPage();
-    await page.goto("/hockey");
+    await page.goto("/hockey/my-nights");
     // Since 2026-11-01 a signed-out /hockey is the public front door; its one
     // button leads to sign-in.
     if (new URL(page.url()).pathname === "/hockey")
-      await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+      await page
+        .getByRole("link", { name: "Create a Hockey Night" })
+        .first()
+        .click();
     await page.getByRole("tab", { name: "Sign Up" }).click();
     await page
       .getByLabel("Email address")

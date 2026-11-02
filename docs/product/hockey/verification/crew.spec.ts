@@ -67,7 +67,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(email(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -163,7 +166,7 @@ test("The Crew: find friends, summon the squad, snack run", async ({
 
   // ------------------------------------------------------------ the host
   const host = await phone(browser, 390);
-  await host.page.goto("/hockey");
+  await host.page.goto("/hockey/my-nights");
   await signUp(host.page, "host");
   await host.page.getByLabel("Your name").fill("Lorne");
   // The form no longer suggests an opponent once the Sycle night has passed.

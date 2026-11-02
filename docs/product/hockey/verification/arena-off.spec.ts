@@ -32,11 +32,14 @@ test("before the migration: the map works, check-ins say they're off", async ({
       .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/hockey");
+  await page.goto("/hockey/my-nights");
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   const email = `arena-off-${stamp}@example.test`;
   await page.getByLabel("Email address").fill(email);

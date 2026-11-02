@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { measure } from "../../../../_server/measure";
 import { asMember, bodyOf } from "../../../../_server/respond";
 import {
   NightError,
@@ -24,7 +25,9 @@ export async function POST(request: Request, { params }: Ctx) {
       .object({ label: z.string().max(60).optional() })
       .safeParse(await bodyOf(request));
     if (!body.success) throw new NightError("Bad invitation.", 400);
-    return createInvite(user, id, body.data.label);
+    const invite = await createInvite(user, id, body.data.label);
+    await measure("Hockey: invitation created");
+    return invite;
   });
 }
 

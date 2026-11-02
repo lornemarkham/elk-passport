@@ -23,7 +23,10 @@ async function signUp(page: Page, who: string) {
   // Since 2026-11-01 a signed-out /hockey is the public front door; its one
   // button leads to sign-in.
   if (new URL(page.url()).pathname === "/hockey")
-    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
+    await page
+      .getByRole("link", { name: "Create a Hockey Night" })
+      .first()
+      .click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page
     .getByLabel("Email address")
@@ -41,7 +44,7 @@ test("no migration: the night and its chat work, with no teams and no Chirp Bot"
     hasTouch: true,
   });
   const page = await context.newPage();
-  await page.goto("/hockey");
+  await page.goto("/hockey/my-nights");
   await signUp(page, "host");
   await page.getByLabel("Your name").fill("Lorne");
   // The form no longer suggests an opponent once the Sycle night has passed.

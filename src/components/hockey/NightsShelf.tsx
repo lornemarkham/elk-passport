@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { zoneOr, type GameChoice } from "@/domain/hockey/schedule";
 import { editionLabel } from "@/domain/hockey/edition";
@@ -74,22 +74,40 @@ export function NightsShelf({
   name,
   gone,
   suggestion,
+  gameId,
+  via,
 }: {
   nights: readonly Night[];
   cups: readonly Cup[];
   name: string;
   gone: boolean;
   suggestion: GameChoice;
+  /** A game chosen on a public hockey page: the form opens on it. */
+  gameId?: number;
+  /** Which public page sent the person here, carried to the start request. */
+  via?: string;
 }) {
-  const [starting, setStarting] = useState(nights.length === 0);
+  const [starting, setStarting] = useState(
+    nights.length === 0 || gameId !== undefined,
+  );
+  useEffect(() => {
+    if (gameId !== undefined)
+      document.getElementById("start")?.scrollIntoView({ block: "start" });
+  }, [gameId]);
   const upcoming = nights.filter((n) => !n.over);
   const past = nights.filter((n) => n.over).reverse();
 
   return (
     <main className="min-h-dvh bg-[oklch(0.14_0.015_260)] px-5 pt-14 pb-24 text-white">
       <div className="mx-auto max-w-md">
-        <p className="text-[13px] tracking-wide text-white/45 uppercase">
-          Hockey Night
+        <p className="flex items-center justify-between text-[13px] tracking-wide text-white/45 uppercase">
+          <span>My Hockey Nights</span>
+          <Link
+            href="/hockey"
+            className="inline-flex min-h-11 items-center tracking-normal text-white/60 normal-case hover:text-white"
+          >
+            Scores & standings →
+          </Link>
         </p>
         <h1 className="mt-1 font-serif text-[32px] leading-tight">
           {nights.length ? `Your nights, ${name}.` : `Nothing on yet, ${name}.`}
@@ -122,7 +140,10 @@ export function NightsShelf({
           </section>
         )}
 
-        <div className="mt-8 rounded-2xl border border-dashed border-white/20 p-5">
+        <div
+          id="start"
+          className="mt-8 scroll-mt-6 rounded-2xl border border-dashed border-white/20 p-5"
+        >
           <p className="text-[16px] font-medium">Start a Hockey Night</p>
           {starting ? (
             <>
@@ -130,7 +151,13 @@ export function NightsShelf({
                 Any NHL game, any arena. Start it, then invite people one link
                 at a time.
               </p>
-              <StartNight suggestion={suggestion} name={name} cta="Start it" />
+              <StartNight
+                suggestion={suggestion}
+                name={name}
+                cta="Start it"
+                {...(gameId !== undefined ? { gameId } : {})}
+                {...(via ? { via } : {})}
+              />
             </>
           ) : (
             <>

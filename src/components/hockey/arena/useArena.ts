@@ -34,7 +34,7 @@ export function useArena(initial: ArenaView) {
         cache: "no-store",
       });
       if (res.status === 404 || res.status === 401) {
-        window.location.href = "/hockey?gone=1";
+        window.location.href = "/hockey/my-nights?gone=1";
         return;
       }
       if (!res.ok) return;
