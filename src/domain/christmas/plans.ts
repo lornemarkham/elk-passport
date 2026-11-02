@@ -35,7 +35,7 @@ export const SHAPES: readonly Shape[] = [
     line: "Lights after dark, something warm, home for bed.",
     emoji: "🌙",
     days: 1,
-    say: "this evening, good food and drink",
+    say: "a Christmas evening, good food and drink",
     title: "Our Christmas evening",
   },
   {
@@ -44,7 +44,7 @@ export const SHAPES: readonly Shape[] = [
     line: "Santa, a treat, a run-around, nobody melting down.",
     emoji: "👨‍👩‍👧",
     days: 1,
-    say: "take it easy, good food and drink",
+    say: "a Christmas day, take it easy, good food and drink",
     title: "Our family Christmas day",
   },
   {
@@ -53,7 +53,7 @@ export const SHAPES: readonly Shape[] = [
     line: "A market or two, a long lunch, presents sorted.",
     emoji: "🎪",
     days: 1,
-    say: "markets, good food and drink",
+    say: "Christmas markets, good food and drink",
     title: "Christmas market day",
   },
   {
@@ -62,7 +62,7 @@ export const SHAPES: readonly Shape[] = [
     line: "Two days, the best of the season, one plan.",
     emoji: "🎄",
     days: 2,
-    say: "a great day out, good food and drink",
+    say: "a great Christmas day out, good food and drink",
     title: "Our holiday weekend",
   },
   {
@@ -71,7 +71,7 @@ export const SHAPES: readonly Shape[] = [
     line: "Three to five days — family in town, or a trip.",
     emoji: "🧳",
     days: 3,
-    say: "a great day out, good food and drink",
+    say: "a great Christmas day out, good food and drink",
     title: "Our Christmas",
   },
 ];

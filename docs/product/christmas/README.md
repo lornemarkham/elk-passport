@@ -81,7 +81,11 @@ group's half.
   Hockey Night of 2026-10-25 (brief M466). No push notifications (§6): the
   page checks every 30 s while open and visible.
 - **Challenges** — twelve optional dares in Passport's own words, finished
-  only by sharing proof (a photo, a line, or either). Finishing one _is_ a
+  only by sharing proof (a photo, a line, or either). _Since 2026-11-01
+  ([smarter adventures](../adventures/smarter/README.md)):_ at most three
+  lead, chosen for who is going and for what Atlas holds near the adventure
+  on its days, each with real places to do it; the rest wait under _More
+  dares_. Finishing one _is_ a
   memory; a tally, not a leaderboard (§14 keeps elaborate games out).
 - **Memories and the recap** — photos (shrunk to 1280 px in the browser),
   favourite moments, family traditions and finished challenges; a recap built

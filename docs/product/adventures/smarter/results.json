@@ -1,0 +1,120 @@
+{
+  "A": {
+    "plan": [
+      {
+        "heard": "Passport heard: romantic, cozy, festive · something warm to drink · Christmas lights · snow · a good dinnerSomething warm to drink — nowhere near Vernon that Atlas knows is both open that evening and lists it.Christmas lights — Atlas has no light display listed near Vernon for that day. Many towns switch theirs on in late November; Passport won't guess a street.Snow — that's usually before the snow season here, so nothing in this plan depends on it.Hours — Atlas has no evening hours for these stops. A quick call ahead is worth it.",
+        "stops": [
+          {
+            "name": "Midtown Bistro",
+            "at": "6:15 pm",
+            "because": "Dinner at a bistro; Atlas says it does “dinner”."
+          },
+          {
+            "name": "Priest Valley Arena",
+            "at": "7:30 pm",
+            "because": "Atlas lists “public skating” here — public-skate times aren't in Atlas, so check them first."
+          },
+          {
+            "name": "Okanagan Spirits Craft Distillery",
+            "at": "8:45 pm",
+            "because": "Atlas says it does “cocktail”."
+          }
+        ]
+      }
+    ],
+    "challenges": [
+      {
+        "id": "hot-chocolate",
+        "text": "☕ Rank the hot chocolate You asked for something warm to drink. Every hot chocolate this season gets a score out of ten. Post the leader. The Boarding House Cafe 0.2 km · A cafe — open till 5 pm that day, by its own hours Add to the plan Teassential 0.3 km · A tea shop — Atlas has no menu or hours for it Add to the plan Cotton's Chocolates 0.5 km · A chocolate shop — Atlas has no menu or hours for"
+      },
+      {
+        "id": "on-the-ice",
+        "text": "⛸️ Get on the ice Holding hands on the ice is mandatory. One lap counts. Holding the wall counts. Falling over and laughing counts double. Centennial Outdoor Rink 0.5 km · Its own note says it's closed for the season — check it has reopened. Add to the plan Kal Tire Place 1 km · Open till 4 pm that day, by its own hours. Add to the plan We did it — share it"
+      },
+      {
+        "id": "best-lights",
+        "text": "✨ Find the best Christmas lights You asked for Christmas lights. Out of everything you see this season, which lights win? Photo or it didn't happen. Atlas has no light display dated near Vernon for these days — this one works on any lit-up street you pass. Passport won't point at anyone's house. We did it — share it"
+      }
+    ]
+  },
+  "B": {
+    "choices": [
+      "Priest Valley Arena Vernon · 0.4 km away Atlas lists public skating Add to the day Directions",
+      "Centennial Outdoor Rink Vernon · 0.5 km away Atlas lists outdoor rink Its own note says it's closed for the season — check it has reopened. Family Day public skating: 6:30 to 8pm on Monday, February 16th. Season: Open during the winter months Add to the day Directions",
+      "Kal Tire Place 1 km away Atlas lists Skating Open till 4 pm that day, by its own hours. Hours: Hours: Sunday: 8:00 am-4:00 pm; Monday - Thursday: 8:00 am-8:00 pm; Friday - Saturday: 8:00 am-4:00 pm Add to the day Directions",
+      "Brewer's Pond 17.9 km away Atlas lists Skating, outdoor skating rink Add to the day Directions",
+      "Winfield Arena Lake Country · 28.5 km away Atlas lists Public Skating Open till 1 am that day, by its own hours. Status: Open Hours: Hours: Sunday: 6:00 am-1:00 am · Monday: 6:00 am-1:00 am · Tuesday: 6:00 am-1:00 am · Wednesday: 6:00 am-1:00 am · Thursday: 6:00 am-1:00 am · Friday: 6:00 am-1:00 am · Saturday: 6:00 am-1:00 am Add to the day Directions"
+    ]
+  },
+  "B2": "go bowling → Lincoln Lanes Bowling, idea replaced",
+  "E": {
+    "invite": "one-person link redeemed by a second account",
+    "vote": "Midtown Bistro: 1 in, seen by owner after refresh",
+    "proposal": "Warm socks and a thermos — From the group, after refresh",
+    "memory": "shared moment visible to owner and on a second device",
+    "secondDevice": "owner logged in fresh, adventure listed and identical",
+    "outsider": "Not found page; find → 404; item post refused"
+  },
+  "C": {
+    "plan": [
+      {
+        "heard": "Passport heard: festive, for the family · a good dinner",
+        "stops": [
+          {
+            "name": "Priest Valley Arena",
+            "at": "1",
+            "because": "Atlas lists “public skating” here — public-skate times aren't in Atlas, so check them first."
+          },
+          {
+            "name": "Farmhouse Pizza and Donair",
+            "at": "2",
+            "because": "Close to the rest of the day."
+          },
+          {
+            "name": "Big White's Twinkling Trail",
+            "at": "3",
+            "because": "Atlas dates it to this day — “Twinkling”."
+          }
+        ]
+      }
+    ],
+    "challenges": [
+      {
+        "id": "on-the-ice",
+        "text": "⛸️ Get on the ice Falling over counts double. One lap counts. Holding the wall counts. Falling over and laughing counts double. Centennial Outdoor Rink 0.5 km · Its own note says it's closed for the season — check it has reopened. Add to the plan Kal Tire Place 1 km · Open till 4 pm that day, by its own hours. Add to the plan We did it — share it"
+      },
+      {
+        "id": "hot-chocolate",
+        "text": "☕ Rank the hot chocolate Every stop gets a score. Every hot chocolate this season gets a score out of ten. Post the leader. The Boarding House Cafe 0.2 km · A cafe — open till 5 pm that day, by its own hours Add to the plan Teassential 0.3 km · A tea shop — Atlas has no menu or hours for it Add to the plan Cotton's Chocolates 0.5 km · A chocolate shop — Atlas has no menu or hours for it Add to the"
+      },
+      {
+        "id": "new-treat",
+        "text": "🍪 Try a holiday treat nobody's had Somewhere to find a treat none of you has had. Stollen, a mince tart, a pretzel the size of your head, egg nog. Something none of you has tasted — then tell everyone the verdict. The Boarding House Cafe 0.2 km · A cafe — open till 5 pm that day, by its own hours Add to the plan Teassential 0.3 km · A tea shop — Atlas has no menu or hours for it Add to the plan C"
+      }
+    ]
+  },
+  "D": {
+    "plan": [
+      {
+        "heard": "Passport heard: lively · snow",
+        "stops": [
+          {
+            "name": "SilverStar Mountain Resort",
+            "at": "1",
+            "because": "You asked for skiing, and this says it has it."
+          },
+          {
+            "name": "Okanagan Spirits",
+            "at": "2",
+            "because": "A brewery."
+          },
+          {
+            "name": "1516 Pub & Grill",
+            "at": "3",
+            "because": "A bar and grill restaurant."
+          }
+        ]
+      }
+    ]
+  }
+}

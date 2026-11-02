@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
+import type { SavedForAdventure, SavedPick } from "@/domain/occasion/saved";
 import { weekdayLabel } from "@/lib/adventures/present";
 import { placeLabel } from "@/domain/discovery/compose";
 import { Picture } from "../Picture";
@@ -14,7 +16,12 @@ import { SectionHeading } from "../kit";
  * Places on the person's own Saved that this adventure doesn't hold yet,
  * offered inside an adventure they opened — one tap onto a day, or into the
  * ideas. Nothing is duplicated: anything the adventure already points at is
- * not offered. Passport says the person saved it; it does not claim it fits.
+ * not offered.
+ *
+ * **The ones that fit come first, and say why** (`savedForAdventure`): on
+ * during the dates, close to where it is, suited to the occasion its days
+ * were asked for. An event that is over or something far away waits behind
+ * "Show everything you saved" — never deleted, never pretended to fit.
  */
 export function SavedSuggestions({
   saved,
@@ -24,7 +31,7 @@ export function SavedSuggestions({
   act,
   call,
 }: {
-  readonly saved: readonly Experience[];
+  readonly saved: SavedForAdventure;
   readonly days: readonly string[];
   readonly isOwner: boolean;
   readonly busy: boolean;
@@ -38,7 +45,12 @@ export function SavedSuggestions({
     body?: unknown,
   ) => Promise<T>;
 }) {
-  if (saved.length === 0) return null;
+  const [all, setAll] = useState(false);
+  const total = saved.fits.length + saved.elsewhere.length;
+  if (total === 0) return null;
+  const shown: readonly SavedPick[] = all
+    ? [...saved.fits, ...saved.elsewhere]
+    : saved.fits.slice(0, 4);
   const add = (experience: Experience, onDay: string | null) =>
     act(
       () =>
@@ -62,10 +74,12 @@ export function SavedSuggestions({
         eyebrow="From your saved places"
         title="You've already found these"
       >
-        Saved, and not on this adventure yet. One tap puts one on a day.
+        {saved.fits.length > 0
+          ? "The things you saved that suit this one, first. One tap puts one on a day."
+          : "Nothing you saved fits these dates or this area — but it's all still yours."}
       </SectionHeading>
       <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {saved.slice(0, 6).map((experience) => (
+        {shown.map(({ experience, why }) => (
           <li
             key={experience.id}
             data-testid="saved-suggestion"
@@ -77,7 +91,9 @@ export function SavedSuggestions({
               className="aspect-square w-20 shrink-0 rounded-2xl"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-[var(--gh-ink-soft)]">You saved</p>
+              <p className="text-sm text-[var(--gh-ink-soft)]">
+                {why ?? "You saved"}
+              </p>
               <p className="ghad-display text-lg leading-tight font-extrabold">
                 {experience.title}
               </p>
@@ -113,6 +129,18 @@ export function SavedSuggestions({
           </li>
         ))}
       </ul>
+      {total > shown.length && (
+        <button
+          type="button"
+          onClick={() => setAll(true)}
+          data-testid="saved-show-all"
+          className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline"
+        >
+          Show everything you saved ({total})
+          {saved.elsewhere.length > 0 &&
+            ` — ${saved.elsewhere.length} ${saved.elsewhere.length === 1 ? "is" : "are"} over or far from here`}
+        </button>
+      )}
     </section>
   );
 }
