@@ -996,6 +996,15 @@ certainty. Do not invent an answer here to make the document feel finished.
     The second person joins with an account through the core's invitation.
     One composition. It also shows that the shared builder does not yet order
     a day by time of day.
+    _Informed again 2026-11-01 by The Markham Adventure, rebuilt_
+    (`docs/product/date-night/MARKHAM-ADVENTURE.md`, mission 485): the night
+    now opens on a few whole evenings to choose from (photo, drive,
+    highlights, one button) and the five questions move into "plan it
+    yourself". A chosen evening is written through the core (the adventure's
+    name for it, its Atlas places as the day), so nothing new is stored. A
+    place Atlas lacks (Crazy Creek) is named and checked by hand, never
+    invented as a stop. Whether "pick from a few evenings" is how every
+    Experience should open is still open.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**
