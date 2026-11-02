@@ -36,6 +36,7 @@ import type { ResponseValue } from "@/lib/adventures/rules";
 import type { PackingView } from "@/lib/date-night/night";
 import type { DayDetail } from "@/lib/adventures/propose";
 import type { DayForecast } from "@/domain/date-night/conditions";
+import type { SavedForAdventure } from "@/domain/occasion/saved";
 
 const POLL_MS = 15_000;
 
@@ -144,7 +145,7 @@ export function NightBoard({
   experiences: Record<string, Experience>;
   config: NightConfig | null;
   details: Record<string, DayDetail>;
-  saved: readonly Experience[];
+  saved: SavedForAdventure;
   today: string;
   atlasDown: boolean;
   forecast?: DayForecast;

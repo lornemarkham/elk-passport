@@ -121,6 +121,16 @@ people, not Kalamalka), snow outside a cabin window, marshmallows close up,
 and a personalised trailer for the invitation. Each should be labelled as an
 illustration and never shown as a real place.
 
+## Mission 482, integrated
+
+Mission 482 ("Make adventures smarter") committed `24c45da` and `b027be6` on
+`main` while this was being built. Its `main` was based on `5da3ee3`, not on
+GitHub's `c12c8d5`. `lane/daybuilder` merges it cleanly, so the release
+holds both and stays a fast-forward of GitHub `main`. The night now gets
+482's reading for free: saved places that fit this day first (`savedFor`),
+and its occasion-aware engine behind change-in-words in the details. The one
+integration edit was the journey's `saved` prop, now `SavedForAdventure`.
+
 ## Release
 
 No new migration. The page needs these, already in `supabase/migrations`.

@@ -18,6 +18,7 @@ import type { Moment } from "@/domain/christmas/recap";
 import { dayDetails, type DayDetail } from "@/lib/adventures/propose";
 import { todayIn } from "@/lib/adventures/overview";
 import { loadSaved } from "@/lib/data/loadSaved";
+import { savedFor } from "@/lib/adventures/fit";
 import { environmentFor } from "@/lib/environment/reading";
 import {
   clockTime,
@@ -132,11 +133,11 @@ export default async function NightPage({
     ]);
   const atlasNames = stops?.names ?? {};
   const experiences = stops?.experiences ?? {};
-  const held = new Set(refs);
+  // Mission 482's reading: saved places that fit this day first.
   const savedHere =
     saved?.status === "ok"
-      ? saved.experiences.filter((e) => !held.has(e.id))
-      : [];
+      ? savedFor(view, saved.experiences)
+      : { fits: [], elsewhere: [] };
   const forecast =
     day && area ? dayForecast(environments.get(area.id), day) : undefined;
   const light = day
