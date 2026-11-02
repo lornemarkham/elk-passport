@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type { Participant, ResponseValue } from "@/experience-lab/core/types";
+import { announceSchema } from "./announce";
 import { MODULE_IDS, type ModuleId } from "./modules";
 import { TEAM_ABBRS } from "./fans";
 import { CHALLENGE_KINDS, MARKETS, SIDES, TEAM_REACTIONS } from "./challenges";
@@ -39,7 +40,16 @@ const responseValue: z.ZodType<ResponseValue> = z.union([
 
 export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("respond"), promptId, value: responseValue }),
-  z.object({ type: z.literal("say"), text: short(500) }),
+  z.object({
+    type: z.literal("say"),
+    text: short(500),
+    /** Answering one line in particular (`announce.ts`). */
+    replyTo: z.string().uuid().optional(),
+  }),
+  /** The host's "CHANGE OF PLANS!" — kept in front of everyone until seen. */
+  announceSchema,
+  /** The host takes an announcement down. */
+  z.object({ type: z.literal("retract"), momentId: z.string().uuid() }),
   z.object({ type: z.literal("react"), momentId: z.string().uuid(), emoji }),
   z.object({
     type: z.literal("addOption"),

@@ -21,6 +21,27 @@ import {
 } from "@/domain/discovery/environment";
 import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { PART_OF_DAY_END } from "./intent";
+import { daylightAt } from "@/domain/environment/daylight";
+import { readChristmas } from "@/domain/christmas/themes";
+import { statedCloseOn } from "@/domain/occasion/hours";
+import {
+  activityByKey,
+  doesActivity,
+  inSeason,
+} from "@/domain/discovery/activities";
+import {
+  afterDarkAt,
+  eveningOrder,
+  fitOccasion,
+  heardLine,
+  isSnowPlace,
+  shapesThePlan,
+  roleOf,
+  wantLabel,
+  type OccasionFit,
+  type Role,
+  type WantId,
+} from "@/domain/occasion/occasion";
 
 /**
  * **Indoors, as Atlas says it.** A stated indoor setting, a sheltered rain
@@ -210,6 +231,15 @@ export interface DayPlanned {
    * does offer it where one is known.
    */
   readonly unmet?: readonly Unmet[];
+  /**
+   * **The occasion as Passport heard it**, and the things named in passing
+   * this plan could not hold — said on screen so the person can correct
+   * what was heard, and never left to discover that the lights are missing.
+   */
+  readonly occasion?: {
+    readonly heard: string;
+    readonly missing: readonly string[];
+  };
 }
 
 /** A forecast, with whose forecast it is. */
@@ -284,7 +314,12 @@ function statedCost(experience: Experience): string | undefined {
   return undefined;
 }
 
-/** A published fact about opening hours, quoted. Never parsed into a claim. */
+/**
+ * A published fact about opening hours, quoted. Never parsed into a claim
+ * here. The one question an evening plan must ask of a place's own hours —
+ * *is it still open when we get there?* — is `domain/occasion/hours.ts`,
+ * which reads only the publisher's weekday sentence and quotes it back.
+ */
 function statedHours(experience: Experience): string | undefined {
   for (const fact of experience.knowledge?.practical ?? []) {
     const label = fact.label?.toLowerCase() ?? "";
@@ -371,8 +406,9 @@ function fitness(
   origin?: { latitude: number; longitude: number },
   radiusKm?: number,
   weather?: PlanWeather,
+  occasionFit?: (e: Experience) => OccasionFit | undefined,
 ): number {
-  let score = 0;
+  let score = occasionFit?.(experience)?.score ?? 0;
 
   // **A day should fit inside itself.** Closer is better, within the circle
   // the day is drawn in — enough to break ties and to stop a four-hour
@@ -445,6 +481,72 @@ function fitness(
     score += 4;
   }
   return score;
+}
+
+/**
+ * **The occasion's judgement of each place, for one brief** — `undefined`
+ * when the brief names no occasion, so a plain day is built exactly as
+ * before. Whether the outing is after dark is the sun's arithmetic for the
+ * town and the day (`daylightAt`), never a forecast.
+ */
+const OCCASION_FITS = new WeakMap<
+  DayBrief,
+  (e: Experience) => OccasionFit | undefined
+>();
+
+function sunsetMinutes(brief: DayBrief): number | undefined {
+  if (!brief.town || !brief.on) return undefined;
+  const light = daylightAt(
+    brief.town.latitude,
+    brief.town.longitude,
+    new Date(`${brief.on}T20:00:00Z`),
+  );
+  if (!light) return undefined;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Vancouver",
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(light.sunset);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  return get("hour") * 60 + get("minute");
+}
+
+export function outingAfterDark(brief: DayBrief): boolean {
+  return afterDarkAt({
+    ...(brief.startAt !== undefined ? { startAt: brief.startAt } : {}),
+    ...(brief.on ? { on: brief.on } : {}),
+    ...(sunsetMinutes(brief) !== undefined
+      ? { sunsetMinutes: sunsetMinutes(brief)! }
+      : {}),
+  });
+}
+
+function occasionFitFor(
+  brief: DayBrief,
+): (e: Experience) => OccasionFit | undefined {
+  const cached = OCCASION_FITS.get(brief);
+  if (cached) return cached;
+  const occasion = brief.occasion;
+  let fit: (e: Experience) => OccasionFit | undefined;
+  if (!occasion) fit = () => undefined;
+  else {
+    const context = {
+      afterDark: outingAfterDark(brief),
+      ...(brief.on ? { on: brief.on } : {}),
+      ...(brief.startAt !== undefined ? { startAt: brief.startAt } : {}),
+    };
+    const seen = new WeakMap<Experience, OccasionFit>();
+    fit = (e) => {
+      const kept = seen.get(e);
+      if (kept) return kept;
+      const result = fitOccasion(e, occasion, context);
+      seen.set(e, result);
+      return result;
+    };
+  }
+  OCCASION_FITS.set(brief, fit);
+  return fit;
 }
 
 /** One sentence saying why this stop is in the day. Facts only. */
@@ -799,8 +901,8 @@ function rank(
     const byMeasured = measured(b) - measured(a);
     if (byMeasured !== 0) return byMeasured;
     return (
-      fitness(b, brief, origin, radiusKm, weather) -
-      fitness(a, brief, origin, radiusKm, weather)
+      fitness(b, brief, origin, radiusKm, weather, occasionFitFor(brief)) -
+      fitness(a, brief, origin, radiusKm, weather, occasionFitFor(brief))
     );
   });
   return {
@@ -902,8 +1004,14 @@ export function buildDay({
     keep,
   );
 
+  // **A mountain is the day.** A snow day is the hill and somewhere after,
+  // not a tour: at most three stops unless the person asked for more.
+  const snowCap =
+    brief.occasion?.moods.includes("snowy") && count === undefined
+      ? 3
+      : MAX_STOPS;
   const wanted = Math.min(
-    MAX_STOPS,
+    snowCap,
     Math.max(
       1,
       count ?? stopCount(brief.hours, brief.lessDriving),
@@ -969,8 +1077,44 @@ export function buildDay({
     const kind = candidate.subtype ?? candidate.kind;
     kindCount.set(kind, (kindCount.get(kind) ?? 0) + 1);
   };
+  // **An outing has one dinner.** With an occasion, a short outing takes
+  // at most one meal and one drinks stop, and nowhere to sleep, so an
+  // evening is dinner and something to do rather than two restaurants. It
+  // is the shape of a plan, not a filter: the last pass below still takes
+  // whatever is left before it leaves a day short.
+  const occasionFit = occasionFitFor(brief);
+  const shaped = shapesThePlan(brief.occasion);
+  const roleCaps: Partial<Record<Role, number>> | undefined = shaped
+    ? wanted <= 4
+      ? { meal: 1, drink: 1, stay: 0, treat: 1 }
+      : { meal: 2, drink: 2, stay: 0 }
+    : undefined;
+  const snowDay = brief.occasion?.moods.includes("snowy") ?? false;
+  const skates = (e: Experience) => doesActivity(e, "skating");
+  const secondOf = (candidate: Experience) =>
+    (snowDay && isSnowPlace(candidate) && chosen.some(isSnowPlace)) ||
+    (shaped && skates(candidate) && chosen.some(skates));
+  const roleAtCap = (candidate: Experience) => {
+    if (!roleCaps) return false;
+    // A ski hill is the day: one mountain, not a tour of them. And one rink.
+    if (secondOf(candidate)) return true;
+    const role = roleOf(candidate);
+    const cap = roleCaps[role];
+    return (
+      cap !== undefined &&
+      chosen.filter((c) => roleOf(c) === role).length >= cap
+    );
+  };
+  // A place the occasion argues against (fast food on a date) is never a
+  // first or second choice; it can still fill a day nothing else will.
+  const unwelcome = (candidate: Experience) =>
+    shaped &&
+    Boolean(occasionFit(candidate)?.against) &&
+    !kept.has(candidate.id);
   const sameKindAtCap = (candidate: Experience, cap: number) =>
-    (kindCount.get(candidate.subtype ?? candidate.kind) ?? 0) >= cap;
+    (kindCount.get(candidate.subtype ?? candidate.kind) ?? 0) >= cap ||
+    roleAtCap(candidate) ||
+    unwelcome(candidate);
 
   const kept = new Set(keptExperiences.map((e) => e.id));
   for (const experience of keptExperiences) take(experience);
@@ -984,8 +1128,39 @@ export function buildDay({
     for (const interest of brief.interests) {
       if (chosen.length >= wanted) break;
       if (chosen.some((c) => offers(c, interest))) continue;
-      const match = placeable.find(
+      // One place that does several of the things asked for beats one for
+      // each: a mountain with skiing and snowboarding is one stop.
+      const others = brief.interests.filter(
+        (i) => i !== interest && !chosen.some((c) => offers(c, i)),
+      );
+      const covering = (c: Experience) =>
+        others.filter((i) => offers(c, i)).length;
+      const candidates = placeable.filter(
         (c) => !chosen.includes(c) && offers(c, interest),
+      );
+      const best = (list: readonly Experience[]) =>
+        list.reduce<Experience | undefined>(
+          (top, c) => (!top || covering(c) > covering(top) ? c : top),
+          undefined,
+        );
+      const match =
+        best(candidates.filter((c) => !roleAtCap(c) && !unwelcome(c))) ??
+        candidates.find((c) => !secondOf(c));
+      if (match) take(match);
+    }
+    // **And each thing named in passing** — a warm drink, the lights, snow —
+    // gets the best place whose own words support it, where Atlas holds one.
+    for (const want of brief.occasion?.wants ?? []) {
+      if (chosen.length >= wanted) break;
+      if (chosen.some((c) => occasionFit(c)?.meets.includes(want.id))) continue;
+      // Not one Passport itself would have to warn may be shut by then.
+      const match = placeable.find(
+        (c) =>
+          !chosen.includes(c) &&
+          !roleAtCap(c) &&
+          (occasionFit(c)?.score ?? 0) > 0 &&
+          !occasionFit(c)!.closedRisk &&
+          occasionFit(c)!.meets.includes(want.id),
       );
       if (match) take(match);
     }
@@ -996,24 +1171,56 @@ export function buildDay({
     const verbs = verbsOf(candidate);
     const freshVerb =
       verbs.length === 0 || verbs.some((v) => !seenVerbs.has(v));
-    if (freshVerb && !sameKindAtCap(candidate, 2)) take(candidate);
+    const fits =
+      !shaped ||
+      ((occasionFit(candidate)?.score ?? 0) > 0 &&
+        !occasionFit(candidate)?.closedRisk);
+    if (freshVerb && fits && !sameKindAtCap(candidate, 2)) take(candidate);
   }
   for (const candidate of open ? ranked : []) {
     if (chosen.length >= wanted) break;
-    if (!chosen.includes(candidate) && !sameKindAtCap(candidate, 2)) {
+    if (
+      !chosen.includes(candidate) &&
+      !sameKindAtCap(candidate, 2) &&
+      (!shaped ||
+        ((occasionFit(candidate)?.score ?? 0) > 0 &&
+          !occasionFit(candidate)?.closedRisk))
+    ) {
       take(candidate);
     }
   }
+  // **A shorter outing that fits beats a full one that doesn't.** With an
+  // occasion, the last pass only takes what the occasion doesn't argue
+  // against, and stops at two once nothing left fits it.
   for (const candidate of open ? ranked : []) {
     if (chosen.length >= wanted) break;
-    if (!chosen.includes(candidate)) take(candidate);
+    if (chosen.includes(candidate)) continue;
+    if (shaped) {
+      const fitted = occasionFit(candidate);
+      const poor =
+        (fitted?.score ?? 0) <= 0 ||
+        Boolean(fitted?.closedRisk) ||
+        roleAtCap(candidate);
+      if (poor && chosen.length >= 2) continue;
+      if (unwelcome(candidate)) continue;
+    }
+    take(candidate);
   }
 
   // Nearest-first from where they start, so the day is a route rather than a
   // list — unless the person set the order, in which case it is theirs, and
   // anything new is routed on from the last of their stops.
+  const evening = shaped && outingAfterDark(brief);
   const ordered = (() => {
-    if (!order || order.length === 0) return route(chosen, origin);
+    if (!order || order.length === 0)
+      return evening
+        ? eveningOrder(route(chosen, origin))
+        : snowDay
+          ? [
+              ...route(chosen, origin).filter(isSnowPlace),
+              ...route(chosen, origin).filter((e) => !isSnowPlace(e)),
+            ]
+          : route(chosen, origin);
     const placed = order
       .map((id) => chosen.find((e) => e.id === id))
       .filter((e): e is Experience => Boolean(e));
@@ -1088,6 +1295,9 @@ export function buildDay({
     }
     const adult = needsAdult(experience, brief.childAge);
     if (adult && !notes.includes(adult)) notes.push(adult);
+    const fitted = occasionFit(experience);
+    if (fitted?.caution && !notes.includes(fitted.caution))
+      notes.push(fitted.caution);
     const schedule = experience.schedule?.onDate;
     const challenge = challengeFor(
       experience,
@@ -1114,7 +1324,7 @@ export function buildDay({
       ...(km !== undefined ? { km: roundKm(km) } : {}),
       because: picked.includes(experience.id)
         ? "You picked this in Discovery."
-        : reasonFor(experience, brief, weather),
+        : occasionReason(experience, brief, weather, fitted),
       ...(cost ? { cost } : {}),
       ...(schedule && schedule.reading === "on"
         ? { open: `Published as open on ${schedule.date}.` }
@@ -1166,6 +1376,31 @@ export function buildDay({
       `Not in this day: ${aside} — nothing Atlas holds offered it, and you said to plan without it.`,
     );
   for (const caution of brief.cautions ?? []) unknowns.push(caution);
+  const occasionSummary = brief.occasion
+    ? {
+        heard: heardLine(brief.occasion),
+        missing: [
+          ...brief.occasion.wants
+            .filter(
+              (w) =>
+                !stops.some((s) =>
+                  occasionFit(s.experience)?.meets.includes(w.id),
+                ),
+            )
+            .map((w) => missingLine(w.id, brief, placeable, occasionFit)),
+          ...eveningHoursLine(stops, brief),
+        ],
+      }
+    : undefined;
+  for (const line of occasionSummary?.missing ?? []) unknowns.push(line);
+  if (
+    brief.occasion?.moods.includes("festive") &&
+    stops.length > 0 &&
+    !stops.some((s) => readChristmas(s.experience)?.christmas)
+  )
+    unknowns.push(
+      `Nothing Christmassy in this plan — Atlas has no Christmas event it can place near ${brief.town?.name.replace(/,\s*BC$/, "") ?? "here"}${brief.on ? " on that day" : ""}. The rest still fits what you described.`,
+    );
   for (const note of keptAgainst(keptExperiences, brief)) unknowns.push(note);
   const unfit = brief.interests.filter(
     (i) =>
@@ -1237,7 +1472,76 @@ export function buildDay({
       ? { radiusKm, radiusAssumed: brief.withinKm === undefined }
       : {}),
     ...(unmet.length > 0 ? { unmet } : {}),
+    ...(occasionSummary ? { occasion: occasionSummary } : {}),
   };
+}
+
+/**
+ * **Why this stop**, with the occasion's reason where it has one. Something
+ * the person asked for by name still says so first.
+ */
+function occasionReason(
+  experience: Experience,
+  brief: DayBrief,
+  weather: PlanWeather | undefined,
+  fitted: OccasionFit | undefined,
+): string {
+  const plain = reasonFor(experience, brief, weather);
+  if (!fitted?.why || plain.startsWith("You asked for")) return plain;
+  return fitted.why;
+}
+
+/**
+ * **An evening out depends on things being open.** Said once for the day,
+ * visibly: how many stops Atlas holds that day's hours for.
+ */
+function eveningHoursLine(
+  stops: readonly DayStop[],
+  brief: DayBrief,
+): string[] {
+  if (!shapesThePlan(brief.occasion) || !outingAfterDark(brief)) return [];
+  if (stops.length === 0) return [];
+  const known = stops.filter(
+    (s) => brief.on && statedCloseOn(s.experience, brief.on),
+  ).length;
+  if (known === stops.length) return [];
+  return [
+    known === 0
+      ? "Hours — Atlas has no evening hours for these stops. A quick call ahead is worth it."
+      : `Hours — Atlas has that evening's hours for ${known} of these ${stops.length} stops; check the others are open.`,
+  ];
+}
+
+/**
+ * **A thing named in passing that this plan could not hold**, said plainly
+ * with what Atlas does hold — never left for the person to discover.
+ */
+function missingLine(
+  want: WantId,
+  brief: DayBrief,
+  placeable: readonly Experience[],
+  fit: (e: Experience) => OccasionFit | undefined,
+): string {
+  const where = brief.town?.name.replace(/,\s*BC$/, "") ?? "here";
+  const meeting = placeable.filter((e) => fit(e)?.meets.includes(want));
+  const anywhere = meeting.some((e) => !fit(e)?.closedRisk);
+  const label = wantLabel(want);
+  if (meeting.length === 0 && want === "warm-drink" && outingAfterDark(brief))
+    return `${label.charAt(0).toUpperCase()}${label.slice(1)} — nowhere near ${where} that Atlas knows is both open that evening and lists it.`;
+  const cautioned = meeting.filter((e) => fit(e)?.closedRisk).slice(0, 2);
+  if (want === "snow")
+    return brief.on && !inSeason(activityByKey("skiing")!, brief.on)
+      ? "Snow — that's usually before the snow season here, so nothing in this plan depends on it."
+      : "Snow — nobody can promise it ahead of time, so nothing in this plan depends on it. Check the forecast the day before.";
+  if (anywhere)
+    return `Not in this plan: ${label}. Atlas has somewhere near ${where} for it — say “add ${label}” to make room.`;
+  if (cautioned.length > 0 && outingAfterDark(brief))
+    return `${label.charAt(0).toUpperCase()}${label.slice(1)} — nowhere near ${where} that Atlas knows is both open that evening and has it. Atlas lists ${cautioned.map((e) => e.title).join(" and ")} for it, but no evening hours.`;
+  if (cautioned.length > 0)
+    return `${label.charAt(0).toUpperCase()}${label.slice(1)} — Atlas has ${cautioned.map((e) => e.title).join(" and ")} for it, but ${cautioned.length === 1 ? "it" : "they"} may be closed by then: ${fit(cautioned[0]!)!.caution!.replace(/^./, (c) => c.toLowerCase())}`;
+  if (want === "lights")
+    return `Christmas lights — Atlas has no light display listed near ${where}${brief.on ? " for that day" : ""}. Many towns switch theirs on in late November; Passport won't guess a street.`;
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)} — nothing Atlas holds near ${where} says it has it.`;
 }
 
 /**
@@ -1379,7 +1683,14 @@ export function alternativesFor({
   );
   const here = point(stop.experience);
   const score = (e: Experience) => {
-    const base = fitness(e, brief, origin, radiusKm, weather);
+    const base = fitness(
+      e,
+      brief,
+      origin,
+      radiusKm,
+      weather,
+      occasionFitFor(brief),
+    );
     const there = point(e);
     if (!here || !there) return base;
     // Near the stop it replaces, so the route still holds together.

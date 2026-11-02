@@ -71,6 +71,11 @@ export interface SketchInput {
   readonly childAge?: number;
   /** Saved places the person chose: kept on the days first. */
   readonly seeds?: readonly string[];
+  /**
+   * Seeds that belong on one particular day — an event Atlas dates to it.
+   * They go on that day; every other seed is shared out as before.
+   */
+  readonly pinned?: Readonly<Record<string, string>>;
 }
 
 export interface SketchedDay {
@@ -93,9 +98,12 @@ export async function sketchDays(input: SketchInput): Promise<SketchedDay[]> {
   const out: SketchedDay[] = [];
   for (const [index, onDay] of input.days.entries()) {
     const candidates = await candidatesFor(input.childAge, onDay);
-    const mine = seeds
-      .filter((_, i) => i % input.days.length === index)
-      .slice(0, MAX_SEED);
+    const pinned = input.pinned ?? {};
+    const loose = seeds.filter((s) => !input.days.includes(pinned[s] ?? ""));
+    const mine = [
+      ...seeds.filter((s) => pinned[s] === onDay),
+      ...loose.filter((_, i) => i % input.days.length === index),
+    ].slice(0, MAX_SEED);
     const pool = dayPool(candidates, seeds);
     const brief = readBrief(input.say, {
       town,
@@ -149,6 +157,11 @@ export interface DayDetail {
   readonly stops: Readonly<Record<string, StopDetail>>;
   /** What Passport could not find out, named. */
   readonly unknowns: readonly string[];
+  /** The occasion as Passport heard it, and what it couldn't find for it. */
+  readonly occasion?: {
+    readonly heard: string;
+    readonly missing: readonly string[];
+  };
   readonly leftOut: readonly string[];
   /** The day's clock is from a time somebody said. */
   readonly clocked: boolean;
@@ -229,7 +242,8 @@ function detailOf(onDay: string, day: DayPlanned): DayDetail {
         return [stop.experience.id, detail];
       }),
     ),
-    unknowns: day.unknowns,
+    unknowns: day.unknowns.filter((u) => !day.occasion?.missing.includes(u)),
+    ...(day.occasion ? { occasion: day.occasion } : {}),
     leftOut: day.leftOut ?? [],
     clocked: Boolean(timeline),
   };

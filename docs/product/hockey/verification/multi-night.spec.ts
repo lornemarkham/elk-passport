@@ -31,6 +31,10 @@ const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (new URL(page.url()).pathname === "/hockey")
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -149,7 +153,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   await lorne.page.getByLabel("Your name").fill("Lorne");
   const kraken = await startNight(lorne.page, "kraken", inDays(23), "Start it");
   await lorne.page.getByRole("button", { name: /Skip/ }).click();
-  await expect(lorne.page.getByText("Canucks vs Kraken")).toBeVisible();
+  await expect(lorne.page.getByText("Canucks vs Kraken").first()).toBeVisible();
   await expect(
     lorne.page.getByRole("navigation", { name: "The night" }),
   ).toContainText("Before the game");
@@ -167,7 +171,7 @@ test("two nights, two guest lists, nothing crosses — then a guest runs it back
   const oilers = await startNight(lorne.page, "Oilers", inDays(37), "Start it");
   expect(oilers).not.toBe(kraken);
   await lorne.page.getByRole("button", { name: /Skip/ }).click();
-  await expect(lorne.page.getByText("Canucks vs Oilers")).toBeVisible();
+  await expect(lorne.page.getByText("Canucks vs Oilers").first()).toBeVisible();
   const forSam = await invite(lorne.page, "Sam");
 
   // ------------------------------------- Maya joins one, Sam the other

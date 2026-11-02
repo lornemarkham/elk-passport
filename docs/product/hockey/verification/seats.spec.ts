@@ -45,6 +45,10 @@ async function phone(browser: Browser, width: number) {
 }
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (new URL(page.url()).pathname === "/hockey")
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(`${who}-${stamp}@example.test`);
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -127,6 +131,8 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   await host.page.goto("/hockey");
   await signUp(host.page, "seats-host");
   await host.page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await host.page.getByLabel("Opponent").fill("Wild");
   await host.page.getByRole("button", { name: "Start it" }).click();
   await expect(host.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightPath = new URL(host.page.url()).pathname;
@@ -213,7 +219,7 @@ test("Our seats: host and guest, persistence, authorization, directions, phones"
   ).toBeVisible();
 
   // -------------------------------------------------- invite the guest
-  await host.page.getByRole("button", { name: "Invite" }).click();
+  await host.page.getByRole("button", { name: "Invite", exact: true }).click();
   await host.page.getByLabel("Who the invitation is for").fill("Maya");
   await host.page.getByRole("button", { name: "Make a link" }).click();
   const invitePath = new URL(

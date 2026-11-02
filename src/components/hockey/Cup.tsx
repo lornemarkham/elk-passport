@@ -1,6 +1,7 @@
 "use client";
 
 import { Crown } from "lucide-react";
+import { useCupName } from "./CupName";
 import type { LiveExperience } from "@/experience-lab/core/engine";
 import { FanAvatar, useFan } from "./FanTag";
 import styles from "./hockey.module.css";
@@ -79,6 +80,7 @@ export function CupChampion({ live }: { live: LiveExperience }) {
     (p) => p.prompt.scoring && p.prompt.resolution !== undefined,
   );
   const team = useFan(first?.participant.id);
+  const cupName = useCupName();
   if (!first || !called || first.points <= 0) return null;
   const tied = second && second.points === first.points;
   const winners = tied
@@ -98,7 +100,7 @@ export function CupChampion({ live }: { live: LiveExperience }) {
     >
       <p className="flex items-center gap-2 text-[12px] font-bold tracking-[0.16em] text-[#ffd84d] uppercase">
         <Crown className="h-4 w-4" aria-hidden />
-        {tied ? "The Sycle Cup is shared" : "Sycle Cup champion"}
+        {tied ? `The ${cupName} is shared` : `${cupName} champion`}
       </p>
       <div className="mt-3 flex items-center gap-4">
         <span className={`${styles.crest} flex -space-x-3`}>

@@ -513,10 +513,30 @@ export const PICKS_LINES = lines("pk", [
   "And they're sealed. {name}: {pick}. Bold. Chirp Bot will read this out at the recap either way.",
 ]);
 
+/**
+ * The run-up (`runup.ts`): one line when a night enters a stage of its week,
+ * only in a room where somebody has spoken. `{home}`, `{away}`, `{days}`.
+ */
+export const RUNUP_RIVALRY_LINES = lines("ru.rv", [
+  "{days} days out. Everyone's declared. Chirp Bot has read the room and it is a room that should be throwing bets.",
+  "{days} days to {home} vs {away} and nobody has made a prophecy yet. Cowards, all of you.",
+  "Rivalry week. Somebody in here is cheering for the wrong team and everybody knows who. Say it with a bet.",
+]);
+export const RUNUP_CHIRP_LINES = lines("ru.ch", [
+  "{days} days out. Chirp Bot has questions. Chirp Bot also has dares, and no scruples.",
+  "The picks aren't sealed, the dares aren't thrown, and {home} vs {away} is {days} days away. Chirp Bot is disappointed, not surprised.",
+  "Trash-talk window is open. Chirp Bot writes three; you send one. Or none, if you're a coward.",
+]);
+export const RUNUP_FINAL_LINES = lines("ru.fn", [
+  "Tomorrow. Dinner decided? Meeting point set? Picks sealed? Chirp Bot counts two no's from here.",
+  "Last day before {home} vs {away}. Anyone who hasn't sealed their picks will be sealing them in the arena line, badly.",
+  "Twenty-four hours. Lock it in. Chirp Bot has already decided who's going to be spectacularly wrong.",
+]);
+
 /** The game is over and the Cup has a leader. `{name}`, `{points}`. */
 export const VERDICT_LINES = lines("fv", [
-  "Final verdict: {name} takes the Sycle Cup with {points} points. Worth nothing. Contested bitterly. Engraving pending.",
-  "The horn has gone and so has everyone's dignity except {name}'s. Sycle Cup champion, {points} points.",
+  "Final verdict: {name} takes the {cup} with {points} points. Worth nothing. Contested bitterly. Engraving pending.",
+  "The horn has gone and so has everyone's dignity except {name}'s. {cup} champion, {points} points.",
   "Chirp Bot has reviewed the tape. {name} wins the night with {points} points. Appeals will be heard never.",
 ]);
 
@@ -541,10 +561,10 @@ export const DONE_LINES = lines("dn", [
   "{name} delivered. The rest of you have run out of excuses.",
 ]);
 
-/** The Sycle Cup has a new outright leader during the night. `{name}`, `{points}`. */
+/** The Cup has a new outright leader during the night. `{name}`, `{points}`, `{cup}`. */
 export const LEAD_LINES = lines("ld", [
-  "Lead change. {name} takes over the Sycle Cup with {points} points. The trophy is worthless and everyone wants it.",
-  "{name} is top of the Sycle Cup now, {points} points. Chirp Bot is updating the group's grudges.",
+  "Lead change. {name} takes over the {cup} with {points} points. The trophy is worthless and everyone wants it.",
+  "{name} is top of the {cup} now, {points} points. Chirp Bot is updating the group's grudges.",
   "New Cup leader: {name}, {points} points. Plenty of night left for this to go badly.",
 ]);
 
@@ -754,6 +774,9 @@ const ALL: LibraryLine[] = [
   ...RULED_PROPHECY,
   ...RULED_FALSE_PROPHECY,
   ...WORST_PICK_LINES,
+  ...RUNUP_RIVALRY_LINES,
+  ...RUNUP_CHIRP_LINES,
+  ...RUNUP_FINAL_LINES,
   ...PROMPTS,
 ];
 

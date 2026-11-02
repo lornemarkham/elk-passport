@@ -56,34 +56,65 @@ export function Between({
     journeys[0],
     leg.from.at && leg.to.at ? distanceKm(leg.from.at, leg.to.at) : undefined,
   );
+  const next = leg.to;
   return (
-    <p
-      className="flex items-center gap-2 py-1 text-sm text-[var(--gh-ink-soft)]"
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm text-[var(--gh-ink-soft)]"
       data-testid="plan-leg"
     >
-      <Car className="h-4 w-4 shrink-0" aria-hidden />
-      {status === "loading" ? "Asking Atlas how far…" : words}
-    </p>
+      <span className="inline-flex items-center gap-2 font-semibold text-[var(--gh-ink)]">
+        <Car className="h-4 w-4 shrink-0" aria-hidden />
+        {status === "loading" ? "Asking Atlas how far…" : words.headline}
+      </span>
+      {(next.at || next.id) && (
+        <a
+          href={directionsTo(next)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 items-center font-semibold underline"
+        >
+          Directions
+        </a>
+      )}
+      {status !== "loading" && words.caveat && (
+        <details className="w-full sm:w-auto">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs underline">
+            How this is measured
+          </summary>
+          <p className="text-xs">{words.caveat}</p>
+        </details>
+      )}
+    </div>
   );
 }
 
+/** Directions to the next stop: its coordinates where Atlas has them, else its name. */
+function directionsTo(end: LegEnd): string {
+  const destination = end.at
+    ? `${end.at.latitude},${end.at.longitude}`
+    : end.name;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+}
+
+/**
+ * The headline a person reads ("About 20 min drive") and, kept one tap
+ * away, how it was measured and whose route it is — the attribution a
+ * routed time carries is never dropped, only moved out of the way.
+ */
 function journeyWords(
   journey: Journey | undefined,
   straightKm: number | undefined,
-): string {
-  if (journey && journey.kind !== "unknown") {
-    const { headline, caveat } = describeJourney(journey);
-    return `${headline}. ${caveat}`;
-  }
-  if (straightKm !== undefined) {
-    const { headline, caveat } = describeJourney({
+): { headline: string; caveat?: string } {
+  if (journey && journey.kind !== "unknown") return describeJourney(journey);
+  if (straightKm !== undefined)
+    return describeJourney({
       kind: "straight-line",
       km: straightKm,
       basis: "coordinates",
     });
-    return `${headline}. ${caveat}`;
-  }
-  return "Passport can't place one of these, so it can't say how far.";
+  return {
+    headline: "Passport can't place one of these, so it can't say how far.",
+  };
 }
 
 /** The day's driving, summed only over routed legs — "at least" otherwise. */

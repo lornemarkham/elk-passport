@@ -6,6 +6,7 @@ import { ExternalLink, Plus, Printer, Sparkles, X } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import type { DayView, ItemView } from "@/lib/adventures/store";
 import type { DayDetail } from "@/lib/adventures/propose";
+import type { SavedForAdventure } from "@/domain/occasion/saved";
 import {
   groupByDay,
   isPassportSuggestion,
@@ -21,6 +22,7 @@ import { Between, DayTravel } from "./Legs";
 import { ChangeBox, type ChangeHandle } from "./ChangeBox";
 import { Answers, StopCard } from "./StopCard";
 import { SavedSuggestions } from "./SavedSuggestions";
+import { FindPlaces, namesAnActivity } from "./FindPlaces";
 import { TodayPanel } from "./TodayPanel";
 import { useAdventure } from "./useAdventure";
 
@@ -51,6 +53,7 @@ export function AdventureJourney({
   today,
   saved,
   atlasDown,
+  examples,
 }: {
   readonly adventureId: string;
   readonly isOwner: boolean;
@@ -63,10 +66,12 @@ export function AdventureJourney({
   readonly details: Readonly<Record<string, DayDetail>>;
   readonly townId: string | null;
   readonly today: string;
-  /** The person's saved places this adventure doesn't hold. */
-  readonly saved: readonly Experience[];
+  /** The person's saved places this adventure doesn't hold, fitting first. */
+  readonly saved: SavedForAdventure;
   /** Atlas didn't answer: Passport can't suggest, everything manual works. */
   readonly atlasDown: boolean;
+  /** Change-box starting points suited to this adventure. */
+  readonly examples?: readonly string[];
 }) {
   const { call, act, busy } = useAdventure(adventureId);
   const changes = useRef<ChangeHandle>(null);
@@ -117,6 +122,7 @@ export function AdventureJourney({
           busy={busy}
           handle={changes}
           hasDays={dayList.length > 0}
+          {...(examples ? { examples } : {})}
         />
       )}
 
@@ -206,6 +212,24 @@ export function AdventureJourney({
                   >
                     Built from “{new URLSearchParams(ask).get("say")}”
                   </p>
+                )}
+                {detail?.occasion && (
+                  <div className="px-2" data-testid="day-heard">
+                    <p className="text-sm">
+                      <span className="font-bold">Passport heard:</span>{" "}
+                      {detail.occasion.heard}
+                    </p>
+                    {detail.occasion.missing.length > 0 && (
+                      <ul
+                        className="mt-2 space-y-1 rounded-2xl bg-[#fff4d6] p-3 text-sm"
+                        data-testid="day-missing"
+                      >
+                        {detail.occasion.missing.map((m) => (
+                          <li key={m}>{m}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 )}
                 {day.items.length === 0 ? (
                   <div className="rounded-3xl bg-white p-6 text-center">
@@ -517,6 +541,17 @@ function IdeaCard({
           )}
         </div>
         <Answers item={item} name={name} busy={busy} act={act} call={call} />
+        {!item.atlasRef && item.label && namesAnActivity(item.label) && (
+          <FindPlaces
+            said={item.label}
+            days={days}
+            isOwner={isOwner}
+            busy={busy}
+            act={act}
+            call={call}
+            {...(item.canChange ? { replaces: item.id } : {})}
+          />
+        )}
       </div>
     </article>
   );
@@ -608,6 +643,28 @@ function AddYourOwn({
             className="mt-1 block min-h-12 w-full rounded-2xl border-2 border-[var(--gh-line)] px-3 font-normal"
           />
         </label>
+        {namesAnActivity(label) && (
+          <div className="sm:col-span-2">
+            <p className="text-base">
+              Want a real place for “{label.trim()}”? Passport can look for
+              somewhere near the adventure.
+            </p>
+            <FindPlaces
+              key={label}
+              said={label}
+              days={days}
+              isOwner={isOwner}
+              busy={busy}
+              act={act}
+              call={call}
+              onDone={() => {
+                setLabel("");
+                setNote("");
+                setOnDay("");
+              }}
+            />
+          </div>
+        )}
         <button
           type="submit"
           disabled={busy || (!label.trim() && !note.trim())}

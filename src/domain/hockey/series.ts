@@ -110,6 +110,8 @@ export interface CupHolder {
 
 export interface Cup {
   readonly series: string;
+  /** What this run calls it; absent means the Sycle Cup. */
+  readonly name?: string;
   /** Oldest first. */
   readonly nights: readonly CupResult[];
   /** Most titles first; then most nights played. Shared titles count for everybody in them. */

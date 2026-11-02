@@ -45,6 +45,7 @@ export function ChangeBox({
   busy,
   handle,
   hasDays,
+  examples = EXAMPLES,
 }: {
   readonly isOwner: boolean;
   readonly call: <T = unknown>(
@@ -60,6 +61,8 @@ export function ChangeBox({
   /** How the rest of the page asks for a change (Replace, Sketch this day). */
   readonly handle?: Ref<ChangeHandle>;
   readonly hasDays: boolean;
+  /** Starting points suited to the adventure; the general ones otherwise. */
+  readonly examples?: readonly string[];
 }) {
   const [said, setSaid] = useState("");
   const [asking, setAsking] = useState(false);
@@ -189,7 +192,7 @@ export function ChangeBox({
       </form>
       {hasDays && !preview && !applied && (
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Try saying">
-          {EXAMPLES.map((example) => (
+          {examples.map((example) => (
             <button
               key={example}
               type="button"

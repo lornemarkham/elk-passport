@@ -4,6 +4,8 @@ import { currentUser } from "@/lib/auth/currentUser";
 import { visitorDb } from "@/lib/adventures/server";
 import { describeInvite } from "@/lib/adventures/store";
 import { kindLabel } from "@/lib/adventures/kinds";
+import { MARKHAM } from "@/domain/date-night/adventures/markham";
+import { PHOTOS } from "@/domain/date-night/adventures/evenings";
 import { TOKEN_PATTERN } from "@/lib/adventures/rules";
 
 export const metadata: Metadata = {
@@ -33,6 +35,17 @@ export default async function JoinAdventurePage({
       state={described?.state ?? "unknown"}
       kindLabel={described ? kindLabel(described.kind) : null}
       signedIn={user !== null}
+      invitation={
+        described?.kind === "date-night-plan" ? MARKHAM.invitation : null
+      }
+      backdrop={
+        described?.kind === "date-night-plan"
+          ? {
+              src: PHOTOS.dusk.src,
+              credit: `${PHOTOS.dusk.where} · ${PHOTOS.dusk.credit}, ${PHOTOS.dusk.license}`,
+            }
+          : null
+      }
     />
   );
 }

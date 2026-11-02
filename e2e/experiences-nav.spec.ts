@@ -41,10 +41,10 @@ for (const [name, device] of [
       await expect(page.getByTestId("passport-experiences")).toBeVisible();
       await expect(
         page.getByTestId("passport-experiences").getByRole("link"),
-      ).toHaveCount(3);
+      ).toHaveCount(4);
     });
 
-    test("Experiences opens to Conference, Hockey Night and October", async ({
+    test("Experiences opens to Conference, Hockey Night, October and Christmas", async ({
       page,
     }) => {
       await page.goto("/");
@@ -58,6 +58,7 @@ for (const [name, device] of [
         ["conference", "Conference", "/conferences"],
         ["hockey", "Hockey Night", "/hockey"],
         ["october", "October", "/october"],
+        ["christmas", "Christmas", "/christmas"],
       ] as const) {
         const link = page.getByTestId(`passport-experience-${id}`);
         await link.scrollIntoViewIfNeeded();
@@ -93,6 +94,13 @@ for (const [name, device] of [
       await page.goto("/");
       await page.getByTestId("passport-nav-experiences").click();
       await page.getByTestId("passport-experience-hockey").click();
+      // Since 2026-11-01 a signed-out /hockey is the public front door; its
+      // one button carries the sign-in, with the way back.
+      await expect(page).toHaveURL(/\/hockey$/);
+      await expect(
+        page.getByRole("heading", { name: "Hockey is better with your crew." }),
+      ).toBeVisible();
+      await page.getByRole("link", { name: "Start a Hockey Night" }).click();
       await expect(page).toHaveURL(/\/auth\?next=%2Fhockey$/);
     });
 

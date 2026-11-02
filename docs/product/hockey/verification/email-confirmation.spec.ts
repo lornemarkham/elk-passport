@@ -46,6 +46,10 @@ async function confirmationLink(to: string): Promise<string> {
 }
 
 async function signUp(page: Page, who: string) {
+  // Since 2026-11-01 a signed-out /hockey is the public front door; its one
+  // button leads to sign-in.
+  if (new URL(page.url()).pathname === "/hockey")
+    await page.getByRole("link", { name: "Start a Hockey Night" }).click();
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(emailFor(who));
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
@@ -67,11 +71,13 @@ async function hostWithInvite(browser: Browser, hostName: string) {
   await host.page.goto(await confirmationLink(emailFor(hostName)));
   await expect(host.page.getByText(/Nothing on yet/)).toBeVisible();
   await host.page.getByLabel("Your name").fill("Lorne");
+  // The form no longer suggests an opponent once the Sycle night has passed.
+  await host.page.getByLabel("Opponent").fill("Wild");
   await host.page.getByRole("button", { name: "Start it" }).click();
   await expect(host.page).toHaveURL(/\/hockey\/[0-9a-f-]{36}$/);
   const nightId = host.page.url().split("/").pop()!;
   await host.page.getByRole("button", { name: /Skip/ }).click();
-  await host.page.getByRole("button", { name: "Invite" }).click();
+  await host.page.getByRole("button", { name: "Invite", exact: true }).click();
   await host.page.getByLabel("Who the invitation is for").fill("Maya");
   await host.page.getByRole("button", { name: "Make a link" }).click();
   const invitePath = new URL(

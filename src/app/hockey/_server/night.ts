@@ -37,6 +37,7 @@ import {
 import { isTeamAbbr } from "@/domain/hockey/fans";
 import { cupStatus } from "@/domain/hockey/cup";
 import { NO_CROWD, isWatching, type Crowd } from "@/domain/hockey/crowd";
+import type { ScheduledGame } from "@/domain/hockey/nhl";
 import {
   chirpOnArrival,
   chirpOnCouch,
@@ -62,6 +63,7 @@ import { editionOf, seriesOf } from "@/domain/hockey/edition";
 import {
   ZONE,
   chooseGame,
+  chooseScheduledGame,
   isOver,
   type GameRequest,
 } from "@/domain/hockey/schedule";
@@ -74,6 +76,8 @@ import {
 } from "@/domain/hockey/series";
 import {
   SYCLE_HOCKEY_NIGHT,
+  cupNameOf,
+  venuePoint,
   composeNight,
   rulesFor,
   settledPlay,
@@ -107,6 +111,10 @@ export interface NightSnapshot {
   readonly crowd: Crowd;
   /** Challenges, the jury, team reactions, the mission ledger (`challenges.ts`). */
   readonly play: PlayRoom;
+  /** Announcements and replies are on (announce-migration.sql, `announce.ts`). */
+  readonly announce: boolean;
+  /** What this group calls its trophy (`night.ts cupNameOf`). */
+  readonly cupName: string;
 }
 
 export class NightError extends Error {
@@ -142,6 +150,8 @@ type Rows = NightRows & {
   readonly chirpAvailable: boolean;
   /** alive-migration.sql is applied (`watching` exists). */
   readonly watchingAvailable: boolean;
+  /** announce-migration.sql is applied (`reply_to`, `tag`, `href` exist). */
+  readonly announceAvailable: boolean;
 };
 
 /**
@@ -155,8 +165,14 @@ async function rowsFor(
   id: string,
   viewer: string,
 ): Promise<Rows | null> {
-  for (const level of ["alive", "chirp", "none"] as const) {
-    const rows = await rowsWith(db, id, level !== "none", level === "alive");
+  for (const level of ["announce", "alive", "chirp", "none"] as const) {
+    const rows = await rowsWith(
+      db,
+      id,
+      level !== "none",
+      level === "alive" || level === "announce",
+      level === "announce",
+    );
     // Sealed picks stay sealed whatever the database's reveal rule is.
     if (rows !== "missing") return rows && sealedFor(rows, viewer);
   }
@@ -168,6 +184,7 @@ async function rowsWith(
   id: string,
   chirp: boolean,
   watching = false,
+  announce = false,
 ): Promise<Rows | null | "missing"> {
   if (!UUID.test(id)) return null;
   const { data: occasion, error } = await db
@@ -208,7 +225,9 @@ async function rowsWith(
     of("passport_occasion_responses", "prompt_id, user_id, value, answered_at"),
     of(
       "passport_occasion_moments",
-      chirp ? `${MOMENT_COLUMNS}, bot_key, bot_line, bot_sig` : MOMENT_COLUMNS,
+      chirp
+        ? `${MOMENT_COLUMNS}, bot_key, bot_line, bot_sig${announce ? ", reply_to, tag, href" : ""}`
+        : MOMENT_COLUMNS,
     )
       .order("at", { ascending: false })
       .limit(200),
@@ -226,7 +245,8 @@ async function rowsWith(
     cues,
     consents,
   ]) {
-    if ((chirp || watching) && missingColumn(r.error)) return "missing";
+    if ((chirp || watching || announce) && missingColumn(r.error))
+      return "missing";
     if (r.error) throw new NightError(r.error.message, 500);
   }
 
@@ -235,6 +255,7 @@ async function rowsWith(
   return {
     chirpAvailable: chirp,
     watchingAvailable: watching,
+    announceAvailable: announce,
     play,
     occasion: occasion as unknown as NightRows["occasion"],
     members: members.data as unknown as NightRows["members"],
@@ -314,6 +335,8 @@ export async function loadNight(
     chirp: chirpRoomOf(rows, rows.chirpAvailable, facts),
     crowd: crowdOf(rows),
     play: rows.play ? { available: true, ...rows.play } : NO_PLAY,
+    announce: rows.announceAvailable,
+    cupName: cupNameOf(rows.occasion.details),
   };
 }
 
@@ -360,7 +383,11 @@ export interface NightSummary {
   readonly startsAt: string;
   readonly role: "host" | "guest";
   readonly members: number;
+  readonly home: string;
   readonly opponent: string;
+  readonly venue: string;
+  readonly timeZone?: string;
+  readonly cup?: string;
   readonly series: string;
   readonly edition: number;
   readonly over: boolean;
@@ -399,7 +426,11 @@ export async function myNights(user: PassportUser): Promise<NightSummary[]> {
       startsAt: o.starts_at as string,
       role: mine.find((m) => m.occasion_id === o.id)?.role as "host" | "guest",
       members: (everyone ?? []).filter((m) => m.occasion_id === o.id).length,
+      home: night.details.home ?? SYCLE_HOCKEY_NIGHT.details.home,
       opponent: night.details.opponent ?? SYCLE_HOCKEY_NIGHT.details.opponent,
+      venue: night.details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue,
+      ...(night.details.cup ? { cup: night.details.cup } : {}),
+      ...(night.details.timeZone ? { timeZone: night.details.timeZone } : {}),
       series: seriesOf(night),
       edition: editionOf(night),
       over: isOver(o.starts_at as string, now),
@@ -492,17 +523,26 @@ export async function myCups(
   const series = [...new Set(mine.filter((n) => n.over).map((n) => n.series))];
   const now = new Date();
   const cups = await Promise.all(
-    series.map(async (s) =>
-      sycleCup(s, await seriesNights(user, s, mine), now),
-    ),
+    series.map(async (s) => {
+      const cup = sycleCup(s, await seriesNights(user, s, mine), now);
+      const named = mine
+        .filter((n) => n.series === s && n.cup)
+        .sort((a, b) => b.edition - a.edition)[0];
+      return named?.cup ? { ...cup, name: named.cup } : cup;
+    }),
   );
   return cups.filter((c) => c.nights.some((n) => n.status !== "upcoming"));
 }
 
 export interface StartRequest {
   readonly name?: string;
-  /** Absent: the night M216 was for. */
-  readonly game?: GameRequest;
+  /**
+   * Absent: the night M216 was for. By hand: a Canucks home game. From the
+   * schedule: one of the league's games, already looked up by the route.
+   */
+  readonly game?: GameRequest | { readonly scheduled: ScheduledGame };
+  /** What this group calls its trophy. Absent: the Sycle Cup. */
+  readonly cup?: string;
   /** "Run it back": the night this one follows. */
   readonly after?: string;
   /** Absent: everything on, or — running it back — whatever last time had. */
@@ -526,12 +566,21 @@ export async function createSycleNight(
 
   let startsAt: string = SYCLE_HOCKEY_NIGHT.startsAt;
   let details: OccasionRow["details"] = SYCLE_HOCKEY_NIGHT.details;
-  if (request.game) {
+  let title: string = SYCLE_HOCKEY_NIGHT.title;
+  if (request.game && "scheduled" in request.game) {
+    // One of the league's games: any two teams, any arena.
+    const chosen = chooseScheduledGame(request.game.scheduled, now);
+    if (!chosen.ok) throw new NightError(chosen.problem, 422);
+    startsAt = chosen.startsAt;
+    details = chosen.details;
+    title = "Hockey Night";
+  } else if (request.game) {
     const chosen = chooseGame(request.game, now);
     if (!chosen.ok) throw new NightError(chosen.problem, 422);
     startsAt = chosen.startsAt;
     details = chosen.details;
   }
+  if (request.cup) details = { ...details, cup: request.cup };
 
   if (request.after) {
     const previous = await loadNight(user, request.after);
@@ -556,9 +605,12 @@ export async function createSycleNight(
       ...details,
       series: last.series,
       edition,
+      // The run's trophy keeps its name.
+      ...(previous.definition && last.cup ? { cup: last.cup } : {}),
       // Same night again means the same modules, unless the starter said.
       modules: request.modules ? undefined : previous.modules,
     };
+    title = last.title;
   }
   if (request.modules) {
     details = { ...details, modules: storedModules(request.modules) };
@@ -567,7 +619,7 @@ export async function createSycleNight(
   const look = defaultLook(user.id);
   const { data, error } = await db.rpc("passport_create_occasion", {
     p_template: SYCLE_HOCKEY_NIGHT.template,
-    p_title: SYCLE_HOCKEY_NIGHT.title,
+    p_title: title,
     p_starts_at: startsAt,
     p_details: details,
     p_display_name: cleanName(
@@ -775,6 +827,20 @@ export async function act(
     }
 
     case "say": {
+      // A reply names a line on this night the person can see; anything
+      // else is posted as a plain line rather than refused, because what
+      // they typed is the point. Before announce-migration.sql there is no
+      // column to put it in, so it is a plain line too.
+      const replyTo =
+        action.replyTo &&
+        rows.announceAvailable &&
+        rows.moments.some(
+          (m) =>
+            m.id === action.replyTo &&
+            ["note", "photo", "chirp", "announce"].includes(m.kind),
+        )
+          ? action.replyTo
+          : undefined;
       const { data, error } = await db
         .from("passport_occasion_moments")
         .insert({
@@ -782,6 +848,7 @@ export async function act(
           actor_id: user.id,
           kind: "note",
           text: action.text,
+          ...(replyTo ? { reply_to: replyTo } : {}),
         })
         .select("id")
         .single();
@@ -793,6 +860,38 @@ export async function act(
         const momentId = data.id as string;
         after(() => chirpOnSay(db, rows, user.id, action.text, momentId));
       }
+      break;
+    }
+
+    case "announce": {
+      if (!rows.announceAvailable)
+        throw new NightError("Announcements aren't switched on here yet.", 409);
+      if (me.role !== "host")
+        throw new NightError("Only the host can announce something.", 403);
+      const { error } = await db.from("passport_occasion_moments").insert({
+        occasion_id: id,
+        actor_id: user.id,
+        kind: "announce",
+        tag: action.tag,
+        text: action.text,
+        ...(action.href ? { href: action.href } : {}),
+      });
+      fail(error, "announcing");
+      break;
+    }
+
+    case "retract": {
+      if (me.role !== "host")
+        throw new NightError("Only the host can take that down.", 403);
+      const target = rows.moments.find((m) => m.id === action.momentId);
+      if (!target || target.kind !== "announce")
+        throw new NightError("That isn't an announcement.", 404);
+      const { error } = await db
+        .from("passport_occasion_moments")
+        .delete()
+        .eq("id", action.momentId)
+        .eq("occasion_id", id);
+      fail(error, "taking it down");
       break;
     }
 
@@ -1179,8 +1278,16 @@ async function placesNear(
   occasion: NightRows["occasion"],
   onBallot: readonly string[] = [],
 ): Promise<Nearby> {
-  const venue = occasion.details.venueAt ?? SYCLE_HOCKEY_NIGHT.details.venueAt;
+  const venue = venuePoint(occasion.details);
   const venueName = occasion.details.venue ?? SYCLE_HOCKEY_NIGHT.details.venue;
+  if (!venue) {
+    // An arena Passport has not measured: no distances, no places, said so.
+    return {
+      places: [],
+      venue: { name: venueName, inAtlas: false },
+      outage: `Passport hasn't measured ${venueName} yet, so it can't say what's near it.`,
+    } as unknown as Nearby;
+  }
   const { day, weekday } = gameDayOf(occasion.starts_at);
   const { candidates, outage } = await listDiscoveryCandidates(undefined, day)
     .then((candidates) => ({ candidates, outage: undefined }))
@@ -1385,6 +1492,9 @@ export async function changeGame(
         ...((current?.details as Record<string, unknown> | null) ?? {}),
         opponent: chosen.details.opponent,
         opponentEmoji: chosen.details.opponentEmoji,
+        // Set by hand now: the league's id and codes no longer describe it.
+        nhlGameId: undefined,
+        awayAbbr: undefined,
       },
     })
     .eq("id", id)

@@ -1,4 +1,5 @@
 import { scorePrompt } from "@/experience-lab/core/scoring";
+import { scoreWords, sidesOf } from "./score";
 import type { LivePrompt } from "@/experience-lab/core/engine";
 import type {
   Participant,
@@ -9,19 +10,21 @@ import type {
 /**
  * **What somebody picked, said the way you would say it out loud.**
  *
- * "4–2", "Yes", "Canucks", "Maya", "6 goals". Used by the reveal, which only
+ * "VAN 4–2 MIN", "Yes", "Canucks", "Maya", "6 goals". Used by the reveal, which only
  * ever receives answers the database already let this person see — sealed
  * answers are sealed in Postgres (`passport_occasion_answer_visible`), not by
  * this file.
  */
 export function answerText(
-  prompt: Pick<Prompt, "kind" | "options" | "unit">,
+  prompt: Pick<Prompt, "kind" | "options" | "unit" | "pairLabels">,
   value: ResponseValue,
   people: readonly Pick<Participant, "id" | "name">[] = [],
 ): string {
   if (Array.isArray(value)) {
+    // A score names both teams (`score.ts`): "5–0" on its own was read two
+    // ways by one real group.
     return value.length === 2 && value.every((v) => typeof v === "number")
-      ? `${value[0]}–${value[1]}`
+      ? scoreWords(value as readonly number[], sidesOf(prompt))
       : value.join(", ");
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
