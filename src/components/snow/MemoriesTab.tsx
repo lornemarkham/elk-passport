@@ -110,6 +110,18 @@ export function MemoriesTab({ day, me, act }: TabProps) {
             ))}
           </ul>
         )}
+        {recap.predictions.length > 0 && (
+          <div>
+            <h3 className="font-bold">Called</h3>
+            <ul className="text-sm">
+              {recap.predictions.map((p) => (
+                <li key={p.text}>
+                  {p.happened ? "✅" : "❌"} {p.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {recap.challengesDone.length > 0 && (
           <div>
             <h3 className="font-bold">Challenges done</h3>

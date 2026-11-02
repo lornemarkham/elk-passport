@@ -12,6 +12,7 @@ import { isPacked, personName } from "@/domain/snow/day";
 import type { TabProps } from "./tabs";
 import { newId } from "./store";
 import { Card, btn, field } from "./kit";
+import { PredictionsCard } from "./PredictionsCard";
 
 /**
  * **Get ready: the day starts before the day.**
@@ -20,7 +21,8 @@ import { Card, btn, field } from "./kit";
  * list and an optional drive-up playlist. It speaks when you open it; it
  * never sends anything.
  */
-export function HypeTab({ day, me, act, today, now }: TabProps) {
+export function HypeTab(props: TabProps) {
+  const { day, me, act, today, now } = props;
   const [song, setSong] = useState("");
   const cd = countdownToDay(now, day);
   const daysOut = day.date ? daysBetween(today, day.date) : undefined;
@@ -140,6 +142,8 @@ export function HypeTab({ day, me, act, today, now }: TabProps) {
           </p>
         </Card>
       )}
+
+      <PredictionsCard {...props} />
 
       <Card className="space-y-3">
         <h2 className="text-xl font-extrabold">

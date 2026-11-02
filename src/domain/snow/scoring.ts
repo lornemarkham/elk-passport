@@ -4,6 +4,7 @@ import {
   type ChallengeCategory,
 } from "./challenges";
 import type { Person, SnowDay } from "./day";
+import { bestCallers, predictionPoints } from "./predictions";
 
 /**
  * **Friendly competition: derived, never stored.**
@@ -54,6 +55,7 @@ export function standings(day: SnowDay): Standing[] {
       points += POINTS.showedUp;
     points += Math.min(photos, POINTS.photoCap) * POINTS.photo;
     points += Math.min(moments, POINTS.momentCap) * POINTS.moment;
+    points += predictionPoints(day, person.id);
     return { person, points, byCategory, challenges: done.length, photos };
   });
   const sorted = [...rows].sort(
@@ -125,6 +127,16 @@ export function awards(day: SnowDay): Award[] {
         day.moments.filter((m) => m.personId === p.id).length;
       const best = Math.max(0, ...day.people.map(n));
       return best > 0 ? day.people.filter((p) => n(p) === best) : null;
+    })(),
+  );
+  add(
+    "called-it",
+    "🔮",
+    "Called It",
+    "Most predictions called right",
+    (() => {
+      const w = bestCallers(day);
+      return w.length ? w : null;
     })(),
   );
   add(

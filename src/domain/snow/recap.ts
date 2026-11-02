@@ -21,6 +21,7 @@ export interface Recap {
   readonly photos: SnowDay["photos"];
   readonly moments: readonly { text: string; who: string }[];
   readonly ideas: SnowDay["ideas"];
+  readonly predictions: readonly { text: string; happened: boolean }[];
   readonly empty: boolean;
 }
 
@@ -53,6 +54,9 @@ export function buildRecap(day: SnowDay): Recap {
     awards: awards(day),
     photos: day.photos,
     moments,
+    predictions: day.predictions.flatMap((p) =>
+      p.outcome === undefined ? [] : [{ text: p.text, happened: p.outcome }],
+    ),
     ideas: [...day.ideas].sort((a, b) => b.votes.length - a.votes.length),
     empty:
       challengesDone.length === 0 &&
@@ -84,6 +88,12 @@ export function recapText(day: SnowDay): string {
   }
   if (r.challengesDone.length) {
     lines.push("", `Challenges done: ${r.challengesDone.length}`);
+  }
+  if (r.predictions.length) {
+    lines.push("", "Called:");
+    r.predictions.forEach((p) =>
+      lines.push(`${p.happened ? "✅" : "❌"} ${p.text}`),
+    );
   }
   const best = r.moments[0];
   if (best) lines.push("", `“${best.text}” — ${best.who}`);

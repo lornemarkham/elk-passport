@@ -15,12 +15,21 @@ HAVE ANOTHER — and puts its weight on the second half (LIVE, REMEMBER).
 | Discover    | `/snow`, `/snow/mountains` | Mountain imagery, one primary action. Atlas ski areas when connected, Passport's short list beside them, distance, skill guidance |
 | Plan        | Day → **Plan**             | Date, mountain, getting there, meeting points, tickets, meals, après: options, one vote each, lock-in, last-minute change notice  |
 | Build crew  | Day → **Crew**             | Who, what they ride, level, rentals, notes; announcements; share the plan                                                         |
-| Hype        | Day → **Get ready**        | Countdown, reminders that fit how close it is, per-person gear list, optional drive-up playlist                                   |
+| Hype        | Day → **Get ready**        | Countdown, reminders that fit how close it is, per-person gear list, **Call it** predictions, optional drive-up playlist          |
 | Challenges  | Day → **Challenges**       | 11 vetted challenges + crew-written ones, level-aware, each with a safety line                                                    |
-| Competition | Day → **Challenges**       | Standings and playful awards, derived from what happened                                                                          |
+| Competition | Day → **Challenges**       | Standings and playful awards (incl. **Called It**), derived from what happened; right predictions are +3 each, max 5              |
 | On the hill | Day → **On the hill**      | Plan card, meeting points, "where I am" in words, quick updates, print card; works with no signal                                 |
 | Remember    | Day → **Memories**         | Photos, moments, recap (standings, awards, challenges), plain-text share                                                          |
 | Go again    | Memories                   | Vote on the next one; "Same crew, next snow day" carries the crew over                                                            |
+
+### Predictions (added 2026-11-01)
+
+Yes/no lines about the crew's own day ("Someone forgets their gloves"). Each
+person says yes or no, anyone settles it afterwards (reversible), and a right
+call on a settled prediction is worth 3 points, capped at 5 per person. They are
+about people, never about conditions: no starter claims snow, weather or lifts,
+and crew-written ones pass the same safety check as challenges. Pure
+domain (`domain/snow/predictions.ts`), derived into standings, no AI calls.
 
 ## Rules this build holds itself to
 

@@ -79,3 +79,13 @@ public, account-free `/snow` once someone adds the nav entry and spot-checks the
 static list. It is **not** ready to be called a group product until the shared
 tables exist. Suggested integration step: fetch
 `git fetch metatron:passport/main feature/snow`.
+
+## Addendum — Powder Day brief, 2026-11-01
+
+Audit against the brief found one named item missing: **predictions**. Added
+(domain, UI in Get ready, scoring, "Called It" award, recap, tests, e2e step).
+Everything else in the brief already existed (see sections 1 and 4). Still
+blocked, unchanged: shared multi-phone crew (needs a `snow-day` kind + migration
+from the contracts lane), nav entry (shell), real-Atlas pass, cold-start offline,
+cross-phone photo sharing. Nothing was deployed; release status is "gated, local
+commit, not pushed".

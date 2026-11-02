@@ -417,3 +417,92 @@ describe("recap and sharing", () => {
     expect(parseDay(bad)?.photos).toEqual([]);
   });
 });
+
+describe("predictions", () => {
+  const withCall = () =>
+    run(crew(), {
+      type: "predict",
+      id: "p1",
+      text: "We take a group photo at the top.",
+      by: "a",
+    });
+
+  it("takes a call, refuses unsafe or duplicate ones", () => {
+    const d = withCall();
+    expect(d.predictions).toHaveLength(1);
+    const unsafe = applyAction(
+      d,
+      { type: "predict", id: "p2", text: "Who goes fastest down", by: "a" },
+      NOW,
+    );
+    expect(unsafe.ok).toBe(false);
+    const dup = applyAction(
+      d,
+      {
+        type: "predict",
+        id: "p3",
+        text: "we take a group photo at the top.",
+        by: "b",
+      },
+      NOW,
+    );
+    expect(dup.ok).toBe(false);
+    const stranger = applyAction(
+      d,
+      {
+        type: "predict",
+        id: "p4",
+        text: "Hot chocolate before noon",
+        by: "zzz",
+      },
+      NOW,
+    );
+    expect(stranger.ok).toBe(false);
+  });
+
+  it("scores only settled calls, derived from guesses", () => {
+    let d = withCall();
+    d = run(
+      d,
+      { type: "guess", id: "p1", personId: "a", says: true },
+      { type: "guess", id: "p1", personId: "b", says: false },
+    );
+    const before = standings(d);
+    expect(before.every((s) => s.points === 0)).toBe(true); // open: no points
+    d = run(d, { type: "settle", id: "p1", outcome: true });
+    const after = Object.fromEntries(
+      standings(d).map((s) => [s.person.id, s.points]),
+    );
+    expect(after.a).toBe(3);
+    expect(after.b).toBe(0);
+    expect(
+      awards(d)
+        .find((a) => a.id === "called-it")
+        ?.winners.map((p) => p.id),
+    ).toEqual(["a"]);
+    // Reopening takes the points back; settled calls can't be re-guessed.
+    expect(
+      applyAction(
+        d,
+        { type: "guess", id: "p1", personId: "b", says: true },
+        NOW,
+      ).ok,
+    ).toBe(false);
+    d = run(d, { type: "settle", id: "p1", outcome: null });
+    expect(standings(d).every((s) => s.points === 0)).toBe(true);
+  });
+
+  it("shows in the recap and survives parsing", () => {
+    let d = withCall();
+    d = run(d, { type: "settle", id: "p1", outcome: false });
+    expect(buildRecap(d).predictions).toEqual([
+      { text: "We take a group photo at the top.", happened: false },
+    ]);
+    expect(recapText(d)).toContain("❌ We take a group photo at the top.");
+    expect(parseDay(JSON.parse(JSON.stringify(d)))?.predictions).toHaveLength(
+      1,
+    );
+    // Older saved days with no predictions still load.
+    expect(parseDay({ ...d, predictions: undefined })?.predictions).toEqual([]);
+  });
+});

@@ -1,3 +1,4 @@
+import type { Prediction } from "./predictions";
 import {
   isAbility,
   isDiscipline,
@@ -140,6 +141,7 @@ export interface SnowDay {
   readonly checkIns: readonly CheckIn[];
   readonly playlist: readonly { id: string; title: string; by: string }[];
   readonly ideas: readonly Idea[];
+  readonly predictions: readonly Prediction[];
 }
 
 export const LIMITS = {
@@ -150,6 +152,7 @@ export const LIMITS = {
   announcements: 60,
   ideas: 12,
   playlist: 30,
+  predictions: 12,
 } as const;
 
 export function newDay(input: {
@@ -177,6 +180,7 @@ export function newDay(input: {
     checkIns: [],
     playlist: [],
     ideas: [],
+    predictions: [],
   };
 }
 
@@ -211,7 +215,11 @@ export type Action =
   | { type: "song"; id: string; title: string; by: string }
   | { type: "removeSong"; id: string }
   | { type: "idea"; id: string; text: string; by: string }
-  | { type: "voteIdea"; id: string; personId: string; on: boolean };
+  | { type: "voteIdea"; id: string; personId: string; on: boolean }
+  | { type: "predict"; id: string; text: string; by: string }
+  | { type: "removePrediction"; id: string }
+  | { type: "guess"; id: string; personId: string; says: boolean | null }
+  | { type: "settle"; id: string; outcome: boolean | null };
 
 export type Result = { ok: true; day: SnowDay } | { ok: false; reason: string };
 
@@ -597,6 +605,59 @@ export function applyAction(day: SnowDay, action: Action, now: string): Result {
         ),
       });
     }
+    case "predict": {
+      const text = clean(action.text, 90);
+      const check = checkChallengeText(text);
+      if (!check.ok) return no(check.reason);
+      if (!has(day, action.by)) return no("Only the crew can call things.");
+      if (day.predictions.length >= LIMITS.predictions)
+        return no("That's plenty of predictions for one day.");
+      if (
+        day.predictions.some((p) => p.text.toLowerCase() === text.toLowerCase())
+      )
+        return no("That one is already on the list.");
+      return ok({
+        ...day,
+        predictions: [
+          ...day.predictions,
+          { id: action.id, text, by: action.by, guesses: {} },
+        ],
+      });
+    }
+    case "removePrediction":
+      return ok({
+        ...day,
+        predictions: day.predictions.filter((p) => p.id !== action.id),
+      });
+    case "guess": {
+      if (!has(day, action.personId)) return no("Only the crew calls it.");
+      const target = day.predictions.find((p) => p.id === action.id);
+      if (!target) return no("That prediction isn't on the list.");
+      if (target.outcome !== undefined)
+        return no("That one is already settled.");
+      const guesses = { ...target.guesses };
+      if (action.says === null) delete guesses[action.personId];
+      else guesses[action.personId] = action.says;
+      return ok({
+        ...day,
+        predictions: day.predictions.map((p) =>
+          p.id === action.id ? { ...p, guesses } : p,
+        ),
+      });
+    }
+    case "settle": {
+      const target = day.predictions.find((p) => p.id === action.id);
+      if (!target) return no("That prediction isn't on the list.");
+      return ok({
+        ...day,
+        predictions: day.predictions.map((p) => {
+          if (p.id !== action.id) return p;
+          return action.outcome === null
+            ? { id: p.id, text: p.text, by: p.by, guesses: p.guesses }
+            : { ...p, outcome: action.outcome };
+        }),
+      });
+    }
   }
 }
 
@@ -693,5 +754,13 @@ export function parseDay(raw: unknown): SnowDay | null {
     checkIns: arr<CheckIn>(d.checkIns),
     playlist: arr(d.playlist),
     ideas: arr<Idea>(d.ideas),
+    predictions: arr<Prediction>(d.predictions).filter(
+      (p) =>
+        p &&
+        typeof p.id === "string" &&
+        typeof p.text === "string" &&
+        p.guesses &&
+        typeof p.guesses === "object",
+    ),
   };
 }

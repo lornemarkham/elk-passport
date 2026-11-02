@@ -134,8 +134,29 @@ test("a crew plans, plays, remembers and goes again", async ({
   await gear.getByRole("checkbox").first().check();
   await expect(gear).toContainText("1 of");
   await page.getByLabel("Add a song").fill("Mountain Sound");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page
+    .getByLabel("Add a song")
+    .locator("xpath=ancestor::form")
+    .getByRole("button", { name: "Add" })
+    .click();
   await expect(page.getByText("♪ Mountain Sound")).toBeVisible();
+
+  // predictions: call one, refuse an unsafe one, settle it
+  const calls = page.getByTestId("predictions");
+  await calls
+    .getByRole("button", { name: /Someone forgets their gloves/ })
+    .click();
+  const call = calls.locator("li").first();
+  await call.getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(call.getByRole("button", { name: "Yes" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await calls.getByLabel("Write a prediction").fill("Who goes fastest");
+  await calls.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(calls.getByRole("alert")).toBeVisible();
+  await call.getByRole("button", { name: "It happened" }).click();
+  await expect(call).toContainText("It happened ✅");
   await shot(page, "05-get-ready");
 
   // ---------------------------------------------------------- challenges
@@ -209,6 +230,7 @@ test("a crew plans, plays, remembers and goes again", async ({
   await expect(recap).toContainText("Powder Friday");
   await expect(recap).toContainText("Final table");
   await expect(recap).toContainText("Challenges done");
+  await expect(recap).toContainText("Called");
   await recap.scrollIntoViewIfNeeded();
   await page.evaluate(() =>
     window.scrollTo(
