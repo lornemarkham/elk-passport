@@ -33,6 +33,9 @@ import { dayDetails } from "@/lib/adventures/propose";
 import { todayIn } from "@/lib/adventures/overview";
 import { adventureStatus, whenLabel } from "@/lib/adventures/present";
 import { loadSaved } from "@/lib/data/loadSaved";
+import { adventureFrame, savedFor } from "@/lib/adventures/fit";
+import { dayPool } from "@/lib/go/pool";
+import { pickChallenges } from "@/domain/christmas/challengePicks";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import type { Moment } from "@/domain/christmas/recap";
 import { momentsOf, noticesOf, sharingOn } from "../../_server/together";
@@ -156,24 +159,33 @@ export default async function ChristmasAdventurePage({
   );
   const savedHere =
     saved?.status === "ok"
-      ? saved.experiences.filter((e) => !held.has(e.id))
-      : [];
+      ? savedFor(view, saved.experiences)
+      : { fits: [], elsewhere: [] };
   const sharing = await sharingOn(db, id).catch(() => false);
-  const [stops, details, atlasUp, notices, moments] = await Promise.all([
+  const [stops, details, candidates, notices, moments] = await Promise.all([
     held.size > 0
       ? atlasStopsFor([...held])
       : Promise.resolve<AtlasStops>({ names: {}, experiences: {} }),
     dayDetails(view).catch(() => null),
-    listDiscoveryCandidates()
-      .then(() => true)
-      .catch(() => false),
+    listDiscoveryCandidates(undefined, view.startsOn ?? undefined).catch(
+      () => null,
+    ),
     sharing ? noticesOf(db, id, me).catch(() => []) : Promise.resolve([]),
     sharing
       ? momentsOf(db, id, me).catch(() => [])
       : Promise.resolve([] as Moment[]),
   ]);
   const { names: atlasNames, experiences } = stops;
-  const atlasDown = !atlasUp || details === null;
+  const atlasDown = !candidates || details === null;
+  // The few dares that lead, with somewhere real to do them (challengePicks).
+  const picks =
+    sharing && candidates
+      ? pickChallenges({
+          ...adventureFrame(view),
+          pool: dayPool(candidates, []),
+          held,
+        })
+      : [];
   const today = todayIn(view.timeZone ?? null);
 
   const ordered = [...view.items]
@@ -375,6 +387,7 @@ export default async function ChristmasAdventurePage({
               initial={moments}
               enabled={sharing}
               againHref={againHref}
+              picks={picks}
               done={status.stage === "done"}
             />
           </div>

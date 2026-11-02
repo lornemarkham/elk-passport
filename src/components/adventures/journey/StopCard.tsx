@@ -31,6 +31,9 @@ const ANSWERS: readonly { value: ResponseValue; label: string }[] = [
   { value: "out", label: "Out" },
 ];
 
+const CHECK_FIRST =
+  /\b(check before you go|check it's on|closes at|closed that day|be dark by then|check the programme|closed for the season|check it's open|check it has reopened)\b/i;
+
 const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth"];
 
 const control =
@@ -88,6 +91,11 @@ export function StopCard({
   const kept = item.status === "confirmed";
   const passport = isPassportSuggestion(item);
   const where = experience ? placeLabel(experience) : undefined;
+  // What to check before going — the closing-time and dates cautions —
+  // is said on the card, not folded away; the rest stays one tap away.
+  const notes = detail?.notes ?? [];
+  const warnings = notes.filter((n) => CHECK_FIRST.test(n));
+  const others = notes.filter((n) => !CHECK_FIRST.test(n));
   const move = (direction: -1 | 1) =>
     act(() => call(`/move`, "POST", { item: item.id, direction }));
 
@@ -186,16 +194,29 @@ export function StopCard({
               {item.note}
             </p>
           )}
-          {(detail?.hours ||
-            (detail?.notes.length ?? 0) > 0 ||
-            detail?.rainPlan) && (
+          {warnings.length > 0 && (
+            <ul
+              className="mt-2 space-y-1 rounded-2xl bg-[#fff4d6] px-3 py-2 text-sm text-[var(--gh-ink)]"
+              data-testid="stop-check"
+            >
+              {warnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          )}
+          {detail?.hours && (
+            <p className="mt-1 line-clamp-2 text-sm text-[var(--gh-ink-soft)]">
+              <span className="font-semibold text-[var(--gh-ink)]">Hours:</span>{" "}
+              {detail.hours}
+            </p>
+          )}
+          {(others.length > 0 || detail?.rainPlan) && (
             <details className="group mt-2 text-sm">
               <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-[var(--gh-ink)] underline-offset-4 hover:underline">
                 Good to know
               </summary>
               <ul className="mt-1 space-y-1 text-[var(--gh-ink-soft)]">
-                {detail?.hours && <li>Published hours: {detail.hours}</li>}
-                {detail?.notes.map((note) => (
+                {others.map((note) => (
                   <li key={note}>{note}</li>
                 ))}
                 {detail?.rainPlan && (
@@ -207,7 +228,16 @@ export function StopCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <div
+        className="mt-3 flex flex-wrap items-center gap-1.5"
+        role="group"
+        aria-label={`The plan: ${name}`}
+      >
+        {(isOwner || item.canChange) && (
+          <span className="mr-1 text-xs font-bold tracking-[0.12em] text-[var(--gh-ink-soft)] uppercase">
+            {isOwner ? "On the plan?" : "Your suggestion"}
+          </span>
+        )}
         {isOwner && !kept && (
           <button
             type="button"
@@ -374,10 +404,13 @@ export function Answers({
   const counts = responsesLabel(item.responses);
   return (
     <div
-      className="mt-2 flex flex-wrap items-center gap-1.5"
+      className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[var(--gh-line)] pt-2"
       role="group"
       aria-label={`Your answer on ${name}`}
     >
+      <span className="mr-1 text-xs font-bold tracking-[0.12em] text-[var(--gh-ink-soft)] uppercase">
+        Are you in?
+      </span>
       {ANSWERS.map((answer) => {
         const chosen = item.yourResponse === answer.value;
         return (

@@ -28,6 +28,7 @@ import { atlasStopsFor, type AtlasStops } from "@/lib/adventures/atlas-names";
 import { dayDetails, type DayDetail } from "@/lib/adventures/propose";
 import { todayIn } from "@/lib/adventures/overview";
 import { loadSaved } from "@/lib/data/loadSaved";
+import { savedFor } from "@/lib/adventures/fit";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { adventureKind, kindLabel } from "@/lib/adventures/kinds";
 import { redirect } from "next/navigation";
@@ -109,9 +110,9 @@ export default async function AdventurePage({
     view?.items.flatMap((i) => (i.atlasRef ? [i.atlasRef] : [])) ?? [],
   );
   const savedHere =
-    saved?.status === "ok"
-      ? saved.experiences.filter((e) => !held.has(e.id))
-      : [];
+    view && saved?.status === "ok"
+      ? savedFor(view, saved.experiences)
+      : { fits: [], elsewhere: [] };
   const refs = view
     ? [
         ...held,
