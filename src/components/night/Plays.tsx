@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  Check,
   Copy,
   Dices,
   Lock,
@@ -24,9 +25,11 @@ import {
   type PlayBody,
   type PlayView,
   type Theme,
+  type Turn,
+  turnOf,
 } from "@/domain/date-night/plays";
 import { clock } from "@/domain/date-night/adventures/itinerary";
-import { copy, messageOf, sendText } from "./share";
+import { afterSend, copy, messageOf, sendText } from "./share";
 import { cn } from "@/lib/utils";
 
 /** What the composer is making. Predictions and photo dares are flavours. */
@@ -124,6 +127,9 @@ export interface PlaysProps {
   apply: (what: string) => Promise<void>;
   /** The link to one play; for someone not yet in, their invitation too. */
   linkTo: (playId: string) => Promise<string | null>;
+  /** The same link when it needs no round trip (they're in, or the
+   * invitation is already made), so a tap can open the share sheet. */
+  linkReady: (playId: string) => string | null;
   /** Open with this composer already out (from the Adventure room). */
   start?: Making | null;
 }
@@ -145,7 +151,14 @@ function whenSaid(
 export function Plays(props: PlaysProps) {
   const { plays, partner, focus, busy } = props;
   const [making, setMaking] = useState<Making | null>(props.start ?? null);
-  const waiting = plays.filter((p) => !p.mine && !p.yours && !p.hidden);
+  /** Just made: the words and the link, ready for a tap to send. */
+  const [ready, setReady] = useState<{
+    id: string;
+    words: string;
+    url: string;
+  } | null>(null);
+  const waiting = plays.filter((p) => turnOf(p) === "yours");
+  const theirTurn = plays.filter((p) => turnOf(p) === "theirs").length;
   const rest = plays.filter((p) => !waiting.includes(p));
 
   useEffect(() => {
@@ -158,19 +171,20 @@ export function Plays(props: PlaysProps) {
     play: PlayView | (PlayBody & { id: string }),
     words?: string,
   ) {
-    const url = await props.linkTo(play.id);
+    // Ready at once when it can be, so the tap still opens the share sheet.
+    const url = props.linkReady(play.id) ?? (await props.linkTo(play.id));
     if (!url) {
       toast.error("Couldn't make the link. Try again.");
       return;
     }
     const said = words ?? textFor(play, whenSaid(play.opens, props.opensAt));
-    const sent = await sendText(said, url);
-    if (sent === "copied")
-      toast.success(`Copied. Paste it into your texts to ${partner}.`);
-    else if (sent === "failed")
-      toast.error(
-        "Couldn't open your texts or copy. Long-press the link to copy it.",
-      );
+    say(await sendText(said, url));
+  }
+
+  function say(sent: Awaited<ReturnType<typeof sendText>>) {
+    const line = afterSend(sent, partner);
+    if (line && sent === "failed") toast.error(line);
+    else if (line) toast.success(line);
   }
 
   return (
@@ -190,8 +204,26 @@ export function Plays(props: PlaysProps) {
           Play together
         </h2>
         <p className="mt-1.5 text-[14px] text-[var(--n-ink)]/70">
-          Make one, text it to {partner}. The link opens it right here.
+          Make one, send it to {partner}. Their link opens it right here, and
+          their answer shows up on yours.
         </p>
+        {(waiting.length > 0 || theirTurn > 0) && (
+          <p
+            className="mt-2 flex flex-wrap gap-2 text-[12.5px] font-bold"
+            data-testid="plays-turns"
+          >
+            {waiting.length > 0 && (
+              <span className="rounded-full bg-[var(--n-ember)] px-2.5 py-1 text-white">
+                Your turn · {waiting.length}
+              </span>
+            )}
+            {theirTurn > 0 && (
+              <span className="rounded-full bg-black/[0.06] px-2.5 py-1 text-[var(--n-ink)]/70">
+                {partner}&apos;s turn · {theirTurn}
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
       {waiting.length > 0 && (
@@ -216,7 +248,10 @@ export function Plays(props: PlaysProps) {
             type="button"
             aria-pressed={making === f.id}
             data-testid={`make-${f.id}`}
-            onClick={() => setMaking(making === f.id ? null : f.id)}
+            onClick={() => {
+              setReady(null);
+              setMaking(making === f.id ? null : f.id);
+            }}
             className={cn(
               "flex min-h-[112px] flex-col items-start justify-between rounded-[22px] p-3 text-left ring-1 transition sm:p-4",
               making === f.id
@@ -254,7 +289,10 @@ export function Plays(props: PlaysProps) {
             type="button"
             aria-pressed={making === m.id}
             data-testid={`make-${m.id}`}
-            onClick={() => setMaking(making === m.id ? null : m.id)}
+            onClick={() => {
+              setReady(null);
+              setMaking(making === m.id ? null : m.id);
+            }}
             className={cn(
               "min-h-10 rounded-full px-3.5 text-[13px] font-bold ring-1 transition",
               making === m.id
@@ -275,11 +313,85 @@ export function Plays(props: PlaysProps) {
           onMade={async (body) => {
             const id = await props.create(body);
             if (!id) return;
+            // The link is made now, while nobody's waiting on a tap; the
+            // share sheet then opens straight from "Send to …".
+            const url = await props.linkTo(id);
             setMaking(null);
-            await textIt({ ...body, id });
+            if (!url) {
+              toast.error(
+                "Saved, but the link didn't make. Use Send on its card.",
+              );
+              return;
+            }
+            setReady({
+              id,
+              url,
+              words: textFor(body, whenSaid(body.opens, props.opensAt)),
+            });
           }}
           busy={busy}
         />
+      )}
+
+      {ready && (
+        <div
+          className="rounded-[24px] bg-[var(--n-forest)] p-4 text-[var(--n-cream)] sm:p-5"
+          data-testid="ready-to-send"
+          role="status"
+        >
+          <p className="flex items-center gap-2 text-[15px] font-extrabold">
+            <Check className="h-4 w-4" aria-hidden /> Made. Now send it to{" "}
+            {partner}.
+          </p>
+          <p className="mt-1 text-[13px] text-white/75">
+            It goes from your own messages. Nothing is sent until you press send
+            there.
+          </p>
+          <p className="mt-3 rounded-2xl bg-white/10 p-3 text-[14px] leading-snug">
+            {ready.words}
+          </p>
+          <label className="mt-2 block text-[12px] font-semibold text-white/70">
+            The link
+            <input
+              readOnly
+              value={ready.url}
+              onFocus={(e) => e.currentTarget.select()}
+              data-testid="ready-link"
+              className="mt-1 block min-h-11 w-full rounded-xl bg-white/90 px-3 text-[13px] text-[var(--n-ink)]"
+            />
+          </label>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="ready-send"
+              onClick={async () => say(await sendText(ready.words, ready.url))}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-ember)] px-6 font-extrabold text-white"
+            >
+              <Send className="h-4 w-4" aria-hidden /> Send to {partner}
+            </button>
+            <button
+              type="button"
+              data-testid="ready-copy"
+              onClick={async () => {
+                if (await copy(messageOf(ready.words, ready.url)))
+                  toast.success(
+                    `Copied. Paste it into a message to ${partner}.`,
+                  );
+                else toast.error("Couldn't copy. Press and hold the link.");
+              }}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full px-5 font-bold ring-1 ring-white/40"
+            >
+              <Copy className="h-4 w-4" aria-hidden /> Copy link
+            </button>
+            <button
+              type="button"
+              onClick={() => setReady(null)}
+              className="min-h-12 rounded-full px-4 font-bold text-white/80"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       )}
 
       {rest.length > 0 && (
@@ -383,6 +495,23 @@ function Composer({
       ...(making === "secret" ? { secret: true as const } : {}),
       t,
     };
+
+  /** Why "Make it" can't go yet, in words; null when it can. */
+  const missing = busy
+    ? "Saving…"
+    : body
+      ? null
+      : (making === "pick" || making === "predict") && (!a.trim() || !b.trim())
+        ? "Fill in both choices."
+        : making === "predict"
+          ? `Pick your guess at what ${partner} chooses.`
+          : making === "decide"
+            ? "Choose an adventure first; then there's something to decide."
+            : making === "note"
+              ? "Write the note first."
+              : making === "secret"
+                ? "Write the secret first."
+                : "Write something first, or tap Another.";
 
   const input =
     "min-h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-base";
@@ -499,6 +628,11 @@ function Composer({
       {making === "decide" && (
         <>
           <p className="text-[15px] font-extrabold">{partner} decides</p>
+          {pairs.length === 0 && (
+            <p className="mt-2 text-[14px] text-[var(--n-ink)]/65">
+              Nothing to decide yet.
+            </p>
+          )}
           <div
             className="mt-3 space-y-2"
             role="radiogroup"
@@ -583,12 +717,14 @@ function Composer({
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={busy || !body}
+          disabled={missing !== null}
+          aria-describedby={missing ? "make-missing" : undefined}
           onClick={() => body && void onMade(body)}
           data-testid="make-send"
-          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-ember)] px-6 font-extrabold text-white shadow-[0_12px_28px_-14px_rgba(194,87,26,0.9)] disabled:opacity-50"
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-ember)] px-6 font-extrabold text-white shadow-[0_12px_28px_-14px_rgba(194,87,26,0.9)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
-          <Send className="h-4 w-4" aria-hidden /> Text {partner}
+          <Send className="h-4 w-4" aria-hidden />
+          {busy ? "Saving…" : `Make it for ${partner}`}
         </button>
         {making !== "decide" && making !== "note" && making !== "secret" && (
           <button
@@ -606,6 +742,15 @@ function Composer({
           </button>
         )}
       </div>
+      {missing && !busy && (
+        <p
+          id="make-missing"
+          className="mt-2 text-[13px] font-semibold text-[var(--n-ink)]/60"
+          data-testid="make-missing"
+        >
+          {missing}
+        </p>
+      )}
     </div>
   );
 }
@@ -629,6 +774,7 @@ function PlayCard({
   remove,
   apply,
   linkTo,
+  linkReady,
   textIt,
 }: PlaysProps & {
   play: PlayView;
@@ -641,6 +787,7 @@ function PlayCard({
   const choice = (i: 0 | 1 | undefined) =>
     i === undefined ? undefined : i === 0 ? p.a : p.b;
   const when = whenSaid(p.opens, opensAt);
+  const turn = turnOf(p);
 
   async function pick(i: 0 | 1) {
     if (!(await answer(p, { pick: i }))) return;
@@ -818,7 +965,7 @@ function PlayCard({
             type="button"
             disabled={busy}
             onClick={() => void answer(p, { react: "love" })}
-            className="mt-2 min-h-11 rounded-full px-4 font-bold ring-1 ring-black/15"
+            className="mt-2 min-h-11 rounded-full px-4 font-bold ring-1 ring-black/15 disabled:opacity-60"
           >
             ❤️ Got it
           </button>
@@ -845,7 +992,7 @@ function PlayCard({
                 type="button"
                 disabled={busy}
                 onClick={() => void answer(p, { react: r.id })}
-                className="min-h-11 rounded-full px-4 font-bold ring-1 ring-black/15"
+                className="min-h-11 rounded-full px-4 font-bold ring-1 ring-black/15 disabled:opacity-60"
               >
                 {r.label}
               </button>
@@ -881,6 +1028,7 @@ function PlayCard({
         <span className="font-semibold tracking-normal text-[var(--n-ink)]/45 normal-case">
           {p.mine ? "from you" : `from ${from}`}
         </span>
+        <TurnChip turn={turn} partner={partner} />
       </p>
       {body}
       {(p.mine || answered) && (
@@ -899,19 +1047,20 @@ function PlayCard({
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--n-ink)] px-4 text-[14px] font-bold text-[var(--n-cream)]"
           >
             <Send className="h-4 w-4" aria-hidden />
-            {p.mine ? `Text ${partner}` : `Text ${partner} back`}
+            {p.mine ? `Send to ${partner}` : `Tell ${partner}`}
           </button>
           <button
             type="button"
+            data-testid="copy-link"
             onClick={async () => {
-              const url = await linkTo(p.id);
+              const url = linkReady(p.id) ?? (await linkTo(p.id));
               if (url && (await copy(messageOf(textFor(p, when), url))))
-                toast.success("Copied, link and all.");
+                toast.success(`Copied. Paste it into a message to ${partner}.`);
+              else toast.error("Couldn't copy the link. Try again.");
             }}
-            aria-label="Copy it"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full ring-1 ring-black/10"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold ring-1 ring-black/10"
           >
-            <Copy className="h-4 w-4" aria-hidden />
+            <Copy className="h-4 w-4" aria-hidden /> Copy link
           </button>
           {p.mine && p.canChange && (
             <button
@@ -926,5 +1075,27 @@ function PlayCard({
         </div>
       )}
     </article>
+  );
+}
+
+function TurnChip({ turn, partner }: { turn: Turn; partner: string }) {
+  if (turn === "locked") return null;
+  return (
+    <span
+      data-testid="turn"
+      data-turn={turn}
+      className={cn(
+        "ml-auto rounded-full px-2 py-0.5 text-[10.5px] tracking-[0.08em]",
+        turn === "yours" && "bg-[var(--n-ember)] text-white",
+        turn === "theirs" && "bg-black/[0.06] text-[var(--n-ink)]/60",
+        turn === "done" && "bg-[var(--n-forest)]/10 text-[var(--n-forest)]",
+      )}
+    >
+      {turn === "yours"
+        ? "Your turn"
+        : turn === "theirs"
+          ? `${partner}'s turn`
+          : "Done ✓"}
+    </span>
   );
 }

@@ -249,9 +249,10 @@ test("Date Night, made magical: leave at 4, pack, play, text, join, play back", 
   await lorne.getByLabel("This", { exact: true }).fill("Campfire");
   await lorne.getByLabel("That", { exact: true }).fill("Hot tub");
   await lorne.getByTestId("guess-0").click();
-  await expect(lorne.getByTestId("make-send")).toHaveText(/Text Jess/);
+  await expect(lorne.getByTestId("make-send")).toHaveText(/Make it for Jess/);
   await shot(lorne, "04-this-or-that");
   await writes(lorne, () => lorne.getByTestId("make-send").click(), /\/items$/);
+  await lorne.getByTestId("ready-send").click();
   const first = await lastShared(lorne, 1);
   expect(first.text).toContain("This or that? Campfire or Hot tub.");
   // Jess isn't in yet: the link is her invitation, and it lands on this.
@@ -313,8 +314,11 @@ test("Date Night, made magical: leave at 4, pack, play, text, join, play back", 
   await jess.getByTestId("make-dare").click();
   await jess.getByRole("button", { name: "❤️ Romantic" }).click();
   await jess.getByLabel("The words").fill("One slow dance by the water.");
-  await expect(jess.getByTestId("make-send")).toHaveText(/Text lorne-mg-/);
+  await expect(jess.getByTestId("make-send")).toHaveText(
+    /Make it for lorne-mg-/,
+  );
   await writes(jess, () => jess.getByTestId("make-send").click(), /\/items$/);
+  await jess.getByTestId("ready-send").click();
   const dare = await lastShared(jess, 1);
   expect(dare.text).toContain("I dare you ❤️ One slow dance by the water.");
   expect(dare.path).toMatch(/^\/night\/[^?]+\?p=[0-9a-f-]{36}$/);
@@ -354,6 +358,7 @@ test("Date Night, made magical: leave at 4, pack, play, text, join, play back", 
     "Stay wild or Warm ending",
   );
   await writes(lorne, () => lorne.getByTestId("make-send").click(), /\/items$/);
+  await lorne.getByTestId("ready-send").click();
   const decide = await lastShared(lorne, 2);
   expect(decide.text).toBe(
     `You decide: Stay wild or Warm ending? Your call, I'll go with it.\n${decide.link}`,
@@ -392,6 +397,7 @@ test("Date Night, made magical: leave at 4, pack, play, text, join, play back", 
   await lorne.getByLabel("The note").fill("The best part of today is you.");
   await lorne.getByRole("button", { name: "at sunset" }).click();
   await writes(lorne, () => lorne.getByTestId("make-send").click(), /\/items$/);
+  await lorne.getByTestId("ready-send").click();
   const note = await lastShared(lorne, 3);
   expect(note.text).toContain("It opens at sunset");
   await jess.goto(note.path);
@@ -493,6 +499,7 @@ test("Date Night, made magical: leave at 4, pack, play, text, join, play back", 
     () => desktop.getByTestId("make-send").click(),
     /\/items$/,
   );
+  await desktop.getByTestId("ready-send").click();
   await expect
     .poll(() => desktop.evaluate(() => navigator.clipboard.readText()))
     .toMatch(/Bad Ideas Department presents: .+\nhttp:\/\/\S+\/night\/\S+\?p=/);

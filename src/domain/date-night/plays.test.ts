@@ -14,6 +14,7 @@ import {
   playsOf,
   textFor,
   THIS_OR_THAT,
+  turnOf,
   waitingOn,
   type PlayBody,
   type Theme,
@@ -178,5 +179,61 @@ describe("words worth texting", () => {
       const [, t3] = draw(BAD_IDEAS, themes, r);
       if (t3) expect(themes.has(t3)).toBe(true);
     }
+  });
+});
+
+describe("whose turn", () => {
+  const dare: PlayBody = { k: "dare", text: "Sing", flavour: "funny", t: 2 };
+  const turns = (notes: [string, string, boolean][]) =>
+    playsOf(notes.map(([id, n, mine]) => item(id, n, mine))).map(turnOf);
+
+  it("is theirs after I send, mine after they send", () => {
+    expect(turns([["p", encodePlay(pick), true]])).toEqual(["theirs"]);
+    expect(turns([["p", encodePlay(pick), false]])).toEqual(["yours"]);
+  });
+
+  it("is done once answered", () => {
+    const answer = encodeAnswer({ to: "p", pick: 0, t: 3 });
+    expect(
+      turns([
+        ["p", encodePlay(pick), true],
+        ["a", answer, false],
+      ]),
+    ).toEqual(["done"]);
+  });
+
+  it("stays with whoever is in for a dare until it's done", () => {
+    const on = encodeAnswer({ to: "d", state: "on", t: 3 });
+    const done = encodeAnswer({ to: "d", state: "done", t: 4 });
+    expect(
+      turns([
+        ["d", encodePlay(dare), false],
+        ["a", on, true],
+      ]),
+    ).toEqual(["yours"]);
+    expect(
+      turns([
+        ["d", encodePlay(dare), true],
+        ["a", on, false],
+      ]),
+    ).toEqual(["theirs"]);
+    expect(
+      turns([
+        ["d", encodePlay(dare), true],
+        ["a", on, false],
+        ["b", done, false],
+      ]),
+    ).toEqual(["done"]);
+  });
+
+  it("is locked for a note that hasn't opened", () => {
+    const note: PlayBody = { k: "note", text: "x", opens: 1000, t: 1 };
+    const hidden = hideUnopened(
+      [{ ...item("n", encodePlay(note), false), label: "A note" }],
+      "2026-11-02",
+      "2026-11-02",
+      0,
+    );
+    expect(playsOf(hidden).map(turnOf)).toEqual(["locked"]);
   });
 });
