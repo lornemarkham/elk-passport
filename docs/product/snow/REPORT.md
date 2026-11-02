@@ -106,3 +106,14 @@ A snow day can now be shared between phones. See `SHARING.md`.
   has not been applied anywhere real.
 - **Outside my lane:** none. Proposed for the contracts lane: the migration,
   the `snow-day` kind label, the nav entry.
+
+## Addendum — Powder Day integrate, verify, release, 2026-11-02
+
+Integrated on `feature/snow` (main `a47e611` merged in; the tip is a
+fast-forward of GitHub `main`). The migration is now
+`supabase/migrations/20261103000000_passport_snow.sql`, `snow-day` is a
+registered kind, and Snow Day is the fifth Experiences entry. Release review
+made starting a day and settling the plan single transactions and made
+photos raster-only. Gates, migration rehearsal, operator steps and the
+production checklist: `docs/release/RELEASE-2026-11-02-POWDER-DAY.md`. Not
+pushed, no production SQL, not deployed.

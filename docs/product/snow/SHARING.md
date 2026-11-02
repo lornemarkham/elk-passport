@@ -81,17 +81,43 @@ inserts.
 - Every Snow action carries over to a shared day, except adding a person by
   hand: people join by invitation (a test fails if a new action has no rows).
 
-## Proposals for the contracts lane (not made here)
+## Integrated (Powder Day release, 2026-11-02)
 
-This lane owns `src/*/snow` and `docs/product/snow`. It changed no shared file.
+The three proposals were made, by the release mission, with two review fixes:
 
-1. **Migration.** Copy `docs/product/snow/shared-migration.sql` to
-   `supabase/migrations/<stamp>_passport_snow.sql`, unchanged below its header.
+1. **Migration** — `supabase/migrations/20261103000000_passport_snow.sql`.
    Requires only `20261021000000_passport_adventures.sql`. Preflight and
-   rollback sit beside it.
-2. **Kind.** Add to `ADVENTURE_KINDS` in `src/lib/adventures/kinds.ts`:
-   `{ id: "snow-day", label: "Snow Day", blurb: "A day on the mountain, with the crew.", joinVisibility: "members" }`.
-   Nothing depends on it: the kind is an open string and Snow's code creates it
-   directly. It only makes `/adventures` say "Snow Day" instead of "Adventure".
-3. **Nav.** `{ href: "/snow", label: "Snow Day", testId: "snow" }` in
-   `PassportNav`'s `EXPERIENCES`.
+   rollback stay here (`shared-preflight.sql`, `shared-rollback.sql`).
+2. **Kind** — `snow-day` in `ADVENTURE_KINDS`, `home: "/snow/day"` (so
+   `/adventures/<id>` opens the snow day) and `startable: false` (a snow day
+   starts on `/snow`, where the host's level is written with the adventure).
+3. **Nav** — "Snow Day" is the fifth entry in the Experiences menu.
+
+Review fixes, both in the migration and the server:
+
+- **Changes that go together are one transaction.** Starting a shared day
+  (`passport_snow_start`: adventure, day row, host's level) and the host
+  settling the plan (`passport_snow_decide`: lock a choice, set the date and
+  meeting time, post "plan changed") either happen whole or not at all.
+  Before, a refused notice (the chat flood limit) left a plan moved and
+  nobody told. Both are `SECURITY INVOKER`: RLS still decides every row.
+- **Photos are raster only** (`jpeg`, `png`, `webp`) — in Postgres, the
+  request parser and the photo route, which also sends
+  `Content-Security-Policy: default-src 'none'; sandbox`. An SVG served
+  from Passport's origin could run script.
+
+Still separate requests, and safe to repeat: joining (redeem the link, then
+your level — a retry redeems nothing twice and only fills a missing level)
+and changing your name with your level (two rows, both yours).
+
+## Named, for an owner decision: ADR 014 overlap
+
+ADR 014 (accepted 2026-11-01, after this lane branched) puts announcements
+and shared moments on the core (`passport_adventure_notices`,
+`passport_adventure_moments`) and names Snow as an adopter. Snow ships its
+own: announcements and "plan changed" notices share `passport_snow_posts`
+with chat, and moments and photos live in `passport_snow_moments`. They
+differ on purpose today: any crew member may post a Snow update (core:
+owner only, with _Got it_), and leaving a snow day takes your photos with
+you (core: they stay). Not changed in this release. Moving them before real
+photos accumulate is the cheaper time; see the release record.
