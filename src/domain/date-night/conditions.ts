@@ -90,7 +90,7 @@ const TO_HOUR = 18;
 
 export function dayForecast(
   environment: Environment | undefined,
-  night: DateNight,
+  night: Pick<DateNight, "on" | "timeZone">,
 ): DayForecast | undefined {
   if (!environment) return undefined;
   const from = zonedInstant(night.on, FROM_HOUR, night.timeZone).getTime();

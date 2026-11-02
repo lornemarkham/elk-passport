@@ -1,7 +1,14 @@
 import { MARKHAM } from "./markham";
 import type { NightConfig } from "./types";
 
-export type { NightActivity, NightConfig } from "./types";
+export type {
+  DayOption,
+  Mood,
+  NightActivity,
+  NightConfig,
+  NightDay,
+  Phase,
+} from "./types";
 
 const NIGHTS: readonly NightConfig[] = [MARKHAM];
 

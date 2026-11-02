@@ -53,6 +53,7 @@ export function AdventureJourney({
   today,
   saved,
   atlasDown,
+  examples,
 }: {
   readonly adventureId: string;
   readonly isOwner: boolean;
@@ -69,6 +70,8 @@ export function AdventureJourney({
   readonly saved: SavedForAdventure;
   /** Atlas didn't answer: Passport can't suggest, everything manual works. */
   readonly atlasDown: boolean;
+  /** Change-box starting points suited to this adventure. */
+  readonly examples?: readonly string[];
 }) {
   const { call, act, busy } = useAdventure(adventureId);
   const changes = useRef<ChangeHandle>(null);
@@ -119,6 +122,7 @@ export function AdventureJourney({
           busy={busy}
           handle={changes}
           hasDays={dayList.length > 0}
+          {...(examples ? { examples } : {})}
         />
       )}
 
