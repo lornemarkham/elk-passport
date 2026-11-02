@@ -223,3 +223,18 @@ Production is "done" only when 1–12 pass. Record the deployment ID here.
   open, with no service worker.
 - **Doctrine tension** recorded in `docs/product/snow/README.md` (the
   "who gets down fastest" example) is unchanged.
+
+## 7. Re-merge of main `963daec` (2026-11-02, later)
+
+Local `main` had moved 13 commits past `a47e611` (Date Night shared, Hockey
+website, dependency fixes, test files excluded from the production build).
+Merged into `feature/snow` with no conflicts; Snow's migration and files are
+untouched, so the push is still a fast-forward of whatever `origin/main` is
+at (re-check before pushing). Gates on the merged tree: `tsc` clean; `eslint`
+0 errors / 42 warnings; `vitest` 4,183 passed / 44 skipped (340 files; the
+real-stack Snow tests skip without the stack env); `npm run build` ok;
+`e2e/snow.spec.ts` 3/3 and the Experiences menu spec 6/6 on rerun (one
+Discovery-section test failed once in a parallel run with no Atlas, and
+passed when run alone). No shared soundtrack feature exists in `main` yet, so
+Snow's own drive-up playlist list stands and no Spotify code was added.
+Still not pushed, not deployed, no production SQL.
