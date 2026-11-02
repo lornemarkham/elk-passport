@@ -139,3 +139,22 @@ twice, the Atlas stand-in serving Atlas's real 2026-10-24 corpus
 port 3131, and `verification/christmas.spec.ts` on a 390 px phone: three
 people, one Christmas weekend, from the first tap to _Go have another_.
 Screenshots are in [`screenshots/`](screenshots/).
+
+## M487 — first two screens and the sentence (2026-11-01)
+
+- **The first phone screen is a photograph.** The soonest Christmas find Atlas
+  has a picture of fills the hero (never stock photography), captioned with
+  what it is and how sure its dates are. Headline: _Let's make some Christmas
+  memories._ The second screen is the sentence box.
+- **Say it in a sentence** (`sentence.ts`, `SayIt.tsx`). "We have Saturday
+  afternoon, two kids, and $100" is read into shape, day, party, children's
+  ages and town; the planner opens already filled and the words go to the Day
+  Builder untouched, which is what reads the budget and time of day. Anything
+  not recognised is left unread — nothing is guessed. Signed out, the sentence
+  survives sign-in.
+- **Theme tiles are Atlas pictures**, not emoji; shape and challenge cards lost
+  their emoji too.
+- Not done: Christmas lights/market photography beyond what Atlas holds
+  (no pictured find → a deep-green night sky); budget is read by the Day
+  Builder but Atlas holds no structured prices, so a $100 plan is a plan
+  around the stated budget, not a verified cost.
