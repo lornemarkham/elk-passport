@@ -11,7 +11,7 @@ const PORT = Number(process.env.E2E_PORT ?? 3120);
 
 export default defineConfig({
   testDir: ".",
-  testMatch: /date-night\.spec\.ts$/,
+  testMatch: /(date-night|markham)\.spec\.ts$/,
   reporter: "list",
   workers: 1,
   timeout: 180_000,

@@ -19,11 +19,14 @@ export function JoinAdventure({
   state,
   kindLabel,
   signedIn,
+  invitation = null,
 }: {
   token: string;
   state: "valid" | "revoked" | "expired" | "used-up" | "unknown";
   kindLabel: string | null;
   signedIn: boolean;
+  /** A kind's own words for the invitation, in place of the generic ones. */
+  invitation?: readonly string[] | null;
 }) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
@@ -87,12 +90,26 @@ export function JoinAdventure({
           </>
         ) : (
           <>
-            <h1 className="text-xl font-semibold">
-              You&apos;re invited to a {kindLabel ?? "Passport adventure"}
-            </h1>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Join to see what it is, who&apos;s going and what&apos;s planned.
-            </p>
+            {invitation ? (
+              <div data-testid="invitation">
+                <h1 className="text-xl font-semibold">{invitation[0]}</h1>
+                {invitation.slice(1).map((line) => (
+                  <p key={line} className="text-muted-foreground mt-2 text-sm">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <>
+                <h1 className="text-xl font-semibold">
+                  You&apos;re invited to a {kindLabel ?? "Passport adventure"}
+                </h1>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  Join to see what it is, who&apos;s going and what&apos;s
+                  planned.
+                </p>
+              </>
+            )}
             {error && (
               <p role="alert" className="text-destructive mt-3 text-sm">
                 {error}

@@ -98,6 +98,16 @@ export const ADVENTURE_KINDS: readonly AdventureKind[] = [
     joinVisibility: "members",
     startable: false,
   },
+  {
+    // A Date Night built on the core, for two accounts (src/domain/date-night/
+    // adventures). Started from its own page, not Passport's start menu.
+    id: "date-night-plan",
+    label: "Date Night",
+    blurb: "Ideas to vote on, a plan, a packing list and the memories after.",
+    joinVisibility: "members",
+    home: "/night",
+    startable: false,
+  },
 ];
 
 /**

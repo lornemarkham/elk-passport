@@ -20,6 +20,7 @@ describe("adventure kinds", () => {
       "trip",
       "christmas",
       "date-night",
+      "date-night-plan",
     ]);
   });
 

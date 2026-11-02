@@ -348,6 +348,19 @@ async function services({ fresh }) {
     );
     await sql(dateNight);
     await sql(dateNight);
+    // Shared memories (the Markham Adventure's photos) and its packing list,
+    // each twice as well.
+    for (const file of [
+      "20261101000000_passport_adventure_together.sql",
+      "20261102100000_passport_adventure_packing.sql",
+    ]) {
+      const text = fs.readFileSync(
+        path.join(repo, "supabase/migrations", file),
+        "utf8",
+      );
+      await sql(text);
+      await sql(text);
+    }
   }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {
