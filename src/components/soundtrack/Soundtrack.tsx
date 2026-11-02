@@ -68,6 +68,7 @@ export function Soundtrack({
   const [tried, setTried] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [allMoods, setAllMoods] = useState(false);
 
   const songs = songsFor(driveMinutes);
   const problem = whyNot(paste);
@@ -187,10 +188,9 @@ export function Soundtrack({
                 type="button"
                 disabled={disabled}
                 onClick={() => void onClear()}
-                aria-label="Remove the soundtrack"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-black/45 hover:bg-black/5 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[14px] font-bold text-black/50 hover:bg-black/5 disabled:opacity-50"
               >
-                <X className="h-4 w-4" aria-hidden />
+                <X className="h-4 w-4" aria-hidden /> Remove
               </button>
             )}
           </div>
@@ -288,12 +288,18 @@ export function Soundtrack({
       )}
 
       {moods.length > 0 && (
-        <div className="mt-4" data-testid="soundtrack-moods">
-          <p className="text-[13px] font-extrabold">
-            {current ? "Or try one of these" : "No playlist yet? Start here"}
-          </p>
-          <ul className="mt-2 space-y-2">
-            {moods.map((m) => (
+        <details
+          className="group mt-4"
+          data-testid="soundtrack-moods"
+          open={current ? undefined : true}
+        >
+          <summary className="min-h-10 cursor-pointer list-none py-2 text-[13px] font-extrabold [&::-webkit-details-marker]:hidden">
+            {current
+              ? "Other playlists for tonight ▾"
+              : "No playlist yet? Start with one of these"}
+          </summary>
+          <ul className="mt-1 space-y-2">
+            {(allMoods ? moods : moods.slice(0, 3)).map((m) => (
               <li
                 key={m.mood}
                 className="rounded-2xl bg-black/[0.035] p-3"
@@ -336,10 +342,19 @@ export function Soundtrack({
               </li>
             ))}
           </ul>
+          {moods.length > 3 && !allMoods && (
+            <button
+              type="button"
+              onClick={() => setAllMoods(true)}
+              className="mt-2 min-h-10 rounded-full px-3 text-[13px] font-bold ring-1 ring-black/10"
+            >
+              More moods · {moods.length - 3}
+            </button>
+          )}
           <p className="mt-2 text-[11.5px] text-black/45">
             Spotify&apos;s own public playlists, checked 2 November 2026.
           </p>
-        </div>
+        </details>
       )}
     </section>
   );

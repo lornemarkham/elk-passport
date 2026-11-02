@@ -94,6 +94,8 @@ SELECT column_name, data_type
 --
 --   PGRST205 on the panel, G all true  → the API's schema cache is stale:
 --       NOTIFY pgrst, 'reload schema';
+--       (Since FINISH-POLISH-SHIP.md the packing and together migrations
+--       end with that NOTIFY, so re-running the file does both.)
 --   42501 on the panel, G has a false  → the grants didn't land; re-run
 --       supabase/migrations/20261102100000_passport_adventure_packing.sql
 --       (guarded, safe twice), then the NOTIFY above.

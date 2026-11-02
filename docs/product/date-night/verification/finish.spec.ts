@@ -244,6 +244,7 @@ test("Date Night, finished: send, answer, turns, soundtrack, memories", async ({
   expect(song.link).toBe(`https://open.spotify.com/playlist/${PLAYLIST}`);
   await claimsNothing(lorne);
   // Saving another replaces it rather than piling up.
+  await music.getByText("Other playlists for tonight").click();
   await writes(
     lorne,
     () =>
@@ -321,13 +322,19 @@ test("Date Night, finished: send, answer, turns, soundtrack, memories", async ({
   await shot(lorne, "05-memories", true);
 
   // ------------------------------------- a desktop, by keyboard, no sheet
+  // A real desktop: the project's phone settings would otherwise carry over.
   const desk = await browser.newContext({
     viewport: { width: 1440, height: 900 },
+    isMobile: false,
+    hasTouch: false,
+    deviceScaleFactor: 1,
     reducedMotion: "reduce",
     permissions: ["clipboard-read", "clipboard-write"],
   });
   const desktop = await desk.newPage();
   await signIn(desktop, "lorne");
+  // The clipboard only takes writes from the focused page.
+  await desktop.bringToFront();
   await desktop.goto(`${nightPath}#together`);
   await settle(desktop);
   await desktop.getByTestId("make-dare").focus();
@@ -350,12 +357,13 @@ test("Date Night, finished: send, answer, turns, soundtrack, memories", async ({
     /\/night\/[^?]+\?p=[0-9a-f-]{36}$/,
   );
   await desktop.getByTestId("ready-send").click();
-  await expect
-    .poll(() => desktop.evaluate(() => navigator.clipboard.readText()))
-    .toMatch(/Howl at the moon\. Once\.\nhttp:\/\/\S+\/night\/\S+\?p=/);
+  // The toast first: it only stays four seconds.
   await expect(
     desktop.getByText(/^Link copied\. Paste it into a message to jess-fp-/),
   ).toBeVisible();
+  await expect
+    .poll(() => desktop.evaluate(() => navigator.clipboard.readText()))
+    .toMatch(/Howl at the moon\. Once\.\nhttp:\/\/\S+\/night\/\S+\?p=/);
   await claimsNothing(desktop);
   await shot(desktop, "06-desktop-copied");
 });

@@ -1052,6 +1052,16 @@ certainty. Do not invent an answer here to make the document feel finished.
     silent shift. One composition; whether "no chat, things to text" holds
     for groups larger than two is open, and whether these small plays sit
     under §6 or §14's "elaborate social games" is the owner's call.
+    _Informed again 2026-11-02 by Date Night, finished_
+    (`docs/product/date-night/FINISH-POLISH-SHIP.md`): sending is two honest
+    steps (make it, then send it from your own messages, with the link shown
+    and copyable), and nothing ever says a message was sent. Each play says
+    whose turn it is. Music arrives as a **Passport Soundtrack**: a Spotify
+    link kept on the adventure as an ordinary item, opened in Spotify, with
+    no sign-in, plus real Spotify playlists for the moods an Experience
+    names. It is a shared capability with an experience-neutral component,
+    used by one composition; whether other Experiences show it the same way
+    is theirs to decide (§10).
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

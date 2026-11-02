@@ -1,8 +1,10 @@
 # Date Night
 
-> Latest: [`SHARED-ADVENTURE.md`](SHARED-ADVENTURE.md) (2026-11-02): five
-> rooms behind a bottom bar, leave-time options, plays to text, and the
-> packing panel that says why it's off.
+> Latest: [`FINISH-POLISH-SHIP.md`](FINISH-POLISH-SHIP.md) (2026-11-02):
+> the packing migration reloads PostgREST's cache (the PGRST205), Together's
+> buttons no longer grey out with the 15-second refresh, Make it → Send to
+> Jess with the link shown, whose turn it is, and the reusable Passport
+> Soundtrack. Before that: [`SHARED-ADVENTURE.md`](SHARED-ADVENTURE.md).
 
 A personal invitation to an adventure. The first one is **Lorne ❤️ Jess, 2
 November 2026**, at `gohaveaday.com/lorne-and-jess`. Owner brief: "Date Night —
