@@ -392,9 +392,6 @@ export function NightBoard({
         >
           <Share2 className="h-4 w-4" aria-hidden /> Invite {partner}
         </button>
-        <p className="mt-2 text-xs text-[var(--n-cream)]/55">
-          Send the invitation
-        </p>
       </div>
     </div>
   );
@@ -444,7 +441,7 @@ export function NightBoard({
             {day ? `${fullDate(day.on)} · Around 5 PM` : "Date night"}
           </p>
           <h1
-            className={`ghad-display mt-3 max-w-3xl text-[52px] leading-[0.88] font-extrabold tracking-tight text-balance uppercase sm:text-8xl ${styles.rise}`}
+            className={`ghad-display mt-3 max-w-3xl text-[clamp(2.4rem,11vw,6rem)] leading-[0.88] font-extrabold tracking-tight text-balance uppercase ${styles.rise}`}
           >
             {displayTitle(view.title)}
           </h1>

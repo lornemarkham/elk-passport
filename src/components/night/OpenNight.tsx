@@ -66,7 +66,7 @@ export function OpenNight({
 
   return (
     <main
-      className={`relative isolate flex min-h-[100svh] flex-col justify-end overflow-hidden px-6 pt-24 pb-12 text-white sm:items-center sm:text-center ${styles.night} bg-[var(--n-ink)]`}
+      className={`relative isolate flex min-h-[100svh] flex-col justify-end overflow-hidden px-6 pt-24 pb-12 text-white sm:items-center sm:text-center ${styles.palette} bg-[var(--n-ink)]`}
     >
       <div className="absolute inset-0 -z-10" aria-hidden>
         <Image
@@ -85,7 +85,7 @@ export function OpenNight({
         An adventure for two
       </p>
       <h1
-        className={`ghad-display mt-3 max-w-3xl text-[56px] leading-[0.86] font-extrabold tracking-tight text-balance uppercase sm:text-8xl ${styles.rise}`}
+        className={`ghad-display mt-3 max-w-3xl text-[clamp(2.6rem,11.5vw,6rem)] leading-[0.88] font-extrabold tracking-tight text-balance uppercase ${styles.rise}`}
       >
         {title}
       </h1>

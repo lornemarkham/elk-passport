@@ -2,6 +2,7 @@
    of the way (physics-of-passport: slow, settling, never bouncy). */
 /* The Markham Adventure: a field journal. Forest, charcoal, warm cream,
    burnt orange and campfire amber (mission 485). */
+.palette,
 .night {
   --n-forest: #1f3a2e;
   --n-ink: #1c1b18;
@@ -9,6 +10,9 @@
   --n-paper: #fbf7ef;
   --n-ember: #c2571a;
   --n-amber: #e8a33d;
+}
+
+.night {
   color: var(--n-ink);
   background:
     radial-gradient(120% 50% at 50% 0%, #f8f1e4 0%, transparent 60%),
