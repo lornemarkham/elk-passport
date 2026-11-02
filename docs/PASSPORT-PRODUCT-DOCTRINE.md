@@ -1040,6 +1040,18 @@ certainty. Do not invent an answer here to make the document feel finished.
     place Atlas hasn't checked is refused, never invented. A capability
     whose table isn't applied says so instead of looking like it works. One
     composition.
+    _Informed again 2026-11-02 by Date Night, shared_
+    (`docs/product/date-night/SHARED-ADVENTURE.md`): the two people play
+    before the night begins, and **texting is the channel, not an in-app
+    chat**. Passport makes small things worth sending (a This or That, a
+    challenge, a choice the other person makes, a note that opens at sunset),
+    and the texted link opens that exact thing, through the invitation if
+    they haven't joined yet. A new leave time is answered with honest ways to
+    spend it (shorter, more light for the main thing, the other ending, a
+    closer adventure, or the plan as it is with its warnings), never a
+    silent shift. One composition; whether "no chat, things to text" holds
+    for groups larger than two is open, and whether these small plays sit
+    under §6 or §14's "elaborate social games" is the owner's call.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

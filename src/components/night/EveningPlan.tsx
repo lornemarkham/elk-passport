@@ -132,6 +132,7 @@ export function EveningPlan({
   chooser,
   chooserOpen,
   onToggleChooser,
+  onLeave,
 }: {
   readonly evening: Evening | undefined;
   readonly stops: readonly PlanStop[];
@@ -151,6 +152,8 @@ export function EveningPlan({
   readonly chooser?: React.ReactNode;
   readonly chooserOpen?: boolean;
   readonly onToggleChooser?: () => void;
+  /** Change when we leave (the Change it room). */
+  readonly onLeave?: () => void;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
@@ -216,17 +219,37 @@ export function EveningPlan({
           ["Home", home !== undefined ? clock(home) : "—", House],
         ].map(([term, value, Icon]) => {
           const I = Icon as typeof Car;
-          return (
-            <div
-              key={term as string}
-              className="border-white/10 px-3 py-3 not-first:border-l sm:px-5"
-            >
+          const leaving = term === "Leave" && onLeave;
+          const cell = (
+            <>
               <dt className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-[var(--n-amber)] uppercase">
                 <I className="h-3.5 w-3.5" aria-hidden /> {term as string}
+                {leaving && (
+                  <Pencil className="ml-auto h-3.5 w-3.5" aria-hidden />
+                )}
               </dt>
               <dd className="mt-1 text-[19px] leading-none font-extrabold tabular-nums sm:text-2xl">
                 {value as string}
               </dd>
+            </>
+          );
+          return leaving ? (
+            <button
+              key={term as string}
+              type="button"
+              onClick={onLeave}
+              data-testid="change-leave"
+              aria-label={`Leave ${value as string}. Change when we leave`}
+              className="border-white/10 px-3 py-3 text-left not-first:border-l hover:bg-white/5 sm:px-5"
+            >
+              {cell}
+            </button>
+          ) : (
+            <div
+              key={term as string}
+              className="border-white/10 px-3 py-3 not-first:border-l sm:px-5"
+            >
+              {cell}
             </div>
           );
         })}
