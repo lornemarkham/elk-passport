@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nightConfig, pickMystery } from ".";
+import { nightConfig, nightForTitle, pickMystery } from ".";
 
 describe("night configs", () => {
   const markham = nightConfig("datenight")!;
@@ -7,7 +7,15 @@ describe("night configs", () => {
   it("holds the brief's six activities and seven packing items", () => {
     expect(markham.activities.map((a) => a.id)).toHaveLength(6);
     expect(markham.packing).toHaveLength(7);
-    expect(markham.invitation[0]).toContain("Monday");
+    expect(markham.invitation[0]).toBe("Come on an adventure with me. ❤️");
+  });
+
+  it("has no family name in public, and still knows nights made before", () => {
+    expect(markham.adventureTitle).toBe("Just us ❤️");
+    expect(JSON.stringify(markham.invitation)).not.toMatch(/Markham/);
+    expect(nightForTitle("Just us ❤️")).toBe(markham);
+    expect(nightForTitle("The Markham Adventure ❤️")).toBe(markham);
+    expect(nightForTitle("Someone else's night")).toBeUndefined();
   });
 
   it("claims no Atlas place it has not verified", () => {

@@ -1018,6 +1018,16 @@ certainty. Do not invent an answer here to make the document feel finished.
     with the Day Builder's clock readers and the night's checked places, and
     previewed before it is applied. The second planner, the second itinerary
     and the loose idea vote are gone. One composition.
+    _Informed again 2026-11-02 by Date Night, made magical_
+    (`docs/product/date-night/MAGICAL.md`, mission 495): the same structure,
+    presented as invitations and a journey. Once an adventure is chosen it
+    is the page's star and the others fold behind Change adventure. The
+    title says when, from the leave time (an afternoon is not called a
+    night), and names come from the people on it, not from code. The
+    sentence reader says it reads by rules, not AI, and what it can't do; a
+    place Atlas hasn't checked is refused, never invented. A capability
+    whose table isn't applied says so instead of looking like it works. One
+    composition.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**

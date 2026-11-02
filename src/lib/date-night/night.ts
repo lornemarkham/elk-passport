@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { NightConfig } from "@/domain/date-night/adventures";
+import { isNightTitle, type NightConfig } from "@/domain/date-night/adventures";
 import {
   addItem,
   adventuresOf,
@@ -56,7 +56,7 @@ export async function startNight(
     (a) =>
       a.kind === "date-night-plan" &&
       a.role === "owner" &&
-      a.title === config.adventureTitle,
+      isNightTitle(config, a.title),
   );
   if (existing) return existing.id;
 

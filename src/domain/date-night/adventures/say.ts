@@ -40,14 +40,40 @@ export type Reading =
   | { readonly kind: "none"; readonly reply: string };
 
 export const EXAMPLES = [
-  "Let's leave earlier and get home by eight",
-  "More time at the lake",
+  "Let's leave later",
+  "Get us home by eight",
   "Find somewhere warm for dinner",
-  "Let's skip the swim",
-  "Can we leave an hour earlier?",
-  "Make it a little more romantic",
+  "Skip the swim",
+  "Make it more romantic",
+  "We want more time at the lake",
   "Find something fun along the way",
 ];
+
+/**
+ * What the reader understands, said plainly on the page: it is a set of
+ * rules, not a model, and a person should know where its edges are.
+ */
+export const UNDERSTANDS = [
+  "leaving earlier or later, or at a time",
+  "home by a time",
+  "more or less time somewhere",
+  "skipping a stop",
+  "somewhere warm for dinner",
+  "more romantic",
+  "something fun on the way",
+] as const;
+
+/** What a tag is called when it isn't on the plan. */
+const NOUN: Partial<Record<StopTag, string>> = {
+  swim: "swim",
+  hunt: "hunt",
+  fire: "fire",
+  stars: "stargazing",
+  dinner: "dinner",
+  sunset: "sunset stop",
+  pools: "hot pools",
+  lake: "lake",
+};
 
 const WORDS: Record<string, string> = {
   one: "1",
@@ -130,9 +156,14 @@ function find(
     .map((s, i) => ({ s, i }))
     .filter(({ s, i }) => has(s, tag, e, day) && !fixedAt(stops, i));
   if (all.length === 0) return -1;
-  // "the lake" is the lake stop itself before anything else at the lake.
+  // "the lake" is the lake stop itself before anything else at the lake,
+  // and never the cold dip when something else is there.
   const exact = all.find(({ s }) => ruleOf(e, s, day).tags[0] === tag);
-  return (exact ?? all[0]!).i;
+  const dry =
+    tag === "swim"
+      ? undefined
+      : all.find(({ s }) => !ruleOf(e, s, day).tags.includes("swim"));
+  return (exact ?? dry ?? all[0]!).i;
 }
 
 /** A checked Atlas place open for the whole of `[at, at + minutes]`. */
@@ -156,12 +187,25 @@ export function readRequest(
     };
   let stops: PlanStop[] = current.map((s) => ({ ...s }));
   const heard: string[] = [];
+  // Understood, but nothing to change: said only if nothing else is.
+  const notes: string[] = [];
+  const name = e?.composed ? "this plan" : (e?.title ?? "this plan");
+  const missing = (tag: StopTag) => {
+    const noun = NOUN[tag];
+    if (noun && !stops.some((s) => has(s, tag, e, day)))
+      notes.push(`There's no ${noun} on ${name}, so nothing changed there.`);
+  };
   const protect = new Set<string>();
   const relay = () => {
     stops = layOut(stops, stops[0]!.at, sunset, e, day);
   };
   const dinnerIndex = () =>
     stops.findIndex((s) => has(s, "dinner", e, day) && s.atlasRef);
+  /** A dinner that isn't a place: "Dinner to go". */
+  const takeaway = () =>
+    stops.findIndex(
+      (s, i) => has(s, "dinner", e, day) && !s.atlasRef && !fixedAt(stops, i),
+    );
 
   // ------------------------------------------------ the ending, or dinner
   const wantsWarm =
@@ -184,11 +228,36 @@ export function readRequest(
           : "The ending changes: fire, warm food and stars at the lake. Everything before it stays.",
       );
     } else if (target) {
-      heard.push(
+      notes.push(
         to === "warm"
           ? `Dinner's already somewhere warm: ${stops[dinnerIndex()]?.title.replace(/^Dinner at /, "") ?? "back in town"}.`
           : "You're already staying out at the lake.",
       );
+    } else if (wantsWarm && dinnerIndex() >= 0) {
+      notes.push(
+        `Dinner's already somewhere warm: ${stops[dinnerIndex()]!.title.replace(/^Dinner at /, "")}.`,
+      );
+    } else if (wantsWarm && dinnerIndex() < 0 && takeaway() >= 0) {
+      // Dinner to go becomes a sit-down dinner at a checked place open then.
+      const t = takeaway();
+      const now = stops[t]!;
+      const option = day.options.find(
+        (o) => o.phase === "unwind" && openFor(o, now.at, o.minutes),
+      );
+      if (option) {
+        stops[t] = {
+          ...optionStop(option, "dinner", now.travel),
+          at: now.at,
+          ...(now.id ? { id: now.id } : {}),
+        };
+        relay();
+        heard.push(
+          `${now.title} becomes a sit-down dinner at ${option.title}, open ${clock(option.opens!)}–${clock(option.closes!)}.`,
+        );
+      } else
+        notes.push(
+          "No place Atlas has checked is open for a sit-down dinner then, so dinner stays as it is.",
+        );
     } else if (wantsWarm && dinnerIndex() < 0) {
       const home = stops.findIndex((s) => s.key === "home");
       const at =
@@ -240,6 +309,18 @@ export function readRequest(
           `Dinner moves to ${pick.title}${pick.opens !== undefined ? `, open till ${clock(pick.closes!)}` : ""}. ${pick.caution ?? ""}`.trim(),
         );
       }
+    } else if (
+      romantic &&
+      stops.some((s) => ruleOf(e, s, day).romance !== undefined)
+    ) {
+      const i = stops.findIndex((s) => ruleOf(e, s, day).romance);
+      const s = stops[i]!;
+      const romance = ruleOf(e, s, day).romance!;
+      const shift = romance.endAt - (s.at + s.minutes);
+      if (shift >= 5) {
+        stops = layOut(stops, stops[0]!.at + shift, sunset, e, day);
+        heard.push(`${romance.line} Leave at ${clock(stops[0]!.at)}.`);
+      } else notes.push(`${s.title} already runs to ${clock(romance.endAt)}.`);
     } else if (romantic) {
       const i = find(stops, "stars", e, day);
       const j = i >= 0 ? i : find(stops, "sunset", e, day);
@@ -247,7 +328,7 @@ export function readRequest(
         stops[j] = { ...stops[j]!, minutes: stops[j]!.minutes + 20 };
         protect.add(stops[j]!.title);
         relay();
-        heard.push(`Twenty more minutes for ${stops[j]!.title.toLowerCase()}.`);
+        heard.push(`Twenty more minutes for ${spokenTitle(stops[j]!.title)}.`);
       }
     }
   }
@@ -262,7 +343,17 @@ export function readRequest(
       const tag = targetIn(rest.split(/\b(and|but|then)\b/)[0]!);
       if (!tag || /\bno (later|earlier|more|less)\b/.test(phrase)) continue;
       const i = find(stops, tag, e, day);
-      if (i < 0) continue;
+      if (i < 0) {
+        missing(tag);
+        continue;
+      }
+      const rule = ruleOf(e, stops[i]!, day);
+      if (rule.main && rule.tags[0] !== tag) {
+        notes.push(
+          `${stops[i]!.title} is the heart of ${name}. To skip it, choose another adventure.`,
+        );
+        continue;
+      }
       const title = stops[i]!.title;
       const removed = removeStop(stops, i, sunset, e, day);
       if (removed) {
@@ -312,9 +403,23 @@ export function readRequest(
     const tag = targetIn(m[3]!);
     if (!tag) continue;
     const i = find(stops, tag, e, day);
-    if (i < 0) continue;
+    if (i < 0) {
+      missing(tag);
+      continue;
+    }
     const by = amountIn(text.slice(m.index ?? 0)) ?? 30;
     const s = stops[i]!;
+    const rule = ruleOf(e, s, day);
+    if (
+      sign > 0 &&
+      rule.tags.includes("swim") &&
+      !rule.tags.includes("pools")
+    ) {
+      notes.push(
+        "The cold dip stays short: a minute or two is the safe amount. Say “more time at the sunset” to linger by the water.",
+      );
+      continue;
+    }
     const least = ruleOf(e, s, day).least;
     const minutes = Math.max(
       sign > 0 ? s.minutes : least,
@@ -325,7 +430,7 @@ export function readRequest(
     protect.add(s.title);
     relay();
     heard.push(
-      `${sign > 0 ? "More" : "Less"} time for ${s.title.replace(/^Explore /, "").toLowerCase()}: ${minutes} minutes instead of ${s.minutes}.`,
+      `${sign > 0 ? "More" : "Less"} time for ${spokenTitle(s.title.replace(/^Explore /, ""))}: ${minutes} minutes instead of ${s.minutes}.`,
     );
   }
 
@@ -358,13 +463,18 @@ export function readRequest(
     leaveAt = leaving + (relative[3] === "later" ? by : -by);
   }
   if (leaveAt !== undefined && leaveAt !== leaving) {
+    const before = stops;
     stops = layOut(stops, leaveAt, sunset, e, day);
     const diff = leaving - leaveAt;
-    const hunt = find(stops, "hunt", e, day);
+    // The stop that stretches gives or takes the difference, so the sunset
+    // stays where it was: say which, and by how much.
+    const giver = stops.findIndex((s) => ruleOf(e, s, day).stretch);
+    const gave =
+      giver >= 0 ? stops[giver]!.minutes - before[giver]!.minutes : 0;
     heard.push(
       `Leave at ${clock(leaveAt)}, ${diff > 0 ? `${spoken(diff)} earlier` : `${spoken(-diff)} later`}.${
-        hunt >= 0 && diff > 0
-          ? " The extra daylight goes to the grouse; the sunset stays at the lake."
+        gave !== 0
+          ? ` ${gave > 0 ? `${spoken(gave)} more` : `${spoken(-gave)} less`} for ${spokenTitle(stops[giver]!.title.replace(/ along .*$/, ""))}, so you still catch the sunset.`
           : ""
       }`,
     );
@@ -389,7 +499,7 @@ export function readRequest(
   }
   if (by !== undefined) {
     if (end <= by)
-      heard.push(`Home by ${clock(by)}: you already are, about ${clock(end)}.`);
+      notes.push(`Home by ${clock(by)}: you already are, about ${clock(end)}.`);
     else {
       const protectIdx = new Set(
         stops.flatMap((s, i) => (protect.has(s.title) ? [i] : [])),
@@ -402,23 +512,59 @@ export function readRequest(
         );
       else
         heard.push(
-          `Home by ${clock(by)}: ${fit.trimmed.length ? `a little less time for ${fit.trimmed.map((t) => t.toLowerCase()).join(" and ")}` : "it fits"}.`,
+          `Home by ${clock(by)}: ${fit.trimmed.length ? `a little less time for ${fit.trimmed.map(spokenTitle).join(" and ")}` : "it fits"}.`,
         );
     }
   }
 
+  // A place that closes may have given time back: say so.
+  stops.forEach((s, i) => {
+    const closes = ruleOf(e, s, day).closesAt;
+    const was = current.find((c) => c.title === s.title);
+    if (
+      closes !== undefined &&
+      was &&
+      s.minutes < was.minutes &&
+      s.at + s.minutes === closes &&
+      i > 0
+    )
+      heard.push(
+        `That leaves ${spoken(s.minutes)} at ${s.title}, which closes at ${clock(closes)}.`,
+      );
+  });
+
   if (heard.length === 0)
     return {
       kind: "none",
-      reply: `I didn't catch a change in that. Try “${EXAMPLES[0]}”, “${EXAMPLES[3]}” or “${EXAMPLES[2]}”.`,
+      reply: notes.length
+        ? notes.join(" ")
+        : PLACE_ASK.test(text)
+          ? "Passport only suggests places Atlas has checked for this night, and none of them fits that, so it won't make one up. If you know a place, add it with Add something."
+          : `I didn't catch a change in that. I understand ${UNDERSTANDS.slice(0, -1).join(", ")} and ${UNDERSTANDS[UNDERSTANDS.length - 1]}.`,
     };
-  return { kind: "change", heard, stops };
+  return { kind: "change", heard: [...heard, ...notes], stops };
+}
+
+/** Asking for a place or a thing to do, rather than a change of time. */
+const PLACE_ASK =
+  /\b(find|somewhere|some place|a place|go to|go for|instead|restaurant|cafe|coffee|bar|pub|pizza|sushi|bowling|movie|show|museum|winery|brewery|spa)\b/;
+
+/**
+ * A stop's title inside a sentence: "dinner at BNA Brewing", "stars", but a
+ * name stays a name ("King Edward Lake").
+ */
+export function spokenTitle(title: string): string {
+  const words = title.split(" ");
+  if (words.length > 1 && words.every((w) => /^[A-Z0-9&]/.test(w)))
+    return title;
+  return title.charAt(0).toLowerCase() + title.slice(1);
 }
 
 function spoken(minutes: number): string {
   if (minutes % 60 === 0)
     return minutes === 60 ? "an hour" : `${minutes / 60} hours`;
   if (minutes === 30) return "half an hour";
+  if (minutes > 60) return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
   return `${minutes} minutes`;
 }
 

@@ -31,6 +31,8 @@ export interface NightConfig {
   readonly title: string;
   /** The adventure's own title in the database. */
   readonly adventureTitle: string;
+  /** Titles nights were stored under before; still this night. */
+  readonly formerTitles?: readonly string[];
   readonly tagline: string;
   /** What the invitation says, shown on the share screen and the join page. */
   readonly invitation: readonly string[];

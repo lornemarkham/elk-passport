@@ -6,6 +6,7 @@ import { MARKHAM } from "@/domain/date-night/adventures/markham";
 import {
   addItem,
   adventureFor,
+  createAdventure,
   createInvite,
   redeemInvite,
   respond,
@@ -234,4 +235,19 @@ describe.skipIf(!ENV_FILE)("The Markham Adventure (real stack)", () => {
     expect(back.items.find((i) => i.id === itemId)?.yourResponse).toBe("in");
     expect((await packingOf(again, id))[0]!.checked).toBe(false);
   }, 60_000);
+
+  it("finds a night stored under its old title instead of making a second", async () => {
+    const owner = await signUp("legacy");
+    const old = await createAdventure(owner.db, {
+      kind: "date-night-plan",
+      title: "The Markham Adventure ❤️",
+      displayName: "Legacy",
+      startsOn: null,
+      endsOn: null,
+      timeZone: null,
+      destinationLabel: null,
+      destinationTownId: null,
+    });
+    expect(await startNight(owner.db, owner.id, "Legacy", MARKHAM)).toBe(old);
+  }, 30_000);
 });

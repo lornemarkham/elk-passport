@@ -55,6 +55,8 @@ export interface StopRule {
   readonly optional: boolean;
   readonly main: boolean;
   readonly option?: DayOption;
+  readonly closesAt?: number;
+  readonly romance?: StopTemplate["romance"];
 }
 
 /** Every stop template an adventure knows: its stops and both endings. */
@@ -116,6 +118,10 @@ export function ruleOf(
     optional: Boolean(template?.optional),
     main: Boolean(template?.main),
     ...(option ? { option } : {}),
+    ...(template?.closesAt !== undefined
+      ? { closesAt: template.closesAt }
+      : {}),
+    ...(template?.romance ? { romance: template.romance } : {}),
   };
 }
 
@@ -171,6 +177,15 @@ export function layOut(
       }
     }
   }
+  // A place that closes ends the stop there, never below its least; what
+  // still runs over is said by `warningsFor`.
+  out.forEach((s) => {
+    const rule = ruleOf(evening, s, day);
+    if (rule.closesAt === undefined || s.at + s.minutes <= rule.closesAt)
+      return;
+    s.minutes = Math.max(rule.least, rule.closesAt - s.at);
+    time();
+  });
   return out;
 }
 
@@ -474,6 +489,11 @@ export function warningsFor(
       s.at > sunset + rule.byAfterSunset
     )
       out.push({ stop: i, line: "This one needs daylight." });
+    if (rule.closesAt !== undefined && end > rule.closesAt)
+      out.push({
+        stop: i,
+        line: `${s.title} closes at ${clock(rule.closesAt)}.`,
+      });
     if (rule.beforeSunset !== undefined && s.at > sunset + 5)
       out.push({
         stop: i,

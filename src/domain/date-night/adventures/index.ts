@@ -15,9 +15,14 @@ const NIGHTS: readonly NightConfig[] = [MARKHAM];
 export const nightConfig = (slug: string): NightConfig | undefined =>
   NIGHTS.find((n) => n.slug === slug);
 
+/** Whether an adventure's stored title is this night's, now or before. */
+export const isNightTitle = (config: NightConfig, title: string): boolean =>
+  config.adventureTitle === title ||
+  (config.formerTitles ?? []).includes(title);
+
 /** The night an existing adventure was made from, by its title. */
 export const nightForTitle = (title: string): NightConfig | undefined =>
-  NIGHTS.find((n) => n.adventureTitle === title);
+  NIGHTS.find((n) => isNightTitle(n, title));
 
 /** Which Atlas place a mystery reveals: the first not already on the plan. */
 export function pickMystery(

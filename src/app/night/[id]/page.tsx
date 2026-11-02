@@ -23,7 +23,7 @@ import { sunsetOf } from "@/domain/date-night/adventures/compose";
 import { eveningOf } from "@/domain/date-night/adventures/evenings";
 
 export const metadata: Metadata = {
-  title: "The Markham Adventure ❤️",
+  title: "Just us ❤️",
   robots: { index: false },
 };
 

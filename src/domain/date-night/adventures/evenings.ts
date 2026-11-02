@@ -99,6 +99,13 @@ export interface StopTemplate {
   readonly main?: true;
   /** Fine to drop; said so on the stop. */
   readonly optional?: true;
+  /** The place closes then (minutes after midnight): the stop ends by it. */
+  readonly closesAt?: number;
+  /**
+   * What "make it more romantic" means for this stop, when it isn't dinner:
+   * be there until `endAt` (the night moves later to fit), said as `line`.
+   */
+  readonly romance?: { readonly endAt: number; readonly line: string };
 }
 
 /** "Stay wild" or "Warm ending": the same day, finished two ways. */
@@ -124,6 +131,8 @@ export interface Evening {
   /** "Jess's Pick". */
   readonly pick?: string;
   readonly line: string;
+  /** The card's one line: short enough to read at a glance. */
+  readonly teaser: string;
   readonly where: string;
   readonly drive: string;
   readonly highlights: readonly string[];
@@ -225,6 +234,8 @@ export const EVENINGS: readonly Evening[] = [
     id: "king-eddie",
     title: "King Eddie Lake",
     aliases: ["Into the Wild"],
+    teaser:
+      "Forest roads, grouse in the last light, and a mountain lake to yourselves at sunset.",
     line: "Up the forest road for grouse in the afternoon light, a wander round the lake, a dip if you dare, and the sun going down over the water.",
     where: "King Edward Lake, above Coldstream",
     drive: "40–50 min up the King Edward FSR",
@@ -370,6 +381,8 @@ export const EVENINGS: readonly Evening[] = [
     id: "crazy-creek",
     title: "Crazy Creek Escape",
     pick: "Jess's Pick",
+    teaser:
+      "Hot pools in the cedars below a waterfall. A long soak, then a cozy drive home.",
     line: "A scenic drive past Mara and Shuswap lakes to hot pools in the cedars below Crazy Creek Falls. Dinner to go, a long soak, a cozy drive home.",
     where: "Crazy Creek Hot Pools, Malakwa",
     drive: "About 1½ hours each way",
@@ -412,6 +425,11 @@ export const EVENINGS: readonly Evening[] = [
           "Crazy Creek Hot Pools Resort, 6162 Trans-Canada Hwy, Malakwa, BC",
         tags: ["pools", "swim"],
         main: true,
+        closesAt: 22 * 60,
+        romance: {
+          endAt: 22 * 60,
+          line: "Later into the evening, so you're in the pools for the adults-only hour, 9 to 10.",
+        },
       },
       {
         key: "home",
@@ -439,6 +457,8 @@ export const EVENINGS: readonly Evening[] = [
   {
     id: "cold-water",
     title: "Cold Water, Warm Fire",
+    teaser:
+      "One screaming-cold dip in Kal Lake, then dry clothes, dinner and a fire.",
     line: "A screaming-cold dip in Kal Lake before the sun goes, then dry clothes, hot chocolate, dinner and a fire at home.",
     where: "Kal Beach, Coldstream",
     drive: "Minutes from home",
@@ -509,6 +529,8 @@ export const EVENINGS: readonly Evening[] = [
   {
     id: "surprise",
     title: "Surprise Us",
+    teaser:
+      "Passport picks real places near home that are open tonight. No peeking.",
     line: "Passport picks the evening from real places near home, open on a Monday night. No peeking.",
     where: "Somewhere near home",
     drive: "Close to home",

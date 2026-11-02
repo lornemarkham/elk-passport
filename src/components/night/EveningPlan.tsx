@@ -7,25 +7,34 @@ import {
   ArrowUp,
   Car,
   ChevronDown,
+  CloudSun,
+  House,
   Navigation,
   Pencil,
   Plus,
+  Shuffle,
   Sunset,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { Picture } from "@/components/adventures/Picture";
 import type { Experience } from "@/domain/experience/types";
+import type { NightDay } from "@/domain/date-night/adventures";
+import type { DayForecast } from "@/domain/date-night/conditions";
 import {
   directionsTo,
+  PHOTOS,
   type Evening,
+  type Photo,
 } from "@/domain/date-night/adventures/evenings";
 import {
   clock,
   endingOf,
   fixedAt,
   homeAt,
+  ruleOf,
   type PlanStop,
+  type StopRule,
   type Warning,
 } from "@/domain/date-night/adventures/itinerary";
 import { cardPictures } from "@/lib/media/cardPicture";
@@ -56,13 +65,56 @@ export interface PlanActions {
   readonly ending: (id: string) => void;
 }
 
+/** Where the light is: it decides the colour of each stop's time. */
+type Light = "day" | "golden" | "night";
+const lightAt = (at: number, sunset: number): Light =>
+  at < sunset - 60 ? "day" : at <= sunset + 20 ? "golden" : "night";
+const LIGHT: Record<Light, { dot: string; time: string; line: string }> = {
+  day: {
+    dot: "bg-[var(--n-amber)]/60 ring-[var(--n-amber)]/30",
+    time: "text-[var(--n-ink)]",
+    line: "from-[var(--n-amber)]/45 to-[var(--n-amber)]/45",
+  },
+  golden: {
+    dot: "bg-[var(--n-ember)] ring-[var(--n-ember)]/25",
+    time: "text-[var(--n-ember)]",
+    line: "from-[var(--n-ember)]/60 to-[var(--n-ember)]/60",
+  },
+  night: {
+    dot: "bg-[#2b3550] ring-[#2b3550]/20",
+    time: "text-[#2b3550]",
+    line: "from-[#2b3550]/50 to-[#2b3550]/50",
+  },
+};
+
+/** The photograph a big moment gets, if it has one of its own. */
+function photoOf(
+  stop: PlanStop,
+  rule: StopRule,
+  e: Experience | undefined,
+  hero: Photo | undefined,
+): { kind: "atlas"; e: Experience } | { kind: "photo"; photo: Photo } | null {
+  if (stop.atlasRef && realPhoto(e)) return { kind: "atlas", e: e! };
+  const photo = rule.tags.includes("fire")
+    ? PHOTOS.campfire
+    : rule.tags.includes("sunset")
+      ? PHOTOS.sunset
+      : undefined;
+  // The hero already shows the adventure's own photograph.
+  return photo && photo.src !== hero?.src ? { kind: "photo", photo } : null;
+}
+
 /**
- * **Our adventure — the schedule.** The one itinerary: time, what, where, a
- * line, directions where they help. The owner changes any stop (Change ·
- * Move · Remove) and adds; the other person adds their own and changes what
- * they added. An adventure with two endings offers them here, as a way to
- * customise this adventure (not choose another). What the times get wrong —
- * a hunt after legal hours, a dip after dark — is said on the stop.
+ * **Our adventure — the journey.** The one itinerary, read top to bottom
+ * like the afternoon and evening it is: the light at each stop (day, golden,
+ * night), the sunset where it falls, the drive between stops, and a
+ * photograph only on the moments that have one of their own, so it stays
+ * quick to scan. The owner changes any stop (Change · Earlier · Later ·
+ * Remove) and adds; the other person adds their own and changes what they
+ * added. An adventure with two endings offers them as how it ends. What the
+ * times get wrong — a hunt after legal hours, a dip after dark, a place
+ * after it closes — is said on the stop. What the last change touched is
+ * marked, so nobody has to hunt for it.
  */
 export function EveningPlan({
   evening,
@@ -74,6 +126,12 @@ export function EveningPlan({
   busy,
   next,
   actions,
+  day,
+  forecast,
+  changed,
+  chooser,
+  chooserOpen,
+  onToggleChooser,
 }: {
   readonly evening: Evening | undefined;
   readonly stops: readonly PlanStop[];
@@ -85,6 +143,14 @@ export function EveningPlan({
   /** On the day: the stop that's now or next. */
   readonly next?: number;
   readonly actions: PlanActions;
+  readonly day: NightDay;
+  readonly forecast?: DayForecast;
+  /** Titles of the stops the last change touched. */
+  readonly changed?: ReadonlySet<string>;
+  /** The other adventures, behind Change adventure. */
+  readonly chooser?: React.ReactNode;
+  readonly chooserOpen?: boolean;
+  readonly onToggleChooser?: () => void;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
@@ -92,46 +158,109 @@ export function EveningPlan({
   const title = evening?.composed
     ? "Passport's surprise"
     : (evening?.title ?? "Our own plan");
-  const photo = evening?.photo;
   const endings = evening?.endings ?? [];
   const onEnding = endingOf(stops, evening);
   const home = homeAt(stops);
+  // The sunset falls before the first stop that starts after it.
+  const afterSunset = stops.findIndex(
+    (s, i) => i > 0 && s.at >= sunset && stops[i - 1]!.at < sunset,
+  );
 
   return (
     <div data-testid="evening-plan">
-      <div className="relative isolate overflow-hidden rounded-[28px] bg-[var(--n-ink)] px-5 pt-16 pb-5 text-white">
-        {photo && (
-          <Image
-            src={photo.src}
-            alt=""
-            fill
-            sizes="(min-width: 640px) 672px, 100vw"
-            className="-z-10 object-cover opacity-60"
-          />
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-ember)] uppercase">
+            Our adventure
+          </p>
+          <h2 className="ghad-display mt-1 text-[32px] leading-[0.92] font-extrabold tracking-tight uppercase sm:text-[44px]">
+            {title}
+          </h2>
+        </div>
+        {chooser && (
+          <button
+            type="button"
+            onClick={onToggleChooser}
+            aria-expanded={chooserOpen ?? false}
+            aria-controls="evenings"
+            data-testid="change-adventure"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-bold text-[var(--n-forest)] ring-1 ring-[var(--n-forest)]/25 hover:bg-[var(--n-forest)]/5"
+          >
+            <Shuffle className="h-4 w-4" aria-hidden />
+            {chooserOpen ? "Keep this one" : "Change adventure"}
+          </button>
         )}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[var(--n-ink)] via-[var(--n-ink)]/60 to-transparent" />
-        <p className="text-xs font-extrabold tracking-[0.22em] text-[var(--n-amber)] uppercase">
-          Our adventure
-        </p>
-        <h2 className="ghad-display mt-1 text-[38px] leading-[0.92] font-extrabold tracking-tight uppercase sm:text-5xl">
-          {title}
-        </h2>
-        <p
-          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] font-semibold text-white/85"
-          data-testid="plan-summary"
-        >
-          <span>Leave {clock(stops[0]!.at)}</span>
-          <span className="inline-flex items-center gap-1">
-            <Sunset className="h-4 w-4" aria-hidden /> Sunset {clock(sunset)}
-          </span>
-          {home !== undefined && <span>Home about {clock(home)}</span>}
-        </p>
       </div>
 
+      {chooser && chooserOpen && (
+        <div
+          id="evenings"
+          className="mt-4 scroll-mt-20 rounded-[26px] bg-black/[0.035] p-3"
+        >
+          <p className="px-2 pb-2 text-[13px] font-semibold text-[var(--n-ink)]/60">
+            {isOwner
+              ? "The others, ready if you change your minds."
+              : "Suggest another one, and it goes to the planner."}
+          </p>
+          {chooser}
+        </div>
+      )}
+
+      <dl
+        className="mt-4 grid grid-cols-3 overflow-hidden rounded-[22px] bg-[var(--n-ink)] text-[var(--n-cream)]"
+        data-testid="plan-summary"
+      >
+        {[
+          ["Leave", clock(stops[0]!.at), Car],
+          ["Sunset", clock(sunset), Sunset],
+          ["Home", home !== undefined ? clock(home) : "—", House],
+        ].map(([term, value, Icon]) => {
+          const I = Icon as typeof Car;
+          return (
+            <div
+              key={term as string}
+              className="border-white/10 px-3 py-3 not-first:border-l sm:px-5"
+            >
+              <dt className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-[var(--n-amber)] uppercase">
+                <I className="h-3.5 w-3.5" aria-hidden /> {term as string}
+              </dt>
+              <dd className="mt-1 text-[19px] leading-none font-extrabold tabular-nums sm:text-2xl">
+                {value as string}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+      {forecast && (
+        <p
+          className="mt-2 flex items-start gap-1.5 px-1 text-[13px] text-[var(--n-ink)]/65"
+          data-testid="plan-weather"
+        >
+          <CloudSun className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            {[
+              forecast.words.slice(0, 2).join(", "),
+              forecast.highC !== undefined
+                ? `high ${Math.round(forecast.highC)}°`
+                : null,
+              forecast.lowC !== undefined
+                ? `low ${Math.round(forecast.lowC)}°`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            <span className="text-[var(--n-ink)]/45">
+              {" "}
+              — {forecast.source} for {forecast.city ?? day.area}
+            </span>
+          </span>
+        </p>
+      )}
+
       {endings.length > 1 && (
-        <fieldset className="mt-4" data-testid="endings">
+        <fieldset className="mt-5" data-testid="endings">
           <legend className="text-xs font-extrabold tracking-[0.18em] text-[var(--n-ink)]/55 uppercase">
-            Customize this adventure · how it ends
+            How it ends
           </legend>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {endings.map((e) => {
@@ -168,9 +297,10 @@ export function EveningPlan({
         </fieldset>
       )}
 
-      <ol className="mt-5" aria-label="The adventure, start to finish">
+      <ol className="mt-6" aria-label="The adventure, start to finish">
         {stops.map((stop, i) => {
           const e = stop.atlasRef ? experiences[stop.atlasRef] : undefined;
+          const rule = ruleOf(evening, stop, day);
           const lat = e?.location?.latitude;
           const lng = e?.location?.longitude;
           const href = stop.directions
@@ -183,31 +313,122 @@ export function EveningPlan({
           const mayChange = isOwner || stop.mine === true;
           const said = warnings.filter((w) => w.stop === i);
           const isOpen = open === i;
+          const light = LIGHT[lightAt(stop.at, sunset)];
+          const ends = i === 0 || fixedAt(stops, i);
+          const photo = ends ? null : photoOf(stop, rule, e, evening?.photo);
+          const fresh = changed?.has(stop.title) ?? false;
           return (
             <li key={stop.id ?? `${i}-${stop.title}`} data-testid="beat">
+              {i === afterSunset && (
+                <p
+                  className="relative my-2 ml-[66px] flex items-center gap-2 text-[12.5px] font-extrabold tracking-wide text-[var(--n-ember)] uppercase"
+                  data-testid="sunset-marker"
+                >
+                  <span className="h-px flex-1 bg-gradient-to-r from-[var(--n-amber)] to-[var(--n-ember)]/0" />
+                  <Sunset className="h-4 w-4" aria-hidden /> Sunset{" "}
+                  {clock(sunset)}
+                  <span className="h-px flex-1 bg-gradient-to-l from-[var(--n-amber)] to-[var(--n-ember)]/0" />
+                </p>
+              )}
               {stop.travel > 0 && (
-                <p className="flex items-center gap-2 py-1 pl-[66px] text-[12.5px] font-semibold text-[var(--n-ink)]/50">
-                  <Car className="h-3.5 w-3.5" aria-hidden />{" "}
-                  {length(stop.travel)} drive
+                <p className="flex items-center gap-2 py-1.5 pl-[58px] text-[12.5px] font-semibold text-[var(--n-ink)]/50">
+                  <span className="ml-[3px] h-6 border-l-2 border-dashed border-[var(--n-ink)]/20" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1">
+                    <Car className="h-3.5 w-3.5" aria-hidden />
+                    {length(stop.travel)} drive
+                  </span>
                 </p>
               )}
               <div
                 className={cn(
-                  "grid grid-cols-[58px_1fr] gap-x-2 rounded-2xl py-2 pr-1",
+                  "grid grid-cols-[52px_1fr] gap-x-3 rounded-2xl py-2 pr-1",
                   next === i &&
                     "bg-[var(--n-amber)]/20 ring-1 ring-[var(--n-amber)]",
+                  fresh && "bg-[var(--n-amber)]/10",
                 )}
+                data-changed={fresh || undefined}
               >
-                <p className="pt-0.5 text-right text-[15px] leading-tight font-extrabold text-[var(--n-ink)] tabular-nums">
+                <p
+                  className={cn(
+                    "pt-0.5 text-right text-[16px] leading-tight font-extrabold tabular-nums",
+                    light.time,
+                  )}
+                >
                   {clock(stop.at).replace(/ (am|pm)$/, "")}
                   <span className="block text-[10px] font-bold uppercase opacity-60">
                     {clock(stop.at).slice(-2)}
                   </span>
                 </p>
-                <div className="min-w-0 border-l-2 border-[var(--n-forest)]/15 pl-3">
+                <div className="relative min-w-0 pl-4">
+                  <span
+                    className={cn(
+                      "absolute top-2 left-0 h-2.5 w-2.5 -translate-x-1/2 rounded-full ring-4",
+                      light.dot,
+                    )}
+                    aria-hidden
+                  />
+                  <span
+                    className={cn(
+                      "absolute top-6 bottom-[-12px] left-0 w-0.5 -translate-x-1/2 bg-gradient-to-b",
+                      i === stops.length - 1 ? "hidden" : light.line,
+                    )}
+                    aria-hidden
+                  />
+                  {photo && (
+                    <figure className="mb-2.5 overflow-hidden rounded-2xl">
+                      {photo.kind === "atlas" ? (
+                        <Picture
+                          experience={photo.e}
+                          fallbackTitle=""
+                          showLabel={false}
+                          className="h-28 w-full sm:h-36"
+                        />
+                      ) : (
+                        <div className="relative h-28 w-full sm:h-36">
+                          <Image
+                            src={photo.photo.src}
+                            alt={photo.photo.alt}
+                            fill
+                            sizes="(min-width: 640px) 600px, 90vw"
+                            className="object-cover"
+                          />
+                          <figcaption className="absolute right-2 bottom-1.5 text-[10px] text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+                            {photo.photo.where} · {photo.photo.credit},{" "}
+                            {photo.photo.license}
+                          </figcaption>
+                        </div>
+                      )}
+                    </figure>
+                  )}
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-[16.5px] leading-tight font-extrabold text-[var(--n-ink)]">
+                      {(rule.main || fresh) && (
+                        <p className="mb-0.5 flex gap-1.5">
+                          {rule.main && (
+                            <span className="rounded-full bg-[var(--n-ember)] px-2 py-0.5 text-[10.5px] font-extrabold tracking-[0.12em] text-white uppercase">
+                              The big one
+                            </span>
+                          )}
+                          {fresh && (
+                            <span
+                              data-testid="stop-changed"
+                              className="rounded-full bg-[var(--n-amber)] px-2 py-0.5 text-[10.5px] font-extrabold tracking-[0.12em] text-[var(--n-ink)] uppercase"
+                            >
+                              Just changed
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      <h3
+                        className={cn(
+                          "leading-tight font-extrabold text-[var(--n-ink)]",
+                          ends
+                            ? "text-[15.5px]"
+                            : rule.main
+                              ? "text-[19px]"
+                              : "text-[17px]",
+                        )}
+                      >
                         {stop.title}
                       </h3>
                       <p className="mt-0.5 text-[12.5px] font-semibold text-[var(--n-ink)]/55">
@@ -222,14 +443,6 @@ export function EveningPlan({
                           .join(" · ")}
                       </p>
                     </div>
-                    {stop.atlasRef && realPhoto(e) && (
-                      <Picture
-                        experience={e}
-                        fallbackTitle=""
-                        showLabel={false}
-                        className="h-12 w-12 shrink-0 rounded-xl"
-                      />
-                    )}
                     {mayChange && (
                       <button
                         type="button"
@@ -240,14 +453,22 @@ export function EveningPlan({
                         aria-expanded={isOpen}
                         aria-label={`Edit ${stop.title}`}
                         data-testid="edit-stop"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--n-forest)] hover:bg-black/5"
+                        className={cn(
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--n-forest)] hover:bg-black/5",
+                          isOpen && "bg-[var(--n-forest)] text-white",
+                        )}
                       >
                         <Pencil className="h-4 w-4" aria-hidden />
                       </button>
                     )}
                   </div>
                   {stop.line && (
-                    <p className="mt-1 text-[14.5px] leading-snug text-[var(--n-ink)]/75">
+                    <p
+                      className={cn(
+                        "mt-1 leading-snug text-[var(--n-ink)]/75",
+                        ends ? "text-[13.5px]" : "text-[14.5px]",
+                      )}
+                    >
                       {stop.line}
                     </p>
                   )}

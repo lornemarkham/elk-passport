@@ -1,7 +1,13 @@
 "use client";
 
 import { useImperativeHandle, useRef, useState, type Ref } from "react";
-import { ArrowRight, MessageCircle, TriangleAlert, Undo2 } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  MessageCircle,
+  TriangleAlert,
+  Undo2,
+} from "lucide-react";
 import type { NightDay } from "@/domain/date-night/adventures";
 import type { Evening } from "@/domain/date-night/adventures/evenings";
 import {
@@ -14,6 +20,7 @@ import {
   diffPlans,
   EXAMPLES,
   readRequest,
+  UNDERSTANDS,
   type Reading,
 } from "@/domain/date-night/adventures/say";
 import { cn } from "@/lib/utils";
@@ -28,7 +35,10 @@ export interface MakeItOursHandle {
  * applied), answered with what would change: each stop's time before → after,
  * what's new and what goes. The owner applies it to the same itinerary and
  * can undo; the other person sends it as a suggestion. Not a chatbot: no
- * thread, no persona (doctrine §3).
+ * thread, no persona (doctrine §3). And not dressed up as one: the box says
+ * it reads by rules, what those rules understand, and that places only come
+ * from what Atlas has checked. After a change, what changed stays in view
+ * beside Undo until the next one.
  */
 export function MakeItOurs({
   stops,
@@ -53,7 +63,10 @@ export function MakeItOurs({
   readonly busy: boolean;
   readonly canUndo: boolean;
   readonly handle?: Ref<MakeItOursHandle>;
-  readonly onApply: (stops: readonly PlanStop[]) => Promise<boolean>;
+  readonly onApply: (
+    stops: readonly PlanStop[],
+    heard: readonly string[],
+  ) => Promise<boolean>;
   readonly onUndo: () => void;
   readonly onSuggest: (said: string) => Promise<boolean>;
 }) {
@@ -61,12 +74,14 @@ export function MakeItOurs({
   const [reading, setReading] = useState<{ said: string; r: Reading } | null>(
     null,
   );
+  const [applied, setApplied] = useState<readonly string[] | null>(null);
   const box = useRef<HTMLElement>(null);
 
   function ask(words: string) {
     const text = words.trim();
     if (!text) return;
     setSaid(text);
+    setApplied(null);
     setReading({
       said: text,
       r: readRequest(text, stops, evening, day, sunset),
@@ -102,6 +117,10 @@ export function MakeItOurs({
       >
         <MessageCircle className="h-6 w-6" aria-hidden /> Just say it
       </h2>
+      <p className="mt-2 max-w-md text-[14px] leading-snug text-[var(--n-cream)]/70">
+        Tell Passport what you want different. You&apos;ll see exactly what
+        changes before anything does.
+      </p>
       <form
         className="mt-4 flex flex-col gap-2"
         onSubmit={(e) => {
@@ -215,11 +234,12 @@ export function MakeItOurs({
                 disabled={busy}
                 onClick={async () => {
                   const ok = isOwner
-                    ? await onApply(r.stops)
+                    ? await onApply(r.stops, r.heard)
                     : await onSuggest(reading!.said);
                   if (ok) {
                     setReading(null);
                     setSaid("");
+                    if (isOwner) setApplied(r.heard);
                   }
                 }}
                 className="min-h-12 rounded-full bg-[var(--n-forest)] px-6 font-bold text-white disabled:opacity-50"
@@ -241,16 +261,52 @@ export function MakeItOurs({
       )}
 
       {canUndo && !reading && (
-        <button
-          type="button"
-          data-testid="change-undo"
-          disabled={busy}
-          onClick={onUndo}
-          className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm font-bold"
+        <div
+          className="mt-4 rounded-3xl bg-white/[0.07] p-4 ring-1 ring-white/10"
+          data-testid="change-done"
         >
-          <Undo2 className="h-4 w-4" aria-hidden /> Undo the last change
-        </button>
+          {applied && (
+            <>
+              <p className="flex items-center gap-1.5 text-[12px] font-extrabold tracking-[0.16em] text-[var(--n-amber)] uppercase">
+                <Check className="h-4 w-4" aria-hidden /> What changed
+              </p>
+              <ul className="mt-1.5 space-y-1 text-[14px] text-[var(--n-cream)]/85">
+                {applied.map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <button
+            type="button"
+            data-testid="change-undo"
+            disabled={busy}
+            onClick={() => {
+              setApplied(null);
+              onUndo();
+            }}
+            className={cn(
+              "inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm font-bold",
+              applied && "mt-3",
+            )}
+          >
+            <Undo2 className="h-4 w-4" aria-hidden /> Undo the last change
+          </button>
+        </div>
       )}
+
+      <details className="group mt-4 text-[13px] text-[var(--n-cream)]/60">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-semibold underline decoration-white/25 underline-offset-4">
+          How Passport reads this
+        </summary>
+        <p className="mt-1 max-w-lg leading-snug" data-testid="change-honesty">
+          By rules, not AI: it understands {UNDERSTANDS.slice(0, -1).join(", ")}{" "}
+          and {UNDERSTANDS[UNDERSTANDS.length - 1]}. Times come from the sunset
+          and each stop&apos;s length. A new place only ever comes from the
+          places Atlas has checked for this night; if none fits, it says so
+          rather than making one up.
+        </p>
+      </details>
     </section>
   );
 }
