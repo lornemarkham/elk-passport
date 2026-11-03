@@ -20,6 +20,12 @@ file and the code disagree, the code is right and this file is stale.
 
 ## RESUME HERE
 
+> **Current production baseline (2026-11-03):**
+> [`docs/release/RELEASE-2026-11-03-CATCH-UP.md`](release/RELEASE-2026-11-03-CATCH-UP.md)
+> — what production runs, every experience's state, the operator steps, and
+> the Forge database-service blocker. Start there; this file below is the
+> 2026-10-10 snapshot.
+
 Read these, in this order, before doing anything:
 
 1. **`../CLAUDE.md`** (workspace root) — how the two repositories relate and
