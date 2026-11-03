@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 /**
@@ -23,7 +24,8 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  */
 
 const SHOTS = process.env.SHOTS_DIR ?? path.resolve(__dirname, "screenshots");
-const PASSWORD = "first-date-forever-7";
+// A fresh password per run: nothing credential-shaped is committed.
+const PASSWORD = `fp-${randomBytes(12).toString("base64url")}`;
 const stamp = Date.now().toString(36);
 const emailFor = (who: string) => `${who}-fp-${stamp}@example.test`;
 const PLAYLIST = "37i9dQZF1DX9wC1KY45plY"; // Classic Road Trip Songs
