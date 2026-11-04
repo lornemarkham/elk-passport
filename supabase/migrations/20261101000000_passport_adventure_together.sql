@@ -179,8 +179,3 @@ BEGIN
         OR passport_is_adventure_owner(adventure_id));
   END IF;
 END $$;
-
--- PostgREST only sees a new table once its schema cache reloads; without
--- this, the API answers PGRST205 ("not in the schema cache") although the
--- table exists (SHARED-ADVENTURE.md §1). Harmless to run again.
-NOTIFY pgrst, 'reload schema';

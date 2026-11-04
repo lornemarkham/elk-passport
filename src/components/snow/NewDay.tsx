@@ -252,7 +252,7 @@ export function NewDay({
         </div>
       </fieldset>
 
-      {!again && (
+      {false && !again && (
         <label className="flex items-start gap-3 rounded-xl border border-[var(--sn-line)] p-3 text-sm">
           <input
             type="checkbox"

@@ -20,6 +20,15 @@ the NOTIFY; these two didn't.
 throughout, so **re-running the packing file is the whole remedy** and touches
 no rows.
 
+> **Release branch `ship/date-night` (2026-11-03) holds this back.** Both files
+> are already applied in production, and Forge's release runner treats any
+> change to `supabase/migrations/` as a database release. Its database service
+> did not point at the project the live app uses (see
+> `docs/release/RELEASE-2026-11-03-CATCH-UP.md`). So the Date Night release
+> ships code only. The production remedy stays the operator's one line in the
+> SQL editor, `NOTIFY pgrst, 'reload schema';`. `main` keeps the NOTIFY in
+> both files for fresh databases.
+
 **Proven on the real local stack** (GoTrue + PostgREST + Postgres, 570xx):
 
 1. The table dropped and the cache reloaded, then the **old** file (963daec,
