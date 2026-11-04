@@ -9,6 +9,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  Copy,
   CloudSun,
   Heart,
   MapPin,
@@ -29,7 +30,16 @@ import { NightMemories } from "./NightMemories";
 import { LeaveTime } from "./LeaveTime";
 import { NightNav, isRoom, type Room } from "./NightNav";
 import { Plays, type DecidePair, type OpenAt } from "./Plays";
-import { sendText } from "./share";
+import { Soundtrack } from "@/components/soundtrack/Soundtrack";
+import { recommend } from "@/domain/soundtrack/moods";
+import {
+  encodeSoundtrack,
+  isSoundtrackNote,
+  replacedSoundtracks,
+  soundtrackOf,
+} from "@/domain/soundtrack/stored";
+import { driveOf, nightMoods } from "@/domain/date-night/soundtrack";
+import { afterSend, copy, messageOf, sendText } from "./share";
 import styles from "./night.module.css";
 import type { Experience } from "@/domain/experience/types";
 import type { Mood, NightConfig } from "@/domain/date-night/adventures";
@@ -190,6 +200,9 @@ export function NightBoard({
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [saving, setSaving] = useState<string | null>(null);
+  /** Their invitation, made once and reused while they haven't joined. */
+  const inviteLink = useRef<string | null>(null);
+  const [invitePath, setInvitePath] = useState<string | null>(null);
   const [local, setLocal] = useState<PlanStop[] | null>(null);
   const [previous, setPrevious] = useState<PlanStop[] | null>(null);
   const [confirm, setConfirm] = useState<{
@@ -535,31 +548,45 @@ export function NightBoard({
       i.label &&
       !i.atlasRef &&
       !seeded.has(i.label) &&
-      !isPlayNote(i.note),
+      !isPlayNote(i.note) &&
+      !isSoundtrackNote(i.note),
   );
 
+  /**
+   * Makes their invitation link (once a session) and shows it, ready to
+   * send. Sending is a second tap on purpose: the share sheet needs a tap
+   * of its own, and the link has to exist before anything is said.
+   */
   async function invite() {
+    if (inviteLink.current) {
+      setInvitePath(inviteLink.current);
+      return;
+    }
     setSaving("invite");
     try {
       const response = await call(
         `/api/adventures/${view.id}/invites`,
         "POST",
-        {},
+        { label: `For ${partner}` },
       );
       const body = await response.json();
-      const url = `${window.location.origin}${body.path}`;
-      // The phone's share sheet, else a new text, else a copy (`share.ts`).
-      const sent = await sendText(invitationLines.join("\n\n"), url);
-      if (sent === "copied")
-        toast.success(
-          `Invitation copied. Paste it into your texts to ${partner}.`,
-        );
+      inviteLink.current = body.path as string;
+      setInvitePath(body.path as string);
       startRefresh(() => router.refresh());
     } catch {
       toast.error("Couldn't make the invitation. Try again.");
     } finally {
       setSaving(null);
     }
+  }
+
+  /** The phone's share sheet, else a new text, else a copy (`share.ts`). */
+  async function sendInvitation(url: string) {
+    const line = afterSend(
+      await sendText(invitationLines.join("\n\n"), url),
+      partner,
+    );
+    if (line) toast(line);
   }
 
   async function tick(item: PackingView) {
@@ -632,25 +659,30 @@ export function NightBoard({
   const textee = isOwner
     ? (others[0]?.displayName ?? partner)
     : (ownerName ?? "them");
-  /** Their invitation, made once and reused while they haven't joined. */
-  const inviteLink = useRef<string | null>(null);
-
-  async function linkTo(playId: string): Promise<string | null> {
+  /** The link to one play, when it needs no round trip; else null. */
+  function linkReady(playId: string): string | null {
     const target = `/night/${encodeURIComponent(view.id)}?p=${playId}`;
     const origin = window.location.origin;
     if (!isOwner || others.length > 0) return `${origin}${target}`;
     // Not in yet: the link is their invitation, and it lands on this.
+    return inviteLink.current
+      ? `${origin}${inviteLink.current}?next=${encodeURIComponent(target)}`
+      : null;
+  }
+
+  async function linkTo(playId: string): Promise<string | null> {
+    const ready = linkReady(playId);
+    if (ready) return ready;
     try {
-      if (!inviteLink.current) {
-        const response = await call(
-          `/api/adventures/${view.id}/invites`,
-          "POST",
-          { label: `For ${partner}` },
-        );
-        inviteLink.current = (await response.json()).path as string;
-        startRefresh(() => router.refresh());
-      }
-      return `${origin}${inviteLink.current}?next=${encodeURIComponent(target)}`;
+      const response = await call(
+        `/api/adventures/${view.id}/invites`,
+        "POST",
+        { label: `For ${partner}` },
+      );
+      inviteLink.current = (await response.json()).path as string;
+      setInvitePath(inviteLink.current);
+      startRefresh(() => router.refresh());
+      return linkReady(playId);
     } catch {
       return null;
     }
@@ -714,6 +746,61 @@ export function NightBoard({
       if (e) await choose(e);
       go("adventure");
     }
+  }
+
+  // ----------------------------------------------------------- the music
+
+  const soundtrack = useMemo(() => soundtrackOf(view.items), [view.items]);
+
+  async function saveSoundtrack(url: string, title?: string) {
+    setSaving("music");
+    try {
+      await call(`/api/adventures/${view.id}/items`, "POST", {
+        label: `Our soundtrack${title ? `: ${title}` : ""}`.slice(0, 120),
+        note: encodeSoundtrack({
+          url,
+          ...(title ? { title } : {}),
+          t: Date.now(),
+        }),
+      });
+      // The one it replaces goes, when it's ours to take back.
+      const mine = new Set(
+        view.items.filter((i) => i.canChange).map((i) => i.id),
+      );
+      for (const id of replacedSoundtracks(view.items).concat(
+        soundtrack ? [soundtrack.itemId] : [],
+      ))
+        if (mine.has(id))
+          await call(`/api/adventures/${view.id}/items/${id}`, "DELETE").catch(
+            () => undefined,
+          );
+      startRefresh(() => router.refresh());
+      toast.success("Saved to your adventure. 🎶");
+      return true;
+    } catch {
+      toast.error("That didn't save. Try again.");
+      return false;
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function clearSoundtrack() {
+    if (!soundtrack) return;
+    try {
+      await call(
+        `/api/adventures/${view.id}/items/${soundtrack.itemId}`,
+        "DELETE",
+      );
+      startRefresh(() => router.refresh());
+    } catch {
+      toast.error("Couldn't take that off. Try again.");
+    }
+  }
+
+  async function shareSoundtrack(words: string, url: string) {
+    const line = afterSend(await sendText(words, url), textee);
+    if (line) toast(line);
   }
 
   // ---------------------------------------------------------- leave time
@@ -914,6 +1001,8 @@ export function NightBoard({
 
   // ------------------------------------------------------------ together
 
+  // Only read once an invitation exists, which is only ever in the browser.
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
   const inviteCard = isOwner && others.length === 0 && (
     <div
       className="relative isolate overflow-hidden rounded-[28px] bg-[var(--n-ink)] p-6 text-[var(--n-cream)] sm:p-8"
@@ -947,14 +1036,69 @@ export function NightBoard({
         suggests changes{packing ? " and packs with you" : ""}. Only you change
         the plan itself, and nobody else can open it.
       </p>
-      <button
-        onClick={invite}
-        disabled={busy}
-        data-testid="send-invitation"
-        className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-amber)] px-6 font-extrabold text-[var(--n-ink)] shadow-[0_12px_28px_-12px_rgba(232,163,61,0.9)] disabled:opacity-60"
-      >
-        <Send className="h-4 w-4" aria-hidden /> Send it to {partner}
-      </button>
+      {invitePath ? (
+        <div className="mt-5 space-y-3" data-testid="invite-ready">
+          <label className="block text-[12px] font-semibold text-white/70">
+            {partner}&apos;s link
+            <input
+              readOnly
+              value={`${origin}${invitePath}`}
+              onFocus={(e) => e.currentTarget.select()}
+              data-testid="invite-link"
+              className="mt-1 block min-h-11 w-full rounded-xl bg-white/90 px-3 text-[13px] text-[var(--n-ink)]"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void sendInvitation(`${origin}${invitePath}`)}
+              data-testid="send-invitation"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-amber)] px-6 font-extrabold text-[var(--n-ink)] shadow-[0_12px_28px_-12px_rgba(232,163,61,0.9)]"
+            >
+              <Send className="h-4 w-4" aria-hidden /> Send to {partner}
+            </button>
+            <button
+              type="button"
+              data-testid="copy-invitation"
+              onClick={async () => {
+                if (
+                  await copy(
+                    messageOf(
+                      invitationLines.join("\n\n"),
+                      `${origin}${invitePath}`,
+                    ),
+                  )
+                )
+                  toast.success(
+                    `Copied. Paste it into a message to ${partner}.`,
+                  );
+                else toast.error("Couldn't copy. Press and hold the link.");
+              }}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full px-5 font-bold ring-1 ring-white/30"
+            >
+              <Copy className="h-4 w-4" aria-hidden /> Copy link
+            </button>
+          </div>
+          <p className="text-[12.5px] text-white/60">
+            It goes from your own messages; nothing is sent until you press send
+            there. {partner} signs in with an email (or makes an account in a
+            minute) and lands right in.
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={invite}
+          disabled={saving === "invite"}
+          data-testid="make-invitation"
+          className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--n-amber)] px-6 font-extrabold text-[var(--n-ink)] shadow-[0_12px_28px_-12px_rgba(232,163,61,0.9)] disabled:opacity-60"
+        >
+          <Send className="h-4 w-4" aria-hidden />
+          {saving === "invite"
+            ? "Making the link…"
+            : `Make ${partner}'s invitation`}
+        </button>
+      )}
     </div>
   );
 
@@ -1165,7 +1309,7 @@ export function NightBoard({
       <p className="mt-1 font-[family-name:var(--font-fraunces)] text-[22px] leading-tight italic">
         {waiting > 0
           ? `${textee} sent you something.`
-          : `Get ${textee} excited. Text something.`}
+          : `Get ${textee} excited. Send something.`}
       </p>
       <div className="mt-3 grid grid-cols-3 gap-2">
         {(
@@ -1472,7 +1616,7 @@ export function NightBoard({
             pairs={pairs}
             opensAt={opensAt}
             focus={focus}
-            busy={busy}
+            busy={saving === "play" || saving === "answer"}
             isOwner={isOwner}
             start={start}
             create={createPlay}
@@ -1480,8 +1624,38 @@ export function NightBoard({
             remove={removePlay}
             apply={applyChoice}
             linkTo={linkTo}
+            linkReady={linkReady}
           />
         </div>
+        <Soundtrack
+          heading="Soundtrack for tonight"
+          partner={textee}
+          current={
+            soundtrack
+              ? {
+                  url: soundtrack.url,
+                  ...(soundtrack.title ? { title: soundtrack.title } : {}),
+                  link: soundtrack.link,
+                  by: soundtrack.mine
+                    ? "you"
+                    : (view.members.find(
+                        (m) => m.memberId === soundtrack.addedBy,
+                      )?.displayName ?? textee),
+                  canChange: soundtrack.canChange,
+                }
+              : null
+          }
+          onSave={saveSoundtrack}
+          onClear={clearSoundtrack}
+          onShare={shareSoundtrack}
+          moods={recommend(
+            nightMoods(themes, driveOf(plan ?? [])),
+            driveOf(plan ?? []),
+          )}
+          driveMinutes={plan ? driveOf(plan) : null}
+          busy={saving === "music"}
+          className="[--st-accent:var(--n-forest)]"
+        />
         {asks.length > 0 && (
           <ul className="space-y-2" data-testid="suggestions">
             {asks.map((item) => {

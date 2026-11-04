@@ -336,7 +336,11 @@ test("Date Night: choose, customise, say it, edit, together", async ({
   );
   await lorne.getByTestId("invite-card").scrollIntoViewIfNeeded();
   await shot(lorne, "06b-invitation", false);
-  await lorne.getByRole("button", { name: "Send it to Jess" }).click();
+  await lorne.getByRole("button", { name: "Make Jess's invitation" }).click();
+  await expect(lorne.getByTestId("invite-link")).toHaveValue(
+    /\/adventures\/join\//,
+  );
+  await lorne.getByRole("button", { name: "Send to Jess" }).click();
   await expect
     .poll(() => lorne.evaluate(() => navigator.clipboard.readText()), {
       timeout: 10_000,

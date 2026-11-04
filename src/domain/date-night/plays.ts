@@ -229,6 +229,27 @@ export function waitingOn(plays: readonly PlayView[]): PlayView[] {
   );
 }
 
+/**
+ * **Whose turn.** "yours": something here is waiting on me (answer it, or
+ * do the dare I said I'm in for). "theirs": I've done my part and it's
+ * waiting on them. "done": nothing is waiting. "locked": a note that hasn't
+ * opened yet.
+ */
+export type Turn = "yours" | "theirs" | "done" | "locked";
+
+export function turnOf(p: PlayView): Turn {
+  if (p.hidden) return "locked";
+  const answer = p.mine ? p.theirs : p.yours;
+  if (p.k === "dare") {
+    const state = answer?.state;
+    if (state === "done" || state === "nope") return "done";
+    if (state === "on") return p.mine ? "theirs" : "yours";
+    return p.mine ? "theirs" : "yours";
+  }
+  if (answer) return "done";
+  return p.mine ? "theirs" : "yours";
+}
+
 // -------------------------------------------------------- notes, hidden
 
 /** What an unopened note becomes on its way to the other person. */
