@@ -1,0 +1,100 @@
+/* Snow: alpine night. Own palette, scoped to this Experience. */
+.root {
+  --sn-ink: #07121f;
+  --sn-deep: #0b1d33;
+  --sn-mid: #15324f;
+  --sn-ice: #eaf4fb;
+  --sn-frost: #b9d6ea;
+  --sn-glow: #ff7a3d; /* alpenglow: the energy colour */
+  --sn-aurora: #3fd6c5;
+  --sn-line: rgba(185, 214, 234, 0.18);
+  background: radial-gradient(
+    120% 80% at 50% -10%,
+    #1c4468 0%,
+    var(--sn-deep) 45%,
+    var(--sn-ink) 100%
+  );
+  color: var(--sn-ice);
+  min-height: 100dvh;
+}
+.card {
+  background: rgba(234, 244, 251, 0.06);
+  border: 1px solid var(--sn-line);
+  border-radius: 20px;
+}
+.go {
+  background: linear-gradient(135deg, #ff9a4d, var(--sn-glow) 55%, #ff5a3d);
+  color: #1b0a02;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 30px rgba(255, 122, 61, 0.35);
+}
+.go:focus-visible,
+.btn:focus-visible,
+.tab:focus-visible,
+.chip:focus-visible {
+  outline: 3px solid var(--sn-aurora);
+  outline-offset: 2px;
+}
+.btn {
+  border: 1px solid var(--sn-line);
+  background: rgba(234, 244, 251, 0.08);
+  border-radius: 999px;
+}
+.btn:hover {
+  background: rgba(234, 244, 251, 0.16);
+}
+.on {
+  background: var(--sn-ice);
+  color: var(--sn-ink);
+  border-color: var(--sn-ice);
+}
+.field {
+  background: rgba(7, 18, 31, 0.6);
+  border: 1px solid var(--sn-line);
+  border-radius: 12px;
+  color: var(--sn-ice);
+}
+.field:focus-visible {
+  outline: 3px solid var(--sn-aurora);
+  outline-offset: 1px;
+}
+.live {
+  background: rgba(63, 214, 197, 0.15);
+  color: var(--sn-aurora);
+}
+.static {
+  background: rgba(185, 214, 234, 0.14);
+  color: var(--sn-frost);
+}
+.muted {
+  color: rgba(234, 244, 251, 0.72);
+}
+.flake {
+  position: absolute;
+  top: -10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.8;
+  animation: fall linear infinite;
+}
+@keyframes fall {
+  to {
+    transform: translate3d(30px, 110vh, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flake {
+    animation: none;
+    opacity: 0.35;
+    top: 30%;
+  }
+}
+@media print {
+  .root {
+    background: #fff;
+    color: #000;
+  }
+}
