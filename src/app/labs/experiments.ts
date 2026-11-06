@@ -83,7 +83,7 @@ export function labExperiments(
       kicker: "Hockey Night · shared",
       title: "A private night you share with real friends",
       status: "blocked",
-      note: "Needs real sign-in and a database migration that has not been applied. Held back on purpose; not in this build.",
+      note: "The real thing is live: open Experiences → Hockey Night and sign in to start a night with friends. Labs only holds the pretend version above.",
     },
     {
       id: "conference",

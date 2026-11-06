@@ -62,8 +62,8 @@ import { Wordmark } from "@/components/ghad/Wordmark";
  */
 
 const DESTINATIONS = [
-  { href: "/discovery", label: "Discover" },
-  { href: "/places", label: "Places" },
+  { href: "/discovery", label: "Discover", testId: "discover" },
+  { href: "/places", label: "Places", testId: "places" },
   // **Saved means what somebody saved, not the index of their boards.** This
   // pointed at `/boards`, which is the administration screen the owner's
   // route through Discovery → My Places → Back to Boards → Your Boards came
@@ -71,6 +71,7 @@ const DESTINATIONS = [
   {
     href: "/saved",
     label: "Saved",
+    testId: "saved",
     /**
      * A board **is** a saved collection, so somebody looking at one is in this
      * section even though the link points elsewhere. Without this, opening a
@@ -78,6 +79,20 @@ const DESTINATIONS = [
      * adventure is where saved things are planned, so it lights Saved too.
      */
     also: ["/boards", "/adventures"],
+  },
+  /**
+   * **The Day Builder has a front door** (doctrine §2.5, §9: *Saved leads
+   * somewhere*). `/go` was a side route reachable only from a sentence on
+   * Discovery or from a printed guide's wordmark (roadmap D-1), so the step
+   * after Save — shaping a real day — could not be found by looking. It sits
+   * straight after Saved because that is where the loop goes. Go Offline
+   * (`/detox`) is the same journey's last step, so it lights this too.
+   */
+  {
+    href: "/go",
+    label: "Build a day",
+    testId: "build",
+    also: ["/detox"],
   },
 ] as const;
 
@@ -155,11 +170,11 @@ export function PassportNav({
             answer the five control rows already use. */}
         <nav
           aria-label="Go Have A Day"
-          className="mx-auto flex max-w-[1760px] items-center gap-0.5 overflow-x-auto px-3 sm:gap-1 sm:px-6 lg:px-10"
+          className="mx-auto flex max-w-[1760px] flex-wrap items-center gap-0.5 px-3 sm:flex-nowrap sm:gap-1 sm:overflow-x-auto sm:px-6 lg:px-10"
         >
           {/* The wordmark is the way home, which is the one navigation
               convention it is safe to assume everybody already knows. */}
-          <span className="mr-1 inline-flex min-h-12 shrink-0 items-center sm:mr-4">
+          <span className="order-1 mr-1 inline-flex min-h-12 shrink-0 items-center sm:order-none sm:mr-4">
             <Wordmark href="/" lines={1} />
           </span>
 
@@ -170,11 +185,11 @@ export function PassportNav({
                 key={d.href}
                 href={d.href}
                 aria-current={current ? "page" : undefined}
-                data-testid={`passport-nav-${d.label.toLowerCase()}`}
+                data-testid={`passport-nav-${d.testId}`}
                 style={
                   current ? { borderColor: "var(--ghad-accent)" } : undefined
                 }
-                className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-1.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+                className={`order-5 -mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:order-none sm:px-3 sm:text-[14px] ${
                   current
                     ? "text-[#111]"
                     : "border-transparent text-black/60 hover:text-black/85"
@@ -199,7 +214,7 @@ export function PassportNav({
             style={
               inExperience ? { borderColor: "var(--ghad-accent)" } : undefined
             }
-            className={`-mb-px inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-1 border-b-2 px-1.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+            className={`order-2 -mb-px inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-0.5 border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:order-none sm:gap-1 sm:px-3 sm:text-[14px] ${
               inExperience || open
                 ? "text-[#111]"
                 : "border-transparent text-black/60 hover:text-black/85"
@@ -214,7 +229,7 @@ export function PassportNav({
             </span>
           </button>
 
-          <span className="flex-1" />
+          <span className="order-2 flex-1 sm:order-none" />
 
           {/* Hidden below `sm`: at phone width the bar only fits through Saved,
               and LABS and Sign in sat beyond the edge. */}
@@ -227,7 +242,7 @@ export function PassportNav({
             href="/labs"
             aria-current={inside("/labs") ? "page" : undefined}
             data-testid="passport-nav-labs"
-            className={`inline-flex min-h-12 shrink-0 items-center px-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors sm:px-3 ${
+            className={`order-3 inline-flex min-h-12 shrink-0 items-center px-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors sm:order-none sm:px-3 ${
               inside("/labs")
                 ? "text-[#111]"
                 : "text-black/45 hover:text-black/80"
@@ -242,13 +257,13 @@ export function PassportNav({
             <span
               aria-hidden
               data-testid="passport-account-pending"
-              className="inline-flex min-h-12 w-20 shrink-0 sm:w-24"
+              className="order-4 inline-flex min-h-12 w-20 shrink-0 sm:order-none sm:w-24"
             />
           ) : displayName ? (
             <Link
               href={`/account?next=${from}`}
               data-testid="passport-account"
-              className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] text-black/60 transition-colors hover:text-black/85 sm:px-3"
+              className="order-4 inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] text-black/60 transition-colors hover:text-black/85 sm:order-none sm:px-3"
             >
               {displayName}
             </Link>
@@ -257,11 +272,17 @@ export function PassportNav({
               href={`/auth?next=${from}`}
               data-testid="passport-sign-in"
               style={{ color: "var(--ghad-accent)" }}
-              className="inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] font-semibold sm:px-3"
+              className="order-4 inline-flex min-h-12 shrink-0 items-center px-2.5 text-[14px] font-semibold sm:order-none sm:px-3"
             >
               Sign in
             </Link>
           )}
+          {/* **A phone gets two rows, not a scroll.** One row put Experiences,
+              Labs and Sign in past the right edge, where nobody looks — the
+              existing experiences were unreachable by sight. Below `sm` the
+              wordmark, Experiences, Labs and the account sit on the first row and
+              the four sections take their own, all in view. */}
+          <span aria-hidden className="order-4 h-0 basis-full sm:hidden" />
         </nav>
 
         {/* **The row.** Rendered only while open, so a closed menu is nothing

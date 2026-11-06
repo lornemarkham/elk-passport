@@ -54,6 +54,26 @@ describe("where you are", () => {
   });
 });
 
+describe("the Day Builder has a front door", () => {
+  it("is on the bar, straight after Saved, and opens /go", () => {
+    at("/saved");
+    const build = screen.getByTestId("passport-nav-build");
+    expect(build).toHaveAttribute("href", "/go");
+    expect(build).toHaveTextContent("Build a day");
+  });
+
+  it("lights up inside the builder and on its Go Offline step", () => {
+    for (const path of ["/go", "/go/print", "/detox/out"]) {
+      const { unmount } = at(path);
+      expect(screen.getByTestId("passport-nav-build")).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      unmount();
+    }
+  });
+});
+
 describe("getting out", () => {
   it("always offers a way home", () => {
     at("/boards");
@@ -96,6 +116,7 @@ describe("what it refuses to promise", () => {
       "Discover",
       "Places",
       "Saved",
+      "Build a day",
       "Labs",
       "Sign in",
     ]);

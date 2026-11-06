@@ -9,15 +9,15 @@ Labs does not settle the open Experience-architecture question (doctrine §10);
 it only makes experiments reachable. Inspiration (§13) and the §14 futures are
 not here.
 
-| Experiment                 | Route                                 | Status here                                                        |
-| -------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
-| Go have a day              | `/go`                                 | Playable when `ATLAS_API_URL` is set                               |
-| Discovery · Vancouver      | `/discovery` (pick Vancouver)         | Playable when `ATLAS_API_URL` is set                               |
-| Hockey Night (lab fixture) | `/labs/experience/sycle-hockey-night` | Playable, browser-only, invented people                            |
-| Experience Lab             | `/labs/experience`                    | Playable, browser-only                                             |
-| Conference                 | `/labs/conference` → `/conferences`   | Follows `conferenceSetup()`; closed in production until configured |
-| Conference · Arrivals      | —                                     | Blocked outside development (no durable store)                     |
-| Hockey Night · shared      | —                                     | Blocked: needs real auth + unapplied migration; **not merged**     |
+| Experiment                 | Route                                 | Status here                                                                                                                     |
+| -------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Go have a day              | `/go`                                 | Playable when `ATLAS_API_URL` is set                                                                                            |
+| Discovery · Vancouver      | `/discovery` (pick Vancouver)         | Playable when `ATLAS_API_URL` is set                                                                                            |
+| Hockey Night (lab fixture) | `/labs/experience/sycle-hockey-night` | Playable, browser-only, invented people                                                                                         |
+| Experience Lab             | `/labs/experience`                    | Playable, browser-only                                                                                                          |
+| Conference                 | `/labs/conference` → `/conferences`   | Follows `conferenceSetup()`; closed in production until configured                                                              |
+| Conference · Arrivals      | —                                     | Blocked outside development (no durable store)                                                                                  |
+| Hockey Night · shared      | —                                     | Not a Labs experiment any more: the real thing is live under Experiences → Hockey Night (sign-in); Labs keeps a blocked pointer |
 
 **October is not in Labs.** It belongs to iamoctober.com (queued mission 230).
 

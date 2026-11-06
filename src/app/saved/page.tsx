@@ -108,15 +108,30 @@ export default async function SavedPage({
                   material for a hell of a day.
                 </p>
               </div>
-              <PillLink
-                href="/adventures/new"
-                variant="forest"
-                data-testid="create-adventure"
-                className="min-h-14 shrink-0 px-7 text-lg"
-              >
-                <Plus className="h-5 w-5" aria-hidden />
-                Create an adventure
-              </PillLink>
+              <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                <PillLink
+                  href="/adventures/new"
+                  variant="forest"
+                  data-testid="create-adventure"
+                  className="min-h-14 px-7 text-lg"
+                >
+                  <Plus className="h-5 w-5" aria-hidden />
+                  Create an adventure
+                </PillLink>
+                {/* **A single day is a way on too.** Saved leads somewhere
+                    (§2.6): an adventure for a weekend or a trip, or just
+                    today. Choosing places below keeps them in the day;
+                    this opens the Day Builder to say it in words. */}
+                <PillLink
+                  href="/go"
+                  variant="quiet"
+                  data-testid="saved-build-a-day"
+                  className="min-h-11 px-4 text-base"
+                >
+                  Or build one day
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </PillLink>
+              </div>
             </header>
 
             {overview && next && (

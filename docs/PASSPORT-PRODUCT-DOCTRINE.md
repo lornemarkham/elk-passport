@@ -642,6 +642,21 @@ agreed experience in
 - **On the day it leads with what's next**, quietly (§2.7, §6). **It has a
   printable guide** on the Fishing With Emi skeleton, and **Do it again**.
 
+### The Day Builder is on the bar (decided 2026-11-06)
+
+From the owner's _P0: Restore the product experience_ brief (mission 623),
+answering the nav half of roadmap D-1:
+
+- **Build a day** is a section of the bar, straight after Saved, and opens the
+  Day Builder (`/go`). The loop on the bar reads Discover · Places · Saved ·
+  Build a day, with Experiences and Labs beside it. Saved also offers **Or
+  build one day** next to _Create an adventure_.
+- **On a phone the bar is two rows, not a scroll**, so Experiences, Labs and
+  Sign in are in view. Labs stays discreet; it is where the pretend
+  fixtures live, and the real Experiences stay under Experiences.
+- This answers where the Day Builder is _reached_. It does not answer whether
+  `/go` is the home page, nor the Want / Plan / Lived vocabulary (§15.14).
+
 ---
 
 ## 10. Experiences — an explicit open architectural question
