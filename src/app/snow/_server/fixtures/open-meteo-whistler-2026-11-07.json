@@ -1,0 +1,75 @@
+{
+  "latitude": 50.125107,
+  "longitude": -122.94098,
+  "generationtime_ms": 0.6380081176757812,
+  "utc_offset_seconds": -25200,
+  "timezone": "America/Vancouver",
+  "timezone_abbreviation": "GMT-7",
+  "elevation": 672.0,
+  "current_units": {
+    "time": "iso8601",
+    "interval": "seconds",
+    "temperature_2m": "°C",
+    "apparent_temperature": "°C",
+    "wind_speed_10m": "km/h",
+    "wind_gusts_10m": "km/h",
+    "weather_code": "wmo code",
+    "snowfall": "cm"
+  },
+  "current": {
+    "time": "2026-11-07T08:30",
+    "interval": 900,
+    "temperature_2m": 3.9,
+    "apparent_temperature": 0.6,
+    "wind_speed_10m": 9.3,
+    "wind_gusts_10m": 12.6,
+    "weather_code": 3,
+    "snowfall": 0.0
+  },
+  "daily_units": {
+    "time": "iso8601",
+    "weather_code": "wmo code",
+    "snowfall_sum": "cm",
+    "temperature_2m_min": "°C",
+    "temperature_2m_max": "°C",
+    "wind_gusts_10m_max": "km/h",
+    "precipitation_probability_max": "%",
+    "sunrise": "iso8601",
+    "sunset": "iso8601"
+  },
+  "daily": {
+    "time": [
+      "2026-11-07",
+      "2026-11-08",
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13"
+    ],
+    "weather_code": [63, 63, 51, 63, 81, 45, 81],
+    "snowfall_sum": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "temperature_2m_min": [3.4, 0.2, -3.0, 4.4, 6.5, 6.7, 4.5],
+    "temperature_2m_max": [10.5, 5.2, 5.5, 7.5, 8.2, 9.1, 7.8],
+    "wind_gusts_10m_max": [75.0, 78.8, 13.7, 22.7, 18.7, 7.2, 25.9],
+    "precipitation_probability_max": [100, 100, 96, 97, 96, 61, 87],
+    "sunrise": [
+      "2026-11-07T08:12",
+      "2026-11-08T08:13",
+      "2026-11-09T08:15",
+      "2026-11-10T08:17",
+      "2026-11-11T08:18",
+      "2026-11-12T08:20",
+      "2026-11-13T08:22"
+    ],
+    "sunset": [
+      "2026-11-07T17:38",
+      "2026-11-08T17:36",
+      "2026-11-09T17:35",
+      "2026-11-10T17:33",
+      "2026-11-11T17:32",
+      "2026-11-12T17:30",
+      "2026-11-13T17:29"
+    ]
+  }
+}

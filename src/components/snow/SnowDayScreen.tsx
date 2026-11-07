@@ -159,6 +159,11 @@ function DayScreen({ id, state }: { id: string; state: DayState }) {
     act,
     today,
     now,
+    go: (t: TabKey) => {
+      setTab(t);
+      clearProblem();
+      window.scrollTo?.({ top: 0 });
+    },
     shared: shared ? { id, isOwner: shared.isOwner } : undefined,
   };
 

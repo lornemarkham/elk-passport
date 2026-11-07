@@ -13,13 +13,8 @@ import { mountainById, MOUNTAINS } from "@/domain/snow/mountains";
 import type { TabProps } from "./tabs";
 import { newId } from "./store";
 import { Card, Source, btn, field } from "./kit";
-
-const QUICK = [
-  "Heading to the lodge for a food break",
-  "Back on the hill — meet at the lift base in 20",
-  "Last run! Everyone down together",
-  "Heading to the car",
-] as const;
+import { Companion } from "./Companion";
+import { QUICK_UPDATES, channelFor } from "@/domain/snow/companion";
 
 /**
  * **On the hill: coordination without pulling anyone out of the day.**
@@ -28,7 +23,8 @@ const QUICK = [
  * works with no signal. Location here is a *label a person types or taps* —
  * Passport reads no GPS on the hill and never claims to know where anyone is.
  */
-export function MountainTab({ day, me, act, now }: TabProps) {
+export function MountainTab(props: TabProps) {
+  const { day, me, act, now } = props;
   const [spot, setSpot] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const meet = chosenFor(day, "meeting");
@@ -66,6 +62,7 @@ export function MountainTab({ day, me, act, now }: TabProps) {
 
   return (
     <div className="space-y-4">
+      <Companion {...props} />
       {offline && (
         <p
           role="status"
@@ -216,12 +213,16 @@ export function MountainTab({ day, me, act, now }: TabProps) {
       <Card className="space-y-2">
         <h2 className="text-xl font-extrabold">Quick updates</h2>
         <div className="flex flex-wrap gap-2">
-          {QUICK.map((q) => (
+          {QUICK_UPDATES.map((q) => (
             <button
               key={q}
               className={btn}
               onClick={() =>
-                act({ type: "announce", id: newId(), by: me.id, text: q })
+                act(
+                  channelFor(!!props.shared) === "chat"
+                    ? { type: "say", id: newId(), by: me.id, text: q }
+                    : { type: "announce", id: newId(), by: me.id, text: q },
+                )
               }
             >
               {q}
@@ -229,7 +230,9 @@ export function MountainTab({ day, me, act, now }: TabProps) {
           ))}
         </div>
         <p className="text-xs text-[var(--sn-frost)]">
-          They land on the Crew tab. Share the plan again to reach a crew phone.
+          {props.shared
+            ? "They go to the crew chat."
+            : "They land on the Crew tab. Share the plan again to reach a crew phone."}
         </p>
       </Card>
     </div>

@@ -8,6 +8,8 @@ export interface TabProps {
   /** Today as `YYYY-MM-DD`, in the phone's own time zone. */
   readonly today: string;
   readonly now: Date;
+  /** Jump to another section of the day. */
+  readonly go: (tab: TabKey) => void;
   /** Present only when the day is shared between phones. */
   readonly shared?: { readonly id: string; readonly isOwner: boolean };
 }
