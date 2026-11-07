@@ -1002,6 +1002,13 @@ certainty. Do not invent an answer here to make the document feel finished.
     challenges whose points everyone sees alike — and whose announcements
     and shared photos are the adventure core's (ADR 014), not its own. One
     composition; the general question stays open.
+    _Informed 2026-11-07 by Snow Day, the mountain experience_
+    (`docs/product/snow/MOUNTAIN-EXPERIENCE.md`, ADR 015): pressing **Start your
+    snow day** is a mode change on that phone alone — big buttons, the sky,
+    lunch, heading out and an après vote — and a shared snow day may opt in to
+    showing where its members are, for a while, only to others doing the same
+    (the ADR 011 shape, now for a second kind of group; awaiting the owner's
+    confirmation). One composition.
     _Informed again 2026-10-23 by the executive overhaul_
     (`docs/products/go-have-a-conference/EXECUTIVE.md`): a conference's
     overview leads with what matters at this point of the trip — before,

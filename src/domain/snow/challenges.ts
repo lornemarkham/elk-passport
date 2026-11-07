@@ -97,6 +97,34 @@ export const CHALLENGES: readonly Challenge[] = [
     safety: "Take it at a lodge, a deck or a safe stop — never on a run.",
   },
   {
+    id: "photo-frost",
+    category: "photo",
+    title: "Photo: the frostiest face in the crew",
+    detail:
+      "Frost on a toque, ice on a beard, a frozen eyelash. The crew picks the winner.",
+    points: 10,
+    safety: "Take it at a lodge, a deck or a safe stop, never on a run.",
+  },
+  {
+    id: "photo-colour",
+    category: "photo",
+    title: "Photo scavenger: something red on the mountain",
+    detail:
+      "A chair, a flag, a jacket you don't know. One photo, no strangers' faces.",
+    points: 10,
+    safety:
+      "Look up from the phone on the move. Photograph from a safe stop only.",
+  },
+  {
+    id: "photo-view",
+    category: "photo",
+    title: "Photo: the best view from the lift",
+    detail: "Taken seated, bar down or not, whatever the lift allows.",
+    points: 10,
+    safety:
+      "Hold on to the phone, and to the chair. Never lean out for a photo.",
+  },
+  {
     id: "matching",
     category: "creative",
     title: "Most creative crew look",

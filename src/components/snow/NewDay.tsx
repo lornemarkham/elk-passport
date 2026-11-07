@@ -23,10 +23,13 @@ export function NewDay({
   mountainId,
   again,
   atlasName,
+  sharedReady = false,
 }: {
   mountainId?: string;
   again?: string;
   atlasName?: string;
+  /** The database can hold a shared day (migration applied). */
+  sharedReady?: boolean;
 }) {
   const router = useRouter();
   const mountain = mountainById(mountainId);
@@ -252,7 +255,7 @@ export function NewDay({
         </div>
       </fieldset>
 
-      {false && !again && (
+      {sharedReady && !again && (
         <label className="flex items-start gap-3 rounded-xl border border-[var(--sn-line)] p-3 text-sm">
           <input
             type="checkbox"

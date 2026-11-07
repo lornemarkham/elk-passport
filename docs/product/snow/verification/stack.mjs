@@ -377,6 +377,18 @@ async function services({ fresh }) {
     );
     await sql(snow);
     await sql(snow);
+    // Find your crew (opt-in, time-limited locations): a PROPOSED migration,
+    // so it lives in docs until the contracts lane moves it into
+    // supabase/migrations. Also applied twice. Skipped with
+    // SNOW_NO_LOCATION=1 to rehearse the world before it is applied.
+    if (!process.env.SNOW_NO_LOCATION) {
+      const loc = fs.readFileSync(
+        path.join(repo, "docs/product/snow/location-migration.sql"),
+        "utf8",
+      );
+      await sql(loc);
+      await sql(loc);
+    }
   }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {

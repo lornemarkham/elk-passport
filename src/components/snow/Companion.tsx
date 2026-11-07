@@ -18,10 +18,11 @@ import type { TabProps } from "./tabs";
 import { newId } from "./store";
 import { ConditionsCard } from "./ConditionsCard";
 import { TopicCard } from "./PlanTab";
+import { FindCrew } from "./FindCrew";
 import { Card, styles } from "./kit";
 
 /** Big, glove-sized: 64 px tall, 18 px type, nothing small to hit. */
-const big = `${styles.btn} min-h-16 px-4 text-lg font-bold`;
+const big = `${styles.btn} min-h-16 px-2 text-base font-bold`;
 
 type Panel = "where" | "lunch" | "leave" | null;
 
@@ -284,6 +285,7 @@ export function Companion(p: TabProps) {
               className={`${styles.go} min-h-16 w-full rounded-full text-lg uppercase`}
               onClick={() => {
                 write({ ...started, endedAt: now.toISOString() });
+                if (p.crew?.sharing) p.crew.stop();
                 setPanel(null);
               }}
               data-testid="end-day"
@@ -296,6 +298,8 @@ export function Companion(p: TabProps) {
           </Card>
         </div>
       )}
+
+      {!ended && <FindCrew {...p} />}
 
       {!ended && (
         <ConditionsCard
