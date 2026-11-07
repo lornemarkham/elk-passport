@@ -657,6 +657,17 @@ answering the nav half of roadmap D-1:
 - This answers where the Day Builder is _reached_. It does not answer whether
   `/go` is the home page, nor the Want / Plan / Lived vocabulary (§15.14).
 
+### The adventure comes alive (2026-11-07)
+
+From the owner's _Make the adventure come alive_ brief, recorded in
+[`product/adventures/ALIVE.md`](product/adventures/ALIVE.md): before the day an
+adventure counts down and shows what to look forward to; on the day **Start
+your day** turns it into a companion (now, next, directions, adjust, keep the
+moment); afterwards a **recap** tells what was done, skipped and loved and
+leads to another adventure. A person's memories stay on their phone unless
+they share one with the group (ADR 014). This does not answer §15.14, §15.10
+or §15.13.
+
 ---
 
 ## 10. Experiences — an explicit open architectural question

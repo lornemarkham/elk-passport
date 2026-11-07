@@ -359,6 +359,7 @@ export default async function ChristmasAdventurePage({
             <section id="plan" className="scroll-mt-16">
               <AdventureJourney
                 adventureId={view.id}
+                adventureTitle={view.title}
                 isOwner={view.role === "owner"}
                 items={view.items}
                 atlasNames={atlasNames}

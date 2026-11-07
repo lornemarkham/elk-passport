@@ -414,6 +414,9 @@ test("E — the actual day: what's next, directions, done", async ({
     "href",
     /^https:\/\/www\.google\.com\/maps\/dir\//,
   );
+  // START is a mode change: nothing but the button until it is pressed.
+  await expect(page.getByTestId("today-done")).toHaveCount(0);
+  await page.getByTestId("start-day").click();
   await page.getByTestId("today-done").click();
   await expect(page.getByTestId("today-next")).toContainText(stops[1]!);
   await page.reload();
@@ -566,4 +569,211 @@ test("F — Atlas is down: the adventure is created, safe, and editable by hand"
     fullPage: true,
   });
   await context.close();
+});
+
+const PIXEL_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+const tomorrow = new Date(Date.now() + 86_400_000).toLocaleDateString("en-CA", {
+  timeZone: "America/Vancouver",
+});
+
+for (const [label, device] of [
+  ["phone", devices["Pixel 7"]],
+  ["desktop", devices["Desktop Chrome"]],
+] as const) {
+  test(`G (${label}) — it comes alive: look forward, change it, start, keep it, remember`, async ({
+    browser,
+  }) => {
+    const shots = process.env.SHOTS ?? "/tmp";
+    const { page, context } = await person(browser, { ...device });
+    await signUp(page, `gia-${label}`, "/adventures/new");
+
+    // 1. Tomorrow: something to look forward to, honestly sourced.
+    const future = await start(page, {
+      town: "kelowna",
+      when: "Pick dates",
+      on: tomorrow,
+      vibes: ["Outdoors"],
+      title: "Tomorrow in Kelowna",
+    });
+    const hope = page.getByTestId("anticipation");
+    await expect(hope).toBeVisible();
+    await expect(page.getByTestId("countdown")).toHaveText("Tomorrow");
+    await expect(
+      page.getByTestId("highlights").locator("li").first(),
+    ).toBeVisible();
+    await expect(page.getByTestId("booking-note")).toContainText(
+      "hasn't booked or reserved anything",
+    );
+    await expect(page.getByTestId("first-directions")).toHaveAttribute(
+      "href",
+      /^https:\/\/www\.google\.com\/maps\/dir\//,
+    );
+    await expect(page.getByTestId("share-adventure")).toBeVisible();
+    // No START before the day: the date has to arrive first.
+    await expect(page.getByTestId("start-day")).toHaveCount(0);
+    // The map is there, with its honest caption.
+    await expect(page.getByTestId("stops-map").first()).toContainText(
+      "not a route",
+    );
+    await page.screenshot({
+      path: `${shots}/G-${label}-anticipation.png`,
+      fullPage: true,
+    });
+
+    // 2. Make it yours: the sentence from the brief changes it, with a preview.
+    const before = await titlesOf(page);
+    await changeInWords(
+      page,
+      "Make this more romantic and add somewhere for dessert",
+    );
+    await expect(page.getByTestId("change-preview")).toBeVisible();
+    await page.screenshot({ path: `${shots}/G-${label}-change.png` });
+    // Nothing was written by asking.
+    expect(await titlesOf(page)).toEqual(before);
+
+    // 3. The day itself.
+    await page.goto("/adventures/new");
+    const url = await start(page, {
+      town: "kelowna",
+      when: "Pick dates",
+      on: today,
+      vibes: ["Outdoors"],
+      title: `Today in Kelowna ${label}`,
+    });
+    await expect(page.getByTestId("today-panel")).toBeVisible();
+    await page.screenshot({
+      path: `${shots}/G-${label}-before-start.png`,
+      fullPage: true,
+    });
+    await page.getByTestId("start-day").click();
+    await expect(page.getByTestId("today-adjust")).toBeVisible();
+
+    await page.getByTestId("behind-more").click();
+    await expect(page.getByTestId("behind-note")).toContainText("phone only");
+
+    await page.getByTestId("capture-favourite").click();
+    await page.getByTestId("capture-note").click();
+    await page
+      .getByTestId("capture-note-text")
+      .fill("Best view of the whole day");
+    await page.getByTestId("capture-note-save").click();
+    await page.getByTestId("capture-photo-input").setInputFiles({
+      name: "p.png",
+      mimeType: "image/png",
+      buffer: PIXEL_PNG,
+    });
+    await page.screenshot({
+      path: `${shots}/G-${label}-started.png`,
+      fullPage: true,
+    });
+
+    const stops = await titlesOf(page);
+    await page.getByTestId("today-skip").click();
+    await expect(page.getByTestId("today-next")).toContainText(stops[1]!);
+    for (let i = 1; i < stops.length; i += 1)
+      await page.getByTestId("today-done").click();
+    await expect(page.getByTestId("open-recap")).toBeVisible();
+
+    // 4. Remember.
+    await page.getByTestId("open-recap").click();
+    await expect(page).toHaveURL(/\/recap$/);
+    await expect(page.getByTestId("recap-line")).toContainText(
+      `${stops.length - 1} of ${stops.length} done · 1 skipped · 1 photo`,
+    );
+    await expect(page.getByTestId("recap-favourites")).toContainText(stops[0]!);
+    await expect(page.getByText("Best view of the whole day")).toBeVisible();
+    await expect(page.getByTestId("recap-stop")).toHaveCount(stops.length);
+    await page.screenshot({
+      path: `${shots}/G-${label}-recap.png`,
+      fullPage: true,
+    });
+    // Kept: still there after a reload.
+    await page.reload();
+    await expect(page.getByText("Best view of the whole day")).toBeVisible();
+    // The path to another adventure.
+    await expect(page.getByTestId("recap-again")).toHaveAttribute(
+      "href",
+      /\/adventures\/new\?/,
+    );
+    // Nobody else on it: nothing offers sharing.
+    await expect(page.getByTestId("share-memory")).toHaveCount(0);
+    expect(url).toMatch(/adventures/);
+    await context.close();
+  });
+}
+
+test("H — a memory is private until it is shared, and a stranger sees nothing", async ({
+  browser,
+}) => {
+  const owner = await person(browser, { ...devices["Pixel 7"] });
+  await signUp(owner.page, "hal-owner", "/adventures/new");
+  const url = await start(owner.page, {
+    town: "kelowna",
+    when: "Pick dates",
+    on: today,
+    vibes: ["Outdoors"],
+    title: "Shared recap",
+  });
+  const id = url.split("/").pop()!;
+
+  // Invite someone through the core's own invitation.
+  await owner.page.getByRole("button", { name: "Link for one person" }).click();
+  await expect(owner.page.getByTestId("invite-url").first()).toBeVisible();
+  const link = (
+    (await owner.page.getByTestId("invite-url").first().textContent()) ?? ""
+  ).trim();
+
+  await owner.page.getByTestId("start-day").click();
+  await owner.page.getByTestId("capture-note").click();
+  await owner.page.getByTestId("capture-note-text").fill("Our secret spot");
+  await owner.page.getByTestId("capture-note-save").click();
+
+  const friend = await person(browser, { ...devices["Pixel 7"] });
+  await friend.page.goto(new URL(link).pathname);
+  await friend.page.getByRole("link", { name: "Sign in to join" }).click();
+  await friend.page.getByRole("tab", { name: "Sign Up" }).click();
+  await friend.page.getByLabel("Email address").fill(emailFor("hal-friend"));
+  await friend.page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await friend.page.getByRole("button", { name: "Create account" }).click();
+  await friend.page.getByRole("button", { name: /join/ }).click();
+  await expect(
+    friend.page.getByRole("heading", { name: "Shared recap" }),
+  ).toBeVisible();
+
+  // The friend sees nothing of the owner's phone, and nothing shared yet.
+  await friend.page.goto(`/adventures/${id}/recap`);
+  await expect(friend.page.getByText("Our secret spot")).toHaveCount(0);
+  await expect(friend.page.getByTestId("recap-shared")).toContainText(
+    "Nothing shared yet",
+  );
+
+  // The owner shares that one memory, deliberately.
+  await owner.page.goto(`/adventures/${id}/recap`);
+  await owner.page.getByTestId("share-memory").first().click();
+  await expect(owner.page.getByTestId("share-memory").first()).toBeDisabled();
+  await friend.page.reload();
+  await expect(friend.page.getByTestId("recap-shared")).toContainText(
+    "Our secret spot",
+  );
+
+  // Someone not on the adventure gets nothing at all.
+  const stranger = await person(browser);
+  await signUp(stranger.page, "hal-stranger", "/saved");
+  const response = await stranger.page.goto(`/adventures/${id}/recap`);
+  expect(response?.status()).toBe(404);
+  // Postgres's row security answers a non-member with an empty list, never
+  // with what was shared.
+  const api = await stranger.page.evaluate(async (adventure) => {
+    const r = await fetch(`/api/adventures/${adventure}/moments`);
+    return { status: r.status, body: await r.text() };
+  }, id);
+  expect(api.body).not.toContain("Our secret spot");
+  expect(api.status === 200 ? JSON.parse(api.body) : []).toEqual([]);
+  await owner.context.close();
+  await friend.context.close();
+  await stranger.context.close();
 });

@@ -24,6 +24,8 @@ import { Answers, StopCard } from "./StopCard";
 import { SavedSuggestions } from "./SavedSuggestions";
 import { FindPlaces, namesAnActivity } from "./FindPlaces";
 import { TodayPanel } from "./TodayPanel";
+import { Anticipation } from "./Anticipation";
+import { StopsMap, type StopPin } from "./StopsMap";
 import { useAdventure } from "./useAdventure";
 
 /**
@@ -41,6 +43,7 @@ import { useAdventure } from "./useAdventure";
  */
 export function AdventureJourney({
   adventureId,
+  adventureTitle,
   isOwner,
   items,
   atlasNames,
@@ -56,6 +59,7 @@ export function AdventureJourney({
   examples,
 }: {
   readonly adventureId: string;
+  readonly adventureTitle: string;
   readonly isOwner: boolean;
   readonly items: readonly ItemView[];
   readonly atlasNames: Readonly<Record<string, string>>;
@@ -90,17 +94,36 @@ export function AdventureJourney({
       : undefined) ??
     (item.atlasRef ? "A place Passport can't name right now" : "Something");
   const todays = grouped.days.find((d) => d.onDay === today);
+  // The next day still to come, for something to look forward to.
+  const coming = grouped.days.find(
+    (d) => d.onDay > today && d.items.length > 0,
+  );
 
   return (
     <div className="space-y-12">
       {todays && todays.items.length > 0 && (
         <TodayPanel
           adventureId={adventureId}
+          adventureTitle={adventureTitle}
           onDay={today}
           stops={todays.items}
           names={atlasNames}
           experiences={experiences}
           detail={details[today]}
+          changePlan={atlasDown ? undefined : requestChange}
+        />
+      )}
+
+      {!todays && coming && (
+        <Anticipation
+          adventureId={adventureId}
+          adventureTitle={adventureTitle}
+          firstDay={coming.onDay}
+          today={today}
+          stops={coming.items}
+          names={atlasNames}
+          experiences={experiences}
+          detail={details[coming.onDay]}
         />
       )}
 
@@ -295,6 +318,12 @@ export function AdventureJourney({
                     ))}
                   </ol>
                 )}
+                <DayMap
+                  items={day.items}
+                  experiences={experiences}
+                  nameOf={nameOf}
+                  tone={tone.bg}
+                />
                 {day.items.length > 1 && (
                   <div className="px-2">
                     <DayTravel items={day.items} experiences={experiences} />
@@ -674,5 +703,30 @@ function AddYourOwn({
         </button>
       </form>
     </details>
+  );
+}
+
+/** The day's stops that Atlas can place, on a map, in plan order. */
+function DayMap({
+  items,
+  experiences,
+  nameOf,
+  tone,
+}: {
+  readonly items: readonly ItemView[];
+  readonly experiences: Readonly<Record<string, Experience>>;
+  readonly nameOf: (item: ItemView) => string;
+  readonly tone: string;
+}) {
+  const pins: StopPin[] = [];
+  items.forEach((item, i) => {
+    const at = item.atlasRef
+      ? experiences[item.atlasRef]?.geography?.coordinates
+      : undefined;
+    if (at)
+      pins.push({ n: i + 1, name: nameOf(item), at: [at[0], at[1]] as const });
+  });
+  return (
+    <StopsMap pins={pins} missing={items.length - pins.length} tone={tone} />
   );
 }

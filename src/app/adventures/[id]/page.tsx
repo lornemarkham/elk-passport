@@ -314,6 +314,16 @@ export default async function AdventurePage({
                           ? "The guide & memories"
                           : "Adventure guide"}
                       </Link>
+                      {(status?.stage === "done" ||
+                        status?.stage === "today") && (
+                        <Link
+                          href={`/adventures/${view.id}/recap`}
+                          data-testid="open-recap-header"
+                          className={pillClass("light")}
+                        >
+                          The recap
+                        </Link>
+                      )}
                       <Link
                         href={`/saved?adventure=${encodeURIComponent(view.id)}`}
                         data-testid="add-from-saved"
@@ -366,6 +376,13 @@ export default async function AdventurePage({
                       >
                         Write it down
                       </Link>
+                      <Link
+                        href={`/adventures/${view.id}/recap`}
+                        data-testid="done-recap"
+                        className={pillClass("forest")}
+                      >
+                        See your recap
+                      </Link>
                       <Link href={againHref} className={pillClass("forest")}>
                         <Repeat className="h-4 w-4" aria-hidden />
                         Do it again
@@ -375,6 +392,7 @@ export default async function AdventurePage({
                 )}
                 <AdventureJourney
                   adventureId={view.id}
+                  adventureTitle={view.title}
                   isOwner={view.role === "owner"}
                   items={view.items}
                   atlasNames={atlasNames}

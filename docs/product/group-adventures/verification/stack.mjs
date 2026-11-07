@@ -328,6 +328,20 @@ async function services({ fresh }) {
       await sql(origin);
       await sql(origin);
     }
+    // ADR 014's shared moments (the recap shares a memory with the group).
+    // ADVENTURES_WITHOUT_TOGETHER=1 leaves them out, to prove the recap says
+    // sharing is not switched on instead of failing.
+    if (process.env.ADVENTURES_WITHOUT_TOGETHER !== "1") {
+      const together = fs.readFileSync(
+        path.join(
+          repo,
+          "supabase/migrations/20261101000000_passport_adventure_together.sql",
+        ),
+        "utf8",
+      );
+      await sql(together);
+      await sql(together);
+    }
   }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {

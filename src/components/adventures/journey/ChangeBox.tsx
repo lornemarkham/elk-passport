@@ -17,6 +17,9 @@ type Applied =
   | { kind: "swap"; days: readonly [string, string] };
 
 const EXAMPLES = [
+  "Make it more romantic and add somewhere for dessert",
+  "Start in Kelowna instead",
+  "Leave at 10",
   "Make it more adventurous",
   "We're bringing a five-year-old",
   "Find somewhere better for lunch",
