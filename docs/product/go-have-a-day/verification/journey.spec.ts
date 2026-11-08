@@ -20,7 +20,7 @@ import { expect, test, type Page } from "@playwright/test";
  * API after every step that could lose something.
  */
 
-const PASSWORD = "a-pretty-good-day-9";
+const testPassword = "a-pretty-good-day-9";
 const SHOTS = process.env.E2E_SHOTS ?? "/tmp/ghad-journey-shots";
 
 const SANDHILL = "Sandhill Winery";
@@ -78,7 +78,7 @@ test("a new visitor discovers, saves, makes a day, lives it and remembers it", a
   await page.goto("/auth?next=/discovery");
   await page.getByRole("tab", { name: "Sign Up" }).click();
   await page.getByLabel("Email address").fill(who);
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/discovery/);
 
