@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 
@@ -112,7 +118,7 @@ describe("a saved Place and its detail-page link", () => {
     ).toHaveAttribute("href", "/places/238661eb-e191-4d60-ae3d-748b4543964c");
   });
 
-  it("removes a saved Place from the list and keeps it reachable from the board", async () => {
+  it("leaves a Place saved on an earlier visit out of the list, and keeps it reachable from the Pocket", async () => {
     items = [
       {
         id: "item-1",
@@ -125,11 +131,14 @@ describe("a saved Place and its detail-page link", () => {
       <DiscoveryListView experiences={experiences} displayName="Tester" />,
     );
 
-    // Its card is gone from the list…
-    const sidebar = await screen.findByRole("complementary");
-    await waitFor(() =>
-      expect(within(sidebar).getByText("Ellison Provincial Park")).toBeTruthy(),
+    // It is in the Pocket…
+    fireEvent.click(
+      await screen.findByRole("button", { name: /1 idea saved/ }),
     );
+    const pocket = screen.getByTestId("pocket");
+    expect(pocket).toHaveTextContent("Ellison Provincial Park");
+
+    // …its card is gone from the list…
     expect(
       screen
         .getAllByRole("listitem")
@@ -140,16 +149,12 @@ describe("a saved Place and its detail-page link", () => {
         ),
     ).toBe(true);
 
-    // …and the board carries the same destination the card would have.
+    // …and the Pocket carries the same destination the card would have.
     expect(
-      within(sidebar).getByRole("link", { name: "Ellison Provincial Park" }),
+      within(pocket).getByRole("link", {
+        name: "Details of Ellison Provincial Park",
+      }),
     ).toHaveAttribute("href", "/places/eddd9851-b490-45ad-bb20-cb21e7d9e27f");
-    // Exactly one link to it — the board's, not a lingering card.
-    expect(
-      document.querySelectorAll(
-        'a[href="/places/eddd9851-b490-45ad-bb20-cb21e7d9e27f"]',
-      ),
-    ).toHaveLength(1);
 
     // The unsaved Place is unaffected — saving one thing hides one thing.
     expect(

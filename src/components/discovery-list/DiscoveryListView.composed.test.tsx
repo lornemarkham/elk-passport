@@ -464,17 +464,22 @@ describe("controls that cannot work are not offered", () => {
   });
 });
 
-describe("the board before anything is in it", () => {
-  it("is a line, not a filing cabinet", () => {
-    renderPage();
-    expect(screen.getByTestId("board-empty")).toBeTruthy();
+/**
+ * **No board beside the results** (owner brief, 2026-11-08, P1): the 320px
+ * column that sat beside Discovery — empty, for most people, most of the
+ * time — is gone. Saved things live in the Adventure Pocket, which is not
+ * on the page at all until there is something in it.
+ */
+describe("before anything is saved", () => {
+  it("gives the results the whole width, with no board beside them", () => {
+    const { container } = renderPage();
+    expect(screen.queryByTestId("board-empty")).toBeNull();
+    expect(container.innerHTML).not.toContain("320px");
   });
 
-  it("says what saving is for", () => {
+  it("shows no Pocket until something is in it", () => {
     renderPage(null);
-    expect(screen.getByTestId("board-empty")).toHaveTextContent(
-      /keep what you find/i,
-    );
+    expect(screen.queryByTestId("pocket-button")).toBeNull();
   });
 });
 

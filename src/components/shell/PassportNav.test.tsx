@@ -31,22 +31,33 @@ describe("where you are", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByTestId("passport-nav-places")).not.toHaveAttribute(
+    expect(screen.getByTestId("passport-nav-my-stuff")).not.toHaveAttribute(
       "aria-current",
     );
   });
 
   it("counts being deeper inside a section as being in it", () => {
     at("/boards/abc-123");
-    expect(screen.getByTestId("passport-nav-saved")).toHaveAttribute(
+    expect(screen.getByTestId("passport-nav-my-stuff")).toHaveAttribute(
       "aria-current",
       "page",
     );
   });
 
+  it("calls a collection, an adventure and a memory My Stuff", () => {
+    for (const path of ["/saved", "/adventures/abc", "/adventures/abc/recap"]) {
+      const { unmount } = at(path);
+      expect(screen.getByTestId("passport-nav-my-stuff")).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      unmount();
+    }
+  });
+
   it("marks nothing on the homepage, which is not a section", () => {
     at("/");
-    for (const id of ["discover", "places", "saved"]) {
+    for (const id of ["discover", "my-stuff", "build"]) {
       expect(screen.getByTestId(`passport-nav-${id}`)).not.toHaveAttribute(
         "aria-current",
       );
@@ -55,11 +66,11 @@ describe("where you are", () => {
 });
 
 describe("the Day Builder has a front door", () => {
-  it("is on the bar, straight after Saved, and opens /go", () => {
+  it("is on the bar, straight after My Stuff, and opens /go", () => {
     at("/saved");
     const build = screen.getByTestId("passport-nav-build");
     expect(build).toHaveAttribute("href", "/go");
-    expect(build).toHaveTextContent("Build a day");
+    expect(build).toHaveTextContent("Build a Day");
   });
 
   it("lights up inside the builder and on its Go Offline step", () => {
@@ -106,7 +117,11 @@ describe("getting out", () => {
 });
 
 describe("what it refuses to promise", () => {
-  it("offers only sections that exist and are finished", () => {
+  /**
+   * **Discover | My Stuff | Build a Day | Experiences** — the owner's brief,
+   * 2026-11-08 (P0). Places and Labs are off the bar; their routes remain.
+   */
+  it("offers the four parts of the journey, and nothing else", () => {
     at("/discovery");
     const labels = screen
       .getAllByRole("link")
@@ -114,12 +129,12 @@ describe("what it refuses to promise", () => {
     expect(labels).toEqual([
       "Go have a day",
       "Discover",
-      "Places",
-      "Saved",
-      "Build a day",
-      "Labs",
+      "My Stuff",
+      "Build a Day",
       "Sign in",
     ]);
+    expect(screen.queryByTestId("passport-nav-places")).toBeNull();
+    expect(screen.queryByTestId("passport-nav-labs")).toBeNull();
     // Experiences is on the bar too, but as a button: it opens a row, it
     // does not go anywhere itself.
     expect(screen.getByTestId("passport-nav-experiences")).toHaveTextContent(
@@ -179,7 +194,7 @@ describe("experiences", () => {
     expect(button).toHaveAttribute("aria-controls", row.id);
     const links = screen
       .getAllByRole("link", {
-        name: /Conference|Hockey Night|October|Christmas|Snow Day/,
+        name: /Conference|Hockey Night|October|Christmas|Snow Day|Date Night/,
       })
       .map((a) => [a.textContent?.trim(), a.getAttribute("href")]);
     expect(links).toEqual([
@@ -188,6 +203,7 @@ describe("experiences", () => {
       ["October", "/october"],
       ["Christmas", "/christmas"],
       ["Snow Day", "/snow"],
+      ["Date Night", "/datenight"],
     ]);
   });
 
@@ -221,7 +237,7 @@ describe("experiences", () => {
       "aria-current",
       "page",
     );
-    for (const id of ["discover", "places", "saved"]) {
+    for (const id of ["discover", "my-stuff", "build"]) {
       expect(screen.getByTestId(`passport-nav-${id}`)).not.toHaveAttribute(
         "aria-current",
       );
@@ -257,7 +273,7 @@ describe("while who is signed in is still being read", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByTestId("passport-nav-places")).toBeInTheDocument();
+    expect(screen.getByTestId("passport-nav-my-stuff")).toBeInTheDocument();
     expect(screen.getByTestId("passport-nav-experiences")).toBeInTheDocument();
     expect(screen.getByTestId("passport-account-pending")).toBeInTheDocument();
     expect(screen.queryByTestId("passport-sign-in")).not.toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import type { Board } from "@/lib/data/boards-repo";
@@ -153,10 +153,13 @@ describe("the Discover list under a geographic scope", () => {
         scope={{ kind: "atlas-region", regionId: OKANAGAN, label: "Okanagan" }}
       />,
     );
-    const sidebar = await screen.findByRole("complementary");
-    await waitFor(() =>
-      expect(sidebar.textContent).toContain("Coquihalla Summit"),
-    );
+    const pocket = async () => {
+      fireEvent.click(
+        await screen.findByRole("button", { name: /1 idea saved/ }),
+      );
+      return screen.getByTestId("pocket");
+    };
+    expect((await pocket()).textContent).toContain("Coquihalla Summit");
     unmount();
 
     render(
@@ -170,10 +173,7 @@ describe("the Discover list under a geographic scope", () => {
         }}
       />,
     );
-    const other = await screen.findByRole("complementary");
-    await waitFor(() =>
-      expect(other.textContent).toContain("Coquihalla Summit"),
-    );
+    expect((await pocket()).textContent).toContain("Coquihalla Summit");
   });
 });
 

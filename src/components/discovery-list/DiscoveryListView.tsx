@@ -12,30 +12,12 @@ import {
   type GeographicScope,
 } from "@/domain/discovery/geographicScope";
 import type { Experience } from "@/domain/experience/types";
-import {
-  clearStoredActiveBoardId,
-  getStoredActiveBoardId,
-  setStoredActiveBoardId,
-} from "@/lib/data/activeBoardStorage";
-import {
-  createBoard,
-  deleteBoard,
-  isSignedOut,
-  listBoardItems,
-  listBoards,
-  removeExperienceFromBoard,
-  renameBoard,
-  saveExperienceToBoard,
-  type Board,
-  type BoardItem,
-} from "@/lib/data/boards-repo";
+import { isSignedOut } from "@/lib/data/boards-repo";
+import { useIdeas } from "@/lib/pocket/useIdeas";
+import { savedLine } from "@/lib/voice";
+import { AdventurePocket } from "@/components/pocket/AdventurePocket";
 import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
 import { isOctoberKind } from "@/lib/october/types";
-import { DeleteBoardDialog } from "./DeleteBoardDialog";
-import {
-  DiscoveryListSidebar,
-  type SavedListItem,
-} from "./DiscoveryListSidebar";
 import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { excludesAge, ageEvidence } from "@/domain/discovery/suitability";
@@ -240,24 +222,17 @@ export function DiscoveryListView({
 }: DiscoveryListViewProps) {
   const signedIn = displayName !== null;
 
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
-  const [boardsLoaded, setBoardsLoaded] = useState(false);
-  const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
+  /**
+   * **A person's ideas** — the same Atlas boards the Adventure Pocket and My
+   * Stuff read (`useIdeas`). The board that used to sit beside the results,
+   * with its switcher, rename and delete, is gone (owner brief, 2026-11-08):
+   * collections are managed in My Stuff, and nothing here needs to know which
+   * board a thing is on.
+   */
+  const ideas = useIdeas(signedIn);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [confirmingDeleteBoard, setConfirmingDeleteBoard] = useState(false);
-  const [isDeletingBoard, setIsDeletingBoard] = useState(false);
-  // Which board-changing operation (switch, create-then-switch, or
-  // rename) is the most recent. Root cause of the "rename only takes
-  // effect after another interaction" bug: switchToBoard and
-  // handleRenameBoard each independently `await` a request and then call
-  // setBoard(...) with whatever they started with. With no coordination,
-  // an in-flight rename that resolves *after* the user has switched
-  // boards would win the race and silently snap `board` back to the
-  // renamed one. Every operation claims a ticket before its request goes
-  // out; only the operation still holding the latest ticket when its
-  // request resolves is allowed to apply setBoard.
-  const boardRequestRef = useRef(0);
+  // Which save this is, this visit — so the line varies without randomness.
+  const saves = useRef(0);
 
   // The day a person actually has. Situational and deliberately not persisted
   // — see `situation.ts`. Nothing here becomes a profile.
@@ -377,85 +352,22 @@ export function DiscoveryListView({
     setShown(RESULT_PAGE);
   }
 
-  // Same bootstrap contract as the immersive DiscoverySpace (resolve the
-  // persisted active board, or Atlas's first, and load its real items) —
-  // Atlas is still the one source of truth, this is just a second
-  // renderer of the same board data, not a second copy of it.
+  // **What is already in their October**, so *Want to do* says so. Ideas
+  // themselves are loaded by `useIdeas`.
   useEffect(() => {
-    // A visitor has no boards to load. Calling anyway would 401 on every page
-    // view and toast an error at somebody who has done nothing wrong.
-    if (!signedIn) {
-      // The next person to sign in on this browser must not inherit the last
-      // one's active board.
-      clearStoredActiveBoardId();
-      return;
-    }
-
+    if (!signedIn) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const [allBoards, octoberThings] = await Promise.all([
-          listBoards(),
-          listOctoberThings().catch(() => []),
-        ]);
-        if (cancelled) return;
-        setWantedIds(new Set(octoberThings.map((t) => t.entityId)));
-        setBoards(allBoards);
-        setBoardsLoaded(true);
-        const storedId = getStoredActiveBoardId();
-        const resolved =
-          (storedId && allBoards.find((b) => b.id === storedId)) ||
-          allBoards[0];
-        if (!resolved) return;
-        // **Which board this is, before what is on it.** These used to be
-        // one step, so a failed item fetch left `board` null — the sidebar
-        // showed no board, *Review board* vanished, and the next save created
-        // a second board called "My Places" beside the real one.
-        setBoard(resolved);
-        setStoredActiveBoardId(resolved.id);
-        try {
-          const items = await listBoardItems(resolved.id);
-          if (!cancelled) setBoardItems(items);
-        } catch (error) {
-          // The board is still theirs and still reachable. Only its contents
-          // are missing, and saying so beats pretending it is not there.
-          console.error(
-            `Failed to load items for board ${resolved.id}:`,
-            error,
-          );
-          toast.error("Couldn't load what is on your board.");
-        }
-      } catch (error) {
-        console.error("Failed to load boards from Atlas:", error);
-        setBoardsLoaded(true);
-      }
-    })();
+    void listOctoberThings()
+      .catch(() => [])
+      .then((things) => {
+        if (!cancelled) setWantedIds(new Set(things.map((t) => t.entityId)));
+      });
     return () => {
       cancelled = true;
     };
-    // Re-runs when the person changes — signing in mid-session has to load
-    // their boards, and signing out has to stop showing the previous one's.
   }, [signedIn]);
 
-  /**
-   * What the page actually shows.
-   *
-   * Signing out has to clear what is on screen, not merely stop fetching — the
-   * previous person's board name and saved places sitting in the sidebar is the
-   * exact failure this mission exists to prevent. Derived rather than cleared
-   * in an effect: an effect that copies one piece of state into another renders
-   * the stale value first and corrects it a frame later, which for *whose data
-   * this is* is not an acceptable frame.
-   */
-  const visibleBoards = signedIn ? boards : [];
-  const visibleBoard = signedIn ? board : null;
-  // Memoised because two `useMemo`s below depend on it; a fresh `[]` every
-  // render would defeat both.
-  const visibleBoardItems = useMemo(
-    () => (signedIn ? boardItems : []),
-    [signedIn, boardItems],
-  );
-  const boardsReady = signedIn ? boardsLoaded : true;
+  const boardsReady = ideas.ready;
 
   /**
    * **The button they pressed before Passport interrupted them.**
@@ -501,16 +413,23 @@ export function DiscoveryListView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, boardsReady, experiences]);
 
-  const savedIds = useMemo(
-    () => new Set(visibleBoardItems.map((item) => item.experienceId)),
-    [visibleBoardItems],
-  );
+  const savedIds = ideas.savedIds;
 
-  // The list represents what's still available to discover — once an
-  // experience is saved to the active board, the sidebar is its home
-  // (see savedItems below). Presentation-only: nothing is deleted, and
-  // removing it from the board (handleRemoveSaved) drops it from
-  // savedIds, which brings it right back here.
+  // **What was already saved when they arrived stays out of the feed; what
+  // they save now stays where it is.** The list is what is still there to
+  // discover, so ideas from an earlier visit are not offered again (the
+  // Pocket and My Stuff are their home). But a card that vanished under the
+  // finger the moment it was saved — which is what this did while the board
+  // sat beside the results — reshuffled the page and left nothing to undo
+  // on. Taking something out of the Pocket brings it back here either way.
+  const [savedOnArrival, setSavedOnArrival] =
+    useState<ReadonlySet<string> | null>(null);
+  if (signedIn && ideas.ready && savedOnArrival === null)
+    setSavedOnArrival(new Set(savedIds));
+  const alreadyHad = useCallback(
+    (id: string) => Boolean(savedOnArrival?.has(id) && savedIds.has(id)),
+    [savedOnArrival, savedIds],
+  );
   // **Candidate eligibility is not feed inclusion.** Atlas says 189 things are
   // worth considering; the default view is a conservative projection of that
   // (see `defaultFeed`), and a typed query or an explicit kind searches the
@@ -624,6 +543,11 @@ export function DiscoveryListView({
    * URL (ADR 002). The plan asks again, in the browser, or says it cannot
    * measure.
    */
+  /** Every candidate by id — what the Pocket shows for a saved id. */
+  const experienceById = useMemo(
+    () => new Map(experiences.map((e) => [e.id, e])),
+    [experiences],
+  );
   const carry = useMemo(() => {
     const query = new URLSearchParams();
     if (session.on) query.set("on", session.on);
@@ -764,12 +688,20 @@ export function DiscoveryListView({
     const narrowed = pool
       .filter((experience) => (kind ? experience.kind === kind : true))
       .filter((experience) => (intent ? intentOf(experience) === intent : true))
-      .filter((experience) => !savedIds.has(experience.id));
+      .filter((experience) => !alreadyHad(experience.id));
 
     // **A picture first**, then the soft answers: a stated welcome for this
     // age, stated hours on the chosen day, shelter on a wet one.
     return byPreference(pictureFirst(narrowed), preferences);
-  }, [placedExperiences, savedIds, browsing, kind, intent, scope, preferences]);
+  }, [
+    placedExperiences,
+    alreadyHad,
+    browsing,
+    kind,
+    intent,
+    scope,
+    preferences,
+  ]);
   const contextResults = useMemo(
     () => everywhereResults.filter(inContext),
     [everywhereResults, inContext],
@@ -779,16 +711,16 @@ export function DiscoveryListView({
 
   /**
    * The pool the composed page and the situational panel both answer from —
-   * scoped, feed-filtered, and with saved things removed, exactly as the
+   * scoped, feed-filtered, and without what they had already saved, as the
    * sections see it. One pool, so the panel cannot suggest something the page
    * below would never show.
    */
   const composedPool = useMemo(
     () =>
       defaultFeed(scopeExperiences(placedExperiences, scope)).filter(
-        (experience) => !savedIds.has(experience.id),
+        (experience) => !alreadyHad(experience.id),
       ),
-    [placedExperiences, scope, savedIds],
+    [placedExperiences, scope, alreadyHad],
   );
 
   const elsewhereCount = useMemo(
@@ -1274,154 +1206,6 @@ export function DiscoveryListView({
     });
   const dayHrefFor = (experience: Experience) => toDay([experience.id]);
 
-  // Recently saved, newest first, resolved against the already-loaded
-  // catalogue rather than a second fetch — Atlas's board-items response
-  // has no experience detail on it, and the full list is already here.
-  /**
-   * Saved ids the catalogue in memory cannot name.
-   *
-   * Counted rather than ignored: a sidebar that silently drops a row is the
-   * same defect as a board that does, one surface along.
-   */
-  const unshownSaves = useMemo(() => {
-    const known = new Set(experiences.map((e) => e.id));
-    return visibleBoardItems.filter((item) => !known.has(item.experienceId))
-      .length;
-  }, [visibleBoardItems, experiences]);
-
-  const savedItems: SavedListItem[] = useMemo(() => {
-    const experienceById = new Map(experiences.map((e) => [e.id, e]));
-    return visibleBoardItems
-      .slice()
-      .sort((a, b) => b.addedAt.localeCompare(a.addedAt))
-      .flatMap((item) => {
-        const experience = experienceById.get(item.experienceId);
-        return experience ? [{ experience, addedAt: item.addedAt }] : [];
-      });
-  }, [visibleBoardItems, experiences]);
-
-  // Shared by both create and switch: point `board` at a different board,
-  // persist that choice, and replace local board-item state with a fresh
-  // fetch for it. Atlas-first: fetching items happens before any local
-  // state changes, so a failed switch leaves the previous board's view
-  // intact instead of half-updating. Claims the latest request ticket
-  // (see boardRequestRef above) so a slower, earlier-started rename can't
-  // resolve afterward and overwrite the board the user actually switched to.
-  async function switchToBoard(target: Board) {
-    const requestId = ++boardRequestRef.current;
-    try {
-      const items = await listBoardItems(target.id);
-      if (boardRequestRef.current !== requestId) return;
-      setBoard(target);
-      setStoredActiveBoardId(target.id);
-      setBoardItems(items);
-    } catch (error) {
-      console.error(`Failed to switch to board ${target.id}:`, error);
-      toast.error("Couldn't switch boards. Please try again.");
-    }
-  }
-
-  async function handleCreateBoard(name: string) {
-    // Same invitation as saving. A board is durable user state too, so it needs
-    // somebody to belong to before it can exist.
-    if (!signedIn) {
-      // No pending act: a board is a container, not a thing they chose.
-      signInHere("A board keeps what you find");
-      return;
-    }
-
-    try {
-      const created = await createBoard(name);
-      setBoards((prev) => [...prev, created]);
-      await switchToBoard(created);
-    } catch (error) {
-      console.error(`Failed to create board "${name}":`, error);
-      toast.error("Couldn't create that board. Please try again.");
-    }
-  }
-
-  function handleSwitchBoard(boardId: string) {
-    const target = boards.find((candidate) => candidate.id === boardId);
-    if (!target) {
-      console.error(
-        `Cannot switch to board ${boardId} — not in the loaded boards list.`,
-      );
-      return;
-    }
-    switchToBoard(target);
-  }
-
-  // Claims the latest request ticket the same way switchToBoard does: the
-  // rename itself (and its effect on `boards`, keyed by id and safe to
-  // apply regardless) always goes through, but if the user switches to a
-  // different board before this PATCH resolves, `setBoard(renamed)` is
-  // skipped rather than clobbering the board they switched to.
-  async function handleRenameBoard(name: string) {
-    if (!board) return;
-    const requestId = ++boardRequestRef.current;
-    const renamed = await renameBoard(board.id, name);
-    setBoards((prev) =>
-      prev.map((candidate) =>
-        candidate.id === renamed.id ? renamed : candidate,
-      ),
-    );
-    if (boardRequestRef.current === requestId) {
-      setBoard(renamed);
-    }
-  }
-
-  function handleRequestDeleteBoard() {
-    setConfirmingDeleteBoard(true);
-  }
-
-  // Atlas-first: the board only disappears from local state once Atlas
-  // confirms it's actually gone. Hands off to whichever board naturally
-  // comes next — switchToBoard if one remains, or a clean "no boards"
-  // reset if that was the last one.
-  async function handleConfirmDeleteBoard() {
-    if (!board) return;
-    const deletedId = board.id;
-    setIsDeletingBoard(true);
-    try {
-      await deleteBoard(deletedId);
-      const remaining = boards.filter(
-        (candidate) => candidate.id !== deletedId,
-      );
-      setBoards(remaining);
-      setConfirmingDeleteBoard(false);
-      if (remaining.length > 0) {
-        await switchToBoard(remaining[0]);
-      } else {
-        boardRequestRef.current += 1;
-        setBoard(null);
-        setBoardItems([]);
-        clearStoredActiveBoardId();
-      }
-      toast.success("Board deleted.");
-    } catch (error) {
-      console.error(`Failed to delete board ${deletedId}:`, error);
-      toast.error("Couldn't delete this board. Please try again.");
-    } finally {
-      setIsDeletingBoard(false);
-    }
-  }
-
-  async function handleRemoveSaved(experienceId: string) {
-    if (!board) return;
-    try {
-      await removeExperienceFromBoard(board.id, experienceId);
-      setBoardItems((prev) =>
-        prev.filter((item) => item.experienceId !== experienceId),
-      );
-    } catch (error) {
-      console.error(
-        `Failed to remove "${experienceId}" from board ${board.id}:`,
-        error,
-      );
-      toast.error("Couldn't remove that experience. Please try again.");
-    }
-  }
-
   /**
    * The only thing on this page that asks for anything.
    *
@@ -1429,20 +1213,6 @@ export function DiscoveryListView({
    * mid-browse, and throwing them at a sign-in form loses the thing they were
    * looking at. `next` brings them back to it.
    */
-  /** The same invitation with nothing to replay afterwards. */
-  function signInHere(title: string, description?: string) {
-    const back = sessionHref(session);
-    toast(title, {
-      description,
-      action: {
-        label: "Sign in",
-        onClick: () => {
-          window.location.href = `/auth?next=${encodeURIComponent(back)}`;
-        },
-      },
-    });
-  }
-
   function inviteSignIn(
     title: string,
     description: string,
@@ -1507,9 +1277,7 @@ export function DiscoveryListView({
       // cannot hold this kind — `passport_october_things` constrains
       // `entity_kind` — so the stronger intention is the only part that
       // cannot happen, and it is the only part reported.
-      toast.success(
-        "Saved to your board. My October can't hold this kind yet.",
-      );
+      toast.success("In your Pocket. My October can't hold this kind yet.");
       return;
     }
     try {
@@ -1522,7 +1290,7 @@ export function DiscoveryListView({
       setWantedIds((prev) => new Set(prev).add(experience.id));
       // Both halves said, because both happened. The silent version of this
       // is what made a saved thing look like it had gone somewhere else.
-      toast.success("Saved to your board, and kept for your October.");
+      toast.success("In your Pocket, and kept for your October.");
     } catch (error) {
       toast.error(
         isSignedOut(error)
@@ -1545,28 +1313,8 @@ export function DiscoveryListView({
    *
    * Already on the board is success, not a second row.
    */
-  async function collect(experience: Experience): Promise<Board | null> {
-    // Only when they genuinely have none. `board` can be null while the first
-    // load is still in flight, and creating one then is how a second "My
-    // Places" appears beside the real one.
-    let target = board ?? boards[0] ?? null;
-    if (!target) {
-      // A person who just signed up has no board, and telling them to go and
-      // make one before they may keep the thing they are looking at is a dead
-      // end dressed as an instruction.
-      target = await createBoard("My Places");
-      setBoards((prev) => [...prev, target!]);
-      setBoard(target);
-      setStoredActiveBoardId(target.id);
-    }
-    if (savedIds.has(experience.id)) return target;
-    const item = await saveExperienceToBoard(target.id, experience.id);
-    setBoardItems((prev) =>
-      prev.some((existing) => existing.experienceId === item.experienceId)
-        ? prev
-        : [...prev, item],
-    );
-    return target;
+  async function collect(experience: Experience): Promise<void> {
+    await ideas.save(experience.id);
   }
 
   async function handleSave(experience: Experience) {
@@ -1591,8 +1339,20 @@ export function DiscoveryListView({
     if (savingId) return;
     setSavingId(experience.id);
     try {
-      const target = await collect(experience);
-      if (target) toast.success(`Saved to ${target.name}.`);
+      await collect(experience);
+      // **Saved at once, said quietly, undone in one tap** (owner brief,
+      // 2026-11-08, P2). The count on the Pocket moves with it.
+      toast.success(savedLine(saves.current++), {
+        description: experience.title,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void ideas.remove(experience.id).catch(() => {
+              toast.error("Couldn't undo that. It's in your Pocket.");
+            });
+          },
+        },
+      });
     } catch (error) {
       console.error(`Failed to save "${experience.id}":`, error);
       // A session that expired mid-visit is not a broken save, and telling
@@ -2004,7 +1764,11 @@ export function DiscoveryListView({
               question and the photographs. The October door moved up beside
               *Refine*; the mode switcher and `InvitationStrip` went earlier
               (see git history for why). */}
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* **The whole width is the results'.** A 320px board column used to
+              sit beside them on every wide screen (owner brief, 2026-11-08:
+              _"The current board must never reduce the width of Discovery
+              results"_); saved things live in the Pocket now. */}
+          <div className="mt-6 sm:mt-8">
             {/* `min-w-0`: a grid item sizes to its content by default, so the
                 shelves' `overflow-x-auto` never engaged and the **document**
                 scrolled sideways by 2,440px at 1440 instead. */}
@@ -2171,7 +1935,7 @@ export function DiscoveryListView({
                      was ever handed the reader's position. Same `origin`,
                      same rule — a distance where both ends are stated, and
                      nothing at all otherwise. */
-                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                     {withoutRepeatedIllustrations(visible.slice(0, shown)).map(
                       (experience) => (
                         <PossibilityCard
@@ -2206,31 +1970,15 @@ export function DiscoveryListView({
                 )}
               </>
             </div>
-
-            <DiscoveryListSidebar
-              boards={visibleBoards}
-              board={visibleBoard}
-              boardsLoaded={boardsReady}
-              signedIn={signedIn}
-              savedItems={savedItems}
-              unshownSaves={unshownSaves}
-              onSwitchBoard={handleSwitchBoard}
-              onCreateBoard={handleCreateBoard}
-              onRenameBoard={handleRenameBoard}
-              onRequestDeleteBoard={handleRequestDeleteBoard}
-              onRemoveSaved={handleRemoveSaved}
-              backHref={sessionHref(session)}
-            />
           </div>
         </div>
 
-        <DeleteBoardDialog
-          boardName={
-            confirmingDeleteBoard ? (visibleBoard?.name ?? null) : null
-          }
-          isDeleting={isDeletingBoard}
-          onOpenChange={(open) => !open && setConfirmingDeleteBoard(false)}
-          onConfirm={handleConfirmDeleteBoard}
+        {/* **The Pocket, not a sidebar.** One small button in the corner;
+            the results keep the whole width. */}
+        <AdventurePocket
+          ideas={ideas}
+          find={(id) => experienceById.get(id)}
+          carry={carry}
         />
 
         <ActivityExplorer

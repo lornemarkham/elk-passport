@@ -360,7 +360,11 @@ describe("an older want-to-do link still collects", () => {
   });
 });
 
-describe("the sidebar counts what is on the board", () => {
+/**
+ * **The Pocket counts what was saved, not what it can draw** (owner brief,
+ * 2026-11-08, P2 — it replaced the sidebar, and keeps its honesty rule).
+ */
+describe("the Pocket counts what is saved", () => {
   it("says so rather than lowering the number it cannot name", async () => {
     listBoardItems.mockResolvedValue([
       {
@@ -377,12 +381,15 @@ describe("the sidebar counts what is on the board", () => {
       },
     ]);
     view(true);
-    const sidebar = await screen.findByRole("complementary");
     await waitFor(() =>
-      expect(sidebar).toHaveTextContent("2 experiences saved"),
+      expect(screen.getByTestId("pocket-count")).toHaveTextContent(
+        "2 ideas saved",
+      ),
     );
-    expect(screen.getByTestId("unshown-saves")).toHaveTextContent(
-      "1 of them is on your board but can't be shown here right now",
-    );
+    expect(screen.queryByRole("complementary")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /2 ideas saved/ }));
+    const pocket = screen.getByTestId("pocket");
+    expect(within(pocket).getAllByTestId("pocket-item")).toHaveLength(1);
+    expect(pocket).toHaveTextContent("1 more saved that this page can't show");
   });
 });

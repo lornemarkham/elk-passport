@@ -61,36 +61,37 @@ import { Wordmark } from "@/components/ghad/Wordmark";
  * was cut off at exactly the width it was needed most.
  */
 
+/**
+ * **Four things, in the order of the journey** (owner brief _Go Have a Day —
+ * the experience overhaul_, 2026-11-08, P0):
+ *
+ * ```
+ * Discover | My Stuff | Build a Day | Experiences
+ * ```
+ *
+ * - **Places is off the bar.** It was Atlas's filing cabinet presented as a
+ *   section (doctrine §8). `/places` and every place page still work —
+ *   Discovery's cards open them — it is just not a destination of its own.
+ * - **Saved became My Stuff**, the one home of ideas, collections, adventures
+ *   and memories. A board **is** a collection and an adventure lives there,
+ *   so both light it.
+ * - **Build a Day** is the Day Builder (`/go`), straight after, because that
+ *   is where saved ideas go. Go Offline (`/detox`) is the same journey's last
+ *   step, so it lights this too.
+ * - **Labs is off the bar** too: the brief names four things, and Labs is
+ *   where unfinished experiments live. `/labs` still answers.
+ */
 const DESTINATIONS = [
   { href: "/discovery", label: "Discover", testId: "discover" },
-  { href: "/places", label: "Places", testId: "places" },
-  // **Saved means what somebody saved, not the index of their boards.** This
-  // pointed at `/boards`, which is the administration screen the owner's
-  // route through Discovery → My Places → Back to Boards → Your Boards came
-  // out of. `/boards` is still there for anybody who goes looking for it.
   {
     href: "/saved",
-    label: "Saved",
-    testId: "saved",
-    /**
-     * A board **is** a saved collection, so somebody looking at one is in this
-     * section even though the link points elsewhere. Without this, opening a
-     * board unlit the only nav item that described where they were. An
-     * adventure is where saved things are planned, so it lights Saved too.
-     */
+    label: "My Stuff",
+    testId: "my-stuff",
     also: ["/boards", "/adventures"],
   },
-  /**
-   * **The Day Builder has a front door** (doctrine §2.5, §9: *Saved leads
-   * somewhere*). `/go` was a side route reachable only from a sentence on
-   * Discovery or from a printed guide's wordmark (roadmap D-1), so the step
-   * after Save — shaping a real day — could not be found by looking. It sits
-   * straight after Saved because that is where the loop goes. Go Offline
-   * (`/detox`) is the same journey's last step, so it lights this too.
-   */
   {
     href: "/go",
-    label: "Build a day",
+    label: "Build a Day",
     testId: "build",
     also: ["/detox"],
   },
@@ -109,6 +110,7 @@ const EXPERIENCES = [
   { href: "/october", label: "October", testId: "october" },
   { href: "/christmas", label: "Christmas", testId: "christmas" },
   { href: "/snow", label: "Snow Day", testId: "snow" },
+  { href: "/datenight", label: "Date Night", testId: "date-night" },
 ] as const;
 
 export function PassportNav({
@@ -235,22 +237,6 @@ export function PassportNav({
               and LABS and Sign in sat beyond the edge. */}
           <ThemePicker className="mr-1 hidden shrink-0 sm:mr-2 sm:flex" />
 
-          {/* **Discreet on purpose.** Labs is where unfinished experiments
-              live, so it is the quietest thing on the bar: small, uppercase,
-              no accent. It is not a section (§10 is still open). */}
-          <Link
-            href="/labs"
-            aria-current={inside("/labs") ? "page" : undefined}
-            data-testid="passport-nav-labs"
-            className={`order-3 inline-flex min-h-12 shrink-0 items-center px-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors sm:order-none sm:px-3 ${
-              inside("/labs")
-                ? "text-[#111]"
-                : "text-black/45 hover:text-black/80"
-            }`}
-          >
-            Labs
-          </Link>
-
           {/* Carries where you are, so auth and the account page can bring you
               back — the same fix October's bar already had. */}
           {pending ? (
@@ -277,10 +263,10 @@ export function PassportNav({
               Sign in
             </Link>
           )}
-          {/* **A phone gets two rows, not a scroll.** One row put Experiences,
-              Labs and Sign in past the right edge, where nobody looks — the
+          {/* **A phone gets two rows, not a scroll.** One row put Experiences
+              and Sign in past the right edge, where nobody looks — the
               existing experiences were unreachable by sight. Below `sm` the
-              wordmark, Experiences, Labs and the account sit on the first row and
+              wordmark, Experiences and the account sit on the first row and
               the four sections take their own, all in view. */}
           <span aria-hidden className="order-4 h-0 basis-full sm:hidden" />
         </nav>
