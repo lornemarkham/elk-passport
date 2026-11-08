@@ -154,8 +154,9 @@ test("a new visitor discovers, saves, makes a day, lives it and remembers it", a
       .click();
   await expect(page.getByTestId("chosen-count")).toContainText("2 chosen");
   await page.getByTestId("saved-to-collection").click();
-  await page.getByTestId("collection-name").fill("Okanagan wine weekend");
-  await page.getByTestId("collection-submit").click();
+  const filing = page.getByTestId("plan-from-saved");
+  await filing.getByTestId("collection-name").fill("Okanagan wine weekend");
+  await filing.getByTestId("collection-submit").click();
   const collection = page
     .getByTestId("collection")
     .filter({ hasText: "Okanagan wine weekend" });

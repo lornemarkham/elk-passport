@@ -16,6 +16,8 @@ import { isSignedOut } from "@/lib/data/boards-repo";
 import { useIdeas } from "@/lib/pocket/useIdeas";
 import { savedLine } from "@/lib/voice";
 import { AdventurePocket } from "@/components/pocket/AdventurePocket";
+import { nearestTown } from "@/domain/day/intent";
+import { distanceKm } from "@/lib/environment/geo";
 import { listOctoberThings, wantToDo } from "@/lib/october/october-repo";
 import { isOctoberKind } from "@/lib/october/types";
 import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
@@ -574,9 +576,19 @@ export function DiscoveryListView({
    * A chosen town now decides it, and the corpus only answers when nobody
    * has. See `towns.ts`.
    */
+  //
+  // **And a shared position decides it too** (owner brief 2026-11-08, P5: a
+  // Vernon reader must not get thousands of Vancouver results without
+  // explanation). The nearest named town within 40 km, the Day Builder's own
+  // rule; a position near none of them leaves the corpus default, labelled.
   const home = useMemo(
-    () => homeArea(session.at, dominantArea(experiences)),
-    [session.at, experiences],
+    () =>
+      homeArea(
+        session.at ??
+          (shared ? nearestTown(shared, distanceKm)?.town.id : undefined),
+        dominantArea(experiences),
+      ),
+    [session.at, shared, experiences],
   );
   // The calendar day, derived from the server's instant so a card can say
   // "Last day" instead of printing a stated interval nobody reads.

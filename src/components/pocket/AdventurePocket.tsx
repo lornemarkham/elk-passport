@@ -50,6 +50,9 @@ export function AdventurePocket({
   const [open, setOpen] = useState(false);
   const [left, setLeft] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  // **A picture that fails is no picture** — the card's own rule: the
+  // letter tile, never a broken-image icon.
+  const [broken, setBroken] = useState<ReadonlySet<string>>(new Set());
   const panel = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -243,13 +246,15 @@ export function AdventurePocket({
                     >
                       {inDay && <Check className="h-4 w-4" aria-hidden />}
                     </button>
-                    {picture ? (
+                    {picture && !broken.has(picture) ? (
                       // eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, sized by sizedImage like every card
                       <img
-                        {...sizedImage(picture, [160, 320])}
+                        {...sizedImage(picture)}
                         sizes="64px"
                         alt=""
-                        loading="lazy"
+                        onError={() =>
+                          setBroken((prev) => new Set(prev).add(picture))
+                        }
                         className="h-16 w-16 shrink-0 rounded-xl object-cover"
                       />
                     ) : (
