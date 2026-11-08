@@ -8,6 +8,10 @@ import { conditionsFor } from "../../_server/conditions";
  * screen shows its last good answer, labelled with its age).
  */
 export async function GET(request: Request) {
+  // Open-Meteo's free tier is non-commercial. Until the owner has cleared the
+  // terms (or changed source), the forecast is off unless SNOW_FORECAST=on.
+  if (process.env.SNOW_FORECAST !== "on")
+    return Response.json({ error: "off" }, { status: 503 });
   const id = new URL(request.url).searchParams.get("mountain") ?? "";
   if (!/^[a-z0-9-]{1,40}$/.test(id))
     return Response.json({ error: "mountain" }, { status: 400 });
