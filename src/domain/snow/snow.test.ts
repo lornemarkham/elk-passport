@@ -267,6 +267,21 @@ describe("competition", () => {
     expect(titles).toContain("Chief Hype Officer");
     expect(titles).not.toContain("Paparazzi");
   });
+  it("hands out the playful social awards, only in a crew and only for what happened", () => {
+    expect(awards(crew()).map((a) => a.id)).not.toContain("dj-chairlift");
+    const d = run(
+      crew(),
+      { type: "song", id: "s1", title: "Sweet Caroline", by: "b" },
+      { type: "song", id: "s2", title: "Mr. Brightside", by: "b" },
+      { type: "say", id: "c1", by: "a", text: "who has the tickets?" },
+    );
+    const byId = Object.fromEntries(awards(d).map((a) => [a.id, a]));
+    expect(byId["dj-chairlift"]?.winners.map((p) => p.id)).toEqual(["b"]);
+    expect(byId["chatterbox"]?.winners.map((p) => p.id)).toEqual(["a"]);
+    expect(byId["social-director"]).toBeUndefined();
+    const solo = { ...d, people: d.people.slice(0, 1) };
+    expect(awards(solo).map((a) => a.id)).not.toContain("dj-chairlift");
+  });
   it("accepts a safe crew challenge and refuses an unsafe one", () => {
     const ok = applyAction(
       crew(),

@@ -11,6 +11,9 @@
 -- delete them. They stay with their adventures, readable by its members
 -- through the core's policies. To remove them as well (permanent), run the
 -- optional block at the end.
+-- If location-migration.sql was applied, run location-rollback.sql FIRST: this
+-- script fails (loudly, changing nothing) while the location policies depend on
+-- passport_is_snow_member.
 -- Take a backup first if anyone has used it.
 -- ============================================================================
 DROP TRIGGER IF EXISTS passport_snow_members_gone ON public.passport_adventure_members;

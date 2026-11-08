@@ -10,17 +10,17 @@ HAVE ANOTHER — and puts its weight on the second half (LIVE, REMEMBER).
 
 ## What a crew can do today
 
-| Step        | Where                      | What it does                                                                                                                      |
-| ----------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Discover    | `/snow`, `/snow/mountains` | Mountain imagery, one primary action. Atlas ski areas when connected, Passport's short list beside them, distance, skill guidance |
-| Plan        | Day → **Plan**             | Date, mountain, getting there, meeting points, tickets, meals, après: options, one vote each, lock-in, last-minute change notice  |
-| Build crew  | Day → **Crew**             | Who, what they ride, level, rentals, notes; host announcements (the core's notices); share the plan                               |
-| Hype        | Day → **Get ready**        | Countdown, reminders that fit how close it is, per-person gear list, **Call it** predictions, optional drive-up playlist          |
-| Challenges  | Day → **Challenges**       | 11 vetted challenges + crew-written ones, level-aware, each with a safety line                                                    |
-| Competition | Day → **Challenges**       | Standings and playful awards (incl. **Called It**), derived from what happened; right predictions are +3 each, max 5              |
-| On the hill | Day → **On the hill**      | Plan card, meeting points, "where I am" in words, quick updates, print card; works with no signal                                 |
-| Remember    | Day → **Memories**         | Photos, moments, recap (standings, awards, challenges), plain-text share                                                          |
-| Go again    | Memories                   | Vote on the next one; "Same crew, next snow day" carries the crew over                                                            |
+| Step        | Where                      | What it does                                                                                                                                     |
+| ----------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Discover    | `/snow`, `/snow/mountains` | Mountain imagery, one primary action. Atlas ski areas when connected, Passport's short list beside them, distance, skill guidance                |
+| Plan        | Day → **Plan**             | Date, mountain, getting there, meeting points, tickets, meals, après: options, one vote each, lock-in, last-minute change notice                 |
+| Build crew  | Day → **Crew**             | Who, what they ride, level, rentals, notes; host announcements (the core's notices); share the plan                                              |
+| Hype        | Day → **Get ready**        | Countdown, reminders that fit how close it is, per-person gear list, **Call it** predictions, optional drive-up playlist                         |
+| Challenges  | Day → **Challenges**       | 11 vetted challenges + crew-written ones, level-aware, each with a safety line                                                                   |
+| Competition | Day → **Challenges**       | Standings and playful awards (incl. **Called It**), derived from what happened; right predictions are +3 each, max 5                             |
+| On the hill | Day → **On the hill**      | **Start your snow day**, then big buttons (here, lunch, photo, last run, heading out), the sky, après vote, find your crew; works with no signal |
+| Remember    | Day → **Memories**         | Photos, moments, recap (standings, awards, challenges), plain-text share                                                                         |
+| Go again    | Memories                   | Vote on the next one; "Same crew, next snow day" carries the crew over                                                                           |
 
 ### Predictions (added 2026-11-01)
 
@@ -46,9 +46,10 @@ domain (`domain/snow/predictions.ts`), derived into standings, no AI calls.
    against a deny-list and refused in words. The group rides at its most
    careful member's level. Alcohol is never a prize; the après challenge says
    anyone driving stays alcohol-free.
-3. **Location is words, not GPS.** On the hill, "where I am" is a label the
-   person taps or types and chooses to send. Passport reads no position on the
-   mountain. The mountains page can use browser location to sort by distance,
+3. **Location is words by default; a position is opt-in.** "Where I am" is a
+   label the person taps or types. On a shared day a person may, by choice and
+   for 30 min to 4 h, share a position with the crew members doing the same
+   (ADR 015; needs a migration not yet applied). Passport reads none otherwise. The mountains page can use browser location to sort by distance,
    only when asked, only in memory.
 4. **Offline is exactly what is tested.** The day is on the phone
    (`localStorage`). With the network cut, the open page keeps taking and
@@ -83,4 +84,6 @@ domain (`domain/snow/predictions.ts`), derived into standings, no AI calls.
 
 ## What is not here
 
-See [`SHARING.md`](SHARING.md) and [`REPORT.md`](REPORT.md).
+See [`SHARING.md`](SHARING.md), [`REPORT.md`](REPORT.md) and, for the mountain
+experience (conditions, Start, find your crew, release steps),
+[`MOUNTAIN-EXPERIENCE.md`](MOUNTAIN-EXPERIENCE.md).

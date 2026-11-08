@@ -139,6 +139,36 @@ export function awards(day: SnowDay): Award[] {
       return w.length ? w : null;
     })(),
   );
+  const count = (ids: readonly (string | undefined)[], p: Person) =>
+    ids.filter((id) => id === p.id).length;
+  const most = (ids: readonly (string | undefined)[]): Person[] | null => {
+    // A title for the most of something needs someone to have more than.
+    if (day.people.length < 2) return null;
+    const n = (p: Person) => count(ids, p);
+    const best = Math.max(0, ...day.people.map(n));
+    return best > 0 ? day.people.filter((p) => n(p) === best) : null;
+  };
+  add(
+    "dj-chairlift",
+    "🎧",
+    "DJ Chairlift",
+    "Most songs for the drive up",
+    most(day.playlist.map((s) => s.by)),
+  );
+  add(
+    "social-director",
+    "🗓️",
+    "Social Director",
+    "Most ideas put to the plan",
+    most(day.proposals.map((p) => p.by)),
+  );
+  add(
+    "chatterbox",
+    "💬",
+    "Chatterbox",
+    "Most lines in the crew chat",
+    most(day.chat.map((m) => m.by)),
+  );
   add(
     "crew-spirit",
     "🤝",

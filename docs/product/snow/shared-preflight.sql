@@ -13,7 +13,9 @@ UNION ALL SELECT 'core: notices, acks and moments present (ADR 014, 202611010000
        AND to_regclass('public.passport_adventure_notice_acks') IS NOT NULL
        AND to_regclass('public.passport_adventure_moments') IS NOT NULL
 UNION ALL SELECT 'snow: all 15 tables present',
-       (SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'passport_snow\_%') = 15
+       (SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'passport_snow\_%'
+          -- the optional location table has its own preflight (location-preflight.sql)
+          AND tablename <> 'passport_snow_locations') = 15
 UNION ALL SELECT 'snow: RLS on every table',
        (SELECT bool_and(rowsecurity) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'passport_snow\_%')
 UNION ALL SELECT 'snow: anon holds nothing',

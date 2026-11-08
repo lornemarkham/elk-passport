@@ -8,11 +8,12 @@ import {
   packedCount,
   reminders,
 } from "@/domain/snow/prep";
-import { isPacked, personName } from "@/domain/snow/day";
+import { chosenFor, isPacked, personName } from "@/domain/snow/day";
 import type { TabProps } from "./tabs";
 import { newId } from "./store";
 import { Card, btn, field } from "./kit";
 import { PredictionsCard } from "./PredictionsCard";
+import { ConditionsCard } from "./ConditionsCard";
 
 /**
  * **Get ready: the day starts before the day.**
@@ -75,6 +76,13 @@ export function HypeTab(props: TabProps) {
           </ul>
         )}
       </Card>
+
+      <ConditionsCard
+        mountainName={chosenFor(day, "mountain")?.label}
+        date={day.date}
+        today={today}
+        now={now}
+      />
 
       <Card className="space-y-3" data-testid="gear">
         <h2 className="text-xl font-extrabold">Your gear, {me.name}</h2>

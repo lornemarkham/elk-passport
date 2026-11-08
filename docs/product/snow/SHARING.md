@@ -75,7 +75,7 @@ inserts.
   and leaves what they added to the shared plan, shown as "Someone".
 - **Photos** are served to members only, by a route that asks Postgres as the
   caller; a guessed id is the same 404 as a missing one.
-- Location sharing remains out of scope; if it arrives it follows ADR 011.
+- Location sharing is opt-in, temporary and mutual (ADR 015, `location-migration.sql`, a separate proposal that Snow's migration does not depend on).
 
 ## What is still on one phone
 

@@ -1,4 +1,5 @@
 import type { Action, Person, SnowDay } from "@/domain/snow/day";
+import type { CrewLocation } from "./useCrewLocation";
 
 export interface TabProps {
   readonly day: SnowDay;
@@ -8,6 +9,10 @@ export interface TabProps {
   /** Today as `YYYY-MM-DD`, in the phone's own time zone. */
   readonly today: string;
   readonly now: Date;
+  /** Opt-in, temporary location sharing. Only on a shared day. */
+  readonly crew?: CrewLocation;
+  /** Jump to another section of the day. */
+  readonly go: (tab: TabKey) => void;
   /** Present only when the day is shared between phones. */
   readonly shared?: { readonly id: string; readonly isOwner: boolean };
 }

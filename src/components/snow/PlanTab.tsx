@@ -18,6 +18,7 @@ import { groupLine } from "@/domain/snow/ability";
 import type { TabProps } from "./tabs";
 import { newId } from "./store";
 import { Card, btn, btnOn, field, styles } from "./kit";
+import { ConditionsCard } from "./ConditionsCard";
 
 /**
  * **Plan: every decision a snow day turns on, voted rather than argued.**
@@ -60,6 +61,12 @@ export function PlanTab(p: TabProps) {
         </p>
       </Card>
 
+      <ConditionsCard
+        mountainName={chosenFor(p.day, "mountain")?.label}
+        date={p.day.date}
+        today={p.today}
+        now={p.now}
+      />
       <WhenCard {...p} />
       {TOPICS.map((t) => (
         <TopicCard key={t} topic={t} {...p} />
@@ -121,7 +128,12 @@ function WhenCard({ day, act }: TabProps) {
   );
 }
 
-function TopicCard({ topic, day, me, act }: TabProps & { topic: Topic }) {
+export function TopicCard({
+  topic,
+  day,
+  me,
+  act,
+}: TabProps & { topic: Topic }) {
   const [text, setText] = useState("");
   const options = proposalsFor(day, topic);
   const chosen = chosenFor(day, topic);

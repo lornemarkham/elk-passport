@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { SnowPage } from "@/components/snow/kit";
 import { NewDay } from "@/components/snow/NewDay";
+import { sharedDaysReady } from "../_server/readiness";
 
 export const metadata: Metadata = {
   title: "Start a snow day — Passport",
@@ -14,6 +15,8 @@ export default async function NewSnowDay({
   searchParams: Promise<{ mountain?: string; again?: string; atlas?: string }>;
 }) {
   const { mountain, again, atlas } = await searchParams;
+  // Offered only where the database can hold a shared day (see readiness.ts).
+  const sharedReady = await sharedDaysReady();
   return (
     <>
       <PassportNav displayName={null} />
@@ -23,6 +26,7 @@ export default async function NewSnowDay({
             mountainId={mountain}
             again={again}
             atlasName={atlas?.slice(0, 80)}
+            sharedReady={sharedReady}
           />
         </main>
       </SnowPage>

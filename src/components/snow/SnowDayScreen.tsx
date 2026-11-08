@@ -13,6 +13,7 @@ import { HypeTab } from "./HypeTab";
 import { PlayTab } from "./PlayTab";
 import { MountainTab } from "./MountainTab";
 import { MemoriesTab } from "./MemoriesTab";
+import { useCrewLocation } from "./useCrewLocation";
 
 const localDay = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -71,6 +72,7 @@ function DayScreen({ id, state }: { id: string; state: DayState }) {
   const { day, status, act, problem, clearProblem, me, setMe, shared } = state;
   const now = useNow();
   const online = useOnline();
+  const crew = useCrewLocation(shared ? id : null);
   const [tab, setTab] = useState<TabKey | null>(null);
   // Where the day opens follows how close it is — once. Planning a date that
   // happens to fall this week must not yank the screen out from under you.
@@ -159,6 +161,12 @@ function DayScreen({ id, state }: { id: string; state: DayState }) {
     act,
     today,
     now,
+    go: (t: TabKey) => {
+      setTab(t);
+      clearProblem();
+      window.scrollTo?.({ top: 0 });
+    },
+    crew: shared ? crew : undefined,
     shared: shared ? { id, isOwner: shared.isOwner } : undefined,
   };
 
