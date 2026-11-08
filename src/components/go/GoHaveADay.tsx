@@ -53,6 +53,7 @@ import { offlineHref } from "@/lib/detox/day";
 import { DayItinerary, type StopControls } from "./DayItinerary";
 import { KeptDays } from "./KeptDays";
 import { SaveToAdventure, type AdventureTarget } from "./SaveToAdventure";
+import { SaveAsAdventure } from "./SaveAsAdventure";
 import type { Timeline } from "@/domain/day/timeline";
 import { dayAsText } from "@/lib/go/dayText";
 import { weekendFrom } from "@/lib/pocket/ideas";
@@ -1122,8 +1123,15 @@ function ShapedDay({
                   </button>
                 </div>
               </div>
-              {adventure && (
+              {adventure ? (
                 <SaveToAdventure adventure={adventure} query={query} />
+              ) : (
+                day.stops.length > 0 && (
+                  <SaveAsAdventure
+                    query={query}
+                    firstStop={day.stops[0]?.experience.title}
+                  />
+                )
               )}
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
