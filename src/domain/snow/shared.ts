@@ -447,6 +447,7 @@ export function plan(
       break;
     case "propose":
       if (!mine(action.proposal.by)) return refuse(ONLY_YOU);
+      if (!isStoredTopic(action.proposal.topic)) return refuse(NOT_STORED);
       break;
     case "withdraw":
       if (!authorOrHost(day.proposals.find((p) => p.id === action.id)?.by))
@@ -616,6 +617,18 @@ function opsFor(before: SnowDay, after: SnowDay, a: Action): Op[] {
       return [{ k: "settle", id: a.id, outcome: a.outcome }];
   }
 }
+
+/**
+ * The topics the shared tables hold. `activity` is newer than the Snow
+ * migration's CHECK; until `docs/product/snow/activity-migration.sql` is
+ * applied a shared day refuses it with a sentence rather than a 500.
+ */
+export const STORED_TOPICS: readonly Topic[] = TOPICS.filter(
+  (t) => t !== "activity",
+);
+const isStoredTopic = (t: Topic) => STORED_TOPICS.includes(t);
+const NOT_STORED =
+  "Voting on activities isn't switched on for shared days yet. Post it in the chat for now.";
 
 /** The topics, for validating what a route is handed. */
 export const isTopic = (t: unknown): t is Topic =>

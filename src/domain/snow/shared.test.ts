@@ -432,6 +432,46 @@ describe("plan: who may do what", () => {
       ),
     ).toEqual({ ok: false, reason: "Write something first." });
   });
+
+  it("refuses an activity on a shared day in words until its migration is applied", () => {
+    const r = plan(
+      base,
+      {
+        type: "propose",
+        proposal: {
+          id: "pa",
+          topic: "activity",
+          label: "Tube Town",
+          by: "m-jess",
+          source: "atlas",
+        },
+      },
+      guest,
+      NOW,
+    );
+    expect(r).toMatchObject({ ok: false });
+    expect((r as { reason: string }).reason).toMatch(
+      /isn't switched on for shared days/,
+    );
+    // Lunch and après as Atlas places are stored today.
+    expect(
+      plan(
+        base,
+        {
+          type: "propose",
+          proposal: {
+            id: "pm",
+            topic: "apres",
+            label: "Long John's Pub",
+            by: "m-jess",
+            source: "atlas",
+          },
+        },
+        guest,
+        NOW,
+      ).ok,
+    ).toBe(true);
+  });
 });
 
 describe("parseAction", () => {

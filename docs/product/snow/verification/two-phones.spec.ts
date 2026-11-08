@@ -114,6 +114,7 @@ test("two phones, one snow day", async ({ browser }) => {
 
   // ---------------------------------------------------------- votes
   await tab(jess, "Plan");
+  await openCard(jess, "mountain");
   const jessMountain = jess.getByTestId("topic-mountain");
   await expect(
     jessMountain.locator("li").filter({ hasText: "Cypress Mountain" }),
@@ -124,6 +125,7 @@ test("two phones, one snow day", async ({ browser }) => {
     .getByRole("button", { name: "Vote" })
     .click();
   await tab(lorne, "Plan");
+  await openCard(lorne, "mountain");
   const lorneMountain = lorne.getByTestId("topic-mountain");
   await expect(lorneMountain.getByText("LEADING")).toBeVisible({
     timeout: 20_000,
@@ -264,6 +266,7 @@ test("two phones, one snow day", async ({ browser }) => {
   await again.waitForURL(dayUrl);
   await expect(again.getByTestId("you-are")).toHaveText("You are Jess");
   await tab(again, "Plan");
+  await openCard(again, "mountain");
   await expect(
     again.getByTestId("topic-mountain").getByText("LOCKED IN"),
   ).toBeVisible();
@@ -308,3 +311,9 @@ test("two phones, one snow day", async ({ browser }) => {
   ).toBeVisible();
   expect((await visitor.request.get(src!)).status()).toBe(401);
 });
+
+/** The Plan tab is a dashboard: open one card to decide its topic. */
+async function openCard(page: Page, key: string) {
+  const c = page.getByTestId(`card-${key}`);
+  if ((await c.getAttribute("aria-expanded")) !== "true") await c.click();
+}

@@ -3,6 +3,15 @@ import { discoveryCandidates } from "@/lib/data/atlas-repo";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { doesActivity } from "@/domain/discovery/activities";
 import type { Experience } from "@/domain/experience/types";
+import type { Mountain } from "@/domain/snow/mountains";
+import {
+  acquisitionRequest,
+  gapsIn,
+  picksNear,
+  type Gap,
+  type Pick,
+} from "@/domain/snow/nearby";
+import { resortFacts } from "@/domain/snow/resorts";
 
 /**
  * **Ski areas, as Atlas knows them.**
@@ -59,5 +68,37 @@ export async function atlasSkiAreas(): Promise<AtlasAreas> {
   return {
     status: "connected",
     areas: skiAreasFrom(candidates.map(candidateToExperience)),
+  };
+}
+
+export type AtlasNearby =
+  | {
+      status: "connected";
+      picks: Pick[];
+      gaps: Gap[];
+      /** The Atlas acquisition request for what's missing, in words. */
+      request: string;
+    }
+  | { status: "unavailable"; picks: []; gaps: []; request: "" };
+
+/**
+ * **What Atlas holds around one of Passport's mountains** — the same corpus
+ * Discovery reads, sorted for a snow day (`domain/snow/nearby.ts`). Nothing
+ * is added here; where Atlas is thin, the answer carries the gap.
+ */
+export async function atlasNear(mountain: Mountain): Promise<AtlasNearby> {
+  const { candidates, outage } = await discoveryCandidates();
+  if (outage)
+    return { status: "unavailable", picks: [], gaps: [], request: "" };
+  const facts = resortFacts(mountain.id);
+  const picks = picksNear(candidates.map(candidateToExperience), mountain, {
+    onMountainKm: facts?.onMountainKm,
+  });
+  const gaps = gapsIn(picks);
+  return {
+    status: "connected",
+    picks,
+    gaps,
+    request: acquisitionRequest(mountain.name, facts, picks, gaps).text,
   };
 }

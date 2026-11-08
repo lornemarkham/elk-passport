@@ -109,6 +109,19 @@ export function CrewTab(p: TabProps) {
                       " · needs rentals"}
                   </p>
                   {x.note && <p className="text-sm">{x.note}</p>}
+                  {!shared && (
+                    <Rename
+                      name={x.name}
+                      onSave={(name, note) =>
+                        act({
+                          type: "updatePerson",
+                          id: x.id,
+                          patch: { name, note },
+                        })
+                      }
+                      note={x.note}
+                    />
+                  )}
                 </div>
                 <div className="flex gap-2">
                   {x.discipline !== "apres" && (!shared || x.id === me.id) && (
@@ -356,5 +369,66 @@ export function CrewTab(p: TabProps) {
         </ul>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Fix a name or a note ("vegetarian", "nervous on chairlifts") — mostly for
+ * the placeholders a sentence created ("Not skiing 1"). A shared day's
+ * people name themselves, so this is for a day kept on one phone.
+ */
+function Rename({
+  name,
+  note,
+  onSave,
+}: {
+  name: string;
+  note?: string;
+  onSave: (name: string, note: string) => boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [n, setN] = useState(name);
+  const [t, setT] = useState(note ?? "");
+  if (!open)
+    return (
+      <button
+        type="button"
+        className="mt-1 text-xs underline"
+        onClick={() => {
+          setN(name);
+          setT(note?.startsWith("Name and level not set") ? "" : (note ?? ""));
+          setOpen(true);
+        }}
+      >
+        Edit {name}
+      </button>
+    );
+  return (
+    <form
+      className="mt-2 flex flex-wrap gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (onSave(n, t)) setOpen(false);
+      }}
+    >
+      <input
+        className={`${field} !w-36`}
+        value={n}
+        onChange={(e) => setN(e.target.value)}
+        aria-label={`${name}'s name`}
+        maxLength={30}
+      />
+      <input
+        className={`${field} !w-48`}
+        value={t}
+        onChange={(e) => setT(e.target.value)}
+        aria-label={`${name}'s note`}
+        placeholder="Loves tubing, vegetarian…"
+        maxLength={80}
+      />
+      <button type="submit" className={btn}>
+        Save
+      </button>
+    </form>
   );
 }
