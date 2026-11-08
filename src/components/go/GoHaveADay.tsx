@@ -55,9 +55,16 @@ import { KeptDays } from "./KeptDays";
 import { SaveToAdventure, type AdventureTarget } from "./SaveToAdventure";
 import type { Timeline } from "@/domain/day/timeline";
 import { dayAsText } from "@/lib/go/dayText";
+import { weekendFrom } from "@/lib/pocket/ideas";
+import { GOOD_DAY } from "@/lib/voice";
+
 import { readKeptDays, withKept, writeKeptDays } from "@/lib/go/keptDays";
 import { readLastStart, writeLastStart } from "@/lib/go/lastStart";
 import type { TravelMode } from "@/lib/routing/journey";
+
+/** "make it a weekend", "two days instead", "overnight" — not "no weekend". */
+const WEEKEND =
+  /^(?!.*\b(?:no|not)\b).*\b(?:weekend|two days|2 days|overnight)\b/i;
 
 /**
  * **"What kind of day do you want?"**
@@ -596,6 +603,15 @@ function ShapedDay({
     if (!brief || !day || !said.trim()) return;
     const n = day.stops.length;
 
+    // **"Make it a weekend instead."** A day can't hold two days; an
+    // adventure can. The stops go with it, kept, so it carries on from this
+    // day rather than starting over (owner brief, 2026-11-08, P4).
+    if (WEEKEND.test(said) && n > 0) {
+      setReply(["A weekend it is — taking these stops with you."]);
+      router.push(weekendFrom(day.stops.map((s) => s.experience.id)));
+      return;
+    }
+
     const swap = replacedStop(said);
     if (swap !== undefined) {
       if (swap <= n) {
@@ -958,6 +974,14 @@ function ShapedDay({
           data-testid="go-day"
           className="mt-10 border-t border-black/10 pt-8"
         >
+          {day.stops.length > 0 && (
+            <p
+              data-testid="go-good-day"
+              className="ghad-display mb-4 text-[24px] leading-tight font-extrabold tracking-[-0.02em] text-[#111] sm:text-[30px]"
+            >
+              {GOOD_DAY}
+            </p>
+          )}
           <WorkingFrom brief={brief} day={day} />
           <Who brief={brief} onSay={talk} />
           {weather && <Forecast weather={weather} />}

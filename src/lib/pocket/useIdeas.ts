@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   clearStoredActiveBoardId,
-  getStoredActiveBoardId,
   setStoredActiveBoardId,
 } from "@/lib/data/activeBoardStorage";
 import {
@@ -79,7 +78,9 @@ export function useIdeas(signedIn: boolean) {
       try {
         const all = (await listBoards()) as RoleBoard[];
         if (cancelled) return;
-        const home = ideasBoardOf(all, getStoredActiveBoardId());
+        // Their first own board — the rule My Stuff uses too, so the
+        // board saves go to is never also listed there as a collection.
+        const home = ideasBoardOf(all, null);
         // Only the boards that can hold ideas are read: a board shared with
         // them to look at is listed on My Stuff, not merged into their ideas.
         const own = all.filter((b) => (b.role ?? "owner") === "owner");

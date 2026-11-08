@@ -12,6 +12,7 @@ import { forget, wantToDo } from "@/lib/october/october-repo";
 import { useHere } from "@/lib/location/useHere";
 import { PossibilityCard } from "@/components/discovery-list/PossibilityCard";
 import { PlanFromSaved } from "./PlanFromSaved";
+import type { CollectionChoice } from "@/components/my-stuff/AddToCollection";
 
 /**
  * **"What did I collect, and which of these do I actually want to do?"**
@@ -64,7 +65,20 @@ export function SavedReview({
   back,
   readOnly = false,
   adventure,
+  holders,
+  collections = [],
+  label,
 }: {
+  /**
+   * For each idea, every board of this person's it is on (My Stuff). Remove
+   * takes it off all of them, so it is not still an idea through a
+   * collection. Absent means the one board, `boardId`.
+   */
+  readonly holders?: Readonly<Record<string, readonly string[]>>;
+  /** Collections chosen ideas can be put in. */
+  readonly collections?: readonly CollectionChoice[];
+  /** What the count is of — "in My Places", or "saved" for Ideas. */
+  readonly label?: string;
   /** An adventure being added to (`/saved?adventure=`): start choosing. */
   readonly adventure?: string | undefined;
   readonly boardId: string;
@@ -101,7 +115,11 @@ export function SavedReview({
     if (busy) return;
     setBusy(experience.id);
     try {
-      await removeExperienceFromBoard(boardId, experience.id);
+      await Promise.all(
+        (holders?.[experience.id] ?? [boardId]).map((id) =>
+          removeExperienceFromBoard(id, experience.id),
+        ),
+      );
       setRemoved((prev) => new Set(prev).add(experience.id));
       // **Taken out of the collection, and out of October with it.** Leaving
       // an orphaned intention behind would be a thing somebody still means to
@@ -174,7 +192,8 @@ export function SavedReview({
     <div data-testid="saved-review">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-base text-[var(--gh-ink-soft)]">
-          {total} {total === 1 ? "possibility" : "possibilities"} in {boardName}
+          {total} {total === 1 ? "possibility" : "possibilities"}{" "}
+          {label ?? `in ${boardName}`}
           {readOnly ? " · shared with you to look at" : ""}
         </p>
         {showing.length > 0 && !choosing && (
@@ -358,6 +377,7 @@ export function SavedReview({
           chosen={chosen}
           titles={Object.fromEntries(showing.map((e) => [e.id, e.title]))}
           preselect={adventure}
+          collections={collections}
           onClear={() => {
             setChosen([]);
             setChoosing(false);

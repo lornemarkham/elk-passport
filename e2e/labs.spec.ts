@@ -25,14 +25,14 @@ for (const [name, device] of [
       hasTouch: device.hasTouch,
     });
 
-    test("a LABS link sits in the bar and opens /labs", async ({ page }) => {
+    // **Off the bar, still there** (owner brief 2026-11-08: the bar is
+    // Discover | My Stuff | Build a Day | Experiences). The Creative Archive
+    // still links here.
+    test("Labs is off the bar and /labs still opens", async ({ page }) => {
       await page.goto("/discovery");
-      const link = page.getByTestId("passport-nav-labs");
-      await link.scrollIntoViewIfNeeded();
-      await expect(link).toBeVisible();
-      await expect(link).toHaveText("Labs");
-      await link.click();
-      await expect(page).toHaveURL(/\/labs$/);
+      await expect(page.getByTestId("passport-nav-discover")).toBeVisible();
+      await expect(page.getByTestId("passport-nav-labs")).toHaveCount(0);
+      await page.goto("/labs");
       await expect(
         page.getByRole("heading", { name: /playing with/i }),
       ).toBeVisible();

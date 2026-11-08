@@ -66,6 +66,7 @@ import { ActivityExplorer, ActivityExplorerButton } from "./ActivityExplorer";
 import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
+import { FeaturedHosts } from "./FeaturedHosts";
 import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
 import { PossibilityCard } from "./PossibilityCard";
 import {
@@ -1897,6 +1898,7 @@ export function DiscoveryListView({
                     savingId={savingId}
                     onSave={handleSave}
                     dayHrefFor={dayHrefFor}
+                    interlude={<FeaturedHosts />}
                   />
                 ) : visible.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-black/25 bg-white px-4 py-10 text-center text-sm text-black/60">

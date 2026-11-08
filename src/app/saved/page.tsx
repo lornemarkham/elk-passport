@@ -4,36 +4,46 @@ import { ArrowRight, Compass, Plus } from "lucide-react";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { SavedReview } from "@/components/saved/SavedReview";
 import { currentUser } from "@/lib/auth/currentUser";
-import { loadSaved } from "@/lib/data/loadSaved";
+import { loadMyStuff } from "@/lib/data/loadMyStuff";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { safeNext } from "@/lib/auth/safeNext";
 import { adventureSession } from "@/lib/adventures/server";
-import type { AdventureSummary } from "@/lib/adventures/store";
-import { nextAdventure } from "@/lib/adventures/present";
+import { adventureStatus, nextAdventure } from "@/lib/adventures/present";
 import { adventureOverview, todayIn } from "@/lib/adventures/overview";
 import { AdventureCard } from "@/components/adventures/AdventureCard";
-import { Eyebrow, PillLink, SectionHeading } from "@/components/adventures/kit";
+import { PillLink } from "@/components/adventures/kit";
+import {
+  AdventuresAndMemories,
+  SectionTitle,
+  type AdventureEntry,
+} from "@/components/my-stuff/AdventuresAndMemories";
+import { AddToCollection } from "@/components/my-stuff/AddToCollection";
+import { sizedImage } from "@/lib/media/sizedImage";
+import { MY_STUFF_LINE } from "@/lib/voice";
 import { ThemeProvider } from "@/components/ghad/theme";
 
-export const metadata: Metadata = { title: "Saved — Passport" };
+export const metadata: Metadata = { title: "My Stuff — Go Have a Day" };
 
 /**
- * **The other half of discovering.**
+ * **My Stuff** — the owner's brief, _Go Have a Day — the experience
+ * overhaul_ (2026-11-08, P3): one clear destination for
  *
- * Collecting a handful of possibilities and looking at them together is one
- * journey, and it used to be two products: Discovery, then a board
- * administration area with a sharing panel above the things somebody had just
- * saved. The owner's route from one to the other and back took five screens
- * and passed two different pages called *My Places*.
+ * ```
+ * IDEAS        individual saved experiences
+ * COLLECTIONS  optional groups of them
+ * ADVENTURES   planned days, weekends and trips
+ * MEMORIES     completed adventures and their memories
+ * ```
  *
- * **And the home of someone's possibilities** (ADR 012): it opens on the
- * adventures they are making — the next one first, big — and then the places
- * they have saved, which are the raw material for the next. *Create an
- * adventure* is the largest thing on the page, because it is the point.
+ * Saving never needs a collection; collections can be made later. The
+ * Adventure Pocket on Discovery is a convenient view of the same ideas
+ * (`useIdeas`, `loadMyStuff`): this page is their permanent home, and the
+ * two read the same Atlas boards, so there is one source of truth.
  *
- * This is the round trip. `?back=` carries the exploration so *Back to
- * discovering* is one tap to exactly where they were, validated by the same
- * `safeNext` the sign-in handoff uses.
+ * It keeps everything the Saved page did (ADR 010, ADR 012): _Create an
+ * adventure_ is the largest action, choosing ideas leads to a day, an
+ * adventure or now a collection, and `?back=` returns to exactly where
+ * Discovery was.
  */
 export default async function SavedPage({
   searchParams,
@@ -49,18 +59,17 @@ export default async function SavedPage({
       : undefined;
   const back = safeNext(typeof asked === "string" ? asked : null, "/discovery");
 
-  const [user, saved] = await Promise.all([currentUser(), loadSaved()]);
-  // The intentions already recorded, so Saved can show what somebody has
-  // already decided rather than offering it to them again. Read-only here:
-  // nothing about opening this page changes anybody's October.
+  const [user, stuff] = await Promise.all([currentUser(), loadMyStuff()]);
+  // The intentions already recorded, so Ideas can show what somebody has
+  // already decided rather than offering it to them again. Read-only here.
   const october =
-    saved.status === "ok" && user
+    stuff.status === "ok" && user
       ? await octoberThingsFor(user).catch(() => [])
       : [];
 
-  // Adventures this person is planning, to come back to. Not reachable (no
-  // session, or the adventures tables not migrated here) means the section
-  // is not shown — never "you have none".
+  // Adventures this person is planning or has had. Not reachable (no
+  // session, or the adventures tables not migrated here) means the sections
+  // say so plainly — never "you have none".
   const overview = user
     ? await adventureSession()
         .then((session) => (session ? adventureOverview(session) : null))
@@ -68,19 +77,47 @@ export default async function SavedPage({
     : null;
   const today = todayIn();
   const next = overview ? nextAdventure(overview.adventures, today) : null;
-  const others = overview
-    ? overview.adventures.filter((a) => a.id !== next?.id)
-    : [];
-  const card = (a: AdventureSummary, hero = false) => (
-    <AdventureCard
-      key={a.id}
-      adventure={a}
-      today={today}
-      hero={hero}
-      {...(overview?.glances[a.id] ? { glance: overview.glances[a.id] } : {})}
-      {...(overview?.covers[a.id] ? { cover: overview.covers[a.id] } : {})}
-    />
-  );
+  const entries: AdventureEntry[] = (overview?.adventures ?? [])
+    .slice()
+    .sort((a, b) =>
+      a.id === next?.id
+        ? -1
+        : b.id === next?.id
+          ? 1
+          : (a.startsOn ?? "9999").localeCompare(b.startsOn ?? "9999"),
+    )
+    .map((a) => ({
+      id: a.id,
+      title: a.title,
+      over:
+        adventureStatus(a, { stops: 1, undecided: 0 }, today).stage === "done",
+      card: (
+        <AdventureCard
+          adventure={a}
+          today={today}
+          {...(overview?.glances[a.id]
+            ? { glance: overview.glances[a.id] }
+            : {})}
+          {...(overview?.covers[a.id] ? { cover: overview.covers[a.id] } : {})}
+        />
+      ),
+    }));
+
+  const ideas = stuff.status === "ok" ? stuff.ideas.length : 0;
+  const collections = stuff.status === "ok" ? stuff.collections : [];
+  const writable = collections
+    .filter((c) => c.role !== "viewer")
+    .map((c) => ({ id: c.board.id, name: c.board.name }));
+  const jumps = [
+    [
+      "ideas",
+      "Ideas",
+      ideas + (stuff.status === "ok" ? stuff.unresolved.length : 0),
+    ],
+    ["collections", "Collections", collections.length],
+    ["adventures", "Adventures", null],
+    ["memories", "Memories", null],
+  ] as const;
 
   return (
     <>
@@ -99,13 +136,11 @@ export default async function SavedPage({
 
             <header className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <Eyebrow>Saved</Eyebrow>
-                <h1 className="ghad-display mt-2 text-[2.6rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-[var(--gh-ink)] sm:text-7xl">
-                  Where to next?
+                <h1 className="ghad-display text-[2.6rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-[var(--gh-ink)] sm:text-7xl">
+                  My Stuff
                 </h1>
                 <p className="mt-3 max-w-xl text-lg text-[var(--gh-ink-soft)]">
-                  Your adventures, and every place you&apos;ve saved — the raw
-                  material for a hell of a day.
+                  {MY_STUFF_LINE}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col gap-2 sm:items-end">
@@ -118,10 +153,6 @@ export default async function SavedPage({
                   <Plus className="h-5 w-5" aria-hidden />
                   Create an adventure
                 </PillLink>
-                {/* **A single day is a way on too.** Saved leads somewhere
-                    (§2.6): an adventure for a weekend or a trip, or just
-                    today. Choosing places below keeps them in the day;
-                    this opens the Day Builder to say it in words. */}
                 <PillLink
                   href="/go"
                   variant="quiet"
@@ -134,130 +165,149 @@ export default async function SavedPage({
               </div>
             </header>
 
-            {overview && next && (
-              <section
-                aria-labelledby="next-heading"
-                data-testid="saved-adventures"
-                className="mt-10"
-              >
-                <Eyebrow className="mb-3">
-                  <span id="next-heading">Your next adventure</span>
-                </Eyebrow>
-                {card(next, true)}
-                {others.length > 0 && (
-                  <div className="mt-12">
-                    <SectionHeading
-                      id="adventures-heading"
-                      title="Your adventures"
-                      action={
-                        <PillLink href="/adventures" variant="quiet">
-                          See them all
-                        </PillLink>
-                      }
-                    />
-                    <ul
-                      aria-labelledby="adventures-heading"
-                      className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
-                    >
-                      {others.slice(0, 6).map((a) => (
-                        <li key={a.id}>{card(a)}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </section>
-            )}
-            {overview && !next && overview.adventures.length > 0 && (
-              <section
-                aria-labelledby="adventures-heading"
-                data-testid="saved-adventures"
-                className="mt-10"
-              >
-                <SectionHeading id="adventures-heading" title="Your adventures">
-                  All done — time to dream up the next one.
-                </SectionHeading>
-                <ul className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {overview.adventures.slice(0, 6).map((a) => (
-                    <li key={a.id}>{card(a)}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {overview && overview.adventures.length === 0 && (
-              <section
-                data-testid="saved-no-adventures"
-                className="mt-10 rounded-[28px] bg-[var(--gh-forest)] px-6 py-10 text-white sm:px-10"
-              >
-                <Eyebrow className="text-[var(--gh-sun)]!">
-                  Your first adventure
-                </Eyebrow>
-                <p className="ghad-display mt-2 max-w-2xl text-3xl leading-tight font-extrabold tracking-[-0.03em] sm:text-5xl">
-                  Tell Passport where and when. It sketches the whole day.
-                </p>
-                <p className="mt-3 max-w-xl text-lg text-white/85">
-                  Real places from Atlas, in an order that works — then change
-                  anything in your own words.
-                </p>
-                <PillLink
-                  href="/adventures/new"
-                  variant="light"
-                  className="mt-6 min-h-14 px-7 text-lg"
+            {/* **Four parts, one tap each.** Sticky so a long list of ideas
+                never hides where the adventures are. */}
+            <nav
+              aria-label="My Stuff"
+              data-testid="my-stuff-sections"
+              className="sticky top-0 z-10 -mx-4 mt-8 flex gap-1 overflow-x-auto border-b border-[var(--gh-line)] bg-white/95 px-4 backdrop-blur sm:mx-0 sm:px-0"
+            >
+              {jumps.map(([id, label, count]) => (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  className="inline-flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-[15px] font-semibold text-[var(--gh-ink-soft)] hover:text-[var(--gh-ink)]"
                 >
-                  Start one
-                  <ArrowRight className="h-5 w-5" aria-hidden />
-                </PillLink>
-              </section>
-            )}
+                  {label}
+                  {count !== null && (
+                    <span className="text-sm font-normal">{count}</span>
+                  )}
+                </a>
+              ))}
+            </nav>
 
-            <section aria-labelledby="places-heading" className="mt-14">
-              <SectionHeading
-                id="places-heading"
-                eyebrow="My places"
-                title="Places you've saved"
-              >
-                Choose a few and Passport turns them into a day, a weekend or a
-                trip.
-              </SectionHeading>
+            <section
+              id="ideas"
+              aria-labelledby="ideas-heading"
+              data-testid="my-stuff-ideas"
+              className="mt-8 scroll-mt-20"
+            >
+              <SectionTitle id="ideas-heading">Ideas</SectionTitle>
+              <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
+                Everything you&apos;ve saved. Choose a few and Passport turns
+                them into a day, a weekend or a trip — or tuck them into a
+                collection.
+              </p>
               <div className="mt-5">
-                {saved.status === "signed-out" && (
+                {stuff.status === "signed-out" && (
                   <Panel
                     title="Sign in to see what you have saved"
                     description="What you collect stays with your account, on any device."
                   />
                 )}
-                {saved.status === "error" && (
+                {stuff.status === "error" && (
                   <Panel
                     title="Couldn't load what you saved"
-                    description="Something went wrong reaching Atlas. Your collection is unchanged — try again in a moment."
+                    description="Something went wrong reaching Atlas. Your stuff is unchanged — try again in a moment."
                   />
                 )}
-                {saved.status === "not-found" && (
-                  <Panel
-                    title="Couldn't open your collection"
-                    description="Nothing has been lost. Try again in a moment."
-                  />
-                )}
-                {saved.status === "nothing-yet" && (
-                  <Panel
-                    title="Nothing saved yet"
-                    description="Save anything that looks interesting while you browse, and it will be here to plan with."
-                  />
-                )}
-
-                {saved.status === "ok" && (
-                  <SavedReview
-                    boardId={saved.board.id}
-                    boardName={saved.board.name}
-                    experiences={saved.experiences}
-                    unresolved={saved.unresolved}
-                    october={october}
-                    back={back}
-                    readOnly={saved.role === "viewer"}
-                    adventure={adventure}
-                  />
-                )}
+                {stuff.status === "ok" &&
+                  !stuff.ideasBoard &&
+                  stuff.ideas.length === 0 && (
+                    <Panel
+                      title="Nothing saved yet"
+                      description="Save anything that looks interesting while you browse. It lands in your Pocket, and here."
+                    />
+                  )}
+                {stuff.status === "ok" &&
+                  (stuff.ideasBoard || stuff.ideas.length > 0) && (
+                    <SavedReview
+                      boardId={stuff.ideasBoard?.id ?? ""}
+                      boardName={stuff.ideasBoard?.name ?? "Ideas"}
+                      label="saved"
+                      experiences={stuff.ideas}
+                      unresolved={stuff.unresolved}
+                      holders={stuff.holders}
+                      collections={writable}
+                      october={october}
+                      back={back}
+                      adventure={adventure}
+                    />
+                  )}
               </div>
             </section>
+
+            <section
+              id="collections"
+              aria-labelledby="collections-heading"
+              data-testid="my-stuff-collections"
+              className="mt-16 scroll-mt-20"
+            >
+              <SectionTitle id="collections-heading" count={collections.length}>
+                Collections
+              </SectionTitle>
+              <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
+                Optional. Group ideas whenever you feel like it — they stay in
+                Ideas too.
+              </p>
+              {collections.length > 0 && (
+                <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {collections.map((c) => (
+                    <li key={c.board.id}>
+                      <Link
+                        href={`/boards/${encodeURIComponent(c.board.id)}`}
+                        data-testid="collection"
+                        className="group flex items-center gap-4 rounded-3xl border border-[var(--gh-line)] p-3 hover:border-[var(--gh-ink)]/30"
+                      >
+                        {c.cover ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, sized like every card
+                          <img
+                            {...sizedImage(c.cover, [160, 320])}
+                            sizes="80px"
+                            alt=""
+                            loading="lazy"
+                            className="h-20 w-20 shrink-0 rounded-2xl object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="h-20 w-20 shrink-0 rounded-2xl bg-[var(--gh-cream)]"
+                          />
+                        )}
+                        <span className="min-w-0">
+                          <span className="block truncate text-lg font-bold text-[var(--gh-ink)] group-hover:underline">
+                            {c.board.name}
+                          </span>
+                          <span className="block text-sm text-[var(--gh-ink-soft)]">
+                            {c.count} {c.count === 1 ? "thing" : "things"}
+                            {c.role === "viewer"
+                              ? " · shared with you"
+                              : c.role === "editor"
+                                ? " · shared, you can add"
+                                : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {stuff.status === "ok" && (
+                <details
+                  className="mt-5 max-w-md rounded-3xl bg-[var(--gh-cream)] p-4"
+                  data-testid="new-collection"
+                >
+                  <summary className="min-h-11 cursor-pointer content-center text-base font-semibold text-[var(--gh-ink)]">
+                    New collection
+                  </summary>
+                  <div className="mt-3">
+                    <AddToCollection collections={writable} />
+                  </div>
+                </details>
+              )}
+            </section>
+
+            <AdventuresAndMemories entries={entries} signedIn={Boolean(user)} />
           </div>
         </main>
       </ThemeProvider>

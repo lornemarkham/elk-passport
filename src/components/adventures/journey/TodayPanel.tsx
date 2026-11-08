@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Check, Navigation, PartyPopper, SkipForward } from "lucide-react";
 import type { Experience } from "@/domain/experience/types";
 import type { ItemView } from "@/lib/adventures/store";
@@ -13,6 +14,7 @@ import { Picture } from "../Picture";
 import { pillClass } from "../kit";
 import { Capture } from "./Capture";
 import { useDevice } from "./useDevice";
+import { markLived } from "@/lib/adventures/lived";
 
 /** Directions to a stop: its coordinates where Atlas states them, else its name and place. */
 export function directionsHref(
@@ -77,6 +79,12 @@ export function TodayPanel({
   const now = open[0];
   const after = open[1];
   const finished = device.ready && !now;
+  // **Finished here is a memory now** — My Stuff lists it under Memories
+  // without waiting for the date to pass. Reopening the day takes it back.
+  useEffect(() => {
+    if (!device.ready || !started) return;
+    markLived(adventureId, onDay, finished);
+  }, [device.ready, started, finished, adventureId, onDay]);
   const favourite = (id: string) =>
     device.memories.some((m) => m.kind === "favourite" && m.itemId === id);
 

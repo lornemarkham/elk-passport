@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { Experience } from "@/domain/experience/types";
 import type { DiscoverySection } from "@/domain/discovery/compose";
 import type { Point } from "@/domain/discovery/situation";
@@ -29,7 +29,14 @@ export function DiscoverySections({
   savingId,
   onSave,
   dayHrefFor,
+  interlude,
 }: {
+  /**
+   * **Something that is not a shelf**, placed after the second one (or the
+   * last, on a short page) — the featured hosts. Not between the first two,
+   * so the page always opens on possibilities.
+   */
+  readonly interlude?: React.ReactNode;
   readonly sections: readonly DiscoverySection[];
   /** Today where the subjects are, so a card can say "Last day". */
   readonly today?: string;
@@ -48,22 +55,26 @@ export function DiscoverySections({
   return (
     <div className="flex flex-col gap-10">
       {sections.map((section, index) => (
-        <Section
-          key={section.id}
-          section={section}
-          // Only the section that opens the page, and only its first cards —
-          // see `PossibilityCard`'s `priority`. Everything else stays lazy.
-          leading={index === 0}
-          {...(today ? { today } : {})}
-          {...(home ? { home } : {})}
-          {...(origin ? { origin } : {})}
-          {...(carry ? { carry } : {})}
-          savedIds={savedIds}
-          savingId={savingId}
-          onSave={onSave}
-          {...(dayHrefFor ? { dayHrefFor } : {})}
-        />
+        <Fragment key={section.id}>
+          <Section
+            key={section.id}
+            section={section}
+            // Only the section that opens the page, and only its first cards —
+            // see `PossibilityCard`'s `priority`. Everything else stays lazy.
+            leading={index === 0}
+            {...(today ? { today } : {})}
+            {...(home ? { home } : {})}
+            {...(origin ? { origin } : {})}
+            {...(carry ? { carry } : {})}
+            savedIds={savedIds}
+            savingId={savingId}
+            onSave={onSave}
+            {...(dayHrefFor ? { dayHrefFor } : {})}
+          />
+          {interlude && index === Math.min(1, sections.length - 1) && interlude}
+        </Fragment>
       ))}
+      {interlude && sections.length === 0 && interlude}
     </div>
   );
 }

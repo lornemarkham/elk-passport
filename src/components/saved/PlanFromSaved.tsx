@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import { MAX_SEED } from "@/lib/adventures/days";
 import { whenLabel } from "@/lib/adventures/present";
+import {
+  AddToCollection,
+  type CollectionChoice,
+} from "@/components/my-stuff/AddToCollection";
 
 interface AdventureChoice {
   readonly id: string;
@@ -44,7 +48,10 @@ export function PlanFromSaved({
   titles,
   preselect,
   onClear,
+  collections = [],
 }: {
+  /** Collections the chosen ideas can be put in (My Stuff). */
+  readonly collections?: readonly CollectionChoice[];
   readonly chosen: readonly string[];
   /** For saying what was chosen. */
   readonly titles: Readonly<Record<string, string>>;
@@ -58,6 +65,7 @@ export function PlanFromSaved({
   const [target, setTarget] = useState<string>(preselect ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filing, setFiling] = useState(false);
 
   useEffect(() => {
     if (!open || load.at !== "loading") return;
@@ -167,6 +175,16 @@ export function PlanFromSaved({
               Add to one I&apos;ve started
             </button>
           )}
+          {!filing && (
+            <button
+              type="button"
+              data-testid="saved-to-collection"
+              onClick={() => setFiling(true)}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-[var(--gh-ink)]/15 bg-white px-5 text-base font-semibold text-[var(--gh-ink)] hover:border-[var(--gh-ink)]/40"
+            >
+              Put in a collection
+            </button>
+          )}
           <Link
             href={dayHref}
             data-testid="saved-make-day"
@@ -180,6 +198,19 @@ export function PlanFromSaved({
                 : "these"}
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
+        </div>
+      )}
+
+      {filing && chosen.length > 0 && (
+        <div className="mt-4 border-t border-[var(--gh-line)] pt-4">
+          <AddToCollection
+            collections={collections}
+            chosen={chosen}
+            onDone={() => {
+              setFiling(false);
+              onClear();
+            }}
+          />
         </div>
       )}
 
