@@ -642,7 +642,7 @@ agreed experience in
 - **On the day it leads with what's next**, quietly (§2.7, §6). **It has a
   printable guide** on the Fishing With Emi skeleton, and **Do it again**.
 
-### The Day Builder is on the bar (decided 2026-11-06)
+### The Day Builder is on the bar (decided 2026-11-06; the bar itself superseded 2026-11-08, below)
 
 From the owner's _P0: Restore the product experience_ brief (mission 623),
 answering the nav half of roadmap D-1:
@@ -667,6 +667,41 @@ moment); afterwards a **recap** tells what was done, skipped and loved and
 leads to another adventure. A person's memories stay on their phone unless
 they share one with the group (ADR 014). This does not answer §15.14, §15.10
 or §15.13.
+
+### The experience overhaul: four parts, a Pocket, My Stuff (decided 2026-11-08)
+
+From the owner's _Go Have a Day — the experience overhaul_ brief (mission
+642), recorded in [`product/go-have-a-day/OVERHAUL.md`](product/go-have-a-day/OVERHAUL.md).
+The journey is **DISCOVER → SAVE IDEAS → BUILD AN ADVENTURE → GO HAVE A DAY →
+REMEMBER IT → DO IT AGAIN** — §2's loop again, in the owner's words.
+
+- **The bar is Discover · My Stuff · Build a Day · Experiences.** This
+  replaces the 2026-11-06 bar above: Places and Labs leave it (their routes
+  stay; Atlas still supplies places), and Saved is renamed My Stuff. Date
+  Night joins the Experiences menu.
+- **No board beside Discovery.** Results take the full width. Saving is
+  immediate, said in one line with an Undo, and lands in the **Adventure
+  Pocket**: a small corner button (a panel on a wide screen, a bottom sheet
+  on a phone) to remove, reorder, open, and make a day or a weekend.
+- **My Stuff is the permanent home: Ideas, Collections, Adventures,
+  Memories.** Saving never needs a collection; a collection is an optional
+  group made later, and an idea in one is still an idea. The Pocket and My
+  Stuff read the same Atlas boards — Ideas is every board the person owns —
+  so there is no second source of truth and nothing was migrated. The next
+  adventure still leads the page (ADR 012).
+- **A day made from the Pocket can be saved as an adventure**, so it can
+  start, be lived and be remembered; "make it a weekend" carries the day's
+  stops into a new adventure rather than starting over.
+- **Go Have a Day has a voice**: Canadian, friendly, slightly cheeky, never
+  corporate, and always the plain fact first (`src/lib/voice.ts`).
+- **Featured hosts are a list, ELK Lark the first entry** (Gold Bank
+  GB-2026-10-11-030: no special case). A featured card says who hosts and
+  what they do, says why it is there (ours, or _Sponsored_), and states no
+  dates, prices or availability.
+
+This does not answer §15.14 (Want / Plan / Lived vocabulary): "Memories" is
+a place in My Stuff, not a state name, and a finished day is a mark on the
+phone that lived it.
 
 ---
 
@@ -773,6 +808,9 @@ verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs
 no account; a shared day is an invitation-only adventure of kind `snow-day`.
 This settles reachability for Snow; it does not answer §15.12.
+
+_Date Night joined the menu 2026-11-08_ (mission 642): six, each opening its
+own route (`/datenight`) under its own access rules.
 
 ---
 

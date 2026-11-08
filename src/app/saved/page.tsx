@@ -165,6 +165,36 @@ export default async function SavedPage({
               </div>
             </header>
 
+            {/* **Your next adventure leads** (ADR 012: Saved opens on the
+                adventure being made, next one first). The four parts follow
+                in the brief's order; this one is also listed under
+                Adventures. */}
+            {next && (
+              <section
+                aria-labelledby="next-heading"
+                data-testid="saved-adventures"
+                className="mt-10"
+              >
+                <p
+                  id="next-heading"
+                  className="mb-3 text-xs font-bold tracking-[0.14em] text-[var(--gh-ink-soft)] uppercase"
+                >
+                  Your next adventure
+                </p>
+                <AdventureCard
+                  adventure={next}
+                  today={today}
+                  hero
+                  {...(overview?.glances[next.id]
+                    ? { glance: overview.glances[next.id] }
+                    : {})}
+                  {...(overview?.covers[next.id]
+                    ? { cover: overview.covers[next.id] }
+                    : {})}
+                />
+              </section>
+            )}
+
             {/* **Four parts, one tap each.** Sticky so a long list of ideas
                 never hides where the adventures are. */}
             <nav
