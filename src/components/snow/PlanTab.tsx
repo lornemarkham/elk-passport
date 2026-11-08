@@ -305,6 +305,7 @@ const PLACEHOLDER: Record<Topic, string> = {
   transport: "Ana's car, leave 6:45 from Burnaby",
   meeting: "Base lodge deck, by the big fireplace",
   tickets: "Day tickets bought online",
+  activity: "Tubing at 2, then skating",
   meals: "Packed lunch at the lodge tables",
   apres: "Hot tubs, then pizza in town",
 };

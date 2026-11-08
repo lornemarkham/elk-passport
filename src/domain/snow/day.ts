@@ -23,6 +23,7 @@ export const TOPICS = [
   "transport",
   "meeting",
   "tickets",
+  "activity",
   "meals",
   "apres",
 ] as const;
@@ -34,6 +35,7 @@ export const TOPIC_LABEL: Record<Topic, string> = {
   transport: "Getting there",
   meeting: "Meeting points",
   tickets: "Lift tickets",
+  activity: "Activities",
   meals: "Meals",
   apres: "Après",
 };
@@ -46,6 +48,8 @@ export const TOPIC_PROMPT: Record<Topic, string> = {
   meeting: "Where do we find each other — lodge, lift base, lunch spot?",
   tickets:
     "How is everyone getting on the lift? Prices are the resort's to state — add what you find.",
+  activity:
+    "Skating, tubing, snowshoeing — something everyone can do, including whoever isn't skiing.",
   meals: "Packed lunch, lodge, or somewhere in town?",
   apres: "What happens when the lifts stop?",
 };
