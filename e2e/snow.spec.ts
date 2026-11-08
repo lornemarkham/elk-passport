@@ -72,6 +72,7 @@ test("a crew plans, plays, remembers and goes again", async ({
   await mountain.getByRole("button", { name: "Lock it in" }).first().click();
   await expect(mountain.getByText("LOCKED IN")).toBeVisible();
 
+  await openCard(page, "date");
   const when = iso(3);
   await page.getByLabel("Suggest date").fill(when);
   await page
@@ -82,11 +83,13 @@ test("a crew plans, plays, remembers and goes again", async ({
     .getByTestId("topic-date")
     .getByRole("button", { name: "Lock it in" })
     .click();
+  await openCard(page, "transport");
   await page.getByLabel("Suggest meeting points").fill("Base lodge deck");
   await page
     .getByTestId("topic-meeting")
     .getByRole("button", { name: "Suggest" })
     .click();
+  await openCard(page, "meals");
   await page
     .getByLabel("Suggest meals")
     .fill("Packed lunch at the lodge tables");
@@ -98,6 +101,7 @@ test("a crew plans, plays, remembers and goes again", async ({
   await shot(page, "03-plan");
 
   // changing a locked choice tells the crew once
+  await openCard(page, "mountain");
   await mountain.getByRole("button", { name: "Vote" }).last().click();
   await mountain.getByRole("button", { name: "Lock it in" }).click();
   await expect(page.getByTestId("latest-update")).toContainText(
@@ -311,3 +315,9 @@ test("mountains: static and live facts are told apart, and nothing is invented",
     timeout: 15_000,
   });
 });
+
+/** The Plan tab is a dashboard: open one card to decide its topic. */
+async function openCard(page: Page, key: string) {
+  const c = page.getByTestId(`card-${key}`);
+  if ((await c.getAttribute("aria-expanded")) !== "true") await c.click();
+}

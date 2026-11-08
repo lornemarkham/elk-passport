@@ -324,6 +324,9 @@ export function seasonOn(
 export function liftHoursOn(facts: ResortFacts | undefined, date?: string) {
   const h = facts?.liftHours;
   if (!h) return undefined;
+  // "Opening Day to January 31": nothing before opening day.
+  if (date && facts?.season && date < facts.season.opens.value)
+    return undefined;
   if (date && h.value.until && date > h.value.until) return undefined;
   return h;
 }

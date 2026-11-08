@@ -96,11 +96,8 @@ export function categoriesOf(e: Experience): {
     if (keys.some((k) => doesActivity(e, k))) categories.add(cat);
   if (words.some((w) => TUBING.test(w))) categories.add("tubing");
   if (String(e.kind).toLowerCase() === "event") categories.add("events");
-  if (
-    categories.has("tubing") ||
-    categories.has("skating") ||
-    doesActivity(e, "playgrounds")
-  )
+  // Family means a winter thing kids do. A playground is a summer answer.
+  if (categories.has("tubing") || categories.has("skating"))
     categories.add("family");
   // Après also means dinner: a restaurant is an après option, ranked after bars.
   if (categories.has("lunch") && doesActivity(e, "restaurants"))
@@ -147,6 +144,14 @@ export function picksNear(
     seen.add(key);
     const img = e.presentationImage;
     const date = e.startTime?.slice(0, 10);
+    // An event Atlas doesn't date can't be offered for a day.
+    if (
+      categories.includes("events") &&
+      !(date && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    ) {
+      categories.splice(categories.indexOf("events"), 1);
+      if (categories.length === 0) continue;
+    }
     out.push({
       id: e.id,
       title: e.title,

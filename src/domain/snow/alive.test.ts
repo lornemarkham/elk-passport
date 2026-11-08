@@ -77,6 +77,7 @@ describe("resort facts: published, quoted, dated", () => {
     expect(isStaleFact("2026-11-08", "2026-12-01")).toBe(true);
     expect(liftHoursOn(facts, "2026-12-01")?.value.from).toBe("09:00");
     expect(liftHoursOn(facts, "2027-02-10")).toBeUndefined();
+    expect(liftHoursOn(facts, "2026-11-14")).toBeUndefined(); // before opening
   });
 });
 

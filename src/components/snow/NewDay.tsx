@@ -10,8 +10,19 @@ import {
   type Ability,
   type Discipline,
 } from "@/domain/snow/ability";
-import { newDay } from "@/domain/snow/day";
+import {
+  applyAction,
+  newDay,
+  type Action,
+  type SnowDay,
+} from "@/domain/snow/day";
 import { mountainById } from "@/domain/snow/mountains";
+import {
+  PLACEHOLDER_NAME,
+  askLine,
+  crewFromAsk,
+  readAsk,
+} from "@/domain/snow/ask";
 import { newId, readDay, rememberSharedDay, writeDay, writeMe } from "./store";
 import { btn, btnOn, field, styles } from "./kit";
 
@@ -32,7 +43,12 @@ export function NewDay({
   sharedReady?: boolean;
 }) {
   const router = useRouter();
-  const mountain = mountainById(mountainId);
+  const [sentence, setSentence] = useState("");
+  const today = localToday();
+  const ask = sentence.trim() ? readAsk(sentence, today) : null;
+  // A mountain said in the sentence wins over the one the link came with.
+  const mountain = ask?.mountain ?? mountainById(mountainId);
+  const saidMountain = !!ask?.mountain;
   const [title, setTitle] = useState("");
   const [name, setName] = useState("");
   const [discipline, setDiscipline] = useState<Discipline>("ski");
@@ -80,30 +96,43 @@ export function NewDay({
         return;
       }
       rememberSharedDay(made.id, dayTitle);
-      const label = atlasName ?? mountain?.name;
+      const label = saidMountain
+        ? mountain?.name
+        : (atlasName ?? mountain?.name);
+      const send = (action: Action) =>
+        fetch(`/snow/api/${made.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
       if (label) {
         // The mountain you came from goes on the list as the first option.
         const seen = (await (await fetch(`/snow/api/${made.id}`)).json()) as {
           me: string;
         };
-        await fetch(`/snow/api/${made.id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: {
-              type: "propose",
-              proposal: {
-                id: newId(),
-                topic: "mountain",
-                label,
-                detail: atlasName ? undefined : mountain?.region,
-                by: seen.me,
-                source: atlasName ? "atlas" : "passport-list",
-              },
-            },
-          }),
+        const proposalId = newId();
+        await send({
+          type: "propose",
+          proposal: {
+            id: proposalId,
+            topic: "mountain",
+            label,
+            detail: atlasName && !saidMountain ? undefined : mountain?.region,
+            by: seen.me,
+            source: atlasName && !saidMountain ? "atlas" : "passport-list",
+          },
         });
+        // "We're going to SilverStar" is a decision, not a suggestion.
+        if (saidMountain)
+          await send({
+            type: "choose",
+            topic: "mountain",
+            proposalId,
+            by: seen.me,
+            changeId: newId(),
+          });
       }
+      if (ask?.date) await send({ type: "when", date: ask.date.date });
       router.push(`/snow/day/${made.id}`);
     } catch {
       setError("No signal — a shared day needs one to start.");
@@ -117,7 +146,9 @@ export function NewDay({
     const hostName = name.trim();
     if (!hostName) return setError("What should the crew call you?");
     if (together) {
-      const label = atlasName ?? mountain?.name;
+      const label = saidMountain
+        ? mountain?.name
+        : (atlasName ?? mountain?.name);
       return void startTogether(
         hostName,
         title || (label ? `${label} day` : "Our snow day"),
@@ -130,13 +161,15 @@ export function NewDay({
       id,
       title:
         title ||
-        ((atlasName ?? mountain?.name)
-          ? `${atlasName ?? mountain?.name} day`
-          : "Our snow day"),
+        (saidMountain
+          ? `${mountain!.name}${ask?.date?.key === "opening" ? " opening weekend" : " day"}`
+          : (atlasName ?? mountain?.name)
+            ? `${atlasName ?? mountain?.name} day`
+            : "Our snow day"),
       now,
       host: { id: hostId, name: hostName, discipline, ability, ownGear: true },
     });
-    if (atlasName)
+    if (atlasName && !saidMountain)
       day = {
         ...day,
         proposals: [
@@ -163,6 +196,7 @@ export function NewDay({
           },
         ],
       };
+    if (ask) day = fromAsk(day, ask, hostId, discipline, now);
     // Go Have Another: the crew carries over, the plans and scores do not.
     const before = again ? readDay(again) : null;
     if (before) {
@@ -197,6 +231,57 @@ export function NewDay({
           <p className="mt-2 text-sm font-semibold text-[var(--sn-aurora)]">
             Starting with {atlasName ?? mountain?.name} as an option.
           </p>
+        )}
+      </div>
+
+      <div className="space-y-2" data-testid="ask">
+        <label className="block space-y-1.5">
+          <span className="text-sm font-semibold">
+            Tell Passport about the day (optional)
+          </span>
+          <textarea
+            className={`${field} min-h-24 py-2`}
+            value={sentence}
+            onChange={(e) => setSentence(e.target.value)}
+            placeholder="We're going to SilverStar opening weekend. Four people. Two skiers, one snowboarder and someone who doesn't ski."
+            maxLength={400}
+          />
+        </label>
+        {ask && (
+          <div role="status" className="text-sm" data-testid="ask-read">
+            {askLine(ask).length > 0 ? (
+              <p className="font-semibold text-[var(--sn-aurora)]">
+                Got it: {askLine(ask).join(" · ")}
+                {ask.date && "date" in ask.date && ` (${ask.date.date})`}
+              </p>
+            ) : (
+              <p className={styles.muted}>
+                Nothing to go on yet — name a mountain, a weekend, who&apos;s
+                coming.
+              </p>
+            )}
+            {ask.openingUnknown && (
+              <p className="text-[var(--sn-glow)]">
+                {mountain?.name ?? "That resort"} hasn&apos;t published an
+                opening day Passport has read, so it won&apos;t guess one. Pick
+                the date on the next screen.
+              </p>
+            )}
+            {sentence && !ask.mountain && /\b[A-Z][a-z]+\b/.test(sentence) && (
+              <p className={styles.muted}>
+                Passport knows {""}
+                <a className="underline" href="/snow/mountains">
+                  these mountains
+                </a>
+                ; add another on the next screen.
+              </p>
+            )}
+            {together && crewFromAsk(ask, discipline).length > 0 && (
+              <p className={styles.muted}>
+                Shared days add people when they join with the invite link.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -280,8 +365,64 @@ export function NewDay({
         disabled={busy}
         className={`${styles.go} min-h-14 w-full rounded-full text-lg uppercase`}
       >
-        Create the day
+        {ask && askLine(ask).length > 0
+          ? "Make us an awesome day"
+          : "Create the day"}
       </button>
     </form>
   );
+}
+
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/**
+ * What the sentence said, applied through the same actions the screen uses:
+ * the mountain it named is locked in (it was said as a decision), the date
+ * set, and the people it described added with a placeholder name and the
+ * most careful level, for the crew to correct.
+ */
+function fromAsk(
+  day: SnowDay,
+  ask: ReturnType<typeof readAsk>,
+  hostId: string,
+  discipline: Parameters<typeof crewFromAsk>[1],
+  now: string,
+): SnowDay {
+  const run = (d: SnowDay, a: Action) => {
+    const r = applyAction(d, a, now);
+    return r.ok ? r.day : d;
+  };
+  let next = day;
+  if (ask.mountain) {
+    const m = next.proposals.find((p) => p.topic === "mountain");
+    if (m)
+      next = run(next, {
+        type: "choose",
+        topic: "mountain",
+        proposalId: m.id,
+        by: hostId,
+        changeId: newId(),
+      });
+  }
+  if (ask.date) next = run(next, { type: "when", date: ask.date.date });
+  const seen: Record<string, number> = {};
+  for (const d of crewFromAsk(ask, discipline)) {
+    seen[d] = (seen[d] ?? 0) + 1;
+    const n = seen[d] + (d === discipline ? 1 : 0);
+    next = run(next, {
+      type: "addPerson",
+      person: {
+        id: newId(),
+        name: `${PLACEHOLDER_NAME[d]} ${n}`,
+        discipline: d,
+        ability: "beginner",
+        ownGear: true,
+        note: "Name and level not set yet — change it in Crew",
+      },
+    });
+  }
+  return next;
 }
