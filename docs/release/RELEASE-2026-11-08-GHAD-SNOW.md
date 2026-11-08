@@ -104,5 +104,6 @@ is fixed, the runner can't apply these, and a person runs them in the SQL editor
 - Code: production is `dfa7d69`. Promote its Vercel deployment again, or
   revert `main` to it with a new commit. No force-push.
 - Database: nothing in 1–3 rewrites existing rows. Code at `dfa7d69` runs
-  against the migrated schema (it never writes `activity`, and it predates the
-  Snow tables), so a code rollback needs no SQL rollback.
+  against the migrated schema: it already reads the Snow tables behind the
+  readiness probe and never writes `activity`. A code rollback needs no SQL
+  rollback.
