@@ -1020,6 +1020,17 @@ certainty. Do not invent an answer here to make the document feel finished.
     showing where its members are, for a while, only to others doing the same
     (the ADR 011 shape, now for a second kind of group; awaiting the owner's
     confirmation). One composition.
+    _Informed 2026-11-08 by Snow Day, the mountain come alive_
+    (`docs/product/snow/ALIVE.md`): a snow day opens on one sentence ("SilverStar
+    opening weekend, four of us, one doesn't ski"), read by rules and echoed
+    back, and its plan is a dashboard of the things the day turns on rather
+    than a stack of forms. The resort's own published facts (opening day, lift
+    hours) are quoted with their source and the date they were read, never
+    shown as live; Atlas supplies the places, and where Atlas has none (no
+    lunch on SilverStar) the plan says so and an acquisition request is
+    written instead. Each stop of the suggested day says whether it is
+    locked in, the crew's pick, published, an Atlas suggestion or Passport's
+    suggestion (§5). One composition.
     _Informed again 2026-10-23 by the executive overhaul_
     (`docs/products/go-have-a-conference/EXECUTIVE.md`): a conference's
     overview leads with what matters at this point of the trip — before,
