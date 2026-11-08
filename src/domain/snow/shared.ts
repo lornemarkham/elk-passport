@@ -619,13 +619,12 @@ function opsFor(before: SnowDay, after: SnowDay, a: Action): Op[] {
 }
 
 /**
- * The topics the shared tables hold. `activity` is newer than the Snow
- * migration's CHECK; until `docs/product/snow/activity-migration.sql` is
- * applied a shared day refuses it with a sentence rather than a 500.
+ * The topics the shared tables hold: every topic since
+ * `20261108000000_passport_snow_activity.sql` added `activity` to the CHECK.
+ * A topic added later stays out of this list until its migration lands, so a
+ * shared day refuses it with a sentence rather than a 500.
  */
-export const STORED_TOPICS: readonly Topic[] = TOPICS.filter(
-  (t) => t !== "activity",
-);
+export const STORED_TOPICS: readonly Topic[] = TOPICS;
 const isStoredTopic = (t: Topic) => STORED_TOPICS.includes(t);
 const NOT_STORED =
   "Voting on activities isn't switched on for shared days yet. Post it in the chat for now.";

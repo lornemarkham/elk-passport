@@ -377,6 +377,20 @@ async function services({ fresh }) {
     );
     await sql(snow);
     await sql(snow);
+    // Activities as a voted topic (one CHECK), twice. Skipped with
+    // SNOW_NO_ACTIVITY=1 to rehearse a database that only has Powder Day,
+    // then `apply` it over existing rows.
+    if (!process.env.SNOW_NO_ACTIVITY) {
+      const activity = fs.readFileSync(
+        path.join(
+          repo,
+          "supabase/migrations/20261108000000_passport_snow_activity.sql",
+        ),
+        "utf8",
+      );
+      await sql(activity);
+      await sql(activity);
+    }
     // Find your crew (opt-in, time-limited locations): a PROPOSED migration,
     // so it lives in docs until the contracts lane moves it into
     // supabase/migrations. Also applied twice. Skipped with

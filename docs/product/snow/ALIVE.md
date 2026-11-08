@@ -143,8 +143,10 @@ the browser spec run on them.
 - **Drive times.** Distances are straight lines and labelled that way. Atlas's
   travel legs are not used here.
 - **Shared days and activities.** Voting on activities on a shared day needs
-  `activity-migration.sql` (one CHECK). Until then a shared day refuses it
-  with a sentence. Timing tweaks (lunch time, staying on the mountain) live on
+  `supabase/migrations/20261108000000_passport_snow_activity.sql` (one CHECK;
+  promoted from `docs/product/snow/activity-migration.sql` at integration,
+  M646, which also dropped the code's refusal: apply the SQL before the code
+  deploys). Timing tweaks (lunch time, staying on the mountain) live on
   the phone that made them. Picks put to the crew are shared.
 - **Opening facts for the other 12 mountains.** Not read. Their card says so.
 - **Forecast**: still behind `SNOW_FORECAST=on` (Open-Meteo terms, owner).
@@ -154,7 +156,8 @@ the browser spec run on them.
 - `e2e/snow-silverstar.spec.ts` (new), `e2e/snow.spec.ts` (opens the cards;
   assertions unchanged).
 - `docs/PASSPORT-PRODUCT-DOCTRINE.md`: one "Informed 2026-11-08" note in §15.12.
-- No shared contract changed. **Proposed for `passport-domain`:**
+- No shared contract changed. **Proposed for `passport-domain`** (done at
+  integration, M646):
   `git mv docs/product/snow/activity-migration.sql supabase/migrations/20261108000000_passport_snow_activity.sql`,
   and drop the `activity` exclusion in `STORED_TOPICS` (`src/domain/snow/shared.ts`) in the same change.
 

@@ -433,7 +433,7 @@ describe("plan: who may do what", () => {
     ).toEqual({ ok: false, reason: "Write something first." });
   });
 
-  it("refuses an activity on a shared day in words until its migration is applied", () => {
+  it("stores an activity on a shared day, like lunch and après", () => {
     const r = plan(
       base,
       {
@@ -449,10 +449,7 @@ describe("plan: who may do what", () => {
       guest,
       NOW,
     );
-    expect(r).toMatchObject({ ok: false });
-    expect((r as { reason: string }).reason).toMatch(
-      /isn't switched on for shared days/,
-    );
+    expect(r).toMatchObject({ ok: true });
     // Lunch and après as Atlas places are stored today.
     expect(
       plan(

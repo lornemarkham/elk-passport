@@ -1,17 +1,15 @@
 -- ============================================================================
--- PROPOSED MIGRATION — activities as a voted snow-day topic
+-- MIGRATION — activities as a voted snow-day topic
 -- Written on lane snow (feature/snow), 2026-11-08, mission "Snow Day — make
--- the mountain come alive".
--- PROPOSAL: lives in docs/product/snow/ because supabase/migrations/ is a
--- shared contract (CLAUDE.local.md). The integration step is
---   git mv docs/product/snow/activity-migration.sql \
---          supabase/migrations/20261108000000_passport_snow_activity.sql
--- and, in the same change, removing the `activity` exclusion from
--- STORED_TOPICS in src/domain/snow/shared.ts.
+-- the mountain come alive"; promoted from docs/product/snow/ by the
+-- integration workspace (M646), with the `activity` exclusion removed from
+-- STORED_TOPICS in src/domain/snow/shared.ts in the same change.
 --
--- Requires 20261103000000_passport_snow.sql. Until it is applied, a day kept
+-- Requires 20261103000000_passport_snow.sql. Apply it BEFORE the code that
+-- carries it is deployed: that code lets a shared day store an activity, and
+-- without this CHECK the insert fails. (Before this change, a day kept
 -- on one phone votes on activities and a shared day says "Voting on
--- activities isn't switched on for shared days yet" (no 500, no lost data).
+-- activities isn't switched on for shared days yet": no 500, no lost data.)
 --
 -- WHAT IT CHANGES: one CHECK. Votes and decisions reference the topic through
 -- the composite foreign key (id, adventure_id, topic), so they accept the new
