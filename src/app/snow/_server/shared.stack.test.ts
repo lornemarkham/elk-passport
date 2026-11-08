@@ -174,6 +174,37 @@ describe.skipIf(!ENV_FILE)("Powder Day on two phones (real stack)", () => {
     expect(options.map((p) => p.label)).toEqual(["Big White", "Silver Star"]);
     const [bigWhite, silver] = options;
 
+    // Activities are a stored topic too (20261108000000_passport_snow_activity).
+    const activity = await act(
+      jess.db,
+      id,
+      jess.id,
+      {
+        type: "propose",
+        proposal: {
+          id: "x",
+          topic: "activity",
+          label: "Tube Town",
+          by: j0.me,
+          source: "atlas",
+        },
+      },
+      NOW,
+    );
+    expect(activity.ok).toBe(true);
+    const tubeTown = (await L()).day.proposals.find(
+      (p) => p.topic === "activity",
+    );
+    expect(tubeTown?.label).toBe("Tube Town");
+    await act(
+      jess.db,
+      id,
+      jess.id,
+      { type: "vote", proposalId: tubeTown!.id, personId: j0.me, on: true },
+      NOW,
+    );
+    expect((await L()).day.votes[tubeTown!.id]).toEqual([j0.me]);
+
     await act(
       lorne.db,
       id,
