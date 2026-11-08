@@ -29,7 +29,10 @@ for (const [name, device] of [
       page,
     }) => {
       await page.goto("/discovery");
-      for (const id of ["discover", "places", "saved"]) {
+      // The bar is Discover | My Stuff | Build a Day | Experiences (owner
+      // brief, 2026-11-08); Places is off it.
+      await expect(page.getByTestId("passport-nav-places")).toHaveCount(0);
+      for (const id of ["discover", "my-stuff", "build"]) {
         await expect(page.getByTestId(`passport-nav-${id}`)).toBeVisible();
       }
       const button = page.getByTestId("passport-nav-experiences");
@@ -41,7 +44,7 @@ for (const [name, device] of [
       await expect(page.getByTestId("passport-experiences")).toBeVisible();
       await expect(
         page.getByTestId("passport-experiences").getByRole("link"),
-      ).toHaveCount(5);
+      ).toHaveCount(6);
     });
 
     test("Experiences opens to Conference, Hockey Night, October, Christmas and Snow Day", async ({
@@ -60,6 +63,7 @@ for (const [name, device] of [
         ["october", "October", "/october"],
         ["christmas", "Christmas", "/christmas"],
         ["snow", "Snow Day", "/snow"],
+        ["date-night", "Date Night", "/datenight"],
       ] as const) {
         const link = page.getByTestId(`passport-experience-${id}`);
         await link.scrollIntoViewIfNeeded();
