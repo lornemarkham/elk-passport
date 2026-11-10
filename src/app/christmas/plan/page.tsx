@@ -11,7 +11,7 @@ import { todayIn } from "@/lib/adventures/overview";
 import { ATLAS_REF } from "@/lib/adventures/rules";
 import { loadSaved } from "@/lib/data/loadSaved";
 import { readAsk, type Find } from "@/domain/christmas/discover";
-import { shapeById } from "@/domain/christmas/plans";
+import { sayFor, shapeById } from "@/domain/christmas/plans";
 import { readChristmas, themeById } from "@/domain/christmas/themes";
 import { readWhen } from "@/domain/christmas/when";
 import { christmasFinds } from "../_server/corpus";
@@ -58,6 +58,22 @@ export default async function ChristmasPlanPage({
   const name = typeof params.name === "string" ? params.name.slice(0, 120) : "";
   const session = await adventureSession();
   const here = `/christmas/plan${Object.keys(params).length ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : ""}`;
+
+  // The person's own sentence when they said one (it already holds the
+  // shape and who is coming); otherwise the sentence the planner would send.
+  const goParams = new URLSearchParams({
+    say: say
+      ? /christmas/i.test(say)
+        ? say
+        : `${say}, Christmas`
+      : sayFor({
+          shape,
+          ...(ask.party ? { party: ask.party } : {}),
+          ...(ask.ages[0] !== undefined ? { youngest: ask.ages[0] } : {}),
+        }),
+  });
+  if (ask.at) goParams.set("at", ask.at);
+  if (withIds.length) goParams.set("with", withIds.join(","));
 
   let picks: PlanPick[] = [];
   let saved: PlanPick[] = [];
@@ -150,6 +166,20 @@ export default async function ChristmasPlanPage({
                 >
                   Sign in
                 </Link>
+                <p className="mt-6 text-sm text-[var(--gh-ink-soft)]">
+                  Just want a day out of it?
+                </p>
+                <Link
+                  href={`/go?${goParams.toString()}`}
+                  className="mt-2 inline-flex min-h-12 items-center rounded-full px-6 font-bold text-[#b3242f] ring-2 ring-[#b3242f]"
+                  data-testid="plan-no-account"
+                >
+                  Build it now — no account
+                </Link>
+                <p className="mx-auto mt-2 max-w-md text-xs text-[var(--gh-ink-soft)]">
+                  Change it, keep it on this device, and send it as words or a
+                  printed page. Sign in later to plan it with your people.
+                </p>
               </div>
             ) : (
               <Planner

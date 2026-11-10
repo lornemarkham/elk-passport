@@ -85,3 +85,67 @@ test("planning and an adventure ask a visitor to sign in, and come back", async 
   const start = await request.post("/christmas/api/start", { data: {} });
   expect(start.status()).toBe(401);
 });
+
+/**
+ * **The no-account Christmas day: open, plan, save, share, reopen** — on a
+ * phone (390px) and a desktop. The sign-in wall used to be the end of the road
+ * for a visitor; now `/christmas/plan` hands the same sentence to the Day
+ * Builder, which edits, keeps on this device and shares as words or a printed
+ * page. Sharing *live* with later changes still needs an account (adventures).
+ */
+for (const [label, viewport] of [
+  ["phone 390px", { width: 390, height: 844 }],
+  ["desktop", { width: 1280, height: 900 }],
+] as const) {
+  test(`a visitor plans, keeps, shares and reopens a Christmas day — ${label}`, async ({
+    browser,
+  }) => {
+    test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
+    const context = await browser.newContext({
+      viewport,
+      hasTouch: viewport.width < 600,
+      permissions: ["clipboard-read", "clipboard-write"],
+    });
+    const page = await context.newPage();
+    // open
+    await page.goto("/christmas");
+    await page.getByRole("link", { name: "Kelowna", exact: true }).click();
+    await expect(page).toHaveURL(/at=kelowna/);
+    await page
+      .getByRole("textbox", { name: /What does your Christmas look like/ })
+      .fill("A Christmas evening for the two of us");
+    await page.getByTestId("say-it-go").click();
+    // plan: the wall offers a way on without an account
+    await page.getByTestId("plan-no-account").click();
+    await expect(page).toHaveURL(/\/go\?say=/);
+    await expect(page.getByTestId("go-day")).toBeVisible();
+    await expect(page.getByTestId("go-stop").first()).toBeVisible();
+    // save: on this device
+    await page.getByTestId("go-keep-day").click();
+    await expect(page.getByTestId("go-note")).toContainText("this device");
+    // share: the printed page is a link anyone can open
+    const href = await page.getByTestId("go-print").getAttribute("href");
+    expect(href).toContain("/go/print?");
+    const friend = await context.newPage();
+    await friend.goto(href!);
+    await expect(friend.locator("body")).toContainText(/Christmas/i);
+    await friend.close();
+    // reopen: kept days list it on /go
+    await page.goto("/go");
+    await expect(page.getByTestId("go-kept-day")).toHaveCount(1);
+    await page.getByTestId("go-kept-open").click();
+    await expect(page.getByTestId("go-stop").first()).toBeVisible();
+    await context.close();
+  });
+}
+
+test("the sign-in wall offers a way on without an account", async ({
+  page,
+}) => {
+  await page.goto("/christmas/plan?shape=family-day&ages=5&at=kelowna");
+  const link = page.getByTestId("plan-no-account");
+  await expect(link).toBeVisible();
+  const href = (await link.getAttribute("href"))!;
+  expect(href).toMatch(/^\/go\?say=/);
+  expect(href).toContain("at=kelowna");
+});
