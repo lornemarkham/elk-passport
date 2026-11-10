@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SKILL_NAMES } from "@/lib/courtqueue/model";
 import type { LiveView } from "@/lib/courtqueue/view";
-import { Btn, Card, Elapsed, Person, SkillTag, clock, cx } from "./bits";
+import { Btn, Card, Elapsed, Person, clock, cx } from "./bits";
 import { Teams, type Act } from "./Tonight";
 
 export function Courts({ view, offset }: { view: LiveView; offset: number }) {
@@ -15,9 +14,7 @@ export function Courts({ view, offset }: { view: LiveView; offset: number }) {
       {[...night.courts].reverse().map((c) => (
         <Card key={c.id} className={cx(c.closed && "opacity-50")}>
           <div className="flex items-baseline justify-between">
-            <h2 className="text-xl font-black">
-              Court {c.id} · {c.name}
-            </h2>
+            <h2 className="text-xl font-black">{c.name}</h2>
             <span className="text-sm font-semibold">
               {c.closed ? (
                 "Closed"
@@ -43,7 +40,7 @@ export function Courts({ view, offset }: { view: LiveView; offset: number }) {
                 ) : (
                   <>Called {clock(c.game.calledAt)} · waiting for START</>
                 )}
-                {c.game.source === "challenge" ? " · challenge" : ""}
+                {c.game.source === "challenge" ? " · a game with friends" : ""}
               </p>
             </>
           )}
@@ -51,7 +48,7 @@ export function Courts({ view, offset }: { view: LiveView; offset: number }) {
       ))}
       {night.recent.length > 0 && (
         <Card>
-          <h2 className="mb-2 font-bold">Results tonight</h2>
+          <h2 className="mb-2 font-bold">Games played tonight</h2>
           <ul className="divide-y divide-white/10">
             {night.recent.map((g) => (
               <li key={g.id} className="py-2 text-sm">
@@ -59,27 +56,11 @@ export function Courts({ view, offset }: { view: LiveView; offset: number }) {
                   <span>
                     Court {g.court} · {clock(g.finishedAt!)} · {g.minutes} min
                   </span>
-                  <span>
-                    {g.score ? `${g.score[0]}–${g.score[1]}` : "no score"}
-                  </span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span
-                    className={cx(
-                      "truncate",
-                      g.winner === 0 && "font-bold text-lime-300",
-                    )}
-                  >
-                    {g.slots[0]?.name} & {g.slots[1]?.name}
-                  </span>
-                  <span
-                    className={cx(
-                      "truncate text-right",
-                      g.winner === 1 && "font-bold text-lime-300",
-                    )}
-                  >
-                    {g.slots[2]?.name} & {g.slots[3]?.name}
-                  </span>
+                <div className="truncate">
+                  {g.slots[0]?.name} & {g.slots[1]?.name}
+                  <span className="text-white/50"> with </span>
+                  {g.slots[2]?.name} & {g.slots[3]?.name}
                 </div>
               </li>
             ))}
@@ -103,12 +84,12 @@ export function ChallengeTab({ view, act }: { view: LiveView; act: Act }) {
   if (!night || night.status !== "live")
     return (
       <Card>
-        Challenges open once tonight&apos;s session starts and you&apos;ve
+        Game invites open once tonight&apos;s session starts and you&apos;ve
         checked in.
       </Card>
     );
   if (!night.present.some((p) => p.id === meId))
-    return <Card>Check in first, then challenge your friends.</Card>;
+    return <Card>Check in first, then invite your friends to a game.</Card>;
   const pick = (
     value: string,
     set: (v: string) => void,
@@ -127,7 +108,7 @@ export function ChallengeTab({ view, act }: { view: LiveView; act: Act }) {
           .filter((p) => !taken.includes(p.id) || p.id === value)
           .map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} — {SKILL_NAMES[p.skill]}
+              {p.name}
             </option>
           ))}
       </select>
@@ -137,15 +118,15 @@ export function ChallengeTab({ view, act }: { view: LiveView; act: Act }) {
   return (
     <div className="space-y-4">
       <Card>
-        <h1 className="text-2xl font-black">Friendly challenge</h1>
+        <h1 className="text-2xl font-black">Play with friends</h1>
         <p className="mt-1 text-sm text-white/70">
-          Pick your partner and two opponents. All four must accept. Then it
-          waits for a court the matchup is allowed on — and never ahead of
-          anyone still waiting for their first game.
+          Pick your partner and the other two. All four say yes, then it waits
+          for a free court — never ahead of anyone still waiting for their first
+          game. Anyone can say &quot;not tonight&quot;, no explanation needed.
         </p>
         <div className="mt-4 space-y-3">
           {pick(partner, setPartner, "Your partner", [o1, o2])}
-          {pick(o1, setO1, "Opponent", [partner, o2])}
+          {pick(o1, setO1, "Playing against", [partner, o2])}
           {pick(o2, setO2, "Their partner", [partner, o1])}
         </div>
         <Btn
@@ -163,7 +144,7 @@ export function ChallengeTab({ view, act }: { view: LiveView; act: Act }) {
             )
           }
         >
-          Send challenge
+          Send invite
         </Btn>
       </Card>
       <Card>
@@ -172,23 +153,11 @@ export function ChallengeTab({ view, act }: { view: LiveView; act: Act }) {
           {night.present.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-2">
               <Person p={p} me={meId} small />
-              <span className="flex items-center gap-1">
-                {p.mentor && (
-                  <span className="text-xs text-white/60">mentor</span>
-                )}
-                <SkillTag skill={p.skill} />
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-      <Card>
-        <h2 className="font-bold">Court rules tonight</h2>
-        <ul className="mt-2 space-y-1 text-sm text-white/70">
-          {night.courts.map((c) => (
-            <li key={c.id}>
-              <span className="font-semibold text-white">{c.name}:</span>{" "}
-              {c.rule}
+              {p.mentor && (
+                <span className="text-xs text-white/60">
+                  happy to say hello
+                </span>
+              )}
             </li>
           ))}
         </ul>

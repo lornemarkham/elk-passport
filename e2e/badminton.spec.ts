@@ -25,11 +25,10 @@ test.describe.configure({ mode: "serial" });
 async function player(
   baseURL: string,
   name: string,
-  skill: number,
 ): Promise<APIRequestContext> {
   const api = await pwRequest.newContext({ baseURL });
   const r = await api.post("/api/badminton/me", {
-    data: { action: "register", name, pin: "4321", skill },
+    data: { action: "register", name, pin: "4321" },
   });
   if (r.status() === 503) test.skip(true, "CourtQueue store not configured");
   expect(r.ok(), `register ${name}: ${await r.text()}`).toBe(true);
@@ -71,7 +70,7 @@ async function phone(browser: Browser) {
 let org: APIRequestContext;
 
 test.beforeAll(async ({ baseURL }) => {
-  org = await player(baseURL!, `Org ${RUN}`, 3);
+  org = await player(baseURL!, `Org ${RUN}`);
   TODAY = localDate((await live(org)).now);
   const claim = await org.post("/api/badminton/me", {
     data: { action: "organizer", code: CODE },
@@ -95,7 +94,15 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   await a.page.getByRole("button", { name: "I'm new" }).click();
   await a.page.getByLabel("Your name").fill(`Ana ${RUN}`);
   await a.page.getByLabel(/Choose a PIN/).fill("2468");
-  await a.page.getByText("Intermediate", { exact: true }).click();
+  // Nobody is asked to rate themselves.
+  await expect(
+    a.page.getByText(/Beginner|Intermediate|Expert|rate yourself/),
+  ).toHaveCount(0);
+  await expect(
+    a.page.getByText(
+      "Everyone is welcome. Come play, meet people, and have fun!",
+    ),
+  ).toBeVisible();
   await a.page.getByRole("button", { name: "Join CourtQueue" }).click();
   const phase = a.page.getByTestId("phase");
 
@@ -105,6 +112,16 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   ).toBeVisible();
   await a.page.getByRole("button", { name: "SIGN ME UP" }).click();
   await expect(phase).toHaveText("REGISTERED");
+  // "What kind of game sounds fun today?" — optional, friendly, changeable.
+  await expect(
+    a.page.getByText("What kind of game sounds fun today?"),
+  ).toBeVisible();
+  await a.page.getByLabel("I’d love some friendly rallies.").click();
+  await expect(
+    a.page.getByLabel("I’d love some friendly rallies."),
+  ).toBeChecked();
+  await a.page.getByLabel("I’m up for a challenge!").click();
+  await expect(a.page.getByLabel("I’m up for a challenge!")).toBeChecked();
   await a.page.getByRole("button", { name: "I'M HERE" }).click();
   await expect(phase).toHaveText("READY TO PLAY");
   await a.page.getByRole("button", { name: "JOIN THE QUEUE" }).click();
@@ -114,7 +131,7 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   // Three friends sign up and join the queue on their own phones.
   const others = [];
   for (const n of ["Bo", "Cy", "Di"]) {
-    const p = await player(baseURL!, `${n} ${RUN}`, 3);
+    const p = await player(baseURL!, `${n} ${RUN}`);
     await must(p, { type: "register" });
     await must(p, { type: "check-in" });
     others.push(p);
@@ -132,11 +149,9 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   const court = Number(
     (await takeover.getByText(/^COURT \d$/).textContent())!.slice(-1),
   );
-  // Intermediates are not sent to the expert court.
-  expect(court).not.toBe(3);
 
   // Someone who isn't one of the four cannot start it.
-  const ed = await player(baseURL!, `Ed ${RUN}`, 4);
+  const ed = await player(baseURL!, `Ed ${RUN}`);
   await must(ed, { type: "register" });
   await must(ed, { type: "check-in" });
   const gameId = (await live(others[0]!)).night.me.game.id;
@@ -173,11 +188,15 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
     timeout: 10_000,
   });
 
-  // FINISH without a score: the court is free at once anyway.
+  // FINISH: there is no score to enter, and the court is free at once.
   await a.page.getByRole("button", { name: "FINISH GAME" }).click();
-  await a.page.getByRole("button", { name: "Finish without a score" }).click();
+  await expect(a.page.getByLabel(/Score/)).toHaveCount(0);
+  await a.page
+    .getByRole("dialog", { name: "Finish game" })
+    .getByRole("button", { name: "Finish game" })
+    .click();
   await expect(phase).toHaveText("FINISHED");
-  await expect(a.page.getByText("no score yet")).toBeVisible();
+  await expect(a.page.getByText(/thanks for playing/i)).toBeVisible();
   await expect(e.page.getByTestId(`court-${court}`)).not.toHaveAttribute(
     "data-status",
     "playing",
@@ -187,17 +206,15 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   const after = await live(org);
   expect(after.night.queue).toHaveLength(0);
 
-  // The score, later; a teammate confirms it.
-  await a.page.getByRole("button", { name: "Add the score" }).click();
-  await a.page.getByLabel("Score 1").fill("21");
-  await a.page.getByLabel("Score 2").fill("17");
-  await a.page.getByRole("button", { name: "Save" }).click();
-  await expect(a.page.getByText("(provisional)")).toBeVisible();
+  // No scores, winners or levels anywhere on the player's phone.
   const played = (await live(others[0]!)).night.me.played[0];
-  expect(played.score).toEqual([21, 17]);
   expect(played.startedAt).toBeLessThan(played.finishedAt);
-  await must(others[0]!, { type: "confirm", gameId: played.id });
-  await expect(a.page.getByText("confirmed")).toBeVisible({ timeout: 8_000 });
+  expect(JSON.stringify(await live(others[0]!))).not.toMatch(
+    /skill|"score"|"winner"/i,
+  );
+  await expect(
+    a.page.getByText(/Beginner|Intermediate|Expert|Advanced|won–lost/),
+  ).toHaveCount(0);
 
   // BACK IN THE QUEUE, only when tapped.
   await a.page.getByRole("button", { name: "BACK IN THE QUEUE" }).click();
@@ -260,16 +277,13 @@ test("the season schedule, cancelled nights, and no sign-up for another day", as
 test("24 phones, three courts: every phone agrees, nobody waits twice for nothing", async ({
   baseURL,
 }) => {
-  const skills = [
-    1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 2, 3, 4, 3, 5,
-  ];
   // Make room: everyone from the first story gives their spot away.
   for (const r of (await live(org)).organizer.roster)
     if (r.status === "confirmed")
       await must(org, { type: "cancel", playerId: r.person.id });
   const phones: APIRequestContext[] = [];
-  for (const [i, k] of skills.entries())
-    phones.push(await player(baseURL!, `Sim${i} ${RUN}`, k));
+  for (let i = 0; i < 24; i++)
+    phones.push(await player(baseURL!, `Sim${i} ${RUN}`));
   // Everybody checks in and joins the queue.
   await Promise.all(phones.map((p) => must(p, { type: "register" })));
   await Promise.all(phones.map((p) => must(p, { type: "check-in" })));
@@ -312,7 +326,7 @@ test("24 phones, three courts: every phone agrees, nobody waits twice for nothin
     expect(new Set(seated).size).toBe(seated.length);
     for (const c of courts)
       if (c.game) expect(c.game.slots.filter(Boolean)).toHaveLength(4);
-    // Start, finish with a score, and the four tap back in.
+    // Start, finish, and the four tap back in.
     for (const c of courts) {
       if (!c.game) continue;
       const four = c.game.slots.map((s: { id: string }) => byId.get(s.id)!);
@@ -321,7 +335,6 @@ test("24 phones, three courts: every phone agrees, nobody waits twice for nothin
       await must(four[1]!, {
         type: "finish",
         gameId: c.game.id,
-        score: [21, 12 + round],
       });
       await Promise.all(
         four.map((p: APIRequestContext) => must(p, { type: "play" })),
@@ -335,7 +348,6 @@ test("24 phones, three courts: every phone agrees, nobody waits twice for nothin
   expect(finished.length).toBeGreaterThanOrEqual(10);
   for (const g of finished) {
     expect(g.startedAt).toBeLessThan(g.finishedAt);
-    expect(g.score).not.toBeNull();
   }
   const here = o.roster.filter(
     (r: { here: boolean; person: { id: string } }) =>
@@ -345,25 +357,13 @@ test("24 phones, three courts: every phone agrees, nobody waits twice for nothin
   expect(Math.max(...games) - Math.min(...games)).toBeLessThanOrEqual(2);
 });
 
-test("the expert court never takes a beginner; 25 is the limit and the waitlist moves up", async ({
+test("every court takes anyone; 25 is the limit and the waitlist moves up", async ({
   baseURL,
 }) => {
-  const beginner = await player(baseURL!, `Newbie ${RUN}`, 1);
-  const experts = [];
-  for (const n of ["X1", "X2", "X3"])
-    experts.push(await player(baseURL!, `${n} ${RUN}`, 5));
-  const four = await Promise.all(
-    [beginner, ...experts].map(async (p) => (await live(p)).me.id),
-  );
-  const out = await act(org, { type: "assign", court: 3, slots: four });
-  expect(out.ok).toBe(false);
-  expect(out.body.error).toMatch(
-    /never on the expert court|isn't checked in|already has a game/,
-  );
-
-  // 24 are in; the beginner takes the 25th spot and one more waits.
-  await must(beginner, { type: "register" });
-  const late = await player(baseURL!, `Late ${RUN}`, 3);
+  const newcomer = await player(baseURL!, `Newbie ${RUN}`);
+  // 24 are in; the newcomer takes the 25th spot and one more waits.
+  await must(newcomer, { type: "register" });
+  const late = await player(baseURL!, `Late ${RUN}`);
   await must(late, { type: "register" });
   let view = (await live(late)).sessions.find(
     (s: { id: string }) => s.id === TODAY,

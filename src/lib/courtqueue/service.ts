@@ -38,8 +38,8 @@ import {
 } from "./engine";
 import {
   emptyClub,
+  tidyClub,
   emptySession,
-  isSkill,
   type Club,
   type Player,
   type Session,
@@ -68,7 +68,7 @@ import {
   registrationState,
   upcomingNights,
 } from "./schedule";
-import { playerStats, promotionHint } from "./stats";
+import { playerStats } from "./stats";
 import { courtStore, NotReady, type DocStore } from "./store";
 import {
   clubhouseView,
@@ -146,7 +146,7 @@ const ATTEMPTS = 30;
 async function loadClub(store: DocStore, fresh = false) {
   const d = (await read(store, [CLUB], fresh)).get(CLUB);
   return d
-    ? { club: d.value as Club, version: d.version }
+    ? { club: tidyClub(d.value as Club), version: d.version }
     : { club: emptyClub(), version: 0 };
 }
 
@@ -179,7 +179,7 @@ async function changeSession(
     if (!clubDoc || !doc)
       return { ok: false, error: "That session isn't here." };
     const out = applySession(
-      clubDoc.value as Club,
+      tidyClub(clubDoc.value as Club),
       doc.value as Session,
       actor,
       cmd,
@@ -188,7 +188,11 @@ async function changeSession(
     if (!out.ok) return out;
     if (await write(store, sessionKey(id), out.value, doc.version)) {
       sendLater(
-        changeNotices(clubDoc.value as Club, doc.value as Session, out.value),
+        changeNotices(
+          tidyClub(clubDoc.value as Club),
+          doc.value as Session,
+          out.value,
+        ),
       );
       return out;
     }
@@ -248,16 +252,12 @@ export type SignInOutcome = Outcome<{ cookie: string }>;
 export async function register(input: {
   name: unknown;
   pin: unknown;
-  skill: unknown;
-  statsPublic?: unknown;
 }): Promise<SignInOutcome> {
   const name = cleanName(input.name);
   if (name.length < 2) return { ok: false, error: "Tell us your name." };
   if (!validPin(input.pin))
     return { ok: false, error: "Pick a PIN of 4 to 8 digits." };
-  if (!isSkill(input.skill)) return { ok: false, error: "Pick your level." };
   const pin = input.pin;
-  const skill = input.skill;
   const store = courtStore();
   const pinHash = hashPin(pin);
   let cookie = "";
@@ -273,17 +273,12 @@ export async function register(input: {
     const p: Player = {
       id: randomBytes(6).toString("base64url"),
       name,
-      skill,
       createdAt: now,
       pinHash,
       tokenHashes: [],
-      statsPublic: input.statsPublic !== false,
       mentor: false,
       organizer: false,
       photo: false,
-      skillHistory: [
-        { at: now, from: null, to: skill, by: "self", reason: "Self-assessed" },
-      ],
     };
     cookie = newToken(p);
     const next = structuredClone(club);
@@ -446,7 +441,7 @@ async function announceChallenge(
     const names = ch.slots.map((id) => club.players[id]?.name ?? "Someone");
     const kind = ch.rematch ? "rematch" : "challenge";
     const text =
-      ch.note ?? (ch.rematch ? "Rematch? 🔁" : "Care for a game? 🏸");
+      ch.note ?? (ch.rematch ? "Same four again? 🔁" : "Care for a game? 🏸");
     const out = await chatChange(store, club, actorOf(me), {
       type: "announce",
       kind,
@@ -668,7 +663,7 @@ export async function live(
   const keys = [CLUB, ...metas.map((m) => sessionKey(m.id))];
   let docs = await read(store, [...keys, ...chatKeys]);
   const clubDoc = docs.get(CLUB);
-  const club = (clubDoc?.value as Club | undefined) ?? emptyClub();
+  const club = clubDoc ? tidyClub(clubDoc.value as Club) : emptyClub();
   let sessions = metas
     .map((m) => docs.get(sessionKey(m.id))?.value as Session | undefined)
     .filter((s): s is Session => !!s);
@@ -698,7 +693,6 @@ export async function live(
       ? {
           ...person(club, me.id),
           organizer: me.organizer,
-          statsPublic: me.statsPublic,
         }
       : null,
     sessions: sessions
@@ -823,38 +817,8 @@ export async function stats(cookie: string | undefined) {
   const sessions = keys
     .map((k) => docs.get(k)?.value as Session | undefined)
     .filter((s): s is Session => !!s);
-  const rows = Object.values(club.players).map((p) => {
-    const st = playerStats(club, sessions, p.id);
-    return {
-      person: person(club, p.id),
-      statsPublic: p.statsPublic,
-      stats: st,
-    };
-  });
-  const mine = rows.find((r) => r.person.id === me.id)!;
-  const visible = rows.filter(
-    (r) => me.organizer || r.statsPublic || r.person.id === me.id,
-  );
-  return {
-    me: mine.stats,
-    board: visible
-      .filter((r) => r.stats.attended > 0)
-      .sort((a, b) => b.stats.points - a.stats.points)
-      .map((r) => ({
-        person: r.person,
-        private: !r.statsPublic,
-        points: r.stats.points,
-        attended: r.stats.attended,
-        games: r.stats.games,
-        minutes: r.stats.minutes,
-        wins: r.stats.wins,
-        losses: r.stats.losses,
-        winPct: r.stats.winPct,
-        partners: r.stats.partners,
-        mentoredGames: r.stats.mentoredGames,
-        hint: me.organizer ? promotionHint(r.stats) : null,
-      })),
-  };
+  // Yours alone: nobody else's numbers are ever sent, and there is no board.
+  return { me: playerStats(club, sessions, me.id) };
 }
 
 // --- Photos ----------------------------------------------------------------

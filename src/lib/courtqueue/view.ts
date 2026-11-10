@@ -16,7 +16,6 @@ import {
 } from "./fair";
 import {
   MINUTE,
-  SKILL_NAMES,
   filled,
   isActiveGame,
   isHeldChallenge,
@@ -30,7 +29,7 @@ import {
   type Rules,
   type Session,
   type SessionStatus,
-  type Skill,
+  type Mood,
 } from "./model";
 import {
   SEASON,
@@ -55,8 +54,8 @@ import { nightBalance } from "./stats";
 export interface PersonView {
   readonly id: string;
   readonly name: string;
-  readonly skill: Skill;
   readonly photo: boolean;
+  /** "Happy to welcome newcomers." A volunteer, not a rank. */
   readonly mentor: boolean;
 }
 
@@ -73,11 +72,6 @@ export interface GameView {
   readonly minutes: number | null;
   readonly startEstimated: boolean;
   readonly endEstimated: boolean;
-  readonly score: [number, number] | null;
-  readonly winner: 0 | 1 | null;
-  readonly scoreBy: string | null;
-  readonly confirmedBy: string | null;
-  readonly disputedBy: string | null;
   readonly accepted: readonly string[];
   readonly kudosFrom: readonly string[];
 }
@@ -150,9 +144,6 @@ export interface NightView {
     readonly id: number;
     readonly name: string;
     readonly where: string;
-    readonly kind: Court["kind"];
-    /** Who may play here, in words. */
-    readonly rule: string;
     readonly closed: boolean;
     readonly game: GameView | null;
   }[];
@@ -181,13 +172,15 @@ export interface NightView {
     /** Why their place in line is what it is, in their own numbers. */
     readonly lineRule: string | null;
     readonly autoRequeue: boolean;
+    /** "What kind of game sounds fun today?" — theirs, for tonight. */
+    readonly mood: Mood | null;
     readonly queuePosition: number | null;
     readonly queuedSince: number | null;
     readonly estimateMin: number | null;
     readonly games: number;
     readonly minutes: number;
     readonly game: GameView | null;
-    /** Finished tonight, newest first: for scores, confirming and kudos. */
+    /** Finished tonight, newest first: for shout-outs and playing the same four again. */
     readonly played: GameView[];
   } | null;
 }
@@ -219,7 +212,6 @@ export interface SessionListing {
 
 export interface MeView extends PersonView {
   readonly organizer: boolean;
-  readonly statsPublic: boolean;
 }
 
 export interface OrganizerView {
@@ -232,10 +224,10 @@ export interface OrganizerView {
     readonly games: number;
     readonly minutes: number;
     readonly waitingMin: number | null;
+    readonly nextUp: boolean;
   }[];
   readonly players: (PersonView & {
     readonly organizer: boolean;
-    readonly statsPublic: boolean;
   })[];
   readonly courts: Court[];
   readonly rules: Rules;
@@ -276,7 +268,7 @@ export type ChatLevel = "off" | "mine" | "all";
 
 /** What this phone's owner has asked to be pinged about. Independent. */
 export interface NotifyPrefs {
-  /** Court-ready, score checks, sign-up opening. */
+  /** Court-ready, game invites, sign-up opening. */
   readonly courts: boolean;
   /** Clubhouse: nothing, just what's for me, or every message. */
   readonly chat: ChatLevel;
@@ -330,31 +322,11 @@ export interface LiveView {
   readonly notify: NotifyPrefs;
 }
 
-export function courtRule(c: Court): string {
-  const range =
-    c.minSkill === c.maxSkill
-      ? SKILL_NAMES[c.minSkill]
-      : c.minSkill === 1 && c.maxSkill === 5
-        ? "Everyone"
-        : `${SKILL_NAMES[c.minSkill]} to ${SKILL_NAMES[c.maxSkill]}`;
-  const stretch =
-    c.stretchPartnerMin !== null && c.minSkill > 1
-      ? ` · ${SKILL_NAMES[(c.minSkill - 1) as Skill]} partnered with ${SKILL_NAMES[c.stretchPartnerMin]}${c.stretchPartnerMin < 5 ? " or better" : ""}`
-      : "";
-  const never = c.kind === "expert" ? " · never Beginner-rated players" : "";
-  const meant =
-    c.idealMin !== c.minSkill || c.idealMax !== c.maxSkill
-      ? ` · mostly ${SKILL_NAMES[c.idealMin]}${c.idealMax !== c.idealMin ? `–${SKILL_NAMES[c.idealMax]}` : ""} games`
-      : "";
-  return `${range}${stretch}${meant}${never}`;
-}
-
 export function person(club: Club, id: string): PersonView {
   const p = club.players[id];
   return {
     id,
     name: p?.name ?? "Someone",
-    skill: p?.skill ?? 3,
     photo: !!p?.photo,
     mentor: !!p?.mentor,
   };
@@ -374,11 +346,6 @@ function gameView(club: Club, g: Game): GameView {
     minutes: g.status === "finished" ? playedMinutes(g) : null,
     startEstimated: !!g.startEstimated,
     endEstimated: !!g.endEstimated,
-    score: g.score ?? null,
-    winner: g.winner ?? null,
-    scoreBy: g.scoreBy ?? null,
-    confirmedBy: g.confirmedBy ?? null,
-    disputedBy: g.disputedBy ?? null,
     accepted: Object.keys(g.accepted),
     kudosFrom: g.kudos.map((k) => k.from),
   };
@@ -522,6 +489,7 @@ export function nightView(
             ? "Everyone gets a first game before anyone plays a second."
             : `People who've played fewer than ${games} game${games === 1 ? "" : "s"} tonight go first, then fewest minutes, then whoever has waited longest.`,
       autoRequeue: presence?.autoRequeue ?? true,
+      mood: s.moods?.[me] ?? null,
       queuePosition: pos >= 0 ? pos + 1 : null,
       queuedSince: pos >= 0 ? line[pos]!.since : null,
       estimateMin: pos >= 0 ? estimateWaitMinutes(s, open, pos, now) : null,
@@ -546,8 +514,6 @@ export function nightView(
         id: c.id,
         name: c.name,
         where: c.where,
-        kind: c.kind,
-        rule: courtRule(c),
         closed: s.closedCourts.includes(c.id),
         game: g ? gameView(club, g) : null,
       };
@@ -612,18 +578,7 @@ export function organizerView(
         );
       if (g.status === "called" && filled(g.slots).length < 4)
         alerts.push(`Court ${g.court} is waiting for a fourth player.`);
-      if (g.disputedBy) alerts.push(`A score on court ${g.court} is disputed.`);
     }
-    const busyCourts = new Set(
-      s.games.filter(isActiveGame).map((g) => g.court),
-    );
-    const idle = club.courts.filter(
-      (c) => !s.closedCourts.includes(c.id) && !busyCourts.has(c.id),
-    );
-    if (s.status === "live" && idle.length && s.queue.length >= 4)
-      alerts.push(
-        `${idle.map((c) => c.name).join(", ")} idle: nobody waiting may play there. Adjust the court's levels or assign a game.`,
-      );
   }
   const bal = s ? nightBalance(club, s).filter((r) => s.present[r.id]) : [];
   return {
@@ -640,6 +595,7 @@ export function organizerView(
             left: s.present[r.playerId]?.leftAt !== undefined,
             games: t.get(r.playerId)?.games ?? 0,
             minutes: t.get(r.playerId)?.minutes ?? 0,
+            nextUp: !!s.nextUp?.includes(r.playerId),
             waitingMin: queuedSince.has(r.playerId)
               ? Math.round((now - queuedSince.get(r.playerId)!) / MINUTE)
               : null,
@@ -649,7 +605,6 @@ export function organizerView(
       .map((p) => ({
         ...person(club, p.id),
         organizer: p.organizer,
-        statsPublic: p.statsPublic,
       }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     courts: club.courts,

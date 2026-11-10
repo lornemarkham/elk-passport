@@ -109,3 +109,26 @@ room, with a chat in it:
 **Still open (not resolved here):** ADR 009's question — whether CourtQueue's
 players and chat should one day be Passport accounts and adventures — is
 unchanged, and a Clubhouse makes a second membership system more visible.
+
+## Amendment 2026-11-10 — Everyone belongs
+
+The Vernon Badminton Club's organizer said skill labels could make people feel
+judged (owner brief _P0: Everyone belongs_). CourtQueue therefore **does not
+model ability at all**:
+
+- `Player.skill`, `skillHistory`, `statsPublic`, `Court.kind` and the court
+  skill ranges are gone from the types. Stored clubs that still carry them are
+  scrubbed when read (`tidyClub`) and rewritten clean on the next club write —
+  **no migration**, the documents are plain JSON.
+- Courts are interchangeable (`Court 1/2/3`). The fairness engine
+  (`fair.ts`) mixes people by turns, minutes, waiting, new partners, a welcome
+  for newcomers and, as a gentle tie-break, a per-night `Session.moods` choice
+  ("what kind of game sounds fun today?"). It never reads or infers ability.
+- Organizers get `play-next` (a queue nudge cleared when called) instead of a
+  level picker.
+- Scores, winners, win %, points and the club board are no longer produced or
+  shown. The `score`/`confirm`/`dispute` engine commands and stored game
+  fields remain only so earlier nights still load; nothing sends them.
+
+This is a product decision recorded in `docs/PASSPORT-PRODUCT-DOCTRINE.md` §10
+and `docs/product/badminton/README.md`.

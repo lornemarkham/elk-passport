@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applySession, unsound } from "./engine";
 import { localClock, localDate } from "./clock";
-import {
-  MINUTE,
-  filled,
-  isActiveGame,
-  type Session,
-  type Skill,
-} from "./model";
+import { MINUTE, filled, isActiveGame, type Session } from "./model";
 import { playerStats } from "./stats";
 import { nightView } from "./view";
 import { ORG, T0, arrive, as, club, must, night, refused } from "./testkit";
@@ -24,7 +18,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("caps the night at 25 and promotes from the waitlist on a cancellation", () => {
-    const c = club(Array(27).fill(3) as Skill[]);
+    const c = club(27);
     let s = night();
     for (const id of ids(27)) s = must(c, s, as(id), { type: "register" }, T0);
     expect(s.roster.filter((r) => r.status === "confirmed")).toHaveLength(25);
@@ -47,7 +41,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("only signs up and checks in on the day", () => {
-    const c = club([3]);
+    const c = club(1);
     expect(
       refused(c, night("2026-11-16"), as("p1"), { type: "register" }, T0),
     ).toMatch(/8:00 am on Monday Nov 16/);
@@ -57,26 +51,17 @@ describe("CourtQueue engine", () => {
   });
 
   it("fills three courts from twelve players and keeps the other twelve waiting", () => {
-    const skills: Skill[] = [
-      1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 2, 3, 4, 1, 3,
-    ];
-    const c = club(skills);
+    const c = club(24);
     const s = arrive(c, night(), ids(24), T0);
     expect(active(s)).toHaveLength(3);
     expect(s.queue).toHaveLength(12);
     const seated = active(s).flatMap((g) => filled(g.slots));
     expect(new Set(seated).size).toBe(12);
-    // Nobody rated Beginner or Beginner+ is on the expert court.
-    for (const id of filled(onCourt(s, 3)!.slots))
-      expect(c.players[id]!.skill).toBeGreaterThanOrEqual(3);
-    // The beginner court has no experts.
-    for (const id of filled(onCourt(s, 1)!.slots))
-      expect(c.players[id]!.skill).toBeLessThanOrEqual(3);
     expect(unsound(c, s)).toBeNull();
   });
 
   it("starts and finishes on the server's clock, and counts only playing time", () => {
-    const c = club([3, 3, 3, 3]);
+    const c = club(4);
     let s = arrive(c, night(), ids(4), T0);
     const g = active(s)[0]!;
     // Called at T0; they take 4 minutes to walk on — that's waiting, not playing.
@@ -105,14 +90,12 @@ describe("CourtQueue engine", () => {
     expect(st).toMatchObject({
       games: 1,
       minutes: 15,
-      wins: 0,
-      losses: 1,
       attended: 1,
     });
   });
 
   it("a second player confirms the score; the scorer can't confirm their own", () => {
-    const c = club([3, 3, 3, 3]);
+    const c = club(4);
     let s = arrive(c, night(), ids(4), T0);
     const id = active(s)[0]!.id;
     s = must(c, s, as("p1"), { type: "start", gameId: id }, T0);
@@ -137,7 +120,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("never puts two games on one court, even when organizer and engine collide", () => {
-    const c = club(Array(8).fill(3) as Skill[]);
+    const c = club(8);
     let s = arrive(c, night(), ids(8), T0);
     // The engine filled courts with the first eight; court 2 is busy.
     expect(onCourt(s, 2)).toBeTruthy();
@@ -153,54 +136,14 @@ describe("CourtQueue engine", () => {
     ).toMatch(/already has a game|already on a court/);
   });
 
-  it("refuses a beginner on the expert court, even from the organizer", () => {
-    const c = club([1, 5, 5, 5]);
+  it("every court takes anybody: the organizer and a game with friends can use any open court", () => {
+    const c = club(4);
     let s = night();
     for (const id of ids(4)) {
       s = must(c, s, as(id), { type: "register" }, T0);
       s = must(c, s, as(id), { type: "check-in" }, T0);
     }
-    expect(
-      refused(
-        c,
-        s,
-        ORG,
-        { type: "assign", court: 3, slots: ["p1", "p2", "p3", "p4"] },
-        T0,
-      ),
-    ).toMatch(/never on the expert court/);
-    // The same four in a challenge are sent to a court that allows them.
-    s = must(
-      c,
-      s,
-      as("p1"),
-      { type: "challenge", slots: ["p1", "p2", "p3", "p4"] },
-      T0,
-    );
-    for (const id of ["p2", "p3", "p4"])
-      s = must(
-        c,
-        s,
-        as(id),
-        { type: "challenge-accept", challengeId: s.challenges[0]!.id },
-        T0,
-      );
-    // Accepted, but nothing happens until all four are in the queue.
-    expect(active(s)).toHaveLength(0);
-    for (const id of ["p1", "p2", "p3", "p4"])
-      s = must(c, s, as(id), { type: "play" }, T0);
-    const g = active(s)[0]!;
-    expect(g.court).not.toBe(3);
-  });
-
-  it("lets an intermediate partner an expert on the expert court", () => {
-    const c = club([3, 5, 5, 5]);
-    let s = night();
-    for (const id of ids(4)) {
-      s = must(c, s, as(id), { type: "register" }, T0);
-      s = must(c, s, as(id), { type: "check-in" }, T0);
-    }
-    // Close the other two so the expert court is the only option.
+    // Close the other two so the last court is the only option.
     s = must(c, s, ORG, { type: "court-closed", court: 1, closed: true }, T0);
     s = must(c, s, ORG, { type: "court-closed", court: 2, closed: true }, T0);
     s = must(
@@ -218,41 +161,76 @@ describe("CourtQueue engine", () => {
     const g = active(s)[0]!;
     expect(g.court).toBe(3);
     expect(g.source).toBe("challenge");
-    // Intermediate + intermediate is not an expert-court team.
-    const c2 = club([3, 3, 5, 5]);
-    let s2 = night();
-    for (const id of ids(4)) {
-      s2 = must(c2, s2, as(id), { type: "register" }, T0);
-      s2 = must(c2, s2, as(id), { type: "check-in" }, T0);
-    }
-    s2 = must(
-      c2,
-      s2,
-      ORG,
-      { type: "court-closed", court: 1, closed: true },
-      T0,
-    );
-    s2 = must(
-      c2,
-      s2,
-      ORG,
-      { type: "court-closed", court: 2, closed: true },
-      T0,
-    );
+    // With every court closed, there is nowhere to play.
+    let s2 = must(c, night(), as("p1"), { type: "register" }, T0);
+    for (const court of [1, 2, 3])
+      s2 = must(c, s2, ORG, { type: "court-closed", court, closed: true }, T0);
     expect(
       refused(
-        c2,
+        c,
         s2,
         as("p1"),
         { type: "challenge", slots: ["p1", "p2", "p3", "p4"] },
         T0,
       ),
-    ).toMatch(/No open court/);
+    ).toMatch(/closed/);
+  });
+
+  it("the organizer can ask someone to play next, and it clears once they are called", () => {
+    const c = club(8);
+    let s = night();
+    for (const id of ids(8)) {
+      s = must(c, s, as(id), { type: "register" }, T0);
+      s = must(c, s, as(id), { type: "check-in" }, T0);
+    }
+    s = must(c, s, ORG, { type: "court-closed", court: 2, closed: true }, T0);
+    s = must(c, s, ORG, { type: "court-closed", court: 3, closed: true }, T0);
+    for (const id of ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"])
+      s = must(c, s, as(id), { type: "play" }, T0);
+    // p1..p4 are on court 1; p5..p8 wait in that order.
+    expect(
+      refused(
+        c,
+        s,
+        as("p8"),
+        { type: "play-next", playerId: "p8", on: true },
+        T0,
+      ),
+    ).toMatch(/organizer/i);
+    s = must(c, s, ORG, { type: "play-next", playerId: "p8", on: true }, T0);
+    expect(s.nextUp).toEqual(["p8"]);
+    const g = active(s)[0]!;
+    s = must(c, s, ORG, { type: "start", gameId: g.id }, T0 + MINUTE);
+    s = must(c, s, ORG, { type: "finish", gameId: g.id }, T0 + 15 * MINUTE);
+    const next = active(s)[0]!;
+    expect(filled(next.slots)).toContain("p8");
+    expect(s.nextUp).toEqual([]);
+  });
+
+  it("nobody is rated: players remember a mood for one night only and can skip it", () => {
+    const c = club(2);
+    let s = must(c, night(), as("p1"), { type: "mood", mood: "challenge" }, T0);
+    expect(s.moods).toEqual({ p1: "challenge" });
+    expect(
+      refused(c, s, as("p1"), { type: "mood", mood: "expert" }, T0),
+    ).toMatch(/one of the three/);
+    expect(
+      refused(
+        c,
+        s,
+        as("p1"),
+        { type: "mood", playerId: "p2", mood: "fun" },
+        T0,
+      ),
+    ).toMatch(/yourself/);
+    s = must(c, s, as("p1"), { type: "mood", mood: null }, T0);
+    expect(s.moods).toEqual({});
+    expect("skill" in c.players.p1!).toBe(false);
   });
 
   it("a challenge needs all four, and a decline gives everyone their place back", () => {
-    const c = club(Array(12).fill(4) as Skill[]);
-    let s = arrive(c, night(), ids(12), T0);
+    const c = club(16);
+    let s = arrive(c, night(), ids(16), T0);
     // All courts busy with p1..p12; free them up.
     for (const g of active(s)) {
       s = must(c, s, ORG, { type: "start", gameId: g.id }, T0 + MINUTE);
@@ -303,7 +281,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("a challenge never jumps someone waiting for their first game", () => {
-    const c = club(Array(9).fill(4) as Skill[]);
+    const c = club(9);
     let s = night();
     // One court tonight, to make the order visible.
     s = must(c, s, ORG, { type: "go-live" }, T0);
@@ -394,7 +372,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("a player is never in two games or reservations at once", () => {
-    const c = club(Array(11).fill(3) as Skill[]);
+    const c = club(11);
     const s = arrive(c, night(), ids(11), T0);
     const g = onCourt(s, 2) ?? active(s)[0]!;
     const busy = filled(g.slots)[0]!;
@@ -417,7 +395,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("declining a recommended game keeps your place and isn't counted against you", () => {
-    const c = club(Array(5).fill(3) as Skill[]);
+    const c = club(5);
     let s = night();
     s = arrive(c, s, ids(5), T0);
     const g = active(s)[0]!;
@@ -430,7 +408,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("leaving early takes you out of line and out of a called game", () => {
-    const c = club(Array(6).fill(3) as Skill[]);
+    const c = club(6);
     let s = arrive(c, night(), ids(6), T0);
     const g = active(s)[0]!;
     const leaver = filled(g.slots)[0]!;
@@ -459,7 +437,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("a forgotten START is estimated from the players' word, and audited", () => {
-    const c = club([3, 3, 3, 3]);
+    const c = club(4);
     let s = arrive(c, night(), ids(4), T0);
     const id = active(s)[0]!.id;
     s = must(
@@ -486,7 +464,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("a forgotten FINISH is fixed by the organizer, with an audit trail", () => {
-    const c = club([3, 3, 3, 3]);
+    const c = club(4);
     let s = arrive(c, night(), ids(4), T0);
     const id = active(s)[0]!.id;
     s = must(c, s, as("p1"), { type: "start", gameId: id }, T0);
@@ -531,7 +509,7 @@ describe("CourtQueue engine", () => {
   });
 
   it("disputes are resolved by the organizer", () => {
-    const c = club([3, 3, 3, 3]);
+    const c = club(4);
     let s = arrive(c, night(), ids(4), T0);
     const id = active(s)[0]!.id;
     s = must(c, s, as("p1"), { type: "start", gameId: id }, T0);
@@ -563,9 +541,7 @@ describe("CourtQueue engine", () => {
   it("many phones tapping PLAY against one stored night all land exactly once", async () => {
     const { memoryStore } = await import("./store");
     const store = memoryStore(5);
-    const c = club(
-      Array.from({ length: 24 }, (_, i) => (i % 2 ? 4 : 3)) as Skill[],
-    );
+    const c = club(24);
     let s = night();
     for (const id of ids(24)) {
       s = must(c, s, as(id), { type: "register" }, T0);
@@ -600,7 +576,7 @@ describe("CourtQueue engine", () => {
   it("two groups racing for the same free court: one wins, the other re-reads and waits", async () => {
     const { memoryStore } = await import("./store");
     const store = memoryStore(3);
-    const c = club(Array(12).fill(3) as Skill[]);
+    const c = club(12);
     let s = night();
     for (const id of ids(12)) {
       s = must(c, s, as(id), { type: "register" }, T0);

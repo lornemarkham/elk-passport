@@ -16,65 +16,40 @@ import type { Cancellation } from "./schedule";
  * out of the games (`stats.ts`), so a corrected timestamp corrects the totals.
  */
 
-export type Skill = 1 | 2 | 3 | 4 | 5;
+/**
+ * **What kind of game sounds fun today.** A choice a player makes for one
+ * night and can change any time. It is never a rating of the player, never
+ * shown next to their name and never carried to the next night.
+ */
+export type Mood = "fun" | "rallies" | "challenge";
 
-export const SKILL_NAMES: Record<Skill, string> = {
-  1: "Beginner",
-  2: "Beginner+",
-  3: "Intermediate",
-  4: "Advanced",
-  5: "Expert",
-};
+export const MOODS: readonly { id: Mood; label: string }[] = [
+  { id: "fun", label: "I’m here to have fun!" },
+  { id: "rallies", label: "I’d love some friendly rallies." },
+  { id: "challenge", label: "I’m up for a challenge!" },
+];
 
-/** Beginner and Beginner+. Never on the expert court, whatever the rules say. */
-export const isBeginnerRated = (skill: number) => skill <= 2;
-
-export const isSkill = (n: unknown): n is Skill =>
-  n === 1 || n === 2 || n === 3 || n === 4 || n === 5;
-
-export interface SkillChange {
-  readonly at: number;
-  readonly from: Skill | null;
-  readonly to: Skill;
-  readonly by: string;
-  readonly reason: string;
-}
+export const isMood = (m: unknown): m is Mood =>
+  m === "fun" || m === "rallies" || m === "challenge";
 
 export interface Player {
   readonly id: string;
   name: string;
-  skill: Skill;
   readonly createdAt: number;
   /** scrypt, `salt:hash`. Never leaves the server. */
   pinHash: string;
   /** sha256 of each live sign-in token. Never leaves the server. */
   tokenHashes: string[];
-  statsPublic: boolean;
+  /** "Happy to welcome newcomers": a volunteer, not a rank. */
   mentor: boolean;
   organizer: boolean;
   photo: boolean;
-  skillHistory: SkillChange[];
 }
-
-export type CourtKind = "beginner" | "intermediate" | "expert";
 
 export interface Court {
   readonly id: 1 | 2 | 3;
-  readonly kind: CourtKind;
   name: string;
   where: string;
-  /** Hard limits: a player outside them is not put on this court. */
-  minSkill: Skill;
-  maxSkill: Skill;
-  /** Soft: the games this court is for. Outside it costs, it is not refused. */
-  idealMin: Skill;
-  idealMax: Skill;
-  /**
-   * A player one level under `minSkill` may still play here when their
-   * partner is at least this good — the intermediate-with-an-expert case.
-   * `null` turns that off.
-   */
-  stretchPartnerMin: Skill | null;
 }
 
 export interface Rules {
@@ -231,6 +206,13 @@ export interface Session {
   games: Game[];
   challenges: Challenge[];
   awards: Award[];
+  /** Tonight's "what sounds fun" choices, by player. Per night, optional. */
+  moods?: Record<string, Mood>;
+  /**
+   * Players the organizer asked to play next — a new face, someone who has
+   * waited, someone with a bus to catch. Cleared as they are called.
+   */
+  nextUp?: string[];
   audit: AuditEntry[];
   seq: number;
   /**
@@ -242,40 +224,50 @@ export interface Session {
 }
 
 export const DEFAULT_COURTS: Court[] = [
-  {
-    id: 1,
-    kind: "beginner",
-    name: "Beginner Court",
-    where: "Furthest from the seats",
-    minSkill: 1,
-    maxSkill: 3,
-    idealMin: 1,
-    idealMax: 2,
-    stretchPartnerMin: null,
-  },
-  {
-    id: 2,
-    kind: "intermediate",
-    name: "Intermediate Court",
-    where: "The middle court",
-    minSkill: 1,
-    maxSkill: 5,
-    idealMin: 2,
-    idealMax: 4,
-    stretchPartnerMin: null,
-  },
-  {
-    id: 3,
-    kind: "expert",
-    name: "Expert Court",
-    where: "Closest to the seats",
-    minSkill: 4,
-    maxSkill: 5,
-    idealMin: 4,
-    idealMax: 5,
-    stretchPartnerMin: 5,
-  },
+  { id: 1, name: "Court 1", where: "Furthest from the seats" },
+  { id: 2, name: "Court 2", where: "The middle court" },
+  { id: 3, name: "Court 3", where: "Closest to the seats" },
 ];
+
+const LEGACY_COURT = /^(beginner|intermediate|expert) court$/i;
+const LEGACY_PLAYER_FIELDS = ["skill", "skillHistory", "statsPublic"] as const;
+const LEGACY_COURT_FIELDS = [
+  "kind",
+  "minSkill",
+  "maxSkill",
+  "idealMin",
+  "idealMax",
+  "stretchPartnerMin",
+] as const;
+
+/**
+ * **Everyone belongs (2026-11-10).** Clubs stored before this carry skill
+ * levels, level history, a skill range on each court and "Beginner / Expert"
+ * court names. None of it is read any more; this drops it the next time the
+ * club is read, and renames the courts. A club with none of it is returned
+ * as it is.
+ */
+export function tidyClub(club: Club): Club {
+  const legacy =
+    club.courts.some(
+      (c) =>
+        LEGACY_COURT.test(c.name) || LEGACY_COURT_FIELDS.some((k) => k in c),
+    ) ||
+    Object.values(club.players).some((p) =>
+      LEGACY_PLAYER_FIELDS.some((k) => k in p),
+    );
+  if (!legacy) return club;
+  const out = structuredClone(club);
+  for (const c of out.courts) {
+    if (LEGACY_COURT.test(c.name)) c.name = `Court ${c.id}`;
+    for (const k of LEGACY_COURT_FIELDS)
+      delete (c as unknown as Record<string, unknown>)[k];
+  }
+  for (const p of Object.values(out.players))
+    for (const k of LEGACY_PLAYER_FIELDS)
+      delete (p as unknown as Record<string, unknown>)[k];
+  return out;
+}
 
 export const DEFAULT_RULES: Rules = {
   capacity: 25,

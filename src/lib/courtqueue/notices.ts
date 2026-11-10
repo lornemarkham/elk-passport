@@ -73,28 +73,14 @@ export function changeNotices(
       body: `A spot opened up for ${weekdayLabel(after.date)}, ${hoursLabel(after.date)}. See you there.`,
       tag: `in-${after.id}`,
     });
-  // A score to confirm.
-  for (const g of after.games) {
-    if (g.status !== "finished" || !g.score || g.confirmedBy) continue;
-    const was = before.games.find((x) => x.id === g.id);
-    if (was?.score && was.score.join() === g.score.join()) continue;
-    const to = filled(g.slots).filter((id) => id !== g.scoreBy);
-    if (to.length)
-      out.push({
-        to,
-        title: "Check the score",
-        body: `Court ${g.court}: ${g.score[0]}–${g.score[1]}, says ${first(club, g.scoreBy ?? null)}. Is that right?`,
-        tag: `score-${g.id}`,
-      });
-  }
-  // Challenged.
+  // Invited to a game with friends.
   for (const c of after.challenges) {
     if (before.challenges.some((x) => x.id === c.id)) continue;
     const to = c.slots.filter((id) => id !== c.by);
     out.push({
       to,
-      title: "You've been challenged!",
-      body: `${first(club, c.by)} wants a game with you. Open CourtQueue to accept.`,
+      title: "A game invite 🏸",
+      body: `${first(club, c.by)} would love a game with you. Open CourtQueue to say yes — or not tonight, no problem.`,
       tag: `challenge-${c.id}`,
     });
   }
@@ -186,7 +172,7 @@ export function openingNotice(
 /**
  * A Clubhouse message, as a notification: to whoever is `@mentioned`, and to
  * everyone who chose "every message". Challenge announcements add nobody
- * directly — the players challenged already get "You've been challenged!".
+ * directly — the players challenged already get "A game invite".
  */
 export function chatNotice(
   club: Club,
@@ -206,7 +192,7 @@ export function chatNotice(
     title:
       m.kind === "text"
         ? `${who} in the Clubhouse`
-        : `${who} threw down a challenge 🏸`,
+        : `${who} sent a game invite 🏸`,
     body,
     tag: "clubhouse",
   };

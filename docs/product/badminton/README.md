@@ -9,78 +9,101 @@ Release: [`docs/release/RELEASE-2026-11-12-COURTQUEUE.md`](../../release/RELEASE
 
 ## A night, from a player's phone
 
-1. **Join** with a name, a PIN and a self-rated level (Beginner, Beginner+,
-   Intermediate, Advanced, Expert). Add to Home Screen for an app icon.
+1. **Join** with a name and a PIN — nothing else. _"Everyone is welcome. Come
+   play, meet people, and have fun!"_ Add to Home Screen for an app icon.
 2. **Sign up** for a Monday or Thursday. The next of each is always on the
    calendar. 25 are confirmed; the rest join a waitlist, which moves up by
    itself when someone cancels or is marked a no-show.
 3. **I'M HERE** at the gym, then **🏸 PLAY**. The phone shows your place in
    line, a rough wait, the courts, and your games and minutes tonight. Put it
-   down.
+   down. Any time tonight: **"What kind of game sounds fun today?"** (optional
+   — see _Everyone belongs_).
 4. **You're up!** — the phone says which court, who with, and why these four
-   ("First game tonight for Sam", "Evenly matched teams", "New partners").
+   ("First game tonight for Sam", "New partners", "Dana is here to say hello").
    **I'm in**, or **Not this one** (keep your place, or take a break — no
    penalty either way).
 5. **START GAME** on any of the four phones. The court is occupied and the
    clock is the server's.
-6. **FINISH GAME**, with the score or without. Forgot to tap? Say how many
-   minutes ago it ended, or when it started. Another player confirms the score
-   or says "not quite" (that goes to the organizer). Shout out a good sport.
+6. **FINISH GAME** — no score is asked for. Forgot to tap? Say how many
+   minutes ago it ended, or when it started. Say thanks to someone who made
+   the game fun.
 7. **BACK IN THE QUEUE** when you're ready (never automatic), until
    **I'm heading home**.
 
-**Challenges:** pick a partner and two opponents; all four accept. Until all
-four have, nobody loses their place in line. Then it waits for a court the
-matchup is allowed on, and never goes ahead of anyone still waiting for a
-first game.
+**Game invites** (the old "challenges"): pick a partner and the other two; all
+four say yes, or "not tonight". Until all four have, nobody loses their place
+in line. Then it waits for a free court, and never goes ahead of anyone still
+waiting for a first game.
 
 ## Fairness
 
 _Fewest games tonight goes first; then fewest minutes; then whoever has waited longest._
-The most deserving player who may use the free court anchors the game and is
-always in it; the other three come from the next seven in line, chosen for
-close levels, even teams, new partners, and not the same four again. Passing
-over a first-timer for someone who has played costs heavily. A ready challenge
-takes a court only when no first-timer is waiting and its players have, on
-average, played no more than whoever would go next. Nobody else's games or minutes are shown to
-players: the line is names in order, never a league table of playing time.
+The most deserving player in line anchors the game and is always in it; the
+other three come from the next seven in line, chosen to mix people up: new
+partners, people they haven't shared a court with tonight, not the same four
+again, a newcomer alongside a volunteer who likes to say hello — and, only as a
+gentle tie-break, what each player said sounds fun today. **Nothing in the
+engine knows how good anyone is.** Passing over a first-timer for someone who
+has played costs heavily. A ready invite takes a court only when no first-timer
+is waiting and its players have, on average, played no more than whoever would
+go next. Nobody else's games or minutes are shown to players: the line is names
+in order, never a league table of playing time.
 
-## Courts (defaults; the organizer can change levels)
+## Courts
 
-| Court                         | Allowed                                                    | Mostly for                                   |
-| ----------------------------- | ---------------------------------------------------------- | -------------------------------------------- |
-| 1 · Beginner (far from seats) | Beginner – Intermediate                                    | Beginner, Beginner+                          |
-| 2 · Intermediate (middle)     | Everyone                                                   | Beginner+ – Advanced; mentors with beginners |
-| 3 · Expert (by the seats)     | Advanced, Expert; an Intermediate partnered with an Expert | Advanced, Expert                             |
+Court 1, 2 and 3 — far from the seats, the middle, by the seats. Every court is
+for everyone; the organizer can rename one or change where it is, and can close
+one. There are no tiers.
 
-**Beginner and Beginner+ are never put on the expert court**, by the engine,
-a challenge or the organizer, whatever the levels are set to.
+## Everyone belongs (2026-11-10, owner brief _P0: Everyone belongs_)
+
+The Vernon Badminton Club's organizer pointed out that Beginner / Intermediate /
+Expert labels could make people feel judged. CourtQueue is a welcome, not a
+ranking, so:
+
+- **Removed:** the self-rated level at sign-up, the level tag on every card, the
+  organizer's level picker and level history, skill ranges on courts and the
+  "never on the expert court" rule, ability-balanced teams, wins/losses and
+  win %, points, the club board, "maybe ready for the next level" hints, score
+  entry/confirmation/disputes, awards, and notifications that said "challenged"
+  or "check the score". Old club documents are scrubbed of skill data the next
+  time they are read (`tidyClub` in `model.ts`); the courts are renamed
+  "Court 1/2/3".
+- **Added:** _"What kind of game sounds fun today?"_ — **I'm here to have fun! /
+  I'd love some friendly rallies. / I'm up for a challenge!** Optional, changed
+  any time, stored for one night only (`Session.moods`), never shown on a card
+  or to anyone else, and only a gentle tie-break in who is mixed together.
+- **Welcome:** the first-time screen says _"Everyone is welcome. Come play, meet
+  people, and have fun!"_; "mentor" became "happy to say hello to new players"
+  and is used to seat a newcomer (registered in the three weeks before the
+  night) next to a friendly face. It is a volunteer, not a rank.
+- **Organizer controls** (Organize tab): **Play next** on anyone checked in
+  (a new face, someone who has waited, someone with a bus to catch — cleared
+  when they are called), assign four by hand, close/rename a court, pause or
+  sign someone out, see games and minutes tonight to balance court time, and
+  fix a game's times.
+- **Player stats are private to the player:** nights, games, minutes, people
+  played with, thank-yous. Nothing about anyone else is ever sent.
+- A guard test (`belong.test.ts`) fails the build if skill words, win records or
+  boards come back into the source.
+
+Open: the game still stores `score`/`winner` fields and the engine still
+accepts `score`, `confirm` and `dispute` commands for games recorded before this
+change; nothing in the app sends them or shows them.
 
 ## Organizer (the Organize tab)
 
 Open or close registration, open check-in early, end the session; the roster
-and waitlist (promote, check in, no-show, remove, add); levels; PIN resets;
-close a court; assign four by hand; finish or cancel a game; **fix a game's
-start, finish or score with a reason**, kept in the audit trail; awards for
-sportsmanship; alerts for a game running long, a call nobody started, a
-disputed score, an idle court nobody waiting may use.
-
-## Points (participation, never skill)
-
-Attending 10 · a game 3 · a first-ever partner 2 · a volunteer mentor
-(Advanced/Expert) partnering a beginner 4 · a player's shout-out 2 · an
-organizer's award 5. Players choose whether their stats appear on the club
-board; the organizer always sees them, with a hint when someone wins ≥ 70 % of
-8+ games.
+and waitlist (promote, check in, no-show, remove, add, **play next**); PIN
+resets; close or rename a court; assign four by hand; finish or cancel a game;
+**fix a game's start or finish with a reason**, kept in the audit trail; alerts
+for a game running long or a call nobody started.
 
 ## Built vs deferred
 
-Built: every P0 in the brief. P1 built lightly: mentor flag and recognition,
-level history, the club board, kudos and awards, promotion hints.
-
-Deferred: achievement badges;
-point-by-point scoring; skill changes from results (the hint informs the
-organizer, it never changes a level).
+Built: every P0 in the brief, then _Everyone belongs_. Deferred: achievement
+badges; point-by-point scoring. Skill levels, points, boards and scores are
+**not deferred — they are removed on purpose.**
 
 ## Real-world release (2026-11-10, owner brief _P0: CourtQueue real-world release_)
 
@@ -110,22 +133,21 @@ What changed for the club's first real nights (Thursday 2026-11-12 on):
   BACK IN THE QUEUE. Being called takes over the whole screen:
   **"COURT 2 — YOU'RE UP!"**.
 - **Nobody is requeued automatically** after a game. FINISH frees the court at
-  once, with or without a score; the score can follow later, provisional until
-  another player confirms it; organizer corrections stay in the audit trail.
+  once, with no score asked for; organizer corrections stay in the audit trail.
 - **Fairness order:** fewest games tonight, then fewest minutes, then longest
-  wait; skill and partner variety choose the rest of the four. Requested games
-  (challenges) never go ahead of that order — the 15-minute "patience"
+  wait; partner variety and a warm welcome choose the rest of the four.
+  Requested games (invites) never go ahead of that order — the 15-minute "patience"
   override is retired.
 - **The next games are prepared:** for each busy court, in the order they
   should free, the four that will be called (`prepared()` in `fair.ts`),
   shown under each court and to the players in it.
-- **Tracked per game:** players, court, start, finish, duration, score; per
+- **Tracked per game:** players, court, start, finish, duration; per
   player tonight: games, minutes played, minutes waited.
 - **Push notifications** (Web Push, real, where the phone allows it — iPhone
   needs CourtQueue on the Home Screen, iOS 16.4+): sign-up open (once, on the
   day, to subscribers not yet in), off the waitlist, your court is called, a
   called court nobody started after 5 minutes, a game running past the long-game
-  limit, a score to confirm, a challenge. The screen always shows the same
+  limit, a game invite. The screen always shows the same
   thing — polling every 2 s stays the source of truth.
 - **Nights put themselves away** an hour after their end: games still on court
   are finished there (marked estimated), the queue is cleared, history stays.

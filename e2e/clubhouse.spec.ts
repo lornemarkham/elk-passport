@@ -26,10 +26,10 @@ test.describe.configure({ mode: "serial" });
 
 const nm = (n: string) => `${n} ${RUN}`;
 
-async function player(baseURL: string, name: string, skill = 3) {
+async function player(baseURL: string, name: string) {
   const api = await pwRequest.newContext({ baseURL });
   const r = await api.post("/api/badminton/me", {
-    data: { action: "register", name, pin: "4321", skill },
+    data: { action: "register", name, pin: "4321" },
   });
   if (r.status() === 503) test.skip(true, "CourtQueue store not configured");
   expect(r.ok(), `register ${name}: ${await r.text()}`).toBe(true);
@@ -53,7 +53,7 @@ async function must(api: APIRequestContext, cmd: object, sessionId = TODAY) {
 const say = (api: APIRequestContext, text: string) =>
   api.post("/api/badminton/chat", { data: { cmd: { type: "post", text } } });
 
-async function phone(browser: Browser, name: string, skill = "Intermediate") {
+async function phone(browser: Browser, name: string) {
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     isMobile: true,
@@ -64,7 +64,6 @@ async function phone(browser: Browser, name: string, skill = "Intermediate") {
   await page.getByRole("button", { name: "I'm new" }).click();
   await page.getByLabel("Your name").fill(name);
   await page.getByLabel(/Choose a PIN/).fill("4321");
-  await page.getByText(skill, { exact: true }).click();
   await page.getByRole("button", { name: "Join CourtQueue" }).click();
   await expect(page.getByTestId("phase")).toBeVisible();
   return { ctx, page };
@@ -156,39 +155,39 @@ test("a challenge is made ahead of the day, answered without signing up, and sha
   const ben = await phone(browser, nm("Ben2"));
   // Ada picks the next club night — not today — and three others.
   await tab(ada.page, /Clubhouse/).click();
-  await ada.page.getByRole("button", { name: /Challenge/ }).click();
+  await ada.page.getByRole("button", { name: /Invite/ }).click();
   const dialog = ada.page.getByRole("dialog", {
-    name: "Challenge another pair",
+    name: "Invite friends to a game",
   });
   await dialog.getByLabel("Which night?").selectOption({ index: 1 });
   await dialog
     .getByLabel("Your partner")
-    .selectOption({ label: `${nm("Cleo")} — Intermediate` });
+    .selectOption({ label: `${nm("Cleo")}` });
   await dialog
-    .getByLabel("Opponent")
-    .selectOption({ label: `${nm("Ben2")} — Intermediate` });
+    .getByLabel("Playing against")
+    .selectOption({ label: `${nm("Ben2")}` });
   await dialog
     .getByLabel("Their partner")
-    .selectOption({ label: `${nm("Dev")} — Intermediate` });
-  await dialog.getByLabel(/playful line/).fill("Loser buys the shuttles 😎");
-  await dialog.getByRole("button", { name: "Send challenge" }).click();
+    .selectOption({ label: `${nm("Dev")}` });
+  await dialog.getByLabel(/playful line/).fill("Bring your best smile 😄");
+  await dialog.getByRole("button", { name: "Send invite" }).click();
 
-  const card = ada.page.getByRole("region", { name: "Challenges" });
-  await expect(card).toContainText("Loser buys the shuttles");
+  const card = ada.page.getByRole("region", { name: "Game invites" });
+  await expect(card).toContainText("Bring your best smile");
   const share = card.getByRole("link", {
-    name: /Share this challenge to WhatsApp/,
+    name: /Share this invite to WhatsApp/,
   });
   const href = (await share.getAttribute("href"))!;
   expect(href).toMatch(/^https:\/\/wa\.me\/\?text=/);
   const text = decodeURIComponent(href.split("text=")[1]!);
-  expect(text).toContain("Challenge!");
+  expect(text).toContain("Game on?");
   expect(text).toContain("Vernon Badminton Club");
   expect(text).toContain("/badminton");
 
   // Ben sees the card in the Clubhouse and says yes — he isn't signed up for anything.
   await tab(ben.page, /Clubhouse/).click();
-  const bens = ben.page.getByRole("region", { name: "Challenges" });
-  await expect(bens).toContainText("Loser buys the shuttles", {
+  const bens = ben.page.getByRole("region", { name: "Game invites" });
+  await expect(bens).toContainText("Bring your best smile", {
     timeout: 8_000,
   });
   await expect(bens).toContainText(/Saying yes doesn't sign you up/);
@@ -200,7 +199,7 @@ test("a challenge is made ahead of the day, answered without signing up, and sha
   expect(night.mine).toBeNull();
   expect(night.confirmed).toBe(0);
   // And the room was told, as a card in the conversation.
-  await expect(ben.page.getByText(/threw down a challenge/)).toBeVisible();
+  await expect(ben.page.getByText(/sent a game invite/)).toBeVisible();
 
   await ben.page.screenshot({ path: "test-results/clubhouse-challenge.png" });
   // Declining is just as free.

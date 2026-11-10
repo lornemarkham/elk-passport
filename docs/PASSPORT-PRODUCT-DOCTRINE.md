@@ -843,6 +843,11 @@ back in line but by themselves_ — after a game a player taps BACK IN THE QUEUE
 Its Clubhouse (2026-11-10, ADR 017 amendment) made a third canonical for it:
 _one chat for the whole club, no private messages_, and a challenge is a
 request that reserves nothing and never goes ahead of the queue.
+_Everyone belongs_ (2026-11-10, owner brief "P0: Everyone belongs") made a
+fourth canonical for it: _CourtQueue never rates, ranks or compares players_.
+No skill levels, no courts for a level, no scores, win records, points or
+boards; a player says only what kind of game sounds fun tonight, and can
+decline to say.
 
 ---
 

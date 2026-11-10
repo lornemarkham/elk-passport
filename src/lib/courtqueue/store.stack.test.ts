@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applySession, unsound } from "./engine";
-import { isActiveGame, type Session, type Skill } from "./model";
+import { isActiveGame, type Session } from "./model";
 import { NotReady, postgresStore } from "./store";
 import { T0, as, club, must, night } from "./testkit";
 
@@ -53,9 +53,7 @@ describe.skipIf(!live)("CourtQueue Postgres store (local stack)", () => {
   });
 
   it("24 phones tapping PLAY at once against Postgres land exactly once", async () => {
-    const c = club(
-      Array.from({ length: 24 }, (_, i) => (i % 2 ? 4 : 3)) as Skill[],
-    );
+    const c = club(24);
     let s = night();
     const ids = Array.from({ length: 24 }, (_, i) => `p${i + 1}`);
     for (const p of ids) {

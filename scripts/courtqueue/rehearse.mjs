@@ -6,7 +6,7 @@
  *
  * 25 players register (one won't come), 24 check in and tap PLAY at the same
  * moment, and 24 phones poll every two seconds while games are started,
- * finished (seconds, not minutes), scored and confirmed. Pairs of players tap
+ * finished (seconds, not minutes). Pairs of players tap
  * START and FINISH at the same instant on purpose. After every round the
  * script checks what the server says: never two games on a court, never a
  * player in two places, every duration exactly finish − start.
@@ -19,9 +19,8 @@ const BASE = process.argv[2] ?? "http://localhost:3188";
 const GAMES = Number(process.argv[3] ?? 18);
 const CODE = process.env.COURTQUEUE_ORGANIZER_CODE ?? "organizer";
 const RUN = Math.random().toString(36).slice(2, 6);
-const SKILLS = [
-  5, 5, 5, 5, 1, 2, 1, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 2, 3, 4, 3, 5, 3,
-];
+// 25 people; the 25th registers but doesn't come. Nobody is rated.
+const PLAYERS = 25;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const stats = { requests: 0, errors: 0, conflicts: 0, latencies: [] };
@@ -56,7 +55,6 @@ async function main() {
     action: "register",
     name: org.name,
     pin: "9999",
-    skill: 3,
   });
   const claim = await org.call("POST", "/api/badminton/me", {
     action: "organizer",
@@ -64,17 +62,16 @@ async function main() {
   });
   if (claim.status !== 200)
     throw new Error(`organizer code refused: ${JSON.stringify(claim.json)}`);
-  const players = SKILLS.map((_, i) =>
+  const players = Array.from({ length: PLAYERS }, (_, i) =>
     client(`P${String(i + 1).padStart(2, "0")} ${RUN}`),
   );
   // Everybody registers at the same moment, too.
   const signups = await Promise.all(
-    players.map((p, i) =>
+    players.map((p) =>
       p.call("POST", "/api/badminton/me", {
         action: "register",
         name: p.name,
         pin: "1234",
-        skill: SKILLS[i],
       }),
     ),
   );
@@ -130,8 +127,6 @@ async function main() {
               problems.push(`${label}: ${s.name} in two games`);
             seen.set(s.id, g.id);
           }
-        if (g.court === 3 && g.slots.some((s) => s && s.skill <= 2))
-          problems.push(`${label}: beginner on the expert court`);
       }
       if (
         g.status === "finished" &&
@@ -198,11 +193,9 @@ async function main() {
         act(a, {
           type: "finish",
           gameId: g.id,
-          score: [21, 10 + (finished % 10)],
         }),
         act(b, { type: "finish", gameId: g.id }),
       ]);
-      await act(byId.get(g.slots[2].id), { type: "confirm", gameId: g.id });
       finished++;
       // Nobody is put back in line for them: all four tap BACK IN THE QUEUE.
       const after = (await org.call("GET", "/api/badminton/live")).json;
@@ -254,19 +247,6 @@ async function main() {
   await Promise.all(pollers);
   v = await check("end");
 
-  // A beginner may never be assigned the expert court.
-  const beginner = players.find((_, i) => SKILLS[i] === 1);
-  const free3 = v.night.courts.find((c) => c.id === 3 && !c.game);
-  let expertRefusal = "court busy, not tried";
-  if (free3) {
-    const r = await act(org, {
-      type: "assign",
-      court: 3,
-      slots: [beginner.id, players[0].id, players[1].id, players[2].id],
-    });
-    expertRefusal = r.json.error ?? "NOT REFUSED";
-  }
-
   const balance = v.organizer.roster.filter((r) => r.here).map((r) => r.games);
   const lat = [...stats.latencies].sort((a, b) => a - b);
   const report = {
@@ -287,7 +267,6 @@ async function main() {
       p95: lat[Math.floor(lat.length * 0.95)],
       max: lat.at(-1),
     },
-    expertCourtBeginner: expertRefusal,
     unassignedStartsRefused: unassignedRefused,
     roundsAllPhonesAgreed: consistentRounds,
     problems,

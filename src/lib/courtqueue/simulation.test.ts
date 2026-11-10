@@ -7,7 +7,6 @@ import {
   isActiveGame,
   playedMinutes,
   type Session,
-  type Skill,
 } from "./model";
 import { registrationOpensAt } from "./schedule";
 import { nightBalance } from "./stats";
@@ -22,7 +21,7 @@ import { ORG, T0, as, club, must, night, setMentor } from "./testkit";
  * forgets START, one forgets FINISH and the organizer fixes it.
  *
  * The night is checked after every single step: never two games on a court,
- * never a player in two places, never a beginner on the expert court.
+ * never a player in two places, nobody is held off a court.
  */
 
 function rng(seed: number) {
@@ -32,22 +31,17 @@ function rng(seed: number) {
   };
 }
 
-const SKILLS: Skill[] = [
-  // p1..p4: the expert friends.
-  5, 5, 5, 5,
-  // p5, p6: quiet beginners.
-  1, 2, 1, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 2, 3, 4, 3, 5,
-  // p25 registers but doesn't come.
-  3,
-];
+// p1..p4 are friends who like to play together; p5, p6 are quiet newcomers;
+// p25 registers but doesn't come. 25 people, nobody rated.
+const PLAYERS = 25;
 
 export function simulate(seed = 7) {
   const random = rng(seed);
-  let c = club(SKILLS);
+  let c = club(PLAYERS);
   c = setMentor(c, "p16");
   c = setMentor(c, "p24");
   let s: Session = night();
-  const ids = SKILLS.map((_, i) => `p${i + 1}`);
+  const ids = Array.from({ length: PLAYERS }, (_, i) => `p${i + 1}`);
   const quiet = new Set(["p5", "p6"]);
   const friends = ["p1", "p2", "p3", "p4"];
   const step = (actor: typeof ORG, cmd: SessionCommand, now: number) => {

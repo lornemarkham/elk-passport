@@ -42,8 +42,6 @@ export async function POST(request: Request) {
         const out = await register({
           name: body.name,
           pin: body.pin,
-          skill: body.skill,
-          statsPublic: body.statsPublic,
         });
         if (!out.ok) return json({ ok: false, error: out.error }, 409);
         await setPlayerCookie(out.value.cookie);

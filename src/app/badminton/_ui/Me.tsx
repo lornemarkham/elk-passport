@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SKILL_NAMES, type Skill } from "@/lib/courtqueue/model";
 import type { ChatLevel, LiveView, NotifyPrefs } from "@/lib/courtqueue/view";
-import { Avatar, Btn, Card, SkillTag, Toggle, cx, plural } from "./bits";
+import { Avatar, Btn, Card, Toggle, cx, plural } from "./bits";
 import { post } from "./api";
 import type { Alerts } from "./notify";
 
@@ -12,38 +11,9 @@ interface Stats {
     attended: number;
     games: number;
     minutes: number;
-    wins: number;
-    losses: number;
-    winPct: number | null;
     partners: number;
-    mentoredGames: number;
     kudos: number;
-    awards: number;
-    points: number;
-    skillHistory: {
-      at: number;
-      from: number | null;
-      to: Skill;
-      reason: string;
-    }[];
   };
-  board: {
-    person: {
-      id: string;
-      name: string;
-      skill: Skill;
-      photo: boolean;
-      mentor: boolean;
-    };
-    private: boolean;
-    points: number;
-    attended: number;
-    games: number;
-    minutes: number;
-    winPct: number | null;
-    partners: number;
-    hint: string | null;
-  }[];
 }
 
 export function Me({
@@ -94,7 +64,6 @@ export function Me({
         </label>
         <div className="min-w-0">
           <p className="truncate text-2xl font-black">{me.name}</p>
-          <SkillTag skill={me.skill} />
           {me.organizer && (
             <span className="ml-2 text-xs font-bold text-amber-300">
               ORGANIZER
@@ -106,84 +75,22 @@ export function Me({
 
       {s && (
         <Card>
-          <h2 className="mb-3 font-bold">Your badminton</h2>
+          <h2 className="mb-1 font-bold">Your badminton</h2>
+          <p className="mb-3 text-xs text-white/50">
+            Just for you — nobody else sees these, and there&apos;s nothing to
+            beat.
+          </p>
           <dl className="grid grid-cols-3 gap-3 text-center">
-            <Stat n={s.points} label="points" />
             <Stat n={s.attended} label="nights" />
             <Stat n={s.games} label="games" />
             <Stat n={s.minutes} label="minutes" />
-            <Stat
-              n={`${s.wins}–${s.losses}`}
-              label={s.winPct === null ? "won–lost" : `won–lost · ${s.winPct}%`}
-            />
-            <Stat n={s.partners} label="partners" />
+            <Stat n={s.partners} label="people played with" />
           </dl>
-          {(s.mentoredGames > 0 || s.kudos > 0) && (
+          {s.kudos > 0 && (
             <p className="mt-3 text-sm text-white/70">
-              {s.mentoredGames > 0
-                ? `${plural(s.mentoredGames, "game")} mentoring · `
-                : ""}
-              {plural(s.kudos, "shout-out")} from other players
+              {plural(s.kudos, "thank-you")} from other players 👏
             </p>
           )}
-          <p className="mt-3 text-xs text-white/50">
-            Points are for taking part — showing up, playing, new partners,
-            helping beginners, being a good sport. They say nothing about skill.
-          </p>
-          {s.skillHistory.length > 1 && (
-            <div className="mt-3">
-              <p className="text-sm font-semibold">Level history</p>
-              <ul className="text-sm text-white/70">
-                {s.skillHistory.map((h) => (
-                  <li key={h.at}>
-                    {new Date(h.at).toLocaleDateString("en-CA", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                    : {SKILL_NAMES[h.to]} — {h.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {stats && stats.board.length > 0 && (
-        <Card>
-          <h2 className="mb-2 font-bold">Club board</h2>
-          <p className="mb-2 text-xs text-white/50">
-            {me.organizer
-              ? "Everyone (private players marked)."
-              : "Players who share their stats."}{" "}
-            Sorted by participation points.
-          </p>
-          <ol className="space-y-2">
-            {stats.board.map((r, i) => (
-              <li
-                key={r.person.id}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="w-5 text-right text-white/50">{i + 1}</span>
-                  <Avatar p={r.person} size={26} />
-                  <span className="truncate">
-                    {r.person.name}
-                    {r.private ? " 🔒" : ""}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right text-white/70">
-                  {r.points} pts · {r.games} games
-                  {r.winPct !== null ? ` · ${r.winPct}%` : ""}
-                  {r.hint && (
-                    <span className="block text-xs text-amber-300">
-                      {r.hint}
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ol>
         </Card>
       )}
 
@@ -207,22 +114,13 @@ export function Me({
           </div>
         </label>
         <Toggle
-          label="Share my stats on the club board"
-          on={me.statsPublic}
-          onChange={(v) => clubAct({ type: "profile", statsPublic: v })}
-        />
-        <Toggle
-          label="I'm happy to mentor beginners"
+          label="I'm happy to say hello to new players"
           on={me.mentor}
           onChange={(v) => clubAct({ type: "profile", mentor: v })}
         />
         <p className="text-xs text-white/50">
-          Mentors are sometimes matched with newer players on the Intermediate
-          Court — not every game.
-        </p>
-        <p className="mt-3 text-sm text-white/70">
-          Your level ({SKILL_NAMES[me.skill]}) is set by the organizer after
-          your first night.
+          Now and then you may be matched with someone new to the club, so they
+          meet a friendly face. Not every game.
         </p>
       </Card>
 

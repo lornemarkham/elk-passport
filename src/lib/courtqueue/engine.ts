@@ -4,24 +4,20 @@ import {
   propose,
   rebalance,
   replacement,
-  slotsMayUse,
   tonight,
   typicalGameMinutes,
 } from "./fair";
 import {
   MINUTE,
-  SKILL_NAMES,
   filled,
+  isMood,
   isActiveGame,
-  isBeginnerRated,
   isHeldChallenge,
-  isSkill,
   type Challenge,
   type Club,
   type Court,
   type Game,
   type Session,
-  type Skill,
   type Slots,
 } from "./model";
 import {
@@ -63,6 +59,7 @@ export type SessionCommand =
   | { type: "leave"; playerId?: string }
   | { type: "play"; playerId?: string }
   | { type: "pause"; playerId?: string }
+  | { type: "mood"; playerId?: string; mood: string | null }
   | { type: "auto-requeue"; on: boolean }
   | { type: "accept"; gameId: string }
   | { type: "decline"; gameId: string; pause?: boolean }
@@ -102,6 +99,7 @@ export type SessionCommand =
   | { type: "cancel-game"; gameId: string; reason?: string }
   | { type: "assign"; court: number; slots: [string, string, string, string] }
   | { type: "court-closed"; court: number; closed: boolean }
+  | { type: "play-next"; playerId: string; on: boolean }
   | { type: "award"; playerId: string; reason: string }
   | { type: "end" };
 
@@ -114,6 +112,7 @@ const ORGANIZER_ONLY = new Set<SessionCommand["type"]>([
   "cancel-game",
   "assign",
   "court-closed",
+  "play-next",
   "award",
   "end",
 ]);
@@ -391,6 +390,18 @@ function run(
       unqueue(s, id);
       return;
     }
+    case "mood": {
+      // "What kind of game sounds fun today?" — theirs to choose and to
+      // change, for tonight only. Never a rating, never shown on a card.
+      const id = subject(actor, cmd.playerId);
+      if (!known(club, id)) refuse("Unknown player.");
+      const moods = { ...(s.moods ?? {}) };
+      if (cmd.mood === null) delete moods[id];
+      else if (isMood(cmd.mood)) moods[id] = cmd.mood;
+      else refuse("Pick one of the three, or skip it.");
+      s.moods = moods;
+      return;
+    }
     case "auto-requeue": {
       const p = s.present[actor.id] ?? refuse("Check in first.");
       p.autoRequeue = !!cmd.on;
@@ -549,11 +560,8 @@ function run(
         refuse("You already have a challenge going.");
       if (s.challenges.filter(isHeldChallenge).length >= 40)
         refuse("There are plenty of challenges out already.");
-      const skillOf = (id: string) => club.players[id]!.skill;
-      const anywhere = club.courts.some(
-        (c) => !s.closedCourts.includes(c.id) && slotsMayUse(c, ids, skillOf),
-      );
-      if (!anywhere) refuse("No open court allows that matchup.");
+      if (club.courts.every((c) => s.closedCourts.includes(c.id)))
+        refuse("Every court is closed right now.");
       const ch: Challenge = {
         id: nextId(s, "c"),
         by,
@@ -741,10 +749,6 @@ function run(
         if (activeGameOf(s, id)) refuse(`${p.name} is already on a court.`);
         if (heldChallengeOf(s, id))
           refuse(`${p.name} is in a challenge — cancel it first.`);
-        if (court.kind === "expert" && isBeginnerRated(p.skill))
-          refuse(
-            `${p.name} is ${SKILL_NAMES[p.skill]} — never on the expert court.`,
-          );
       }
       const waitedSince: Record<string, number> = {};
       for (const id of ids) waitedSince[id] = unqueue(s, id) ?? now;
@@ -776,6 +780,19 @@ function run(
         actor,
         now,
         `${court.name} ${cmd.closed ? "closed" : "reopened"}`,
+      );
+      return;
+    }
+    case "play-next": {
+      if (!known(club, cmd.playerId)) refuse("Unknown player.");
+      const rest = (s.nextUp ?? []).filter((id) => id !== cmd.playerId);
+      s.nextUp = cmd.on ? [...rest, cmd.playerId] : rest;
+      audit(
+        s,
+        actor,
+        now,
+        `${club.players[cmd.playerId]!.name} ${cmd.on ? "to play next" : "back in turn"}`,
+        { playerId: cmd.playerId },
       );
       return;
     }
@@ -902,9 +919,6 @@ function leave(s: Session, id: string, now: number) {
 
 // ---------------------------------------------------------------------------
 
-/** Courts in the order they are filled: the most particular first. */
-const FILL_ORDER = { expert: 0, beginner: 1, intermediate: 2 } as const;
-
 /**
  * Fill what can be filled: a called game that lost a player, then each free
  * court — with a ready challenge when fairness allows it, otherwise with the
@@ -921,7 +935,6 @@ export function tick(club: Club, s: Session, now: number): boolean {
 }
 
 function step(club: Club, s: Session, now: number): boolean {
-  const skillOf = (id: string) => club.players[id]?.skill ?? 3;
   for (const ch of s.challenges) if (readyIfFree(s, ch, now)) return true;
   // A called game a player dropped out of.
   for (const g of s.games) {
@@ -941,21 +954,16 @@ function step(club: Club, s: Session, now: number): boolean {
     ];
     return true;
   }
-  const free = club.courts
-    .filter(
-      (c) =>
-        !s.closedCourts.includes(c.id) &&
-        !s.games.some((g) => g.court === c.id && isActiveGame(g)),
-    )
-    .sort((a, b) => FILL_ORDER[a.kind] - FILL_ORDER[b.kind]);
+  const free = club.courts.filter(
+    (c) =>
+      !s.closedCourts.includes(c.id) &&
+      !s.games.some((g) => g.court === c.id && isActiveGame(g)),
+  );
   for (const court of free) {
     const proposal = propose(club, s, court, now);
     const ready = s.challenges
       .filter(
-        (c) =>
-          c.status === "ready" &&
-          !c.slots.some((p) => activeGameOf(s, p)) &&
-          slotsMayUse(court, c.slots, skillOf),
+        (c) => c.status === "ready" && !c.slots.some((p) => activeGameOf(s, p)),
       )
       .sort((a, b) => (a.readyAt ?? 0) - (b.readyAt ?? 0));
     const ch = ready.find((c) => challengeMayGo(club, s, c, court, proposal));
@@ -972,7 +980,7 @@ function step(club: Club, s: Session, now: number): boolean {
         slots: [...ch.slots],
         source: "challenge",
         challengeId: ch.id,
-        why: [`${club.players[ch.by]?.name ?? "A friend"}'s challenge`],
+        why: [`${club.players[ch.by]?.name ?? "A friend"}'s invite`],
         status: "called",
         calledAt: now,
         accepted: {},
@@ -986,6 +994,10 @@ function step(club: Club, s: Session, now: number): boolean {
       const waitedSince: Record<string, number> = {};
       for (const id of filled(proposal.slots))
         waitedSince[id] = unqueue(s, id) ?? now;
+      if (s.nextUp)
+        s.nextUp = s.nextUp.filter(
+          (id) => !filled(proposal.slots).includes(id),
+        );
       s.games.push({
         id: nextId(s, "g"),
         court: court.id,
@@ -1022,10 +1034,7 @@ export function challengeMayGo(
 ): boolean {
   const t = tonight(s);
   const games = (id: string) => t.get(id)?.games ?? 0;
-  const skillOf = (id: string) => club.players[id]?.skill ?? 3;
-  const firstTimerWaiting = s.queue.some(
-    (q) => games(q.playerId) === 0 && slotsMayUse(court, [q.playerId], skillOf),
-  );
+  const firstTimerWaiting = s.queue.some((q) => games(q.playerId) === 0);
   if (firstTimerWaiting) return false;
   if (!proposal) return true;
   const theirs = ch.slots.reduce((n, id) => n + games(id), 0) / 4;
@@ -1050,14 +1059,6 @@ export function unsound(club: Club, s: Session): string | null {
     courts.add(g.court);
     if (g.status === "playing" && filled(g.slots).length !== 4)
       return `game ${g.id} playing without four`;
-    const court = club.courts.find((c) => c.id === g.court);
-    if (
-      court?.kind === "expert" &&
-      filled(g.slots).some((id) =>
-        isBeginnerRated(club.players[id]?.skill ?? 3),
-      )
-    )
-      return "a beginner on the expert court";
     for (const id of filled(g.slots)) {
       const broken = claim(id, `game ${g.id}`);
       if (broken) return broken;
@@ -1095,11 +1096,9 @@ export type ClubCommand =
   | {
       type: "profile";
       name?: string;
-      statsPublic?: boolean;
       mentor?: boolean;
       photo?: boolean;
     }
-  | { type: "skill"; playerId: string; skill: number; reason: string }
   | { type: "organizer"; playerId: string; on: boolean }
   | { type: "court"; court: number; patch: Partial<Court> }
   | { type: "rules"; patch: Partial<Club["rules"]> }
@@ -1149,31 +1148,8 @@ function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
           refuse("Someone already has that name.");
         me!.name = name;
       }
-      if (cmd.statsPublic !== undefined) me!.statsPublic = !!cmd.statsPublic;
       if (cmd.mentor !== undefined) me!.mentor = !!cmd.mentor;
       if (cmd.photo !== undefined) me!.photo = !!cmd.photo;
-      return;
-    }
-    case "skill": {
-      if (!actor.organizer)
-        refuse("Only the organizer can change skill levels.");
-      const p = known(c, cmd.playerId)
-        ? c.players[cmd.playerId]!
-        : refuse("Unknown player.");
-      if (!isSkill(cmd.skill)) refuse("Skill is 1 to 5.");
-      const to = cmd.skill as Skill;
-      if (to === p.skill) return;
-      p.skillHistory.push({
-        at: now,
-        from: p.skill,
-        to,
-        by: actor.id,
-        reason:
-          String(cmd.reason ?? "")
-            .slice(0, 140)
-            .trim() || "Organizer",
-      });
-      p.skill = to;
       return;
     }
     case "organizer": {
@@ -1193,28 +1169,8 @@ function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
       const patch = cmd.patch ?? {};
       if (patch.name !== undefined)
         court.name = cleanName(patch.name) || court.name;
-      for (const k of ["minSkill", "maxSkill", "idealMin", "idealMax"] as const)
-        if (patch[k] !== undefined) {
-          if (!isSkill(patch[k])) refuse("Skill is 1 to 5.");
-          court[k] = patch[k] as Skill;
-        }
-      if (patch.stretchPartnerMin !== undefined) {
-        if (
-          patch.stretchPartnerMin !== null &&
-          !isSkill(patch.stretchPartnerMin)
-        )
-          refuse("Skill is 1 to 5.");
-        court.stretchPartnerMin = patch.stretchPartnerMin;
-      }
-      if (court.minSkill > court.maxSkill) refuse("Minimum is above maximum.");
-      // Beginners are never on the expert court; the rules can't be bent to it.
-      if (
-        court.kind === "expert" &&
-        court.minSkill < 4 &&
-        court.stretchPartnerMin !== null
-      )
-        court.stretchPartnerMin = null;
-      if (court.kind === "expert" && court.minSkill < 3) court.minSkill = 3;
+      if (patch.where !== undefined)
+        court.where = cleanName(patch.where) || court.where;
       return;
     }
     case "rules": {

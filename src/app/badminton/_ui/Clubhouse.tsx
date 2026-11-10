@@ -9,7 +9,6 @@ import {
 } from "react";
 import { REACTIONS, MAX_TEXT } from "@/lib/courtqueue/chat";
 import { localDate, weekdayLabel } from "@/lib/courtqueue/clock";
-import { SKILL_NAMES } from "@/lib/courtqueue/model";
 import { SEASON } from "@/lib/courtqueue/schedule";
 import type {
   ChallengeView,
@@ -24,7 +23,7 @@ export type ChatSend = (cmd: object) => Promise<boolean>;
 
 const QUICK = [
   "Good game! 👏",
-  "Rematch? 🔁",
+  "Same four again? 🔁",
   "Who's in tonight? 🏸",
   "Nice shot! 🔥",
   "Running a bit late ⏰",
@@ -191,7 +190,7 @@ export function Clubhouse({
           className="shrink-0 !px-3 !py-2 text-sm"
           onClick={() => setSheet(true)}
         >
-          🏸 Challenge
+          🏸 Invite
         </Btn>
       </header>
 
@@ -209,8 +208,8 @@ export function Clubhouse({
       )}
 
       {mine.length > 0 && (
-        <section aria-label="Challenges" className="space-y-2">
-          <h2 className="text-sm font-bold text-white/70">Your challenges</h2>
+        <section aria-label="Game invites" className="space-y-2">
+          <h2 className="text-sm font-bold text-white/70">Your game invites</h2>
           {mine.map(({ c, label }) => (
             <ChallengeCard
               key={c.id}
@@ -237,7 +236,7 @@ export function Clubhouse({
         {!messages.length && (
           <Card>
             <p className="text-center text-white/70">
-              Nothing here yet. Say hello, or throw down a challenge 🏸
+              Nothing here yet. Say hello, or invite someone to a game 🏸
             </p>
           </Card>
         )}
@@ -354,14 +353,14 @@ function Message({
             <p className="mb-1 text-center text-xs text-white/50">
               {m.author.name}{" "}
               {m.kind === "rematch"
-                ? "asked for a rematch"
-                : "threw down a challenge"}
+                ? "asked for another game together"
+                : "sent a game invite"}
             </p>
             {card ?? (
               <p className="rounded-xl bg-white/[0.06] p-3 text-center text-sm text-white/70">
                 {showText
                   ? m.text
-                  : "A challenge from a night that has passed."}
+                  : "A game invite from a night that has passed."}
               </p>
             )}
           </div>
@@ -615,9 +614,9 @@ function Teams({ slots }: { slots: PersonView[] }) {
 export function challengeShare(c: ChallengeView, label: string, site: string) {
   const [a, b, d, e] = c.slots.map((p) => first(p.name));
   return (
-    `🏸 Challenge! ${a} & ${b} vs ${d} & ${e} — ${label} at ${SEASON.club}` +
+    `🏸 Game on? ${a} & ${b} with ${d} & ${e} — ${label} at ${SEASON.club}` +
     `${c.note ? `: “${c.note}”` : "."} ` +
-    `Accept it in CourtQueue: ${site}/badminton`
+    `Say yes in CourtQueue: ${site}/badminton`
   );
 }
 
@@ -717,7 +716,7 @@ export function ChallengeCard({
             href={whatsapp(challengeShare(c, label, site))}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Share this challenge to WhatsApp"
+            aria-label="Share this invite to WhatsApp"
             className="rounded-xl bg-emerald-500/90 px-4 py-2 text-center font-bold text-white"
           >
             Share to WhatsApp
@@ -792,7 +791,7 @@ function ChallengeSheet({
           .filter((p) => !taken.includes(p.id) || p.id === value)
           .map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} — {SKILL_NAMES[p.skill]}
+              {p.name}
             </option>
           ))}
       </select>
@@ -807,26 +806,27 @@ function ChallengeSheet({
     setPartner(pa!);
     setO1(a!);
     setO2(b!);
-    setNote("Rematch? 🔁");
+    setNote("Same four again? 🔁");
     setRematch(true);
     if (view.night) setSession(view.night.id);
   };
   return (
-    <Sheet open={open} onClose={onClose} title="Challenge another pair">
+    <Sheet open={open} onClose={onClose} title="Invite friends to a game">
       {nights.length === 0 ? (
         <p className="text-white/70">
-          There&apos;s no club night coming up to challenge for just now.
+          There&apos;s no club night coming up to plan a game for just now.
         </p>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-white/70">
-            Pick your partner and two opponents. Everyone can say yes or no — it
-            doesn&apos;t sign anybody up. On the day it goes ahead once all four
-            are signed up and in the queue, and it never skips the line.
+            Pick your partner and the other two. Everyone can say yes or no — no
+            explanation needed — it doesn&apos;t sign anybody up. On the day it
+            goes ahead once all four are signed up and in the queue, and it
+            never skips the line.
           </p>
           {last && (
             <Btn kind="ghost" className="w-full" onClick={fillRematch}>
-              🔁 Rematch my last game
+              🔁 Same four again?
             </Btn>
           )}
           <label className="block">
@@ -844,7 +844,7 @@ function ChallengeSheet({
             </select>
           </label>
           {pick(partner, setPartner, "Your partner", [o1, o2])}
-          {pick(o1, setO1, "Opponent", [partner, o2])}
+          {pick(o1, setO1, "Playing against", [partner, o2])}
           {pick(o2, setO2, "Their partner", [partner, o1])}
           <label className="block">
             <span className="text-sm text-white/70">
@@ -881,7 +881,7 @@ function ChallengeSheet({
               }
             }}
           >
-            Send challenge
+            Send invite
           </Btn>
         </div>
       )}

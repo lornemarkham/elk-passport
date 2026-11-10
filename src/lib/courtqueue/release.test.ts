@@ -7,14 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { applyClub, applySession, tick, unsound, windDown } from "./engine";
 import { prepared, inOrder } from "./fair";
-import {
-  MINUTE,
-  filled,
-  isActiveGame,
-  type Club,
-  type Session,
-  type Skill,
-} from "./model";
+import { MINUTE, filled, isActiveGame, type Club, type Session } from "./model";
 import { changeNotices, dueReminders, openingNotice } from "./notices";
 import {
   OFFICIAL_CANCELLED,
@@ -72,7 +65,7 @@ describe("the season", () => {
   });
 
   it("lets an organizer cancel a night, on the record, and nobody else", () => {
-    const c0 = club([3]);
+    const c0 = club(1);
     expect(
       applyClub(
         c0,
@@ -133,7 +126,7 @@ describe("the season", () => {
 
 describe("same-day sign-up", () => {
   it("opens at 8:00 am on the day, for everyone, organizer included", () => {
-    const c = club([3, 3]);
+    const c = club(2);
     const s = night();
     expect(refused(c, s, as("p1"), { type: "register" }, OPENS - 1)).toMatch(
       /8:00 am today/,
@@ -158,7 +151,7 @@ describe("same-day sign-up", () => {
   });
 
   it("confirms the first 25, waitlists the rest, and promotes in order", () => {
-    const c = club(Array(28).fill(3) as Skill[]);
+    const c = club(28);
     let s = night();
     ids(28).forEach((id, i) => {
       s = must(c, s, as(id), { type: "register" }, OPENS + i * 1000);
@@ -194,7 +187,7 @@ describe("same-day sign-up", () => {
 
 describe("nobody starts a game CourtQueue didn't assign", () => {
   it("only the four called can start it, and only with four", () => {
-    const c = club(Array(5).fill(3) as Skill[]);
+    const c = club(5);
     let s = here(c, night(), ids(5), T0);
     for (const id of ids(4)) s = must(c, s, as(id), { type: "play" }, T0);
     const g = active(s)[0]!;
@@ -220,7 +213,7 @@ describe("nobody starts a game CourtQueue didn't assign", () => {
   });
 
   it("records who, which court, start, finish, duration, score, minutes and waiting", () => {
-    const c = club(Array(4).fill(3) as Skill[]);
+    const c = club(4);
     let s = here(c, night(), ids(4), T0);
     for (const id of ids(4)) s = must(c, s, as(id), { type: "play" }, T0);
     const g0 = active(s)[0]!;
@@ -247,7 +240,7 @@ describe("nobody starts a game CourtQueue didn't assign", () => {
 
 describe("the open-court workflow", () => {
   it("frees the court on FINISH, never requeues, and BACK IN THE QUEUE is explicit", () => {
-    const c = club(Array(8).fill(3) as Skill[]);
+    const c = club(8);
     let s = here(c, night(), ids(8), T0);
     for (const id of ids(8)) s = must(c, s, as(id), { type: "play" }, T0);
     // Two of three courts called (eight players), none waiting.
@@ -311,7 +304,7 @@ describe("the open-court workflow", () => {
   });
 
   it("an organizer correction is kept on the record with the reason", () => {
-    const c = club(Array(4).fill(3) as Skill[]);
+    const c = club(4);
     let s = here(c, night(), ids(4), T0);
     for (const id of ids(4)) s = must(c, s, as(id), { type: "play" }, T0);
     const g = active(s)[0]!;
@@ -341,8 +334,7 @@ describe("the open-court workflow", () => {
   });
 
   it("prepares the next game, and calls exactly that four when the court frees", () => {
-    const skills = [...Array(8).fill(4), ...Array(8).fill(3)] as Skill[];
-    const c = club(skills);
+    const c = club(16);
     let s = here(c, night(), ids(16), T0);
     for (const id of ids(16))
       s = must(c, s, as(id), { type: "play" }, T0 + MINUTE);
@@ -365,7 +357,7 @@ describe("the open-court workflow", () => {
 
 describe("fairness", () => {
   it("fewest games, then fewest minutes, then longest wait", () => {
-    const c = club(Array(12).fill(3) as Skill[]);
+    const c = club(12);
     const s = here(c, night(), ids(12), T0);
     s.games.push(
       ...(["p1", "p2"] as const).map((id, i) => ({
@@ -394,9 +386,9 @@ describe("fairness", () => {
   });
 
   it("a challenge never goes ahead of fairness, however long it waits", () => {
-    const c = club(Array(12).fill(4) as Skill[]);
-    let s = here(c, night(), ids(12), T0);
-    for (const id of ids(12)) s = must(c, s, as(id), { type: "play" }, T0);
+    const c = club(16);
+    let s = here(c, night(), ids(16), T0);
+    for (const id of ids(16)) s = must(c, s, as(id), { type: "play" }, T0);
     // Courts full; p1..p4 play, and challenge each other for next time.
     const g1 = active(s).find((g) => g.slots.includes("p1"))!;
     const four = filled(g1.slots);
@@ -434,7 +426,7 @@ describe("fairness", () => {
 
 describe("a night puts itself away", () => {
   it("an hour after the end, the queue is gone and the history stays", () => {
-    const c = club(Array(6).fill(3) as Skill[]);
+    const c = club(6);
     let s = here(c, night(), ids(6), T0);
     for (const id of ids(6)) s = must(c, s, as(id), { type: "play" }, T0);
     const end = sessionWindow(s.date).end;
@@ -452,7 +444,7 @@ describe("a night puts itself away", () => {
 
 describe("notifications", () => {
   it("tells each of the four their court, once", () => {
-    const c = club(Array(4).fill(3) as Skill[], ["Ann Lee", "Bo", "Cy", "Di"]);
+    const c = club(4, ["Ann Lee", "Bo", "Cy", "Di"]);
     let s = here(c, night(), ids(4), T0);
     for (const id of ids(3)) s = must(c, s, as(id), { type: "play" }, T0);
     const before = s;
@@ -473,7 +465,7 @@ describe("notifications", () => {
   });
 
   it("reminds a court nobody started, and a game running long, once each", () => {
-    const c = club(Array(8).fill(3) as Skill[]);
+    const c = club(8);
     let s = here(c, night(), ids(8), T0);
     for (const id of ids(8)) s = must(c, s, as(id), { type: "play" }, T0);
     const [a, b] = active(s);
@@ -487,7 +479,7 @@ describe("notifications", () => {
   });
 
   it("says sign-up is open once, on the day, to subscribers not yet in", () => {
-    const c = club([3, 3, 3]);
+    const c = club(3);
     let s = night();
     expect(openingNotice(c, s, ["p1"], OPENS - 1)).toBeNull();
     s = must(c, s, as("p2"), { type: "register" }, OPENS);

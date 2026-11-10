@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MOODS, type Mood } from "@/lib/courtqueue/model";
 import type {
   GameView,
   LiveView,
@@ -76,6 +77,8 @@ export function Tonight({
         offset={offset}
         onFinish={onFinish}
       />
+      {["registered", "ready", "waiting", "finished"].includes(me.phase) &&
+        night.status !== "ended" && <MoodPicker mood={me.mood} act={act} />}
       {nudge}
       <Invites night={night} meId={meId} act={act} />
       <MyResults night={night} meId={meId} act={act} />
@@ -184,6 +187,9 @@ function StatusCard({
       const full = night.confirmed >= night.capacity;
       return frame(
         <>
+          <p className="mb-1 font-semibold text-lime-300">
+            Everyone is welcome. Come play, meet people, and have fun!
+          </p>
           <p className="mb-3 text-white/80">
             {night.registration === "open"
               ? full
@@ -261,10 +267,7 @@ function StatusCard({
         <>
           {last && (
             <p className="text-white/80">
-              Court {last.court} · {last.minutes} min
-              {last.score
-                ? ` · ${last.score[0]}–${last.score[1]}${last.confirmedBy ? "" : " (provisional)"}`
-                : " · no score yet"}
+              Court {last.court} · {last.minutes} min — thanks for playing!
             </p>
           )}
           <p className="mt-1 mb-3 text-sm text-white/60">
@@ -592,22 +595,13 @@ export function FinishSheet({
   g: GameView;
   act: Act;
 }) {
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
   const [late, setLate] = useState(0);
   const [startAgo, setStartAgo] = useState(15);
   const neverStarted = g.status === "called";
-  const team = (i: number) =>
-    g.slots
-      .slice(i * 2, i * 2 + 2)
-      .map((p) => p?.name.split(" ")[0])
-      .join(" & ");
-  const send = async (withScore: boolean) => {
-    const score = withScore ? [Number(a), Number(b)] : undefined;
+  const send = async () => {
     const ok = await act({
       type: "finish",
       gameId: g.id,
-      score,
       finishedMinutesAgo: late || undefined,
       startedMinutesAgo: neverStarted ? startAgo : undefined,
     });
@@ -616,28 +610,6 @@ export function FinishSheet({
   return (
     <Sheet open={open} onClose={onClose} title="Finish game">
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          {[0, 1].map((i) => (
-            <label key={i} className="block">
-              <span className="mb-1 block truncate text-sm text-white/70">
-                {team(i)}
-              </span>
-              <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                aria-label={`Score for ${team(i)}`}
-                value={i === 0 ? a : b}
-                onChange={(e) =>
-                  (i === 0 ? setA : setB)(
-                    e.target.value.replace(/\D/g, "").slice(0, 2),
-                  )
-                }
-                className="w-full rounded-xl bg-white/10 p-4 text-center text-4xl font-black"
-                placeholder="–"
-              />
-            </label>
-          ))}
-        </div>
         {neverStarted && (
           <label className="block">
             <span className="text-sm text-white/70">
@@ -671,15 +643,8 @@ export function FinishSheet({
             ))}
           </select>
         </label>
-        <Btn
-          className="w-full"
-          disabled={!a || !b || a === b}
-          onClick={() => send(true)}
-        >
-          Save {a && b ? `${a}–${b}` : "score"} & finish
-        </Btn>
-        <Btn kind="ghost" className="w-full" onClick={() => send(false)}>
-          Finish without a score
+        <Btn className="w-full" onClick={() => send()}>
+          Finish game
         </Btn>
       </div>
     </Sheet>
@@ -771,13 +736,7 @@ function MyResults({
   meId: string;
   act: Act;
 }) {
-  const [scoring, setScoring] = useState<GameView | null>(null);
-  const todo = night.me!.played.filter(
-    (g) =>
-      !g.score ||
-      (g.score && !g.confirmedBy && g.scoreBy !== meId && !g.disputedBy) ||
-      !g.kudosFrom.includes(meId),
-  );
+  const todo = night.me!.played.filter((g) => !g.kudosFrom.includes(meId));
   if (!todo.length) return null;
   const g = todo[0]!;
   return (
@@ -786,116 +745,75 @@ function MyResults({
         Your last game · Court {g.court} · {g.minutes} min
       </p>
       <Teams g={g} meId={meId} />
-      {g.score ? (
-        <p className="mt-2 text-2xl font-black">
-          {g.score[0]}–{g.score[1]}
-          {g.confirmedBy ? (
-            <span className="ml-2 text-sm font-normal text-lime-300">
-              confirmed
-            </span>
-          ) : null}
-          {g.disputedBy ? (
-            <span className="ml-2 text-sm font-normal text-amber-300">
-              with the organizer
-            </span>
-          ) : null}
+      <div className="mt-3">
+        <p className="text-sm text-white/70">
+          Say thanks to someone who made it fun
         </p>
-      ) : (
-        <Btn kind="ghost" className="mt-3 w-full" onClick={() => setScoring(g)}>
-          Add the score
-        </Btn>
-      )}
-      {g.score && !g.confirmedBy && !g.disputedBy && g.scoreBy !== meId && (
-        <div className="mt-3 flex gap-2">
-          <Btn
-            className="flex-1"
-            onClick={() => act({ type: "confirm", gameId: g.id })}
-          >
-            That&apos;s right
-          </Btn>
-          <Btn
-            kind="ghost"
-            className="flex-1"
-            onClick={() => act({ type: "dispute", gameId: g.id })}
-          >
-            Not quite
-          </Btn>
+        <div className="mt-1 flex flex-wrap gap-2">
+          {g.slots
+            .filter((p) => p && p.id !== meId)
+            .map((p) => (
+              <button
+                key={p!.id}
+                className="rounded-full bg-white/10 px-3 py-1 text-sm"
+                onClick={() => act({ type: "kudos", gameId: g.id, to: p!.id })}
+              >
+                👏 {p!.name}
+              </button>
+            ))}
         </div>
-      )}
-      {!g.kudosFrom.includes(meId) && (
-        <div className="mt-3">
-          <p className="text-sm text-white/70">Shout out a good sport</p>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {g.slots
-              .filter((p) => p && p.id !== meId)
-              .map((p) => (
-                <button
-                  key={p!.id}
-                  className="rounded-full bg-white/10 px-3 py-1 text-sm"
-                  onClick={() =>
-                    act({ type: "kudos", gameId: g.id, to: p!.id })
-                  }
-                >
-                  👏 {p!.name}
-                </button>
-              ))}
-          </div>
-        </div>
-      )}
-      {scoring && (
-        <ScoreSheet g={scoring} act={act} onClose={() => setScoring(null)} />
-      )}
+      </div>
     </Card>
   );
 }
 
-function ScoreSheet({
-  g,
-  act,
-  onClose,
-}: {
-  g: GameView;
-  act: Act;
-  onClose: () => void;
-}) {
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
+/**
+ * **What kind of game sounds fun today?** Optional, friendly and changeable
+ * any time tonight. It is never shown on a card or next to a name; it only
+ * nudges who is mixed together. Leave it blank and nothing changes.
+ */
+export function MoodPicker({ mood, act }: { mood: Mood | null; act: Act }) {
   return (
-    <Sheet open onClose={onClose} title="Final score">
-      <div className="grid grid-cols-2 gap-3">
-        {[0, 1].map((i) => (
-          <input
-            key={i}
-            inputMode="numeric"
-            aria-label={`Score ${i + 1}`}
-            value={i === 0 ? a : b}
-            onChange={(e) =>
-              (i === 0 ? setA : setB)(
-                e.target.value.replace(/\D/g, "").slice(0, 2),
-              )
-            }
-            className="rounded-xl bg-white/10 p-4 text-center text-4xl font-black"
-            placeholder={g.slots
-              .slice(i * 2, i * 2 + 2)
-              .map((p) => p?.name.split(" ")[0])
-              .join("+")}
-          />
-        ))}
-      </div>
-      <Btn
-        className="mt-4 w-full"
-        disabled={!a || !b || a === b}
-        onClick={() =>
-          act({
-            type: "score",
-            gameId: g.id,
-            score: [Number(a), Number(b)],
-          }).then((ok) => ok && onClose())
-        }
-      >
-        Save
-      </Btn>
-    </Sheet>
+    <Card>
+      <fieldset>
+        <legend className="font-bold">
+          What kind of game sounds fun today?
+        </legend>
+        <p className="mt-1 text-sm text-white/60">
+          Totally optional, and you can change it any time.
+        </p>
+        <div className="mt-3 space-y-2">
+          {MOODS.map((m) => (
+            <label
+              key={m.id}
+              className={cx(
+                "flex cursor-pointer items-center gap-3 rounded-xl p-3 ring-1",
+                mood === m.id
+                  ? "bg-lime-400/15 ring-lime-300"
+                  : "bg-white/5 ring-white/10",
+              )}
+            >
+              <input
+                type="radio"
+                name="mood"
+                checked={mood === m.id}
+                onChange={() => act({ type: "mood", mood: m.id })}
+                className="accent-lime-400"
+              />
+              <span>{m.label}</span>
+            </label>
+          ))}
+        </div>
+        {mood && (
+          <button
+            className="mt-2 text-sm text-white/60 underline"
+            onClick={() => act({ type: "mood", mood: null })}
+          >
+            Skip this — anything is fun
+          </button>
+        )}
+      </fieldset>
+    </Card>
   );
 }
 
@@ -948,9 +866,6 @@ export function CourtMap({
               )}
             >
               <p className="text-lg leading-tight font-black">{c.id}</p>
-              <p className="text-[10px] tracking-wide uppercase opacity-70">
-                {c.kind}
-              </p>
               <p
                 className={cx(
                   "mt-0.5 text-xs font-black uppercase",

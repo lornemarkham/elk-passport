@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import { localHHMM } from "@/lib/courtqueue/clock";
-import { SKILL_NAMES, type Court, type Skill } from "@/lib/courtqueue/model";
+import type { Court } from "@/lib/courtqueue/model";
 import type { GameView, LiveView } from "@/lib/courtqueue/view";
-import { Btn, Card, Person, Sheet, SkillTag, clock, cx } from "./bits";
+import { Btn, Card, Person, Sheet, clock, cx } from "./bits";
 import { post } from "./api";
 
 type SessionAct = (cmd: object, sessionId?: string) => Promise<boolean>;
-
-const SKILLS = [1, 2, 3, 4, 5] as Skill[];
 
 export function Organizer({
   view,
@@ -126,7 +124,7 @@ export function Organizer({
                     {c.closed ? "Closed" : c.game ? c.game.status : "Available"}
                   </span>
                 </div>
-                <p className="text-xs text-white/50">{c.rule}</p>
+                <p className="text-xs text-white/50">{c.where}</p>
                 {c.game && (
                   <p className="mt-1 text-sm text-white/80">
                     {c.game.slots.map((p) => p?.name ?? "—").join(", ")}
@@ -195,7 +193,7 @@ export function Organizer({
                       setEditing(o.courts.find((x) => x.id === c.id) ?? null)
                     }
                   >
-                    Levels
+                    Rename
                   </Btn>
                 </div>
               </div>
@@ -226,9 +224,7 @@ export function Organizer({
                     {g.finishedAt
                       ? `–${clock(g.finishedAt)} (${g.minutes} min)`
                       : ""}
-                    {g.score ? ` · ${g.score.join("–")}` : ""}
                     {g.startEstimated || g.endEstimated ? " · estimated" : ""}
-                    {g.disputedBy ? " · DISPUTED" : ""}
                   </span>
                 </span>
                 <Btn kind="ghost" onClick={() => setFixing(g)}>
@@ -293,25 +289,19 @@ export function Organizer({
                     </p>
                   )}
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <select
-                      aria-label={`Level for ${r.person.name}`}
-                      value={r.person.skill}
-                      onChange={(e) =>
-                        clubAct({
-                          type: "skill",
-                          playerId: r.person.id,
-                          skill: Number(e.target.value),
-                          reason: "Organizer",
-                        })
-                      }
-                      className="rounded-lg bg-white/10 px-2 py-1"
-                    >
-                      {SKILLS.map((k) => (
-                        <option key={k} value={k}>
-                          {SKILL_NAMES[k]}
-                        </option>
-                      ))}
-                    </select>
+                    {r.here && (
+                      <Mini
+                        onClick={() =>
+                          sact({
+                            type: "play-next",
+                            playerId: r.person.id,
+                            on: !r.nextUp,
+                          })
+                        }
+                      >
+                        {r.nextUp ? "✓ Playing next" : "Play next"}
+                      </Mini>
+                    )}
                     {r.status === "waitlist" && (
                       <Mini
                         onClick={() =>
@@ -357,17 +347,6 @@ export function Organizer({
                     >
                       Remove
                     </Mini>
-                    <Mini
-                      onClick={() =>
-                        sact({
-                          type: "award",
-                          playerId: r.person.id,
-                          reason: "Good sport",
-                        })
-                      }
-                    >
-                      👏 Good sport
-                    </Mini>
                   </div>
                 </li>
               ))}
@@ -387,7 +366,6 @@ export function Organizer({
             <li key={p.id} className="flex items-center justify-between gap-2">
               <Person p={p} small />
               <span className="flex shrink-0 items-center gap-1.5">
-                <SkillTag skill={p.skill} />
                 <Mini onClick={() => setPinFor({ id: p.id, name: p.name })}>
                   PIN
                 </Mini>
@@ -440,7 +418,7 @@ export function Organizer({
         />
       )}
       {editing && (
-        <LevelsSheet
+        <CourtSheet
           court={editing}
           onClose={() => setEditing(null)}
           clubAct={clubAct}
@@ -507,8 +485,6 @@ function FixSheet({
 }) {
   const [start, setStart] = useState(g.startedAt ? localHHMM(g.startedAt) : "");
   const [end, setEnd] = useState(g.finishedAt ? localHHMM(g.finishedAt) : "");
-  const [a, setA] = useState(g.score ? String(g.score[0]) : "");
-  const [b, setB] = useState(g.score ? String(g.score[1]) : "");
   const [reason, setReason] = useState("");
   const send = async () => {
     const cmd: Record<string, unknown> = {
@@ -520,11 +496,6 @@ function FixSheet({
       cmd.startedAt = start;
     if (end && end !== (g.finishedAt ? localHHMM(g.finishedAt) : ""))
       cmd.finishedAt = end;
-    const scoreChanged =
-      a &&
-      b &&
-      (!g.score || Number(a) !== g.score[0] || Number(b) !== g.score[1]);
-    if (scoreChanged) cmd.score = [Number(a), Number(b)];
     if (await act(cmd)) onClose();
   };
   return (
@@ -548,24 +519,6 @@ function FixSheet({
             type="time"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
-            className="mt-1 w-full rounded-xl bg-white/10 p-3"
-          />
-        </label>
-        <label>
-          <span className="text-sm text-white/70">Score (first team)</span>
-          <input
-            inputMode="numeric"
-            value={a}
-            onChange={(e) => setA(e.target.value.replace(/\D/g, ""))}
-            className="mt-1 w-full rounded-xl bg-white/10 p-3"
-          />
-        </label>
-        <label>
-          <span className="text-sm text-white/70">Score (second team)</span>
-          <input
-            inputMode="numeric"
-            value={b}
-            onChange={(e) => setB(e.target.value.replace(/\D/g, ""))}
             className="mt-1 w-full rounded-xl bg-white/10 p-3"
           />
         </label>
@@ -612,7 +565,7 @@ function AssignSheet({
   act,
 }: {
   court: number;
-  present: { id: string; name: string; skill: Skill }[];
+  present: { id: string; name: string }[];
   onClose: () => void;
   act: SessionAct;
 }) {
@@ -643,8 +596,7 @@ function AssignSheet({
               )}
             >
               {picked.includes(p.id) ? `${picked.indexOf(p.id) + 1}. ` : ""}
-              {p.name}{" "}
-              <span className="opacity-60">· {SKILL_NAMES[p.skill]}</span>
+              {p.name}
             </button>
           </li>
         ))}
@@ -664,7 +616,7 @@ function AssignSheet({
   );
 }
 
-function LevelsSheet({
+function CourtSheet({
   court,
   onClose,
   clubAct,
@@ -673,79 +625,37 @@ function LevelsSheet({
   onClose: () => void;
   clubAct: (cmd: object) => Promise<boolean>;
 }) {
-  const [c, setC] = useState(court);
-  const sel = (
-    k: "minSkill" | "maxSkill" | "idealMin" | "idealMax",
-    label: string,
-  ) => (
-    <label>
-      <span className="text-sm text-white/70">{label}</span>
-      <select
-        value={c[k]}
-        onChange={(e) => setC({ ...c, [k]: Number(e.target.value) as Skill })}
-        className="mt-1 w-full rounded-xl bg-white/10 p-3"
-      >
-        {SKILLS.filter(
-          (k2) => c.kind !== "expert" || k !== "minSkill" || k2 >= 3,
-        ).map((k2) => (
-          <option key={k2} value={k2}>
-            {SKILL_NAMES[k2]}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+  const [name, setName] = useState(court.name);
+  const [where, setWhere] = useState(court.where);
   return (
     <Sheet open onClose={onClose} title={court.name}>
-      <div className="grid grid-cols-2 gap-3">
-        {sel("minSkill", "Lowest allowed")}
-        {sel("maxSkill", "Highest allowed")}
-        {sel("idealMin", "Mostly for, from")}
-        {sel("idealMax", "Mostly for, to")}
-      </div>
-      <label className="mt-3 block">
-        <span className="text-sm text-white/70">
-          One level below the lowest may play when partnered with
-        </span>
-        <select
-          value={c.stretchPartnerMin ?? ""}
-          onChange={(e) =>
-            setC({
-              ...c,
-              stretchPartnerMin: e.target.value
-                ? (Number(e.target.value) as Skill)
-                : null,
-            })
-          }
+      <p className="mb-3 text-sm text-white/70">
+        Every court is for everyone. Just a name and where it is, so people can
+        find it.
+      </p>
+      <label className="block">
+        <span className="text-sm text-white/70">Name</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           className="mt-1 w-full rounded-xl bg-white/10 p-3"
-        >
-          <option value="">Nobody — off</option>
-          {SKILLS.map((k) => (
-            <option key={k} value={k}>
-              {SKILL_NAMES[k]} or better
-            </option>
-          ))}
-        </select>
+        />
       </label>
-      {court.kind === "expert" && (
-        <p className="mt-2 text-xs text-white/60">
-          Beginner and Beginner+ players are never put on the expert court,
-          whatever these say.
-        </p>
-      )}
+      <label className="mt-3 block">
+        <span className="text-sm text-white/70">Where it is</span>
+        <input
+          value={where}
+          onChange={(e) => setWhere(e.target.value)}
+          className="mt-1 w-full rounded-xl bg-white/10 p-3"
+        />
+      </label>
       <Btn
         className="mt-4 w-full"
         onClick={() =>
           clubAct({
             type: "court",
             court: court.id,
-            patch: {
-              minSkill: c.minSkill,
-              maxSkill: c.maxSkill,
-              idealMin: c.idealMin,
-              idealMax: c.idealMax,
-              stretchPartnerMin: c.stretchPartnerMin,
-            },
+            patch: { name, where },
           }).then((ok) => ok && onClose())
         }
       >

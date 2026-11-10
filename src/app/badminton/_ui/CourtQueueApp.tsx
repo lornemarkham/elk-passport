@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SKILL_NAMES, type Skill } from "@/lib/courtqueue/model";
 import type { LiveView } from "@/lib/courtqueue/view";
 import { post, useLive } from "./api";
-import { Btn, Card, Toggle, cx } from "./bits";
+import { Btn, Card, cx } from "./bits";
 import { Clubhouse, unreadCount } from "./Clubhouse";
 import { ChallengeTab, Courts } from "./Courts";
 import { Me } from "./Me";
@@ -267,20 +266,10 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 const SEEN_KEY = "cq_clubhouse_seen";
 
-const SKILL_HELP: Record<Skill, string> = {
-  1: "New to badminton, or just getting rallies going",
-  2: "Can rally; learning positions and serves",
-  3: "Comfortable in doubles, consistent clears and drops",
-  4: "Strong, quick, tactical; plays competitively",
-  5: "Club-competitive; smashes, deception, the works",
-};
-
 function Welcome({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<"register" | "sign-in">("register");
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
-  const [skill, setSkill] = useState<Skill | null>(null);
-  const [statsPublic, setStatsPublic] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent) => {
@@ -289,7 +278,7 @@ function Welcome({ onDone }: { onDone: () => void }) {
     const out = await post(
       "/api/badminton/me",
       mode === "register"
-        ? { action: "register", name, pin, skill, statsPublic }
+        ? { action: "register", name, pin }
         : { action: "sign-in", name, pin },
     );
     setBusy(false);
@@ -305,8 +294,8 @@ function Welcome({ onDone }: { onDone: () => void }) {
         <h1 className="mt-2 text-4xl font-black tracking-tight">CourtQueue</h1>
         <p className="text-lg font-semibold text-lime-300">Everybody Plays.</p>
         <p className="mx-auto mt-2 max-w-xs text-sm text-white/70">
-          Drop-in doubles, three courts, fair turns. Tap PLAY, put your phone
-          down, we&apos;ll call you.
+          Everyone is welcome. Come play, meet people, and have fun! Tap PLAY,
+          put your phone down, and we&apos;ll call you.
         </p>
       </header>
       <div className="flex rounded-xl bg-white/10 p-1">
@@ -354,51 +343,6 @@ function Welcome({ onDone }: { onDone: () => void }) {
             className="mt-1 w-full rounded-xl bg-white/10 p-3 text-lg tracking-widest"
           />
         </label>
-        {mode === "register" && (
-          <>
-            <fieldset>
-              <legend className="mb-2 text-sm text-white/70">
-                How would you rate yourself?
-              </legend>
-              <div className="space-y-2">
-                {([1, 2, 3, 4, 5] as Skill[]).map((k) => (
-                  <label
-                    key={k}
-                    className={cx(
-                      "flex cursor-pointer items-start gap-3 rounded-xl p-3 ring-1",
-                      skill === k
-                        ? "bg-lime-400/15 ring-lime-300"
-                        : "bg-white/5 ring-white/10",
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="skill"
-                      checked={skill === k}
-                      onChange={() => setSkill(k)}
-                      className="mt-1 accent-lime-400"
-                    />
-                    <span>
-                      <span className="font-bold">{SKILL_NAMES[k]}</span>
-                      <span className="block text-sm text-white/60">
-                        {SKILL_HELP[k]}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-white/50">
-                The organizer may adjust it after seeing you play. It&apos;s for
-                good matches, not ranking.
-              </p>
-            </fieldset>
-            <Toggle
-              label="Show my stats on the club board"
-              on={statsPublic}
-              onChange={setStatsPublic}
-            />
-          </>
-        )}
         {error && (
           <p
             role="alert"
@@ -410,12 +354,7 @@ function Welcome({ onDone }: { onDone: () => void }) {
         <Btn
           type="submit"
           big
-          disabled={
-            busy ||
-            !name.trim() ||
-            pin.length < 4 ||
-            (mode === "register" && !skill)
-          }
+          disabled={busy || !name.trim() || pin.length < 4}
         >
           {mode === "register" ? "Join CourtQueue" : "Sign in"}
         </Btn>
@@ -465,8 +404,8 @@ function useCalledAlert(
       }
       for (const id of invites)
         if (!was.invites.has(id)) {
-          say("You've been challenged!");
-          notify?.("Challenge!", "Someone wants a game with you.");
+          say("You've got a game invite!");
+          notify?.("A game invite 🏸", "Someone would love a game with you.");
         }
       for (const s of view.sessions)
         if (was.roster[s.id] === "waitlist" && s.mine === "confirmed")

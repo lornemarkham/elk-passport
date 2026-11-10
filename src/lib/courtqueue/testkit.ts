@@ -4,48 +4,36 @@ import {
   type Actor,
   type SessionCommand,
 } from "./engine";
-import {
-  emptyClub,
-  emptySession,
-  type Club,
-  type Session,
-  type Skill,
-} from "./model";
+import { emptyClub, emptySession, type Club, type Session } from "./model";
 
 /** Builders for CourtQueue's tests and simulations. Not used by the app. */
 
 export const T0 = Date.UTC(2026, 10, 13, 3, 0); // Thu Nov 12, 7:00 pm in BC (UTC-8 or -7)
 
-export function club(skills: Skill[], names?: string[]): Club {
+export function club(count: number, names?: string[]): Club {
   const c = emptyClub();
-  skills.forEach((skill, i) => {
+  for (let i = 0; i < count; i++) {
     const id = `p${i + 1}`;
     c.players[id] = {
       id,
       name: names?.[i] ?? `Player ${i + 1}`,
-      skill,
       createdAt: 0,
       pinHash: "",
       tokenHashes: [],
-      statsPublic: true,
       mentor: false,
       organizer: false,
       photo: false,
-      skillHistory: [],
     };
-  });
+  }
   c.players.org = {
     id: "org",
     name: "Organizer",
-    skill: 3,
     createdAt: 0,
     pinHash: "",
     tokenHashes: [],
-    statsPublic: true,
     mentor: false,
     organizer: true,
     photo: false,
-    skillHistory: [],
   };
   return c;
 }

@@ -2,32 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { localClock } from "@/lib/courtqueue/clock";
-import { SKILL_NAMES, type Skill } from "@/lib/courtqueue/model";
 import type { PersonView } from "@/lib/courtqueue/view";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
-}
-
-const SKILL_TONE: Record<Skill, string> = {
-  1: "bg-sky-500/20 text-sky-200",
-  2: "bg-teal-500/20 text-teal-200",
-  3: "bg-lime-500/20 text-lime-200",
-  4: "bg-amber-500/20 text-amber-200",
-  5: "bg-rose-500/20 text-rose-200",
-};
-
-export function SkillTag({ skill }: { skill: Skill }) {
-  return (
-    <span
-      className={cx(
-        "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        SKILL_TONE[skill],
-      )}
-    >
-      {SKILL_NAMES[skill]}
-    </span>
-  );
 }
 
 export function Avatar({ p, size = 36 }: { p: PersonView; size?: number }) {
