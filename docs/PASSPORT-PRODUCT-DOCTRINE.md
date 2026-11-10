@@ -832,6 +832,12 @@ This settles reachability for Snow; it does not answer §15.12.
 _Date Night joined the menu 2026-11-08_ (mission 642): six, each opening its
 own route (`/datenight`) under its own access rules.
 
+_CourtQueue arrived 2026-11-10, deliberately not on the menu_ (owner brief
+"P0: Build CourtQueue"; `docs/product/badminton/README.md`, ADR 017):
+drop-in badminton for one club, reached by its own link, `/badminton`, with
+its own name-and-PIN players. Whether it belongs in the Experiences menu is
+the owner's call; this paragraph does not make it.
+
 ---
 
 ## 11. Current near-term direction
@@ -1176,6 +1182,13 @@ certainty. Do not invent an answer here to make the document feel finished.
     names. It is a shared capability with an experience-neutral component,
     used by one composition; whether other Experiences show it the same way
     is theirs to decide (§10).
+    _Informed 2026-11-10 by CourtQueue_ (`docs/product/badminton/README.md`,
+    ADR 017): a group that lives one evening at a time on separate phones,
+    where the product's job is fairness — fewest games first, the reason for
+    each game said out loud, nobody's playing time shown to anybody else —
+    and the phone's job is to be put down until it calls you. Its players are
+    not Passport accounts, which departs from ADR 009's one foundation; that
+    conflict is recorded in ADR 017 and left to the owner. One composition.
 13. **Exact AI / deterministic responsibility boundaries.** (§3)
 14. **Product vocabulary for Want / Plan / Lived states.** (§2.9)
 15. **"THIS ENTITY SUCKS" — a human correction loop back into Atlas.**
