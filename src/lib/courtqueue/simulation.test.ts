@@ -9,13 +9,15 @@ import {
   type Session,
   type Skill,
 } from "./model";
+import { registrationOpensAt } from "./schedule";
 import { nightBalance } from "./stats";
 import { ORG, T0, as, club, must, night, setMentor } from "./testkit";
 
 /**
- * **A simulated Thursday.** 25 registered, 24 turn up, three courts, two
- * hours. Players accept, walk on, play 10–18 minutes, report a score and
- * queue again. Four expert friends keep challenging each other. Two quiet
+ * **A simulated Thursday.** 25 sign up on the day after 8:00 am, 24 turn
+ * up, three courts, two hours. Players accept, walk on, play 10–18 minutes,
+ * report a score, and tap BACK IN THE QUEUE when they've caught their breath
+ * — nobody is put back in line for them; now and then someone sits one out. Four expert friends keep challenging each other. Two quiet
  * players are slow to tap anything. One player leaves early, one game
  * forgets START, one forgets FINISH and the organizer fixes it.
  *
@@ -56,7 +58,12 @@ export function simulate(seed = 7) {
       throw new Error(`unsound at ${(now - T0) / MINUTE} min: ${broken}`);
     return out.ok;
   };
-  for (const id of ids) step(as(id), { type: "register" }, T0 - 3 * 86_400_000);
+  // Sign-up opens at 8:00 am on the day; nobody can before.
+  const opens = registrationOpensAt(s.date);
+  for (const id of ids)
+    if (step(as(id), { type: "register" }, opens - MINUTE))
+      throw new Error("registered before 8:00 am");
+  for (const id of ids) step(as(id), { type: "register" }, opens + MINUTE);
   // Arrivals over the first 15 minutes; quiet players come in and tap last.
   const arriveAt = new Map(
     ids
@@ -71,6 +78,7 @@ export function simulate(seed = 7) {
   let forgotFinish: string | null = null;
   let challengeRuns = 0;
   let firstWaitMax = 0;
+  const rejoinAt = new Map<string, number>();
   for (let m = 0; m <= 120; m++) {
     const now = T0 + m * MINUTE;
     for (const [id, at] of arriveAt)
@@ -151,6 +159,31 @@ export function simulate(seed = 7) {
           );
           step(as(four[3]!), { type: "confirm", gameId: g.id }, now);
         }
+      }
+    }
+    // Off court and out of line: back in when ready, never by itself.
+    for (const id of Object.keys(s.present)) {
+      const p = s.present[id]!;
+      const busy =
+        p.leftAt !== undefined ||
+        s.queue.some((q) => q.playerId === id) ||
+        !free(id) ||
+        s.challenges.some((c) => c.status === "ready" && c.slots.includes(id));
+      const played = s.games.some(
+        (g) => g.status === "finished" && g.slots.includes(id),
+      );
+      if (busy || !played) {
+        rejoinAt.delete(id);
+        continue;
+      }
+      if (!rejoinAt.has(id))
+        rejoinAt.set(
+          id,
+          now + (random() < 0.1 ? 5 : Math.floor(3 * random())) * MINUTE,
+        );
+      if (now >= rejoinAt.get(id)!) {
+        step(as(id), { type: "play" }, now);
+        rejoinAt.delete(id);
       }
     }
     if (forgotFinish && m === 75) {

@@ -1,4 +1,4 @@
-import { instantOn, localDate, localClock } from "./clock";
+import { instantOn, localDate, localClock, weekdayLabel } from "./clock";
 import {
   propose,
   rebalance,
@@ -23,6 +23,15 @@ import {
   type Skill,
   type Slots,
 } from "./model";
+import {
+  cancellationOf,
+  isDate,
+  isScheduled,
+  registrationState,
+  registrationWords,
+  sessionWindow,
+  WIND_DOWN_MS,
+} from "./schedule";
 
 /**
  * **Every change to a night, as a pure function.** `(club, session, who,
@@ -250,15 +259,16 @@ function audit(
   if (s.audit.length > 400) s.audit.splice(0, s.audit.length - 400);
 }
 
-function completeGame(s: Session, g: Game, now: number) {
+/**
+ * The court is free the moment a game finishes. Its four are **not** put
+ * back in line: each taps BACK IN THE QUEUE when they're ready, so someone
+ * who wants water or a break is never called while they're away.
+ */
+function completeGame(s: Session, g: Game) {
   g.status = "finished";
   if (g.challengeId) {
     const ch = s.challenges.find((c) => c.id === g.challengeId);
     if (ch) ch.status = "done";
-  }
-  for (const id of filled(g.slots)) {
-    const p = s.present[id];
-    if (p?.autoRequeue) requeue(s, id, now);
   }
 }
 
@@ -293,11 +303,15 @@ function run(
     case "register": {
       const id = subject(actor, cmd.playerId);
       if (!known(club, id)) refuse("Register your profile first.");
-      if (!s.registrationOpen && !actor.organizer)
-        refuse("Registration is closed for this session.");
       const mine = s.roster.find((r) => r.playerId === id);
       if (mine && (mine.status === "confirmed" || mine.status === "waitlist"))
         return;
+      // Same-day sign-up, from 8:00 am, never on a cancelled night — for
+      // everyone, the organizer included: nobody holds a spot in advance.
+      if (registrationState(s.date, now, club.cancelled) !== "open")
+        refuse(registrationWords(s.date, now, club.cancelled));
+      if (!s.registrationOpen && !actor.organizer)
+        refuse("Registration is closed for this session.");
       const status =
         confirmedCount(s) < club.rules.capacity ? "confirmed" : "waitlist";
       s.roster = s.roster.filter((r) => r.playerId !== id);
@@ -318,6 +332,8 @@ function run(
     case "check-in": {
       const id = subject(actor, cmd.playerId);
       if (!known(club, id)) refuse("Register your profile first.");
+      if (cancellationOf(s.date, club.cancelled))
+        refuse(registrationWords(s.date, now, club.cancelled));
       if (s.status !== "live") {
         if (s.date !== localDate(now) && !actor.organizer)
           refuse("Check-in opens on the day.");
@@ -325,6 +341,8 @@ function run(
       }
       let mine = s.roster.find((r) => r.playerId === id);
       if (!mine || mine.status === "cancelled") {
+        if (registrationState(s.date, now, club.cancelled) !== "open")
+          refuse(registrationWords(s.date, now, club.cancelled));
         if (confirmedCount(s) >= club.rules.capacity)
           refuse(
             `Tonight is full (${club.rules.capacity}). Join the waitlist instead.`,
@@ -455,7 +473,7 @@ function run(
         });
       }
       if (cmd.score) setScore(g, actor, validScore(cmd.score));
-      completeGame(s, g, now);
+      completeGame(s, g);
       return;
     }
     case "score": {
@@ -644,7 +662,7 @@ function run(
         g.finishedAt = end;
         g.endEstimated = false;
         g.finishedBy ??= actor.id;
-        if (g.status === "playing") completeGame(s, g, now);
+        if (g.status === "playing") completeGame(s, g);
       }
       if (cmd.score !== undefined) {
         if (cmd.score === null) {
@@ -894,9 +912,7 @@ function step(club: Club, s: Session, now: number): boolean {
           slotsMayUse(court, c.slots, skillOf),
       )
       .sort((a, b) => (a.readyAt ?? 0) - (b.readyAt ?? 0));
-    const ch = ready.find((c) =>
-      challengeMayGo(club, s, c, court, proposal, now),
-    );
+    const ch = ready.find((c) => challengeMayGo(club, s, c, court, proposal));
     if (ch) {
       ch.status = "on-court";
       const id = nextId(s, "g");
@@ -944,11 +960,12 @@ function step(club: Club, s: Session, now: number): boolean {
 }
 
 /**
- * **A challenge never jumps someone still waiting for their first game.**
- * Otherwise it goes when its players have, on average, played no more than
- * whoever the fairness engine would put on next — or once it has waited
- * `challengePatienceMinutes`, because friends choosing each other is part of
- * the night too.
+ * **A challenge is a request, never a way round the queue.** It never jumps
+ * someone still waiting for their first game, and it goes only when its
+ * players have, on average, played no more than whoever the fairness engine
+ * would put on next. (Until 2026-11-10 it also went after waiting
+ * `challengePatienceMinutes`; the owner's release brief says requests
+ * "cannot bypass the fairness system", so waiting no longer buys a court.)
  */
 export function challengeMayGo(
   club: Club,
@@ -956,7 +973,6 @@ export function challengeMayGo(
   ch: Challenge,
   court: Court,
   proposal: { slots: Slots } | null,
-  now: number,
 ): boolean {
   const t = tonight(s);
   const games = (id: string) => t.get(id)?.games ?? 0;
@@ -968,10 +984,7 @@ export function challengeMayGo(
   if (!proposal) return true;
   const theirs = ch.slots.reduce((n, id) => n + games(id), 0) / 4;
   const next = Math.min(...filled(proposal.slots).map(games));
-  if (theirs <= next) return true;
-  return (
-    now - (ch.readyAt ?? now) >= club.rules.challengePatienceMinutes * MINUTE
-  );
+  return theirs <= next;
 }
 
 // ---------------------------------------------------------------------------
@@ -1043,7 +1056,9 @@ export type ClubCommand =
   | { type: "skill"; playerId: string; skill: number; reason: string }
   | { type: "organizer"; playerId: string; on: boolean }
   | { type: "court"; court: number; patch: Partial<Court> }
-  | { type: "rules"; patch: Partial<Club["rules"]> };
+  | { type: "rules"; patch: Partial<Club["rules"]> }
+  | { type: "cancel-night"; date: string; cancelled: boolean; reason?: string }
+  | { type: "schedule-confirmed" };
 
 export const cleanName = (raw: unknown) =>
   String(raw ?? "")
@@ -1176,7 +1191,63 @@ function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
       }
       return;
     }
+    case "cancel-night": {
+      if (!actor.organizer)
+        refuse("Only the organizer can change the schedule.");
+      if (!isDate(cmd.date) || !isScheduled(cmd.date))
+        refuse("That isn't a club night this season.");
+      const reason =
+        String(cmd.reason ?? "")
+          .slice(0, 80)
+          .trim() || "Cancelled";
+      const cancelled = { ...(c.cancelled ?? {}) };
+      if (cmd.cancelled) {
+        if (cancelled[cmd.date]?.reason === reason) return;
+        cancelled[cmd.date] = { reason, by: actor.id, at: now };
+      } else {
+        if (!cancelled[cmd.date]) return;
+        delete cancelled[cmd.date];
+      }
+      c.cancelled = cancelled;
+      scheduleNote(
+        c,
+        actor,
+        now,
+        cmd.cancelled
+          ? `${weekdayLabel(cmd.date)} cancelled — ${reason}`
+          : `${weekdayLabel(cmd.date)} back on`,
+      );
+      return;
+    }
+    case "schedule-confirmed": {
+      if (!actor.organizer)
+        refuse("Only the organizer can change the schedule.");
+      c.scheduleConfirmed = { by: actor.id, at: now };
+      scheduleNote(c, actor, now, "Checked against the official schedule");
+      return;
+    }
     default:
       refuse("Unknown action.");
   }
+}
+
+function scheduleNote(c: Club, actor: Actor, now: number, what: string) {
+  const log = [...(c.scheduleLog ?? []), { at: now, by: actor.id, what }];
+  c.scheduleLog = log.slice(-200);
+}
+
+/** CourtQueue itself, for what happens on time rather than on a tap. */
+export const SYSTEM: Actor = { id: "courtqueue", organizer: true };
+
+/**
+ * **A night puts itself away.** An hour after the booked end, a night still
+ * open is ended by CourtQueue: games on court are finished there and marked
+ * estimated, and the queue is cleared, so the next night starts empty. The
+ * history stays.
+ */
+export function windDown(club: Club, s: Session, now: number): Session | null {
+  if (s.status === "ended") return null;
+  if (now < sessionWindow(s.date).end + WIND_DOWN_MS) return null;
+  const out = applySession(club, s, SYSTEM, { type: "end" }, now);
+  return out.ok ? out.value : null;
 }

@@ -1,3 +1,5 @@
+import type { Cancellation } from "./schedule";
+
 /**
  * **CourtQueue — Everybody Plays.** The shapes the badminton night is made of.
  *
@@ -79,7 +81,10 @@ export interface Rules {
   capacity: number;
   /** Minutes a game may run before the organizer is asked about it. */
   longGameMinutes: number;
-  /** A ready challenge goes ahead after waiting this long, fairness aside. */
+  /**
+   * Retired 2026-11-10 (a challenge no longer goes ahead of fairness after
+   * waiting). Kept so stored clubs and the organizer's form still parse.
+   */
   challengePatienceMinutes: number;
 }
 
@@ -95,6 +100,16 @@ export interface Club {
   courts: Court[];
   rules: Rules;
   sessions: SessionMeta[];
+  /**
+   * Nights the organizer has cancelled (the crossed-out dates on the official
+   * schedule, or a gym closed at short notice), by date. Added 2026-11-10;
+   * older club documents have none.
+   */
+  cancelled?: Record<string, Cancellation>;
+  /** Every change to the season's calendar, oldest first. */
+  scheduleLog?: AuditEntry[];
+  /** An organizer checked the calendar against the official sheet. */
+  scheduleConfirmed?: { readonly by: string; readonly at: number };
 }
 
 export type RosterStatus = "confirmed" | "waitlist" | "cancelled" | "no-show";
@@ -110,7 +125,11 @@ export interface RosterEntry {
 export interface Presence {
   readonly at: number;
   leftAt?: number;
-  /** Back into the queue automatically after each game. */
+  /**
+   * Retired 2026-11-10: nobody goes back in the queue by themselves any more
+   * — after a game a player taps BACK IN THE QUEUE when they're ready. Kept
+   * because nights stored before then carry it; nothing reads it.
+   */
   autoRequeue: boolean;
 }
 
@@ -210,6 +229,12 @@ export interface Session {
   awards: Award[];
   audit: AuditEntry[];
   seq: number;
+  /**
+   * Reminders already sent, by what they were about (`slow:g12`,
+   * `long:g12`, `open`), so a phone is told once — whichever server saw the
+   * moment first wins the write and sends.
+   */
+  notified?: Record<string, number>;
 }
 
 export const DEFAULT_COURTS: Court[] = [

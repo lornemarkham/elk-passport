@@ -56,3 +56,27 @@ nights adventures of kind `badminton`.
 
 Additive: two new tables and four functions, nothing else in the database
 touched. The rollback is in `docs/release/RELEASE-2026-11-12-COURTQUEUE.md`.
+
+## Amendment 2026-11-10 — the real-world release
+
+Owner brief _P0: CourtQueue real-world release_. Same room, three additions:
+
+1. **Push without a new secret.** The VAPID key pair for Web Push is derived
+   (HMAC → P-256 scalar) from the same server key as the store, so it is
+   stable across deploys and needs no new environment variable. Changing the
+   store key (or `ATLAS_SERVICE_TOKEN` when it is the base) changes the VAPID
+   key and silently invalidates every phone's subscription; they re-subscribe
+   the next time the app opens (`notify.ts` re-posts its subscription on load).
+   Encryption (RFC 8291) and VAPID (RFC 8292) are written with `node:crypto`,
+   no package, and checked against the reference decoder `http_ece` and an
+   RFC-written decryptor in `release.test.ts`. Subscriptions live in one more
+   document, `push`, in `passport_courtqueue_docs` — no migration.
+2. **What the clock does happens on the way past.** Filling courts, reminders,
+   "sign-up is open" and putting a night away are done by whichever request
+   arrives first (every phone polls every 2 s) and written by compare-and-swap,
+   so exactly one server sends each message. Before 8:00 am nobody polls, so a
+   Vercel cron (`vercel.json`, 15:00 UTC = 8:00 am in BC) calls
+   `/api/badminton/tick`, which does only what a poll does.
+3. **The season is code, its cancellations are data.** Dates and hours are in
+   `schedule.ts`; cancellations are on the club document, changed only by an
+   organizer, logged.

@@ -75,13 +75,9 @@ export function Organizer({
           <div className="mt-3 flex flex-wrap gap-2">
             <Btn
               kind="ghost"
-              onClick={() =>
-                sact({ type: "registration", open: !session.registrationOpen })
-              }
+              onClick={() => sact({ type: "registration", open: session.held })}
             >
-              {session.registrationOpen
-                ? "Close registration"
-                : "Open registration"}
+              {session.held ? "Reopen sign-up" : "Close sign-up"}
             </Btn>
             {session.status === "upcoming" && (
               <Btn kind="ghost" onClick={() => sact({ type: "go-live" })}>
@@ -809,11 +805,10 @@ function Rules({
   const r = view.organizer!.rules;
   const [cap, setCap] = useState(String(r.capacity));
   const [long, setLong] = useState(String(r.longGameMinutes));
-  const [patience, setPatience] = useState(String(r.challengePatienceMinutes));
   return (
     <Card>
       <h2 className="mb-2 font-bold">Rules</h2>
-      <div className="grid grid-cols-3 gap-2 text-sm">
+      <div className="grid grid-cols-2 gap-2 text-sm">
         <label>
           <span className="text-white/70">Players max</span>
           <input
@@ -832,15 +827,6 @@ function Rules({
             className="mt-1 w-full rounded-xl bg-white/10 p-2"
           />
         </label>
-        <label>
-          <span className="text-white/70">Challenge wait (min)</span>
-          <input
-            inputMode="numeric"
-            value={patience}
-            onChange={(e) => setPatience(e.target.value)}
-            className="mt-1 w-full rounded-xl bg-white/10 p-2"
-          />
-        </label>
       </div>
       <Btn
         kind="ghost"
@@ -851,7 +837,6 @@ function Rules({
             patch: {
               capacity: Number(cap),
               longGameMinutes: Number(long),
-              challengePatienceMinutes: Number(patience),
             },
           })
         }

@@ -83,10 +83,12 @@ async function main() {
     throw new Error(
       `${failed.length} sign-ups failed: ${JSON.stringify(failed[0].json)}`,
     );
-  // Today's session, whatever day it is, opened for check-in.
+  // Today's session on the server's clock (a club night: sign-up is only
+  // possible on the day, from 8:00 am), opened for check-in.
+  const serverNow = (await org.call("GET", "/api/badminton/live")).json.now;
   const date = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Etc/GMT+7",
-  }).format(new Date());
+  }).format(new Date(serverNow));
   await org.call("POST", "/api/badminton/act", {
     scope: "sessions",
     dates: [date],
@@ -166,6 +168,8 @@ async function main() {
   });
 
   let finished = 0;
+  let unassignedRefused = 0;
+  let consistentRounds = 0;
   let doubleTaps = 0;
   const byId = new Map(players.map((p) => [p.id, p]));
   while (finished < GAMES) {
@@ -200,7 +204,51 @@ async function main() {
       ]);
       await act(byId.get(g.slots[2].id), { type: "confirm", gameId: g.id });
       finished++;
+      // Nobody is put back in line for them: all four tap BACK IN THE QUEUE.
+      const after = (await org.call("GET", "/api/badminton/live")).json;
+      const requeued = after.night.queue.filter((q) =>
+        g.slots.some((s) => s && s.id === q.person.id),
+      );
+      if (requeued.length)
+        problems.push(`game ${g.id}: requeued without tapping`);
+      await Promise.all(
+        g.slots.map((s) => act(byId.get(s.id), { type: "play" })),
+      );
     }
+    // Someone not in a called game tries to start it: always refused.
+    const open = v.organizer.games.find((x) => x.status === "called");
+    if (open) {
+      const outsider = here.find(
+        (p) => !open.slots.some((s) => s && s.id === p.id),
+      );
+      const r = await act(outsider, { type: "start", gameId: open.id });
+      if (r.status === 200) problems.push(`outsider started ${open.id}`);
+      else unassignedRefused++;
+    }
+    // Every phone agrees on the courts and the line.
+    const views = await Promise.all(
+      here.slice(0, 8).map((p) => p.call("GET", "/api/badminton/live")),
+    );
+    const shape = (x) =>
+      JSON.stringify({
+        courts: x.json.night.courts.map((c) => [
+          c.id,
+          c.game?.id ?? null,
+          c.game?.status ?? null,
+          c.game?.slots.map((s) => s?.id ?? null) ?? null,
+        ]),
+        queue: x.json.night.queue.map((q) => q.person.id),
+      });
+    const shapes = new Set(views.map(shape));
+    if (shapes.size > 1) {
+      // A write may land between two reads; ask again once, together.
+      const again = await Promise.all(
+        here.slice(0, 8).map((p) => p.call("GET", "/api/badminton/live")),
+      );
+      if (new Set(again.map(shape)).size > 1)
+        problems.push(`round ${finished}: phones disagree`);
+      else consistentRounds++;
+    } else consistentRounds++;
   }
   polling = false;
   await Promise.all(pollers);
@@ -240,6 +288,8 @@ async function main() {
       max: lat.at(-1),
     },
     expertCourtBeginner: expertRefusal,
+    unassignedStartsRefused: unassignedRefused,
+    roundsAllPhonesAgreed: consistentRounds,
     problems,
   };
   console.log(JSON.stringify(report, null, 2));

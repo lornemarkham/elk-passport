@@ -16,8 +16,9 @@ import {
 /**
  * **The fairness engine.** Who plays next, where, and with whom.
  *
- * The rule a person can say out loud: _fewest games tonight goes first, and
- * among equals, whoever has waited longest._ The most deserving player who
+ * The rule a person can say out loud: _fewest games tonight goes first; among
+ * equals, fewest minutes on court; then whoever has waited longest._ Close
+ * skill levels and new partners decide who joins them. The most deserving player who
  * may use the free court is the **anchor** and is always in the game; the
  * other three are picked from the next few in line for close skill, even
  * teams and new partners. Nobody is skipped for being quiet — a player only
@@ -28,6 +29,8 @@ import {
 export interface Tonight {
   games: number;
   minutes: number;
+  /** Minutes spent waiting in line before each game that was called. */
+  waited: number;
   lastFinishedAt: number | null;
   /** Partner id → games together tonight. */
   partners: Map<string, number>;
@@ -43,6 +46,7 @@ export function tonight(s: Session): Map<string, Tonight> {
       t = {
         games: 0,
         minutes: 0,
+        waited: 0,
         lastFinishedAt: null,
         partners: new Map(),
         met: new Map(),
@@ -52,6 +56,15 @@ export function tonight(s: Session): Map<string, Tonight> {
     return t;
   };
   for (const g of s.games) {
+    if (g.status === "cancelled") continue;
+    for (const id of filled(g.slots)) {
+      const since = g.waitedSince[id];
+      if (since !== undefined)
+        get(id).waited += Math.max(
+          0,
+          Math.round((g.calledAt - since) / MINUTE),
+        );
+    }
     if (g.status !== "finished") continue;
     const ids = filled(g.slots);
     for (const id of ids) {
@@ -70,6 +83,7 @@ export function tonight(s: Session): Map<string, Tonight> {
 const none: Tonight = {
   games: 0,
   minutes: 0,
+  waited: 0,
   lastFinishedAt: null,
   partners: new Map(),
   met: new Map(),
@@ -101,8 +115,8 @@ export function inOrder(club: Club, s: Session): Waiting[] {
     .sort(
       (a, b) =>
         a.games - b.games ||
-        a.since - b.since ||
         a.minutes - b.minutes ||
+        a.since - b.since ||
         a.playerId.localeCompare(b.playerId),
     );
 }
@@ -357,6 +371,10 @@ function explain(
   if (firsts.length === 4) why.push("Everyone's first game tonight");
   else if (firsts.length > 0)
     why.push(`First game tonight for ${firsts.map(name).join(" and ")}`);
+  else
+    why.push(
+      `${name(anchor.playerId)} was next: fewest games and minutes tonight`,
+    );
   const waited = Math.round((now - anchor.since) / MINUTE);
   if (waited >= 3)
     why.push(`${name(anchor.playerId)} has waited ${waited} min`);
@@ -432,4 +450,48 @@ export function estimateWaitMinutes(
     frees.sort((a, b) => a - b);
   }
   return Math.max(0, Math.round((at - now) / MINUTE));
+}
+
+export interface Prepared {
+  readonly court: number;
+  readonly slots: Slots;
+  readonly why: readonly string[];
+  /** Roughly when that court frees up. */
+  readonly at: number;
+}
+
+/**
+ * **The next games, already prepared.** For each court that is busy, in the
+ * order they should free up, the four the engine would call there if it
+ * freed now — each four taken out before the next court is filled. When a
+ * court does free, `tick` asks the same question of the same line, so these
+ * are the people called unless the line changed in between (someone took a
+ * break, or a court freed out of order). A projection, never stored: nobody
+ * is held out of the line by it.
+ */
+export function prepared(club: Club, s: Session, now: number): Prepared[] {
+  if (s.status !== "live") return [];
+  const typical = typicalGameMinutes(s) * MINUTE;
+  const busy = club.courts
+    .filter((c) => !s.closedCourts.includes(c.id))
+    .map((c) => {
+      const g = s.games.find(
+        (x) =>
+          x.court === c.id && (x.status === "called" || x.status === "playing"),
+      );
+      return g
+        ? { court: c, at: Math.max(now, (g.startedAt ?? now) + typical) }
+        : null;
+    })
+    .filter((x): x is { court: Court; at: number } => x !== null)
+    .sort((a, b) => a.at - b.at);
+  const taken = new Set<string>();
+  const out: Prepared[] = [];
+  for (const { court, at } of busy) {
+    const p = propose(club, s, court, now, taken);
+    if (!p) continue;
+    for (const id of filled(p.slots)) taken.add(id);
+    out.push({ court: court.id, slots: p.slots, why: p.why, at });
+  }
+  return out;
 }

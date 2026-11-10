@@ -1,222 +1,362 @@
 "use client";
 
 import { useState } from "react";
-import type { GameView, LiveView, NightView } from "@/lib/courtqueue/view";
-import {
-  Btn,
-  Card,
-  Elapsed,
-  Person,
-  Sheet,
-  Toggle,
-  clock,
-  cx,
-  plural,
-} from "./bits";
+import type {
+  GameView,
+  LiveView,
+  NightView,
+  Phase,
+  SessionListing,
+} from "@/lib/courtqueue/view";
+import { Btn, Card, Elapsed, Person, Sheet, clock, cx, plural } from "./bits";
+import { NotificationsCard } from "./Me";
+import type { Alerts } from "./notify";
 
 export type Act = (cmd: object, sessionId?: string) => Promise<boolean>;
 
+/**
+ * **Home.** One glance from a phone lying on a bench: where am I in my
+ * night (one word, big), the one thing to do next (one big button), and the
+ * three courts. Everything else is below the fold.
+ */
 export function Tonight({
   view,
   act,
   offset,
+  onFinish,
+  onRequest,
+  alerts,
 }: {
   view: LiveView;
   act: Act;
   offset: number;
+  onFinish: () => void;
+  onRequest: () => void;
+  alerts?: Alerts;
 }) {
   const night = view.night;
   const meId = view.me!.id;
-  if (!night) return <Upcoming view={view} act={act} />;
+  const nudge =
+    alerts &&
+    (alerts.state === "off" || alerts.state === "needs-home-screen") ? (
+      <NotificationsCard alerts={alerts} />
+    ) : null;
+  if (!night)
+    return (
+      <>
+        <NoNightToday view={view} />
+        <div className="mt-4">{nudge}</div>
+      </>
+    );
   const me = night.me!;
+  const checkedIn = ["ready", "waiting", "up", "playing", "finished"].includes(
+    me.phase,
+  );
   return (
     <div className="space-y-4">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-black">{night.label}</h1>
-        <span className="text-sm text-white/60">
-          {night.confirmed}/{night.capacity} in
-          {night.waitlisted ? ` · ${night.waitlisted} waiting` : ""}
-        </span>
+      <header>
+        <p className="text-xs font-bold tracking-widest text-lime-300/80 uppercase">
+          {view.season.club}
+        </p>
+        <div className="flex items-baseline justify-between gap-2">
+          <h1 className="text-2xl font-black">{night.label}</h1>
+          <span className="text-sm text-white/60 tabular-nums">
+            {night.confirmed}/{night.capacity} in
+            {night.waitlisted ? ` · ${night.waitlisted} waitlist` : ""}
+          </span>
+        </div>
+        <p className="text-sm text-white/60">
+          {night.hours} · {view.season.venue}
+        </p>
       </header>
-      <MyCard night={night} meId={meId} act={act} offset={offset} />
+      <StatusCard
+        night={night}
+        meId={meId}
+        act={act}
+        offset={offset}
+        onFinish={onFinish}
+      />
+      {nudge}
       <Invites night={night} meId={meId} act={act} />
       <MyResults night={night} meId={meId} act={act} />
-      <CourtStrip night={night} meId={meId} offset={offset} />
+      <CourtMap night={night} meId={meId} offset={offset} />
       <Line night={night} meId={meId} />
-      {night.status !== "ended" &&
-        me.state !== "away" &&
-        me.state !== "left" && (
-          <Card>
-            <Toggle
-              label="Back in line automatically after each game"
-              on={me.autoRequeue}
-              onChange={(on) => act({ type: "auto-requeue", on })}
-            />
-            {me.state !== "playing" && (
-              <button
-                className="mt-2 text-sm text-white/60 underline"
-                onClick={() => act({ type: "leave" })}
-              >
-                I&apos;m heading home
-              </button>
-            )}
-          </Card>
-        )}
-      <Upcoming view={view} act={act} skip={night.id} />
+      {checkedIn && night.status === "live" && (
+        <div className="flex flex-wrap justify-between gap-3 px-1 text-sm">
+          <button className="text-lime-300 underline" onClick={onRequest}>
+            Request a game with friends
+          </button>
+          {me.phase !== "playing" && me.phase !== "up" && (
+            <button
+              className="text-white/60 underline"
+              onClick={() => act({ type: "leave" })}
+            >
+              I&apos;m heading home
+            </button>
+          )}
+        </div>
+      )}
+      <NextNights view={view} skip={night.id} />
     </div>
   );
 }
 
-function MyCard({
+const PHASE: Record<Phase, { word: string; tone: string }> = {
+  "not-registered": { word: "NOT SIGNED UP", tone: "bg-white/15 text-white" },
+  waitlist: { word: "WAITLIST", tone: "bg-amber-400 text-slate-950" },
+  registered: { word: "REGISTERED", tone: "bg-sky-400 text-slate-950" },
+  ready: { word: "READY TO PLAY", tone: "bg-lime-400 text-slate-950" },
+  waiting: { word: "WAITING", tone: "bg-white text-slate-950" },
+  up: { word: "YOU'RE UP", tone: "bg-lime-400 text-slate-950" },
+  playing: { word: "PLAYING", tone: "bg-lime-400 text-slate-950" },
+  finished: { word: "FINISHED", tone: "bg-violet-300 text-slate-950" },
+  left: { word: "HEADED HOME", tone: "bg-white/15 text-white" },
+  ended: { word: "THAT'S A WRAP", tone: "bg-white/15 text-white" },
+};
+
+export function PhaseBadge({ phase }: { phase: Phase }) {
+  const p = PHASE[phase];
+  return (
+    <span
+      data-testid="phase"
+      className={cx(
+        "inline-block rounded-full px-3 py-1 text-sm font-black tracking-wider",
+        p.tone,
+      )}
+    >
+      {p.word}
+    </span>
+  );
+}
+
+function StatusCard({
   night,
   meId,
   act,
   offset,
+  onFinish,
 }: {
   night: NightView;
   meId: string;
   act: Act;
   offset: number;
+  onFinish: () => void;
 }) {
   const me = night.me!;
   const [declining, setDeclining] = useState(false);
-  const [finishing, setFinishing] = useState(false);
-  if (night.status === "ended")
-    return (
-      <Card>
-        <p className="text-lg font-bold">That&apos;s a wrap for tonight.</p>
-        <p className="text-white/70">
-          You played {plural(me.games, "game")} · {me.minutes} min on court.
-        </p>
-      </Card>
-    );
   const tally = (
-    <p className="mt-3 text-sm opacity-80">
-      Tonight: {plural(me.games, "game")} · {me.minutes} min played
-    </p>
+    <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+      {[
+        [me.games, me.games === 1 ? "game" : "games"],
+        [me.minutes, "min played"],
+        [me.waited, "min waited"],
+      ].map(([n, label]) => (
+        <div key={String(label)} className="rounded-xl bg-black/15 py-2">
+          <dt className="sr-only">{label}</dt>
+          <dd className="text-2xl font-black tabular-nums">{n}</dd>
+          <dd className="text-[11px] opacity-70">{label}</dd>
+        </div>
+      ))}
+    </dl>
   );
-  switch (me.state) {
-    case "away":
-      if (me.roster === "waitlist")
-        return (
-          <Card tone="warn">
-            <p className="text-lg font-bold">
-              You&apos;re #{me.waitlistPosition} on the waitlist
-            </p>
-            <p className="text-white/70">
-              You&apos;ll move up automatically if someone cancels.
-            </p>
-            <button
-              className="mt-3 text-sm underline"
-              onClick={() => act({ type: "cancel" })}
-            >
-              Take me off the waitlist
-            </button>
-          </Card>
-        );
-      return (
-        <Card>
-          <p className="mb-3 text-white/70">
-            {me.roster === "confirmed"
-              ? "You're signed up. At the gym?"
-              : "Not signed up yet — there's room."}
+  const hot = me.phase === "up" || me.phase === "playing";
+  const frame = (body: React.ReactNode) => (
+    <Card tone={hot ? "hot" : undefined}>
+      <PhaseBadge phase={me.phase} />
+      <div className="mt-3">{body}</div>
+    </Card>
+  );
+  if (night.cancelled)
+    return frame(
+      <p className="text-lg font-bold">
+        Tonight is cancelled — {night.cancelled}.
+      </p>,
+    );
+  switch (me.phase) {
+    case "ended":
+      return frame(
+        <>
+          <p className="text-lg font-bold">Thanks for playing tonight.</p>
+          {tally}
+        </>,
+      );
+    case "not-registered": {
+      const full = night.confirmed >= night.capacity;
+      return frame(
+        <>
+          <p className="mb-3 text-white/80">
+            {night.registration === "open"
+              ? full
+                ? `All ${night.capacity} spots are taken. Join the waitlist — you move up by yourself if someone cancels.`
+                : `${night.capacity - night.confirmed} of ${night.capacity} spots left. First come, first served.`
+              : night.registrationNote}
+          </p>
+          <Btn
+            big
+            disabled={night.registration !== "open"}
+            onClick={() => act({ type: "register" })}
+          >
+            {full ? "JOIN THE WAITLIST" : "SIGN ME UP"}
+          </Btn>
+        </>,
+      );
+    }
+    case "waitlist":
+      return frame(
+        <>
+          <p className="text-4xl font-black">#{me.waitlistPosition}</p>
+          <p className="text-white/80">
+            on the waitlist. You move up by yourself when someone cancels —
+            we&apos;ll tell you.
+          </p>
+          <button
+            className="mt-3 text-sm text-white/60 underline"
+            onClick={() => act({ type: "cancel" })}
+          >
+            Take me off the waitlist
+          </button>
+        </>,
+      );
+    case "registered":
+      return frame(
+        <>
+          <p className="mb-3 text-white/80">
+            You have a spot tonight. At the gym? Check in.
           </p>
           <Btn big onClick={() => act({ type: "check-in" })}>
             I&apos;M HERE
           </Btn>
-          {me.roster === "confirmed" && (
-            <button
-              className="mt-3 text-sm text-white/60 underline"
-              onClick={() => act({ type: "cancel" })}
-            >
-              Can&apos;t make it tonight
-            </button>
-          )}
-        </Card>
+          <button
+            className="mt-3 text-sm text-white/60 underline"
+            onClick={() => act({ type: "cancel" })}
+          >
+            Can&apos;t make it — give my spot away
+          </button>
+        </>,
       );
     case "left":
-      return (
-        <Card>
+      return frame(
+        <>
           <p className="mb-3">You&apos;ve headed home. Changed your mind?</p>
           <Btn onClick={() => act({ type: "check-in" })}>I&apos;m back</Btn>
           {tally}
-        </Card>
+        </>,
       );
-    case "idle":
-      return (
-        <Card>
-          <Btn big onClick={() => act({ type: "play" })} aria-label="Play">
-            🏸 PLAY
+    case "ready":
+      return frame(
+        <>
+          <p className="mb-3 text-white/80">
+            You&apos;re checked in. Join the queue and put your phone down —
+            we&apos;ll call you to a court.
+          </p>
+          <Btn big onClick={() => act({ type: "play" })}>
+            JOIN THE QUEUE
           </Btn>
-          <p className="mt-3 text-center text-sm text-white/60">
-            {courtsFree(night)} · {night.queue.length} waiting
-          </p>
           {tally}
-        </Card>
+        </>,
       );
-    case "queued":
-      return (
-        <Card>
-          <p className="text-sm tracking-wider text-white/60 uppercase">
-            You&apos;re in line
+    case "finished": {
+      const last = me.played[0];
+      return frame(
+        <>
+          {last && (
+            <p className="text-white/80">
+              Court {last.court} · {last.minutes} min
+              {last.score
+                ? ` · ${last.score[0]}–${last.score[1]}${last.confirmedBy ? "" : " (provisional)"}`
+                : " · no score yet"}
+            </p>
+          )}
+          <p className="mt-1 mb-3 text-sm text-white/60">
+            Grab some water. When you&apos;re ready for another game, tap below
+            — nobody puts you back in line but you.
           </p>
-          <p className="text-5xl font-black">#{me.queuePosition}</p>
-          <p className="text-lg">
-            {me.estimateMin === 0
-              ? "Next court that opens"
-              : `About ${me.estimateMin} min`}
-            {me.queuedSince ? (
-              <span className="text-white/60">
-                {" "}
-                · waiting <Elapsed from={me.queuedSince} offset={offset} />
-              </span>
-            ) : null}
-          </p>
+          <Btn big onClick={() => act({ type: "play" })}>
+            BACK IN THE QUEUE
+          </Btn>
+          {tally}
+        </>,
+      );
+    }
+    case "waiting": {
+      if (me.state === "challenge")
+        return frame(
+          <>
+            <p className="text-lg font-bold">Your requested game is on</p>
+            <p className="text-white/70">
+              It gets a court once all four are free and nobody who has played
+              fewer games is waiting.
+            </p>
+            {tally}
+          </>,
+        );
+      return frame(
+        <>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs tracking-wider text-white/60 uppercase">
+                Place in line
+              </p>
+              <p className="text-6xl leading-none font-black tabular-nums">
+                #{me.queuePosition}
+              </p>
+            </div>
+            <p className="text-right text-lg">
+              {me.estimateMin === 0 ? "Next court" : `~${me.estimateMin} min`}
+              {me.queuedSince ? (
+                <span className="block text-sm text-white/60">
+                  waiting <Elapsed from={me.queuedSince} offset={offset} />
+                </span>
+              ) : null}
+            </p>
+          </div>
+          {me.next && (
+            <div className="mt-3 rounded-xl bg-lime-400/15 p-3 ring-1 ring-lime-300/50">
+              <p className="font-black text-lime-300">
+                ON DECK · Court {me.next.court} is next for you
+              </p>
+              <p className="text-sm text-white/80">
+                With{" "}
+                {me.next.slots
+                  .filter((p) => p && p.id !== meId)
+                  .map((p) => p!.name)
+                  .join(", ")}
+              </p>
+            </div>
+          )}
+          {me.lineRule && (
+            <p className="mt-2 text-sm text-white/60">{me.lineRule}</p>
+          )}
           <p className="mt-1 text-sm text-white/60">
-            Fewest games tonight goes first, then whoever has waited longest.
-            Put your phone down — we&apos;ll call you.
+            Put your phone down — it will call you.
           </p>
           {tally}
           <Btn
             kind="ghost"
-            className="mt-3"
+            className="mt-3 w-full"
             onClick={() => act({ type: "pause" })}
           >
-            Take a break
+            Take a break (leave the line)
           </Btn>
-        </Card>
+        </>,
       );
-    case "challenge":
-      return (
-        <Card tone="warn">
-          <p className="text-lg font-bold">Your challenge is on</p>
-          <p className="text-white/70">
-            It goes to a court once all four are off court and fairness allows —
-            players still waiting for their first game go first.
-          </p>
-          {tally}
-        </Card>
-      );
-    case "called":
+    }
+    case "up":
     case "playing": {
       const g = me.game!;
       const court = night.courts.find((c) => c.id === g.court)!;
       const full = g.slots.every(Boolean);
-      return (
-        <Card tone="hot">
-          {g.status === "called" ? (
-            <p className="text-sm font-bold tracking-wider uppercase">
-              You&apos;re up!
-            </p>
-          ) : (
-            <p className="text-sm font-bold tracking-wider uppercase">
-              Playing · <Elapsed from={g.startedAt!} offset={offset} />
-            </p>
-          )}
-          <p className="text-3xl font-black">Court {g.court}</p>
+      return frame(
+        <>
+          <p className="text-5xl font-black">Court {g.court}</p>
           <p className="font-semibold">
             {court.name} · {court.where}
           </p>
+          {g.status === "playing" && (
+            <p className="mt-1 text-lg font-bold tabular-nums">
+              Playing <Elapsed from={g.startedAt!} offset={offset} />
+            </p>
+          )}
           <Teams g={g} meId={meId} dark />
           {g.status === "called" && (
             <ul className="mt-2 list-disc pl-5 text-sm">
@@ -248,7 +388,7 @@ function MyCard({
                       className="flex-1"
                       onClick={() => act({ type: "accept", gameId: g.id })}
                     >
-                      I&apos;m in
+                      On my way
                     </Btn>
                   )}
                   <Btn
@@ -262,65 +402,154 @@ function MyCard({
                 {full && (
                   <button
                     className="w-full text-center text-sm underline"
-                    onClick={() => setFinishing(true)}
+                    onClick={onFinish}
                   >
                     Already played? Forgot to tap start
                   </button>
                 )}
               </>
             ) : (
-              <Btn big kind="dark" onClick={() => setFinishing(true)}>
+              <Btn big kind="dark" onClick={onFinish}>
                 FINISH GAME
               </Btn>
             )}
           </div>
-          <Sheet
+          <DeclineSheet
             open={declining}
             onClose={() => setDeclining(false)}
-            title="Skip this game?"
-          >
-            <p className="mb-4 text-white/70">
-              No penalty. Someone else takes your spot.
-            </p>
-            <div className="space-y-2">
-              <Btn
-                className="w-full"
-                onClick={() =>
-                  act({ type: "decline", gameId: g.id }).then(() =>
-                    setDeclining(false),
-                  )
-                }
-              >
-                Keep my place in line
-              </Btn>
-              <Btn
-                kind="ghost"
-                className="w-full"
-                onClick={() =>
-                  act({ type: "decline", gameId: g.id, pause: true }).then(() =>
-                    setDeclining(false),
-                  )
-                }
-              >
-                I&apos;m taking a break
-              </Btn>
-            </div>
-          </Sheet>
-          <FinishSheet
-            open={finishing}
-            onClose={() => setFinishing(false)}
             g={g}
             act={act}
           />
-        </Card>
+          {tally}
+        </>,
       );
     }
   }
 }
 
-function courtsFree(night: NightView) {
-  const n = night.courts.filter((c) => !c.closed && !c.game).length;
-  return n === 0 ? "All courts busy" : `${plural(n, "court")} free`;
+export function DeclineSheet({
+  open,
+  onClose,
+  g,
+  act,
+}: {
+  open: boolean;
+  onClose: () => void;
+  g: GameView;
+  act: Act;
+}) {
+  return (
+    <Sheet open={open} onClose={onClose} title="Skip this game?">
+      <p className="mb-4 text-white/70">
+        No penalty. The next person in line takes your spot.
+      </p>
+      <div className="space-y-2">
+        <Btn
+          className="w-full"
+          onClick={() =>
+            act({ type: "decline", gameId: g.id }).then(() => onClose())
+          }
+        >
+          Keep my place in line
+        </Btn>
+        <Btn
+          kind="ghost"
+          className="w-full"
+          onClick={() =>
+            act({ type: "decline", gameId: g.id, pause: true }).then(() =>
+              onClose(),
+            )
+          }
+        >
+          I&apos;m taking a break
+        </Btn>
+      </div>
+    </Sheet>
+  );
+}
+
+/** "COURT 2 — YOU'RE UP!", over everything, until they start or skip. */
+export function UpTakeover({
+  night,
+  meId,
+  act,
+  onFinish,
+  onHide,
+}: {
+  night: NightView;
+  meId: string;
+  act: Act;
+  onFinish: () => void;
+  onHide: () => void;
+}) {
+  const g = night.me?.game;
+  const [declining, setDeclining] = useState(false);
+  if (!g || g.status !== "called") return null;
+  const court = night.courts.find((c) => c.id === g.court);
+  const full = g.slots.every(Boolean);
+  return (
+    <div
+      role="alertdialog"
+      aria-label={`Court ${g.court} — you're up`}
+      className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-lime-400 px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-slate-950"
+    >
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col">
+        <p className="text-center text-6xl font-black tracking-tight">
+          COURT {g.court}
+        </p>
+        <p className="text-center text-4xl font-black">YOU&apos;RE UP!</p>
+        <p className="mt-1 text-center font-semibold">
+          {court?.name} · {court?.where}
+        </p>
+        <Teams g={g} meId={meId} dark />
+        <ul className="mt-3 space-y-1 text-center text-sm font-semibold">
+          {g.why.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+        <div className="mt-auto space-y-3 pt-6">
+          <Btn
+            big
+            kind="dark"
+            disabled={!full}
+            onClick={() => act({ type: "start", gameId: g.id })}
+          >
+            {full ? "START GAME" : "Finding a fourth…"}
+          </Btn>
+          <div className="flex gap-2">
+            <Btn
+              kind="ghost"
+              className="flex-1 !bg-slate-950/15 !text-slate-950"
+              onClick={() => setDeclining(true)}
+            >
+              Not this one
+            </Btn>
+            <Btn
+              kind="ghost"
+              className="flex-1 !bg-slate-950/15 !text-slate-950"
+              onClick={onHide}
+            >
+              Hide
+            </Btn>
+          </div>
+          {full && (
+            <button
+              className="w-full text-center text-sm underline"
+              onClick={onFinish}
+            >
+              Already played? Forgot to tap start
+            </button>
+          )}
+        </div>
+      </div>
+      <DeclineSheet
+        open={declining}
+        onClose={() => setDeclining(false)}
+        g={g}
+        act={act}
+      />
+    </div>
+  );
 }
 
 export function Teams({
@@ -352,7 +581,7 @@ export function Teams({
   );
 }
 
-function FinishSheet({
+export function FinishSheet({
   open,
   onClose,
   g,
@@ -669,7 +898,11 @@ function ScoreSheet({
   );
 }
 
-export function CourtStrip({
+/**
+ * The three courts, drawn as courts: who is on each side of the net, how
+ * long they've played, and who is prepared to go on next.
+ */
+export function CourtMap({
   night,
   meId,
   offset,
@@ -679,38 +912,98 @@ export function CourtStrip({
   offset: number;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {night.courts.map((c) => (
-        <div
-          key={c.id}
-          data-testid={`court-${c.id}`}
-          className={cx(
-            "rounded-xl p-2 text-center ring-1",
-            c.closed
-              ? "bg-white/5 text-white/40 ring-white/10"
-              : !c.game
-                ? "bg-lime-400/15 ring-lime-300/40"
-                : c.game.slots.some((p) => p?.id === meId)
-                  ? "bg-lime-400 text-slate-950 ring-lime-300"
-                  : "bg-white/5 ring-white/10",
-          )}
-        >
-          <p className="text-xs font-bold uppercase">Court {c.id}</p>
-          <p className="text-[11px] opacity-70">{c.kind}</p>
-          <p className="mt-1 text-sm font-semibold">
-            {c.closed ? (
-              "Closed"
-            ) : !c.game ? (
-              "Available"
-            ) : c.game.status === "called" ? (
-              "Called"
-            ) : (
-              <Elapsed from={c.game.startedAt!} offset={offset} />
-            )}
-          </p>
-        </div>
-      ))}
-    </div>
+    <section aria-label="Courts" className="space-y-2">
+      <h2 className="px-1 text-sm font-bold tracking-wider text-white/60 uppercase">
+        Courts
+      </h2>
+      <div className="grid grid-cols-3 gap-2">
+        {night.courts.map((c) => {
+          const g = c.game;
+          const mine = g?.slots.some((p) => p?.id === meId);
+          const next = night.prepared.find((p) => p.court === c.id);
+          const status = c.closed
+            ? "Closed"
+            : !g
+              ? "Open"
+              : g.status === "called"
+                ? "Called"
+                : "Playing";
+          return (
+            <div
+              key={c.id}
+              data-testid={`court-${c.id}`}
+              data-status={status.toLowerCase()}
+              className={cx(
+                "flex min-h-44 flex-col rounded-xl p-1.5 text-center ring-2",
+                c.closed
+                  ? "bg-white/5 text-white/40 ring-white/10"
+                  : mine
+                    ? "bg-lime-400 text-slate-950 ring-lime-300"
+                    : !g
+                      ? "bg-emerald-950/60 ring-lime-400/60"
+                      : g.status === "called"
+                        ? "animate-pulse bg-amber-300/15 ring-amber-300"
+                        : "bg-emerald-950/60 ring-white/15",
+              )}
+            >
+              <p className="text-lg leading-tight font-black">{c.id}</p>
+              <p className="text-[10px] tracking-wide uppercase opacity-70">
+                {c.kind}
+              </p>
+              <p
+                className={cx(
+                  "mt-0.5 text-xs font-black uppercase",
+                  !mine && !g && !c.closed && "text-lime-300",
+                  !mine && g?.status === "called" && "text-amber-300",
+                )}
+              >
+                {status}
+                {g?.status === "playing" && g.startedAt && (
+                  <>
+                    {" "}
+                    <Elapsed from={g.startedAt} offset={offset} />
+                  </>
+                )}
+              </p>
+              {g && (
+                <div className="mt-1 flex flex-1 flex-col justify-center text-[11px] leading-tight font-semibold">
+                  {[0, 1].map((team) => (
+                    <div key={team}>
+                      {team === 1 && (
+                        <div
+                          aria-hidden
+                          className="my-1 border-t-2 border-dashed border-current opacity-40"
+                        />
+                      )}
+                      {g.slots.slice(team * 2, team * 2 + 2).map((p, k) => (
+                        <p
+                          key={k}
+                          className={cx(
+                            "truncate",
+                            p?.id === meId && "font-black underline",
+                          )}
+                        >
+                          {p ? p.name.split(" ")[0] : "—"}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {next && (
+                <p className="mt-1 border-t border-current/20 pt-1 text-[10px] leading-tight opacity-80">
+                  Next:{" "}
+                  {next.slots
+                    .filter(Boolean)
+                    .map((p) => p!.name.split(" ")[0])
+                    .join(", ")}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -738,65 +1031,71 @@ function Line({ night, meId }: { night: NightView; meId: string }) {
   );
 }
 
-function Upcoming({
-  view,
-  act,
-  skip,
-}: {
-  view: LiveView;
-  act: Act;
-  skip?: string;
-}) {
-  const list = view.sessions.filter(
-    (s) => s.id !== skip && s.status !== "ended",
+function NoNightToday({ view }: { view: LiveView }) {
+  const next = view.sessions.find((s) => s.status !== "ended");
+  const upcoming = view.season.nights.find(
+    (n) => n.status === "upcoming" || n.status === "today",
   );
-  if (!list.length)
-    return skip ? null : (
-      <Card>
-        <p className="text-lg font-bold">No sessions on the calendar yet.</p>
-        <p className="text-white/70">
-          The organizer adds Monday and Thursday nights.
-        </p>
-      </Card>
-    );
   return (
-    <div className="space-y-2">
-      <h2 className="font-bold text-white/80">Coming up</h2>
-      {list.map((s) => (
-        <Card key={s.id} className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-bold">{s.label}</p>
-            <p className="text-sm text-white/60">
-              {s.confirmed}/{s.capacity} signed up
-              {s.waitlisted ? ` · ${s.waitlisted} on waitlist` : ""}
-              {!s.registrationOpen ? " · registration closed" : ""}
+    <div className="space-y-4">
+      <header>
+        <p className="text-xs font-bold tracking-widest text-lime-300/80 uppercase">
+          {view.season.club}
+        </p>
+        <h1 className="text-2xl font-black">No badminton today</h1>
+        <p className="text-sm text-white/60">{view.season.venue}</p>
+      </header>
+      <Card>
+        <p className="text-xs tracking-wider text-white/60 uppercase">
+          Next night
+        </p>
+        {next ? (
+          <NextNightBody s={next} />
+        ) : upcoming ? (
+          <>
+            <p className="text-2xl font-black">{upcoming.label}</p>
+            <p className="text-white/70">{upcoming.hours}</p>
+            <p className="mt-2 text-sm text-white/60">
+              Sign-up opens at 8:00 am that day.
             </p>
-            {s.mine === "confirmed" && (
-              <p className="text-sm font-semibold text-lime-300">
-                You&apos;re in
-              </p>
-            )}
-            {s.mine === "waitlist" && (
-              <p className="text-sm font-semibold text-amber-300">
-                Waitlist #{s.waitlistPosition}
-              </p>
-            )}
-          </div>
-          {s.mine === "confirmed" || s.mine === "waitlist" ? (
-            <Btn kind="ghost" onClick={() => act({ type: "cancel" }, s.id)}>
-              Cancel
-            </Btn>
-          ) : (
-            <Btn
-              disabled={!s.registrationOpen}
-              onClick={() => act({ type: "register" }, s.id)}
-            >
-              {s.confirmed >= s.capacity ? "Join waitlist" : "I'm in"}
-            </Btn>
-          )}
-        </Card>
-      ))}
+          </>
+        ) : (
+          <p className="text-lg font-bold">The season is over.</p>
+        )}
+      </Card>
     </div>
+  );
+}
+
+function NextNightBody({ s }: { s: SessionListing }) {
+  return (
+    <>
+      <p className="text-2xl font-black">{s.label}</p>
+      <p className="text-white/70">{s.hours}</p>
+      <p className="mt-2 text-sm text-white/60">
+        {s.registration === "not-yet"
+          ? `Sign-up opens at 8:00 am on ${s.label}. ${s.capacity} spots, first come, first served.`
+          : s.registrationNote}
+      </p>
+      {s.mine === "confirmed" && (
+        <p className="mt-1 text-sm font-semibold text-lime-300">
+          You&apos;re in
+        </p>
+      )}
+    </>
+  );
+}
+
+function NextNights({ view, skip }: { view: LiveView; skip: string }) {
+  const s = view.sessions.find((x) => x.id !== skip && x.status !== "ended");
+  if (!s) return null;
+  return (
+    <Card>
+      <p className="text-xs tracking-wider text-white/60 uppercase">
+        Next night
+      </p>
+      <NextNightBody s={s} />
+    </Card>
   );
 }
 

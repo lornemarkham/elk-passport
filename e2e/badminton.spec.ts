@@ -9,14 +9,16 @@ import { localDate } from "../src/lib/courtqueue/clock";
 
 /**
  * CourtQueue end to end, several phones at once, on the memory store. Run
- * against a fresh server started with `COURTQUEUE_STORE=memory` (the
- * organizer code is then "organizer" unless COURTQUEUE_ORGANIZER_CODE says
- * otherwise). One serial story, because it is one night.
+ * against a fresh server started with `COURTQUEUE_STORE=memory` and
+ * `COURTQUEUE_CLOCK` set to a club night after 8:00 am (sign-up is only
+ * possible on the day), e.g. `2026-11-12T18:45:00-07:00`. The organizer code
+ * is "organizer" unless COURTQUEUE_ORGANIZER_CODE says otherwise. One serial
+ * story, because it is one night.
  */
 
 const CODE = process.env.COURTQUEUE_ORGANIZER_CODE ?? "organizer";
 const RUN = Math.random().toString(36).slice(2, 6);
-const TODAY = localDate(Date.now());
+let TODAY = "";
 
 test.describe.configure({ mode: "serial" });
 
@@ -34,9 +36,14 @@ async function player(
   return api;
 }
 
-async function act(api: APIRequestContext, cmd: object, scope = "session") {
+async function act(
+  api: APIRequestContext,
+  cmd: object,
+  sessionId = TODAY,
+  scope = "session",
+) {
   const r = await api.post("/api/badminton/act", {
-    data: { scope, sessionId: TODAY, cmd },
+    data: { scope, sessionId, cmd },
   });
   return { ok: r.ok(), body: await r.json() };
 }
@@ -46,6 +53,9 @@ async function must(api: APIRequestContext, cmd: object) {
   expect(out.ok, `${JSON.stringify(cmd)}: ${out.body.error}`).toBe(true);
   return out.body.view;
 }
+
+const live = async (api: APIRequestContext) =>
+  (await api.get("/api/badminton/live")).json();
 
 async function phone(browser: Browser) {
   const ctx = await browser.newContext({
@@ -62,6 +72,7 @@ let org: APIRequestContext;
 
 test.beforeAll(async ({ baseURL }) => {
   org = await player(baseURL!, `Org ${RUN}`, 3);
+  TODAY = localDate((await live(org)).now);
   const claim = await org.post("/api/badminton/me", {
     data: { action: "organizer", code: CODE },
   });
@@ -72,11 +83,10 @@ test.beforeAll(async ({ baseURL }) => {
   expect(made.ok(), await made.text()).toBe(true);
 });
 
-test("four phones: register, check in, PLAY, get called, START, FINISH, score, confirm", async ({
+test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP → PLAYING → FINISHED", async ({
   browser,
   baseURL,
 }) => {
-  // Phone A registers on the page itself, like everybody will on Thursday.
   const a = await phone(browser);
   await a.page.goto("/badminton");
   await expect(
@@ -87,42 +97,71 @@ test("four phones: register, check in, PLAY, get called, START, FINISH, score, c
   await a.page.getByLabel(/Choose a PIN/).fill("2468");
   await a.page.getByText("Intermediate", { exact: true }).click();
   await a.page.getByRole("button", { name: "Join CourtQueue" }).click();
+  const phase = a.page.getByTestId("phase");
+
+  await expect(phase).toHaveText("NOT SIGNED UP");
+  await expect(
+    a.page.getByText("Coldstream Elementary School Gym"),
+  ).toBeVisible();
+  await a.page.getByRole("button", { name: "SIGN ME UP" }).click();
+  await expect(phase).toHaveText("REGISTERED");
   await a.page.getByRole("button", { name: "I'M HERE" }).click();
-  await a.page.getByRole("button", { name: "Play", exact: true }).click();
-  await expect(a.page.getByText("You're in line")).toBeVisible();
+  await expect(phase).toHaveText("READY TO PLAY");
+  await a.page.getByRole("button", { name: "JOIN THE QUEUE" }).click();
+  await expect(phase).toHaveText("WAITING");
   await expect(a.page.getByText("#1", { exact: true })).toBeVisible();
 
-  // Three friends tap PLAY on their own phones (through the API).
+  // Three friends sign up and join the queue on their own phones.
   const others = [];
   for (const n of ["Bo", "Cy", "Di"]) {
     const p = await player(baseURL!, `${n} ${RUN}`, 3);
+    await must(p, { type: "register" });
     await must(p, { type: "check-in" });
     others.push(p);
   }
   await Promise.all(others.map((p) => must(p, { type: "play" })));
 
-  // Phone A is called without touching anything.
-  await expect(a.page.getByText("You're up!")).toBeVisible({ timeout: 8_000 });
-  await expect(a.page.getByText("Everyone's first game tonight")).toBeVisible();
-  // Intermediates are not sent to the expert court.
+  // Phone A is called without touching anything: the whole screen says so.
+  const takeover = a.page.getByRole("alertdialog");
+  await expect(takeover).toBeVisible({ timeout: 8_000 });
+  await expect(takeover.getByText(/^COURT \d$/)).toBeVisible();
+  await expect(takeover.getByText("YOU'RE UP!")).toBeVisible();
   await expect(
-    a.page.getByText(/^(Beginner|Intermediate) Court ·/),
+    takeover.getByText("Everyone's first game tonight"),
   ).toBeVisible();
+  const court = Number(
+    (await takeover.getByText(/^COURT \d$/).textContent())!.slice(-1),
+  );
+  // Intermediates are not sent to the expert court.
+  expect(court).not.toBe(3);
 
-  // A spectator phone sees the same court.
+  // Someone who isn't one of the four cannot start it.
+  const ed = await player(baseURL!, `Ed ${RUN}`, 4);
+  await must(ed, { type: "register" });
+  await must(ed, { type: "check-in" });
+  const gameId = (await live(others[0]!)).night.me.game.id;
+  const outsider = await act(ed, { type: "start", gameId });
+  expect(outsider.ok).toBe(false);
+  expect(outsider.body.error).toMatch(/Only the four/);
+
+  // A spectator phone sees the same court, called.
   const e = await phone(browser);
-  const er = await e.ctx.request.post("/api/badminton/me", {
-    data: { action: "register", name: `Ed ${RUN}`, pin: "1111", skill: 4 },
-  });
-  expect(er.ok()).toBe(true);
+  await e.ctx.addCookies((await ed.storageState()).cookies);
   await e.page.goto("/badminton");
-  await e.page.getByRole("button", { name: "Courts" }).click();
-  await expect(e.page.getByText("Called").first()).toBeVisible();
+  await expect(e.page.getByTestId(`court-${court}`)).toHaveAttribute(
+    "data-status",
+    "called",
+  );
 
-  await a.page.getByRole("button", { name: "START GAME" }).click();
-  await expect(a.page.getByText(/^Playing ·/)).toBeVisible();
-  await expect(e.page.getByText("Occupied")).toBeVisible({ timeout: 8_000 });
-  await expect(e.page.getByText(`Ana ${RUN}`).first()).toBeVisible();
+  await takeover.getByRole("button", { name: "START GAME" }).click();
+  await expect(phase).toHaveText("PLAYING");
+  await expect(takeover).toBeHidden();
+  await expect(e.page.getByTestId(`court-${court}`)).toHaveAttribute(
+    "data-status",
+    "playing",
+    { timeout: 8_000 },
+  );
+  await expect(e.page.getByTestId(`court-${court}`)).toContainText("Ana");
 
   // Phone A loses signal for a moment — and comes back.
   await a.ctx.setOffline(true);
@@ -134,28 +173,39 @@ test("four phones: register, check in, PLAY, get called, START, FINISH, score, c
     timeout: 10_000,
   });
 
+  // FINISH without a score: the court is free at once anyway.
   await a.page.getByRole("button", { name: "FINISH GAME" }).click();
-  const scores = a.page.getByLabel(/^Score for/);
-  await scores.nth(0).fill("21");
-  await scores.nth(1).fill("17");
-  await a.page.getByRole("button", { name: "Save 21–17 & finish" }).click();
+  await a.page.getByRole("button", { name: "Finish without a score" }).click();
+  await expect(phase).toHaveText("FINISHED");
+  await expect(a.page.getByText("no score yet")).toBeVisible();
+  await expect(e.page.getByTestId(`court-${court}`)).not.toHaveAttribute(
+    "data-status",
+    "playing",
+    { timeout: 8_000 },
+  );
+  // Nobody was put back in line by themselves.
+  const after = await live(org);
+  expect(after.night.queue).toHaveLength(0);
 
-  // The result shows on the spectator's phone, and a teammate confirms it.
-  await expect(e.page.getByText("21–17")).toBeVisible({ timeout: 8_000 });
-  const view = await (await others[0]!.get("/api/badminton/live")).json();
-  const played = view.night.me.played[0];
-  expect(played.minutes).toBeGreaterThanOrEqual(0);
+  // The score, later; a teammate confirms it.
+  await a.page.getByRole("button", { name: "Add the score" }).click();
+  await a.page.getByLabel("Score 1").fill("21");
+  await a.page.getByLabel("Score 2").fill("17");
+  await a.page.getByRole("button", { name: "Save" }).click();
+  await expect(a.page.getByText("(provisional)")).toBeVisible();
+  const played = (await live(others[0]!)).night.me.played[0];
+  expect(played.score).toEqual([21, 17]);
   expect(played.startedAt).toBeLessThan(played.finishedAt);
-  // Anyone but the player who entered the score may confirm it.
-  const confirmer = others[0]!;
-  await must(confirmer, { type: "confirm", gameId: played.id });
-  await a.page.getByRole("button", { name: "Tonight" }).click();
+  await must(others[0]!, { type: "confirm", gameId: played.id });
   await expect(a.page.getByText("confirmed")).toBeVisible({ timeout: 8_000 });
 
-  // The organizer's phone sees the night and can fix it.
+  // BACK IN THE QUEUE, only when tapped.
+  await a.page.getByRole("button", { name: "BACK IN THE QUEUE" }).click();
+  await expect(phase).toHaveText("WAITING");
+
+  // The organizer's phone sees the night and the game's times.
   const o = await phone(browser);
-  const cookies = await org.storageState();
-  await o.ctx.addCookies(cookies.cookies);
+  await o.ctx.addCookies((await org.storageState()).cookies);
   await o.page.goto("/badminton");
   await o.page.getByRole("button", { name: "Organize" }).click();
   await expect(
@@ -166,6 +216,135 @@ test("four phones: register, check in, PLAY, get called, START, FINISH, score, c
   await Promise.all([a.ctx.close(), e.ctx.close(), o.ctx.close()]);
 });
 
+test("the season schedule, cancelled nights, and no sign-up for another day", async ({
+  browser,
+}) => {
+  const o = await phone(browser);
+  await o.ctx.addCookies((await org.storageState()).cookies);
+  await o.page.goto("/badminton");
+  await o.page.getByRole("button", { name: "Schedule" }).click();
+  await expect(
+    o.page.getByRole("heading", { name: "Vernon Badminton Club" }),
+  ).toBeVisible();
+  await expect(
+    o.page.getByText("October 5, 2026 – April 15, 2027"),
+  ).toBeVisible();
+  await expect(o.page.getByText("7:00–9:00 pm")).toBeVisible();
+  await expect(o.page.getByText("6:30–8:30 pm")).toBeVisible();
+  // The organizer marks a crossed-out date.
+  await o.page.getByRole("button", { name: /^Monday Dec 21/ }).click();
+  await o.page.getByLabel("Why (shown to players)").fill("Winter break");
+  await o.page.getByRole("button", { name: "Cancel this night" }).click();
+  await expect(
+    o.page.getByLabel("Monday Dec 21 — cancelled: Winter break"),
+  ).toBeVisible();
+  await expect(o.page.getByText("Winter break").first()).toBeVisible();
+
+  // The server refuses: a cancelled night, and any night that isn't today.
+  const made = await org.post("/api/badminton/act", {
+    data: { scope: "sessions", dates: ["2026-12-21", "2026-12-24"] },
+  });
+  expect(made.ok()).toBe(true);
+  const cancelled = await act(org, { type: "register" }, "2026-12-21");
+  expect(cancelled.body.error).toMatch(/cancelled/);
+  const future = await act(org, { type: "register" }, "2026-12-24");
+  expect(future.body.error).toMatch(/8:00 am on Thursday Dec 24/);
+
+  // Put it back.
+  await o.page.getByRole("button", { name: /^Monday Dec 21/ }).click();
+  await o.page.getByRole("button", { name: "Put this night back on" }).click();
+  await expect(o.page.getByLabel("Monday Dec 21, 7:00–9:00 pm")).toBeVisible();
+  await o.ctx.close();
+});
+
+test("24 phones, three courts: every phone agrees, nobody waits twice for nothing", async ({
+  baseURL,
+}) => {
+  const skills = [
+    1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 2, 3, 4, 3, 5,
+  ];
+  // Make room: everyone from the first story gives their spot away.
+  for (const r of (await live(org)).organizer.roster)
+    if (r.status === "confirmed")
+      await must(org, { type: "cancel", playerId: r.person.id });
+  const phones: APIRequestContext[] = [];
+  for (const [i, k] of skills.entries())
+    phones.push(await player(baseURL!, `Sim${i} ${RUN}`, k));
+  // Everybody checks in and joins the queue.
+  await Promise.all(phones.map((p) => must(p, { type: "register" })));
+  await Promise.all(phones.map((p) => must(p, { type: "check-in" })));
+  await Promise.all(phones.map((p) => must(p, { type: "play" })));
+  const ids = await Promise.all(phones.map(async (p) => (await live(p)).me.id));
+  const byId = new Map(ids.map((id, i) => [id, phones[i]!]));
+
+  const shape = (v: {
+    night: {
+      courts: {
+        id: number;
+        game: {
+          id: string;
+          status: string;
+          slots: ({ id: string } | null)[];
+        } | null;
+      }[];
+      queue: { person: { id: string } }[];
+    };
+  }) =>
+    JSON.stringify({
+      courts: v.night.courts.map((c) => [
+        c.id,
+        c.game?.id,
+        c.game?.status,
+        c.game?.slots.map((s) => s?.id),
+      ]),
+      queue: v.night.queue.map((q) => q.person.id),
+    });
+
+  for (let round = 0; round < 4; round++) {
+    const views = await Promise.all(phones.map(live));
+    expect(new Set(views.map(shape)).size, `round ${round}`).toBe(1);
+    const courts = views[0].night.courts;
+    // Every court in use has four assigned players; nobody is in two places.
+    const seated = courts.flatMap(
+      (c: { game: { slots: { id: string }[] } | null }) =>
+        c.game ? c.game.slots.map((s) => s.id) : [],
+    );
+    expect(new Set(seated).size).toBe(seated.length);
+    for (const c of courts)
+      if (c.game) expect(c.game.slots.filter(Boolean)).toHaveLength(4);
+    // Start, finish with a score, and the four tap back in.
+    for (const c of courts) {
+      if (!c.game) continue;
+      const four = c.game.slots.map((s: { id: string }) => byId.get(s.id)!);
+      if (c.game.status === "called")
+        await must(four[0]!, { type: "start", gameId: c.game.id });
+      await must(four[1]!, {
+        type: "finish",
+        gameId: c.game.id,
+        score: [21, 12 + round],
+      });
+      await Promise.all(
+        four.map((p: APIRequestContext) => must(p, { type: "play" })),
+      );
+    }
+  }
+  const o = (await live(org)).organizer;
+  const finished = o.games.filter(
+    (g: { status: string }) => g.status === "finished",
+  );
+  expect(finished.length).toBeGreaterThanOrEqual(10);
+  for (const g of finished) {
+    expect(g.startedAt).toBeLessThan(g.finishedAt);
+    expect(g.score).not.toBeNull();
+  }
+  const here = o.roster.filter(
+    (r: { here: boolean; person: { id: string } }) =>
+      r.here && ids.includes(r.person.id),
+  );
+  const games = here.map((r: { games: number }) => r.games);
+  expect(Math.max(...games) - Math.min(...games)).toBeLessThanOrEqual(2);
+});
+
 test("the expert court never takes a beginner; 25 is the limit and the waitlist moves up", async ({
   baseURL,
 }) => {
@@ -173,33 +352,20 @@ test("the expert court never takes a beginner; 25 is the limit and the waitlist 
   const experts = [];
   for (const n of ["X1", "X2", "X3"])
     experts.push(await player(baseURL!, `${n} ${RUN}`, 5));
-  for (const p of [beginner, ...experts]) await must(p, { type: "check-in" });
-  const live = await (await org.get("/api/badminton/live")).json();
-  const ids = [beginner, ...experts].map(
-    async (p) => (await (await p.get("/api/badminton/live")).json()).me.id,
+  const four = await Promise.all(
+    [beginner, ...experts].map(async (p) => (await live(p)).me.id),
   );
-  const four = await Promise.all(ids);
-  const expertCourtFree =
-    live.night.courts.find((c: { id: number }) => c.id === 3).game === null;
-  if (expertCourtFree) {
-    const out = await act(org, { type: "assign", court: 3, slots: four });
-    expect(out.ok).toBe(false);
-    expect(out.body.error).toMatch(/never on the expert court/);
-  }
+  const out = await act(org, { type: "assign", court: 3, slots: four });
+  expect(out.ok).toBe(false);
+  expect(out.body.error).toMatch(
+    /never on the expert court|isn't checked in|already has a game/,
+  );
 
-  // Fill the night to 25, then one more.
-  let view = (
-    await (await org.get("/api/badminton/live")).json()
-  ).sessions.find((s: { id: string }) => s.id === TODAY);
-  const extra: APIRequestContext[] = [];
-  for (let i = view.confirmed; i < 25; i++) {
-    const p = await player(baseURL!, `Fill${i} ${RUN}`, 2);
-    await must(p, { type: "register" });
-    extra.push(p);
-  }
+  // 24 are in; the beginner takes the 25th spot and one more waits.
+  await must(beginner, { type: "register" });
   const late = await player(baseURL!, `Late ${RUN}`, 3);
   await must(late, { type: "register" });
-  view = (await (await late.get("/api/badminton/live")).json()).sessions.find(
+  let view = (await live(late)).sessions.find(
     (s: { id: string }) => s.id === TODAY,
   );
   expect(view.confirmed).toBe(25);
@@ -208,8 +374,13 @@ test("the expert court never takes a beginner; 25 is the limit and the waitlist 
     /waitlist/,
   );
   // One cancels: the waitlist moves up on its own.
-  await must(extra[0]!, { type: "cancel" });
-  view = (await (await late.get("/api/badminton/live")).json()).sessions.find(
+  const roster = (await live(org)).organizer.roster;
+  const leaving = roster.find(
+    (r: { status: string; here: boolean }) =>
+      r.status === "confirmed" && !r.here,
+  );
+  await must(org, { type: "cancel", playerId: leaving.person.id });
+  view = (await live(late)).sessions.find(
     (s: { id: string }) => s.id === TODAY,
   );
   expect(view.mine).toBe("confirmed");

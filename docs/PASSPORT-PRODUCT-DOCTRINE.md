@@ -836,7 +836,10 @@ _CourtQueue arrived 2026-11-10, deliberately not on the menu_ (owner brief
 "P0: Build CourtQueue"; `docs/product/badminton/README.md`, ADR 017):
 drop-in badminton for one club, reached by its own link, `/badminton`, with
 its own name-and-PIN players. Whether it belongs in the Experiences menu is
-the owner's call; this paragraph does not make it.
+the owner's call; this paragraph does not make it. Its real-world release
+(2026-11-10) made two of its rules canonical for it: _nobody plays a game
+CourtQueue didn't assign_ (four named players, every game), and _nobody is put
+back in line but by themselves_ — after a game a player taps BACK IN THE QUEUE.
 
 ---
 

@@ -7,10 +7,12 @@ import { post, useLive } from "./api";
 import { Btn, Card, Toggle, cx } from "./bits";
 import { ChallengeTab, Courts } from "./Courts";
 import { Me } from "./Me";
+import { useAlerts } from "./notify";
 import { Organizer } from "./Organizer";
-import { Tonight } from "./Tonight";
+import { Schedule } from "./Schedule";
+import { FinishSheet, Tonight, UpTakeover } from "./Tonight";
 
-type Tab = "tonight" | "courts" | "challenge" | "me" | "organizer";
+type Tab = "tonight" | "courts" | "schedule" | "challenge" | "me" | "organizer";
 
 /**
  * **CourtQueue — Everybody Plays.** One phone each, no central screen. The
@@ -24,12 +26,14 @@ export function CourtQueueApp() {
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(
     null,
   );
-  const alerts = useAlerts();
+  const alerts = useAlerts(view?.me?.id ?? null);
+  const [finishing, setFinishing] = useState(false);
+  const [hidden, setHidden] = useState<string | null>(null);
   const say = useCallback((text: string, bad?: boolean) => {
     setToast({ text, bad });
     setTimeout(() => setToast(null), bad ? 4500 : 2500);
   }, []);
-  useCalledAlert(view, alerts.notify, say);
+  useCalledAlert(view, alerts.state === "on" ? null : alerts.notify, say);
 
   const actPath = `/api/badminton/act${focus ? `?org=${encodeURIComponent(focus)}` : ""}`;
   const act = useCallback(
@@ -55,7 +59,7 @@ export function CourtQueueApp() {
     const out = await post("/api/badminton/act", { scope: "sessions" });
     if (out.view) accept(out.view);
     if (!out.ok) say(out.error ?? "That didn't work.", true);
-    else say("Next Monday and Thursday are on the calendar.");
+    else say("The next club nights are on the calendar.");
     return out.ok;
   }, [accept, say]);
 
@@ -87,15 +91,17 @@ export function CourtQueueApp() {
     );
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: "tonight", label: "Tonight", icon: "🏸" },
+    { id: "tonight", label: "Home", icon: "🏸" },
     { id: "courts", label: "Courts", icon: "▦" },
-    { id: "challenge", label: "Challenge", icon: "⚔︎" },
+    { id: "schedule", label: "Schedule", icon: "▤" },
     { id: "me", label: "Me", icon: "☺︎" },
     ...(view.me.organizer
       ? [{ id: "organizer" as Tab, label: "Organize", icon: "⚙︎" }]
       : []),
   ];
   const called = view.night?.me?.state === "called";
+  const game = view.night?.me?.game ?? null;
+  const takeover = called && game && hidden !== game.id;
   return (
     <Shell>
       {!online && (
@@ -106,6 +112,24 @@ export function CourtQueueApp() {
           Reconnecting… what you see may be a moment old.
         </div>
       )}
+      {takeover && (
+        <UpTakeover
+          night={view.night!}
+          meId={view.me.id}
+          act={act}
+          onFinish={() => setFinishing(true)}
+          onHide={() => setHidden(game!.id)}
+        />
+      )}
+      {game && (
+        <FinishSheet
+          key={game.id}
+          open={finishing}
+          onClose={() => setFinishing(false)}
+          g={game}
+          act={act}
+        />
+      )}
       {called && tab !== "tonight" && (
         <button
           onClick={() => setTab("tonight")}
@@ -115,7 +139,17 @@ export function CourtQueueApp() {
         </button>
       )}
       <main className="pb-28">
-        {tab === "tonight" && <Tonight view={view} act={act} offset={offset} />}
+        {tab === "tonight" && (
+          <Tonight
+            view={view}
+            act={act}
+            offset={offset}
+            onFinish={() => setFinishing(true)}
+            onRequest={() => setTab("challenge")}
+            alerts={alerts}
+          />
+        )}
+        {tab === "schedule" && <Schedule view={view} clubAct={clubAct} />}
         {tab === "courts" && <Courts view={view} offset={offset} />}
         {tab === "challenge" && <ChallengeTab view={view} act={act} />}
         {tab === "me" && (
@@ -343,51 +377,10 @@ function Welcome({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** Optional system notifications. The app never depends on them. */
-function useAlerts() {
-  const [supported, setSupported] = useState(false);
-  const [on, setOn] = useState(false);
-  const reg = useRef<ServiceWorkerRegistration | null>(null);
-  useEffect(() => {
-    const ok =
-      typeof window !== "undefined" &&
-      "Notification" in window &&
-      "serviceWorker" in navigator;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- what the browser supports is only knowable after mount
-    setSupported(ok);
-    if (!ok) return;
-    navigator.serviceWorker
-      .register("/badminton/sw.js", { scope: "/badminton" })
-      .then((r) => {
-        reg.current = r;
-      })
-      .catch(() => {});
-    setOn(Notification.permission === "granted");
-  }, []);
-  const enable = useCallback(async () => {
-    const p = await Notification.requestPermission();
-    setOn(p === "granted");
-  }, []);
-  const notify = useCallback((title: string, body: string) => {
-    if (
-      typeof Notification === "undefined" ||
-      Notification.permission !== "granted"
-    )
-      return;
-    if (document.visibilityState === "visible") return;
-    void reg.current?.showNotification(title, {
-      body,
-      tag: "courtqueue",
-      icon: "/badminton/app-icon/192",
-    });
-  }, []);
-  return { supported, on, enable, notify };
-}
-
 /** When this phone's player is called, or invited, say so — in the app first. */
 function useCalledAlert(
   view: LiveView | null,
-  notify: (t: string, b: string) => void,
+  notify: ((t: string, b: string) => void) | null,
   say: (t: string) => void,
 ) {
   const prev = useRef<{
@@ -411,14 +404,17 @@ function useCalledAlert(
       if (me?.state === "called" && was.state !== "called") {
         const court = me.game?.court;
         say(`You're up — court ${court}!`);
-        notify("You're up!", `Court ${court}. Head over and tap START GAME.`);
+        notify?.(
+          `COURT ${court} — YOU'RE UP!`,
+          "Head over and tap START GAME.",
+        );
         navigator.vibrate?.([200, 100, 200]);
         beep();
       }
       for (const id of invites)
         if (!was.invites.has(id)) {
           say("You've been challenged!");
-          notify("Challenge!", "Someone wants a game with you.");
+          notify?.("Challenge!", "Someone wants a game with you.");
         }
       for (const s of view.sessions)
         if (was.roster[s.id] === "waitlist" && s.mine === "confirmed")

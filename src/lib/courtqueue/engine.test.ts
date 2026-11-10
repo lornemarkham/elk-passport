@@ -46,12 +46,14 @@ describe("CourtQueue engine", () => {
     );
   });
 
-  it("only checks in on the day", () => {
+  it("only signs up and checks in on the day", () => {
     const c = club([3]);
-    const s = must(c, night("2026-11-16"), as("p1"), { type: "register" }, T0);
-    expect(refused(c, s, as("p1"), { type: "check-in" }, T0)).toMatch(
-      /on the day/,
-    );
+    expect(
+      refused(c, night("2026-11-16"), as("p1"), { type: "register" }, T0),
+    ).toMatch(/8:00 am on Monday Nov 16/);
+    expect(
+      refused(c, night("2026-11-16"), as("p1"), { type: "check-in" }, T0),
+    ).toMatch(/on the day/);
   });
 
   it("fills three courts from twelve players and keeps the other twelve waiting", () => {
@@ -249,6 +251,8 @@ describe("CourtQueue engine", () => {
     for (const g of active(s)) {
       s = must(c, s, ORG, { type: "start", gameId: g.id }, T0 + MINUTE);
       s = must(c, s, ORG, { type: "finish", gameId: g.id }, T0 + 15 * MINUTE);
+      for (const id of filled(g.slots))
+        s = must(c, s, as(id), { type: "play" }, T0 + 15 * MINUTE);
     }
     // Everyone has one game; new games got called. Let p1..p4's game finish too.
     const queueBefore = s.queue.map((q) => q.playerId);

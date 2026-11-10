@@ -5,7 +5,7 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
-import { localDate, nextSessionDates, weekdayLabel } from "./clock";
+import { localDate, serverNow, weekdayLabel } from "./clock";
 import {
   applyClub,
   applySession,
@@ -13,6 +13,7 @@ import {
   nameKey,
   nameTaken,
   tickOnly,
+  windDown,
   type Actor,
   type ClubCommand,
   type Outcome,
@@ -26,6 +27,19 @@ import {
   type Player,
   type Session,
 } from "./model";
+import {
+  changeNotices,
+  dueReminders,
+  openingNotice,
+  type Notice,
+} from "./notices";
+import { sendLater, subscribe, subscribedPlayers, unsubscribe } from "./push";
+import {
+  isDate,
+  isScheduled,
+  registrationState,
+  upcomingNights,
+} from "./schedule";
 import { playerStats, promotionHint } from "./stats";
 import { courtStore, NotReady, type DocStore } from "./store";
 import {
@@ -34,6 +48,7 @@ import {
   nightView,
   organizerView,
   person,
+  seasonView,
   type LiveView,
 } from "./view";
 
@@ -134,10 +149,15 @@ async function changeSession(
       doc.value as Session,
       actor,
       cmd,
-      Date.now(),
+      serverNow(),
     );
     if (!out.ok) return out;
-    if (await write(store, sessionKey(id), out.value, doc.version)) return out;
+    if (await write(store, sessionKey(id), out.value, doc.version)) {
+      sendLater(
+        changeNotices(clubDoc.value as Club, doc.value as Session, out.value),
+      );
+      return out;
+    }
   }
   return { ok: false, error: "Busy — try again." };
 }
@@ -215,7 +235,7 @@ export async function register(input: {
       };
     if (Object.keys(club.players).length >= 400)
       return { ok: false, error: "The club is full." };
-    const now = Date.now();
+    const now = serverNow();
     const p: Player = {
       id: randomBytes(6).toString("base64url"),
       name,
@@ -353,7 +373,7 @@ export async function act(
   const actor = actorOf(me);
   if (body.scope === "club") {
     const out = await changeClub(store, (c) =>
-      applyClub(c, actor, body.cmd as ClubCommand, Date.now()),
+      applyClub(c, actor, body.cmd as ClubCommand, serverNow()),
     );
     return out.ok ? { ok: true, value: null } : out;
   }
@@ -361,11 +381,8 @@ export async function act(
     if (!actor.organizer)
       return { ok: false, error: "Only the organizer can add sessions." };
     const dates = Array.isArray(body.dates)
-      ? body.dates.filter(
-          (d): d is string =>
-            typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d),
-        )
-      : nextSessionDates(Date.now());
+      ? body.dates.filter((d): d is string => isDate(d) && isScheduled(d))
+      : upcomingNights(serverNow(), club.cancelled);
     return createSessions(store, dates.slice(0, 8));
   }
   if (body.scope === "session" && typeof body.sessionId === "string") {
@@ -414,12 +431,12 @@ export async function live(
   focus: string | null = null,
 ): Promise<LiveView | { unchanged: true; now: number }> {
   const store = courtStore();
-  const now = Date.now();
+  const now = serverNow();
   let first = await loadClub(store);
   // The next Monday and Thursday are always on the calendar, so a night
   // never waits on someone remembering to add it. Only for a signed-in
   // player, so a passing crawler writes nothing.
-  const upcoming = nextSessionDates(now);
+  const upcoming = upcomingNights(now, first.club.cancelled);
   if (
     playerFromCookie(first.club, cookie) &&
     upcoming.some((d) => !first.club.sessions.some((s) => s.date === d))
@@ -435,21 +452,13 @@ export async function live(
   let sessions = metas
     .map((m) => docs.get(sessionKey(m.id))?.value as Session | undefined)
     .filter((s): s is Session => !!s);
-  // Time alone can free a challenge to go on; fill courts on the way past.
-  const night0 = currentNight(club, sessions, now);
-  if (night0?.status === "live") {
-    const ticked = tickOnly(club, night0, now);
-    const d = docs.get(sessionKey(night0.id));
-    if (
-      ticked &&
-      d &&
-      (await write(store, sessionKey(night0.id), ticked, d.version))
-    ) {
-      docs = await read(store, keys, true);
-      sessions = metas
-        .map((m) => docs.get(sessionKey(m.id))?.value as Session | undefined)
-        .filter((s): s is Session => !!s);
-    }
+  // What time alone changes: a court to fill, a night to put away, a
+  // reminder due. Done on the way past by whichever phone asks first.
+  if (await maintain(store, club, sessions, docs, now)) {
+    docs = await read(store, keys, true);
+    sessions = metas
+      .map((m) => docs.get(sessionKey(m.id))?.value as Session | undefined)
+      .filter((s): s is Session => !!s);
   }
   const me = playerFromCookie(club, cookie);
   const version = [
@@ -462,6 +471,7 @@ export async function live(
   return {
     now,
     version,
+    season: seasonView(club, now),
     me: me
       ? {
           ...person(club, me.id),
@@ -471,12 +481,86 @@ export async function live(
       : null,
     sessions: sessions
       .filter((s) => s.status !== "ended" || s.id === night?.id)
-      .map((s) => listing(club, s, me?.id ?? null)),
+      .map((s) => listing(club, s, me?.id ?? null, now)),
     night: night ? nightView(club, night, me?.id ?? null, now) : null,
     organizer: me?.organizer
       ? organizerView(club, sessions.find((s) => s.id === focus) ?? night, now)
       : null,
   };
+}
+
+/**
+ * One pass of everything the clock does, each a single compare-and-swap
+ * write (a lost race means another server just did it): wind down nights
+ * past their end, fill free courts, send due reminders and, once on the
+ * day, "sign-up is open". True when something was written.
+ */
+async function maintain(
+  store: DocStore,
+  club: Club,
+  sessions: readonly Session[],
+  docs: Map<string, { value: unknown; version: number }>,
+  now: number,
+): Promise<boolean> {
+  let wrote = false;
+  const notices: Notice[] = [];
+  const today = localDate(now);
+  let subscribers: string[] | null = null;
+  for (const s0 of sessions) {
+    const d = docs.get(sessionKey(s0.id));
+    if (!d || s0.status === "ended") continue;
+    const mine: Notice[] = [];
+    let s = windDown(club, s0, now);
+    if (!s) {
+      const ticked = tickOnly(club, s0, now);
+      s = ticked ?? structuredClone(s0);
+      if (ticked) mine.push(...changeNotices(club, s0, ticked));
+      const due = dueReminders(club, s, now);
+      for (const r of due) {
+        s.notified = { ...(s.notified ?? {}), [r.key]: now };
+        mine.push(r.notice);
+      }
+      if (
+        s.date === today &&
+        !s.notified?.open &&
+        registrationState(s.date, now, club.cancelled) === "open"
+      ) {
+        subscribers ??= await subscribedPlayers(store);
+        const open = openingNotice(club, s, subscribers, now);
+        if (open) {
+          s.notified = { ...(s.notified ?? {}), open: now };
+          mine.push(open);
+        }
+      }
+      if (!ticked && !due.length && s.notified?.open === s0.notified?.open)
+        continue;
+    }
+    // Lost the race: whoever won is sending these.
+    if (!(await write(store, sessionKey(s0.id), s, d.version))) continue;
+    wrote = true;
+    notices.push(...mine);
+  }
+  if (wrote) sendLater(notices);
+  return wrote;
+}
+
+/**
+ * The scheduled nudge (Vercel cron, and safe to call any time): make sure
+ * today's night exists if it is a club night, then do what the clock does.
+ * No sign-in needed; it changes nothing a poll wouldn't.
+ */
+export async function tick(): Promise<{ night: string | null }> {
+  const store = courtStore();
+  const now = serverNow();
+  const { club } = await loadClub(store, true);
+  const today = localDate(now);
+  const tonightDate = upcomingNights(now, club.cancelled, 1).find(
+    (d) => d === today,
+  );
+  if (tonightDate && !club.sessions.some((s) => s.date === tonightDate))
+    await createSessions(store, [tonightDate]);
+  await live(undefined, null);
+  return { night: tonightDate ?? null };
 }
 
 export async function stats(cookie: string | undefined) {
@@ -533,7 +617,7 @@ export async function savePhoto(cookie: string | undefined, dataUrl: unknown) {
   if (!me) return { ok: false as const, error: "Sign in first." };
   if (dataUrl === null) {
     await changeClub(store, (c) =>
-      applyClub(c, actorOf(me), { type: "profile", photo: false }, Date.now()),
+      applyClub(c, actorOf(me), { type: "profile", photo: false }, serverNow()),
     );
     return { ok: true as const, value: null };
   }
@@ -549,7 +633,7 @@ export async function savePhoto(cookie: string | undefined, dataUrl: unknown) {
   const existing = (await store.get([photoKey(me.id)])).get(photoKey(me.id));
   await write(store, photoKey(me.id), { dataUrl }, existing?.version ?? 0);
   await changeClub(store, (c) =>
-    applyClub(c, actorOf(me), { type: "profile", photo: true }, Date.now()),
+    applyClub(c, actorOf(me), { type: "profile", photo: true }, serverNow()),
   );
   return { ok: true as const, value: null };
 }
@@ -575,4 +659,28 @@ export async function organizerResetPin(
   const me = await whoIs(cookie);
   if (!me) return { ok: false as const, error: "Sign in first." };
   return resetPin(actorOf(me), String(playerId ?? ""), pin);
+}
+
+// --- Push notifications ----------------------------------------------------
+
+export async function pushChange(
+  cookie: string | undefined,
+  body: { action?: unknown; subscription?: unknown; endpoint?: unknown },
+) {
+  const me = await whoIs(cookie);
+  if (!me) return { ok: false as const, error: "Sign in first." };
+  if (body.action === "subscribe") return subscribe(me.id, body.subscription);
+  if (body.action === "unsubscribe") return unsubscribe(me.id, body.endpoint);
+  if (body.action === "test") {
+    sendLater([
+      {
+        to: [me.id],
+        title: "CourtQueue notifications are on 🏸",
+        body: "This is what you'll see when your court is ready.",
+        tag: "test",
+      },
+    ]);
+    return { ok: true as const, value: null };
+  }
+  return { ok: false as const, error: "Unknown action." };
 }

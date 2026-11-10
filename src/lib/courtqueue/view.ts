@@ -1,7 +1,8 @@
-import { localDate } from "./clock";
+import { localDate, weekdayLabel } from "./clock";
 import {
   estimateWaitMinutes,
   inOrder,
+  prepared,
   tonight,
   typicalGameMinutes,
 } from "./fair";
@@ -23,6 +24,17 @@ import {
   type SessionStatus,
   type Skill,
 } from "./model";
+import {
+  SEASON,
+  cancellationOf,
+  hoursLabel,
+  registrationOpensAt,
+  registrationState,
+  registrationWords,
+  seasonDates,
+  sessionWindow,
+  type RegistrationState,
+} from "./schedule";
 import { nightBalance } from "./stats";
 
 /**
@@ -74,6 +86,38 @@ export interface ChallengeView {
 export type MyState =
   "away" | "idle" | "queued" | "challenge" | "called" | "playing" | "left";
 
+/**
+ * **Where a player is in their night**, the one word the Home screen leads
+ * with. Each has one obvious next step:
+ *
+ *   not-registered  SIGN ME UP (from 8:00 am on the day)
+ *   waitlist        — moves up by itself
+ *   registered      I'M HERE
+ *   ready           JOIN THE QUEUE
+ *   waiting         — put the phone down
+ *   up              START GAME (the court is called)
+ *   playing         FINISH GAME
+ *   finished        BACK IN THE QUEUE (never automatic)
+ *   left / ended    —
+ */
+export type Phase =
+  | "not-registered"
+  | "waitlist"
+  | "registered"
+  | "ready"
+  | "waiting"
+  | "up"
+  | "playing"
+  | "finished"
+  | "left"
+  | "ended";
+
+export interface PreparedView {
+  readonly court: number;
+  readonly slots: (PersonView | null)[];
+  readonly at: number;
+}
+
 export interface NightView {
   readonly id: string;
   readonly date: string;
@@ -99,10 +143,24 @@ export interface NightView {
   readonly challenges: ChallengeView[];
   readonly readyChallenges: number;
   readonly typicalMinutes: number;
+  /** The next games, already prepared for the courts in use. */
+  readonly prepared: PreparedView[];
+  readonly hours: string;
+  readonly endsAt: number;
+  readonly cancelled: string | null;
+  readonly registration: RegistrationState;
+  readonly registrationNote: string;
   readonly me: {
     readonly roster: RosterStatus | null;
     readonly waitlistPosition: number | null;
     readonly state: MyState;
+    readonly phase: Phase;
+    /** Minutes spent waiting in line tonight, including now. */
+    readonly waited: number;
+    /** The prepared game this player is in, if any. */
+    readonly next: PreparedView | null;
+    /** Why their place in line is what it is, in their own numbers. */
+    readonly lineRule: string | null;
     readonly autoRequeue: boolean;
     readonly queuePosition: number | null;
     readonly queuedSince: number | null;
@@ -120,7 +178,14 @@ export interface SessionListing {
   readonly date: string;
   readonly label: string;
   readonly status: SessionStatus;
+  /** Sign-up is possible right now: the day, from 8:00 am, not cancelled. */
   readonly registrationOpen: boolean;
+  readonly registration: RegistrationState;
+  readonly registrationNote: string;
+  /** The organizer has closed sign-up for this night by hand. */
+  readonly held: boolean;
+  readonly opensAt: number;
+  readonly hours: string;
   readonly capacity: number;
   readonly confirmed: number;
   readonly waitlisted: number;
@@ -160,10 +225,34 @@ export interface OrganizerView {
   readonly spread: { readonly fewest: number; readonly most: number } | null;
 }
 
+export type NightOnCalendar = "past" | "today" | "upcoming" | "cancelled";
+
+export interface SeasonView {
+  readonly club: string;
+  readonly venue: string;
+  readonly first: string;
+  readonly last: string;
+  readonly nights: {
+    readonly date: string;
+    readonly label: string;
+    readonly hours: string;
+    readonly status: NightOnCalendar;
+    readonly reason: string | null;
+  }[];
+  /** An organizer has checked the cancellations against the official sheet. */
+  readonly confirmed: { readonly by: string; readonly at: number } | null;
+  readonly log: {
+    readonly at: number;
+    readonly by: string;
+    readonly what: string;
+  }[];
+}
+
 export interface LiveView {
   readonly now: number;
   readonly version: string;
   readonly me: MeView | null;
+  readonly season: SeasonView;
   readonly sessions: SessionListing[];
   readonly night: NightView | null;
   readonly organizer: OrganizerView | null;
@@ -236,6 +325,7 @@ export function listing(
   club: Club,
   s: Session,
   me: string | null,
+  now: number,
 ): SessionListing {
   const confirmed = s.roster.filter((r) => r.status === "confirmed").length;
   const wait = s.roster
@@ -248,7 +338,15 @@ export function listing(
     date: s.date,
     label: s.label,
     status: s.status,
-    registrationOpen: s.registrationOpen,
+    registrationOpen:
+      s.registrationOpen &&
+      s.status !== "ended" &&
+      registrationState(s.date, now, club.cancelled) === "open",
+    registration: registrationState(s.date, now, club.cancelled),
+    registrationNote: registrationWords(s.date, now, club.cancelled),
+    held: !s.registrationOpen,
+    opensAt: registrationOpensAt(s.date),
+    hours: hoursLabel(s.date),
     capacity: club.rules.capacity,
     confirmed,
     waitlisted: wait.length,
@@ -263,8 +361,13 @@ export function nightView(
   me: string | null,
   now: number,
 ): NightView {
-  const l = listing(club, s, me);
+  const l = listing(club, s, me, now);
   const line = inOrder(club, s);
+  const ready = prepared(club, s, now).map((p) => ({
+    court: p.court,
+    slots: p.slots.map((id) => (id ? person(club, id) : null)),
+    at: p.at,
+  }));
   const open = club.courts.filter((c) => !s.closedCourts.includes(c.id)).length;
   const t = tonight(s);
   const here = (id: string) =>
@@ -290,10 +393,44 @@ export function nightView(
             : presence
               ? "idle"
               : "away";
+    const played = s.games
+      .filter((g) => g.status === "finished" && g.slots.includes(me))
+      .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0));
+    const phase: Phase =
+      s.status === "ended"
+        ? "ended"
+        : state === "playing"
+          ? "playing"
+          : state === "called"
+            ? "up"
+            : state === "queued" || state === "challenge"
+              ? "waiting"
+              : state === "left"
+                ? "left"
+                : state === "idle"
+                  ? played.length
+                    ? "finished"
+                    : "ready"
+                  : l.mine === "confirmed"
+                    ? "registered"
+                    : l.mine === "waitlist"
+                      ? "waitlist"
+                      : "not-registered";
+    const games = t.get(me)?.games ?? 0;
+    const waitingNow = pos >= 0 ? Math.max(0, now - line[pos]!.since) : 0;
     mine = {
       roster: l.mine,
       waitlistPosition: l.waitlistPosition,
       state,
+      phase,
+      waited: (t.get(me)?.waited ?? 0) + Math.round(waitingNow / MINUTE),
+      next: ready.find((p) => p.slots.some((x) => x?.id === me)) ?? null,
+      lineRule:
+        pos < 0
+          ? null
+          : games === 0
+            ? "Everyone gets a first game before anyone plays a second."
+            : `People who've played fewer than ${games} game${games === 1 ? "" : "s"} tonight go first, then fewest minutes, then whoever has waited longest.`,
       autoRequeue: presence?.autoRequeue ?? true,
       queuePosition: pos >= 0 ? pos + 1 : null,
       queuedSince: pos >= 0 ? line[pos]!.since : null,
@@ -301,10 +438,7 @@ export function nightView(
       games: t.get(me)?.games ?? 0,
       minutes: t.get(me)?.minutes ?? 0,
       game: game ? gameView(club, game) : null,
-      played: s.games
-        .filter((g) => g.status === "finished" && g.slots.includes(me))
-        .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
-        .map((g) => gameView(club, g)),
+      played: played.map((g) => gameView(club, g)),
     };
   }
   return {
@@ -354,6 +488,12 @@ export function nightView(
       : [],
     readyChallenges: s.challenges.filter((c) => c.status === "ready").length,
     typicalMinutes: typicalGameMinutes(s),
+    prepared: ready,
+    hours: hoursLabel(s.date),
+    endsAt: sessionWindow(s.date).end,
+    cancelled: cancellationOf(s.date, club.cancelled)?.reason ?? null,
+    registration: l.registration,
+    registrationNote: l.registrationNote,
     me: mine,
   };
 }
@@ -430,7 +570,9 @@ export function organizerView(
           .reverse()
           .map((a) => ({
             at: a.at,
-            by: club.players[a.by]?.name ?? a.by,
+            by:
+              club.players[a.by]?.name ??
+              (a.by === "courtqueue" ? "CourtQueue" : a.by),
             what: a.what,
           }))
       : [],
@@ -457,4 +599,43 @@ export function currentNight(
   if (live) return live;
   const today = localDate(now);
   return sessions.find((s) => s.date === today && s.status !== "ended") ?? null;
+}
+
+/** The whole season, for the calendar. */
+export function seasonView(club: Club, now: number): SeasonView {
+  const today = localDate(now);
+  const name = (id: string) =>
+    club.players[id]?.name ?? (id === "courtqueue" ? "CourtQueue" : id);
+  return {
+    club: SEASON.club,
+    venue: SEASON.venue,
+    first: SEASON.first,
+    last: SEASON.last,
+    nights: seasonDates().map((date) => {
+      const c = cancellationOf(date, club.cancelled);
+      return {
+        date,
+        label: weekdayLabel(date),
+        hours: hoursLabel(date),
+        status: c
+          ? "cancelled"
+          : date < today
+            ? "past"
+            : date === today
+              ? "today"
+              : "upcoming",
+        reason: c?.reason ?? null,
+      };
+    }),
+    confirmed: club.scheduleConfirmed
+      ? {
+          by: name(club.scheduleConfirmed.by),
+          at: club.scheduleConfirmed.at,
+        }
+      : null,
+    log: (club.scheduleLog ?? [])
+      .slice(-20)
+      .reverse()
+      .map((a) => ({ at: a.at, by: name(a.by), what: a.what })),
+  };
 }

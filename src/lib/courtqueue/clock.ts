@@ -1,5 +1,23 @@
 import { legalOffset } from "@/domain/date-night/conditions";
 
+/**
+ * The server's clock. A rehearsal on the memory store can set
+ * `COURTQUEUE_CLOCK` (an ISO time) to start the clock there — so the e2e
+ * suite can play a Thursday night on any day of the week. Never honoured
+ * with a real database.
+ */
+export function serverNow(): number {
+  const at = process.env.COURTQUEUE_CLOCK;
+  if (!at || process.env.COURTQUEUE_STORE !== "memory") return Date.now();
+  const g = globalThis as unknown as {
+    __cqClock?: { from: number; at: number };
+  };
+  const start = Date.parse(at);
+  if (Number.isNaN(start)) return Date.now();
+  g.__cqClock ??= { from: Date.now(), at: start };
+  return g.__cqClock.at + (Date.now() - g.__cqClock.from);
+}
+
 /** Badminton is played in British Columbia. */
 export const ZONE = "America/Vancouver";
 

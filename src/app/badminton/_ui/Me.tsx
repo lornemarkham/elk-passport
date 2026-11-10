@@ -5,6 +5,7 @@ import { SKILL_NAMES, type Skill } from "@/lib/courtqueue/model";
 import type { LiveView } from "@/lib/courtqueue/view";
 import { Avatar, Btn, Card, SkillTag, Toggle, plural } from "./bits";
 import { post } from "./api";
+import type { Alerts } from "./notify";
 
 interface Stats {
   me: {
@@ -54,7 +55,7 @@ export function Me({
   view: LiveView;
   clubAct: (cmd: object) => Promise<boolean>;
   refresh: () => void;
-  alerts: { supported: boolean; on: boolean; enable: () => void };
+  alerts: Alerts;
 }) {
   const me = view.me!;
   const [stats, setStats] = useState<Stats | null>(null);
@@ -223,24 +224,9 @@ export function Me({
           Your level ({SKILL_NAMES[me.skill]}) is set by the organizer after
           your first night.
         </p>
-        {alerts.supported && (
-          <div className="mt-3">
-            {alerts.on ? (
-              <p className="text-sm text-lime-300">
-                Alerts are on for when you&apos;re called.
-              </p>
-            ) : (
-              <Btn kind="ghost" onClick={alerts.enable}>
-                Alert me when I&apos;m up
-              </Btn>
-            )}
-            <p className="mt-1 text-xs text-white/50">
-              Optional. The app works without it. On iPhone, add CourtQueue to
-              your Home Screen first (Share → Add to Home Screen).
-            </p>
-          </div>
-        )}
       </Card>
+
+      <NotificationsCard alerts={alerts} />
 
       {!me.organizer && (
         <Card>
@@ -344,4 +330,68 @@ async function shrink(file: File): Promise<string> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/** Turning on real notifications, with the iPhone steps spelled out. */
+export function NotificationsCard({ alerts }: { alerts: Alerts }) {
+  return (
+    <Card>
+      <h2 className="mb-1 font-bold">Notifications</h2>
+      <p className="mb-3 text-sm text-white/70">
+        Your phone tells you when sign-up opens, when you&apos;re off the
+        waitlist and when your court is ready — even locked. The screen here
+        always shows the same thing, so nothing depends on it.
+      </p>
+      {alerts.state === "on" && (
+        <div className="space-y-2">
+          <p className="font-semibold text-lime-300">On for this phone ✓</p>
+          <div className="flex gap-2">
+            <Btn kind="ghost" onClick={alerts.test}>
+              Send me a test
+            </Btn>
+            <Btn kind="ghost" onClick={alerts.disable}>
+              Turn off
+            </Btn>
+          </div>
+        </div>
+      )}
+      {(alerts.state === "off" || alerts.state === "busy") && (
+        <Btn
+          className="w-full"
+          disabled={alerts.state === "busy"}
+          onClick={alerts.enable}
+        >
+          Turn on notifications
+        </Btn>
+      )}
+      {alerts.state === "denied" && (
+        <p className="text-sm text-amber-200">
+          Notifications are blocked for CourtQueue. Allow them in your
+          phone&apos;s Settings → Notifications → CourtQueue, then come back.
+        </p>
+      )}
+      {alerts.state === "needs-home-screen" && (
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-white/80">
+          <li>
+            Tap <b>Share</b> (the square with the arrow) in Safari.
+          </li>
+          <li>
+            Choose <b>Add to Home Screen</b>, then <b>Add</b>.
+          </li>
+          <li>
+            Open <b>CourtQueue</b> from your Home Screen and sign in.
+          </li>
+          <li>
+            Come back here and tap <b>Turn on notifications</b>.
+          </li>
+        </ol>
+      )}
+      {alerts.state === "unsupported" && (
+        <p className="text-sm text-white/60">
+          This browser can&apos;t show notifications. Keep CourtQueue open — it
+          calls you on screen, with a sound and a buzz.
+        </p>
+      )}
+    </Card>
+  );
 }

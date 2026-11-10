@@ -26,7 +26,8 @@ Release: [`docs/release/RELEASE-2026-11-12-COURTQUEUE.md`](../../release/RELEASE
 6. **FINISH GAME**, with the score or without. Forgot to tap? Say how many
    minutes ago it ended, or when it started. Another player confirms the score
    or says "not quite" (that goes to the organizer). Shout out a good sport.
-7. Back in line automatically (switchable), until **I'm heading home**.
+7. **BACK IN THE QUEUE** when you're ready (never automatic), until
+   **I'm heading home**.
 
 **Challenges:** pick a partner and two opponents; all four accept. Until all
 four have, nobody loses their place in line. Then it waits for a court the
@@ -35,14 +36,13 @@ first game.
 
 ## Fairness
 
-_Fewest games tonight goes first; among equals, whoever has waited longest._
+_Fewest games tonight goes first; then fewest minutes; then whoever has waited longest._
 The most deserving player who may use the free court anchors the game and is
 always in it; the other three come from the next seven in line, chosen for
 close levels, even teams, new partners, and not the same four again. Passing
 over a first-timer for someone who has played costs heavily. A ready challenge
 takes a court only when no first-timer is waiting and its players have, on
-average, played no more than whoever would go next — or after
-`challengePatienceMinutes` (15). Nobody else's games or minutes are shown to
+average, played no more than whoever would go next. Nobody else's games or minutes are shown to
 players: the line is names in order, never a league table of playing time.
 
 ## Courts (defaults; the organizer can change levels)
@@ -78,14 +78,62 @@ board; the organizer always sees them, with a hint when someone wins ≥ 70 % of
 Built: every P0 in the brief. P1 built lightly: mentor flag and recognition,
 level history, the club board, kudos and awards, promotion hints.
 
-Deferred: server-sent push notifications (the service worker shows an alert
-only while the app is open in the background — a phone that is locked hears
-nothing; in-app banner, sound and vibration otherwise); achievement badges;
+Deferred: achievement badges;
 point-by-point scoring; skill changes from results (the hint informs the
 organizer, it never changes a level).
 
+## Real-world release (2026-11-10, owner brief _P0: CourtQueue real-world release_)
+
+What changed for the club's first real nights (Thursday 2026-11-12 on):
+
+- **The season is data** (`src/lib/courtqueue/schedule.ts`): Vernon Badminton
+  Club at Coldstream Elementary School Gym, Mondays 7:00–9:00 pm and
+  Thursdays 6:30–8:30 pm, October 5, 2026 – April 15, 2027, America/Vancouver
+  (BC is on UTC-7 all year in this codebase, `legalOffset`). The **Schedule**
+  tab draws the season month by month; cancelled nights are crossed out with
+  their reason.
+- **Cancelled nights:** the owner's official schedule (with its crossed-out
+  dates) was not available to the mission — not in the brief, the inbox or the
+  repository — so **no dates were typed in or guessed**. Organizers tap a night
+  in the Schedule tab to cancel it (with a reason) or put it back; every change
+  is logged with who made it. The Schedule shows organizers a reminder until
+  one taps _This matches the official schedule_. `OFFICIAL_CANCELLED` in
+  `schedule.ts` takes permanent dates if they are ever committed.
+- **Same-day sign-up, enforced on the server:** a night opens at 8:00 am on its
+  own day and closes when it ends. Nobody — organizer included — reserves a
+  future night or a cancelled one. 25 confirmed, then a waitlist that promotes
+  itself in sign-up order.
+- **Home shows one word and one button**: NOT SIGNED UP → SIGN ME UP ·
+  REGISTERED → I'M HERE · READY TO PLAY → JOIN THE QUEUE · WAITING (place in
+  line, the rule in your own numbers, and _ON DECK_ when you're in the next
+  prepared game) · YOU'RE UP → START GAME · PLAYING → FINISH GAME · FINISHED →
+  BACK IN THE QUEUE. Being called takes over the whole screen:
+  **"COURT 2 — YOU'RE UP!"**.
+- **Nobody is requeued automatically** after a game. FINISH frees the court at
+  once, with or without a score; the score can follow later, provisional until
+  another player confirms it; organizer corrections stay in the audit trail.
+- **Fairness order:** fewest games tonight, then fewest minutes, then longest
+  wait; skill and partner variety choose the rest of the four. Requested games
+  (challenges) never go ahead of that order — the 15-minute "patience"
+  override is retired.
+- **The next games are prepared:** for each busy court, in the order they
+  should free, the four that will be called (`prepared()` in `fair.ts`),
+  shown under each court and to the players in it.
+- **Tracked per game:** players, court, start, finish, duration, score; per
+  player tonight: games, minutes played, minutes waited.
+- **Push notifications** (Web Push, real, where the phone allows it — iPhone
+  needs CourtQueue on the Home Screen, iOS 16.4+): sign-up open (once, on the
+  day, to subscribers not yet in), off the waitlist, your court is called, a
+  called court nobody started after 5 minutes, a game running past the long-game
+  limit, a score to confirm, a challenge. The screen always shows the same
+  thing — polling every 2 s stays the source of truth.
+- **Nights put themselves away** an hour after their end: games still on court
+  are finished there (marked estimated), the queue is cleared, history stays.
+
 ## Running it locally
 
+- `COURTQUEUE_CLOCK=2026-11-12T18:45:00-07:00` (memory store only) starts the
+  server's clock on a club night, so sign-up rules can be rehearsed any day.
 - `npx next dev -p 3120` uses the memory store; the organizer code is
   `organizer` unless `COURTQUEUE_ORGANIZER_CODE` is set.
 - `e2e/badminton.spec.ts`: four phones, start to confirm, offline and back,
