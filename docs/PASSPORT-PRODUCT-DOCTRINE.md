@@ -703,6 +703,26 @@ This does not answer §15.14 (Want / Plan / Lived vocabulary): "Memories" is
 a place in My Stuff, not a state name, and a finished day is a mark on the
 phone that lived it.
 
+### Chosen places make the day, wherever they are (decided 2026-11-10)
+
+From the owner's _P0 — Finish the real user experience_ brief, recorded in
+[ADR 016](architecture/decisions/016-a-day-from-chosen-places-starts-where-they-are.md):
+
+- **A day made from chosen places is built around them, all of them.** If they
+  are around one town the day starts there — said, never asked, changeable in
+  words. If they are in different parts of the province the Day Builder says
+  so and offers a day around each, or a weekend with a day for each; it does
+  not build one day across them, and it does not drop or swap any.
+- **When what was chosen does not fit the hours, the day says so first**
+  and keeps every chosen stop.
+- **Discovery places a subject by its stated coordinates** when Atlas states
+  no area, so a page about the Okanagan does not lead with Vancouver. Silence
+  still removes nothing.
+- **Print, copy and the offline guide are secondary** to keeping the day and
+  saving it as an adventure; they stay one tap away.
+
+This narrows ADR 003 (§15.5 for building a day) and does not answer §15.14.
+
 ---
 
 ## 10. Experiences — an explicit open architectural question

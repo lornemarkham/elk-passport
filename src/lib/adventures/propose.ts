@@ -103,13 +103,17 @@ export async function sketchDays(input: SketchInput): Promise<SketchedDay[]> {
   // Vancouver day, never one day with a 230 km hop in it (`places.ts`). Each
   // day starts from the town its own places are around.
   const first = input.days[0];
-  const shared =
+  const sharing =
     first && loose.length > 0
+      ? dayPool(await candidatesFor(input.childAge, first), seeds)
+      : [];
+  // In the order they were chosen: the first-chosen group leads, and an
+  // unplaced pick goes with the biggest group, ties to the first.
+  const shared =
+    sharing.length > 0
       ? shareAcrossDays(
           groupChosen(
-            dayPool(await candidatesFor(input.childAge, first), seeds).filter(
-              (e) => loose.includes(e.id),
-            ),
+            loose.flatMap((id) => sharing.find((e) => e.id === id) ?? []),
           ),
           input.days.length,
         ).perDay

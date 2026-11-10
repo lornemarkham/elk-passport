@@ -8,7 +8,9 @@ import { Eyebrow, PillLink } from "@/components/adventures/kit";
 import { adventureSession } from "@/lib/adventures/server";
 import { atlasStopsFor } from "@/lib/adventures/atlas-names";
 import { todayIn } from "@/lib/adventures/overview";
+import type { Experience } from "@/domain/experience/types";
 import { ATLAS_REF } from "@/lib/adventures/rules";
+import { groupChosen } from "@/domain/day/places";
 
 export const metadata: Metadata = {
   title: "Create an adventure — Passport",
@@ -39,11 +41,21 @@ export default async function NewAdventurePage({
     seeds.length > 0
       ? atlasStopsFor(seeds).catch(() => ({
           names: {} as Record<string, string>,
+          experiences: {} as Record<string, Experience>,
         }))
-      : Promise.resolve({ names: {} as Record<string, string> }),
+      : Promise.resolve({
+          names: {} as Record<string, string>,
+          experiences: {} as Record<string, Experience>,
+        }),
   ]);
-  // "Do it again" brings the town and a name with the places.
-  const at = typeof query?.["at"] === "string" ? query["at"] : "";
+  // "Do it again" brings the town and a name with the places. Without one,
+  // the places say where it starts — the first group's nearest town — so a
+  // weekend made from Saved is not first asked where it is (still editable).
+  const given = typeof query?.["at"] === "string" ? query["at"] : "";
+  const fromPlaces = groupChosen(
+    seeds.flatMap((s) => named.experiences[s] ?? []),
+  ).groups[0]?.town?.id;
+  const at = given || fromPlaces || "";
   const name =
     typeof query?.["name"] === "string" ? query["name"].slice(0, 120) : "";
   const here = `/adventures/new${raw || at || name ? `?${new URLSearchParams({ ...(raw ? { with: raw } : {}), ...(at ? { at } : {}), ...(name ? { name } : {}) }).toString()}` : ""}`;

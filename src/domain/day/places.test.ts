@@ -102,6 +102,16 @@ describe("sharing chosen places across a trip", () => {
     expect(perDay[0]!.ids).toContain(nowhere.id);
   });
 
+  it("on a tie, an unplaced pick goes with the first-chosen group", () => {
+    const tie = groupChosen([kal, bna, cenotaph, penticton, nowhere]);
+    // Vernon: 2, Vancouver: 1, Penticton: 1 → Vernon is biggest.
+    expect(shareAcrossDays(tie, 3).perDay[0]!.ids).toContain(nowhere.id);
+    const even = groupChosen([kal, cenotaph, nowhere]);
+    const { perDay } = shareAcrossDays(even, 2);
+    expect(perDay[0]!.ids).toEqual([kal.id, nowhere.id]);
+    expect(perDay[1]!.ids).toEqual([cenotaph.id]);
+  });
+
   it("with nothing placed, the first day takes what there is", () => {
     const { perDay } = shareAcrossDays(groupChosen([nowhere]), 2);
     expect(perDay.map((d) => d.ids)).toEqual([[nowhere.id], []]);

@@ -139,11 +139,21 @@ export default async function GoPage({ searchParams }: Props) {
   const places = groupChosen(
     keep.flatMap((id) => pool.find((e) => e.id === id) ?? []),
   );
+  // A pick Atlas states no position for goes with the biggest group — the
+  // same rule the weekend sketch uses (`shareAcrossDays`) — so nothing
+  // chosen is missing from the panel or from the weekend link.
+  const lead = places.groups.reduce(
+    (top, g, i, all) => (g.ids.length > all[top]!.ids.length ? i : top),
+    0,
+  );
+  const unplacedTitles = places.unplaced.flatMap(
+    (id) => pool.find((e) => e.id === id)?.title ?? [],
+  );
   const apart =
     places.groups.length > 1
-      ? places.groups.map((g) => ({
-          ids: g.ids,
-          titles: g.titles,
+      ? places.groups.map((g, i) => ({
+          ids: i === lead ? [...g.ids, ...places.unplaced] : g.ids,
+          titles: i === lead ? [...g.titles, ...unplacedTitles] : g.titles,
           ...(g.town ? { townId: g.town.id, townName: g.town.name } : {}),
         }))
       : undefined;

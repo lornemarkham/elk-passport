@@ -14,7 +14,7 @@ const PORT = Number(process.env.E2E_PORT ?? 3164);
 
 export default defineConfig({
   testDir: ".",
-  testMatch: /journey\.spec\.ts$/,
+  testMatch: /(journey|scenarios)\.spec\.ts$/,
   reporter: "list",
   workers: 1,
   timeout: 600_000,
