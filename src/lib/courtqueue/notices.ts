@@ -1,4 +1,5 @@
 import { weekdayLabel } from "./clock";
+import { mentions, type ChatMessage } from "./chat";
 import { MINUTE, filled, type Club, type Session } from "./model";
 import { hoursLabel, registrationOpensAt, registrationState } from "./schedule";
 
@@ -16,6 +17,14 @@ export interface Notice {
   readonly body: string;
   /** Same tag replaces an earlier notification instead of stacking. */
   readonly tag: string;
+  /**
+   * "court" (the default) is the game night itself; "chat" is the Clubhouse.
+   * A player allows each on its own (`NotifyPrefs`), so a muted Clubhouse
+   * never costs anyone a court call.
+   */
+  readonly kind?: "court" | "chat";
+  /** Chat only: also everyone who asked for every message, bar these. */
+  readonly everyone?: { readonly except: readonly string[] };
 }
 
 const first = (club: Club, id: string | null) =>
@@ -171,5 +180,34 @@ export function openingNotice(
     title: "Badminton tonight — sign-up is open",
     body: `${weekdayLabel(s.date)}, ${hoursLabel(s.date)}. ${left > 0 ? `${left} spots` : "Waitlist only"} — first come, first served.`,
     tag: `open-${s.id}`,
+  };
+}
+
+/**
+ * A Clubhouse message, as a notification: to whoever is `@mentioned`, and to
+ * everyone who chose "every message". Challenge announcements add nobody
+ * directly — the players challenged already get "You've been challenged!".
+ */
+export function chatNotice(
+  club: Club,
+  m: ChatMessage,
+  headline?: string,
+  invited: readonly string[] = [],
+): Notice {
+  const who = first(club, m.by);
+  const body = (headline ?? m.text).slice(0, 110);
+  return {
+    kind: "chat",
+    to:
+      m.kind === "text"
+        ? mentions(club, m.text).filter((id) => id !== m.by)
+        : [],
+    everyone: { except: [m.by, ...invited] },
+    title:
+      m.kind === "text"
+        ? `${who} in the Clubhouse`
+        : `${who} threw down a challenge 🏸`,
+    body,
+    tag: "clubhouse",
   };
 }

@@ -93,7 +93,9 @@ export function simulate(seed = 7) {
     const open = s.challenges.some(
       (ch) => ch.status === "pending" || ch.status === "ready",
     );
-    // p1 invites the other three; each accepts once they're off court.
+    // p1 invites the other three; each accepts once they're off court and
+    // steps out of line. A challenge needs all four in the queue together,
+    // so the friends wait for each other and tap PLAY in the same minute.
     if (m > 20 && free("p1") && !open) {
       if (
         step(
@@ -104,10 +106,16 @@ export function simulate(seed = 7) {
       )
         challengeRuns++;
     }
-    for (const ch of s.challenges.filter((x) => x.status === "pending"))
+    for (const ch of s.challenges.filter((x) => x.status === "pending")) {
       for (const f of friends)
         if (ch.accepted[f] === undefined && free(f))
           step(as(f), { type: "challenge-accept", challengeId: ch.id }, now);
+      if (friends.every(free)) {
+        for (const f of friends) step(as(f), { type: "play" }, now);
+      } else
+        for (const f of friends)
+          if (free(f)) step(as(f), { type: "pause" }, now);
+    }
     for (const g of s.games.filter(isActiveGame)) {
       const four = filled(g.slots);
       if (g.status === "called" && four.length === 4 && !plan.has(g.id)) {
@@ -168,7 +176,11 @@ export function simulate(seed = 7) {
         p.leftAt !== undefined ||
         s.queue.some((q) => q.playerId === id) ||
         !free(id) ||
-        s.challenges.some((c) => c.status === "ready" && c.slots.includes(id));
+        s.challenges.some(
+          (c) =>
+            (c.status === "ready" || c.status === "pending") &&
+            c.slots.includes(id),
+        );
       const played = s.games.some(
         (g) => g.status === "finished" && g.slots.includes(id),
       );
@@ -222,7 +234,16 @@ describe("a simulated 24-player Thursday", () => {
         simulate(seed);
       const finished = s.games.filter((g) => g.status === "finished");
       const balance = nightBalance(c, s);
-      const here = balance.filter((r) => r.id !== "p20");
+      // The four friends sit out of the line until all four can join it
+      // together (that is what a challenge asks), so they may play fewer
+      // games by their own choice — but never none.
+      for (const f of ["p1", "p2", "p3", "p4"])
+        expect(balance.find((r) => r.id === f)!.games).toBeGreaterThanOrEqual(
+          1,
+        );
+      const here = balance.filter(
+        (r) => r.id !== "p20" && !["p1", "p2", "p3", "p4"].includes(r.id),
+      );
       const games = here.map((r) => r.games);
       const fewest = Math.min(...games);
       const most = Math.max(...games);

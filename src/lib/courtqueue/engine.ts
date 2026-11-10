@@ -1,3 +1,4 @@
+import { screenText } from "./chat";
 import { instantOn, localDate, localClock, weekdayLabel } from "./clock";
 import {
   propose,
@@ -77,7 +78,12 @@ export type SessionCommand =
   | { type: "confirm"; gameId: string }
   | { type: "dispute"; gameId: string }
   | { type: "kudos"; gameId: string; to: string }
-  | { type: "challenge"; slots: [string, string, string, string] }
+  | {
+      type: "challenge";
+      slots: [string, string, string, string];
+      note?: string;
+      rematch?: boolean;
+    }
   | { type: "challenge-accept"; challengeId: string }
   | { type: "challenge-decline"; challengeId: string }
   // The organizer's.
@@ -516,21 +522,33 @@ function run(
       return;
     }
     case "challenge": {
+      // A challenge is a request, made any time before the night is over —
+      // it reserves nobody's attendance and nobody's place in line. It only
+      // goes ahead on the day, once all four have said yes, signed up, and
+      // joined the queue (`readiness`).
       const ids = cmd.slots;
       if (!Array.isArray(ids) || ids.length !== 4 || new Set(ids).size !== 4)
         refuse("A challenge needs four different players.");
       if (!actor.organizer && !ids.includes(actor.id))
         refuse("You need to be in your own challenge.");
-      for (const id of ids) {
-        if (!club.players[id])
+      for (const id of ids)
+        if (!known(club, id))
           refuse("Someone in that challenge isn't registered.");
-        if (!isHere(s, id))
-          refuse(`${club.players[id]!.name} isn't checked in tonight.`);
+      const state = registrationState(s.date, now, club.cancelled);
+      if (state === "cancelled" || state === "over" || state === "off-season")
+        refuse(registrationWords(s.date, now, club.cancelled));
+      let note: string | undefined;
+      if (cmd.note !== undefined && String(cmd.note).trim() !== "") {
+        const checked = screenText(cmd.note, 80);
+        if (!checked.ok) refuse(checked.error);
+        note = checked.value;
       }
       const by = actor.id;
       if (activeGameOf(s, by)) refuse("Finish your game first.");
       if (acceptedChallengeOf(s, by))
         refuse("You already have a challenge going.");
+      if (s.challenges.filter(isHeldChallenge).length >= 40)
+        refuse("There are plenty of challenges out already.");
       const skillOf = (id: string) => club.players[id]!.skill;
       const anywhere = club.courts.some(
         (c) => !s.closedCourts.includes(c.id) && slotsMayUse(c, ids, skillOf),
@@ -544,6 +562,8 @@ function run(
         accepted: {},
         status: "pending",
         restore: {},
+        ...(note ? { note } : {}),
+        ...(cmd.rematch ? { rematch: true } : {}),
       };
       if (ids.includes(by)) acceptChallenge(s, ch, by, now);
       s.challenges.push(ch);
@@ -556,7 +576,6 @@ function run(
       if (ch.status !== "pending") return;
       if (!ch.slots.includes(actor.id)) refuse("You weren't invited.");
       if (ch.accepted[actor.id] !== undefined) return;
-      if (!isHere(s, actor.id)) refuse("Check in first.");
       if (acceptedChallengeOf(s, actor.id))
         refuse("You're already in another challenge.");
       acceptChallenge(s, ch, actor.id, now);
@@ -812,15 +831,42 @@ function acceptChallenge(s: Session, ch: Challenge, id: string, now: number) {
   readyIfFree(s, ch, now);
 }
 
+export type ReadinessStep = "answer" | "sign-up" | "check-in" | "queue";
+
 /**
- * All four said yes: the challenge is on. Whoever is free leaves the line
- * now; whoever is mid-game joins it when their game ends instead of going
- * back in line. It goes to a court once all four are off court.
+ * **What each of a challenge's four still has to do** before it can go: say
+ * yes, be signed up for the night (confirmed — a waitlist place doesn't
+ * count), be checked in, and be in the playing queue. Empty means the
+ * challenge is ready. The same list the phone shows, so "waiting for Sam to
+ * join the queue" is never a guess.
+ */
+export function readiness(
+  s: Session,
+  ch: Challenge,
+): { playerId: string; step: ReadinessStep }[] {
+  const out: { playerId: string; step: ReadinessStep }[] = [];
+  for (const p of ch.slots) {
+    if (ch.accepted[p] === undefined) out.push({ playerId: p, step: "answer" });
+    else if (
+      !s.roster.some((r) => r.playerId === p && r.status === "confirmed")
+    )
+      out.push({ playerId: p, step: "sign-up" });
+    else if (!isHere(s, p)) out.push({ playerId: p, step: "check-in" });
+    else if (!queued(s, p)) out.push({ playerId: p, step: "queue" });
+  }
+  return out;
+}
+
+/**
+ * All four are in: said yes, signed up, here and in the queue. The challenge
+ * is on. They leave the line together, keeping the places they had, and it
+ * goes to a court only when the fairness engine allows it
+ * (`challengeMayGo`) — joining the queue is the price of a challenge, not a
+ * way round it.
  */
 function readyIfFree(s: Session, ch: Challenge, now: number): boolean {
   if (ch.status !== "pending") return false;
-  if (!ch.slots.every((p) => ch.accepted[p] !== undefined)) return false;
-  if (ch.slots.some((p) => !isHere(s, p))) return false;
+  if (readiness(s, ch).length) return false;
   for (const p of ch.slots) {
     const since = unqueue(s, p);
     ch.restore[p] = since ?? now;

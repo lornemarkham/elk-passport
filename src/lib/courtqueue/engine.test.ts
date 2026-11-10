@@ -185,6 +185,10 @@ describe("CourtQueue engine", () => {
         { type: "challenge-accept", challengeId: s.challenges[0]!.id },
         T0,
       );
+    // Accepted, but nothing happens until all four are in the queue.
+    expect(active(s)).toHaveLength(0);
+    for (const id of ["p1", "p2", "p3", "p4"])
+      s = must(c, s, as(id), { type: "play" }, T0);
     const g = active(s)[0]!;
     expect(g.court).not.toBe(3);
   });
@@ -209,6 +213,8 @@ describe("CourtQueue engine", () => {
     const ch = s.challenges[0]!.id;
     for (const id of ["p2", "p3", "p4"])
       s = must(c, s, as(id), { type: "challenge-accept", challengeId: ch }, T0);
+    for (const id of ["p1", "p2", "p3", "p4"])
+      s = must(c, s, as(id), { type: "play" }, T0);
     const g = active(s)[0]!;
     expect(g.court).toBe(3);
     expect(g.source).toBe("challenge");
@@ -323,8 +329,15 @@ describe("CourtQueue engine", () => {
       { type: "challenge", slots: ["p1", "p2", "p3", "p4"] },
       T0 + 16 * MINUTE,
     );
-    // A first-timer is waiting (alone, so no fair game can be made yet).
-    s = arrive(c, s, ["p5"], T0 + 16 * MINUTE);
+    // The court is shut while the four line up: they say yes, then all four
+    // tap BACK IN THE QUEUE — a challenge needs everyone in line.
+    s = must(
+      c,
+      s,
+      ORG,
+      { type: "court-closed", court: 3, closed: true },
+      T0 + 16 * MINUTE,
+    );
     for (const id of ["p2", "p3", "p4"])
       s = must(
         c,
@@ -333,6 +346,18 @@ describe("CourtQueue engine", () => {
         { type: "challenge-accept", challengeId: s.challenges[0]!.id },
         T0 + 17 * MINUTE,
       );
+    expect(s.challenges[0]!.status).toBe("pending");
+    for (const id of ids(4))
+      s = must(c, s, as(id), { type: "play" }, T0 + 17 * MINUTE);
+    // A first-timer is waiting (alone, so no fair game can be made yet).
+    s = arrive(c, s, ["p5"], T0 + 17 * MINUTE);
+    s = must(
+      c,
+      s,
+      ORG,
+      { type: "court-closed", court: 3, closed: false },
+      T0 + 17 * MINUTE,
+    );
     expect(s.challenges[0]!.status).toBe("ready");
     expect(active(s)).toHaveLength(0);
     // Once four first-timers can play, they go first.

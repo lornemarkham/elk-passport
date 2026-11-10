@@ -1,6 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import type { Notice } from "./notices";
+import { DEFAULT_PREFS, type NotifyPrefs } from "./view";
 import { courtStore, storeKey, type DocStore } from "./store";
 import {
   sendPush,
@@ -21,7 +22,7 @@ import {
  * 410) is forgotten on the next send.
  */
 
-const PUSH = "push";
+export const PUSH = "push";
 const SUBJECT = "https://gohaveaday.com/badminton";
 const PER_PLAYER = 4;
 
@@ -31,6 +32,45 @@ interface Stored extends PushSubscriptionJSON {
 
 export interface PushDoc {
   players: Record<string, Stored[]>;
+  /**
+   * What each player asked to hear about. Court notifications are on unless
+   * turned off; the Clubhouse is off unless turned on. Added 2026-11-10;
+   * older documents have none.
+   */
+  prefs?: Record<string, NotifyPrefs>;
+}
+
+export const prefsOf = (doc: PushDoc, id: string): NotifyPrefs =>
+  Object.hasOwn(doc.prefs ?? {}, id) ? doc.prefs![id]! : DEFAULT_PREFS;
+
+export async function readPrefs(
+  store: DocStore,
+  id: string,
+): Promise<NotifyPrefs> {
+  const { doc } = await readPush(store);
+  return prefsOf(doc, id);
+}
+
+export async function setPrefs(playerId: string, input: unknown) {
+  const p = (input && typeof input === "object" ? input : {}) as Record<
+    string,
+    unknown
+  >;
+  const ok = await changePush(courtStore(), (doc) => {
+    const was = prefsOf(doc, playerId);
+    const next: NotifyPrefs = {
+      courts: typeof p.courts === "boolean" ? p.courts : was.courts,
+      chat:
+        p.chat === "off" || p.chat === "mine" || p.chat === "all"
+          ? p.chat
+          : was.chat,
+    };
+    doc.prefs = { ...(doc.prefs ?? {}), [playerId]: next };
+    return doc;
+  });
+  return ok
+    ? { ok: true as const, value: null }
+    : { ok: false as const, error: "Busy — try again." };
 }
 
 const g = globalThis as unknown as { __cqVapid?: Vapid | null };
@@ -117,6 +157,25 @@ export async function isSubscribed(playerId: string, endpoint: string) {
   return (doc.players[playerId] ?? []).some((s) => s.endpoint === endpoint);
 }
 
+/**
+ * Who a notice actually goes to: the people it names, minus anyone who turned
+ * that kind off, plus — for the Clubhouse — everyone who asked for every
+ * message. The two kinds never touch each other's settings.
+ */
+export function recipients(doc: PushDoc, n: Notice): string[] {
+  const chat = n.kind === "chat";
+  const named = n.to.filter((id) => {
+    const p = prefsOf(doc, id);
+    return chat ? p.chat !== "off" : p.courts;
+  });
+  if (!chat || !n.everyone) return named;
+  const except = new Set(n.everyone.except);
+  const all = Object.keys(doc.players).filter(
+    (id) => !except.has(id) && prefsOf(doc, id).chat === "all",
+  );
+  return [...new Set([...named, ...all])];
+}
+
 /** Send now. Returns how many phones were reached, for tests and logs. */
 export async function deliver(
   notices: readonly Notice[],
@@ -130,7 +189,7 @@ export async function deliver(
   const gone = new Set<string>();
   await Promise.all(
     notices.flatMap((n) =>
-      n.to.flatMap((id) =>
+      recipients(doc, n).flatMap((id) =>
         (doc.players[id] ?? []).map(async (sub) => {
           const r = await sendPush(
             v,

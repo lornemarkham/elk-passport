@@ -5,6 +5,23 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
+import {
+  addDays,
+  applyMod,
+  applyShard,
+  emptyMod,
+  emptyShard,
+  isModCommand,
+  MESSAGE_ID,
+  weekOfMessage,
+  weekStart,
+  type ChatCommand,
+  type ChatMessage,
+  type ChatMod,
+  type ChatShard,
+  type ModCommand,
+  type ShardCommand,
+} from "./chat";
 import { localDate, serverNow, weekdayLabel } from "./clock";
 import {
   applyClub,
@@ -29,12 +46,23 @@ import {
 } from "./model";
 import {
   changeNotices,
+  chatNotice,
   dueReminders,
   openingNotice,
   type Notice,
 } from "./notices";
-import { sendLater, subscribe, subscribedPlayers, unsubscribe } from "./push";
 import {
+  prefsOf,
+  PUSH,
+  sendLater,
+  setPrefs,
+  subscribe,
+  subscribedPlayers,
+  unsubscribe,
+  type PushDoc,
+} from "./push";
+import {
+  SEASON,
   isDate,
   isScheduled,
   registrationState,
@@ -43,12 +71,16 @@ import {
 import { playerStats, promotionHint } from "./stats";
 import { courtStore, NotReady, type DocStore } from "./store";
 import {
+  clubhouseView,
   currentNight,
+  DEFAULT_PREFS,
   listing,
   nightView,
   organizerView,
   person,
   seasonView,
+  CLUBHOUSE_WINDOW,
+  type ClubhouseMessage,
   type LiveView,
 } from "./view";
 
@@ -62,6 +94,8 @@ export { NotReady };
 const CLUB = "club";
 const sessionKey = (id: string) => `session:${id}`;
 const photoKey = (id: string) => `photo:${id}`;
+const CHAT_MOD = "chatmod";
+const chatKey = (week: string) => `chat:${week}`;
 
 // --- Reading, with a moment's cache so 25 phones polling are few reads ----
 
@@ -386,15 +420,184 @@ export async function act(
     return createSessions(store, dates.slice(0, 8));
   }
   if (body.scope === "session" && typeof body.sessionId === "string") {
-    const out = await changeSession(
-      store,
-      body.sessionId,
-      actor,
-      body.cmd as SessionCommand,
-    );
+    const cmd = body.cmd as SessionCommand;
+    const out = await changeSession(store, body.sessionId, actor, cmd);
+    if (out.ok && cmd?.type === "challenge")
+      await announceChallenge(store, club, me, out.value);
     return out.ok ? { ok: true, value: null } : out;
   }
   return { ok: false, error: "Unknown action." };
+}
+
+/**
+ * A challenge is also news in the Clubhouse: one card, kept up to date from
+ * the challenge itself. Best effort — a challenge never fails because the
+ * chat was busy, paused, or the sender's chat is.
+ */
+async function announceChallenge(
+  store: DocStore,
+  club: Club,
+  me: Player,
+  session: Session,
+) {
+  try {
+    const ch = [...session.challenges].reverse().find((c) => c.by === me.id);
+    if (!ch) return;
+    const names = ch.slots.map((id) => club.players[id]?.name ?? "Someone");
+    const kind = ch.rematch ? "rematch" : "challenge";
+    const text =
+      ch.note ?? (ch.rematch ? "Rematch? 🔁" : "Care for a game? 🏸");
+    const out = await chatChange(store, club, actorOf(me), {
+      type: "announce",
+      kind,
+      text,
+      ref: { session: session.id, challenge: ch.id },
+    });
+    if (out.ok && out.message) {
+      const ids = ch.slots.filter((id) => id !== me.id);
+      sendLater([
+        chatNotice(
+          club,
+          out.message,
+          `${names[0]} & ${names[1]} vs ${names[2]} & ${names[3]} — ${weekdayLabel(session.date)}`,
+          ids,
+        ),
+      ]);
+    }
+  } catch (e) {
+    console.error("courtqueue-announce", e);
+  }
+}
+
+// --- The Clubhouse ---------------------------------------------------------
+
+const SHARD_COMMANDS = new Set([
+  "post",
+  "announce",
+  "react",
+  "report",
+  "remove",
+]);
+const MOD_COMMANDS = new Set(["mute", "unmute", "pin", "lock"]);
+
+/** Apply one chat command by compare-and-swap; hands back the new message. */
+async function chatChange(
+  store: DocStore,
+  club: Club,
+  who: Actor,
+  cmd: ChatCommand,
+): Promise<Outcome<null> & { message?: ChatMessage }> {
+  const now = serverNow();
+  if (isModCommand(cmd)) {
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      await backoff(attempt);
+      const d = (await read(store, [CHAT_MOD], true)).get(CHAT_MOD);
+      const mod = (d?.value as ChatMod | undefined) ?? emptyMod();
+      const out = applyMod(mod, club, who, cmd as ModCommand, now);
+      if (!out.ok) return out;
+      if (await write(store, CHAT_MOD, out.value, d?.version ?? 0))
+        return { ok: true, value: null };
+    }
+    return { ok: false, error: "Busy — try again." };
+  }
+  const week =
+    cmd.type === "post" || cmd.type === "announce"
+      ? weekStart(localDate(now))
+      : weekOfMessage((cmd as { id?: unknown }).id);
+  if (!week || !isDate(week) || week < weekStart(SEASON.first))
+    return { ok: false, error: "That message isn't here." };
+  const key = chatKey(week);
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    await backoff(attempt);
+    const docs = await read(store, [key, CHAT_MOD], true);
+    const shard =
+      (docs.get(key)?.value as ChatShard | undefined) ?? emptyShard(week);
+    const mod =
+      (docs.get(CHAT_MOD)?.value as ChatMod | undefined) ?? emptyMod();
+    const out = applyShard(shard, mod, club, who, cmd as ShardCommand, now);
+    if (!out.ok) return out;
+    if (await write(store, key, out.value, docs.get(key)?.version ?? 0))
+      return {
+        ok: true,
+        value: null,
+        message:
+          cmd.type === "post" || cmd.type === "announce"
+            ? out.value.messages[out.value.messages.length - 1]
+            : undefined,
+      };
+  }
+  return { ok: false, error: "Busy — try again." };
+}
+
+/** What a member says or does in the Clubhouse. */
+export async function chat(
+  cookie: string | undefined,
+  cmd: unknown,
+): Promise<Outcome<null>> {
+  const store = courtStore();
+  const { club } = await loadClub(store);
+  const me = playerFromCookie(club, cookie);
+  if (!me) return { ok: false, error: "Sign in first." };
+  const c = cmd as { type?: unknown } | null;
+  if (
+    !c ||
+    typeof c.type !== "string" ||
+    // "announce" is the server's own: a member can't forge a challenge card.
+    !(
+      c.type !== "announce" &&
+      (SHARD_COMMANDS.has(c.type) || MOD_COMMANDS.has(c.type))
+    )
+  )
+    return { ok: false, error: "Unknown action." };
+  const out = await chatChange(store, club, actorOf(me), cmd as ChatCommand);
+  if (out.ok && out.message && out.message.kind === "text")
+    sendLater([chatNotice(club, out.message)]);
+  return out.ok ? { ok: true, value: null } : out;
+}
+
+/** A page of earlier messages, oldest first, before the message `before`. */
+export async function chatHistory(
+  cookie: string | undefined,
+  before: string | null,
+): Promise<{
+  messages: ClubhouseMessage[];
+  olderBefore: string | null;
+} | null> {
+  const store = courtStore();
+  const now = serverNow();
+  const { club } = await loadClub(store);
+  const me = playerFromCookie(club, cookie);
+  if (!me || !before || !MESSAGE_ID.test(before)) return null;
+  const [week, seq] = before.split(":") as [string, string];
+  if (!isDate(week)) return null;
+  const first = weekStart(SEASON.first);
+  const weeks: string[] = [];
+  for (let w = week; w >= first && weeks.length < 40; w = addDays(w, -7))
+    weeks.push(w);
+  const keys = [CHAT_MOD, ...weeks.map(chatKey)];
+  const docs = await read(store, keys);
+  const mod = (docs.get(CHAT_MOD)?.value as ChatMod | undefined) ?? emptyMod();
+  const shards = weeks
+    .reverse()
+    .map((w) => docs.get(chatKey(w))?.value as ChatShard | undefined)
+    .filter((sh): sh is ChatShard => !!sh);
+  const older = shards.flatMap((sh) =>
+    sh.messages.filter(
+      (m) => sh.week < week || Number(m.id.split(":")[1]) < Number(seq),
+    ),
+  );
+  const view = clubhouseView(
+    club,
+    mod,
+    [{ week, seq: 0, messages: older.slice(-CLUBHOUSE_WINDOW) }],
+    { id: me.id, organizer: me.organizer },
+    now,
+    false,
+  );
+  return {
+    messages: view.messages,
+    olderBefore: older.length > CLUBHOUSE_WINDOW ? view.messages[0]!.id : null,
+  };
 }
 
 async function createSessions(
@@ -445,8 +648,11 @@ export async function live(
     first = await loadClub(store, true);
   }
   const metas = visibleMetas(first.club, now);
+  const thisWeek = weekStart(localDate(now));
+  const lastWeek = addDays(thisWeek, -7);
+  const chatKeys = [chatKey(lastWeek), chatKey(thisWeek), CHAT_MOD, PUSH];
   const keys = [CLUB, ...metas.map((m) => sessionKey(m.id))];
-  let docs = await read(store, keys);
+  let docs = await read(store, [...keys, ...chatKeys]);
   const clubDoc = docs.get(CLUB);
   const club = (clubDoc?.value as Club | undefined) ?? emptyClub();
   let sessions = metas
@@ -455,7 +661,7 @@ export async function live(
   // What time alone changes: a court to fill, a night to put away, a
   // reminder due. Done on the way past by whichever phone asks first.
   if (await maintain(store, club, sessions, docs, now)) {
-    docs = await read(store, keys, true);
+    docs = await read(store, [...keys, ...chatKeys], true);
     sessions = metas
       .map((m) => docs.get(sessionKey(m.id))?.value as Session | undefined)
       .filter((s): s is Session => !!s);
@@ -464,7 +670,9 @@ export async function live(
   const version = [
     me?.id ?? "-",
     me?.organizer ? (focus ?? "") : "",
-    ...keys.map((k) => docs.get(k)?.version ?? 0),
+    ...[...keys, ...chatKeys].map((k) => docs.get(k)?.version ?? 0),
+    // A mute running out is a change nobody wrote.
+    me ? Number(!!chatMuteOf(docs, me.id, now)) : "",
   ].join(".");
   if (since && since === version) return { unchanged: true, now };
   const night = currentNight(club, sessions, now);
@@ -486,7 +694,35 @@ export async function live(
     organizer: me?.organizer
       ? organizerView(club, sessions.find((s) => s.id === focus) ?? night, now)
       : null,
+    clubhouse: me
+      ? clubhouseView(
+          club,
+          (docs.get(CHAT_MOD)?.value as ChatMod | undefined) ?? emptyMod(),
+          [lastWeek, thisWeek]
+            .map((w) => docs.get(chatKey(w))?.value as ChatShard | undefined)
+            .filter((sh): sh is ChatShard => !!sh),
+          { id: me.id, organizer: me.organizer },
+          now,
+          lastWeek > weekStart(SEASON.first),
+        )
+      : null,
+    notify: me
+      ? prefsOf(
+          (docs.get(PUSH)?.value as PushDoc | undefined) ?? { players: {} },
+          me.id,
+        )
+      : DEFAULT_PREFS,
   };
+}
+
+function chatMuteOf(
+  docs: Map<string, { value: unknown; version: number }>,
+  id: string,
+  now: number,
+) {
+  const mod = (docs.get(CHAT_MOD)?.value as ChatMod | undefined) ?? emptyMod();
+  const m = Object.hasOwn(mod.muted, id) ? mod.muted[id] : undefined;
+  return m && (m.until === null || m.until > now) ? m : null;
 }
 
 /**
@@ -665,12 +901,19 @@ export async function organizerResetPin(
 
 export async function pushChange(
   cookie: string | undefined,
-  body: { action?: unknown; subscription?: unknown; endpoint?: unknown },
+  body: {
+    action?: unknown;
+    subscription?: unknown;
+    endpoint?: unknown;
+    prefs?: unknown;
+  },
 ) {
   const me = await whoIs(cookie);
   if (!me) return { ok: false as const, error: "Sign in first." };
   if (body.action === "subscribe") return subscribe(me.id, body.subscription);
   if (body.action === "unsubscribe") return unsubscribe(me.id, body.endpoint);
+  if (body.action === "prefs")
+    return setPrefs(me.id, (body as { prefs?: unknown }).prefs);
   if (body.action === "test") {
     sendLater([
       {

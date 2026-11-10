@@ -417,6 +417,10 @@ describe("fairness", () => {
         { type: "challenge-accept", challengeId: s.challenges[0]!.id },
         T0 + 12 * MINUTE,
       );
+    // Yes isn't enough: they tap BACK IN THE QUEUE, all four.
+    expect(s.challenges[0]!.status).toBe("pending");
+    for (const id of four)
+      s = must(c, s, as(id), { type: "play" }, T0 + 12 * MINUTE);
     // The court went to the four with fewer games, not the challenge.
     const next = active(s).find((g) => g.court === g1.court)!;
     expect(next.source).toBe("fair");

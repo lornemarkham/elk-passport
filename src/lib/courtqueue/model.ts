@@ -191,6 +191,10 @@ export interface Challenge {
   status: ChallengeStatus;
   readyAt?: number;
   declinedBy?: string;
+  /** A playful line from whoever sent it (screened like chat). */
+  note?: string;
+  /** Sent as "same four, again?" after a game. */
+  rematch?: boolean;
   gameId?: string;
   /** Queue places held for anyone who left the queue to accept. */
   restore: Record<string, number>;

@@ -1,4 +1,12 @@
+import {
+  activeMute,
+  messageView,
+  type ChatMessageView,
+  type ChatMod,
+  type ChatShard,
+} from "./chat";
 import { localDate, weekdayLabel } from "./clock";
+import { readiness, type ReadinessStep } from "./engine";
 import {
   estimateWaitMinutes,
   inOrder,
@@ -81,6 +89,17 @@ export interface ChallengeView {
   readonly accepted: readonly string[];
   readonly status: Challenge["status"];
   readonly readyAt: number | null;
+  readonly createdAt: number;
+  readonly note: string | null;
+  readonly rematch: boolean;
+  /**
+   * What each player still has to do before it can go ahead — answer, sign
+   * up (from 8:00 am on the day), check in, join the queue. Empty once all
+   * four are in. Only for a challenge still waiting.
+   */
+  readonly needs: { readonly playerId: string; readonly step: ReadinessStep }[];
+  /** The night it is for. */
+  readonly session: string;
 }
 
 export type MyState =
@@ -191,6 +210,11 @@ export interface SessionListing {
   readonly waitlisted: number;
   readonly mine: RosterStatus | null;
   readonly waitlistPosition: number | null;
+  /**
+   * Challenges for this night, visible to the whole club (they are announced
+   * in the Clubhouse): the open ones, and those called off in the last day.
+   */
+  readonly challenges: ChallengeView[];
 }
 
 export interface MeView extends PersonView {
@@ -248,6 +272,50 @@ export interface SeasonView {
   }[];
 }
 
+export type ChatLevel = "off" | "mine" | "all";
+
+/** What this phone's owner has asked to be pinged about. Independent. */
+export interface NotifyPrefs {
+  /** Court-ready, score checks, sign-up opening. */
+  readonly courts: boolean;
+  /** Clubhouse: nothing, just what's for me, or every message. */
+  readonly chat: ChatLevel;
+}
+
+export const DEFAULT_PREFS: NotifyPrefs = { courts: true, chat: "off" };
+
+export interface ClubhouseMessage extends ChatMessageView {
+  readonly author: PersonView;
+}
+
+export interface ClubhouseView {
+  /** Oldest first: the latest couple of weeks. */
+  readonly messages: ClubhouseMessage[];
+  /** Ask for messages before this id to read further back; null at the start. */
+  readonly olderBefore: string | null;
+  readonly pinned: {
+    readonly text: string;
+    readonly by: string;
+    readonly at: number;
+  } | null;
+  readonly locked: boolean;
+  /** The organizer has paused this player's chat. */
+  readonly muted: { readonly until: number | null } | null;
+  /** Organizers only. */
+  readonly moderation: {
+    readonly muted: {
+      readonly person: PersonView;
+      readonly until: number | null;
+    }[];
+    readonly flagged: number;
+    readonly log: {
+      readonly at: number;
+      readonly by: string;
+      readonly what: string;
+    }[];
+  } | null;
+}
+
 export interface LiveView {
   readonly now: number;
   readonly version: string;
@@ -256,6 +324,8 @@ export interface LiveView {
   readonly sessions: SessionListing[];
   readonly night: NightView | null;
   readonly organizer: OrganizerView | null;
+  readonly clubhouse: ClubhouseView | null;
+  readonly notify: NotifyPrefs;
 }
 
 export function courtRule(c: Court): string {
@@ -312,13 +382,22 @@ function gameView(club: Club, g: Game): GameView {
   };
 }
 
-const challengeView = (club: Club, c: Challenge): ChallengeView => ({
+const challengeView = (
+  club: Club,
+  s: Session,
+  c: Challenge,
+): ChallengeView => ({
   id: c.id,
   by: c.by,
   slots: c.slots.map((id) => person(club, id)),
   accepted: Object.keys(c.accepted),
   status: c.status,
   readyAt: c.readyAt ?? null,
+  createdAt: c.createdAt,
+  note: c.note ?? null,
+  rematch: !!c.rematch,
+  needs: c.status === "pending" ? readiness(s, c) : [],
+  session: s.id,
 });
 
 export function listing(
@@ -352,6 +431,15 @@ export function listing(
     waitlisted: wait.length,
     mine: mine?.status ?? null,
     waitlistPosition: pos >= 0 ? pos + 1 : null,
+    challenges: s.challenges
+      .filter(
+        (c) =>
+          isHeldChallenge(c) ||
+          c.status === "on-court" ||
+          now - c.createdAt < 24 * 60 * MINUTE,
+      )
+      .slice(-30)
+      .map((c) => challengeView(club, s, c)),
   };
 }
 
@@ -484,7 +572,7 @@ export function nightView(
                 c.status === "on-court" ||
                 (c.status === "declined" && now - c.createdAt < 30 * MINUTE)),
           )
-          .map((c) => challengeView(club, c))
+          .map((c) => challengeView(club, s, c))
       : [],
     readyChallenges: s.challenges.filter((c) => c.status === "ready").length,
     typicalMinutes: typicalGameMinutes(s),
@@ -637,5 +725,49 @@ export function seasonView(club: Club, now: number): SeasonView {
       .slice(-20)
       .reverse()
       .map((a) => ({ at: a.at, by: name(a.by), what: a.what })),
+  };
+}
+
+/** Messages shown at once; earlier weeks are fetched on request. */
+export const CLUBHOUSE_WINDOW = 80;
+
+/** The Clubhouse as one member sees it. `shards` oldest week first. */
+export function clubhouseView(
+  club: Club,
+  mod: ChatMod,
+  shards: readonly ChatShard[],
+  me: { id: string; organizer: boolean },
+  now: number,
+  mayHaveOlder: boolean,
+): ClubhouseView {
+  const all = shards.flatMap((sh) => sh.messages);
+  const shown = all.slice(-CLUBHOUSE_WINDOW);
+  const mute = activeMute(mod, me.id, now);
+  const name = (id: string) => club.players[id]?.name ?? "Someone";
+  return {
+    messages: shown.map((m) => ({
+      ...messageView(m, me),
+      author: person(club, m.by),
+    })),
+    olderBefore:
+      shown.length && (all.length > shown.length || mayHaveOlder)
+        ? shown[0]!.id
+        : null,
+    pinned: mod.pinned,
+    locked: mod.locked,
+    muted: mute ? { until: mute.until } : null,
+    moderation: me.organizer
+      ? {
+          muted: Object.entries(mod.muted)
+            .filter(([id]) => activeMute(mod, id, now))
+            .map(([id, m]) => ({ person: person(club, id), until: m.until })),
+          flagged: all.filter((m) => !m.removed && (m.reports?.length ?? 0) > 0)
+            .length,
+          log: mod.log
+            .slice(-15)
+            .reverse()
+            .map((l) => ({ at: l.at, by: name(l.by), what: l.what })),
+        }
+      : null,
   };
 }
