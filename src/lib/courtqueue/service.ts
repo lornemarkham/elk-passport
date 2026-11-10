@@ -516,7 +516,8 @@ async function chatChange(
       (docs.get(CHAT_MOD)?.value as ChatMod | undefined) ?? emptyMod();
     const out = applyShard(shard, mod, club, who, cmd as ShardCommand, now);
     if (!out.ok) return out;
-    if (await write(store, key, out.value, docs.get(key)?.version ?? 0))
+    if (await write(store, key, out.value, docs.get(key)?.version ?? 0)) {
+      if (!mod.first || week < mod.first) await noteFirstWeek(store, week);
       return {
         ok: true,
         value: null,
@@ -525,8 +526,21 @@ async function chatChange(
             ? out.value.messages[out.value.messages.length - 1]
             : undefined,
       };
+    }
   }
   return { ok: false, error: "Busy — try again." };
+}
+
+/** Remember the earliest week with talk in it (best effort). */
+async function noteFirstWeek(store: DocStore, week: string) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    await backoff(attempt);
+    const d = (await read(store, [CHAT_MOD], true)).get(CHAT_MOD);
+    const mod = (d?.value as ChatMod | undefined) ?? emptyMod();
+    if (mod.first && mod.first <= week) return;
+    if (await write(store, CHAT_MOD, { ...mod, first: week }, d?.version ?? 0))
+      return;
+  }
 }
 
 /** What a member says or does in the Clubhouse. */
@@ -592,7 +606,7 @@ export async function chatHistory(
     [{ week, seq: 0, messages: older.slice(-CLUBHOUSE_WINDOW) }],
     { id: me.id, organizer: me.organizer },
     now,
-    false,
+    week,
   );
   return {
     messages: view.messages,
@@ -703,7 +717,7 @@ export async function live(
             .filter((sh): sh is ChatShard => !!sh),
           { id: me.id, organizer: me.organizer },
           now,
-          lastWeek > weekStart(SEASON.first),
+          thisWeek,
         )
       : null,
     notify: me

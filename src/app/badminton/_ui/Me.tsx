@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { SKILL_NAMES, type Skill } from "@/lib/courtqueue/model";
-import type { LiveView } from "@/lib/courtqueue/view";
-import { Avatar, Btn, Card, SkillTag, Toggle, plural } from "./bits";
+import type { ChatLevel, LiveView, NotifyPrefs } from "@/lib/courtqueue/view";
+import { Avatar, Btn, Card, SkillTag, Toggle, cx, plural } from "./bits";
 import { post } from "./api";
 import type { Alerts } from "./notify";
 
@@ -226,7 +226,7 @@ export function Me({
         </p>
       </Card>
 
-      <NotificationsCard alerts={alerts} />
+      <NotificationsCard alerts={alerts} prefs={view.notify} />
 
       {!me.organizer && (
         <Card>
@@ -333,7 +333,13 @@ async function shrink(file: File): Promise<string> {
 }
 
 /** Turning on real notifications, with the iPhone steps spelled out. */
-export function NotificationsCard({ alerts }: { alerts: Alerts }) {
+export function NotificationsCard({
+  alerts,
+  prefs,
+}: {
+  alerts: Alerts;
+  prefs?: NotifyPrefs;
+}) {
   return (
     <Card>
       <h2 className="mb-1 font-bold">Notifications</h2>
@@ -364,6 +370,7 @@ export function NotificationsCard({ alerts }: { alerts: Alerts }) {
           Turn on notifications
         </Btn>
       )}
+      {prefs && <NotifyChoices prefs={prefs} />}
       {alerts.state === "denied" && (
         <p className="text-sm text-amber-200">
           Notifications are blocked for CourtQueue. Allow them in your
@@ -393,5 +400,81 @@ export function NotificationsCard({ alerts }: { alerts: Alerts }) {
         </p>
       )}
     </Card>
+  );
+}
+
+const CHAT_CHOICES: { id: ChatLevel; label: string; help: string }[] = [
+  {
+    id: "off",
+    label: "Off",
+    help: "Read the Clubhouse when you open the app.",
+  },
+  {
+    id: "mine",
+    label: "Just me",
+    help: "Only when someone @mentions you.",
+  },
+  {
+    id: "all",
+    label: "Every message",
+    help: "Anything said in the Clubhouse.",
+  },
+];
+
+/**
+ * Two separate switches: the courts (your game being ready, sign-up opening)
+ * and the Clubhouse. Turning the chat down never costs you a court call.
+ */
+function NotifyChoices({ prefs }: { prefs: NotifyPrefs }) {
+  const [courts, setCourts] = useState(prefs.courts);
+  const [chat, setChat] = useState(prefs.chat);
+  // Follow the server when it changes (another phone, a refresh).
+  const [seen, setSeen] = useState(prefs);
+  if (seen !== prefs) {
+    setSeen(prefs);
+    setCourts(prefs.courts);
+    setChat(prefs.chat);
+  }
+  const save = (next: Partial<NotifyPrefs>) =>
+    post("/api/badminton/push", { action: "prefs", prefs: next });
+  return (
+    <div className="mt-4 space-y-3 border-t border-white/10 pt-3">
+      <Toggle
+        label="Court-ready & game-night alerts"
+        on={courts}
+        onChange={(v) => {
+          setCourts(v);
+          void save({ courts: v });
+        }}
+      />
+      <fieldset>
+        <legend className="mb-1 text-sm text-white/80">
+          Clubhouse chat alerts
+        </legend>
+        <div className="flex rounded-xl bg-white/10 p-1">
+          {CHAT_CHOICES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              aria-pressed={chat === c.id}
+              onClick={() => {
+                setChat(c.id);
+                void save({ chat: c.id });
+              }}
+              className={cx(
+                "flex-1 rounded-lg py-2 text-sm font-bold",
+                chat === c.id ? "bg-lime-400 text-slate-950" : "text-white/70",
+              )}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-white/50">
+          {CHAT_CHOICES.find((c) => c.id === chat)!.help} These two settings are
+          independent.
+        </p>
+      </fieldset>
+    </div>
   );
 }

@@ -130,6 +130,54 @@ What changed for the club's first real nights (Thursday 2026-11-12 on):
 - **Nights put themselves away** an hour after their end: games still on court
   are finished there (marked estimated), the queue is cleared, history stays.
 
+## The Clubhouse (2026-11-10, owner brief _CourtQueue — Clubhouse social features_)
+
+**One chat for the whole club** — the Clubhouse tab. Every registered member
+reads and writes in the same room; there is **no private messaging** (a
+message has no recipient, no thread, and the API has no way to address one
+person). Everybody plays — and everybody talks in the open.
+
+- **Talk:** banter, emoji (panel + quick replies like _Good game! 👏_ and
+  _Rematch? 🔁_), reactions (👍 😂 🔥 👏 🏸 😮), `@Name` pings. 300 characters; a
+  second between messages, 12 a minute.
+- **Family-friendly:** a rude-word filter that sees through `sh1t`, `f u c k`,
+  `f***` and `fuuuck` without catching _class_, _pass_, _tonight_ or
+  _shuttlecock_; links refused. A member can **report** a message; three
+  different reporters hide it until an organizer looks. Hiding never deletes.
+- **Organizer controls** (Organizer controls panel in the Clubhouse, and a tap
+  on any message): remove / put back, pause one player's chat (24 h from a
+  message, or until they're let back), pause the whole room, pin an
+  announcement. Each is logged with who did it. Removed messages stay in the
+  database and visible to organizers.
+- **Challenges, any time before the night ends.** Pick your partner and two
+  opponents (anyone in the club), the night, and a playful line. The room sees
+  a card; the three others **accept or decline without signing up** — saying
+  yes reserves nobody's attendance and nobody's place in line. A rematch is the
+  same four again from your last game (_Rematch my last game_).
+- **On the day** (sign-up opens 8:00 am, 25 confirmed first come, first
+  served, then the waitlist — unchanged) a challenge only becomes real when
+  **all four have said yes, are confirmed for the night, are checked in and
+  have joined the queue** (`readiness()` in `engine.ts`; the card names who
+  still has to do what). It then leaves the line as one group and goes to a
+  court only when the fairness engine allows it (`challengeMayGo`): it never
+  jumps a waiting first-timer or anyone with fewer games. _Everybody plays._
+- **Share to WhatsApp** on every challenge and an **Invite a friend** link: a
+  `wa.me` share link with ready-written text. There is no WhatsApp group sync
+  and none is attempted.
+- **Notifications:** two independent settings under Me → Notifications —
+  _Court-ready & game-night alerts_ (default on) and _Clubhouse chat alerts_
+  (**Off** by default · **Just me**: @mentions · **Every message**). Turning chat
+  down never costs a court call, and the other way round.
+- **Stored** in the existing shared database (`passport_courtqueue_docs`, no
+  migration): one document per week of chat (`chat:<Monday>`), `chatmod`
+  (locked, muted, pinned, log), and notification choices inside `push`.
+  Players and chat are never pruned: the whole season stays readable (_Earlier
+  messages_ pages back week by week).
+
+Limits: a week of chat holds 3,000 messages; a challenge needs all four in the
+queue at the same moment, which in a full gym takes some coordination;
+pushes need the phone to allow them (iPhone: from the Home Screen).
+
 ## Running it locally
 
 - `COURTQUEUE_CLOCK=2026-11-12T18:45:00-07:00` (memory store only) starts the
@@ -138,9 +186,17 @@ What changed for the club's first real nights (Thursday 2026-11-12 on):
   `organizer` unless `COURTQUEUE_ORGANIZER_CODE` is set.
 - `e2e/badminton.spec.ts`: four phones, start to confirm, offline and back,
   the 25 limit. Needs a fresh server with `COURTQUEUE_STORE=memory`.
+- `e2e/clubhouse.spec.ts`: the Clubhouse on phones — chat between two phones,
+  the filter, a challenge made for next Monday and answered without signing up,
+  the on-the-day rule, organizer controls, notification choices, sign-in again.
+  Own server (`COURTQUEUE_STORE=memory`, `COURTQUEUE_CLOCK` Thursday after
+  8:00 am); restart the server between runs.
 - `node scripts/courtqueue/rehearse.mjs <url> [games]`: 25 sign-ups at once,
   24 PLAYs at once, 24 phones polling, simultaneous START and FINISH taps,
   invariants checked every round.
 - Real Postgres: `node docs/product/badminton/verification/stack.mjs start`,
   then `set -a; . ~/passport/scratch/courtqueue-stack/env; set +a; npx vitest
-run src/lib/courtqueue/store.stack.test.ts`.
+run src/lib/courtqueue/store.stack.test.ts`. The Clubhouse survives a restart:
+  `STACK_PHASE=write npx vitest run src/lib/courtqueue/clubhouse.stack.test.ts`,
+  `node docs/product/badminton/verification/stack.mjs restart`, then
+  `STACK_PHASE=read` the same.

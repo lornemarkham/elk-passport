@@ -840,6 +840,9 @@ the owner's call; this paragraph does not make it. Its real-world release
 (2026-11-10) made two of its rules canonical for it: _nobody plays a game
 CourtQueue didn't assign_ (four named players, every game), and _nobody is put
 back in line but by themselves_ — after a game a player taps BACK IN THE QUEUE.
+Its Clubhouse (2026-11-10, ADR 017 amendment) made a third canonical for it:
+_one chat for the whole club, no private messages_, and a challenge is a
+request that reserves nothing and never goes ahead of the queue.
 
 ---
 

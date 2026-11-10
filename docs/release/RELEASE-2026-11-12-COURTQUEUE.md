@@ -147,3 +147,25 @@ serving `423a989` with the migration applied and real sign-ups.
 - **Not measured:** a real iPhone receiving a push from Apple; the production
   database after this change (verified only by the runner's deploy and the
   checks above).
+
+## Update: the Clubhouse (M681, 2026-11-10)
+
+Owner brief _CourtQueue — Clubhouse social features_.
+
+- **Database:** no migration. New document keys in the existing
+  `passport_courtqueue_docs`: `chat:<Monday>` (a week of messages), `chatmod`;
+  `push` gains an optional `prefs`. Existing documents are read unchanged
+  (challenges gain optional `note`, `rematch`).
+- **Environment:** nothing new. **Rollback:** deploy the previous commit; the new
+  documents are ignored by it. To clear the chat: delete the `chat:*` and
+  `chatmod` rows (SQL editor, after a recovery point).
+- **Behaviour change to know about:** a challenge only goes ahead once all four
+  are in the queue (it used to be checked in + accepted). Players are told what
+  they still have to do on the challenge card.
+- **Check production:** sign in on two phones → Clubhouse → message each way;
+  Me → Notifications shows the two switches; _Challenge_ for Monday, answer it
+  from another phone without signing up; Share to WhatsApp opens WhatsApp with
+  the text.
+- **Not measured:** a real iPhone receiving a Clubhouse push; WhatsApp opening
+  from the share link on a phone (the link is checked, not WhatsApp); the
+  production database after this change.

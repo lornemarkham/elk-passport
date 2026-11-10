@@ -1,5 +1,6 @@
 import { createECDH, randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { Notice } from "./notices";
 import { deliver, type PushDoc } from "./push";
 import { memoryStore } from "./store";
 
@@ -60,5 +61,61 @@ describe("push delivery", () => {
     const after = (await store.get(["push"])).get("push")!.value as PushDoc;
     expect(after.players.p2).toEqual([]);
     expect(after.players.p3).toHaveLength(1);
+  });
+
+  it("keeps Clubhouse and court notifications on separate switches", async () => {
+    const store = memoryStore();
+    const phone = (id: string) => [
+      { endpoint: `https://web.push.apple.com/${id}`, keys: keys(), at: 1 },
+    ];
+    const doc: PushDoc = {
+      players: {
+        quiet: phone("quiet"), // courts on, chat off (the defaults)
+        chatty: phone("chatty"), // courts off, every message
+        pinged: phone("pinged"), // courts on, only when mentioned
+      },
+      prefs: {
+        chatty: { courts: false, chat: "all" },
+        pinged: { courts: true, chat: "mine" },
+      },
+    };
+    await store.put("push", doc, 0);
+    const urls: string[] = [];
+    const fetcher = (async (url: string) => {
+      urls.push(url.split("/").pop()!);
+      return new Response(null, { status: 201 });
+    }) as unknown as typeof fetch;
+    const who = async (n: Notice) => {
+      urls.length = 0;
+      await deliver([n], store, fetcher);
+      return [...urls].sort();
+    };
+    const everyone = ["quiet", "chatty", "pinged"];
+    // A court call reaches whoever hasn't turned courts off — chat settings are irrelevant.
+    expect(
+      await who({ to: everyone, title: "up", body: "go", tag: "up" }),
+    ).toEqual(["pinged", "quiet"]);
+    // A Clubhouse message: the one who asked for everything, and whoever was @mentioned.
+    expect(
+      await who({
+        kind: "chat",
+        to: ["pinged"],
+        everyone: { except: [] },
+        title: "Ada in the Clubhouse",
+        body: "hi @pinged",
+        tag: "clubhouse",
+      }),
+    ).toEqual(["chatty", "pinged"]);
+    // The author is never pinged about their own message.
+    expect(
+      await who({
+        kind: "chat",
+        to: [],
+        everyone: { except: ["chatty"] },
+        title: "t",
+        body: "b",
+        tag: "clubhouse",
+      }),
+    ).toEqual([]);
   });
 });

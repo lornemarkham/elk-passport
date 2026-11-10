@@ -21,7 +21,6 @@ import type { LiveView } from "./view";
 
 const WED_NOON = "2026-11-11T20:00:00Z"; // Wed 12:00 pm in BC
 const THU_830 = "2026-11-12T16:30:00Z"; // Thu 8:30 am — sign-up is open
-const THU_PM = "2026-11-13T02:00:00Z"; // Thu 6:00 pm — 30 min before the doors
 
 function setClock(iso: string) {
   (globalThis as unknown as { __cqClock?: unknown }).__cqClock = undefined;

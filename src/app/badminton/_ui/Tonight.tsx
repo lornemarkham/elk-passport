@@ -723,8 +723,9 @@ function Invites({
             </p>
             {c.status === "pending" && (
               <p className="mt-1 text-sm text-white/70">
-                {c.accepted.length}/4 said yes. You keep your place in line
-                until all four have.
+                {c.accepted.length}/4 said yes. It goes ahead once all four are
+                signed up and in the queue — you keep your place in line
+                meanwhile.
               </p>
             )}
             {(c.status === "pending" || c.status === "ready") && (

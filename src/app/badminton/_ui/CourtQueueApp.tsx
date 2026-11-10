@@ -5,6 +5,7 @@ import { SKILL_NAMES, type Skill } from "@/lib/courtqueue/model";
 import type { LiveView } from "@/lib/courtqueue/view";
 import { post, useLive } from "./api";
 import { Btn, Card, Toggle, cx } from "./bits";
+import { Clubhouse, unreadCount } from "./Clubhouse";
 import { ChallengeTab, Courts } from "./Courts";
 import { Me } from "./Me";
 import { useAlerts } from "./notify";
@@ -12,7 +13,14 @@ import { Organizer } from "./Organizer";
 import { Schedule } from "./Schedule";
 import { FinishSheet, Tonight, UpTakeover } from "./Tonight";
 
-type Tab = "tonight" | "courts" | "schedule" | "challenge" | "me" | "organizer";
+type Tab =
+  | "tonight"
+  | "clubhouse"
+  | "courts"
+  | "schedule"
+  | "challenge"
+  | "me"
+  | "organizer";
 
 /**
  * **CourtQueue — Everybody Plays.** One phone each, no central screen. The
@@ -55,6 +63,34 @@ export function CourtQueueApp() {
     },
     [accept, say, actPath],
   );
+  const chatSend = useCallback(
+    async (cmd: object) => {
+      const out = await post("/api/badminton/chat", { cmd });
+      if (out.view) accept(out.view);
+      if (!out.ok) say(out.error ?? "That didn't work.", true);
+      return out.ok;
+    },
+    [accept, say],
+  );
+  // The newest Clubhouse message this phone has read (kept on the phone).
+  const [seen, setSeen] = useState<string | null>(null);
+  const newest = view?.clubhouse?.messages.at(-1)?.id ?? null;
+  useEffect(() => {
+    if (!view?.me || newest === null) return;
+    if (tab === "clubhouse") {
+      localStorage.setItem(SEEN_KEY, newest);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors a value kept in localStorage
+      setSeen(newest);
+    } else if (seen === null) {
+      // First time on this phone: start from where the room is now, so
+      // nobody opens to a "47 unread" they never had a chance to read.
+      const was = localStorage.getItem(SEEN_KEY);
+      const start = was ?? newest;
+      if (was === null) localStorage.setItem(SEEN_KEY, newest);
+      setSeen(start);
+    }
+  }, [tab, newest, seen, view?.me]);
+  const unread = unreadCount(view, seen);
   const addSessions = useCallback(async () => {
     const out = await post("/api/badminton/act", { scope: "sessions" });
     if (out.view) accept(out.view);
@@ -92,6 +128,7 @@ export function CourtQueueApp() {
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "tonight", label: "Home", icon: "🏸" },
+    { id: "clubhouse", label: "Clubhouse", icon: "💬" },
     { id: "courts", label: "Courts", icon: "▦" },
     { id: "schedule", label: "Schedule", icon: "▤" },
     { id: "me", label: "Me", icon: "☺︎" },
@@ -149,6 +186,9 @@ export function CourtQueueApp() {
             alerts={alerts}
           />
         )}
+        {tab === "clubhouse" && view.clubhouse && (
+          <Clubhouse view={view} send={chatSend} act={act} seen={seen} />
+        )}
         {tab === "schedule" && <Schedule view={view} clubAct={clubAct} />}
         {tab === "courts" && <Courts view={view} offset={offset} />}
         {tab === "challenge" && <ChallengeTab view={view} act={act} />}
@@ -194,10 +234,20 @@ export function CourtQueueApp() {
                   tab === t.id ? "text-lime-300" : "text-white/60",
                 )}
               >
-                <span className="text-lg leading-none" aria-hidden>
+                <span className="relative text-lg leading-none" aria-hidden>
                   {t.icon}
+                  {t.id === "clubhouse" &&
+                    unread > 0 &&
+                    tab !== "clubhouse" && (
+                      <span className="absolute -top-1.5 -right-3 min-w-4 rounded-full bg-lime-400 px-1 text-center text-[10px] leading-4 font-black text-slate-950">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
                 </span>
                 {t.label}
+                {t.id === "clubhouse" && unread > 0 && tab !== "clubhouse" && (
+                  <span className="sr-only"> ({unread} new)</span>
+                )}
               </button>
             </li>
           ))}
@@ -214,6 +264,8 @@ function Shell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+const SEEN_KEY = "cq_clubhouse_seen";
 
 const SKILL_HELP: Record<Skill, string> = {
   1: "New to badminton, or just getting rallies going",

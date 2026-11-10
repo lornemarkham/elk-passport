@@ -49,6 +49,8 @@ export interface Mute {
 }
 
 export interface ChatMod {
+  /** The first week anyone said anything, so "earlier messages" knows. */
+  first?: string;
   locked: boolean;
   muted: Record<string, Mute>;
   pinned: { text: string; by: string; at: number } | null;

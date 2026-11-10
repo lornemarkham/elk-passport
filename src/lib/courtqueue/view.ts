@@ -299,6 +299,8 @@ export interface ClubhouseView {
     readonly at: number;
   } | null;
   readonly locked: boolean;
+  /** Everyone in the club, to pick opponents from. Names and levels only. */
+  readonly members: PersonView[];
   /** The organizer has paused this player's chat. */
   readonly muted: { readonly until: number | null } | null;
   /** Organizers only. */
@@ -738,7 +740,7 @@ export function clubhouseView(
   shards: readonly ChatShard[],
   me: { id: string; organizer: boolean },
   now: number,
-  mayHaveOlder: boolean,
+  weekNow: string,
 ): ClubhouseView {
   const all = shards.flatMap((sh) => sh.messages);
   const shown = all.slice(-CLUBHOUSE_WINDOW);
@@ -749,12 +751,12 @@ export function clubhouseView(
       ...messageView(m, me),
       author: person(club, m.by),
     })),
-    olderBefore:
-      shown.length && (all.length > shown.length || mayHaveOlder)
-        ? shown[0]!.id
-        : null,
+    olderBefore: olderCursor(mod, all.length > shown.length, shown, weekNow),
     pinned: mod.pinned,
     locked: mod.locked,
+    members: Object.keys(club.players)
+      .map((id) => person(club, id))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     muted: mute ? { until: mute.until } : null,
     moderation: me.organizer
       ? {
@@ -770,4 +772,22 @@ export function clubhouseView(
         }
       : null,
   };
+}
+
+/**
+ * Where "earlier messages" would start from: before the oldest message
+ * shown, or before this week when nothing is shown — and only when the room's
+ * first week of talk is earlier than that.
+ */
+function olderCursor(
+  mod: ChatMod,
+  truncated: boolean,
+  shown: readonly { id: string }[],
+  weekNow: string,
+): string | null {
+  const cursor = shown[0]?.id ?? `${weekNow}:0`;
+  const week = cursor.split(":")[0]!;
+  return truncated || (mod.first !== undefined && mod.first < week)
+    ? cursor
+    : null;
 }

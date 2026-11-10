@@ -80,3 +80,32 @@ Owner brief _P0: CourtQueue real-world release_. Same room, three additions:
 3. **The season is code, its cancellations are data.** Dates and hours are in
    `schedule.ts`; cancellations are on the club document, changed only by an
    organizer, logged.
+
+## Amendment 2026-11-10 — the Clubhouse
+
+Owner brief _CourtQueue — Clubhouse social features_ (M681). The same small
+room, with a chat in it:
+
+1. **One shared chat, no private messaging.** A message belongs to the club:
+   no recipient, no thread, no endpoint to address a person. Written by
+   members only (the same name-and-PIN players), read by members only.
+2. **Documents, not tables.** Messages are one document per week
+   (`chat:<Monday>`), so a season never grows a single document without bound
+   and nothing is ever deleted; moderation state is `chatmod`; notification
+   choices live in the existing `push` document (`prefs`). All through the
+   same compare-and-swap, so **no migration**. Moderation hides, never erases.
+3. **A challenge is a request that costs nothing until the day.** It can be made
+   for any night not yet over, answered without signing up, and only becomes
+   real when all four are confirmed, checked in and in the queue
+   (`readiness()`); the fairness engine then decides when it goes
+   (`challengeMayGo`, unchanged). This **tightens** the 2026-11-10 rule for
+   in-night challenges too: a challenge no longer goes ahead of the queue merely
+   because its four were checked in and said yes — they have to be in it.
+4. **Announcements from the server.** A challenge posts a card to the Clubhouse
+   itself; a member cannot forge one.
+5. **Two notification switches.** `Notice.kind` is `court` or `chat`; a player
+   chooses each independently (courts on by default, chat off by default).
+
+**Still open (not resolved here):** ADR 009's question — whether CourtQueue's
+players and chat should one day be Passport accounts and adventures — is
+unchanged, and a Clubhouse makes a second membership system more visible.
