@@ -1901,8 +1901,6 @@ export function DiscoveryListView({
                     </button>
                   )}
 
-                <LocalInsiders listings={insiders} said={session.ask ?? []} />
-
                 {!browsing && radiusActive && !radiusReady && (
                   <p data-testid="measuring" className="text-sm text-black/50">
                     Measuring from {originLabel}…
@@ -1920,7 +1918,17 @@ export function DiscoveryListView({
                     savingId={savingId}
                     onSave={handleSave}
                     dayHrefFor={dayHrefFor}
-                    interlude={<FeaturedHosts />}
+                    interlude={
+                      <>
+                        {/* Between the shelves, never above the first
+                            results (ADR 006): what locals told us. */}
+                        <LocalInsiders
+                          listings={insiders}
+                          said={session.ask ?? []}
+                        />
+                        <FeaturedHosts />
+                      </>
+                    }
                   />
                 ) : visible.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-black/25 bg-white px-4 py-10 text-center text-sm text-black/60">
@@ -1991,6 +1999,9 @@ export function DiscoveryListView({
                   >
                     Show more ({visible.length - shown} more)
                   </button>
+                )}
+                {browsing && (
+                  <LocalInsiders listings={insiders} said={session.ask ?? []} />
                 )}
               </>
             </div>
