@@ -311,3 +311,74 @@ export function calendarFile(title: string, day: string, uid: string): string {
     "END:VCALENDAR",
   ].join("\r\n");
 }
+
+// ---------------------------------------------------------------------------
+// The same memories, kept against the person's account
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REF = /^[A-Za-z0-9_:.-]{1,128}$/;
+/** The ceiling the table enforces (base64 characters). */
+export const PHOTO_LIMIT = 700_000;
+const JPEG_PREFIX = "data:image/jpeg;base64,";
+
+export type MemoryParse =
+  | { readonly ok: true; readonly value: Memory }
+  | { readonly ok: false; readonly error: string };
+
+/**
+ * What a phone may send to be kept privately. Nothing in it is believed: the
+ * kind is one of three, a note has words, a photo is a JPEG under the ceiling,
+ * and the id is a uuid the phone chose so a retry is the same memory.
+ */
+export function parseMemoryInput(body: unknown): MemoryParse {
+  if (!body || typeof body !== "object")
+    return { ok: false, error: "Send a memory." };
+  const r = body as Record<string, unknown>;
+  if (typeof r["id"] !== "string" || !UUID.test(r["id"]))
+    return { ok: false, error: "That memory needs an id." };
+  if (!KINDS.includes(r["kind"] as MemoryKind))
+    return { ok: false, error: "That isn't a kind of memory." };
+  const kind = r["kind"] as MemoryKind;
+  const text = typeof r["text"] === "string" ? r["text"].trim() : "";
+  if (kind === "note" && !text)
+    return { ok: false, error: "A note needs a few words." };
+  if (text.length > NOTE_LIMIT)
+    return { ok: false, error: `Keep it under ${NOTE_LIMIT} characters.` };
+  let photo: string | null = null;
+  if (kind === "photo") {
+    const p = r["photo"];
+    if (typeof p !== "string" || !p.startsWith(JPEG_PREFIX))
+      return { ok: false, error: "A photo needs to be a JPEG." };
+    if (p.length - JPEG_PREFIX.length > PHOTO_LIMIT)
+      return { ok: false, error: "That photo is too big." };
+    photo = p;
+  }
+  const itemId = r["itemId"];
+  if (itemId != null && (typeof itemId !== "string" || !REF.test(itemId)))
+    return { ok: false, error: "That isn't a stop." };
+  const at =
+    typeof r["at"] === "string" && !Number.isNaN(Date.parse(r["at"]))
+      ? new Date(r["at"]).toISOString()
+      : new Date().toISOString();
+  return {
+    ok: true,
+    value: {
+      id: r["id"].toLowerCase(),
+      kind,
+      at,
+      itemId: itemId ?? null,
+      text: text || null,
+      photo,
+    },
+  };
+}
+
+/** Two copies of the memories (phone, account) as one list: by id, oldest first. */
+export function mergeMemories(
+  ...lists: readonly (readonly Memory[])[]
+): readonly Memory[] {
+  const byId = new Map<string, Memory>();
+  for (const list of lists)
+    for (const m of list) if (!byId.has(m.id)) byId.set(m.id, m);
+  return [...byId.values()].sort((a, b) => a.at.localeCompare(b.at));
+}

@@ -304,7 +304,11 @@ describe("The recap", () => {
       expect.objectContaining({ method: "POST" }),
     );
     const body = JSON.parse(
-      (fetchMock.mock.calls[0]![1] as RequestInit).body as string,
+      (
+        fetchMock.mock.calls.find(
+          (c) => c[0] === "/api/adventures/adv1/moments",
+        )![1] as RequestInit
+      ).body as string,
     );
     expect(body).toEqual({ kind: "moment", text: "Hi", photo: null });
     fetchMock.mockRestore();
