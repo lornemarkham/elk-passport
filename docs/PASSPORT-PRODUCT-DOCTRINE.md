@@ -949,6 +949,28 @@ From the owner's _Discovery activity taxonomy and explorer_ brief, recorded in
 - **Picking an activity is saying it**: the same reader and the same answer as
   a typed sentence.
 
+### Locals tell us what a directory never has (2026-11-09)
+
+From the owner's _P0: Local Insider Network_ brief (mission 683), with the
+storage choice **proposed** in
+[ADR 018](architecture/decisions/018-local-insiders-queue-in-front-of-atlas.md)
+and the product in [`product/insiders/README.md`](product/insiders/README.md):
+
+- **Anyone can say "know something we're missing?"** — in words, out loud or
+  with a poster — and Passport reads it into an event, club, experience or
+  community for them to check. A person reviews it before it is public;
+  invited ambassadors look after their town; trusted ones publish their own.
+- **Nothing is said that nobody checked.** A date, a registration link or an
+  organizer appears only once someone checked it against a page; a past
+  event shows as past until its next date is confirmed; members-only things
+  wait for the organizer's permission.
+- **Published listings are handed to Atlas** as sources to read, and shown on
+  Go Have a Day in their own section ("From the locals"), never mixed into
+  Atlas's results. Whether Passport may show them before Atlas has read them
+  is the owner's call (ADR 018, _The conflict_).
+- **Discovery lead time** — how many days before it starts we first heard of
+  an event — is the network's measure (a shadow of §1's, kept honest by it).
+
 ---
 
 ## 13. Inspiration — preserved, fenced off
@@ -1213,6 +1235,12 @@ certainty. Do not invent an answer here to make the document feel finished.
     _"Something wrong?"_ — the register is part of the product decision and
     conventional UX politeness is not automatically the right answer here.
     **Not scoped. Not approved. Recorded so it is not lost.**
+    _Informed 2026-11-09 by the Local Insider Network_ (ADR 018): a local
+    listing carries **Something wrong?** for anyone, signed in or not — a
+    reason in words, kept on the listing's trail for a reviewer, changing no
+    fact. That answers it for Passport-held listings only; Atlas's own
+    _entity-quality-report_ inbox (Atlas ADR 094) is not yet wired to
+    Passport's subject pages, and who may flag an Atlas entity stays open.
 
 ---
 

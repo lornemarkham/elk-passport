@@ -11,6 +11,7 @@ import { PassportNav } from "@/components/shell/PassportNav";
 import { dayLine } from "@/domain/discovery/dayLine";
 import { OCTOBER_PLACES } from "@/domain/environment/places";
 import { weatherToday } from "@/lib/environment/today";
+import { publishedListings } from "@/lib/insiders/service";
 
 export const metadata: Metadata = {
   title: "Discovery — Passport",
@@ -108,7 +109,7 @@ async function DiscoveryBody({
 }) {
   // Every kind Atlas holds, not just Places — `The BullWheel` is an
   // Organization and was invisible here until now.
-  const [candidates, scope, reader, weather] = await Promise.all([
+  const [candidates, scope, reader, weather, insiders] = await Promise.all([
     listDiscoveryCandidates(childAge, on),
     // The one call site that decides where Passport is looking.
     activeScope(),
@@ -121,6 +122,9 @@ async function DiscoveryBody({
     // is, and offers to replace it with the reader's own. Started alongside
     // the corpus rather than after it, so the two waits overlap.
     forecastForDiscovery(),
+    // **What locals told us about** (the Local Insider Network, ADR 018):
+    // published listings only, and never a reason for Discovery to fail.
+    publishedListings(now ? new Date(now) : new Date()),
   ]);
 
   // **What is sent, and what is not** — see `forDiscoveryWire`. The whole
@@ -138,6 +142,7 @@ async function DiscoveryBody({
       now={now}
       today={today}
       {...(weather ? { weather } : {})}
+      insiders={insiders}
     />
   );
 }

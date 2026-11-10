@@ -12,6 +12,11 @@
 //   POST /__mode  {"candidates":"ok|empty|500|slow", "distance":"ok|500",
 //                  "legs":"ok|404|500|slow"}
 //   GET  /__mode  → the current modes
+//
+// It also stands in for Atlas's candidate-source queue, the seam Passport's
+// Local Insider Network hands a published listing to (ADR 018): POST
+// /admin/candidate-sources is recorded (idempotent by URL, like Atlas), and
+// GET /admin/candidate-sources lists what was queued. Nothing is read.
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
@@ -28,6 +33,7 @@ const body = Array.isArray(parsed) ? parsed : parsed.candidates;
 const byId = new Map(body.map((c) => [c.id, c]));
 
 const modes = { candidates: "ok", distance: "ok", legs: "ok" };
+const queued = [];
 
 const km = (a, b) => {
   const r = Math.PI / 180;
@@ -56,6 +62,31 @@ createServer(async (req, res) => {
       Object.assign(modes, JSON.parse(text || "{}"));
     }
     return json(res, 200, modes);
+  }
+
+  if (url.pathname === "/admin/candidate-sources") {
+    if (!req.headers["x-admin-token"])
+      return json(res, 401, { error: "Missing or invalid x-admin-token." });
+    if (req.method === "POST") {
+      let text = "";
+      for await (const chunk of req) text += chunk;
+      const body = JSON.parse(text || "{}");
+      if (!body.url || !body.reason || !body.sourceType)
+        return json(res, 400, {
+          error: "url, sourceType and reason are all required.",
+        });
+      const existing = queued.find((c) => c.url === body.url);
+      if (existing)
+        return json(res, 200, { candidate: existing, alreadyQueued: true });
+      const candidate = {
+        id: `standin-${queued.length + 1}`,
+        status: "queued",
+        ...body,
+      };
+      queued.push(candidate);
+      return json(res, 201, { candidate, alreadyQueued: false });
+    }
+    return json(res, 200, { candidates: queued });
   }
 
   if (url.pathname === "/discovery/candidates") {

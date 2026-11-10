@@ -69,6 +69,8 @@ import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { DiscoverySections } from "./DiscoverySections";
 import { FeaturedHosts } from "./FeaturedHosts";
+import { LocalInsiders } from "@/components/insiders/LocalInsiders";
+import type { PublicListing } from "@/domain/insiders/model";
 import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
 import { PossibilityCard } from "./PossibilityCard";
 import {
@@ -204,6 +206,11 @@ interface DiscoveryListViewProps {
    * Resolved on the server so nobody has to type "it is raining".
    */
   weather?: DayWeather & { area?: string };
+  /**
+   * Published Local Insider Network listings (ADR 018). Shown in their own
+   * section, matched to what was said; never mixed into Atlas's results.
+   */
+  insiders?: readonly PublicListing[];
 }
 
 /**
@@ -222,6 +229,7 @@ export function DiscoveryListView({
   now,
   today,
   weather,
+  insiders = [],
 }: DiscoveryListViewProps) {
   const signedIn = displayName !== null;
 
@@ -1892,6 +1900,8 @@ export function DiscoveryListView({
                           : `${elsewhereCount} more in ${elsewhereAreas.join(" and ")} — show them too`}
                     </button>
                   )}
+
+                <LocalInsiders listings={insiders} said={session.ask ?? []} />
 
                 {!browsing && radiusActive && !radiusReady && (
                   <p data-testid="measuring" className="text-sm text-black/50">
