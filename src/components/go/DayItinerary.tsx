@@ -158,6 +158,21 @@ export function DayItinerary({
         </div>
       )}
 
+      {day.conflicts && day.conflicts.length > 0 && (
+        <div
+          data-testid="go-conflicts"
+          role="status"
+          className="mt-4 rounded-xl bg-amber-50 p-3 text-[14px] leading-relaxed text-amber-950 ring-1 ring-amber-200"
+        >
+          <p className="font-semibold">This is tight</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {day.conflicts.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {day.budget && <TimeBar day={day} />}
       {timeline && <Verdict timeline={timeline} />}
       {timeline && <Glance day={day} timeline={timeline} />}

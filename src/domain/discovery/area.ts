@@ -1,4 +1,6 @@
 import type { Experience } from "@/domain/experience/types";
+import { DISCOVERY_TOWNS } from "@/domain/discovery/towns";
+import { distanceKm } from "@/lib/environment/geo";
 
 /**
  * **Why Vancouver was on a page about the Okanagan.**
@@ -58,10 +60,43 @@ export const areaOf = (experience: Experience): string | undefined =>
   experience.geography?.area?.name?.trim() || undefined;
 
 /**
- * **Whether Atlas states this is in a different area from the one being
- * browsed.**
+ * **How close a stated position must be to a named town to say which area it
+ * is in.** Okanagan towns are at most ~50 km apart and Vancouver is ~300 km
+ * from the nearest of them, so 60 km separates the two regions without
+ * guessing about the country between them.
+ */
+const PLACED_BY_TOWN_KM = 60;
+
+/**
+ * **The area a subject is in: the one Atlas states, else the one its stated
+ * coordinates fall in.**
  *
- * `false` when Atlas states no area, which is most of the corpus, and `false`
+ * Measured on the 2026-11-08 production corpus, 167 subjects carried
+ * coordinates ~300 km from Vernon (Vancouver public art) and **no** stated
+ * area, so "only a stated area excludes" let them into an Okanagan page.
+ * Coordinates are a stated fact; the nearest named town to them, within
+ * {@link PLACED_BY_TOWN_KM}, says which area they are in. Nothing stated and
+ * nothing near a town stays `undefined`: silence still removes nothing.
+ */
+export function placedAreaOf(experience: Experience): string | undefined {
+  const stated = areaOf(experience);
+  if (stated) return stated;
+  const c = experience.geography?.coordinates;
+  if (!c) return undefined;
+  const here = { latitude: c[1], longitude: c[0] };
+  let best: { area: string; km: number } | undefined;
+  for (const town of DISCOVERY_TOWNS) {
+    const km = distanceKm(here, town);
+    if (!best || km < best.km) best = { area: town.area, km };
+  }
+  return best && best.km <= PLACED_BY_TOWN_KM ? best.area : undefined;
+}
+
+/**
+ * **Whether this is in a different area from the one being browsed** — by
+ * what Atlas states, or failing that by where its stated coordinates are.
+ *
+ * `false` when nothing places it, which is most of the corpus, and `false`
  * when there is no home area to compare against.
  */
 export function elsewhere(
@@ -69,7 +104,7 @@ export function elsewhere(
   home: string | undefined,
 ): boolean {
   if (!home) return false;
-  const area = areaOf(experience);
+  const area = placedAreaOf(experience);
   return area !== undefined && area !== home;
 }
 
@@ -93,7 +128,7 @@ export function otherAreas(
 ): readonly string[] {
   const counts = new Map<string, number>();
   for (const experience of experiences) {
-    const area = areaOf(experience);
+    const area = placedAreaOf(experience);
     if (area && area !== home) counts.set(area, (counts.get(area) ?? 0) + 1);
   }
   return [...counts.entries()]

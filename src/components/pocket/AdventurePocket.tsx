@@ -16,6 +16,7 @@ import { destinationFor } from "@/domain/experience/destination";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import { sizedImage } from "@/lib/media/sizedImage";
 import { DAY_SEEDS, dayFrom, moved, weekendFrom } from "@/lib/pocket/ideas";
+import { groupChosen, placesPhrase } from "@/domain/day/places";
 import type { Ideas } from "@/lib/pocket/useIdeas";
 import { REMOVED, RESTORED, ideasCount, pocketLine } from "@/lib/voice";
 
@@ -64,6 +65,13 @@ export function AdventurePocket({
   const unknown = ideas.pocket.length - shown.length;
   const ids = shown.map((s) => s.experience.id);
   const chosen = ids.filter((id) => !left.has(id));
+  // Ideas saved in different parts of the province are not one day. Said here,
+  // before the press, and again (with the way forward) in the Day Builder.
+  const spread = groupChosen(
+    shown
+      .filter((s) => chosen.includes(s.experience.id))
+      .map((s) => s.experience),
+  ).groups;
   const count = ideas.ideas.length;
 
   useEffect(() => {
@@ -330,6 +338,17 @@ export function AdventurePocket({
             </ol>
 
             <div className="border-t border-black/10 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {spread.length > 1 && (
+                <p
+                  data-testid="pocket-spread"
+                  className="mb-2 text-xs text-[var(--gh-ink-soft,#555)]"
+                >
+                  These are in {spread.length} different places —{" "}
+                  {placesPhrase(spread)}. A day can&apos;t cross them, so
+                  I&apos;ll ask whether to build one around each, or a weekend.
+                  Nothing gets dropped.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Link
                   href={dayFrom(chosen)}

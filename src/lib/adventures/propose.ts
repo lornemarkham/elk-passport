@@ -22,6 +22,7 @@ import {
   readDayQuery,
   writeDayQuery,
 } from "@/lib/domains/integration/dayQuery";
+import { groupChosen, shareAcrossDays } from "@/domain/day/places";
 import { askFrom, daysBetween, MAX_SEED } from "./days";
 import { readChange } from "./sentence";
 import type { AdventureView } from "./store";
@@ -94,19 +95,37 @@ export async function sketchDays(input: SketchInput): Promise<SketchedDay[]> {
   const town = townById(input.townId);
   if (!town) return [];
   const seeds = [...new Set(input.seeds ?? [])];
+  const pinned = input.pinned ?? {};
+  const loose = seeds.filter((s) => !input.days.includes(pinned[s] ?? ""));
+
+  // **Chosen places are shared out by where they are**, not round-robin: a
+  // weekend of Vernon places and a Vancouver place is a Vernon day and a
+  // Vancouver day, never one day with a 230 km hop in it (`places.ts`). Each
+  // day starts from the town its own places are around.
+  const first = input.days[0];
+  const shared =
+    first && loose.length > 0
+      ? shareAcrossDays(
+          groupChosen(
+            dayPool(await candidatesFor(input.childAge, first), seeds).filter(
+              (e) => loose.includes(e.id),
+            ),
+          ),
+          input.days.length,
+        ).perDay
+      : [];
+
   const used: string[] = [];
   const out: SketchedDay[] = [];
   for (const [index, onDay] of input.days.entries()) {
     const candidates = await candidatesFor(input.childAge, onDay);
-    const pinned = input.pinned ?? {};
-    const loose = seeds.filter((s) => !input.days.includes(pinned[s] ?? ""));
     const mine = [
       ...seeds.filter((s) => pinned[s] === onDay),
-      ...loose.filter((_, i) => i % input.days.length === index),
+      ...(shared[index]?.ids ?? []),
     ].slice(0, MAX_SEED);
     const pool = dayPool(candidates, seeds);
     const brief = readBrief(input.say, {
-      town,
+      town: shared[index]?.town ?? town,
       on: onDay,
       ...(input.childAge !== undefined ? { childAge: input.childAge } : {}),
     });

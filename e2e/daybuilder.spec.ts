@@ -286,7 +286,7 @@ test.describe("Day Builder on a phone", () => {
     expect(small).toEqual([]);
   });
 
-  test("the keep and print buttons stay on screen while you scroll the day", async ({
+  test("the keep button stays on screen while you scroll the day", async ({
     page,
   }) => {
     await openDay(page);
@@ -294,7 +294,6 @@ test.describe("Day Builder on a phone", () => {
     await expect(keep).toBeInViewport();
     await page.getByTestId("go-stop").nth(1).scrollIntoViewIfNeeded();
     await expect(keep).toBeInViewport();
-    await expect(page.getByTestId("go-print")).toBeInViewport();
   });
 
   test("the day at a glance jumps to its card", async ({ page }) => {

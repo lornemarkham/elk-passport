@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { GoHaveADay } from "@/components/go/GoHaveADay";
 import { dayPool } from "@/lib/go/pool";
+import { groupChosen } from "@/domain/day/places";
 import { readBrief } from "@/domain/day/brief";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import { ThemeProvider } from "@/components/ghad/theme";
@@ -130,6 +131,25 @@ export default async function GoPage({ searchParams }: Props) {
     .slice(0, 5);
   const pool = dayPool(candidates, keep);
 
+  // **Where the day starts follows the places chosen.** Picks that are all
+  // around one town need no "where are you?" — the day starts from that town,
+  // said on screen and changeable. Picks in different parts of the province
+  // are not one day: the page says so and offers a day for each, or a
+  // weekend (`ApartPanel`). A start the person gave (`?at=`) always wins.
+  const places = groupChosen(
+    keep.flatMap((id) => pool.find((e) => e.id === id) ?? []),
+  );
+  const apart =
+    places.groups.length > 1
+      ? places.groups.map((g) => ({
+          ids: g.ids,
+          titles: g.titles,
+          ...(g.town ? { townId: g.town.id, townName: g.town.name } : {}),
+        }))
+      : undefined;
+  const fromPicks =
+    !one(query.at) && !apart ? places.groups[0]?.town?.id : undefined;
+
   const adventure = await adventureTarget(one(query.adventure));
 
   // `keep` (above) is ids only; one Atlas no longer serves builds the day
@@ -146,7 +166,11 @@ export default async function GoPage({ searchParams }: Props) {
           {...(one(query.say) ? { initialSay: one(query.say)! } : {})}
           {...(one(query.mode) ? { initialMode: one(query.mode)! } : {})}
           {...(childAge !== undefined ? { childAge } : {})}
-          {...(one(query.at) ? { townId: one(query.at)! } : {})}
+          {...(one(query.at) || fromPicks
+            ? { townId: one(query.at) ?? fromPicks! }
+            : {})}
+          {...(fromPicks ? { startedFromPicks: true } : {})}
+          {...(apart ? { apart } : {})}
           on={on}
           atlas={atlas}
           {...(simulated ? { simulatedWeather: simulated } : {})}

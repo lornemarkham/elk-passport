@@ -164,3 +164,42 @@ describe("the Adventure Pocket", () => {
     expect(screen.queryByTestId("pocket")).toBeNull();
   });
 });
+
+describe("ideas saved in different parts of the province", () => {
+  const at = (id: string, title: string, lng: number, lat: number) =>
+    ({
+      ...experience(id, title),
+      geography: { coordinates: [lng, lat] },
+    }) as unknown as Experience;
+  const apart = [
+    at("kal", "Kal Beach", -119.2937, 50.2316),
+    at("bna", "BNA Brewing", -119.27, 50.267),
+    at("stanley", "Stanley Park", -123.1443, 49.3043),
+  ];
+  const findApart = (id: string) => apart.find((t) => t.id === id);
+
+  it("says so before the press, and keeps every one of them", () => {
+    render(
+      <AdventurePocket
+        ideas={ideasWith(["kal", "bna", "stanley"])}
+        find={findApart}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /3 ideas saved/ }));
+    expect(screen.getByTestId("pocket-spread")).toHaveTextContent(
+      "These are in 2 different places",
+    );
+    expect(screen.getByTestId("pocket-make-day")).toHaveAttribute(
+      "href",
+      "/go?with=kal,bna,stanley",
+    );
+  });
+
+  it("says nothing when they are all around one town", () => {
+    render(
+      <AdventurePocket ideas={ideasWith(["kal", "bna"])} find={findApart} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /2 ideas saved/ }));
+    expect(screen.queryByTestId("pocket-spread")).toBeNull();
+  });
+});

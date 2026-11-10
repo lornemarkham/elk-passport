@@ -245,7 +245,16 @@ function ShapedDay({
   memoryKey,
   saved,
   adventure,
+  startedFromPicks = false,
+  apart,
 }: {
+  /** The start was worked out from where the picks are, not asked or given. */
+  readonly startedFromPicks?: boolean;
+  /**
+   * Picks that are too far apart to be one day, grouped by where they are.
+   * Said in place of a day (`ApartPanel`); nothing is dropped or substituted.
+   */
+  readonly apart?: readonly ApartGroup[];
   /** The adventure this day was opened from, when the person is in it. */
   readonly adventure?: AdventureTarget;
   /** `unreachable` when Atlas did not answer: say so, build nothing. */
@@ -404,7 +413,7 @@ function ShapedDay({
   // **No starting point, no day.** A day built with nowhere to start spans the
   // province, so until there is a town — said, carried in, or chosen — the page
   // asks (`StartPanel`). It never picks one.
-  const starting = brief ? needsStart(brief) : false;
+  const starting = brief ? needsStart(brief) || Boolean(apart) : false;
   const day = useMemo(
     () =>
       brief && !starting
@@ -910,7 +919,11 @@ function ShapedDay({
         />
       )}
 
-      {brief && starting && atlas !== "unreachable" && (
+      {brief && apart && atlas !== "unreachable" && (
+        <ApartPanel brief={brief} groups={apart} />
+      )}
+
+      {brief && starting && !apart && atlas !== "unreachable" && (
         <StartPanel
           brief={brief}
           near={
@@ -983,7 +996,7 @@ function ShapedDay({
               {GOOD_DAY}
             </p>
           )}
-          <WorkingFrom brief={brief} day={day} />
+          <WorkingFrom brief={brief} day={day} fromPicks={startedFromPicks} />
           <Who brief={brief} onSay={talk} />
           {weather && <Forecast weather={weather} />}
           {unmetNow.length > 0 && (
@@ -1099,29 +1112,15 @@ function ShapedDay({
                     {note}
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-                  <Link
-                    href={`/go/print?${query}`}
-                    data-testid="go-print"
-                    style={{
-                      backgroundColor: "var(--ghad-accent)",
-                      color: "var(--ghad-accent-ink)",
-                    }}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold"
-                  >
-                    <Printer className="h-4 w-4" aria-hidden />
-                    Print our adventure
-                  </Link>
-                  <button
-                    type="button"
-                    data-testid="go-keep-day"
-                    onClick={keepDay}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#111] px-6 text-[15px] font-semibold text-white"
-                  >
-                    <Bookmark className="h-4 w-4" aria-hidden />
-                    {isKept ? "Kept ✓" : "Keep this day"}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  data-testid="go-keep-day"
+                  onClick={keepDay}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#111] px-6 text-[15px] font-semibold text-white sm:w-auto"
+                >
+                  <Bookmark className="h-4 w-4" aria-hidden />
+                  {isKept ? "Kept ✓" : "Keep this day"}
+                </button>
               </div>
               {adventure ? (
                 <SaveToAdventure adventure={adventure} query={query} />
@@ -1133,33 +1132,48 @@ function ShapedDay({
                   />
                 )
               )}
-              <div className="mt-3 flex flex-wrap gap-3">
+              {/* **Taking it with you is secondary** (owner brief 2026-11-10):
+                  the day lives here and in Keep this day / an adventure.
+                  Paper, text and the offline guide are for when it is
+                  wanted, so they are quiet links, not the way out. */}
+              <p
+                data-testid="go-take"
+                className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-1 text-[14px] text-black/55"
+              >
+                <span>Taking it with you?</span>
+                <Link
+                  href={`/go/print?${query}`}
+                  data-testid="go-print"
+                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold underline underline-offset-2 hover:text-[#111]"
+                >
+                  <Printer className="h-4 w-4" aria-hidden />
+                  Print it
+                </Link>
                 <button
                   type="button"
                   data-testid="go-copy"
                   onClick={takeAsText}
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] ring-1 ring-black/20 ring-inset hover:ring-black/50"
+                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold underline underline-offset-2 hover:text-[#111]"
                 >
                   <Copy className="h-4 w-4" aria-hidden />
-                  Take it as text
+                  Copy as text
                 </button>
-                {/* The end of planning: the same day, the same query, handed
-                    to Go Offline — the exact stops in the exact order. */}
+                {/* The same day, the same query, handed to Go Offline. */}
                 <Link
                   href={offlineHref(query)}
                   data-testid="go-offline"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] ring-1 ring-black/20 ring-inset hover:ring-black/50"
+                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold underline underline-offset-2 hover:text-[#111]"
                 >
-                  Then go offline
+                  Go offline
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
                 <Link
                   href="/discovery"
-                  className="inline-flex min-h-12 items-center px-5 text-[15px] font-semibold text-black/55 hover:text-[#111]"
+                  className="inline-flex min-h-11 items-center font-semibold hover:text-[#111]"
                 >
                   Keep looking instead
                 </Link>
-              </div>
+              </p>
             </>
           )}
         </section>
@@ -1177,9 +1191,12 @@ function ShapedDay({
 function WorkingFrom({
   brief,
   day,
+  fromPicks = false,
 }: {
   readonly brief: DayBrief;
   readonly day?: DayPlanned;
+  /** The start was worked out from the places chosen. */
+  readonly fromPicks?: boolean;
 }) {
   const chips: { label: string; assumed?: boolean }[] = [];
   if (brief.hours !== undefined)
@@ -1197,7 +1214,12 @@ function WorkingFrom({
   if (brief.homeBy !== undefined)
     chips.push({ label: `Home by ${clockLabel(brief.homeBy)}` });
   if (brief.town)
-    chips.push({ label: `From ${brief.town.name.replace(/,\s*BC$/, "")}` });
+    chips.push({
+      label: fromPicks
+        ? `From ${brief.town.name.replace(/,\s*BC$/, "")} — where your picks are`
+        : `From ${brief.town.name.replace(/,\s*BC$/, "")}`,
+      ...(fromPicks ? { assumed: true } : {}),
+    });
   if (brief.childAge !== undefined)
     chips.push({ label: `With a ${brief.childAge}-year-old` });
   else if (brief.party)
@@ -1428,6 +1450,83 @@ function StartPanel({
           </ul>
         </div>
       ))}
+    </section>
+  );
+}
+
+/** Chosen places that sit together, as `/go` hands them to the page. */
+export interface ApartGroup {
+  readonly ids: readonly string[];
+  readonly titles: readonly string[];
+  readonly townId?: string;
+  readonly townName?: string;
+}
+
+/**
+ * **"Those aren't one day."** Said instead of a day when the places somebody
+ * chose are in different parts of the province. Nothing is dropped and nothing
+ * is swapped in: each group is offered as its own day, and all of it as a
+ * weekend that gives each place a day to itself.
+ */
+function ApartPanel({
+  brief,
+  groups,
+}: {
+  readonly brief: DayBrief;
+  readonly groups: readonly ApartGroup[];
+}) {
+  const all = groups.flatMap((g) => g.ids);
+  const name = (g: ApartGroup) =>
+    g.townName ? g.townName.replace(/,\s*BC$/, "") : "one place";
+  return (
+    <section
+      id="go-result"
+      tabIndex={-1}
+      aria-labelledby="go-apart-title"
+      data-testid="go-apart"
+      className="mt-10 border-t border-black/10 pt-8"
+    >
+      <WorkingFrom brief={brief} />
+      <h2
+        id="go-apart-title"
+        className="ghad-display mt-6 text-[28px] leading-tight font-extrabold tracking-[-0.03em] text-[#111]"
+      >
+        Your picks are in {groups.length} different parts of BC
+      </h2>
+      <p className="mt-2 max-w-[58ch] text-[15px] leading-relaxed text-black/60">
+        No single day reaches all of them, and I haven&apos;t dropped or swapped
+        any. Build a day for one group, or make a weekend with a day for each.
+      </p>
+      <ul className="mt-4 space-y-3">
+        {groups.map((g) => (
+          <li
+            key={g.ids.join(",")}
+            data-testid="go-apart-group"
+            className="rounded-2xl p-4 ring-1 ring-black/12 ring-inset"
+          >
+            <p className="text-[16px] font-semibold text-[#111]">
+              Around {name(g)}
+            </p>
+            <p className="mt-1 text-[14px] text-black/60">
+              {g.titles.join(" · ")}
+            </p>
+            <a
+              href={`/go?with=${g.ids.map(encodeURIComponent).join(",")}${g.townId ? `&at=${encodeURIComponent(g.townId)}` : ""}`}
+              data-testid="go-apart-day"
+              className="mt-3 inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
+            >
+              Make a day around {name(g)}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <a
+        href={`/adventures/new?with=${all.map(encodeURIComponent).join(",")}`}
+        data-testid="go-apart-weekend"
+        className="mt-4 inline-flex min-h-12 items-center rounded-full px-6 text-[15px] font-semibold text-[#111] ring-2 ring-black/20 ring-inset hover:ring-black/50"
+      >
+        Make a weekend — a day for each
+      </a>
     </section>
   );
 }

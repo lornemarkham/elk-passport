@@ -209,6 +209,12 @@ export interface DayPlanned {
    * first rather than last.
    */
   readonly leftOut?: readonly string[];
+  /**
+   * **Where what the person chose does not fit what they asked for**, said
+   * before the day is shown as though it did. Every chosen stop is still in
+   * the day; nothing was swapped or dropped to make it fit.
+   */
+  readonly conflicts?: readonly string[];
   readonly brief: DayBrief;
   readonly closing: string;
   readonly budget?: DayBudget;
@@ -1357,6 +1363,20 @@ export function buildDay({
     hoursAssumed,
   };
 
+  // **Say it before squeezing it.** Chosen stops are never dropped for time,
+  // so when they need more than the day has, the day says so in plain words
+  // and offers the ways out, rather than showing a tight day as a finished one.
+  const conflicts: string[] = [];
+  if (budget.overBy > 0 && stops.length > 1) {
+    const length = (m: number) =>
+      m >= 60
+        ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`
+        : `${m} min`;
+    conflicts.push(
+      `${stops.length} stops need about ${length(budget.stopMinutes + budget.moveMinutes)} with the moving between them, and you have ${length(budget.totalMinutes)}${budget.hoursAssumed ? " (assumed)" : ""}. All ${stops.length} are still here at the shortest time each; say “all day” for more room, or take one out.`,
+    );
+  }
+
   const money: DayMoney = {
     ...(brief.budget !== undefined ? { budget: brief.budget } : {}),
     free: stops
@@ -1461,6 +1481,7 @@ export function buildDay({
     stops,
     unknowns,
     ...(keptOut.length > 0 ? { leftOut: keptOut } : {}),
+    ...(conflicts.length > 0 ? { conflicts } : {}),
     brief,
     closing:
       "Put this in your pocket and your phone in the glovebox. Come back and tell us what actually happened.",

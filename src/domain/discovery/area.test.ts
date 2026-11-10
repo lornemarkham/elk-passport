@@ -4,6 +4,7 @@ import {
   countElsewhere,
   elsewhere,
   otherAreas,
+  placedAreaOf,
   withoutElsewhere,
 } from "./area";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
@@ -95,5 +96,46 @@ describe("the ordinary local page", () => {
       "Metro Vancouver",
       "Vancouver Island",
     ]);
+  });
+});
+
+describe("a subject Atlas has placed by coordinates but not by area", () => {
+  const at = (name: string, lng: number, lat: number) =>
+    candidateToExperience({
+      ...candidate(name),
+      geography: {
+        state: "observed" as const,
+        coordinates: [lng, lat],
+        coordinatesBasis: "observed",
+      },
+    } as DiscoveryCandidate);
+
+  // Vancouver public art: the 2026-11-08 corpus has 167 of these, ~300 km
+  // from Vernon, with coordinates and no area.
+  const cenotaph = at("Cenotaph", -123.109894, 49.282475);
+  const kalBeach = at("Kal Beach", -119.2937, 50.2316);
+  // Hope: ~150 km from every named town — nothing says which region.
+  const hope = at("Hope Slide Viewpoint", -121.4, 49.38);
+
+  it("is placed by the nearest named town to its stated coordinates", () => {
+    expect(placedAreaOf(cenotaph)).toBe("Metro Vancouver");
+    expect(placedAreaOf(kalBeach)).toBe("Okanagan");
+  });
+
+  it("is elsewhere from Vernon's page, and Vernon's beach is not", () => {
+    expect(elsewhere(cenotaph, "Okanagan")).toBe(true);
+    expect(elsewhere(kalBeach, "Okanagan")).toBe(false);
+    expect(elsewhere(kalBeach, "Metro Vancouver")).toBe(true);
+  });
+
+  it("still never calls a position far from every town elsewhere", () => {
+    expect(placedAreaOf(hope)).toBeUndefined();
+    expect(elsewhere(hope, "Okanagan")).toBe(false);
+  });
+
+  it("counts and names the held-back area the same way", () => {
+    const mixed = [cenotaph, kalBeach, hope];
+    expect(countElsewhere(mixed, "Okanagan")).toBe(1);
+    expect(otherAreas(mixed, "Okanagan")).toEqual(["Metro Vancouver"]);
   });
 });

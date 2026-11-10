@@ -430,3 +430,63 @@ describe("Go have a day", () => {
     );
   });
 });
+
+describe("places chosen in different parts of the province", () => {
+  const apart = [
+    {
+      ids: ["lakeside-beach", "ridge-trail"],
+      titles: ["Lakeside Beach", "Ridge Trail"],
+      townId: "vernon",
+      townName: "Vernon, BC",
+    },
+    {
+      ids: ["stanley-park"],
+      titles: ["Stanley Park"],
+      townId: "vancouver",
+      townName: "Vancouver, BC",
+    },
+  ];
+
+  it("says they are not one day instead of building one, and drops nothing", () => {
+    render(
+      <GoHaveADay
+        pool={POOL}
+        today="2026-10-11"
+        on="2099-01-01"
+        keep={["lakeside-beach", "ridge-trail", "stanley-park"]}
+        apart={apart}
+      />,
+    );
+    expect(screen.getByTestId("go-apart")).toBeTruthy();
+    expect(screen.queryByTestId("go-day")).toBeNull();
+    expect(screen.queryByTestId("go-where")).toBeNull();
+    const links = screen
+      .getAllByTestId("go-apart-day")
+      .map((a) => a.getAttribute("href"));
+    expect(links).toEqual([
+      "/go?with=lakeside-beach,ridge-trail&at=vernon",
+      "/go?with=stanley-park&at=vancouver",
+    ]);
+    expect(screen.getByTestId("go-apart-weekend").getAttribute("href")).toBe(
+      "/adventures/new?with=lakeside-beach,ridge-trail,stanley-park",
+    );
+  });
+
+  it("asks no starting question when the picks themselves say where", () => {
+    render(
+      <GoHaveADay
+        pool={POOL}
+        today="2026-10-11"
+        on="2099-01-01"
+        townId="vernon"
+        startedFromPicks
+        keep={["lakeside-beach", "ridge-trail"]}
+      />,
+    );
+    expect(screen.queryByTestId("go-where")).toBeNull();
+    expect(stops()).toEqual(
+      expect.arrayContaining(["Lakeside Beach", "Ridge Trail"]),
+    );
+    expect(screen.getByText(/From Vernon — where your picks are/)).toBeTruthy();
+  });
+});
