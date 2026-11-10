@@ -6,6 +6,7 @@ import { post, useLive } from "./api";
 import { Btn, Card, cx } from "./bits";
 import { Clubhouse, unreadCount } from "./Clubhouse";
 import { ChallengeTab, Courts } from "./Courts";
+import { Grow, JourneyIntro } from "./Grow";
 import { Me } from "./Me";
 import { useAlerts } from "./notify";
 import { Organizer } from "./Organizer";
@@ -18,6 +19,7 @@ type Tab =
   | "courts"
   | "schedule"
   | "challenge"
+  | "grow"
   | "me"
   | "organizer";
 
@@ -130,6 +132,7 @@ export function CourtQueueApp() {
     { id: "clubhouse", label: "Clubhouse", icon: "💬" },
     { id: "courts", label: "Courts", icon: "▦" },
     { id: "schedule", label: "Schedule", icon: "▤" },
+    { id: "grow", label: "Grow", icon: "🌱" },
     { id: "me", label: "Me", icon: "☺︎" },
     ...(view.me.organizer
       ? [{ id: "organizer" as Tab, label: "Organize", icon: "⚙︎" }]
@@ -175,6 +178,7 @@ export function CourtQueueApp() {
         </button>
       )}
       <main className="pb-28">
+        {tab === "tonight" && <JourneyIntro view={view} clubAct={clubAct} />}
         {tab === "tonight" && (
           <Tonight
             view={view}
@@ -188,6 +192,7 @@ export function CourtQueueApp() {
         {tab === "clubhouse" && view.clubhouse && (
           <Clubhouse view={view} send={chatSend} act={act} seen={seen} />
         )}
+        {tab === "grow" && <Grow view={view} clubAct={clubAct} />}
         {tab === "schedule" && <Schedule view={view} clubAct={clubAct} />}
         {tab === "courts" && <Courts view={view} offset={offset} />}
         {tab === "challenge" && <ChallengeTab view={view} act={act} />}
@@ -292,7 +297,9 @@ function Welcome({ onDone }: { onDone: () => void }) {
           🏸
         </p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">CourtQueue</h1>
-        <p className="text-lg font-semibold text-lime-300">Everybody Plays.</p>
+        <p className="text-lg font-semibold text-lime-300">
+          Play. Learn. Grow. Together.
+        </p>
         <p className="mx-auto mt-2 max-w-xs text-sm text-white/70">
           Everyone is welcome. Come play, meet people, and have fun! Tap PLAY,
           put your phone down, and we&apos;ll call you.
@@ -364,6 +371,11 @@ function Welcome({ onDone }: { onDone: () => void }) {
           </p>
         )}
       </form>
+      <p className="text-center text-sm">
+        <a href="/badminton/demo" className="text-lime-300 underline">
+          See how a night works
+        </a>
+      </p>
     </div>
   );
 }

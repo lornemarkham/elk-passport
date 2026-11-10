@@ -114,13 +114,14 @@ export function Me({
           </div>
         </label>
         <Toggle
-          label="I'm happy to say hello to new players"
+          label="I'm happy to help newer players"
           on={me.mentor}
           onChange={(v) => clubAct({ type: "profile", mentor: v })}
         />
         <p className="text-xs text-white/50">
-          Now and then you may be matched with someone new to the club, so they
-          meet a friendly face. Not every game.
+          Now and then you may be matched with someone newer, so they meet a
+          friendly face. Never required, and not every game. You can also pick{" "}
+          <b>Happy to Help</b> for a single night.
         </p>
       </Card>
 

@@ -213,7 +213,7 @@ describe("CourtQueue engine", () => {
     expect(s.moods).toEqual({ p1: "challenge" });
     expect(
       refused(c, s, as("p1"), { type: "mood", mood: "expert" }, T0),
-    ).toMatch(/one of the three/);
+    ).toMatch(/one of the four/);
     expect(
       refused(
         c,

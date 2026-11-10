@@ -7,6 +7,7 @@ import {
   tonight,
   typicalGameMinutes,
 } from "./fair";
+import { cleanJourney, isLevel } from "./journey";
 import {
   MINUTE,
   filled,
@@ -398,7 +399,7 @@ function run(
       const moods = { ...(s.moods ?? {}) };
       if (cmd.mood === null) delete moods[id];
       else if (isMood(cmd.mood)) moods[id] = cmd.mood;
-      else refuse("Pick one of the three, or skip it.");
+      else refuse("Pick one of the four, or skip it.");
       s.moods = moods;
       return;
     }
@@ -1099,6 +1100,16 @@ export type ClubCommand =
       mentor?: boolean;
       photo?: boolean;
     }
+  | {
+      type: "journey";
+      /** `null` clears it: "I'd rather not say". */
+      level?: string | null;
+      wantsHelp?: boolean;
+      asked?: boolean;
+      goals?: string[];
+      practising?: string[];
+      done?: string[];
+    }
   | { type: "organizer"; playerId: string; on: boolean }
   | { type: "court"; court: number; patch: Partial<Court> }
   | { type: "rules"; patch: Partial<Club["rules"]> }
@@ -1150,6 +1161,23 @@ function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
       }
       if (cmd.mentor !== undefined) me!.mentor = !!cmd.mentor;
       if (cmd.photo !== undefined) me!.photo = !!cmd.photo;
+      return;
+    }
+    case "journey": {
+      // Theirs alone: no organizer or other player can set or read it.
+      if (!me) refuse("Sign in first.");
+      if (cmd.level !== undefined && cmd.level !== null && !isLevel(cmd.level))
+        refuse("Pick one of the three, or skip it.");
+      const j = cleanJourney({
+        ...me!.journey,
+        ...(cmd.level === undefined ? {} : { level: cmd.level }),
+        ...(cmd.wantsHelp === undefined ? {} : { wantsHelp: cmd.wantsHelp }),
+        ...(cmd.goals === undefined ? {} : { goals: cmd.goals }),
+        ...(cmd.practising === undefined ? {} : { practising: cmd.practising }),
+        ...(cmd.done === undefined ? {} : { done: cmd.done }),
+        asked: true,
+      });
+      me!.journey = j;
       return;
     }
     case "organizer": {

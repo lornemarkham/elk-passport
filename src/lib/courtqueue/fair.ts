@@ -1,3 +1,4 @@
+import { levelRank } from "./journey";
 import {
   MINUTE,
   filled,
@@ -99,6 +100,10 @@ export interface Waiting {
   readonly mood: Mood | null;
   readonly newcomer: boolean;
   readonly host: boolean;
+  /** Wants a friendly partner who can show them a few things. */
+  readonly learner: boolean;
+  /** 0 … 2, or null when they haven't said. Never leaves the server. */
+  readonly rank: number | null;
   readonly games: number;
   readonly minutes: number;
 }
@@ -134,7 +139,10 @@ function traits(club: Club, s: Session, id: string) {
   return {
     mood: s.moods?.[id] ?? null,
     newcomer: !!p && p.createdAt >= Date.parse(s.date) - NEWCOMER_MS,
-    host: !!p?.mentor,
+    // "Happy to Help" tonight, or a standing volunteer.
+    host: !!p?.mentor || s.moods?.[id] === "help",
+    learner: !!p?.journey?.wantsHelp || levelRank(p?.journey?.level) === 0,
+    rank: levelRank(p?.journey?.level),
   };
 }
 
@@ -173,10 +181,32 @@ function seat(four: readonly Waiting[], t: Map<string, Tonight>): Pick {
   const newcomers = four.filter((w) => w.newcomer).length;
   const hosts = four.filter((w) => w.host && !w.newcomer).length;
   if (newcomers > 0 && hosts > 0) base -= 3;
-  // Gentle: "up for a challenge" and "here to have fun" both get the game
-  // they asked for more often when they are not forced together.
+  // Someone who asked for a friendly partner is better off with a helper than
+  // without — but a mixed game is never a requirement and never a rank.
+  const learners = four.filter((w) => w.learner && !w.newcomer).length;
+  if (learners > 0 && hosts > 0 && newcomers === 0) base -= 2;
+  // Gentle: "Challenge Me" and "Just Here to Play" both get the game they
+  // asked for more often when they are not forced together.
   const moods = new Set(four.map((w) => w.mood).filter((m) => m !== null));
   if (moods.has("fun") && moods.has("challenge")) base += 2;
+  // "Challenge Me": a game with someone whose experience is at least theirs.
+  // "Find My Rhythm": a steady game, so a wide spread of experience costs a little.
+  const ranks = four.map((w) => w.rank).filter((r): r is number => r !== null);
+  const top = ranks.length ? Math.max(...ranks) : 0;
+  for (const w of four) {
+    if (
+      w.mood === "challenge" &&
+      w.rank !== null &&
+      four.some((o) => o !== w && o.rank !== null && o.rank >= w.rank!)
+    )
+      base -= 1.5;
+    if (
+      w.mood === "rallies" &&
+      ranks.length > 1 &&
+      top - Math.min(...ranks) >= 2
+    )
+      base += 1.5;
+  }
 
   let best: Pick | null = null;
   for (const [p, q, r, s] of splits) {
@@ -186,6 +216,12 @@ function seat(four: readonly Waiting[], t: Map<string, Tonight>): Pick {
     // Newcomers partner someone who is not also new, when there's a choice.
     if (p.newcomer && q.newcomer) cost += 1.5;
     if (r.newcomer && s.newcomer) cost += 1.5;
+    // A helper alongside someone who asked for one.
+    for (const [x, y] of [
+      [p, q],
+      [r, s],
+    ] as const)
+      if ((x.host && y.learner) || (y.host && x.learner)) cost -= 1;
     if (!best || cost < best.cost)
       best = {
         slots: [p.playerId, q.playerId, r.playerId, s.playerId],
@@ -334,6 +370,19 @@ function explain(
     (id) => id !== host && traits(club, s, id).newcomer,
   );
   if (host && newcomer) why.push(`${name(host)} is here to say hello`);
+  else {
+    // Said in words that name no one's level.
+    const ranks = new Set(
+      ids.map((id) => traits(club, s, id).rank).filter((r) => r !== null),
+    );
+    if (ranks.size > 1)
+      why.push("A mixed-experience game: everyone can learn something");
+    else if (
+      ids.some((id) => s.moods?.[id] === "challenge") &&
+      ranks.size === 1
+    )
+      why.push("A game with a bit of spark");
+  }
   if (why.length === 0) why.push("A fresh mix of players");
   return why;
 }

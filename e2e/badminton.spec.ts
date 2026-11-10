@@ -94,9 +94,10 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   await a.page.getByRole("button", { name: "I'm new" }).click();
   await a.page.getByLabel("Your name").fill(`Ana ${RUN}`);
   await a.page.getByLabel(/Choose a PIN/).fill("2468");
-  // Nobody is asked to rate themselves.
+  // Joining asks for a name and a PIN only; the optional journey question
+  // comes after, on Home.
   await expect(
-    a.page.getByText(/Beginner|Intermediate|Expert|rate yourself/),
+    a.page.getByText(/Beginner|Intermediate|Advanced|rate yourself/),
   ).toHaveCount(0);
   await expect(
     a.page.getByText(
@@ -106,22 +107,31 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   await a.page.getByRole("button", { name: "Join CourtQueue" }).click();
   const phase = a.page.getByTestId("phase");
 
+  // "Where are you in your badminton journey?" — optional, one tap, asked once.
+  await expect(
+    a.page.getByText("Where are you in your badminton journey?"),
+  ).toBeVisible();
+  await a.page.getByRole("button", { name: /^Beginner/ }).click();
+  await expect(
+    a.page.getByText("Where are you in your badminton journey?"),
+  ).toHaveCount(0);
+
   await expect(phase).toHaveText("NOT SIGNED UP");
   await expect(
     a.page.getByText("Coldstream Elementary School Gym"),
   ).toBeVisible();
   await a.page.getByRole("button", { name: "SIGN ME UP" }).click();
   await expect(phase).toHaveText("REGISTERED");
-  // "What kind of game sounds fun today?" — optional, friendly, changeable.
+  // Playing mood — optional, friendly, changeable.
   await expect(
-    a.page.getByText("What kind of game sounds fun today?"),
+    a.page.getByText("What's your playing mood tonight?"),
   ).toBeVisible();
-  await a.page.getByLabel("I’d love some friendly rallies.").click();
-  await expect(
-    a.page.getByLabel("I’d love some friendly rallies."),
-  ).toBeChecked();
-  await a.page.getByLabel("I’m up for a challenge!").click();
-  await expect(a.page.getByLabel("I’m up for a challenge!")).toBeChecked();
+  await a.page.getByLabel(/Find My Rhythm/).click();
+  await expect(a.page.getByLabel(/Find My Rhythm/)).toBeChecked();
+  await a.page.getByLabel(/Challenge Me/).click();
+  await expect(a.page.getByLabel(/Challenge Me/)).toBeChecked();
+  await expect(a.page.getByLabel(/Happy to Help/)).toBeVisible();
+  // Level and mood are private: the Me card has no level tag.
   await a.page.getByRole("button", { name: "I'M HERE" }).click();
   await expect(phase).toHaveText("READY TO PLAY");
   await a.page.getByRole("button", { name: "JOIN THE QUEUE" }).click();
@@ -384,4 +394,66 @@ test("every court takes anyone; 25 is the limit and the waitlist moves up", asyn
     (s: { id: string }) => s.id === TODAY,
   );
   expect(view.mine).toBe("confirmed");
+});
+
+test("Grow: My Journey is private and Learn teaches without links", async ({
+  browser,
+}) => {
+  const a = await phone(browser);
+  await a.page.goto("/badminton");
+  await a.page.getByRole("button", { name: "I'm new" }).click();
+  await a.page.getByLabel("Your name").fill(`Gro ${RUN}`);
+  await a.page.getByLabel(/Choose a PIN/).fill("1357");
+  await a.page.getByRole("button", { name: "Join CourtQueue" }).click();
+  await a.page.getByRole("button", { name: /Not now/ }).click();
+  await a.page.getByRole("button", { name: /Grow/ }).click();
+  await expect(
+    a.page.getByRole("heading", { name: "My Badminton Journey" }),
+  ).toBeVisible();
+  await a.page.getByRole("radio", { name: "Intermediate" }).click();
+  await expect(
+    a.page.getByRole("radio", { name: "Intermediate" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await a.page.getByLabel("A goal of mine").fill("Rally for twenty hits");
+  await a.page.getByRole("button", { name: "Add" }).click();
+  await expect(a.page.getByText("Rally for twenty hits")).toBeVisible();
+  await a.page.getByLabel("A relaxed handshake grip").click();
+  await expect(a.page.getByLabel("A relaxed handshake grip")).toBeChecked();
+  await a.page.getByRole("tab", { name: "Learn" }).click();
+  for (const t of [
+    "Grip and serving",
+    "Footwork",
+    "Clears and drops",
+    "Doubles positioning",
+    "Communication",
+    "Improving consistency",
+  ])
+    await expect(a.page.getByText(t, { exact: true })).toBeVisible();
+  await a.page.getByRole("button", { name: /Doubles positioning/ }).click();
+  await expect(
+    a.page.getByRole("img", { name: /front and back to attack/ }),
+  ).toBeVisible();
+  await expect(a.page.locator('main a[href^="http"]')).toHaveCount(0);
+  // Nothing wider than the phone.
+  const wide = await a.page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
+  expect(wide).toBe(false);
+});
+
+test("See a night: three made-up nights run on the real rules", async ({
+  page,
+}) => {
+  await page.goto("/badminton/demo");
+  await expect(page.getByText("Play. Learn. Grow. Together.")).toBeVisible();
+  for (const t of [
+    "A new player joins comfortably",
+    "Experienced players enjoy a challenging match",
+    "A newer player chooses to challenge a stronger player",
+  ])
+    await expect(
+      page.getByRole("heading", { name: new RegExp(t) }),
+    ).toBeVisible();
+  await expect(page.getByText("Maya & Sam")).toBeVisible();
+  await expect(page.getByText(/invited game/)).toBeVisible();
 });

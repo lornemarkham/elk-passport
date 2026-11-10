@@ -68,6 +68,7 @@ import {
   registrationState,
   upcomingNights,
 } from "./schedule";
+import { cleanJourney } from "./journey";
 import { playerStats } from "./stats";
 import { courtStore, NotReady, type DocStore } from "./store";
 import {
@@ -693,6 +694,8 @@ export async function live(
       ? {
           ...person(club, me.id),
           organizer: me.organizer,
+          // Their own journey: sent to their phone and no one else's.
+          journey: cleanJourney(me.journey),
         }
       : null,
     sessions: sessions

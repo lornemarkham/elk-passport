@@ -12,11 +12,12 @@ import { propose } from "./fair";
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
 
 describe("everyone belongs", () => {
-  it("offers three friendly, optional ways to answer 'what sounds fun today?'", () => {
+  it("offers four friendly, optional playing moods", () => {
     expect(MOODS.map((m) => m.label)).toEqual([
-      "I’m here to have fun!",
-      "I’d love some friendly rallies.",
-      "I’m up for a challenge!",
+      "Just Here to Play",
+      "Find My Rhythm",
+      "Challenge Me",
+      "Happy to Help",
     ]);
   });
 
@@ -141,24 +142,45 @@ describe("the source stays free of skill language", () => {
       .filter((f) => !/\.test\.ts$|testkit/.test(f) && f.endsWith(".ts"))
       .map((f) => join(__dirname, f)),
   ];
-  it("has no Beginner / Intermediate / Expert tiers, win records or boards", () => {
+  // Optional, private levels are the one place these words live (ADR 017,
+  // amendment 2026-11-12): the journey, the lessons and the demonstration.
+  const journeyFiles = [
+    "journey.ts",
+    "learn.ts",
+    "demo.ts",
+    "Grow.tsx",
+    "LearnDiagrams.tsx",
+  ];
+  it("has no Beginner / Intermediate / Expert tiers, win records or boards outside the private journey", () => {
     const banned =
       /\b(Beginner|Intermediate|Expert|Advanced)\b|skill|leaderboard|winPct|won–lost|club board|Level history/i;
+    const hits = files
+      .filter((f) => !journeyFiles.some((j) => f.endsWith(`/${j}`)))
+      .flatMap((f) =>
+        readFileSync(f, "utf8")
+          .split("\n")
+          .map((line, i) => ({ f, line, n: i + 1 }))
+          .filter(
+            ({ line }) =>
+              banned.test(line) &&
+              // model.ts keeps the names it must scrub from old stored clubs.
+              !/LEGACY|legacy|Clubs stored before|"skill"|skillHistory|statsPublic|beginner\|intermediate\|expert|skill levels/.test(
+                line,
+              ) &&
+              !/^\s*"(minSkill|maxSkill)",$/.test(line) &&
+              !/^\s*(\*|\/\/)/.test(line),
+          ),
+      );
+    expect(hits.map((h) => `${h.f}:${h.n} ${h.line.trim()}`)).toEqual([]);
+  });
+
+  it("never lets a win record, a score or a board back in, anywhere", () => {
+    const banned = /leaderboard|winPct|won–lost|club board/i;
     const hits = files.flatMap((f) =>
       readFileSync(f, "utf8")
         .split("\n")
-        .map((line, i) => ({ f, line, n: i + 1 }))
-        .filter(
-          ({ line }) =>
-            banned.test(line) &&
-            // model.ts keeps the names it must scrub from old stored clubs.
-            !/LEGACY|legacy|Clubs stored before|"skill"|skillHistory|statsPublic|beginner\|intermediate\|expert|skill levels/.test(
-              line,
-            ) &&
-            !/^\s*"(minSkill|maxSkill)",$/.test(line) &&
-            !/^\s*(\*|\/\/)/.test(line),
-        ),
+        .filter((l) => banned.test(l) && !/^\s*(\*|\/\/)/.test(l)),
     );
-    expect(hits.map((h) => `${h.f}:${h.n} ${h.line.trim()}`)).toEqual([]);
+    expect(hits).toEqual([]);
   });
 });

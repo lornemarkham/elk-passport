@@ -847,7 +847,10 @@ _Everyone belongs_ (2026-11-10, owner brief "P0: Everyone belongs") made a
 fourth canonical for it: _CourtQueue never rates, ranks or compares players_.
 No skill levels, no courts for a level, no scores, win records, points or
 boards; a player says only what kind of game sounds fun tonight, and can
-decline to say.
+decline to say. _Play. Learn. Grow. Together._ (2026-11-12) refined this:
+an optional level and a playing mood are **private guides** for suggesting
+games and for the player's own learning, never shown to anyone else and never
+a barrier (ADR 017, amendment 2026-11-12).
 
 ---
 

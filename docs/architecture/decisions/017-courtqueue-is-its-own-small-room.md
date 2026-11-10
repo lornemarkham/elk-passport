@@ -132,3 +132,27 @@ model ability at all**:
 
 This is a product decision recorded in `docs/PASSPORT-PRODUCT-DOCTRINE.md` §10
 and `docs/product/badminton/README.md`.
+
+## Amendment 2026-11-12 — Play. Learn. Grow. Together.
+
+The owner's next brief (_P0: Play. Learn. Grow. Together._, M687) refines the
+2026-11-10 amendment. **This is a deliberate partial reversal, named here so it
+is not mistaken for drift:** an optional Beginner / Intermediate / Advanced
+answer returns — as a private guide, not a label.
+
+- `Player.journey` (`journey.ts`): optional level, "friendly partner" wish,
+  goals, techniques being practised, challenges tried. It is sent to that
+  player's phone only (`MeView.journey`); no card, roster, organizer view,
+  notification or "why" line ever carries it (`journey.test.ts` checks).
+- Still removed and guarded by `belong.test.ts`: courts for a level, scores,
+  win records, points, boards. Level words may appear only in the journey,
+  learn, demo and Grow files.
+- The fairness engine uses level and mood only as small tie-breaks, always
+  behind turns, minutes and waiting (`fair.ts`): helper beside someone who
+  asked for one, "Challenge Me" with someone at least as experienced, "Find My
+  Rhythm" avoiding the widest spread. Mixed games are never required and no
+  one is made to coach. Organizers keep assign / play-next.
+- Moods are now four: Just Here to Play, Find My Rhythm, Challenge Me, Happy
+  to Help (stored ids `fun`, `rallies`, `challenge`, `help`).
+- `/badminton/demo` runs three made-up nights through the real engine.
+- No migration: `journey` is a new optional field in the club JSON document.

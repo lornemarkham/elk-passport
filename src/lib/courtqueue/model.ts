@@ -1,3 +1,4 @@
+import type { Journey } from "./journey";
 import type { Cancellation } from "./schedule";
 
 /**
@@ -17,20 +18,34 @@ import type { Cancellation } from "./schedule";
  */
 
 /**
- * **What kind of game sounds fun today.** A choice a player makes for one
- * night and can change any time. It is never a rating of the player, never
- * shown next to their name and never carried to the next night.
+ * **Playing mood.** What a player is in the mood for tonight. A choice for one
+ * night, changeable any time, never a rating of the player, never shown next
+ * to their name and never carried to the next night. The ids are the ones
+ * stored since 2026-11-10 (`fun`, `rallies`); the words are what players read.
  */
-export type Mood = "fun" | "rallies" | "challenge";
+export type Mood = "fun" | "rallies" | "challenge" | "help";
 
-export const MOODS: readonly { id: Mood; label: string }[] = [
-  { id: "fun", label: "I’m here to have fun!" },
-  { id: "rallies", label: "I’d love some friendly rallies." },
-  { id: "challenge", label: "I’m up for a challenge!" },
+export const MOODS: readonly { id: Mood; label: string; hint: string }[] = [
+  { id: "fun", label: "Just Here to Play", hint: "Any game is a good game." },
+  {
+    id: "rallies",
+    label: "Find My Rhythm",
+    hint: "Friendly, steady rallies.",
+  },
+  {
+    id: "challenge",
+    label: "Challenge Me",
+    hint: "A game that stretches me.",
+  },
+  {
+    id: "help",
+    label: "Happy to Help",
+    hint: "Glad to play with someone newer.",
+  },
 ];
 
 export const isMood = (m: unknown): m is Mood =>
-  m === "fun" || m === "rallies" || m === "challenge";
+  m === "fun" || m === "rallies" || m === "challenge" || m === "help";
 
 export interface Player {
   readonly id: string;
@@ -44,6 +59,11 @@ export interface Player {
   mentor: boolean;
   organizer: boolean;
   photo: boolean;
+  /**
+   * Their own badminton journey (`journey.ts`): optional, private to them,
+   * only ever a gentle input to suggestions.
+   */
+  journey?: Journey;
 }
 
 export interface Court {

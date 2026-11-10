@@ -222,3 +222,23 @@ run src/lib/courtqueue/store.stack.test.ts`. The Clubhouse survives a restart:
   `STACK_PHASE=write npx vitest run src/lib/courtqueue/clubhouse.stack.test.ts`,
   `node docs/product/badminton/verification/stack.mjs restart`, then
   `STACK_PHASE=read` the same.
+
+## Play. Learn. Grow. Together. (2026-11-12, owner brief M687)
+
+- **Where are you in your badminton journey?** One optional card on Home
+  (Beginner / Intermediate / Advanced / "not now"), asked once, private.
+- **Playing mood** (per night): Just Here to Play · Find My Rhythm · Challenge
+  Me · Happy to Help.
+- **Suggestions**: turns → minutes → waiting first; level and mood only break
+  ties (helper beside someone who asked, peers for Challenge Me, steadier mix
+  for Find My Rhythm). Players still choose partners via game invites;
+  organizers can assign or play-next.
+- **Grow tab**: _My Journey_ (skills to explore, techniques to practise,
+  three goals, encouraging progress from the player's own nights, optional
+  challenges) and _Learn_ (six lessons with drawn diagrams; no outside links).
+- **Happy to Help** is voluntary; nobody is required to coach.
+- **`/badminton/demo`**: three made-up nights on the real engine (new player
+  joins; experienced players' challenge game; a newer player invites a
+  stronger one).
+  Not built: video, organizer view of levels (deliberately), mentor pairing
+  beyond the gentle seating bias.

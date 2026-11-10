@@ -42,6 +42,7 @@ import {
   sessionWindow,
   type RegistrationState,
 } from "./schedule";
+import type { Journey } from "./journey";
 import { nightBalance } from "./stats";
 
 /**
@@ -212,6 +213,8 @@ export interface SessionListing {
 
 export interface MeView extends PersonView {
   readonly organizer: boolean;
+  /** Theirs alone (`journey.ts`): never part of what anyone else is sent. */
+  readonly journey: Journey;
 }
 
 export interface OrganizerView {

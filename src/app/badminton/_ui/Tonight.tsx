@@ -768,16 +768,16 @@ function MyResults({
 }
 
 /**
- * **What kind of game sounds fun today?** Optional, friendly and changeable
- * any time tonight. It is never shown on a card or next to a name; it only
- * nudges who is mixed together. Leave it blank and nothing changes.
+ * **Playing mood.** Optional, friendly and changeable any time tonight. It is
+ * never shown on a card or next to a name; it only nudges who is mixed
+ * together. Leave it blank and nothing changes.
  */
 export function MoodPicker({ mood, act }: { mood: Mood | null; act: Act }) {
   return (
     <Card>
       <fieldset>
         <legend className="font-bold">
-          What kind of game sounds fun today?
+          What&apos;s your playing mood tonight?
         </legend>
         <p className="mt-1 text-sm text-white/60">
           Totally optional, and you can change it any time.
@@ -800,7 +800,10 @@ export function MoodPicker({ mood, act }: { mood: Mood | null; act: Act }) {
                 onChange={() => act({ type: "mood", mood: m.id })}
                 className="accent-lime-400"
               />
-              <span>{m.label}</span>
+              <span>
+                <span className="block font-semibold">{m.label}</span>
+                <span className="block text-sm text-white/60">{m.hint}</span>
+              </span>
             </label>
           ))}
         </div>
@@ -809,7 +812,7 @@ export function MoodPicker({ mood, act }: { mood: Mood | null; act: Act }) {
             className="mt-2 text-sm text-white/60 underline"
             onClick={() => act({ type: "mood", mood: null })}
           >
-            Skip this — anything is fun
+            Skip this — any game is fun
           </button>
         )}
       </fieldset>
