@@ -127,10 +127,13 @@ export function CourtQueueApp() {
         <p className="mt-24 text-center text-white/60">Loading the courts…</p>
       </Shell>
     );
+  // A visitor who hasn't joined can run the rehearsal on the default courts.
+  if (demo && !view.me)
+    return <GameNight today={view.now} onExit={() => setDemo(false)} />;
   if (!view.me)
     return (
       <Shell>
-        <Welcome onDone={() => refresh(true)} />
+        <Welcome onDone={() => refresh(true)} onDemo={() => setDemo(true)} />
       </Shell>
     );
 
@@ -304,7 +307,13 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 const SEEN_KEY = "cq_clubhouse_seen";
 
-function Welcome({ onDone }: { onDone: () => void }) {
+function Welcome({
+  onDone,
+  onDemo,
+}: {
+  onDone: () => void;
+  onDemo: () => void;
+}) {
   const [mode, setMode] = useState<"register" | "sign-in">("register");
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
@@ -404,6 +413,7 @@ function Welcome({ onDone }: { onDone: () => void }) {
           </p>
         )}
       </form>
+      <TestNightLauncher onOpen={onDemo} />
       <p className="text-center text-sm">
         <a href="/badminton/demo" className="text-lime-300 underline">
           See how a night works
