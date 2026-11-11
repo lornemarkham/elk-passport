@@ -44,10 +44,10 @@ for (const [name, device] of [
       await expect(page.getByTestId("passport-experiences")).toBeVisible();
       await expect(
         page.getByTestId("passport-experiences").getByRole("link"),
-      ).toHaveCount(6);
+      ).toHaveCount(7);
     });
 
-    test("Experiences opens to Conference, Hockey Night, October, Christmas and Snow Day", async ({
+    test("Experiences opens to Conference, Hockey Night, October, Christmas, Snow Day, Date Night and Badminton", async ({
       page,
     }) => {
       await page.goto("/");
@@ -64,6 +64,7 @@ for (const [name, device] of [
         ["christmas", "Christmas", "/christmas"],
         ["snow", "Snow Day", "/snow"],
         ["date-night", "Date Night", "/datenight"],
+        ["badminton", "Badminton Game Night", "/badminton"],
       ] as const) {
         const link = page.getByTestId(`passport-experience-${id}`);
         await link.scrollIntoViewIfNeeded();

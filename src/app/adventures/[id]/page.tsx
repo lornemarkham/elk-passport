@@ -7,7 +7,6 @@ import {
   MapPin,
   Repeat,
 } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { AdventurePeople } from "@/components/adventures/AdventurePeople";
 import { AdventureJourney } from "@/components/adventures/journey/AdventureJourney";
@@ -180,7 +179,6 @@ export default async function AdventurePage({
 
   return (
     <>
-      <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main className="min-h-screen bg-white">
           {!view ? (

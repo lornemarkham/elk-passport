@@ -44,10 +44,9 @@ describe("Discovery while Atlas is being read", () => {
 });
 
 describe("Discovery when Atlas cannot be reached", () => {
-  it("keeps the bar, says Atlas, keeps the account out of it, and offers the retry", () => {
+  it("says Atlas, keeps the account out of it, and offers the retry", () => {
     const retry = vi.fn();
     render(<DiscoveryFailure onRetry={retry} />);
-    expect(screen.getByTestId("passport-nav-discover")).toBeInTheDocument();
     expect(screen.getByTestId("discovery-error")).toHaveTextContent(
       /couldn.t reach Atlas/i,
     );

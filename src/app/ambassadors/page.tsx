@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PassportNav } from "@/components/shell/PassportNav";
 import {
   AmbassadorPortal,
   type PortalListing,
@@ -136,7 +135,6 @@ export default async function AmbassadorsPage() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PassportNav displayName={null} />
       <main className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6 sm:py-12">
         {children}
       </main>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { MountainScene } from "@/components/snow/MountainScene";
 import { GoButton, SnowPage, SoftLink, Card } from "@/components/snow/kit";
 import { MyDays } from "@/components/snow/MyDays";
@@ -24,7 +23,6 @@ const JOURNEY = [
 export default function SnowHome() {
   return (
     <>
-      <PassportNav displayName={null} />
       <SnowPage>
         <main>
           <section className="relative isolate min-h-[78dvh]">

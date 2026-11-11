@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ShareForm } from "@/components/insiders/ShareForm";
 import { actor } from "@/lib/insiders/service";
 
@@ -15,7 +14,6 @@ export default async function SharePage() {
     me && me.role !== "visitor" ? (me.ambassador?.name ?? me.who) : null;
   return (
     <>
-      <PassportNav displayName={null} />
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <h1 className="ghad-display text-4xl leading-tight font-extrabold tracking-[-0.03em] sm:text-5xl">
           Know something we&apos;re missing?

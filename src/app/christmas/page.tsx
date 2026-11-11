@@ -7,7 +7,6 @@ import {
   Compass,
   Sun,
 } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Picture } from "@/components/adventures/Picture";
 import { AdventureCard } from "@/components/adventures/AdventureCard";
@@ -114,7 +113,6 @@ export default async function ChristmasPage({
 
   return (
     <>
-      <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <PicksProvider planHref={`/christmas/plan${q}`}>
           <main className={`${styles.page} min-h-screen pb-28`}>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { SnowPage } from "@/components/snow/kit";
 import { NewDay } from "@/components/snow/NewDay";
 import { sharedDaysReady } from "../_server/readiness";
@@ -19,7 +18,6 @@ export default async function NewSnowDay({
   const sharedReady = await sharedDaysReady();
   return (
     <>
-      <PassportNav displayName={null} />
       <SnowPage>
         <main className="mx-auto max-w-xl px-5 pt-24 pb-24">
           <NewDay

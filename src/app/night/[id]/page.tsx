@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { NightBoard } from "@/components/night/NightBoard";
 import { adventureSession } from "@/lib/adventures/server";
 import {
@@ -64,7 +63,6 @@ export default async function NightPage({
   if (!session || !view) {
     return (
       <>
-        <PassportNav displayName={session?.user.displayName ?? null} />
         <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
           <h1 className="text-2xl font-bold">
             {failed
@@ -169,7 +167,6 @@ export default async function NightPage({
 
   return (
     <>
-      <PassportNav displayName={session.user.displayName ?? null} />
       <NightBoard
         view={view}
         invites={invites}

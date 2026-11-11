@@ -10,7 +10,6 @@ import {
   type Gathering,
 } from "@/lib/data/boards-gatherings";
 import { loadBoardTogether } from "@/lib/data/boards-together-server";
-import { PassportNav } from "@/components/shell/PassportNav";
 import {
   GatheringBoard,
   type GatheringViewer,
@@ -82,7 +81,6 @@ export default async function GatheringPage({ params }: Props) {
 
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="bg-background min-h-screen">
         <div className="mx-auto max-w-4xl px-6 py-10 sm:py-14">
           <Link

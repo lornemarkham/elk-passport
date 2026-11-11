@@ -10,7 +10,6 @@ import {
 import { type Board } from "@/lib/data/boards-repo";
 import { listBoardsFor } from "@/lib/data/boards-server";
 import { currentUser } from "@/lib/auth/currentUser";
-import { PassportNav } from "@/components/shell/PassportNav";
 
 export const metadata: Metadata = {
   title: "Your Boards — Passport",
@@ -107,7 +106,6 @@ export default async function BoardsPage() {
 
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="bg-background min-h-screen">
         <div className="mx-auto max-w-5xl px-6 py-10 sm:py-14">
           <h1 className="font-heading mb-8 text-3xl font-semibold tracking-tight">

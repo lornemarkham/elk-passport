@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Compass, Plus } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { SavedReview } from "@/components/saved/SavedReview";
 import { currentUser } from "@/lib/auth/currentUser";
 import { loadMyStuff } from "@/lib/data/loadMyStuff";
@@ -121,7 +120,6 @@ export default async function SavedPage({
 
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <ThemeProvider className="block">
         <main className="min-h-screen bg-white">
           <div className="mx-auto max-w-6xl px-4 pt-5 pb-16 sm:px-6 sm:pt-10">

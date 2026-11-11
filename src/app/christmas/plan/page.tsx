@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Planner, type PlanPick } from "@/components/christmas/Planner";
 import styles from "@/components/christmas/christmas.module.css";
@@ -107,7 +106,6 @@ export default async function ChristmasPlanPage({
 
   return (
     <>
-      <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main className={`${styles.page} min-h-screen pb-16`}>
           <header className={styles.night}>

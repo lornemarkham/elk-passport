@@ -6,7 +6,6 @@ import { groupChosen } from "@/domain/day/places";
 import { readBrief } from "@/domain/day/brief";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { ZONE } from "@/domain/experience/eventTime";
 import {
@@ -168,7 +167,6 @@ export default async function GoPage({ searchParams }: Props) {
 
   return (
     <ThemeProvider>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="min-h-screen bg-white">
         <GoHaveADay
           pool={pool}

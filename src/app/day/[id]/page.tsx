@@ -6,7 +6,6 @@ import { destinationFor } from "@/domain/experience/destination";
 import { dayPlan } from "@/domain/day/plan";
 import { DayPlanView } from "@/components/ghad/DayPlanView";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { safeNext } from "@/lib/auth/safeNext";
 
@@ -85,7 +84,6 @@ export default async function DayPage({ params, searchParams }: Props) {
 
   return (
     <ThemeProvider>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="min-h-screen bg-white">
         <DayPlanView
           plan={plan}

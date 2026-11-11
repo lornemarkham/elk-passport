@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { StartAdventure } from "@/components/adventures/StartAdventure";
 import { AdventureCard } from "@/components/adventures/AdventureCard";
@@ -40,7 +39,6 @@ export default async function AdventuresPage() {
 
   return (
     <>
-      <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main className="min-h-screen bg-white">
           <div className="mx-auto max-w-6xl px-4 pt-6 pb-20 sm:px-6 sm:pt-12">

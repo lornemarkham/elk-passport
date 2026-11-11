@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { GoOffline } from "@/components/detox/GoOffline";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { resolveDay } from "@/lib/detox/resolve";
 
@@ -41,7 +40,6 @@ export default async function GoOfflinePage({ searchParams }: Props) {
   ]);
   return (
     <ThemeProvider>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="min-h-screen bg-white">
         <GoOffline
           {...(resolved.kind === "day" ? { day: resolved.day } : {})}

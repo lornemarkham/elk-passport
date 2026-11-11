@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Picture } from "@/components/adventures/Picture";
 import { PrintButton } from "@/components/adventures/PrintButton";
@@ -63,7 +62,6 @@ export default async function GuidePage({
   if (!view)
     return (
       <>
-        <PassportNav displayName={session?.user.displayName ?? null} />
         <main className="mx-auto max-w-3xl px-4 py-16 text-center">
           <p className="ghad-display text-2xl font-extrabold">
             {session ? "Not found" : "Sign in to open this guide"}
@@ -109,9 +107,7 @@ export default async function GuidePage({
 
   return (
     <>
-      <div className="print:hidden">
-        <PassportNav displayName={session?.user.displayName ?? null} />
-      </div>
+      <div className="print:hidden"></div>
       <ThemeProvider className="block">
         <main
           className="bg-white text-[var(--gh-ink)]"

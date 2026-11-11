@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AdminNavEntry } from "@/components/admin/AdminNavEntry";
+import { GlobalHeader } from "@/components/shell/GlobalHeader";
 import { Measurement } from "@/components/analytics/Measurement";
 
 const fraunces = Fraunces({
@@ -54,7 +55,10 @@ export default function RootLayout({
       className={`${fraunces.variable} ${jakarta.variable} ${archivo.variable} h-full antialiased`}
     >
       <body className="bg-topo flex min-h-full flex-col">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <GlobalHeader />
+          {children}
+        </QueryProvider>
         <Toaster />
         <AdminNavEntry />
         {/* First-party, cookieless, query strings stripped. See `Measurement`

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
@@ -77,7 +76,6 @@ export default async function ChristmasDiscoverPage({
 
   return (
     <>
-      <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <PicksProvider planHref={`/christmas/plan${carry ? `?${carry}` : ""}`}>
           <main className={`${styles.page} min-h-screen pb-28`}>

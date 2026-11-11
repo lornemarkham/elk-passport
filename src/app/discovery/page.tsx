@@ -67,9 +67,6 @@ export default async function DiscoveryPage({
   // screen that looked like a different site, then the page.
   return (
     <>
-      <Suspense fallback={<PassportNav pending />}>
-        <DiscoveryNav user={user} />
-      </Suspense>
       <Suspense fallback={<DiscoverySkeleton today={today} />}>
         <DiscoveryBody
           user={user}
@@ -81,15 +78,6 @@ export default async function DiscoveryPage({
       </Suspense>
     </>
   );
-}
-
-/** The bar, with the reader's name once Supabase has said who they are. */
-async function DiscoveryNav({ user }: { user: Promise<Reader> }) {
-  // Resolved here, not in the view: Discovery is fully usable signed out, so
-  // `null` is an ordinary answer that changes what saving does and nothing
-  // else. Passport gives before it asks.
-  const reader = await user;
-  return <PassportNav displayName={reader?.displayName ?? null} />;
 }
 
 type Reader = Awaited<ReturnType<typeof currentUser>>;

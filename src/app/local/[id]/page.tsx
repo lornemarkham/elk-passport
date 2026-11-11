@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { InsiderCard } from "@/components/insiders/InsiderCard";
 import { ListingFlags } from "@/components/insiders/ListingFlags";
 import { publishedListings } from "@/lib/insiders/service";
@@ -21,7 +20,6 @@ export default async function ListingPage({
   if (!listing) notFound();
   return (
     <>
-      <PassportNav displayName={null} />
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <Link
           href="/local"

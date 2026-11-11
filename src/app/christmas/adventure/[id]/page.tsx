@@ -8,7 +8,6 @@ import {
   Compass,
   MapPin,
 } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { AdventurePeople } from "@/components/adventures/AdventurePeople";
 import { AdventureJourney } from "@/components/adventures/journey/AdventureJourney";
@@ -110,7 +109,6 @@ export default async function ChristmasAdventurePage({
   if (!view) {
     return (
       <>
-        <PassportNav displayName={session?.user.displayName ?? null} />
         <ThemeProvider className="block">
           <main className={`${styles.page} min-h-screen`}>
             <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:px-6">
@@ -235,7 +233,6 @@ export default async function ChristmasAdventurePage({
 
   return (
     <>
-      <PassportNav displayName={session!.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main className={`${styles.page} min-h-screen pb-16`}>
           <header className={styles.night}>

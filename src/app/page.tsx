@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { INTENTS } from "@/domain/discovery/intents";
 import { ArrowRight } from "lucide-react";
@@ -35,7 +34,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="min-h-screen bg-white">
         <div className="mx-auto flex max-w-5xl flex-col items-center px-6 py-16 text-center sm:py-24">
           {/* **The product's name, which is not the repository's.** The bar

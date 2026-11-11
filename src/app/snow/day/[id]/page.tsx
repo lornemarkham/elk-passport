@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { SnowPage } from "@/components/snow/kit";
 import { SnowDayScreen } from "@/components/snow/SnowDayScreen";
 
@@ -16,7 +15,6 @@ export default async function SnowDayPage({
   const { id } = await params;
   return (
     <>
-      <PassportNav displayName={null} />
       <SnowPage>
         <SnowDayScreen id={id} />
       </SnowPage>

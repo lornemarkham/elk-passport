@@ -91,11 +91,7 @@ export default async function AccountPage({ searchParams }: Props) {
         {/* Whichever product you are in gets its own bar. Before this, an
             October reader got October's and a Passport one got nothing at all
             — `/account` rendered a single link and was a dead end. */}
-        {experience ? (
-          <OctoberNav displayName={null} activePath={back} />
-        ) : (
-          <PassportNav displayName={null} />
-        )}
+        {experience && <OctoberNav displayName={null} activePath={back} />}
         <div className="mx-auto max-w-2xl px-5 py-12">
           <div className="border-primary/25 bg-card/50 flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
             <Compass className="text-primary h-8 w-8" aria-hidden />
@@ -137,10 +133,8 @@ export default async function AccountPage({ searchParams }: Props) {
       data-experience={experience?.name ?? "Passport"}
       className="bg-background min-h-screen"
     >
-      {experience ? (
+      {experience && (
         <OctoberNav displayName={profile.displayName} activePath={back} />
-      ) : (
-        <PassportNav displayName={profile.displayName} />
       )}
       <div className="mx-auto max-w-2xl px-5 py-10">
         <div className="mb-6 flex items-center justify-between gap-3">

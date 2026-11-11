@@ -21,7 +21,6 @@ import { PassportNav } from "@/components/shell/PassportNav";
 export default function DiscoveryLoading() {
   return (
     <>
-      <PassportNav pending />
       <DiscoverySkeleton today={dayLine(new Date())} />
     </>
   );

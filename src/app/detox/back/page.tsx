@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { WelcomeBack } from "@/components/detox/WelcomeBack";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 
 export const metadata: Metadata = {
@@ -20,7 +19,6 @@ export default async function WelcomeBackPage() {
   const user = await currentUser();
   return (
     <ThemeProvider>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="min-h-screen bg-white">
         <WelcomeBack />
       </main>

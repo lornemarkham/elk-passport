@@ -1,4 +1,3 @@
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import type { Metadata } from "next";
 import { listPlaces } from "@/lib/data/atlas-repo";
@@ -25,7 +24,6 @@ export default async function PlacesPage() {
   const [places, user] = await Promise.all([listPlaces(), currentUser()]);
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <PlacesDiscovery places={places} />
     </>
   );

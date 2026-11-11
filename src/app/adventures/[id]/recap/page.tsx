@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { RecapView } from "@/components/adventures/journey/RecapView";
 import { adventureSession } from "@/lib/adventures/server";
@@ -35,7 +34,6 @@ export default async function RecapPage({
   if (!session) {
     return (
       <>
-        <PassportNav displayName={null} />
         <ThemeProvider className="block">
           <main className="mx-auto max-w-3xl px-4 py-16 text-center">
             <p className="ghad-display text-2xl font-extrabold">
@@ -95,7 +93,6 @@ export default async function RecapPage({
 
   return (
     <>
-      <PassportNav displayName={session.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main className="min-h-screen bg-white">
           <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">

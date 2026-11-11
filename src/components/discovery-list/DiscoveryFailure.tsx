@@ -18,7 +18,6 @@ export function DiscoveryFailure({
 }) {
   return (
     <>
-      <PassportNav pending />
       <ThemeProvider>
         <main
           data-testid="discovery-error"

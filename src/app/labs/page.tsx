@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { currentUser } from "@/lib/auth/currentUser";
 import { labExperiments, type LabExperiment } from "./experiments";
 
@@ -69,7 +68,6 @@ export default async function LabsIndex() {
   const closed = all.filter((e) => e.status === "blocked");
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <main className="min-h-dvh bg-[oklch(0.14_0.015_260)] px-5 py-14 text-white">
         <div className="mx-auto max-w-2xl">
           <p className="text-[12.5px] font-medium tracking-[0.14em] text-white/45 uppercase">

@@ -103,14 +103,32 @@ const DESTINATIONS = [
  * `/conferences` says whether it is open and asks for a code or an account
  * itself. Nothing here bypasses that — these are links, not doors cut into
  * the wall.
+ *
+ * **Every deployed experience is listed here and nowhere else.** `also` are
+ * the other routes the same experience lives under (Hockey Night's pages are
+ * `/night/[id]`, Date Night has two prefixes), so the right entry is lit on
+ * all of them. A new experience is one more line. Sesh Wars lives under
+ * `/snow/sesh-wars` and lights Snow Day until it is merged and earns its own
+ * entry.
  */
-const EXPERIENCES = [
-  { href: "/conferences", label: "Conference", testId: "conference" },
+export const EXPERIENCES = [
+  {
+    href: "/conferences",
+    label: "Conference",
+    testId: "conference",
+    also: ["/boards/conference"],
+  },
   { href: "/hockey", label: "Hockey Night", testId: "hockey" },
   { href: "/october", label: "October", testId: "october" },
   { href: "/christmas", label: "Christmas", testId: "christmas" },
   { href: "/snow", label: "Snow Day", testId: "snow" },
-  { href: "/datenight", label: "Date Night", testId: "date-night" },
+  {
+    href: "/datenight",
+    label: "Date Night",
+    testId: "date-night",
+    also: ["/date-night", "/night"],
+  },
+  { href: "/badminton", label: "Badminton Game Night", testId: "badminton" },
 ] as const;
 
 export function PassportNav({
@@ -144,7 +162,7 @@ export function PassportNav({
   const setOpen = (next: boolean) => setOpenedOn(next ? pathname : null);
   const header = useRef<HTMLElement>(null);
   const rowId = useId();
-  const inExperience = EXPERIENCES.some((e) => inside(e.href));
+  const inExperience = EXPERIENCES.some(here);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -161,9 +179,16 @@ export function PassportNav({
     };
   }, [open]);
 
+  // The Atlas workbench is staff tooling, not an experience.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
+
   return (
     <ThemeProvider>
-      <header ref={header} className="border-b border-black/10 bg-white">
+      <header
+        ref={header}
+        data-testid="global-header"
+        className="border-b border-black/10 bg-white"
+      >
         {/* **The bar scrolls rather than pushing the page.** "GO HAVE A DAY"
             is four times the width of the word it replaced, and at 375px the
             bar came to 519px — so the whole document scrolled sideways by
@@ -284,7 +309,7 @@ export function PassportNav({
           >
             <ul className="mx-auto flex max-w-[1760px] items-center gap-0.5 overflow-x-auto px-3 sm:gap-1 sm:px-6 lg:px-10">
               {EXPERIENCES.map((e) => {
-                const current = inside(e.href);
+                const current = here(e);
                 return (
                   <li key={e.href} className="shrink-0">
                     <Link

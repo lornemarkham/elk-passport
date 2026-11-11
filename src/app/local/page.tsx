@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { InsiderCard } from "@/components/insiders/InsiderCard";
 import { ShareButton } from "@/components/insiders/ShareButton";
 import { matchesSaid } from "@/domain/insiders/model";
@@ -36,7 +35,6 @@ export default async function LocalPage({
   const shown = interest ? all.filter((l) => matchesSaid(l, [interest])) : all;
   return (
     <>
-      <PassportNav displayName={null} />
       <main className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-12">
         <p className="text-[11px] font-bold tracking-[0.16em] text-black/60 uppercase">
           Local insiders · Vernon &amp; the North Okanagan

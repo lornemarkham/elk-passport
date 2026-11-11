@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { PassportNav } from "@/components/shell/PassportNav";
-import { currentUser } from "@/lib/auth/currentUser";
 
 export const metadata: Metadata = {
   title: "Conferences · Passport",
@@ -22,14 +20,8 @@ export default async function ConferencesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
   return (
     <>
-      {/* Hidden on a phone inside a conference, whose own bars take over
-          (see `.cf-global-nav` in globals.css). */}
-      <div className="cf-global-nav contents">
-        <PassportNav displayName={user?.displayName ?? null} />
-      </div>
       <main className="bg-cf-paper text-cf-ink min-h-screen pb-24">
         {children}
       </main>

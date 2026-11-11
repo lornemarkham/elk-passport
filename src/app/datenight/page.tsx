@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PassportNav } from "@/components/shell/PassportNav";
 import { MARKHAM } from "@/domain/date-night/adventures/markham";
 import { isNightTitle } from "@/domain/date-night/adventures";
 import { justUs } from "@/domain/date-night/adventures/heading";
@@ -50,7 +49,6 @@ export default async function DateNightPage() {
   });
   return (
     <>
-      <PassportNav displayName={user?.displayName ?? null} />
       <OpenNight
         slug={MARKHAM.slug}
         title={past ? "Just us" : justUs(day.on, today)}
