@@ -293,3 +293,20 @@ test("Test Game Night on a desktop, and a reload keeps the rehearsal", async ({
   await rehearse(page, "desktop");
   await close();
 });
+
+test("A visitor who hasn't joined can run Test Game Night, and Exit returns to Join", async ({
+  browser,
+}) => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto("/badminton");
+  await page.getByRole("button", { name: "🏸 Test Game Night" }).click();
+  await expect(page.getByTestId("demo-banner")).toBeVisible();
+  await expect(page.getByTestId("demo-clock")).toBeVisible();
+  await page.getByRole("button", { name: /^Next event/ }).click();
+  await page.getByRole("button", { name: "Exit demo" }).click();
+  await expect(
+    page.getByRole("button", { name: "Join CourtQueue" }),
+  ).toBeVisible();
+  await ctx.close();
+});
