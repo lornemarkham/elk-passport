@@ -99,7 +99,9 @@ test("a family discovers, plans, shares, lives and remembers a Christmas", async
   await expect(a.getByText("Sign in to keep this")).toBeVisible();
 
   await canyon.getByTestId("pick-find").click();
-  await expect(a.getByTestId("pick-tray")).toContainText("1 picked");
+  await expect(a.getByTestId("pick-tray")).toContainText(
+    "1 in your Christmas day",
+  );
 
   // Markets too: one Atlas dates to a single Sunday, one that starts later.
   const onlyTheme = async (from: string, to: string) => {
@@ -112,7 +114,9 @@ test("a family discovers, plans, shares, lives and remembers a Christmas", async
   await a.locator(`[data-find="${DELTA}"]`).getByTestId("pick-find").click();
   await onlyTheme("markets", "festivals");
   await a.locator(`[data-find="${FESTIVE}"]`).getByTestId("pick-find").click();
-  await expect(a.getByTestId("pick-tray")).toContainText("3 picked");
+  await expect(a.getByTestId("pick-tray")).toContainText(
+    "3 in your Christmas day",
+  );
   await shot(a, "03-discover-tray");
 
   // Refine works without the theme chips: dates, ages, free only.

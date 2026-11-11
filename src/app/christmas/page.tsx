@@ -5,12 +5,15 @@ import {
   Bookmark,
   CalendarHeart,
   Compass,
+  MapPin,
   Sun,
 } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Picture } from "@/components/adventures/Picture";
 import { AdventureCard } from "@/components/adventures/AdventureCard";
 import { Festive } from "@/components/christmas/Festive";
+import { RememberTown } from "@/components/christmas/RememberTown";
+import { PinCard } from "@/components/christmas/lights/PinCard";
 import { SayIt } from "@/components/christmas/SayIt";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
@@ -31,13 +34,54 @@ import { THEMES } from "@/domain/christmas/themes";
 import { CHALLENGES } from "@/domain/christmas/challenges";
 import { SHAPES } from "@/domain/christmas/plans";
 import { CONFIDENCE_LABEL, season } from "@/domain/christmas/when";
+import { around, type SectionId } from "@/domain/christmas/around";
+import { TOWNS } from "@/domain/christmas/lights/model";
 import { christmasFinds } from "./_server/corpus";
+import { lightsFor, viewer } from "./_server/lights";
+import { whereAreWe } from "./_server/where";
 
 export const metadata: Metadata = {
   title: "Go Have a Christmas — Passport",
   description:
     "Christmas markets, lights, Santa and the people you love — real things near you this season, planned together and remembered.",
 };
+
+const SHORT: Readonly<Record<SectionId, string>> = {
+  soon: "Happening soon",
+  lights: "Lights",
+  markets: "Markets",
+  santa: "Santa & family",
+  festive: "Festive events",
+  drive: "Worth the drive",
+};
+
+const EYEBROW: Readonly<Record<SectionId, string>> = {
+  soon: "On the calendar",
+  lights: "After dark",
+  markets: "Gifts, treats and mulled things",
+  santa: "With the kids",
+  festive: "Shows, festivals and feasts",
+  drive: "Worth getting in the car",
+};
+
+/** Where "more" goes for a section: the Discover page narrowed to its kind. */
+function moreHref(id: SectionId, q: string, lightsTown: string): string {
+  const base = q ? `${q}&` : "?";
+  switch (id) {
+    case "lights":
+      return `/christmas/lights${lightsTown}`;
+    case "markets":
+      return `/christmas/discover${base}theme=markets`;
+    case "santa":
+      return `/christmas/discover${base}theme=santa`;
+    case "festive":
+      return `/christmas/discover${base}theme=festivals`;
+    case "drive":
+      return `/christmas/discover${base}km=250`;
+    default:
+      return `/christmas/discover${q}`;
+  }
+}
 
 /** The page's opening line, by where we are in the season. */
 function seasonLine(stage: ReturnType<typeof season>): string {
@@ -72,12 +116,17 @@ export default async function ChristmasPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = (await searchParams) ?? {};
-  const ask = readAsk(params);
+  const asked = readAsk(params);
+  // Christmas opens somewhere: the town just chosen, the one remembered, or
+  // Vernon — never an unplaced list.
+  const where = await whereAreWe(asked.at);
+  const ask = { ...asked, at: where.at };
   const today = todayIn();
   const town = townById(ask.at);
-  const [session, corpus] = await Promise.all([
+  const [session, corpus, lights] = await Promise.all([
     adventureSession(),
     christmasFinds(ask, today),
+    viewer().then((v) => lightsFor(v)),
   ]);
   const mine: AdventureSummary[] = session
     ? await adventuresOf(session.db, session.user.id)
@@ -90,15 +139,13 @@ export default async function ChristmasPage({
   const live = answered.shelves
     .filter((s) => s.id !== "past" && s.id !== "age" && s.id !== "far")
     .flatMap((s) => s.finds);
-  const upcoming = live
-    .filter(
-      (f) =>
-        f.reading.christmas &&
-        (f.when.confidence === "dated" || f.when.confidence === "check"),
-    )
-    .sort((a, b) => (a.when.from ?? "").localeCompare(b.when.from ?? ""));
+  const sections = around(answered, today, ask.km, lights.pins);
+  const sectionFinds = sections.flatMap((s) => s.finds);
   const lead =
-    upcoming.find(hasPicture) ?? live.find(hasPicture) ?? upcoming[0];
+    sectionFinds.find(hasPicture) ?? live.find(hasPicture) ?? sectionFinds[0];
+  const lightsTown = (TOWNS as readonly string[]).includes(ask.at)
+    ? `?at=${ask.at}`
+    : "";
   const christmasCount = corpus.finds.filter((f) => f.reading.christmas).length;
   const datedCount = corpus.finds.filter(
     (f) => f.reading.christmas && f.when.confidence === "dated",
@@ -113,6 +160,7 @@ export default async function ChristmasPage({
 
   return (
     <>
+      {where.chosen && <RememberTown town={ask.at} />}
       <ThemeProvider className="block">
         <PicksProvider planHref={`/christmas/plan${q}`}>
           <main className={`${styles.page} min-h-screen pb-28`}>
@@ -138,7 +186,7 @@ export default async function ChristmasPage({
                   Go Have a Christmas
                 </p>
                 <h1 className="ghad-display mt-3 max-w-3xl text-[3.4rem] leading-[0.9] font-extrabold tracking-[-0.045em] text-balance sm:text-8xl">
-                  Let&apos;s make some Christmas memories.
+                  Christmas around {townName ?? "you"}.
                 </h1>
                 <p
                   className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-black/35 px-4 py-2 text-lg font-bold backdrop-blur"
@@ -151,19 +199,26 @@ export default async function ChristmasPage({
                   {seasonLine(stage)}
                 </p>
                 <p className="mt-4 max-w-xl text-lg text-white/90">
-                  Markets, lights, hot chocolate and the people you love — real
-                  things
+                  Lights, markets, Santa and the people you love — real things
                   {townName ? ` near ${townName}` : " near you"}, with the dates
-                  to prove it.
+                  to prove it. Let&apos;s make some Christmas memories.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    href="#say-it"
+                    href="#build"
                     className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 text-base font-bold text-[#082319] hover:brightness-105"
                     data-testid="cta-plan"
                   >
-                    Plan our Christmas
+                    Build a Christmas adventure
                     <ArrowRight className="h-5 w-5" aria-hidden />
+                  </Link>
+                  <Link
+                    href={`/christmas/lights${lightsTown}`}
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#b3242f] px-6 text-base font-bold text-white hover:brightness-110"
+                    data-testid="cta-lights"
+                  >
+                    <MapPin className="h-5 w-5" aria-hidden />
+                    The Christmas lights map
                   </Link>
                   <Link
                     href={`/christmas/discover${q}`}
@@ -194,19 +249,164 @@ export default async function ChristmasPage({
 
             <div className="mx-auto max-w-6xl space-y-14 px-4 pt-8 sm:px-6">
               <TownChips
+                anywhere={false}
                 selected={ask.at}
                 hrefFor={(id) => `/christmas${id ? `?at=${id}` : ""}`}
               />
 
               {corpus.outage && <AtlasDown />}
 
-              <section id="say-it" className="scroll-mt-20">
-                <SayIt today={today} {...(ask.at ? { town: ask.at } : {})} />
+              {sections.length > 0 && (
+                <nav
+                  aria-label="On this page"
+                  className="-mx-4 -mt-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+                  data-testid="around-nav"
+                >
+                  {[
+                    ...sections.map((s) => ({
+                      id: s.id as string,
+                      label: SHORT[s.id],
+                    })),
+                    { id: "build", label: "Build an adventure" },
+                  ].map((j) => (
+                    <a
+                      key={j.id}
+                      href={`#${j.id}`}
+                      className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-black/10 hover:ring-black/30"
+                    >
+                      {j.label}
+                    </a>
+                  ))}
+                </nav>
+              )}
+
+              {sections.map((s) => (
+                <Section
+                  key={s.id}
+                  id={s.id}
+                  eyebrow={EYEBROW[s.id]}
+                  title={s.title}
+                  line={s.line}
+                  action={
+                    <Link
+                      href={moreHref(s.id, q, lightsTown)}
+                      className="inline-flex min-h-11 items-center text-base font-semibold underline underline-offset-4"
+                      data-testid={`more-${s.id}`}
+                    >
+                      {s.more > 0 ? `${s.more} more` : "See them all"}
+                    </Link>
+                  }
+                >
+                  {s.finds.length > 0 && (
+                    <div
+                      className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6"
+                      data-testid={`around-${s.id}`}
+                    >
+                      {s.finds.map((f) => (
+                        <FindCard
+                          key={f.experience.id}
+                          find={f}
+                          origin={origin}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {s.pins.length > 0 && (
+                    <div className={s.finds.length > 0 ? "mt-5" : ""}>
+                      <p className="mb-2 text-sm font-semibold text-[var(--gh-ink-soft)]">
+                        From the community lights map
+                        <span className="font-normal">
+                          {" "}
+                          — local listings checked by a person, not from Atlas
+                        </span>
+                      </p>
+                      <ul
+                        className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6"
+                        data-testid={`around-${s.id}-pins`}
+                      >
+                        {s.pins.map((p) => (
+                          <li
+                            key={p.id}
+                            className="w-[17.5rem] shrink-0 snap-start"
+                          >
+                            <PinCard pin={p} day />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {s.id === "lights" && (
+                    <Link
+                      href={`/christmas/lights${lightsTown}`}
+                      className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#b3242f] px-6 font-extrabold text-white hover:brightness-110"
+                      data-testid="lights-banner"
+                    >
+                      📍 Open the lights map — or pin one we&apos;re missing
+                    </Link>
+                  )}
+                </Section>
+              ))}
+
+              {sections.length === 0 && !corpus.outage && (
+                <p
+                  className="rounded-[22px] bg-white p-5 text-base ring-1 ring-black/5"
+                  data-testid="around-empty"
+                >
+                  Atlas has no dated Christmas things near {townName} yet. Try
+                  another town above, or{" "}
+                  <Link
+                    href={`/christmas/discover${q}`}
+                    className="font-semibold underline underline-offset-4"
+                  >
+                    everything Atlas knows
+                  </Link>
+                  .
+                </p>
+              )}
+
+              <section id="build" className="scroll-mt-20">
+                <div id="say-it" className="scroll-mt-20">
+                  <SayIt today={today} {...(ask.at ? { town: ask.at } : {})} />
+                </div>
+                <div className="mt-8">
+                  <Section
+                    eyebrow="Build a Christmas adventure"
+                    title="What are you dreaming of?"
+                    line="Add things to your Christmas day as you scroll — events, markets, light displays — then make it an adventure. Passport sketches around what you chose, from real places; invite your people, change anything."
+                  >
+                    <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-5">
+                      {SHAPES.map((shape) => (
+                        <li
+                          key={shape.id}
+                          className="w-[15rem] shrink-0 snap-start sm:w-auto"
+                        >
+                          <Link
+                            href={`/christmas/plan?shape=${shape.id}${amp}`}
+                            className={`${styles.ticket} flex h-full flex-col gap-2 rounded-[22px] p-5 transition hover:-translate-y-0.5 motion-reduce:transition-none`}
+                            data-testid={`shape-${shape.id}`}
+                          >
+                            <span
+                              className="h-1.5 w-10 rounded-full bg-[#b3242f]"
+                              aria-hidden
+                            />
+                            <span className="ghad-display text-lg leading-tight font-extrabold">
+                              {shape.label}
+                            </span>
+                            <span className="text-sm text-[var(--gh-ink-soft)]">
+                              {shape.line}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                </div>
               </section>
 
               <Section
-                eyebrow="What kind of Christmas?"
-                title="Start with what makes you grin"
+                eyebrow="Or start with what makes you grin"
+                title="What kind of Christmas?"
               >
                 <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {THEMES.map((theme) => {
@@ -261,72 +461,6 @@ export default async function ChristmasPage({
                       </span>
                     </Link>
                   </li>
-                </ul>
-              </Section>
-
-              {upcoming.length > 0 && (
-                <Section
-                  eyebrow="Coming up this season"
-                  title={
-                    townName
-                      ? `On the calendar near ${townName}`
-                      : "On the calendar"
-                  }
-                  line="Atlas's dates, soonest first. A yellow chip means check the days before you go."
-                  action={
-                    <Link
-                      href={`/christmas/discover${q}`}
-                      className="inline-flex min-h-11 items-center text-base font-semibold underline underline-offset-4"
-                    >
-                      All {live.length}
-                    </Link>
-                  }
-                >
-                  <div
-                    className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6"
-                    data-testid="upcoming"
-                  >
-                    {upcoming.slice(0, 10).map((f) => (
-                      <FindCard
-                        key={f.experience.id}
-                        find={f}
-                        origin={origin}
-                        compact
-                      />
-                    ))}
-                  </div>
-                </Section>
-              )}
-
-              <Section
-                eyebrow="Make it a plan"
-                title="What are you dreaming of?"
-                line="Passport sketches it from real places, kept around the Christmas things you chose. Invite your people, change anything."
-              >
-                <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-5">
-                  {SHAPES.map((shape) => (
-                    <li
-                      key={shape.id}
-                      className="w-[15rem] shrink-0 snap-start sm:w-auto"
-                    >
-                      <Link
-                        href={`/christmas/plan?shape=${shape.id}${amp}`}
-                        className={`${styles.ticket} flex h-full flex-col gap-2 rounded-[22px] p-5 transition hover:-translate-y-0.5 motion-reduce:transition-none`}
-                        data-testid={`shape-${shape.id}`}
-                      >
-                        <span
-                          className="h-1.5 w-10 rounded-full bg-[#b3242f]"
-                          aria-hidden
-                        />
-                        <span className="ghad-display text-lg leading-tight font-extrabold">
-                          {shape.label}
-                        </span>
-                        <span className="text-sm text-[var(--gh-ink-soft)]">
-                          {shape.line}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
                 </ul>
               </Section>
 
