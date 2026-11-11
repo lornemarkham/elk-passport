@@ -119,6 +119,9 @@ export function CourtQueueApp() {
           </p>
           <p className="mt-4 text-xs text-white/40">{notReady.because}</p>
         </Card>
+        <div className="mt-4">
+          <GameNightDemoLink />
+        </div>
       </Shell>
     );
   if (!view)
@@ -297,6 +300,26 @@ export function CourtQueueApp() {
   );
 }
 
+/**
+ * The separate, fictional Badminton Game Night demo (owner decision
+ * 2026-11-11, ADR 017): its made-up players have levels, scores and records.
+ * Nothing of it reaches the club app or its real players.
+ */
+function GameNightDemoLink() {
+  return (
+    <a
+      href="/badminton/game-night"
+      data-testid="game-night-demo-link"
+      className="block rounded-2xl bg-white/[0.06] p-4 ring-1 ring-lime-300/40"
+    >
+      <span className="block font-black">🏆 Badminton Game Night demo</span>
+      <span className="block text-sm text-white/60">
+        25 fictional players, 4 courts, scores, wins and losses. No sign-in.
+      </span>
+    </a>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto min-h-dvh max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -414,6 +437,7 @@ function Welcome({
         )}
       </form>
       <TestNightLauncher onOpen={onDemo} />
+      <GameNightDemoLink />
       <p className="text-center text-sm">
         <a href="/badminton/demo" className="text-lime-300 underline">
           See how a night works

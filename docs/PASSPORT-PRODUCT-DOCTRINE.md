@@ -866,6 +866,20 @@ decline to say. _Play. Learn. Grow. Together._ (2026-11-12) refined this:
 an optional level and a playing mood are **private guides** for suggesting
 games and for the player's own learning, never shown to anyone else and never
 a barrier (ADR 017, amendment 2026-11-12).
+_Amended 2026-11-11 (owner brief M737, "Ship Badminton and Sesh Wars now")._
+Lorne's decision, verbatim: **"The latest owner requirements supersede the old
+doctrine prohibiting scores and player comparisons."** This answers M735's open
+question. It is built, as M735 recommended, as a separate, clearly labelled
+**Badminton Game Night demo** (`/badminton/game-night`, reached from
+`/badminton`): 25 fictional players with levels 1–5, doubles on four courts,
+match scores, wins and losses, games played, a waiting queue with estimated
+waits, automatic rotation, kept in the visitor's browser with a Reset Demo
+button, and no sign-in or database. The club app's real players are still not
+scored or compared — `belong.test.ts` and the engine are unchanged — so whether
+the real CourtQueue night should now show scores is a further owner call, not
+something this amendment decides. Badminton Game Night and Sesh Wars are both
+in the Experiences menu (`src/lib/experiences.ts`), at the owner's direction
+in the same brief.
 
 ---
 

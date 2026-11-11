@@ -44,10 +44,10 @@ for (const [name, device] of [
       await expect(page.getByTestId("passport-experiences")).toBeVisible();
       await expect(
         page.getByTestId("passport-experiences").getByRole("link"),
-      ).toHaveCount(7);
+      ).toHaveCount(8);
     });
 
-    test("Experiences opens to Conference, Hockey Night, October, Christmas, Snow Day, Date Night and Badminton", async ({
+    test("Experiences opens to Conference, Hockey Night, October, Christmas, Snow Day, Sesh Wars, Date Night and Badminton", async ({
       page,
     }) => {
       await page.goto("/");
@@ -63,6 +63,7 @@ for (const [name, device] of [
         ["october", "October", "/october"],
         ["christmas", "Christmas", "/christmas"],
         ["snow", "Snow Day", "/snow"],
+        ["sesh-wars", "Sesh Wars", "/snow/sesh-wars"],
         ["date-night", "Date Night", "/datenight"],
         ["badminton", "Badminton Game Night", "/badminton"],
       ] as const) {
@@ -122,6 +123,40 @@ for (const [name, device] of [
       await expect(
         page.getByRole("navigation", { name: "October" }),
       ).toBeVisible();
+    });
+
+    test("Sesh Wars opens Sesh Wars, lit on its own and not as Snow Day", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.getByTestId("passport-nav-experiences").click();
+      await page.getByTestId("passport-experience-sesh-wars").click();
+      // It asks Supabase whether its tables exist first (slow on a placeholder).
+      await expect(page).toHaveURL(/\/snow\/sesh-wars$/, { timeout: 20_000 });
+      // With no tables yet the real page says it is warming up and offers
+      // the demo; with them it is the competition. Either is the real page.
+      await expect(page.getByRole("heading").first()).toBeVisible();
+      await expect(page.getByTestId("global-header")).toHaveCount(1);
+      await page.getByTestId("passport-nav-experiences").click();
+      await expect(
+        page.getByTestId("passport-experience-sesh-wars"),
+      ).toHaveAttribute("aria-current", "page");
+      await expect(
+        page.getByTestId("passport-experience-snow"),
+      ).not.toHaveAttribute("aria-current", "page");
+    });
+
+    test("Badminton Game Night opens /badminton, with the scoreboard demo one tap away", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.getByTestId("passport-nav-experiences").click();
+      await page.getByTestId("passport-experience-badminton").click();
+      await expect(page).toHaveURL(/\/badminton$/);
+      await expect(page.getByTestId("global-header")).toHaveCount(1);
+      await page.getByTestId("game-night-demo-link").click();
+      await expect(page).toHaveURL(/\/badminton\/game-night$/);
+      await expect(page.getByTestId("gn-demo")).toBeVisible();
     });
 
     // `/places` is not in this list only because the Atlas stand-in serves

@@ -156,3 +156,24 @@ answer returns — as a private guide, not a label.
   to Help (stored ids `fun`, `rallies`, `challenge`, `help`).
 - `/badminton/demo` runs three made-up nights through the real engine.
 - No migration: `journey` is a new optional field in the club JSON document.
+
+## Amendment 2026-11-11 — scores and comparisons, in a demo of their own
+
+Owner brief M737 ("Ship Badminton and Sesh Wars now"), Lorne, verbatim:
+**"The latest owner requirements supersede the old doctrine prohibiting scores
+and player comparisons."** and "No authentication or database is required for
+this demonstration."
+
+- Built as M735 recommended: a separate simulator, `src/lib/badminton-demo/`
+  (pure, seeded) with its page at `/badminton/game-night` and its UI in
+  `src/components/badminton-demo/`. It has 25 fictional players with levels
+  1–5, four doubles courts, scores (validated as finished games: to 21, win by
+  two, 30 cap), wins, losses, games and minutes, a FIFO queue with estimated
+  waits, automatic rotation (the front of the line always plays, partners
+  closest in level from the next five, pairs balanced by level total), and
+  `localStorage` persistence with Reset Demo.
+- The real engine, its stored documents and `belong.test.ts` are **unchanged**.
+  The demo shares no code or storage with them, so nothing it shows can reach
+  a real player's phone.
+- Open: whether the real club night now takes scores and records too. The
+  owner's words allow it; this amendment does not do it.

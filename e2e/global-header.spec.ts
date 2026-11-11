@@ -12,6 +12,7 @@ const PAGES = [
   ["October", "/october", "october"],
   ["Christmas", "/christmas", "christmas"],
   ["Snow Day", "/snow", "snow"],
+  ["Sesh Wars", "/snow/sesh-wars", "sesh-wars"],
   ["Date Night", "/datenight", "date-night"],
   ["Badminton Game Night", "/badminton", "badminton"],
 ] as const;
@@ -61,7 +62,10 @@ for (const [name, device] of [
       for (const [, path, id] of PAGES.filter(([, , i]) => i !== "snow")) {
         await page.getByTestId("passport-nav-experiences").click();
         await page.getByTestId(`passport-experience-${id}`).click();
-        await expect(page).toHaveURL(new RegExp(`${path}`));
+        // Sesh Wars asks Supabase whether its tables exist first (slow on a placeholder).
+        await expect(page).toHaveURL(new RegExp(`${path}`), {
+          timeout: 20_000,
+        });
         await expect(page.getByTestId("global-header")).toBeVisible();
       }
       await page
