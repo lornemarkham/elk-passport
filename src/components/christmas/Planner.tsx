@@ -1,5 +1,6 @@
 "use client";
 
+import { clearStash } from "./lights/stash";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,8 @@ export interface PlanPick {
   readonly when?: WhenReading;
   /** From Saved rather than picked here. */
   readonly fromSaved?: boolean;
+  /** A light display from the community lights map, not an Atlas subject. */
+  readonly light?: boolean;
 }
 
 const field =
@@ -148,7 +151,8 @@ export function Planner({
           startsOn: first,
           days: count,
           townId: town?.id ?? null,
-          atlasRefs: chosen,
+          atlasRefs: chosen.filter((id) => !everything.get(id)?.light),
+          lights: chosen.filter((id) => everything.get(id)?.light),
           ...(party ? { party } : {}),
           ...(youngest !== undefined ? { youngest } : {}),
           extra: [people ? `${people} of us` : "", extra]
@@ -168,6 +172,7 @@ export function Planner({
       }
       // The picks are in the plan now; the tray starts empty next time.
       window.sessionStorage.removeItem("passport.christmas.picks");
+      clearStash();
       const note = new URLSearchParams({
         started: body.sketch ?? "manual",
         ...(body.offDates ? { off: String(body.offDates) } : {}),
@@ -282,7 +287,9 @@ export function Planner({
                       <span className="block font-bold">{p.title}</span>
                       <span className="block text-sm text-[var(--gh-ink-soft)]">
                         {p.fromSaved ? "From your Saved · " : ""}
-                        {p.when?.line ?? "No dates from Atlas"}
+                        {p.light
+                          ? "Light display · from the community map"
+                          : (p.when?.line ?? "No dates from Atlas")}
                       </span>
                       {off && (
                         <span className="mt-1 flex items-center gap-1 text-sm font-semibold text-[#8e1d26]">

@@ -14,7 +14,9 @@ import { readAsk, type Find } from "@/domain/christmas/discover";
 import { sayFor, shapeById } from "@/domain/christmas/plans";
 import { readChristmas, themeById } from "@/domain/christmas/themes";
 import { readWhen } from "@/domain/christmas/when";
+import { KIND_EMOJI } from "@/domain/christmas/lights/model";
 import { christmasFinds } from "../_server/corpus";
+import { lightsFor, viewer } from "../_server/lights";
 
 export const metadata: Metadata = {
   title: "Plan a Christmas adventure — Passport",
@@ -54,6 +56,14 @@ export default async function ChristmasPlanPage({
         .filter((s) => ATLAS_REF.test(s)),
     ),
   ].slice(0, 12);
+  const lightIds = [
+    ...new Set(
+      (typeof params.lights === "string" ? params.lights : "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => /^(seed|pin)-[a-z0-9-]{1,80}$/.test(s)),
+    ),
+  ].slice(0, 12);
   const say = typeof params.say === "string" ? params.say.slice(0, 200) : "";
   const name = typeof params.name === "string" ? params.name.slice(0, 120) : "";
   const session = await adventureSession();
@@ -77,6 +87,22 @@ export default async function ChristmasPlanPage({
 
   let picks: PlanPick[] = [];
   let saved: PlanPick[] = [];
+  if (session && lightIds.length) {
+    const { pins } = await lightsFor(await viewer());
+    const byId = new Map(
+      pins.filter((p) => p.status === "approved").map((p) => [p.id, p]),
+    );
+    for (const id of lightIds) {
+      const pin = byId.get(id);
+      if (pin)
+        picks.push({
+          id,
+          title: pin.name,
+          emoji: KIND_EMOJI[pin.kind],
+          light: true,
+        });
+    }
+  }
   if (session) {
     const [corpus, savedBoard, named] = await Promise.all([
       christmasFinds({ km: ask.km, ages: [] }, today),
@@ -86,24 +112,27 @@ export default async function ChristmasPlanPage({
         : Promise.resolve(null),
     ]);
     const byId = new Map(corpus.finds.map((f) => [f.experience.id, f]));
-    picks = withIds.flatMap((id) => {
-      const f = byId.get(id);
-      if (f) return [pickOf(f)];
-      // Not a Christmas find (a "Do it again" stop, say): still Atlas's,
-      // named by Atlas, with whatever dates it holds.
-      const e = named?.experiences[id];
-      const title = named?.names[id] ?? e?.title;
-      return title
-        ? [
-            {
-              id,
-              title,
-              emoji: "📍",
-              ...(e ? { when: readWhen(e, today) } : {}),
-            },
-          ]
-        : [];
-    });
+    picks = [
+      ...picks,
+      ...withIds.flatMap((id) => {
+        const f = byId.get(id);
+        if (f) return [pickOf(f)];
+        // Not a Christmas find (a "Do it again" stop, say): still Atlas's,
+        // named by Atlas, with whatever dates it holds.
+        const e = named?.experiences[id];
+        const title = named?.names[id] ?? e?.title;
+        return title
+          ? [
+              {
+                id,
+                title,
+                emoji: "📍",
+                ...(e ? { when: readWhen(e, today) } : {}),
+              },
+            ]
+          : [];
+      }),
+    ];
     if (savedBoard?.status === "ok") {
       saved = savedBoard.experiences
         .filter((e) => !withIds.includes(e.id))

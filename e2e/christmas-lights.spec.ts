@@ -39,7 +39,7 @@ test("a visitor finds the lights, builds a tour, shares it and plays bingo", asy
 }) => {
   await page.goto("/christmas");
   await page.getByTestId("cta-lights").click();
-  await expect(page).toHaveURL(/\/christmas\/lights$/);
+  await expect(page).toHaveURL(/\/christmas\/lights(\?at=vernon)?$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "The Christmas Lights Map" }),
   ).toBeVisible();

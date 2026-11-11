@@ -18,7 +18,7 @@ test("the Christmas page opens on the season and leads somewhere real", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /make some Christmas memories/,
+      name: /Christmas around/,
     }),
   ).toBeVisible();
   await expect(page.getByTestId("countdown")).toBeVisible();
@@ -148,4 +148,81 @@ test("the sign-in wall offers a way on without an account", async ({
   const href = (await link.getAttribute("href"))!;
   expect(href).toMatch(/^\/go\?say=/);
   expect(href).toContain("at=kelowna");
+});
+
+test("Christmas opens on Vernon, shows real things, and follows a move to Kelowna", async ({
+  page,
+}) => {
+  await page.goto("/christmas");
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("town-chips").getByRole("link", { name: "Vernon" }),
+  ).toHaveAttribute("aria-current", "page");
+  // Vernon's lights come from the community map's researched displays, and
+  // are named for what they are: local listings, apart from Atlas's finds.
+  const vernonLights = page.getByTestId("around-lights-pins");
+  await expect(vernonLights).toContainText("SilverStar Annual Light Up");
+  await expect(page.getByTestId("around-soon-pins")).toContainText("Frostival");
+  await expect(vernonLights).not.toContainText("Stuart Park");
+  await expect(
+    page
+      .getByText(/local listings checked by a person, not from Atlas/)
+      .first(),
+  ).toBeVisible();
+  if (WITH_ATLAS) {
+    await expect(page.getByTestId("atlas-down")).toHaveCount(0);
+    await expect(
+      page.getByTestId("around-soon").getByTestId("find-card").first(),
+    ).toBeVisible();
+  }
+
+  await page
+    .getByTestId("town-chips")
+    .getByRole("link", { name: "Kelowna", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/christmas\?at=kelowna/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
+  ).toBeVisible();
+  const kelownaLights = page.getByTestId("around-lights-pins");
+  await expect(kelownaLights).toContainText(/Kelowna Light Up|Tree of Hope/);
+  await expect(kelownaLights).not.toContainText("SilverStar");
+  await expect(page.getByTestId("around-soon-pins")).not.toContainText(
+    "Frostival",
+  );
+
+  // The chosen town is remembered: a bare /christmas opens on Kelowna now.
+  await page.goto("/christmas");
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
+  ).toBeVisible();
+});
+
+test("an event and a light display go into one Christmas day", async ({
+  page,
+}) => {
+  await page.goto("/christmas");
+  const pin = page
+    .getByTestId("around-lights-pins")
+    .getByTestId("add-to-tour")
+    .first();
+  await expect(pin).toHaveText(/Add to my Christmas day/);
+  await pin.click();
+  let expected = 1;
+  if (WITH_ATLAS) {
+    await page
+      .getByTestId("around-soon")
+      .getByTestId("pick-find")
+      .first()
+      .click();
+    expected = 2;
+  }
+  await expect(page.getByTestId("pick-tray")).toContainText(
+    `${expected} in your Christmas day`,
+  );
+  await page.getByTestId("plan-picks").click();
+  await expect(page).toHaveURL(/\/christmas\/plan\?.*lights=(seed|pin)-/);
+  if (WITH_ATLAS) await expect(page).toHaveURL(/with=/);
 });

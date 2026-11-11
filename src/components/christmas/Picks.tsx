@@ -12,6 +12,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Gift, X } from "lucide-react";
 import { useStoredList } from "./stored";
+import { clearStash, useStash } from "./lights/stash";
 import {
   createBoard,
   isSignedOut,
@@ -168,10 +169,23 @@ export function PicksProvider({
   );
 }
 
+/**
+ * **My Christmas day** — what somebody has gathered so far: Atlas finds
+ * (picked on a card, this tab) and light displays (added on the lights map or
+ * a card, this phone). One tray, one button, one adventure.
+ */
 function PickTray({ planHref }: { readonly planHref: string }) {
   const { picked, clearPicks } = usePicks();
-  if (picked.length === 0) return null;
-  const href = `${planHref}${planHref.includes("?") ? "&" : "?"}with=${picked.join(",")}`;
+  const lights = useStash();
+  const total = picked.length + lights.length;
+  if (total === 0) return null;
+  const query = [
+    picked.length ? `with=${picked.join(",")}` : "",
+    lights.length ? `lights=${lights.join(",")}` : "",
+  ]
+    .filter(Boolean)
+    .join("&");
+  const href = `${planHref}${planHref.includes("?") ? "&" : "?"}${query}`;
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
@@ -180,11 +194,14 @@ function PickTray({ planHref }: { readonly planHref: string }) {
       <div className="mx-auto flex max-w-xl items-center gap-2 rounded-full bg-[#0f3b2b] p-2 pl-5 text-white shadow-2xl">
         <Gift className="h-5 w-5 shrink-0 text-[#ffd98a]" aria-hidden />
         <p className="min-w-0 flex-1 truncate text-base font-semibold">
-          {picked.length} picked for a plan
+          {total} in your Christmas day
         </p>
         <button
           type="button"
-          onClick={clearPicks}
+          onClick={() => {
+            clearPicks();
+            clearStash();
+          }}
           className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/10"
           aria-label="Clear picks"
         >
@@ -195,7 +212,7 @@ function PickTray({ planHref }: { readonly planHref: string }) {
           data-testid="plan-picks"
           className="inline-flex min-h-11 items-center rounded-full bg-[#ffd98a] px-5 text-base font-bold text-[#082319] hover:brightness-105"
         >
-          Plan these
+          Make it an adventure
         </Link>
       </div>
     </div>
