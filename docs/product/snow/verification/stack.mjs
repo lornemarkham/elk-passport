@@ -202,6 +202,13 @@ function proxyServer() {
       res.end();
       return;
     }
+    if (req.url.startsWith("/storage/v1/")) {
+      storage(req, res, cors).catch((err) => {
+        res.writeHead(500, cors);
+        res.end(String(err));
+      });
+      return;
+    }
     let port;
     let rest;
     if (req.url.startsWith("/auth/v1")) {
@@ -234,6 +241,190 @@ function proxyServer() {
   });
 }
 
+/**
+ * **A stand-in for Supabase Storage, for Sesh Wars' clips only.** Real
+ * Supabase runs storage-api; this stack has no such binary, so the proxy
+ * answers the three calls Sesh Wars makes, with the same rules the
+ * migration's storage policies state:
+ *
+ *   POST /storage/v1/object/<bucket>/<path>       upload (multipart or raw);
+ *        only an authenticated JWT whose sub is the path's first folder, and
+ *        only once that person has a rider profile (asked of PostgREST as them)
+ *   POST /storage/v1/object/sign/<bucket>/<path>  a signed link, only if the
+ *        caller owns the folder or can see a clip pointing at the file
+ *        (asked of PostgREST as the caller, so the clips policy decides)
+ *   GET  /storage/v1/object/sign/<bucket>/<path>?token=…  the file, with Range
+ *
+ * It is an emulation, labelled as one in SESH-WARS.md: it proves Passport's
+ * calls and the visibility rule, not storage-api itself.
+ */
+const BUCKET = "sesh-wars-clips";
+const MAX_BYTES = 52428800;
+const MIMES = ["video/mp4", "video/quicktime", "video/webm", "image/jpeg"];
+
+function verifyJwt(token) {
+  const [h, b, sig] = String(token ?? "").split(".");
+  if (!sig) return null;
+  const want = createHmac("sha256", JWT_SECRET)
+    .update(`${h}.${b}`)
+    .digest("base64url");
+  if (want !== sig) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(b, "base64url").toString());
+    return claims.exp && claims.exp * 1000 < Date.now() ? null : claims;
+  } catch {
+    return null;
+  }
+}
+
+async function restAs(auth, query) {
+  const r = await fetch(`http://127.0.0.1:${REST_PORT}${query}`, {
+    headers: { authorization: auth },
+  });
+  return r.ok ? r.json() : [];
+}
+
+async function readBody(req) {
+  const chunks = [];
+  let n = 0;
+  for await (const c of req) {
+    n += c.length;
+    if (n > MAX_BYTES + 1_000_000) throw new Error("too large");
+    chunks.push(c);
+  }
+  return Buffer.concat(chunks);
+}
+
+async function storage(req, res, cors) {
+  const url = new URL(req.url, "http://x");
+  const auth =
+    req.headers.authorization ??
+    (req.headers.apikey ? `Bearer ${req.headers.apikey}` : "");
+  const claims = verifyJwt(auth.replace(/^Bearer /, ""));
+  const json = (status, body) => {
+    res.writeHead(status, { ...cors, "content-type": "application/json" });
+    res.end(JSON.stringify(body));
+  };
+  const signed = url.pathname.startsWith("/storage/v1/object/sign/");
+  const rel = decodeURIComponent(
+    url.pathname.replace(
+      signed ? "/storage/v1/object/sign/" : "/storage/v1/object/",
+      "",
+    ),
+  );
+  const [bucket, ...parts] = rel.split("/");
+  const name = parts.join("/");
+  if (
+    bucket !== BUCKET ||
+    !/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(mp4|mov|webm|jpg)$/.test(name)
+  )
+    return json(400, { error: "invalid path" });
+  const file = path.join(STACK, "storage", BUCKET, name);
+
+  if (signed && req.method === "GET") {
+    const want = createHmac("sha256", JWT_SECRET)
+      .update(`sign:${name}`)
+      .digest("base64url");
+    const token = url.searchParams.get("token") ?? "";
+    const [exp, mac] = token.split(".");
+    const ok =
+      mac ===
+        createHmac("sha256", JWT_SECRET)
+          .update(`${want}:${exp}`)
+          .digest("base64url") && Number(exp) > Date.now();
+    if (!ok || !fs.existsSync(file))
+      return json(400, { error: "invalid signature" });
+    const meta = JSON.parse(fs.readFileSync(`${file}.json`, "utf8"));
+    const size = fs.statSync(file).size;
+    const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? "");
+    if (range) {
+      const start = range[1] ? Number(range[1]) : 0;
+      const end = range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+      res.writeHead(206, {
+        ...cors,
+        "content-type": meta.type,
+        "content-range": `bytes ${start}-${end}/${size}`,
+        "accept-ranges": "bytes",
+        "content-length": String(end - start + 1),
+      });
+      fs.createReadStream(file, { start, end }).pipe(res);
+      return;
+    }
+    res.writeHead(200, {
+      ...cors,
+      "content-type": meta.type,
+      "content-length": String(size),
+      "accept-ranges": "bytes",
+    });
+    fs.createReadStream(file).pipe(res);
+    return;
+  }
+
+  if (signed && req.method === "POST") {
+    const owner = claims?.sub && name.split("/")[0] === claims.sub;
+    const quoted = encodeURIComponent(name);
+    const seen =
+      owner ||
+      (
+        await restAs(
+          auth,
+          `/passport_sesh_clips?select=id&or=(video_path.eq.${quoted},poster_path.eq.${quoted})`,
+        )
+      ).length > 0;
+    if (!seen || !fs.existsSync(file))
+      return json(404, { error: "Object not found" });
+    const body = JSON.parse((await readBody(req)).toString() || "{}");
+    const exp =
+      Date.now() + Math.min(Number(body.expiresIn) || 60, 86400) * 1000;
+    const want = createHmac("sha256", JWT_SECRET)
+      .update(`sign:${name}`)
+      .digest("base64url");
+    const mac = createHmac("sha256", JWT_SECRET)
+      .update(`${want}:${exp}`)
+      .digest("base64url");
+    return json(200, {
+      signedURL: `/object/sign/${BUCKET}/${name}?token=${exp}.${mac}`,
+    });
+  }
+
+  if (!signed && req.method === "POST") {
+    if (claims?.role !== "authenticated" || name.split("/")[0] !== claims.sub)
+      return json(403, { error: "new row violates row-level security policy" });
+    const me = await restAs(
+      auth,
+      `/passport_sesh_riders?select=user_id&user_id=eq.${claims.sub}`,
+    );
+    if (me.length === 0)
+      return json(403, { error: "new row violates row-level security policy" });
+    const raw = await readBody(req);
+    let bytes = raw;
+    let type = req.headers["content-type"] ?? "";
+    if (type.startsWith("multipart/form-data")) {
+      const form = await new Response(raw, {
+        headers: { "content-type": type },
+      }).formData();
+      const part = [...form.values()].find((v) => typeof v === "object");
+      if (!part) return json(400, { error: "no file" });
+      bytes = Buffer.from(await part.arrayBuffer());
+      type = part.type;
+    }
+    if (!MIMES.includes(type))
+      return json(415, { error: "mime type not supported" });
+    if (bytes.length > MAX_BYTES)
+      return json(413, { error: "Payload too large" });
+    if (fs.existsSync(file))
+      return json(409, { error: "The resource already exists" });
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, bytes);
+    fs.writeFileSync(`${file}.json`, JSON.stringify({ type }));
+    return json(200, {
+      Key: `${BUCKET}/${name}`,
+      Id: randomBytes(16).toString("hex"),
+    });
+  }
+  return json(405, { error: "not supported by this stand-in" });
+}
+
 async function start() {
   if (fs.existsSync(PIDS)) {
     console.error(`Already running (${PIDS}). Run stop first.`);
@@ -241,6 +432,7 @@ async function start() {
   }
   fs.rmSync(DATA, { recursive: true, force: true });
   fs.rmSync(LOGS, { recursive: true, force: true });
+  fs.rmSync(path.join(STACK, "storage"), { recursive: true, force: true });
   execFileSync(
     path.join(pgBin, "initdb"),
     ["-D", DATA, "-U", "postgres", "--auth=trust", "-E", "UTF8", "--locale=C"],
@@ -402,6 +594,16 @@ async function services({ fresh }) {
       );
       await sql(loc);
       await sql(loc);
+    }
+    // Sesh Wars (PROPOSED, docs/product/snow/sesh-wars-migration.sql), twice.
+    // SESH_NO_MIGRATION=1 rehearses a database without it ("not open yet").
+    if (!process.env.SESH_NO_MIGRATION) {
+      const sesh = fs.readFileSync(
+        path.join(repo, "docs/product/snow/sesh-wars-migration.sql"),
+        "utf8",
+      );
+      await sql(sesh);
+      await sql(sesh);
     }
   }
 
