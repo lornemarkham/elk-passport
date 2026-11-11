@@ -143,11 +143,13 @@ describe("the source stays free of skill language", () => {
       .map((f) => join(__dirname, f)),
   ];
   // Optional, private levels are the one place these words live (ADR 017,
-  // amendment 2026-11-12): the journey, the lessons and the demonstration.
+  // amendment 2026-11-12): the journey, the lessons and the demonstrations
+  // (the made-up players' own private guides).
   const journeyFiles = [
     "journey.ts",
     "learn.ts",
     "demo.ts",
+    "gamenight.ts",
     "Grow.tsx",
     "LearnDiagrams.tsx",
   ];

@@ -1,10 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import type { LiveView, SeasonView } from "@/lib/courtqueue/view";
+import { localDate } from "@/lib/courtqueue/clock";
+import { longDate } from "@/lib/courtqueue/countdown";
+import { registrationState } from "@/lib/courtqueue/schedule";
+import type {
+  LiveView,
+  SeasonView,
+  SessionListing,
+} from "@/lib/courtqueue/view";
 import { Btn, Card, Sheet, clock, cx } from "./bits";
+import { RegistrationNote, useNow } from "./Countdown";
 
 type Night = SeasonView["nights"][number];
+
+/** How a night shows on the calendar, most telling first. */
+type Mark =
+  "cancelled" | "completed" | "registered" | "open" | "upcoming" | "today";
+
+function markOf(n: Night, listing: SessionListing | undefined, now: number) {
+  if (n.status === "cancelled") return "cancelled";
+  if (n.status === "past") return "completed";
+  if (listing?.status === "ended") return "completed";
+  if (listing?.mine === "confirmed" || listing?.mine === "waitlist")
+    return "registered";
+  if (registrationState(n.date, now, undefined) === "open") return "open";
+  return "upcoming";
+}
 
 const MONTHS = [
   "January",
@@ -28,15 +50,20 @@ const MONTHS = [
  */
 export function Schedule({
   view,
+  offset,
   clubAct,
 }: {
   view: LiveView;
+  offset: number;
   clubAct: (cmd: object) => Promise<boolean>;
 }) {
   const season = view.season;
   const organizer = !!view.me?.organizer;
   const [editing, setEditing] = useState<Night | null>(null);
+  const now = useNow(offset, 30_000);
+  const today = localDate(now);
   const byDate = new Map(season.nights.map((n) => [n.date, n]));
+  const listings = new Map(view.sessions.map((l) => [l.date, l]));
   const months: string[] = [];
   for (const n of season.nights) {
     const m = n.date.slice(0, 7);
@@ -76,6 +103,11 @@ export function Schedule({
         </dl>
       </Card>
       <Legend />
+      {!byDate.has(today) && today >= season.first && today <= season.last && (
+        <p className="px-1 text-sm text-white/60">
+          Today is {longDate(today)} — no club night today.
+        </p>
+      )}
       {organizer && !season.confirmed && (
         <Card tone="warn">
           <p className="font-bold">Check the cancelled nights</p>
@@ -96,7 +128,10 @@ export function Schedule({
           key={m}
           month={m}
           byDate={byDate}
-          onPick={organizer ? setEditing : undefined}
+          listings={listings}
+          now={now}
+          today={today}
+          onPick={setEditing}
         />
       ))}
       <Card>
@@ -144,8 +179,12 @@ export function Schedule({
         </Card>
       )}
       {editing && (
-        <EditNight
+        <NightSheet
           night={editing}
+          listing={listings.get(editing.date)}
+          venue={season.venue}
+          now={now}
+          organizer={organizer}
           onClose={() => setEditing(null)}
           clubAct={clubAct}
         />
@@ -154,21 +193,39 @@ export function Schedule({
   );
 }
 
+const MARK_STYLE: Record<Mark, string> = {
+  today: "bg-lime-400 text-slate-950",
+  open: "bg-lime-400 text-slate-950",
+  registered: "bg-sky-400 text-slate-950",
+  upcoming: "text-lime-200 ring-2 ring-lime-300/70",
+  completed: "bg-white/10 text-white/50",
+  cancelled: "bg-rose-500/70 text-white line-through decoration-2",
+};
+
+const MARK_WORDS: Record<Mark, string> = {
+  today: "Tonight",
+  open: "Registration open",
+  registered: "You're registered",
+  upcoming: "Badminton coming up",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
 function Legend() {
   return (
-    <ul className="flex flex-wrap gap-3 px-1 text-xs text-white/70">
-      <li className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded-full bg-lime-400" /> Tonight
+    <ul className="flex flex-wrap gap-x-4 gap-y-2 px-1 text-xs text-white/70">
+      <li className="flex items-center gap-1.5">
+        <span className="h-3 w-3 rounded-full outline-2 outline-offset-1 outline-white" />{" "}
+        Today
       </li>
-      <li className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded-full ring-2 ring-lime-300" /> Coming up
-      </li>
-      <li className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded-full bg-white/20" /> Played
-      </li>
-      <li className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded-full bg-rose-500/80" /> Cancelled
-      </li>
+      {(
+        ["upcoming", "open", "registered", "completed", "cancelled"] as const
+      ).map((m) => (
+        <li key={m} className="flex items-center gap-1.5">
+          <span className={cx("h-3 w-3 rounded-full", MARK_STYLE[m])} />{" "}
+          {MARK_WORDS[m]}
+        </li>
+      ))}
     </ul>
   );
 }
@@ -176,11 +233,17 @@ function Legend() {
 function Month({
   month,
   byDate,
+  listings,
+  now,
+  today,
   onPick,
 }: {
   month: string;
   byDate: Map<string, Night>;
-  onPick?: (n: Night) => void;
+  listings: Map<string, SessionListing>;
+  now: number;
+  today: string;
+  onPick: (n: Night) => void;
 }) {
   const [y, m] = month.split("-").map(Number);
   const firstDay = new Date(Date.UTC(y!, m! - 1, 1)).getUTCDay();
@@ -204,45 +267,119 @@ function Month({
           if (d === null) return <span key={i} />;
           const date = `${month}-${String(d).padStart(2, "0")}`;
           const n = byDate.get(date);
+          const isToday = date === today;
+          const todayRing =
+            isToday && "outline-2 outline-offset-2 outline-white";
           if (!n)
             return (
-              <span key={i} className="py-1.5 text-white/25">
+              <span
+                key={i}
+                data-today={isToday || undefined}
+                aria-label={isToday ? `Today, ${longDate(date)}` : undefined}
+                className={cx(
+                  "flex h-8 items-center justify-center rounded-full text-sm",
+                  isToday ? "font-black text-white" : "text-white/25",
+                  todayRing,
+                )}
+              >
                 {d}
               </span>
             );
-          const body = (
-            <span
-              className={cx(
-                "flex h-8 w-full items-center justify-center rounded-full text-sm font-bold",
-                n.status === "today" && "bg-lime-400 text-slate-950",
-                n.status === "upcoming" &&
-                  "text-lime-200 ring-2 ring-lime-300/70",
-                n.status === "past" && "bg-white/10 text-white/50",
-                n.status === "cancelled" &&
-                  "bg-rose-500/70 text-white line-through decoration-2",
-              )}
-            >
-              {d}
-            </span>
-          );
-          const label = `${n.label}${n.status === "cancelled" ? ` — cancelled: ${n.reason}` : `, ${n.hours}`}`;
-          return onPick ? (
+          const mark = markOf(n, listings.get(date), now);
+          const label = `${isToday ? "Today, " : ""}${n.label}${n.status === "cancelled" ? ` — cancelled: ${n.reason}` : `, ${n.hours} — ${MARK_WORDS[mark].toLowerCase()}`}`;
+          return (
             <button
               key={i}
               aria-label={label}
               title={label}
+              data-mark={mark}
+              data-today={isToday || undefined}
               onClick={() => onPick(n)}
             >
-              {body}
+              <span
+                className={cx(
+                  "relative flex h-8 w-full items-center justify-center rounded-full text-sm font-bold",
+                  MARK_STYLE[mark],
+                  todayRing,
+                )}
+              >
+                {d}
+                {mark === "completed" && (
+                  <span
+                    aria-hidden
+                    className="absolute -top-1 -right-0.5 text-[9px] text-lime-300"
+                  >
+                    ✓
+                  </span>
+                )}
+              </span>
             </button>
-          ) : (
-            <span key={i} aria-label={label} title={label}>
-              {body}
-            </span>
           );
         })}
       </div>
     </Card>
+  );
+}
+
+/** One night: details and sign-up for everyone; cancel or restore for organizers. */
+function NightSheet({
+  night,
+  listing,
+  venue,
+  now,
+  organizer,
+  onClose,
+  clubAct,
+}: {
+  night: Night;
+  listing: SessionListing | undefined;
+  venue: string;
+  now: number;
+  organizer: boolean;
+  onClose: () => void;
+  clubAct: (cmd: object) => Promise<boolean>;
+}) {
+  const mark = markOf(night, listing, now);
+  return (
+    <Sheet open onClose={onClose} title={longDate(night.date)}>
+      <p className="text-white/80">
+        {night.hours} · {venue}
+      </p>
+      <p className="mt-1 text-sm font-bold text-lime-200">{MARK_WORDS[mark]}</p>
+      <div className="mt-3 rounded-xl bg-white/[0.06] p-3">
+        <RegistrationNote
+          date={night.date}
+          now={now}
+          confirmed={listing?.confirmed}
+          capacity={listing?.capacity ?? 25}
+          cancelled={night.status === "cancelled" ? night.reason : null}
+          over={mark === "completed"}
+        />
+        {listing && mark !== "cancelled" && (
+          <p className="mt-1 text-sm text-white/70">
+            {listing.confirmed} of {listing.capacity} signed up
+            {listing.waitlisted
+              ? ` · ${listing.waitlisted} on the waitlist`
+              : ""}
+          </p>
+        )}
+        {listing?.mine === "confirmed" && (
+          <p className="mt-1 font-bold text-lime-300">
+            ✓ You&apos;re registered
+          </p>
+        )}
+        {listing?.mine === "waitlist" && (
+          <p className="mt-1 font-bold text-amber-300">
+            You&apos;re on the waitlist
+          </p>
+        )}
+      </div>
+      {organizer && mark !== "completed" && (
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <EditNight night={night} onClose={onClose} clubAct={clubAct} />
+        </div>
+      )}
+    </Sheet>
   );
 }
 
@@ -258,11 +395,7 @@ function EditNight({
   const [reason, setReason] = useState(night.reason ?? "");
   const cancelled = night.status === "cancelled";
   return (
-    <Sheet open onClose={onClose} title={night.label}>
-      <p className="mb-3 text-white/70">
-        {night.hours}
-        {cancelled ? ` · cancelled: ${night.reason}` : ""}
-      </p>
+    <>
       {!cancelled && (
         <label className="mb-3 block">
           <span className="text-sm text-white/70">Why (shown to players)</span>
@@ -291,6 +424,6 @@ function EditNight({
       <p className="mt-2 text-xs text-white/50">
         Kept in the schedule&apos;s history with your name.
       </p>
-    </Sheet>
+    </>
   );
 }
