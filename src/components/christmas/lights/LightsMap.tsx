@@ -63,6 +63,8 @@ export function LightsMap({
     void import("maplibre-gl").then((ml) => {
       if (dead || !box.current) return;
       lib.current = ml;
+      // MapLibre 6 can't find its worker inside Next's bundle; serve it ourselves.
+      ml.setWorkerUrl(`/christmas/api/lights/map-worker?v=${ml.getVersion()}`);
       const m = new ml.Map({
         container: box.current,
         style: STYLE,
