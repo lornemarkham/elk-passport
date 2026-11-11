@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MountainScene } from "@/components/snow/MountainScene";
 import { GoButton, SnowPage, SoftLink, Card } from "@/components/snow/kit";
 import { MyDays } from "@/components/snow/MyDays";
@@ -45,12 +46,39 @@ export default function SnowHome() {
               <div className="flex flex-wrap items-center gap-3">
                 <GoButton href="/snow/new">Go have a snow day</GoButton>
                 <SoftLink href="/snow/mountains">Find a mountain</SoftLink>
+                <SoftLink href="/snow/sesh-wars">⚔️ Sesh Wars</SoftLink>
               </div>
             </div>
           </section>
 
           <div className="mx-auto max-w-5xl space-y-10 px-5 pb-24">
             <MyDays />
+
+            <Link
+              href="/snow/sesh-wars"
+              aria-label="Sesh Wars — every feature has a champion"
+              className="flex flex-wrap items-center gap-5 rounded-[20px] border-[3px] border-[#2b2a27] bg-[#4b5320] p-5 text-[#efe6cf] shadow-[6px_6px_0_#2b2a27] transition hover:-translate-y-0.5"
+            >
+              <span aria-hidden="true" className="text-5xl">
+                ⚔️
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-bold tracking-[0.2em] text-[#f3c969] uppercase">
+                  New · park competitions
+                </span>
+                <span className="block text-3xl font-black tracking-tight uppercase">
+                  Sesh Wars
+                </span>
+                <span className="block text-sm opacity-90">
+                  Film a lap on a park feature, get challenged from the
+                  chairlift, let the mountain vote. Every feature has a
+                  champion. Every rider has a shot.
+                </span>
+              </span>
+              <span className="rounded-full border-2 border-[#2b2a27] bg-[#c8641e] px-5 py-3 text-sm font-extrabold uppercase">
+                Enter
+              </span>
+            </Link>
 
             <section aria-labelledby="journey">
               <h2 id="journey" className="mb-4 text-2xl font-extrabold">

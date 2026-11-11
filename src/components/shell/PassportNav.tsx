@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { ThemePicker, ThemeProvider } from "@/components/ghad/theme";
 import { Wordmark } from "@/components/ghad/Wordmark";
+import { EXPERIENCES, currentExperience } from "@/lib/experiences";
 
 /**
  * **The bar, in the product's own identity.**
@@ -97,40 +98,6 @@ const DESTINATIONS = [
   },
 ] as const;
 
-/**
- * **The experiences, by their existing routes.** Each one keeps its own
- * access rules: `/hockey` sends a visitor to sign in and comes back, and
- * `/conferences` says whether it is open and asks for a code or an account
- * itself. Nothing here bypasses that — these are links, not doors cut into
- * the wall.
- *
- * **Every deployed experience is listed here and nowhere else.** `also` are
- * the other routes the same experience lives under (Hockey Night's pages are
- * `/night/[id]`, Date Night has two prefixes), so the right entry is lit on
- * all of them. A new experience is one more line. Sesh Wars lives under
- * `/snow/sesh-wars` and lights Snow Day until it is merged and earns its own
- * entry.
- */
-export const EXPERIENCES = [
-  {
-    href: "/conferences",
-    label: "Conference",
-    testId: "conference",
-    also: ["/boards/conference"],
-  },
-  { href: "/hockey", label: "Hockey Night", testId: "hockey" },
-  { href: "/october", label: "October", testId: "october" },
-  { href: "/christmas", label: "Christmas", testId: "christmas" },
-  { href: "/snow", label: "Snow Day", testId: "snow" },
-  {
-    href: "/datenight",
-    label: "Date Night",
-    testId: "date-night",
-    also: ["/date-night", "/night"],
-  },
-  { href: "/badminton", label: "Badminton Game Night", testId: "badminton" },
-] as const;
-
 export function PassportNav({
   displayName = null,
   pending = false,
@@ -162,7 +129,8 @@ export function PassportNav({
   const setOpen = (next: boolean) => setOpenedOn(next ? pathname : null);
   const header = useRef<HTMLElement>(null);
   const rowId = useId();
-  const inExperience = EXPERIENCES.some(here);
+  const active = currentExperience(pathname);
+  const inExperience = active !== undefined;
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -307,9 +275,9 @@ export function PassportNav({
             data-testid="passport-experiences"
             className="border-t border-black/10 bg-[#fafafa]"
           >
-            <ul className="mx-auto flex max-w-[1760px] items-center gap-0.5 overflow-x-auto px-3 sm:gap-1 sm:px-6 lg:px-10">
+            <ul className="mx-auto flex max-w-[1760px] flex-wrap items-center gap-x-0.5 px-3 sm:gap-x-1 sm:px-6 lg:px-10">
               {EXPERIENCES.map((e) => {
-                const current = here(e);
+                const current = active?.href === e.href;
                 return (
                   <li key={e.href} className="shrink-0">
                     <Link

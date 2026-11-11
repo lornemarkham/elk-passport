@@ -1,5 +1,8 @@
 # Go Have A Snow Day — the Snow Experience
 
+> **Sesh Wars** (2026-11-10), the park competition inside Snow, has its own
+> record: [`SESH-WARS.md`](SESH-WARS.md).
+
 **Status (2026-11-01):** first vertical slice, built on `feature/snow`. Not
 merged, not deployed, no migration. Routes: `/snow`, `/snow/mountains`,
 `/snow/new`, `/snow/day/[id]`, `/snow/join`.
