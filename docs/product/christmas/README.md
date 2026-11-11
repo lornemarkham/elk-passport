@@ -13,6 +13,10 @@ Christmas is, what it reuses, and what it does not decide.
                               challenges, memories, recap, go have another
 ```
 
+**Pin the Magic (2026-11-10):** the community Christmas lights map, its
+reviewed submissions, reactions and lights tour are in
+[PIN-THE-MAGIC.md](PIN-THE-MAGIC.md) (`/christmas/lights`).
+
 ## The journey, against the doctrine
 
 The brief's journey and the doctrine's are the same loop said three ways.

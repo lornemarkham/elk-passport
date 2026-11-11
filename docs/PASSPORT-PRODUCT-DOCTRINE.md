@@ -823,6 +823,13 @@ Christmas"; `docs/product/christmas/README.md`): the Experiences item now
 opens to four — Conference, Hockey Night, October, Christmas — each still
 opening its own route (`/christmas`) under its own access rules.
 
+_Christmas gained a community lights map 2026-11-10_ (owner brief "Pin the
+Magic"; `docs/product/christmas/PIN-THE-MAGIC.md`): families pin displays, a
+reviewer publishes them, and a private home is shown only with its owner's
+okay or a public listing — and comes down at once on its owner's word. A
+pin last confirmed in an earlier season is shown as not yet confirmed and
+kept off tours. One composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs
@@ -1050,7 +1057,10 @@ certainty. Do not invent an answer here to make the document feel finished.
    compositions on shared capabilities? (§10)
 2. **Inspiration interaction model.** Entirely unresolved. (§13)
 3. **Reaction states — exact set and names.** How many, and what distinguishes
-   them? (§2.2)
+   them? (§2.2) _Christmas lights pins carry the owner's five playful
+   reactions (2026-11-10, Pin the Magic): a community tally about a display,
+   one of each per account, not a taste signal about the person. That leaves
+   this question open for Passport._
 4. **Planning UI.** What SHAPE actually looks like. (§2.5)
    _Answered narrowly for adventures (ADR 010, 2026-10-21): a day of an
    adventure is shaped in Go Have a Day and saved back; a weekend is shaped
