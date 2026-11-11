@@ -406,3 +406,25 @@ describe("demo world", () => {
     );
   });
 });
+
+describe("the catalogue and the migration agree", () => {
+  it("every real feature is seeded by the migration with the same source and opening day", async () => {
+    const fs = await import("node:fs");
+    const sql = fs.readFileSync(
+      "docs/product/snow/sesh-wars-migration.sql",
+      "utf8",
+    );
+    const seed = sql.slice(
+      sql.indexOf("INSERT INTO public.passport_sesh_features"),
+    );
+    for (const f of REAL_FEATURES) {
+      const row = seed.slice(seed.indexOf(`('${f.id}'`));
+      const line = row.slice(0, row.indexOf("'2026-11-10'") + 12);
+      expect(line, f.id).toContain(`'${f.mountainId}'`);
+      expect(line, f.id).toContain(`'${f.source!.url}'`);
+      expect(line, f.id).toContain(f.opens ? `'${f.opens}'` : "NULL");
+    }
+    const ids = [...seed.matchAll(/^\s+\('([a-z0-9-]+)'/gm)].map((m) => m[1]);
+    expect(ids.sort()).toEqual(REAL_FEATURES.map((f) => f.id).sort());
+  });
+});
