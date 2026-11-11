@@ -172,7 +172,6 @@ export function ReportAndRemove({ pin }: { readonly pin: PinView }) {
           ? "It's hidden now. A reviewer will check, and it stays down if it's your home."
           : "Thanks — a reviewer will look at it.",
       );
-      if (reason === "privacy") router.refresh();
     } else setSay(r.error ?? "That didn't send.");
   }
   async function removeIt() {

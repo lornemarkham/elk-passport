@@ -13,7 +13,18 @@ export interface FestiveStop {
   readonly line: string;
   readonly href: string;
   readonly theme: string;
+  readonly emoji: string;
 }
+
+const THEME_EMOJI: Record<string, string> = {
+  markets: "🛍️",
+  lights: "✨",
+  santa: "🎅",
+  festivals: "🎉",
+  shows: "🎭",
+  food: "☕",
+  winter: "⛸️",
+};
 
 /**
  * **Markets, Santa and festive food from Atlas**, for the map and the tour —
@@ -47,6 +58,7 @@ export async function festiveStops(today: string): Promise<{
         .join(" · "),
       href: subjectHref(e.kind, e.id),
       theme: f.reading.themes[0] ?? "markets",
+      emoji: THEME_EMOJI[f.reading.themes[0] ?? ""] ?? "🎁",
     });
   }
   return { stops, outage: !!outage };

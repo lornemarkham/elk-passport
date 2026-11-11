@@ -407,6 +407,15 @@ describe("A one-night light-up is only toured on its night", () => {
     expect(tourable(byId("seed-christkindl-kelowna"), NOW)).toBe(false);
   });
 
+  it("says whether a dated display has started, is on, or is over", () => {
+    const pin = byId("seed-kelowna-stuart-park");
+    const at = (iso: string) =>
+      visible({ pins: [pin] }, anyone, new Date(iso))[0]?.running;
+    expect(at("2026-11-10T20:00:00Z")).toBe("soon");
+    expect(at("2026-12-10T20:00:00Z")).toBe("on");
+    expect(at("2027-01-10T20:00:00Z")).toBe("over");
+  });
+
   it("reads the Okanagan's calendar day, not UTC's", () => {
     expect(localDay(new Date("2026-12-05T06:30:00Z"))).toBe("2026-12-04");
   });

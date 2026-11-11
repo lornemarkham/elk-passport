@@ -20,6 +20,15 @@ export async function send(path: string, body: unknown): Promise<Answer> {
       body: JSON.stringify(body),
     });
     const data = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+    if (r.status === 429)
+      return {
+        ok: false,
+        status: 429,
+        error:
+          typeof data.because === "string" && data.error === "rate-limited"
+            ? "Whoa, that's a lot of magic at once — give it a minute and try again."
+            : String(data.error ?? "Too many at once — try again in a minute."),
+      };
     return { ...data, ok: r.ok, status: r.status } as Answer;
   } catch {
     return {

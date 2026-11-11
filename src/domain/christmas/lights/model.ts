@@ -296,6 +296,12 @@ export function onThatDay(pin: Pick<Pin, "dates">, day: string): boolean {
   return day >= d.from && day <= d.to;
 }
 
+function running(d: NonNullable<Pin["dates"]>, day: string) {
+  if (day < d.from) return "soon" as const;
+  if (day > d.to) return "over" as const;
+  return "on" as const;
+}
+
 /** May go on a tour on `day` (default: today): published, lit this season, on that day. */
 export function tourable(pin: Pin, now: Date, day = localDay(now)): boolean {
   return (
@@ -341,6 +347,8 @@ export interface PinView {
   readonly features: readonly FeatureId[];
   readonly status: Status;
   readonly season: SeasonState;
+  /** Against its stated days, today: not started, on, or finished. */
+  readonly running?: "soon" | "on" | "over";
   readonly lastConfirmed?: number;
   readonly hasPhoto: boolean;
   readonly source?: Pin["source"];
@@ -386,6 +394,7 @@ export function viewOf(pin: Pin, viewer: Viewer, now: Date): PinView {
     features: pin.features,
     status: pin.status,
     season: seasonState(pin, now),
+    ...(pin.dates ? { running: running(pin.dates, localDay(now)) } : {}),
     ...(confirmedYears.length
       ? { lastConfirmed: confirmedYears[confirmedYears.length - 1] }
       : {}),
@@ -432,3 +441,7 @@ export function favourites(views: readonly PinView[], n = 6) {
       .slice(0, n),
   };
 }
+
+/** Where a pin's photo is served, when it has one. */
+export const photoSrc = (pin: Pick<PinView, "id" | "hasPhoto">) =>
+  pin.hasPhoto ? `/christmas/api/lights/${pin.id}/photo` : null;

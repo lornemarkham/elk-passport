@@ -6,9 +6,9 @@ import {
   KIND_LABEL,
   TOWN_LABEL,
   type PinView,
+  photoSrc,
 } from "@/domain/christmas/lights/model";
 import { send } from "./api";
-import { photoSrc } from "./PinCard";
 
 const CLAIM: Record<
   NonNullable<NonNullable<PinView["review"]>["consentClaim"]>,

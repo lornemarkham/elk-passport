@@ -55,7 +55,7 @@ export default async function LightsPage({
       <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main
-          className={`${christmas.page} ${styles.scope} min-h-screen bg-[#082319] pb-32`}
+          className={`${christmas.page} ${styles.scope} ${styles.dark} min-h-screen pb-32`}
         >
           <header className={christmas.night}>
             <div className="mx-auto max-w-6xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14">
@@ -110,15 +110,7 @@ export default async function LightsPage({
             )}
             <Explorer
               pins={pins}
-              festive={festive.stops.map(
-                ({ id, name, at: point, line, href }) => ({
-                  id,
-                  name,
-                  at: point,
-                  line,
-                  href,
-                }),
-              )}
+              festive={festive.stops}
               signedIn={v.signedIn}
               initialTown={town}
             />
