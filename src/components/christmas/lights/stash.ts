@@ -30,6 +30,10 @@ export function writeStash(ids: readonly string[]) {
   }
 }
 
+export function clearStash() {
+  writeStash([]);
+}
+
 export function toggleStash(id: string): boolean {
   const now = readStash();
   const has = now.includes(id);

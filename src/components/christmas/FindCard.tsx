@@ -185,7 +185,7 @@ export function FindCard({
             ) : (
               <Plus className="h-4 w-4" aria-hidden />
             )}
-            {isPicked ? "In the plan" : "Add to plan"}
+            {isPicked ? "In my Christmas day" : "Add to my Christmas day"}
           </button>
         </div>
       </div>

@@ -72,9 +72,12 @@ const CHIP_TOWNS = [
 export function TownChips({
   selected,
   hrefFor,
+  anywhere = true,
 }: {
   readonly selected?: string;
   readonly hrefFor: (id: string | null) => string;
+  /** Offer "Anywhere" (no town). Off where a page always opens somewhere. */
+  readonly anywhere?: boolean;
 }) {
   return (
     <nav aria-label="Where are you?" data-testid="town-chips">
@@ -83,13 +86,15 @@ export function TownChips({
         Where are you?
       </p>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
-        <Link
-          href={hrefFor(null)}
-          aria-current={!selected ? "page" : undefined}
-          className={chip(!selected)}
-        >
-          Anywhere
-        </Link>
+        {anywhere && (
+          <Link
+            href={hrefFor(null)}
+            aria-current={!selected ? "page" : undefined}
+            className={chip(!selected)}
+          >
+            Anywhere
+          </Link>
+        )}
         {CHIP_TOWNS.map((t) => (
           <Link
             key={t.id}

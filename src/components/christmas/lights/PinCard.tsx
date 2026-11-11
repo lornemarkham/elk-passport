@@ -49,9 +49,12 @@ export function SeasonBadge({ pin }: { readonly pin: PinView }) {
 export function PinCard({
   pin,
   onFocus,
+  day = false,
 }: {
   readonly pin: PinView;
   readonly onFocus?: () => void;
+  /** Say "my Christmas day" (the front page) rather than "my tour" (the map). */
+  readonly day?: boolean;
 }) {
   const stash = useStash();
   const inTour = stash.includes(pin.id);
@@ -124,7 +127,13 @@ export function PinCard({
               ) : (
                 <Plus className="h-4 w-4" aria-hidden />
               )}
-              {inTour ? "On my tour" : "Add to my tour"}
+              {day
+                ? inTour
+                  ? "In my Christmas day"
+                  : "Add to my Christmas day"
+                : inTour
+                  ? "On my tour"
+                  : "Add to my tour"}
             </button>
           )}
           {onFocus && (
