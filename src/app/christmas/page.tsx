@@ -5,6 +5,7 @@ import {
   Bookmark,
   CalendarHeart,
   Compass,
+  MapPin,
   Sun,
 } from "lucide-react";
 import { PassportNav } from "@/components/shell/PassportNav";
@@ -168,6 +169,14 @@ export default async function ChristmasPage({
                     <ArrowRight className="h-5 w-5" aria-hidden />
                   </Link>
                   <Link
+                    href="/christmas/lights"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#b3242f] px-6 text-base font-bold text-white hover:brightness-110"
+                    data-testid="cta-lights"
+                  >
+                    <MapPin className="h-5 w-5" aria-hidden />
+                    The Christmas lights map
+                  </Link>
+                  <Link
                     href={`/christmas/discover${q}`}
                     className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/15 px-6 text-base font-bold backdrop-blur hover:bg-white/25"
                     data-testid="cta-discover"
@@ -201,6 +210,28 @@ export default async function ChristmasPage({
               />
 
               {corpus.outage && <AtlasDown />}
+
+              <Link
+                href="/christmas/lights"
+                className={`${styles.night} block overflow-hidden rounded-[28px] p-6 sm:p-8`}
+                data-testid="lights-banner"
+              >
+                <p className="text-sm font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
+                  New · Pin the Magic
+                </p>
+                <p className="ghad-display mt-2 text-3xl leading-tight font-extrabold sm:text-4xl">
+                  Find the best lights. Build a tour. Pin the ones we&apos;re
+                  missing.
+                </p>
+                <p className="mt-2 max-w-xl text-white/85">
+                  A community lights map for Vernon, Coldstream, Lumby,
+                  Armstrong and Kelowna — react to your favourites and string
+                  them into a night out.
+                </p>
+                <span className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 font-extrabold text-[#082319]">
+                  📍 Open the lights map
+                </span>
+              </Link>
 
               <section id="say-it" className="scroll-mt-20">
                 <SayIt today={today} {...(ask.at ? { town: ask.at } : {})} />
