@@ -194,7 +194,7 @@ describe("experiences", () => {
     expect(button).toHaveAttribute("aria-controls", row.id);
     const links = screen
       .getAllByRole("link", {
-        name: /Conference|Hockey Night|October|Christmas|Snow Day|Date Night/,
+        name: /Conference|Hockey Night|October|Christmas|Snow Day|Sesh Wars|Date Night|Badminton/,
       })
       .map((a) => [a.textContent?.trim(), a.getAttribute("href")]);
     expect(links).toEqual([
@@ -203,7 +203,9 @@ describe("experiences", () => {
       ["October", "/october"],
       ["Christmas", "/christmas"],
       ["Snow Day", "/snow"],
+      ["Sesh Wars", "/snow/sesh-wars"],
       ["Date Night", "/datenight"],
+      ["Badminton Game Night", "/badminton"],
     ]);
   });
 
@@ -249,6 +251,18 @@ describe("experiences", () => {
     expect(
       screen.getByTestId("passport-experience-hockey"),
     ).not.toHaveAttribute("aria-current");
+  });
+
+  it("lights Sesh Wars alone inside it, not Snow Day too", () => {
+    at("/snow/sesh-wars/demo");
+    openRow();
+    expect(screen.getByTestId("passport-experience-sesh-wars")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByTestId("passport-experience-snow")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("marks nothing on Discovery", () => {

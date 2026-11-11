@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { ThemePicker, ThemeProvider } from "@/components/ghad/theme";
 import { Wordmark } from "@/components/ghad/Wordmark";
+import { EXPERIENCES, currentExperience } from "@/lib/experiences";
 
 /**
  * **The bar, in the product's own identity.**
@@ -97,22 +98,6 @@ const DESTINATIONS = [
   },
 ] as const;
 
-/**
- * **The experiences, by their existing routes.** Each one keeps its own
- * access rules: `/hockey` sends a visitor to sign in and comes back, and
- * `/conferences` says whether it is open and asks for a code or an account
- * itself. Nothing here bypasses that — these are links, not doors cut into
- * the wall.
- */
-const EXPERIENCES = [
-  { href: "/conferences", label: "Conference", testId: "conference" },
-  { href: "/hockey", label: "Hockey Night", testId: "hockey" },
-  { href: "/october", label: "October", testId: "october" },
-  { href: "/christmas", label: "Christmas", testId: "christmas" },
-  { href: "/snow", label: "Snow Day", testId: "snow" },
-  { href: "/datenight", label: "Date Night", testId: "date-night" },
-] as const;
-
 export function PassportNav({
   displayName = null,
   pending = false,
@@ -144,7 +129,8 @@ export function PassportNav({
   const setOpen = (next: boolean) => setOpenedOn(next ? pathname : null);
   const header = useRef<HTMLElement>(null);
   const rowId = useId();
-  const inExperience = EXPERIENCES.some((e) => inside(e.href));
+  const active = currentExperience(pathname);
+  const inExperience = active !== undefined;
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -282,9 +268,9 @@ export function PassportNav({
             data-testid="passport-experiences"
             className="border-t border-black/10 bg-[#fafafa]"
           >
-            <ul className="mx-auto flex max-w-[1760px] items-center gap-0.5 overflow-x-auto px-3 sm:gap-1 sm:px-6 lg:px-10">
+            <ul className="mx-auto flex max-w-[1760px] flex-wrap items-center gap-x-0.5 px-3 sm:gap-x-1 sm:px-6 lg:px-10">
               {EXPERIENCES.map((e) => {
-                const current = inside(e.href);
+                const current = active?.href === e.href;
                 return (
                   <li key={e.href} className="shrink-0">
                     <Link
