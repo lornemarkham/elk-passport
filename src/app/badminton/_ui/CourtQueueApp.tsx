@@ -5,6 +5,7 @@ import type { LiveView } from "@/lib/courtqueue/view";
 import { post, useLive } from "./api";
 import { Btn, Card, cx } from "./bits";
 import { Clubhouse, unreadCount } from "./Clubhouse";
+import { GameNight, TEST_NIGHT_KEY, TestNightLauncher } from "./GameNight";
 import { ChallengeTab, Courts } from "./Courts";
 import { Grow, JourneyIntro } from "./Grow";
 import { Me } from "./Me";
@@ -37,6 +38,12 @@ export function CourtQueueApp() {
   );
   const alerts = useAlerts(view?.me?.id ?? null);
   const [finishing, setFinishing] = useState(false);
+  // Test Game Night: a rehearsal that lives only in this tab.
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a rehearsal in progress in this tab survives a reload
+    if (sessionStorage.getItem(TEST_NIGHT_KEY)) setDemo(true);
+  }, []);
   const [hidden, setHidden] = useState<string | null>(null);
   const say = useCallback((text: string, bad?: boolean) => {
     setToast({ text, bad });
@@ -127,6 +134,19 @@ export function CourtQueueApp() {
       </Shell>
     );
 
+  if (demo && view.me.organizer)
+    return (
+      <GameNight
+        courts={view.organizer?.courts}
+        capacity={view.organizer?.rules.capacity}
+        today={view.now}
+        onExit={() => {
+          setDemo(false);
+          setTab("organizer");
+        }}
+      />
+    );
+
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "tonight", label: "Home", icon: "🏸" },
     { id: "clubhouse", label: "Clubhouse", icon: "💬" },
@@ -186,14 +206,22 @@ export function CourtQueueApp() {
             offset={offset}
             onFinish={() => setFinishing(true)}
             onRequest={() => setTab("challenge")}
+            onCourts={() => setTab("courts")}
             alerts={alerts}
           />
+        )}
+        {tab === "tonight" && view.me.organizer && (
+          <div className="mt-4">
+            <TestNightLauncher onOpen={() => setDemo(true)} />
+          </div>
         )}
         {tab === "clubhouse" && view.clubhouse && (
           <Clubhouse view={view} send={chatSend} act={act} seen={seen} />
         )}
         {tab === "grow" && <Grow view={view} clubAct={clubAct} />}
-        {tab === "schedule" && <Schedule view={view} clubAct={clubAct} />}
+        {tab === "schedule" && (
+          <Schedule view={view} offset={offset} clubAct={clubAct} />
+        )}
         {tab === "courts" && <Courts view={view} offset={offset} />}
         {tab === "challenge" && <ChallengeTab view={view} act={act} />}
         {tab === "me" && (
@@ -203,6 +231,11 @@ export function CourtQueueApp() {
             refresh={() => refresh(true)}
             alerts={alerts}
           />
+        )}
+        {tab === "organizer" && view.organizer && (
+          <div className="mb-4">
+            <TestNightLauncher onOpen={() => setDemo(true)} />
+          </div>
         )}
         {tab === "organizer" && view.organizer && (
           <Organizer

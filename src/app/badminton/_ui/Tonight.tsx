@@ -7,9 +7,9 @@ import type {
   LiveView,
   NightView,
   Phase,
-  SessionListing,
 } from "@/lib/courtqueue/view";
 import { Btn, Card, Elapsed, Person, Sheet, clock, cx, plural } from "./bits";
+import { NextSession, RegistrationNote, useNow } from "./Countdown";
 import { NotificationsCard } from "./Me";
 import type { Alerts } from "./notify";
 
@@ -26,6 +26,7 @@ export function Tonight({
   offset,
   onFinish,
   onRequest,
+  onCourts,
   alerts,
 }: {
   view: LiveView;
@@ -33,6 +34,7 @@ export function Tonight({
   offset: number;
   onFinish: () => void;
   onRequest: () => void;
+  onCourts?: () => void;
   alerts?: Alerts;
 }) {
   const night = view.night;
@@ -45,7 +47,7 @@ export function Tonight({
   if (!night)
     return (
       <>
-        <NoNightToday view={view} />
+        <NoNightToday view={view} offset={offset} onCourts={onCourts} />
         <div className="mt-4">{nudge}</div>
       </>
     );
@@ -70,6 +72,9 @@ export function Tonight({
           {night.hours} · {view.season.venue}
         </p>
       </header>
+      {night.status === "upcoming" && !night.cancelled && (
+        <TodaySignUp night={night} offset={offset} />
+      )}
       <StatusCard
         night={night}
         meId={meId}
@@ -82,8 +87,9 @@ export function Tonight({
       {nudge}
       <Invites night={night} meId={meId} act={act} />
       <MyResults night={night} meId={meId} act={act} />
-      <CourtMap night={night} meId={meId} offset={offset} />
+      <CourtMap night={night} meId={meId} offset={offset} onCourts={onCourts} />
       <Line night={night} meId={meId} />
+      <HereTonight night={night} meId={meId} />
       {checkedIn && night.status === "live" && (
         <div className="flex flex-wrap justify-between gap-3 px-1 text-sm">
           <button className="text-lime-300 underline" onClick={onRequest}>
@@ -99,7 +105,12 @@ export function Tonight({
           )}
         </div>
       )}
-      <NextNights view={view} skip={night.id} />
+      <NextSession
+        view={view}
+        offset={offset}
+        skip={night.date}
+        title="Next session after tonight"
+      />
     </div>
   );
 }
@@ -828,16 +839,28 @@ export function CourtMap({
   night,
   meId,
   offset,
+  onCourts,
 }: {
   night: NightView;
   meId: string;
   offset: number;
+  onCourts?: () => void;
 }) {
   return (
     <section aria-label="Courts" className="space-y-2">
-      <h2 className="px-1 text-sm font-bold tracking-wider text-white/60 uppercase">
-        Courts
-      </h2>
+      <div className="flex items-baseline justify-between px-1">
+        <h2 className="text-sm font-bold tracking-wider text-white/60 uppercase">
+          Courts
+        </h2>
+        {onCourts && (
+          <button
+            onClick={onCourts}
+            className="text-sm font-bold text-lime-300 underline"
+          >
+            All courts →
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {night.courts.map((c) => {
           const g = c.game;
@@ -950,11 +973,15 @@ function Line({ night, meId }: { night: NightView; meId: string }) {
   );
 }
 
-function NoNightToday({ view }: { view: LiveView }) {
-  const next = view.sessions.find((s) => s.status !== "ended");
-  const upcoming = view.season.nights.find(
-    (n) => n.status === "upcoming" || n.status === "today",
-  );
+function NoNightToday({
+  view,
+  offset,
+  onCourts,
+}: {
+  view: LiveView;
+  offset: number;
+  onCourts?: () => void;
+}) {
   return (
     <div className="space-y-4">
       <header>
@@ -964,56 +991,47 @@ function NoNightToday({ view }: { view: LiveView }) {
         <h1 className="text-2xl font-black">No badminton today</h1>
         <p className="text-sm text-white/60">{view.season.venue}</p>
       </header>
-      <Card>
-        <p className="text-xs tracking-wider text-white/60 uppercase">
-          Next night
-        </p>
-        {next ? (
-          <NextNightBody s={next} />
-        ) : upcoming ? (
-          <>
-            <p className="text-2xl font-black">{upcoming.label}</p>
-            <p className="text-white/70">{upcoming.hours}</p>
-            <p className="mt-2 text-sm text-white/60">
-              Sign-up opens at 8:00 am that day.
-            </p>
-          </>
-        ) : (
-          <p className="text-lg font-bold">The season is over.</p>
-        )}
-      </Card>
+      <NextSession view={view} offset={offset} onCourts={onCourts} />
     </div>
   );
 }
 
-function NextNightBody({ s }: { s: SessionListing }) {
+/** Today's night before it starts: the countdown to 8:00, then the spaces. */
+function TodaySignUp({ night, offset }: { night: NightView; offset: number }) {
+  const now = useNow(offset);
+  if (night.registration !== "not-yet" && night.registration !== "open")
+    return null;
   return (
-    <>
-      <p className="text-2xl font-black">{s.label}</p>
-      <p className="text-white/70">{s.hours}</p>
-      <p className="mt-2 text-sm text-white/60">
-        {s.registration === "not-yet"
-          ? `Sign-up opens at 8:00 am on ${s.label}. ${s.capacity} spots, first come, first served.`
-          : s.registrationNote}
-      </p>
-      {s.mine === "confirmed" && (
-        <p className="mt-1 text-sm font-semibold text-lime-300">
-          You&apos;re in
-        </p>
-      )}
-    </>
+    <Card className="ring-2 ring-lime-400/50">
+      <RegistrationNote
+        date={night.date}
+        now={now}
+        confirmed={night.confirmed}
+        capacity={night.capacity}
+        big
+      />
+    </Card>
   );
 }
 
-function NextNights({ view, skip }: { view: LiveView; skip: string }) {
-  const s = view.sessions.find((x) => x.id !== skip && x.status !== "ended");
-  if (!s) return null;
+/**
+ * Who's here tonight — the names everyone in the club can already see on
+ * the courts and in "Play with friends". Nothing about anyone's level, mood
+ * or record.
+ */
+function HereTonight({ night, meId }: { night: NightView; meId: string }) {
+  if (night.status !== "live" || !night.present.length) return null;
   return (
     <Card>
-      <p className="text-xs tracking-wider text-white/60 uppercase">
-        Next night
+      <h2 className="mb-2 font-bold">Here tonight ({night.present.length})</h2>
+      <p className="text-sm leading-relaxed text-white/80">
+        {night.present.map((p, i) => (
+          <span key={p.id} className={cx(p.id === meId && "font-black")}>
+            {i ? ", " : ""}
+            {p.name}
+          </span>
+        ))}
       </p>
-      <NextNightBody s={s} />
     </Card>
   );
 }

@@ -242,3 +242,46 @@ run src/lib/courtqueue/store.stack.test.ts`. The Clubhouse survives a restart:
   stronger one).
   Not built: video, organizer view of levels (deliberately), mentor pairing
   beyond the gentle seating bias.
+
+## Test Game Night, countdown and calendar (2026-11-10, owner brief _Game Night Simulator_, M715)
+
+**Test Game Night** (Organize tab, and Home for organizers: _🏸 Test Game
+Night_) rehearses a whole night with 25 fictional players on the club's own
+courts and capacity. `src/lib/courtqueue/gamenight.ts` drives the real engine
+(`applySession`, `tick`, `fair.ts`) on a copy held only in the browser tab
+(`sessionStorage`, so a reload carries on and Exit forgets it). It has no I/O:
+no store, push, Clubhouse or statistics code is imported (a unit test checks
+this) and the e2e suite checks that no request is written and the real club
+reads back identical afterwards.
+
+- **The night is a list of things that will happen** — sign-ups from 8:00
+  a.m. (25 of 25 by evening), doors open, arrivals, games called, started and
+  finished, people catching their breath or taking a break, two leaving
+  early, one no-show, the end. **Next event** jumps the clock to the next one;
+  **+5 min**, **Auto** and **Skip to the end** let time pass.
+- **The organizer's controls**: start, finish, send back, _next group on_ (one
+  court), _rotate all courts_, pick four for a free court, open/close a
+  court, move a player (a swap with someone on another court), mark
+  unavailable / available, play next, add a walk-in (the waitlist once full),
+  remove, reset. **Move** exists only in the demo; the club app does it by
+  sending a call back and assigning four.
+- The fictional players carry a private level and mood like any player's
+  journey, shown only on the demo's Players list (as `demo.ts` already does)
+  and never on a court, in the line or in the summary. The summary is
+  alphabetical: games, minutes, people played with — nobody is ranked.
+
+**Registration countdown** (`countdown.ts`): from the night's own date and
+`SEASON.registrationOpens`. More than 12 hours before: "Registration opens
+Thursday, November 12 at 8:00 a.m."; within 12 hours: "Registration opens in
+11h 42m" with the day and "Opens Thursday at 8:00 a.m."; then "Registration is
+open!" with spaces out of 25, and the waitlist once full. It only says;
+nobody is signed up when it reaches zero. Shown on Home (the next session is
+now its own card, with a way to the courts) and in the calendar.
+
+**Calendar**: today is ringed in white on any date, club night or not;
+nights are marked coming up, registration open, you're registered,
+completed (✓) and cancelled. Every night opens a sheet with its details,
+sign-up state and countdown; organizers also cancel or restore it there.
+Home lists who is here tonight by name (what members already see on the
+courts and in Play with friends); before the night only counts are shown, as
+no setting lets members see who has signed up.
