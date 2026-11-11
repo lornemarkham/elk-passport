@@ -8,6 +8,7 @@ import {
   REACTIONS,
   SEASON_LABEL,
   TOWN_LABEL,
+  photoSrc,
   type PinView,
 } from "@/domain/christmas/lights/model";
 import { toggleStash, useStash } from "./stash";
@@ -26,9 +27,13 @@ export function SeasonBadge({ pin }: { readonly pin: PinView }) {
         ? "Hidden after a privacy report"
         : pin.status === "declined"
           ? "Not published"
-          : pin.season === "unconfirmed" && pin.lastConfirmed
-            ? `Last confirmed ${pin.lastConfirmed} — not yet this year`
-            : SEASON_LABEL[pin.season];
+          : pin.season === "lit" && pin.running === "soon" && pin.dates
+            ? `Confirmed for ${pin.dates.from.slice(0, 4)} · starts ${new Date(`${pin.dates.from}T12:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" })}`
+            : pin.season === "lit" && pin.running === "over"
+              ? "Finished for this year"
+              : pin.season === "unconfirmed" && pin.lastConfirmed
+                ? `Last confirmed ${pin.lastConfirmed} — not yet this year`
+                : SEASON_LABEL[pin.season];
   return (
     <span
       data-testid="season-badge"
@@ -39,9 +44,6 @@ export function SeasonBadge({ pin }: { readonly pin: PinView }) {
     </span>
   );
 }
-
-export const photoSrc = (pin: Pick<PinView, "id" | "hasPhoto">) =>
-  pin.hasPhoto ? `/christmas/api/lights/${pin.id}/photo` : null;
 
 /** A pin as a card: photo, name, how sure we are it's lit, love, add to tour. */
 export function PinCard({

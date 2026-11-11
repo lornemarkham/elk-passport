@@ -33,7 +33,7 @@ export default async function PinPage({
       <PassportNav displayName={session?.user.displayName ?? null} />
       <ThemeProvider className="block">
         <main
-          className={`${christmas.page} ${styles.scope} min-h-screen bg-[#082319] pb-24`}
+          className={`${christmas.page} ${styles.scope} ${styles.dark} min-h-screen pb-24`}
         >
           <header className={christmas.night}>
             <div className="mx-auto max-w-2xl px-4 pt-10 pb-6 sm:px-6">

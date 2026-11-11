@@ -28,6 +28,7 @@ import {
   type PinView,
 } from "@/domain/christmas/lights/model";
 import {
+  REACH_KM,
   buildTour,
   clockText,
   directionsUrl,
@@ -94,6 +95,7 @@ export function TourBuilder({
   const [saved, setSaved] = useState<{ href: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("Our Christmas lights tour");
+  const [nextNight, setNextNight] = useState<string | null>(null);
   const picks = useStash();
 
   const all = useMemo(() => {
@@ -112,24 +114,45 @@ export function TourBuilder({
   const pinById = useMemo(() => new Map(pins.map((p) => [p.id, p])), [pins]);
 
   /** Why a stop can't be toured on `day`, or null when it can. */
-  const notTonight = (id: string): string | null => {
+  const notTonight = (id: string, on = day): string | null => {
     const p = pinById.get(id);
     if (!p) return all.has(id) ? null : "isn't on the map any more";
     if (p.season === "dark") return "was reported not decorated this year";
     if (p.season !== "lit") return "isn't confirmed lit this season yet";
-    if (!onThatDay(p, day))
+    if (!onThatDay(p, on))
       return `isn't on that day (${p.hours ?? "see its dates"})`;
     return null;
   };
   const candidates = [...all.values()].filter((s) => !notTonight(s.id));
 
-  function build() {
+  /** The first night within six weeks with something lit in reach. */
+  function firstLitNight(): string | null {
+    const reach = REACH_KM[mode] * 1000;
+    const start = new Date(`${day}T12:00:00Z`);
+    for (let i = 1; i <= 42; i++) {
+      const d = new Date(start.getTime() + i * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      if (
+        [...all.values()].some(
+          (s) => !notTonight(s.id, d) && metres(from, s.at) <= reach,
+        )
+      )
+        return d;
+    }
+    return null;
+  }
+
+  function build(on = day) {
+    if (on !== day) setDay(on);
     setSaved(null);
     const chosen = picks
-      .filter((id) => all.has(id) && !notTonight(id))
+      .filter((id) => all.has(id) && !notTonight(id, on))
       .map((id) => all.get(id)!);
-    const skipped = picks.filter((id) => notTonight(id));
-    const rest = candidates.filter((c) => !chosen.some((s) => s.id === c.id));
+    const skipped = picks.filter((id) => notTonight(id, on));
+    const rest = [...all.values()].filter(
+      (c) => !notTonight(c.id, on) && !chosen.some((s) => s.id === c.id),
+    );
     const room = Math.max(0, count - chosen.length);
     const filled = buildTour(
       {
@@ -150,11 +173,12 @@ export function TourBuilder({
       ...filled.stops.map((t) => t.stop),
     ]).map((s) => s.id);
     setTourIds(ids);
+    setNextNight(ids.length === 0 ? firstLitNight() : null);
     setSay(
       ids.length === 0
-        ? "Nothing lit is in reach for that — try driving, more time, or another night."
+        ? "Nothing lit is in reach on that night — try driving, more time, or another night."
         : skipped.length
-          ? `Left out ${skipped.length} of your picks: ${skipped.map((id) => `${all.get(id)?.name ?? "a stop"} ${notTonight(id)}`).join("; ")}.`
+          ? `Left out ${skipped.length} of your picks: ${skipped.map((id) => `${all.get(id)?.name ?? "a stop"} ${notTonight(id, on)}`).join("; ")}.`
           : null,
     );
   }
@@ -373,7 +397,7 @@ export function TourBuilder({
               onClick={() => setWithFestive(!withFestive)}
               className={chip(withFestive)}
             >
-              ☕ Markets & treats
+              🎁 Markets, Santa & shows
             </button>
           </div>
         </div>
@@ -396,7 +420,7 @@ export function TourBuilder({
         )}
         <button
           type="button"
-          onClick={build}
+          onClick={() => build()}
           className="flex min-h-14 w-full items-center justify-center rounded-full bg-[#b3242f] text-lg font-extrabold text-white"
           data-testid="build-tour"
         >
@@ -404,6 +428,26 @@ export function TourBuilder({
         </button>
       </section>
 
+      {nextNight && stops.length === 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setNextNight(null);
+            build(nextNight);
+          }}
+          className="flex min-h-14 w-full items-center justify-center rounded-full bg-[#ffd98a] px-4 text-center font-extrabold text-[#082319]"
+          data-testid="next-lit-night"
+        >
+          ✨ The first lit night near you is{" "}
+          {new Date(`${nextNight}T12:00:00Z`).toLocaleDateString("en-CA", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            timeZone: "UTC",
+          })}{" "}
+          — plan that night
+        </button>
+      )}
       {say && say !== "signin" && (
         <p
           className="rounded-2xl bg-[#f7e3e1] p-4 font-bold text-[#082319]"
@@ -421,7 +465,7 @@ export function TourBuilder({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               aria-label="Tour name"
-              className="ghad-display w-full bg-transparent text-3xl font-extrabold outline-none print:hidden"
+              className="ghad-display w-full bg-transparent text-2xl font-extrabold outline-none print:hidden"
             />
             <h2 className="ghad-display hidden text-3xl font-extrabold print:block">
               {title}
@@ -450,7 +494,10 @@ export function TourBuilder({
             markers={stops.map((s, i) => ({
               id: s.id,
               at: s.at,
-              emoji: s.kind === "atlas" ? "☕" : KIND_EMOJI[s.kind],
+              emoji:
+                s.kind === "atlas"
+                  ? (festive.find((f) => f.id === s.id)?.emoji ?? "🎁")
+                  : KIND_EMOJI[s.kind],
               label: `${i + 1}. ${s.name}`,
               n: i + 1,
             }))}

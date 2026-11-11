@@ -12,9 +12,10 @@ import {
   type Kind,
   type PinView,
   type TownId,
+  photoSrc,
 } from "@/domain/christmas/lights/model";
 import { LightsMap, type MapMarker } from "./LightsMap";
-import { PinCard, SeasonBadge, photoSrc } from "./PinCard";
+import { PinCard, SeasonBadge } from "./PinCard";
 import { Reactions } from "./Reactions";
 import { toggleStash, useStash } from "./stash";
 
@@ -24,6 +25,7 @@ export interface Festive {
   readonly at: { readonly lat: number; readonly lng: number };
   readonly line: string;
   readonly href: string;
+  readonly emoji: string;
 }
 
 type Filter = "all" | Kind | "atlas";
@@ -70,7 +72,7 @@ export function Explorer({
     ...festiveShown.map((f) => ({
       id: f.id,
       at: f.at,
-      emoji: "☕",
+      emoji: f.emoji,
       label: `${f.name} — from Atlas`,
       selected: f.id === selected,
     })),
@@ -142,7 +144,7 @@ export function Explorer({
             className={chip(filter === "atlas")}
             onClick={() => setFilter("atlas")}
           >
-            ☕ Markets & treats
+            🎁 Festive, from Atlas
           </button>
         )}
       </div>
@@ -238,7 +240,7 @@ export function Explorer({
       <p className="mt-2 text-sm text-white/75">
         Dim lights aren&apos;t confirmed for this season yet.
         {festive.length > 0
-          ? " ☕ are markets and festive stops Atlas holds."
+          ? " 🛍️🎅🎭 are markets, Santa and shows from Atlas."
           : ""}
       </p>
 

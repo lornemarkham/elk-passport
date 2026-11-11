@@ -1,7 +1,12 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { insidersStore, storeKey, NotReady } from "@/lib/insiders/store";
+import {
+  insidersStore,
+  storeKey,
+  usesMemory,
+  NotReady,
+} from "@/lib/insiders/store";
 import { actor } from "@/lib/insiders/service";
 import {
   clientKey,
@@ -96,8 +101,7 @@ export async function getPhoto(id: string): Promise<string | null> {
 const devSalt = "passport-christmas-lights-dev";
 
 function keyFor(email: string): string {
-  const base =
-    storeKey() ?? (process.env.NODE_ENV === "production" ? null : devSalt);
+  const base = storeKey() ?? (usesMemory() ? devSalt : null);
   if (!base) throw new NotReady("no server key for Christmas lights");
   return (
     "v_" +
@@ -119,8 +123,16 @@ export async function viewer(): Promise<LightsViewer> {
   const a = await actor().catch(() => null);
   if (!a || a.who === "visitor")
     return { key: null, reviewer: false, signedIn: !!a?.signedIn, email: null };
+  let key: string;
+  try {
+    key = keyFor(a.who);
+  } catch (error) {
+    // No server key: the store can't be used either, so they browse as a visitor.
+    console.error("[christmas-lights]", (error as Error).message);
+    return { key: null, reviewer: false, signedIn: true, email: null };
+  }
   return {
-    key: keyFor(a.who),
+    key,
     reviewer: a.role === "admin" || a.role === "ambassador",
     signedIn: true,
     email: a.who,

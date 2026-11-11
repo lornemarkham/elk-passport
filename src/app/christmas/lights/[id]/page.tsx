@@ -5,11 +5,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { PassportNav } from "@/components/shell/PassportNav";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Reactions } from "@/components/christmas/lights/Reactions";
-import {
-  PinCard,
-  SeasonBadge,
-  photoSrc,
-} from "@/components/christmas/lights/PinCard";
+import { PinCard, SeasonBadge } from "@/components/christmas/lights/PinCard";
 import {
   Checks,
   ReportAndRemove,
@@ -24,6 +20,7 @@ import {
   KIND_EMOJI,
   KIND_LABEL,
   TOWN_LABEL,
+  photoSrc,
 } from "@/domain/christmas/lights/model";
 import { lightsFor, viewer } from "../../_server/lights";
 

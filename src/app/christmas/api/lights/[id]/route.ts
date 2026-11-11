@@ -52,8 +52,15 @@ export async function POST(
     .json()
     .catch(() => ({}) as Record<string, unknown>);
   const action = (body as Record<string, unknown>).action;
+  const reviewing =
+    action === "approve" || action === "decline" || action === "restore";
+  // Reviewers work through a queue; their actions share the generous bucket.
   const limit =
-    action === "react" ? "react" : action === "report" ? "report" : "write";
+    action === "react" || (reviewing && v.reviewer)
+      ? "react"
+      : action === "report"
+        ? "report"
+        : "write";
 
   if (action !== "report" && !v.key) return signInFirst();
   const by = v.key ?? visitorKey(request);

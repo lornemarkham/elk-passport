@@ -83,3 +83,23 @@
     display: none !important;
   }
 }
+
+/* The lights pages are night pages: beats `.page`'s snow-white background. */
+.scope.dark {
+  color: #fff;
+  background:
+    radial-gradient(
+      80% 40% at 100% 0%,
+      rgb(255 217 138 / 0.12),
+      transparent 70%
+    ),
+    radial-gradient(70% 40% at 0% 60%, rgb(179 36 47 / 0.16), transparent 70%),
+    linear-gradient(180deg, #082319, #0b2c20 60%, #082319);
+}
+
+@media print {
+  .scope.dark {
+    color: #000;
+    background: #fff;
+  }
+}
