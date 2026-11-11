@@ -829,6 +829,14 @@ Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs
 no account; a shared day is an invitation-only adventure of kind `snow-day`.
 This settles reachability for Snow; it does not answer §15.12.
 
+_Sesh Wars joined Snow 2026-11-10_ (owner brief "SESH WARS — BRING THE
+MOUNTAIN TO LIFE"; `docs/product/snow/SESH-WARS.md`, ADR 019 proposed):
+`/snow/sesh-wars` is reached from Snow's front door, a park competition in
+which riders post clips on resort-listed features, answer each other with
+head-to-head challenges, and the mountain votes champions in. Its fictional
+activity lives only in `/snow/sesh-wars/demo`, on the visitor's own phone,
+never beside real riders.
+
 _Date Night joined the menu 2026-11-08_ (mission 642): six, each opening its
 own route (`/datenight`) under its own access rules.
 
@@ -1041,6 +1049,13 @@ make the experience better.
 - speculative future interfaces
 
 **These ideas matter. They must not hijack current implementation.**
+
+_Named 2026-11-10:_ Sesh Wars (a rider-versus-rider video competition with
+votes, chirps and patches) was built because the owner's brief asked for it
+by name. Whether it is an "elaborate social game" fenced off by this list, or
+a §6 "shared challenge" made bigger, is the owner's call and is recorded as
+open in `docs/product/snow/SESH-WARS.md` §9. It does not lift this fence for
+anything else.
 
 ---
 
