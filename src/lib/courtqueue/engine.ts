@@ -943,7 +943,7 @@ function step(club: Club, s: Session, now: number): boolean {
     if (g.status !== "called" || filled(g.slots).length === 4) continue;
     const court = club.courts.find((c) => c.id === g.court);
     if (!court) continue;
-    const id = replacement(club, s, court, g);
+    const id = replacement(club, s, court, g, now);
     if (!id) continue;
     const at = g.slots.indexOf(null);
     g.waitedSince[id] = unqueue(s, id) ?? now;

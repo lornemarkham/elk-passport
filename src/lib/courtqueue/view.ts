@@ -43,6 +43,12 @@ import {
   type RegistrationState,
 } from "./schedule";
 import type { Journey } from "./journey";
+import {
+  averagePlayed,
+  dashboard,
+  ledger,
+  type FairnessDashboard,
+} from "./fairness";
 import { nightBalance } from "./stats";
 
 /**
@@ -249,6 +255,8 @@ export interface OrganizerView {
   readonly alerts: string[];
   readonly games: GameView[];
   readonly spread: { readonly fewest: number; readonly most: number } | null;
+  /** Court time and waiting for the organizer only (`fairness.ts`). */
+  readonly fairness: FairnessDashboard | null;
 }
 
 export type NightOnCalendar = "past" | "today" | "upcoming" | "cancelled";
@@ -431,7 +439,7 @@ export function nightView(
   now: number,
 ): NightView {
   const l = listing(club, s, me, now);
-  const line = inOrder(club, s);
+  const line = inOrder(club, s, now);
   const ready = prepared(club, s, now).map((p) => ({
     court: p.court,
     slots: p.slots.map((id) => (id ? person(club, id) : null)),
@@ -485,7 +493,6 @@ export function nightView(
                     : l.mine === "waitlist"
                       ? "waitlist"
                       : "not-registered";
-    const games = t.get(me)?.games ?? 0;
     const waitingNow = pos >= 0 ? Math.max(0, now - line[pos]!.since) : 0;
     mine = {
       roster: l.mine,
@@ -497,9 +504,7 @@ export function nightView(
       lineRule:
         pos < 0
           ? null
-          : games === 0
-            ? "Everyone gets a first game before anyone plays a second."
-            : `People who've played fewer than ${games} game${games === 1 ? "" : "s"} tonight go first, then fewest minutes, then whoever has waited longest.`,
+          : `Whoever has waited longest goes first. You've played ${t.get(me)?.minutes ?? 0} min tonight (the average is ${Math.round(averagePlayed(ledger(s, now).values()))}); anyone who has played a lot less moves up a little, so everyone gets court time.`,
       autoRequeue: presence?.autoRequeue ?? true,
       mood: s.moods?.[me] ?? null,
       queuePosition: pos >= 0 ? pos + 1 : null,
@@ -564,6 +569,14 @@ export function nightView(
     registrationNote: l.registrationNote,
     me: mine,
   };
+}
+
+/** Each player the engine has prepared for a court, and which court. */
+function nextCourts(club: Club, s: Session, now: number) {
+  const out = new Map<string, number>();
+  for (const p of prepared(club, s, now))
+    for (const id of filled(p.slots)) out.set(id, p.court);
+  return out;
 }
 
 export function organizerView(
@@ -644,6 +657,10 @@ export function organizerView(
     spread: bal.length
       ? { fewest: bal[0]!.games, most: bal[bal.length - 1]!.games }
       : null,
+    fairness:
+      s && s.status === "live"
+        ? dashboard(club, s, now, nextCourts(club, s, now))
+        : null,
   };
 }
 

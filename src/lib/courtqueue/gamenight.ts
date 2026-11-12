@@ -937,7 +937,7 @@ export interface Picture {
 export function picture(n: GameNight): Picture {
   const s = n.session;
   const t = tonight(s);
-  const line = inOrder(n.club, s);
+  const line = inOrder(n.club, s, n.now);
   const pos = new Map(line.map((w, i) => [w.playerId, i]));
   const ready = prepared(n.club, s, n.now);
   const seat = (id: string): SeatView => ({ id, name: name(n, id) });

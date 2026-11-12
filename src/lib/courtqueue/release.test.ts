@@ -356,7 +356,7 @@ describe("the open-court workflow", () => {
 });
 
 describe("fairness", () => {
-  it("fewest games, then fewest minutes, then longest wait", () => {
+  it("longest wait, with court time deciding anything that is not close", () => {
     const c = club(12);
     const s = here(c, night(), ids(12), T0);
     s.games.push(
@@ -382,7 +382,11 @@ describe("fairness", () => {
       { playerId: "p2", since: T0 + 31 * MINUTE },
       { playerId: "p3", since: T0 + 32 * MINUTE },
     ];
-    expect(inOrder(c, s).map((w) => w.playerId)).toEqual(["p3", "p2", "p1"]);
+    expect(inOrder(c, s, T0 + 40 * MINUTE).map((w) => w.playerId)).toEqual([
+      "p3",
+      "p2",
+      "p1",
+    ]);
   });
 
   it("a challenge never goes ahead of fairness, however long it waits", () => {

@@ -37,7 +37,7 @@ waiting for a first game.
 
 ## Fairness
 
-_Fewest games tonight goes first; then fewest minutes; then whoever has waited longest._
+_Whoever has waited longest goes first; court time breaks a close call_ (amended 2026-11-12, fairness intelligence — see "Fairness intelligence" below). The previous rule was fewest games, then fewest minutes, then longest wait.
 The most deserving player in line anchors the game and is always in it; the
 other three come from the next seven in line, chosen to mix people up: new
 partners, people they haven't shared a court with tonight, not the same four
@@ -134,8 +134,7 @@ What changed for the club's first real nights (Thursday 2026-11-12 on):
   **"COURT 2 — YOU'RE UP!"**.
 - **Nobody is requeued automatically** after a game. FINISH frees the court at
   once, with no score asked for; organizer corrections stay in the audit trail.
-- **Fairness order:** fewest games tonight, then fewest minutes, then longest
-  wait; partner variety and a warm welcome choose the rest of the four.
+- **Fairness order:** longest wait, adjusted by court time (`fairness.ts`); partner variety and a warm welcome choose the rest of the four.
   Requested games (invites) never go ahead of that order — the 15-minute "patience"
   override is retired.
 - **The next games are prepared:** for each busy court, in the order they
@@ -285,3 +284,51 @@ sign-up state and countdown; organizers also cancel or restore it there.
 Home lists who is here tonight by name (what members already see on the
 courts and in Play with friends); before the night only counts are shown, as
 no setting lets members see who has signed up.
+
+## Fairness intelligence (2026-11-12)
+
+Owner brief "P0 addendum — CourtQueue fairness intelligence". Built in
+`src/lib/courtqueue/fairness.ts`, nothing stored: every figure is read back out
+of the night's games, so a corrected time corrects it.
+
+- **Ledger per checked-in player:** minutes played, minutes waiting in line,
+  games, minutes on each court, last game ended, current wait, passes
+  (declined calls), break minutes, partners and everyone played with.
+- **Waiting means time in the line.** A break, a drink or waiting for friends
+  is time out of the line: never waiting, never priority. Played minutes stay
+  exact either way.
+- **Priority** (`priority()`): minutes waited, ±5 min of the night's average
+  court time ignored (a close call is decided by the wait); beyond that, being
+  behind earns 0.75 min of credit per minute (capped at 25 so a late arrival is
+  not owed the night), being ahead costs 1.25. First tie-break: fewer games.
+  The organizer's "play next" still goes first. The anchor + mixing logic in
+  `fair.ts` is unchanged.
+- **Organizer dashboard** (Organizer tab, live night only): Player · Played ·
+  Waiting · Games · Next, least court time first, with a
+  one-line headline (least played, waiting longest) and plain-words
+  recommendations. 🟠 = 8+ min under the average, 🔴 = 15+, and only for
+  someone waiting in the line. "Next" is the court the engine has prepared them for.
+- **Players** see only their own minutes against the night's average, in the
+  line explanation. Nobody sees another player labelled underserved.
+- **Not built, by design: court eligibility.** The brief asks never to violate
+  court eligibility. CourtQueue has none since "Everyone belongs" (every court
+  takes anybody; doctrine, ADR 017), so there is nothing to respect and no
+  skill-level column. This is an open owner question: _should any court ever
+  be limited for anyone?_ Until answered, it is not built; the simulation
+  measures what such a limit would cost.
+- **Preferred partners** are not a stored concept in the real app (a challenge
+  is the nearest thing and already waits its turn), so "respect preferred
+  partners" is satisfied only by never forcing a game and never counting
+  time out of the line as waiting. Nothing new was added.
+
+Simulation: `fairness.sim.ts` / `fairness.sim.test.ts`, 60 seeded nights per
+scenario, 25 players, three courts, FIFO against the same priority function.
+`FAIRNESS_REPORT=path npx vitest run src/lib/courtqueue/fairness.sim` writes
+the tables. Groups A/B/C in the simulation stand for the three private-guide
+levels (the source stays free of level words, `belong.test.ts`). Result,
+60/90/120 min: spread between most and fewest minutes narrows 13% / 22% / 28%;
+players under 60% of the average fall from 2.5 / 0.22 / 0.17 to 1.7 / 0.02 / 0
+a night; the longest wait _rises_ by about 1–2 min (the price of sending the
+under-served ahead of a longer waiter); idle courts do not change; the gap
+between groups is within about 1 min of FIFO's. The simulation is a simplified
+model (game lengths 11–22 min, 18% breaks), not the engine itself.

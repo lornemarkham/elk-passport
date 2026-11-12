@@ -1,3 +1,4 @@
+import { averagePlayed, ledger, order } from "./fairness";
 import { levelRank } from "./journey";
 import {
   MINUTE,
@@ -15,8 +16,9 @@ import {
 /**
  * **The fairness engine.** Who plays next, where, and with whom.
  *
- * The rule a person can say out loud: _fewest games tonight goes first; among
- * equals, fewest minutes on court; then whoever has waited longest._ The
+ * The rule a person can say out loud: _whoever has waited longest goes first,
+ * and court time breaks a close call_ (`fairness.ts`: someone far behind the
+ * night's average moves up, someone far ahead steps back). The
  * most deserving player is the **anchor** and is always in the game; the
  * other three are picked from the next few in line to mix people up: new
  * partners, people they haven't played yet, a warm welcome for someone new,
@@ -109,10 +111,15 @@ export interface Waiting {
 }
 
 /** The queue in the order the fairness engine serves it. */
-export function inOrder(club: Club, s: Session): Waiting[] {
+export function inOrder(
+  club: Club,
+  s: Session,
+  now: number = Date.now(),
+): Waiting[] {
   const t = tonight(s);
   const next = new Set(s.nextUp ?? []);
-  return s.queue
+  const average = averagePlayed(ledger(s, now).values());
+  const line = s.queue
     .filter((q) => club.players[q.playerId])
     .map((q) => {
       const me = t.get(q.playerId) ?? none;
@@ -123,15 +130,22 @@ export function inOrder(club: Club, s: Session): Waiting[] {
         games: me.games,
         minutes: me.minutes,
       };
-    })
-    .sort(
-      (a, b) =>
-        Number(next.has(b.playerId)) - Number(next.has(a.playerId)) ||
-        a.games - b.games ||
-        a.minutes - b.minutes ||
-        a.since - b.since ||
-        a.playerId.localeCompare(b.playerId),
-    );
+    });
+  // Organizer's "play next" first, then longest wait adjusted by court time.
+  const byWait = order(
+    line,
+    (w) => ({
+      waited: (now - w.since) / MINUTE,
+      played: w.minutes,
+      games: w.games,
+      at: w.since,
+    }),
+    average,
+  );
+  return [
+    ...byWait.filter((w) => next.has(w.playerId)),
+    ...byWait.filter((w) => !next.has(w.playerId)),
+  ];
 }
 
 function traits(club: Club, s: Session, id: string) {
@@ -251,7 +265,7 @@ export function propose(
   exclude: ReadonlySet<string> = new Set(),
 ): Proposal | null {
   const t = tonight(s);
-  const line = inOrder(club, s).filter((w) => !exclude.has(w.playerId));
+  const line = inOrder(club, s, now).filter((w) => !exclude.has(w.playerId));
   if (line.length < 4) return null;
   // The most deserving player in line anchors the game.
   const anchor = line[0]!;
@@ -296,13 +310,14 @@ export function replacement(
   s: Session,
   _court: Court,
   game: Game,
+  now: number = Date.now(),
 ): string | null {
   const t = tonight(s);
   const gone = new Set([...filled(game.slots), ...game.declined]);
   const empty = game.slots.indexOf(null);
   if (empty < 0) return null;
   const others = filled(game.slots);
-  const line = inOrder(club, s).filter((w) => !gone.has(w.playerId));
+  const line = inOrder(club, s, now).filter((w) => !gone.has(w.playerId));
   let best: { id: string; cost: number } | null = null;
   line.slice(0, WINDOW + 1).forEach((w, rank) => {
     const repeat = others.reduce(
@@ -354,7 +369,7 @@ function explain(
     why.push(`First game tonight for ${firsts.map(name).join(" and ")}`);
   else
     why.push(
-      `${name(anchor.playerId)} was next: fewest games and minutes tonight`,
+      `${name(anchor.playerId)} was next: longest wait, balanced with court time tonight`,
     );
   const waited = Math.round((now - anchor.since) / MINUTE);
   if (waited >= 3)

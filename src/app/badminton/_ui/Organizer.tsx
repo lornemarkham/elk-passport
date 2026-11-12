@@ -168,6 +168,81 @@ export function Organizer({
         )}
       </Card>
 
+      {live && o.fairness && o.fairness.rows.length > 0 && (
+        <Card>
+          <h2 className="font-bold">Court time tonight</h2>
+          <p
+            className="mb-2 text-sm text-white/60"
+            data-testid="fairness-glance"
+          >
+            {o.fairness.least ? `Least played: ${o.fairness.least}` : ""}
+            {o.fairness.longest
+              ? ` · Waiting longest: ${o.fairness.longest}`
+              : ""}
+            {` · average ${o.fairness.average} min`}
+          </p>
+          {o.fairness.recommendations.length > 0 && (
+            <ul className="mb-3 space-y-1" data-testid="fairness-recs">
+              {o.fairness.recommendations.map((r) => (
+                <li
+                  key={r}
+                  className="rounded-lg bg-amber-300/10 p-2 text-sm font-semibold text-amber-200"
+                >
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="overflow-x-auto">
+            <table
+              className="w-full text-left text-sm"
+              data-testid="fairness-table"
+            >
+              <thead className="text-xs text-white/50 uppercase">
+                <tr>
+                  <th className="py-1 pr-2">Player</th>
+                  <th className="pr-2">Played</th>
+                  <th className="pr-2">Waiting</th>
+                  <th className="pr-2">Games</th>
+                  <th>Next</th>
+                </tr>
+              </thead>
+              <tbody>
+                {o.fairness.rows
+                  .filter((r) => r.status !== "gone")
+                  .map((r) => (
+                    <tr
+                      key={r.playerId}
+                      data-need={r.need ?? ""}
+                      title={r.note ?? undefined}
+                      className="border-t border-white/10"
+                    >
+                      <td className="py-1 pr-2 font-semibold">{r.name}</td>
+                      <td className="pr-2">{r.played} min</td>
+                      <td className="pr-2">
+                        {r.status === "waiting"
+                          ? `${r.waiting} min`
+                          : r.status === "break"
+                            ? "break"
+                            : "on court"}
+                      </td>
+                      <td className="pr-2">{r.games}</td>
+                      <td>
+                        {r.need === "red"
+                          ? "🔴 "
+                          : r.need === "orange"
+                            ? "🟠 "
+                            : ""}
+                        {r.next ? `Court ${r.next}` : "Wait"}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {live && (
         <Card>
           <h2 className="mb-2 font-bold">Courts</h2>
