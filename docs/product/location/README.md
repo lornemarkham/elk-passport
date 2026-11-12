@@ -28,6 +28,12 @@ destination — only for Christmas_.
 - `src/app/api/location/approximate/route.ts` — regional guess from the edge; returns a town id only.
 - `src/components/location/` — `LocationBar`, `LocationPicker`, `ExperienceLocation` (URL-driven pages).
 - Storage: `localStorage["ghad.location.v1"]` — town ids only.
+- Server copy: the shared place (a chosen place or home, never a guess and never
+  an experience's own destination) is mirrored into the `ghad-place` cookie, a
+  town id, so a server-rendered page (Christmas, via `whereAreWe`) opens on it
+  instead of opening on Vernon and rewriting its address. `ExperienceLocation`
+  rewrites the address only when the shared place differs from the town the
+  server rendered (`at`). (M760)
 
 ## Tests
 

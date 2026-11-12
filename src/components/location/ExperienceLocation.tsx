@@ -17,6 +17,10 @@ import { LocationBar } from "./LocationBar";
  *    already about where the person is. (`replace`: Back does not land on the
  *    page that had no place.) A town already in the address is left alone — a
  *    shared link opens on the sender's place and changes nobody's saved one.
+ *    Where the server already opened on the shared place (`at`, read from the
+ *    `ghad-place` cookie the store mirrors), nothing is replaced: rewriting
+ *    the address there re-ran the whole server read for the same town on
+ *    every visit (M760).
  * 2. **Change updates the query.** Picking a place sets the address, which
  *    re-runs the server read; the page's results come from Atlas for the new
  *    town, not the same results re-labelled.
@@ -24,10 +28,13 @@ import { LocationBar } from "./LocationBar";
 export function ExperienceLocation({
   scope,
   experience,
+  at,
   className,
 }: {
   readonly scope: string;
   readonly experience: string;
+  /** The town the server rendered for, when it chose one without `?at=`. */
+  readonly at?: string;
   readonly className?: string;
 }) {
   const router = useRouter();
@@ -48,12 +55,12 @@ export function ExperienceLocation({
   const anywhere = !urlAt && params.has("at");
 
   useEffect(() => {
-    if (!params.has("at") && shared) {
+    if (!params.has("at") && shared && shared !== at) {
       const next = new URLSearchParams(params.toString());
       next.set("at", shared);
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     }
-  }, [shared, params, pathname, router]);
+  }, [shared, at, params, pathname, router]);
 
   return (
     <LocationBar

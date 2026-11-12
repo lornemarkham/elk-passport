@@ -1,7 +1,9 @@
 import {
   EMPTY_PREFS,
+  PLACE_COOKIE,
   STORAGE_KEY,
   parsePrefs,
+  saved,
   serialisePrefs,
   type LocationPrefs,
 } from "@/domain/location/prefs";
@@ -18,6 +20,18 @@ import {
 let current: LocationPrefs | undefined;
 const listeners = new Set<() => void>();
 
+/** `PLACE_COOKIE`: the shared place for the server's first render, or gone. */
+function mirror(prefs: LocationPrefs): void {
+  try {
+    const townId = saved(prefs)?.townId;
+    document.cookie = townId
+      ? `${PLACE_COOKIE}=${encodeURIComponent(townId)}; path=/; max-age=31536000; SameSite=Lax`
+      : `${PLACE_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+  } catch {
+    // No cookies: the page opens on its default and the bar corrects it.
+  }
+}
+
 function read(): LocationPrefs {
   if (typeof window === "undefined") return EMPTY_PREFS;
   if (current) return current;
@@ -26,6 +40,8 @@ function read(): LocationPrefs {
   } catch {
     current = EMPTY_PREFS;
   }
+  // A place chosen before the cookie existed reaches the server too.
+  mirror(current);
   return current;
 }
 
@@ -43,6 +59,7 @@ export function updatePrefs(
   } catch {
     // Kept in memory for this visit.
   }
+  mirror(next);
   listeners.forEach((l) => l());
 }
 

@@ -28,6 +28,13 @@ export interface LocationPrefs {
 export const EMPTY_PREFS: LocationPrefs = { recent: [], destinations: {} };
 
 export const STORAGE_KEY = "ghad.location.v1";
+/**
+ * The shared place (no experience's own destination), mirrored from
+ * `STORAGE_KEY` into a cookie so a server-rendered page can open on it
+ * instead of opening somewhere else and being redirected (M760). A town id,
+ * nothing more; the browser store stays the truth.
+ */
+export const PLACE_COOKIE = "ghad-place";
 const RECENT_LIMIT = 5;
 
 /** What the place on screen rests on. Said out loud wherever it is shown. */

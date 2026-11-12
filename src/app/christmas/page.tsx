@@ -209,6 +209,7 @@ export default async function ChristmasPage({
                   <ExperienceLocation
                     scope="christmas"
                     experience="Christmas"
+                    at={ask.at}
                     className="mt-3 text-white"
                   />
                 </Suspense>

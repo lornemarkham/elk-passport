@@ -185,3 +185,29 @@ describe("changing it", () => {
     expect(result.current.townId).toBe(before);
   });
 });
+
+describe("the server's copy of the shared place", () => {
+  const cookie = () =>
+    document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("ghad-place="))
+      ?.split("=")[1];
+
+  it("mirrors a chosen place into ghad-place, and not a destination", async () => {
+    stubBrowser({});
+    const { result } = renderHook(() => useLocation("christmas"));
+    act(() => result.current.choose("kelowna"));
+    expect(cookie()).toBe("kelowna");
+    act(() => result.current.choose("penticton", { onlyHere: true }));
+    expect(cookie()).toBe("kelowna");
+  });
+
+  it("never writes a guess", async () => {
+    document.cookie = "ghad-place=; path=/; max-age=0";
+    stubBrowser({ edge: { townId: "vancouver", source: "approximate" } });
+    const { result } = renderHook(() => useLocation());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.townId).toBe("vancouver");
+    expect(cookie() ?? "").toBe("");
+  });
+});

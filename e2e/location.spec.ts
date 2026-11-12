@@ -140,9 +140,15 @@ for (const [label, viewport] of [
       page,
     }) => {
       await page.goto("/christmas");
-      await expect(page).toHaveURL(/at=[a-z-]+/, { timeout: 15_000 });
-      await expect(page.getByTestId("town-chips")).toHaveCount(0);
       await expect(name(page)).toContainText("Around");
+      await expect(page.getByTestId("town-chips")).toHaveCount(0);
+      // The server already opened on the shared place (Vernon, the launch
+      // region, here), so the address is not rewritten and nothing is read
+      // twice (M760).
+      await expect(
+        page.getByRole("heading", { level: 1, name: /around Vernon/ }),
+      ).toBeVisible();
+      expect(page.url()).not.toMatch(/at=/);
       await change(page, "kelowna", "kelowna");
       await expect(page).toHaveURL(/at=kelowna/);
       await expect(page.getByTestId("cta-discover")).toContainText("Kelowna");

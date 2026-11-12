@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * **Go Have a Christmas, signed out** — what any visitor reaches. The whole
@@ -10,6 +10,15 @@ import { expect, test } from "@playwright/test";
  * answering rather than "nothing is on".
  */
 const WITH_ATLAS = process.env.E2E_ATLAS === "1";
+
+/** Change the place on the shared location bar (ADR 020; the town pills are gone). */
+async function changePlace(page: Page, id: string) {
+  await page.getByTestId("location-change").first().click();
+  await expect(page.getByTestId("location-picker")).toBeVisible();
+  await page.getByTestId("location-search").fill(id);
+  await page.getByTestId(`location-option-${id}`).click();
+  await expect(page.getByTestId("location-picker")).toHaveCount(0);
+}
 
 test("the Christmas page opens on the season and leads somewhere real", async ({
   page,
@@ -109,7 +118,7 @@ for (const [label, viewport] of [
     const page = await context.newPage();
     // open
     await page.goto("/christmas");
-    await page.getByRole("link", { name: "Kelowna", exact: true }).click();
+    await changePlace(page, "kelowna");
     await expect(page).toHaveURL(/at=kelowna/);
     await page
       .getByRole("textbox", { name: /What does your Christmas look like/ })
@@ -157,9 +166,9 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await expect(
     page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
   ).toBeVisible();
-  await expect(
-    page.getByTestId("town-chips").getByRole("link", { name: "Vernon" }),
-  ).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("location-name").first()).toContainText(
+    "Vernon",
+  );
   // Vernon's lights come from the community map's researched displays, and
   // are named for what they are: local listings, apart from Atlas's finds.
   const vernonLights = page.getByTestId("around-lights-pins");
@@ -178,10 +187,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
     ).toBeVisible();
   }
 
-  await page
-    .getByTestId("town-chips")
-    .getByRole("link", { name: "Kelowna", exact: true })
-    .click();
+  await changePlace(page, "kelowna");
   await expect(page).toHaveURL(/\/christmas\?at=kelowna/);
   await expect(
     page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
@@ -193,7 +199,8 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
     "Frostival",
   );
 
-  // The chosen town is remembered: a bare /christmas opens on Kelowna now.
+  // The chosen place is remembered (the shared place's cookie): a bare
+  // /christmas opens on Kelowna now, from the server's first render.
   await page.goto("/christmas");
   await expect(
     page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
