@@ -10,10 +10,27 @@ interface Stats {
   me: {
     attended: number;
     games: number;
+    wins: number;
+    losses: number;
     minutes: number;
     partners: number;
     kudos: number;
   };
+  table: {
+    id: string;
+    name: string;
+    games: number;
+    wins: number;
+    losses: number;
+  }[];
+  games: {
+    night: string;
+    court: number;
+    at: number;
+    score: [number, number];
+    winner: 0 | 1 | null;
+    team: string[];
+  }[];
 }
 
 export function Me({
@@ -30,6 +47,7 @@ export function Me({
   const me = view.me!;
   const [stats, setStats] = useState<Stats | null>(null);
   const [name, setName] = useState(me.name);
+  const [email, setEmail] = useState(me.email ?? "");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -77,12 +95,13 @@ export function Me({
         <Card>
           <h2 className="mb-1 font-bold">Your badminton</h2>
           <p className="mb-3 text-xs text-white/50">
-            Just for you — nobody else sees these, and there&apos;s nothing to
-            beat.
+            Every game you finish is kept, with its score.
           </p>
           <dl className="grid grid-cols-3 gap-3 text-center">
             <Stat n={s.attended} label="nights" />
             <Stat n={s.games} label="games" />
+            <Stat n={s.wins} label="wins" />
+            <Stat n={s.losses} label="losses" />
             <Stat n={s.minutes} label="minutes" />
             <Stat n={s.partners} label="people played with" />
           </dl>
@@ -91,6 +110,53 @@ export function Me({
               {plural(s.kudos, "thank-you")} from other players 👏
             </p>
           )}
+        </Card>
+      )}
+
+      {stats && stats.table.length > 0 && (
+        <Card>
+          <h2 className="mb-2 font-bold">Everyone&apos;s games</h2>
+          <table className="w-full text-sm" aria-label="Club record">
+            <thead className="text-left text-xs text-white/50">
+              <tr>
+                <th>Player</th>
+                <th className="text-right">Games</th>
+                <th className="text-right">Won</th>
+                <th className="text-right">Lost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.table.map((r) => (
+                <tr key={r.id} className="border-t border-white/10">
+                  <td className="py-1.5">{r.name}</td>
+                  <td className="text-right tabular-nums">{r.games}</td>
+                  <td className="text-right tabular-nums">{r.wins}</td>
+                  <td className="text-right tabular-nums">{r.losses}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+      {stats && stats.games.length > 0 && (
+        <Card>
+          <h2 className="mb-2 font-bold">Game history</h2>
+          <ul className="divide-y divide-white/10 text-sm">
+            {stats.games.map((g, i) => (
+              <li key={i} className="py-2">
+                <span className="text-white/50">
+                  {g.night} · Court {g.court}
+                </span>
+                <div>
+                  {g.team[0]} & {g.team[1]}{" "}
+                  <b className="tabular-nums">
+                    {g.score[0]}–{g.score[1]}
+                  </b>{" "}
+                  {g.team[2]} & {g.team[3]}
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
 
@@ -108,6 +174,26 @@ export function Me({
               kind="ghost"
               disabled={name.trim() === me.name}
               onClick={() => clubAct({ type: "profile", name })}
+            >
+              Save
+            </Btn>
+          </div>
+        </label>
+        <label className="mt-3 block">
+          <span className="text-sm text-white/70">Email</span>
+          <div className="mt-1 flex gap-2">
+            <input
+              value={email}
+              type="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              onChange={(e) => setEmail(e.target.value)}
+              className="min-w-0 flex-1 rounded-xl bg-white/10 p-3"
+            />
+            <Btn
+              kind="ghost"
+              disabled={!email.includes("@") || email.trim() === me.email}
+              onClick={() => clubAct({ type: "profile", email })}
             >
               Save
             </Btn>

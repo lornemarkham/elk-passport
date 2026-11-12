@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { localHHMM } from "@/lib/courtqueue/clock";
 import type { Court } from "@/lib/courtqueue/model";
 import type { GameView, LiveView } from "@/lib/courtqueue/view";
@@ -8,6 +8,62 @@ import { Btn, Card, Person, Sheet, clock, cx } from "./bits";
 import { post } from "./api";
 
 type SessionAct = (cmd: object, sessionId?: string) => Promise<boolean>;
+
+/** The one link everybody joins by, as text and as a QR code to hold up. */
+function InviteCard() {
+  const [url, setUrl] = useState("");
+  const [qr, setQr] = useState("");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const u = `${window.location.origin}/badminton`;
+    void import("qrcode").then((q) =>
+      q
+        .toDataURL(u, { margin: 2, width: 480, errorCorrectionLevel: "M" })
+        .then((data) => {
+          setUrl(u);
+          setQr(data);
+        }),
+    );
+  }, []);
+  return (
+    <Card>
+      <h2 className="mb-1 font-bold">Invite players</h2>
+      <p className="mb-3 text-sm text-white/70">
+        Everyone scans this (or opens the link), adds their name, email and a
+        PIN, and is in the same night.
+      </p>
+      {qr && (
+        <img
+          src={qr}
+          alt="QR code to join CourtQueue"
+          className="mx-auto h-56 w-56 rounded-xl bg-white"
+        />
+      )}
+      <p className="mt-3 text-center font-mono text-sm break-all">{url}</p>
+      <div className="mt-2 flex justify-center gap-2">
+        <Btn
+          kind="ghost"
+          onClick={async () => {
+            await navigator.clipboard?.writeText(url).catch(() => {});
+            setCopied(true);
+          }}
+        >
+          {copied ? "Copied" : "Copy link"}
+        </Btn>
+        {typeof navigator !== "undefined" && "share" in navigator && (
+          <Btn
+            kind="ghost"
+            onClick={() =>
+              navigator.share({ title: "CourtQueue", url }).catch(() => {})
+            }
+          >
+            Share
+          </Btn>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 export function Organizer({
   view,
@@ -49,6 +105,8 @@ export function Organizer({
           </ul>
         </Card>
       )}
+
+      <InviteCard />
 
       <Card>
         <div className="flex items-center justify-between gap-2">
@@ -220,6 +278,7 @@ export function Organizer({
                   </span>
                   <span className="text-white/60">
                     {g.status}
+                    {g.score ? ` · ${g.score[0]}–${g.score[1]}` : ""}
                     {g.startedAt ? ` · ${clock(g.startedAt)}` : ""}
                     {g.finishedAt
                       ? `–${clock(g.finishedAt)} (${g.minutes} min)`
@@ -364,7 +423,14 @@ export function Organizer({
         <ul className="space-y-1.5 text-sm">
           {o.players.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-2">
-              <Person p={p} small />
+              <span className="min-w-0">
+                <Person p={p} small />
+                {p.email && (
+                  <span className="block truncate pl-10 text-xs text-white/50">
+                    {p.email}
+                  </span>
+                )}
+              </span>
               <span className="flex shrink-0 items-center gap-1.5">
                 <Mini onClick={() => setPinFor({ id: p.id, name: p.name })}>
                   PIN

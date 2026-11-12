@@ -58,9 +58,19 @@ export function Courts({ view, offset }: { view: LiveView; offset: number }) {
                   </span>
                 </div>
                 <div className="truncate">
-                  {g.slots[0]?.name} & {g.slots[1]?.name}
-                  <span className="text-white/50"> with </span>
-                  {g.slots[2]?.name} & {g.slots[3]?.name}
+                  <span
+                    className={g.winner === 0 ? "font-bold text-lime-300" : ""}
+                  >
+                    {g.slots[0]?.name} & {g.slots[1]?.name}
+                  </span>
+                  <span className="text-white/50">
+                    {g.score ? ` ${g.score[0]}–${g.score[1]} ` : " with "}
+                  </span>
+                  <span
+                    className={g.winner === 1 ? "font-bold text-lime-300" : ""}
+                  >
+                    {g.slots[2]?.name} & {g.slots[3]?.name}
+                  </span>
                 </div>
               </li>
             ))}

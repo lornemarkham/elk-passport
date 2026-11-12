@@ -29,7 +29,12 @@ const nm = (n: string) => `${n} ${RUN}`;
 async function player(baseURL: string, name: string) {
   const api = await pwRequest.newContext({ baseURL });
   const r = await api.post("/api/badminton/me", {
-    data: { action: "register", name, pin: "4321" },
+    data: {
+      action: "register",
+      name,
+      email: `${name.replace(/\W+/g, "")}@example.test`,
+      pin: "4321",
+    },
   });
   if (r.status() === 503) test.skip(true, "CourtQueue store not configured");
   expect(r.ok(), `register ${name}: ${await r.text()}`).toBe(true);
@@ -63,6 +68,9 @@ async function phone(browser: Browser, name: string) {
   await page.goto("/badminton");
   await page.getByRole("button", { name: "I'm new" }).click();
   await page.getByLabel("Your name").fill(name);
+  await page
+    .getByLabel("Your email")
+    .fill(`${name.replace(/\W+/g, "")}@example.test`);
   await page.getByLabel(/Choose a PIN/).fill("4321");
   await page.getByRole("button", { name: "Join CourtQueue" }).click();
   await expect(page.getByTestId("phase")).toBeVisible();

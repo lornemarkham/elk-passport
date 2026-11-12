@@ -10,6 +10,7 @@ import {
 import { cleanJourney, isLevel } from "./journey";
 import {
   MINUTE,
+  cleanEmail,
   filled,
   isMood,
   isActiveGame,
@@ -1099,6 +1100,7 @@ export type ClubCommand =
       name?: string;
       mentor?: boolean;
       photo?: boolean;
+      email?: string;
     }
   | {
       type: "journey";
@@ -1158,6 +1160,17 @@ function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
         if (nameTaken(c, name, me!.id))
           refuse("Someone already has that name.");
         me!.name = name;
+      }
+      if (cmd.email !== undefined) {
+        const email = cleanEmail(cmd.email);
+        if (!email) refuse("That doesn't look like an email address.");
+        if (
+          Object.values(c.players).some(
+            (x) => x.id !== me!.id && x.email === email,
+          )
+        )
+          refuse("Someone is already registered with that email.");
+        me!.email = email!;
       }
       if (cmd.mentor !== undefined) me!.mentor = !!cmd.mentor;
       if (cmd.photo !== undefined) me!.photo = !!cmd.photo;

@@ -4,11 +4,18 @@ import { legalOffset } from "@/domain/date-night/conditions";
  * The server's clock. A rehearsal on the memory store can set
  * `COURTQUEUE_CLOCK` (an ISO time) to start the clock there — so the e2e
  * suite can play a Thursday night on any day of the week. Never honoured
- * with a real database.
+ * with a real database — except a throwaway one on this machine (the Supabase
+ * URL is loopback), which is how the 25-phone rehearsal runs on Postgres.
  */
+const localDatabase = () =>
+  /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  );
+
 export function serverNow(): number {
   const at = process.env.COURTQUEUE_CLOCK;
-  if (!at || process.env.COURTQUEUE_STORE !== "memory") return Date.now();
+  if (!at || (process.env.COURTQUEUE_STORE !== "memory" && !localDatabase()))
+    return Date.now();
   const g = globalThis as unknown as {
     __cqClock?: { from: number; at: number };
   };

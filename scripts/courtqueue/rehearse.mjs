@@ -54,6 +54,7 @@ async function main() {
   await org.call("POST", "/api/badminton/me", {
     action: "register",
     name: org.name,
+    email: `org-${RUN}@example.test`,
     pin: "9999",
   });
   const claim = await org.call("POST", "/api/badminton/me", {
@@ -71,6 +72,7 @@ async function main() {
       p.call("POST", "/api/badminton/me", {
         action: "register",
         name: p.name,
+        email: `${p.name.replace(/\W+/g, "").toLowerCase()}@example.test`,
         pin: "1234",
       }),
     ),

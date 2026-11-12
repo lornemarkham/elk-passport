@@ -281,6 +281,7 @@ function StatusCard({
               Court {last.court} · {last.minutes} min — thanks for playing!
             </p>
           )}
+          {last && <ResultLine g={last} meId={meId} act={act} />}
           <p className="mt-1 mb-3 text-sm text-white/60">
             Grab some water. When you&apos;re ready for another game, tap below
             — nobody puts you back in line but you.
@@ -595,6 +596,55 @@ export function Teams({
   );
 }
 
+/**
+ * The final score of a doubles game, as the four players see it: the team of
+ * the first two names, then the team of the last two. Two whole numbers, no
+ * tie. Used when finishing and, later, to add or fix a score.
+ */
+export function ScoreFields({
+  g,
+  a,
+  b,
+  setA,
+  setB,
+}: {
+  g: GameView;
+  a: string;
+  b: string;
+  setA: (v: string) => void;
+  setB: (v: string) => void;
+}) {
+  const team = (i: number) =>
+    [g.slots[i]?.name, g.slots[i + 1]?.name].filter(Boolean).join(" & ");
+  const box = (
+    label: string,
+    v: string,
+    set: (v: string) => void,
+    id: string,
+  ) => (
+    <label className="block min-w-0 flex-1 text-center">
+      <span className="block truncate text-xs text-white/70">{label}</span>
+      <input
+        aria-label={id}
+        value={v}
+        onChange={(e) => set(e.target.value.replace(/\D/g, "").slice(0, 2))}
+        inputMode="numeric"
+        className="mt-1 w-full rounded-xl bg-white/10 p-3 text-center text-3xl font-black tabular-nums"
+      />
+    </label>
+  );
+  return (
+    <div className="flex items-end gap-3">
+      {box(team(0), a, setA, "Score, first team")}
+      <span className="pb-4 text-xl text-white/50">–</span>
+      {box(team(2), b, setB, "Score, second team")}
+    </div>
+  );
+}
+
+const scoreOf = (a: string, b: string): [number, number] | null =>
+  a !== "" && b !== "" && a !== b ? [Number(a), Number(b)] : null;
+
 export function FinishSheet({
   open,
   onClose,
@@ -608,11 +658,16 @@ export function FinishSheet({
 }) {
   const [late, setLate] = useState(0);
   const [startAgo, setStartAgo] = useState(15);
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [noScore, setNoScore] = useState(false);
+  const score = scoreOf(a, b);
   const neverStarted = g.status === "called";
   const send = async () => {
     const ok = await act({
       type: "finish",
       gameId: g.id,
+      score: noScore ? undefined : (score ?? undefined),
       finishedMinutesAgo: late || undefined,
       startedMinutesAgo: neverStarted ? startAgo : undefined,
     });
@@ -654,11 +709,128 @@ export function FinishSheet({
             ))}
           </select>
         </label>
-        <Btn className="w-full" onClick={() => send()}>
+        {!noScore && (
+          <div>
+            <p className="mb-1 text-sm text-white/70">Final score</p>
+            <ScoreFields g={g} a={a} b={b} setA={setA} setB={setB} />
+            {a !== "" && a === b && (
+              <p className="mt-1 text-xs text-amber-300">
+                Badminton doesn&apos;t end in a tie — check the score.
+              </p>
+            )}
+          </div>
+        )}
+        <Btn
+          className="w-full"
+          disabled={!noScore && !score}
+          onClick={() => send()}
+        >
           Finish game
         </Btn>
+        <button
+          type="button"
+          className="w-full text-center text-sm text-white/60 underline"
+          onClick={() => setNoScore((v) => !v)}
+        >
+          {noScore ? "Enter the score after all" : "We didn't keep score"}
+        </button>
       </div>
     </Sheet>
+  );
+}
+
+/** The result of the player's last game, or the way to add the score. */
+function ResultLine({ g, meId, act }: { g: GameView; meId: string; act: Act }) {
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [open, setOpen] = useState(false);
+  const score = scoreOf(a, b);
+  const idx = g.slots.findIndex((p) => p?.id === meId);
+  if (g.score && g.winner !== null) {
+    const won = idx >= 0 && (idx < 2 ? 0 : 1) === g.winner;
+    return (
+      <p className="mt-1 font-bold">
+        {won ? "🎉 You won" : "Good game — they took this one"}{" "}
+        <span className="tabular-nums">
+          {g.score[0]}–{g.score[1]}
+        </span>{" "}
+        <button
+          type="button"
+          className="text-sm font-normal text-white/60 underline"
+          onClick={() => setOpen((v) => !v)}
+        >
+          fix
+        </button>
+        {open && (
+          <ScoreEdit
+            g={g}
+            a={a}
+            b={b}
+            setA={setA}
+            setB={setB}
+            score={score}
+            act={act}
+            done={() => setOpen(false)}
+          />
+        )}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2">
+      {!open ? (
+        <Btn kind="ghost" onClick={() => setOpen(true)}>
+          Add the score
+        </Btn>
+      ) : (
+        <ScoreEdit
+          g={g}
+          a={a}
+          b={b}
+          setA={setA}
+          setB={setB}
+          score={score}
+          act={act}
+          done={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ScoreEdit({
+  g,
+  a,
+  b,
+  setA,
+  setB,
+  score,
+  act,
+  done,
+}: {
+  g: GameView;
+  a: string;
+  b: string;
+  setA: (v: string) => void;
+  setB: (v: string) => void;
+  score: [number, number] | null;
+  act: Act;
+  done: () => void;
+}) {
+  return (
+    <span className="mt-2 block space-y-2 font-normal">
+      <ScoreFields g={g} a={a} b={b} setA={setA} setB={setB} />
+      <Btn
+        className="w-full"
+        disabled={!score}
+        onClick={async () => {
+          if (score && (await act({ type: "score", gameId: g.id, score })))
+            done();
+        }}
+      >
+        Save score
+      </Btn>
+    </span>
   );
 }
 

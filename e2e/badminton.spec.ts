@@ -28,7 +28,12 @@ async function player(
 ): Promise<APIRequestContext> {
   const api = await pwRequest.newContext({ baseURL });
   const r = await api.post("/api/badminton/me", {
-    data: { action: "register", name, pin: "4321" },
+    data: {
+      action: "register",
+      name,
+      email: `${name.replace(/\W+/g, "")}@example.test`,
+      pin: "4321",
+    },
   });
   if (r.status() === 503) test.skip(true, "CourtQueue store not configured");
   expect(r.ok(), `register ${name}: ${await r.text()}`).toBe(true);
@@ -93,6 +98,7 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   ).toBeVisible();
   await a.page.getByRole("button", { name: "I'm new" }).click();
   await a.page.getByLabel("Your name").fill(`Ana ${RUN}`);
+  await a.page.getByLabel("Your email").fill(`ana${RUN}@example.test`);
   await a.page.getByLabel(/Choose a PIN/).fill("2468");
   // Joining asks for a name and a PIN only; the optional journey question
   // comes after, on Home.
@@ -198,9 +204,11 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
     timeout: 10_000,
   });
 
-  // FINISH: there is no score to enter, and the court is free at once.
+  // FINISH: the final score is asked for (owner decision 2026-11-12), unless
+  // the four didn't keep one; the court is free at once.
   await a.page.getByRole("button", { name: "FINISH GAME" }).click();
-  await expect(a.page.getByLabel(/Score/)).toHaveCount(0);
+  await expect(a.page.getByLabel(/Score/)).toHaveCount(2);
+  await a.page.getByRole("button", { name: "We didn't keep score" }).click();
   await a.page
     .getByRole("dialog", { name: "Finish game" })
     .getByRole("button", { name: "Finish game" })
@@ -216,12 +224,10 @@ test("one phone, every stage: REGISTERED → READY → WAITING → YOU'RE UP →
   const after = await live(org);
   expect(after.night.queue).toHaveLength(0);
 
-  // No scores, winners or levels anywhere on the player's phone.
+  // No levels anywhere on the player's phone (and no score: none was kept).
   const played = (await live(others[0]!)).night.me.played[0];
   expect(played.startedAt).toBeLessThan(played.finishedAt);
-  expect(JSON.stringify(await live(others[0]!))).not.toMatch(
-    /skill|"score"|"winner"/i,
-  );
+  expect(JSON.stringify(await live(others[0]!))).not.toMatch(/skill/i);
   await expect(
     a.page.getByText(/Beginner|Intermediate|Expert|Advanced|won–lost/),
   ).toHaveCount(0);
@@ -403,6 +409,7 @@ test("Grow: My Journey is private and Learn teaches without links", async ({
   await a.page.goto("/badminton");
   await a.page.getByRole("button", { name: "I'm new" }).click();
   await a.page.getByLabel("Your name").fill(`Gro ${RUN}`);
+  await a.page.getByLabel("Your email").fill(`again${RUN}@example.test`);
   await a.page.getByLabel(/Choose a PIN/).fill("1357");
   await a.page.getByRole("button", { name: "Join CourtQueue" }).click();
   await a.page.getByRole("button", { name: /Not now/ }).click();

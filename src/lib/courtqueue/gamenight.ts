@@ -242,7 +242,7 @@ export function newGameNight(opts: GameNightOptions = {}): GameNight {
   const club: Club = {
     players: {},
     courts: structuredClone(
-      opts.courts?.length ? [...opts.courts] : DEFAULT_COURTS,
+      opts.courts?.length ? [...opts.courts] : DEFAULT_COURTS.slice(0, 3), // the practice night keeps its three
     ),
     rules: { ...DEFAULT_RULES, capacity: opts.capacity ?? 25 },
     sessions: [],

@@ -33,7 +33,11 @@ describe.skipIf(!on)("Clubhouse on Postgres, across a restart", () => {
       const names = ["Ana", "Bo", "Cy", "Di"].map((n) => `${n} ${run}`);
       const cookies: string[] = [];
       for (const name of names) {
-        const out = await register({ name, pin: "2468" });
+        const out = await register({
+          name,
+          email: `${name}@example.test`,
+          pin: "2468",
+        });
         if (!out.ok) throw new Error(out.error);
         cookies.push(out.value.cookie);
       }

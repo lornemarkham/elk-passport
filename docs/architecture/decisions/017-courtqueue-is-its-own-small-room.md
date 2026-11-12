@@ -177,3 +177,29 @@ this demonstration."
   a real player's phone.
 - Open: whether the real club night now takes scores and records too. The
   owner's words allow it; this amendment does not do it.
+
+## Amendment 2026-11-12 — the real club night keeps scores, wins and losses
+
+Owner brief M757 ("P0 — BADMINTON: 25-PERSON LIVE LAUNCH TOMORROW"), Lorne:
+"THIS IS NOT A DEMO", with "Record final scores. Track wins and losses. Show
+player statistics. Preserve game history." This is the further owner call the
+2026-11-11 amendment left open, and it is answered **yes** for the real night.
+
+- **Four doubles courts** (was three). A club stored with three gets Court 4
+  the next time it is read (`tidyClub`); no migration.
+- **Email at sign-up** (required, private to the organizer, never used to sign
+  in; sign-in stays name + PIN). It is not verified: nothing is sent to it.
+  Existing players can add theirs under Me.
+- **Final score** is entered by whoever taps FINISH (two numbers, no ties, 0–99)
+  and can be added or fixed afterwards by any of the four or an organizer.
+  Old `confirm` / `dispute` stay unused. Game documents already carried
+  `score` / `winner`; no new fields, no migration.
+- **Stats**: a player's own page shows nights, games, wins, losses, minutes;
+  Me also shows everyone's games, wins and losses **in name order** (a record,
+  not a ladder) and the game history with scores.
+- **Still true**: no skill levels, tiers, ranking, points, percentage or
+  leaderboard. `belong.test.ts` still bans `leaderboard`, `winPct`, `won–lost`
+  and `club board`; it now allows `score`/`winner`/`wins`/`losses`.
+- The club organizer's earlier worry (the labels made people feel judged) is
+  not answered by this; it is a decision to be watched on the first night.
+- **Join**: the Organize tab shows a QR code and the link `/badminton`.

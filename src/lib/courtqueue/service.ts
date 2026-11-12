@@ -39,6 +39,7 @@ import {
 import {
   emptyClub,
   tidyClub,
+  cleanEmail,
   emptySession,
   type Club,
   type Player,
@@ -69,7 +70,7 @@ import {
   upcomingNights,
 } from "./schedule";
 import { cleanJourney } from "./journey";
-import { playerStats } from "./stats";
+import { clubTable, playerStats } from "./stats";
 import { courtStore, NotReady, type DocStore } from "./store";
 import {
   clubhouseView,
@@ -253,9 +254,16 @@ export type SignInOutcome = Outcome<{ cookie: string }>;
 export async function register(input: {
   name: unknown;
   pin: unknown;
+  email?: unknown;
 }): Promise<SignInOutcome> {
   const name = cleanName(input.name);
   if (name.length < 2) return { ok: false, error: "Tell us your name." };
+  const email = cleanEmail(input.email);
+  if (!email)
+    return {
+      ok: false,
+      error: "Add your email address, like you@example.com.",
+    };
   if (!validPin(input.pin))
     return { ok: false, error: "Pick a PIN of 4 to 8 digits." };
   const pin = input.pin;
@@ -268,12 +276,19 @@ export async function register(input: {
         ok: false,
         error: "That name is taken. Sign in instead, or add your last initial.",
       };
+    if (Object.values(club.players).some((x) => x.email === email))
+      return {
+        ok: false,
+        error:
+          "That email is already registered. Sign in with your name and PIN.",
+      };
     if (Object.keys(club.players).length >= 400)
       return { ok: false, error: "The club is full." };
     const now = serverNow();
     const p: Player = {
       id: randomBytes(6).toString("base64url"),
       name,
+      email,
       createdAt: now,
       pinHash,
       tokenHashes: [],
@@ -696,6 +711,7 @@ export async function live(
           organizer: me.organizer,
           // Their own journey: sent to their phone and no one else's.
           journey: cleanJourney(me.journey),
+          email: me.email ?? null,
         }
       : null,
     sessions: sessions
@@ -820,8 +836,28 @@ export async function stats(cookie: string | undefined) {
   const sessions = keys
     .map((k) => docs.get(k)?.value as Session | undefined)
     .filter((s): s is Session => !!s);
-  // Yours alone: nobody else's numbers are ever sent, and there is no board.
-  return { me: playerStats(club, sessions, me.id) };
+  // Your own numbers, plus the club's record in name order (not a ladder).
+  return {
+    me: playerStats(club, sessions, me.id),
+    table: clubTable(club, sessions),
+    games: sessions
+      .flatMap((s) =>
+        s.games
+          .filter((g) => g.status === "finished" && g.score)
+          .map((g) => ({
+            night: s.date,
+            court: g.court,
+            at: g.finishedAt ?? g.calledAt,
+            score: g.score!,
+            winner: g.winner ?? null,
+            team: g.slots.map((id) =>
+              id ? (club.players[id]?.name ?? "?") : "",
+            ),
+          })),
+      )
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 60),
+  };
 }
 
 // --- Photos ----------------------------------------------------------------
@@ -908,3 +944,5 @@ export async function pushChange(
   }
   return { ok: false as const, error: "Unknown action." };
 }
+
+export { cleanEmail };

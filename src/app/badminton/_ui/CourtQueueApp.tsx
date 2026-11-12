@@ -340,6 +340,7 @@ function Welcome({
   const [mode, setMode] = useState<"register" | "sign-in">("register");
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent) => {
@@ -348,7 +349,7 @@ function Welcome({
     const out = await post(
       "/api/badminton/me",
       mode === "register"
-        ? { action: "register", name, pin }
+        ? { action: "register", name, pin, email }
         : { action: "sign-in", name, pin },
     );
     setBusy(false);
@@ -397,6 +398,21 @@ function Welcome({
             className="mt-1 w-full rounded-xl bg-white/10 p-3 text-lg"
           />
         </label>
+        {mode === "register" && (
+          <label className="block">
+            <span className="text-sm text-white/70">Your email</span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              required
+              className="mt-1 w-full rounded-xl bg-white/10 p-3 text-lg"
+            />
+          </label>
+        )}
         <label className="block">
           <span className="text-sm text-white/70">
             {mode === "register" ? "Choose a PIN (4–8 digits)" : "PIN"}
@@ -426,7 +442,12 @@ function Welcome({
         <Btn
           type="submit"
           big
-          disabled={busy || !name.trim() || pin.length < 4}
+          disabled={
+            busy ||
+            !name.trim() ||
+            pin.length < 4 ||
+            (mode === "register" && !email.includes("@"))
+          }
         >
           {mode === "register" ? "Join CourtQueue" : "Sign in"}
         </Btn>

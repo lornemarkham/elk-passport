@@ -885,6 +885,14 @@ in the same brief.
 
 ## 11. Current near-term direction
 
+_Amended 2026-11-12 (owner brief M757, "P0 — BADMINTON: 25-PERSON LIVE LAUNCH
+TOMORROW")._ The further owner call above is answered: the **real** CourtQueue
+night now records final scores and shows wins and losses, games and history
+(ADR 017, amendment 2026-11-12), on four doubles courts, with an email address
+at sign-up. It still never ranks, rates or tiers players; the club table is in
+name order. The earlier "never rates, ranks or compares players" rule is
+narrowed accordingly: scores and win/loss records are now allowed, ladders are not.
+
 Current generic Passport work focuses on making Discovery:
 
 - visually strong

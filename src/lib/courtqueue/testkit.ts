@@ -10,8 +10,10 @@ import { emptyClub, emptySession, type Club, type Session } from "./model";
 
 export const T0 = Date.UTC(2026, 10, 13, 3, 0); // Thu Nov 12, 7:00 pm in BC (UTC-8 or -7)
 
-export function club(count: number, names?: string[]): Club {
+export function club(count: number, names?: string[], courts = 3): Club {
   const c = emptyClub();
+  // The club has four courts; most tests were written for the original three.
+  c.courts = c.courts.slice(0, courts);
   for (let i = 0; i < count; i++) {
     const id = `p${i + 1}`;
     c.players[id] = {

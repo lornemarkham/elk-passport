@@ -43,6 +43,7 @@ describe("everyone belongs", () => {
       "Court 1",
       "Court 2",
       "Court 3",
+      "Court 4",
     ]);
     expect(JSON.stringify(tidy)).not.toMatch(
       /skill|statsPublic|"kind"|Beginner|Expert|Intermediate/i,
@@ -51,7 +52,7 @@ describe("everyone belongs", () => {
     expect(tidyClub(tidy)).toBe(tidy);
   });
 
-  it("never sends a level, a score or a win record to anyone's phone", () => {
+  it("never sends a level or a ranking to anyone's phone", () => {
     const c = club(8);
     let s = night();
     for (const id of ids(8)) {
@@ -62,7 +63,9 @@ describe("everyone belongs", () => {
     s = must(c, s, as("p1"), { type: "mood", mood: "rallies" }, T0);
     const json = JSON.stringify(nightView(c, s, "p2", T0));
     expect(json).not.toMatch(/skill|rating|beginner|expert|intermediate/i);
-    expect(json).not.toMatch(/"winner"|"wins"|"losses"|"winPct"|"points"/);
+    // Scores and win/loss records are allowed (owner decision 2026-11-12) but
+    // there is still no ranking, percentage or points.
+    expect(json).not.toMatch(/"winPct"|"points"|"rank"/);
     // Nobody else's mood travels either.
     expect(json).not.toContain('"rallies"');
   });

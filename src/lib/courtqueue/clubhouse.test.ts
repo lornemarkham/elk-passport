@@ -43,7 +43,12 @@ beforeAll(async () => {
   setStoreForTests(memoryStore());
   setClock(WED_NOON);
   for (const [i, name] of [...NAMES, "Olive"].entries()) {
-    const out = await register({ name, pin: "1234", skill: 3 + (i % 2) });
+    const out = await register({
+      name,
+      email: `${name}@example.test`,
+      pin: "1234",
+      skill: 3 + (i % 2),
+    });
     if (!out.ok) throw new Error(out.error);
     cookies[name] = out.value.cookie;
     ids[name] = out.value.cookie.split(".")[0]!;
@@ -417,6 +422,7 @@ describe("challenges: ahead of the day, on the day", () => {
     for (let i = 0; i < 21; i++) {
       const out = await register({
         name: `Guest ${i + 1}`,
+        email: `guest${i + 1}@example.test`,
         pin: "1234",
         skill: 3,
       });

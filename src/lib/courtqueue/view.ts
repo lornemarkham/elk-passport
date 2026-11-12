@@ -75,6 +75,9 @@ export interface GameView {
   readonly endEstimated: boolean;
   readonly accepted: readonly string[];
   readonly kudosFrom: readonly string[];
+  /** Final score, [team of slots 0–1, team of slots 2–3]; null until entered. */
+  readonly score: readonly [number, number] | null;
+  readonly winner: 0 | 1 | null;
 }
 
 export interface ChallengeView {
@@ -215,6 +218,8 @@ export interface MeView extends PersonView {
   readonly organizer: boolean;
   /** Theirs alone (`journey.ts`): never part of what anyone else is sent. */
   readonly journey: Journey;
+  /** Their own email, for them to see and fix. */
+  readonly email: string | null;
 }
 
 export interface OrganizerView {
@@ -231,6 +236,8 @@ export interface OrganizerView {
   }[];
   readonly players: (PersonView & {
     readonly organizer: boolean;
+    /** Only the organizer is ever sent anyone's email. */
+    readonly email: string | null;
   })[];
   readonly courts: Court[];
   readonly rules: Rules;
@@ -351,6 +358,8 @@ function gameView(club: Club, g: Game): GameView {
     endEstimated: !!g.endEstimated,
     accepted: Object.keys(g.accepted),
     kudosFrom: g.kudos.map((k) => k.from),
+    score: g.score ?? null,
+    winner: g.winner ?? null,
   };
 }
 
@@ -608,6 +617,7 @@ export function organizerView(
       .map((p) => ({
         ...person(club, p.id),
         organizer: p.organizer,
+        email: p.email ?? null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     courts: club.courts,

@@ -55,6 +55,11 @@ export interface Player {
   pinHash: string;
   /** sha256 of each live sign-in token. Never leaves the server. */
   tokenHashes: string[];
+  /**
+   * Given at sign-up (2026-11-12). Private: only the organizer can read it,
+   * for reaching a player about the club. Not used to sign in.
+   */
+  email?: string;
   /** "Happy to welcome newcomers": a volunteer, not a rank. */
   mentor: boolean;
   organizer: boolean;
@@ -67,7 +72,7 @@ export interface Player {
 }
 
 export interface Court {
-  readonly id: 1 | 2 | 3;
+  readonly id: 1 | 2 | 3 | 4;
   name: string;
   where: string;
 }
@@ -146,7 +151,7 @@ export type GameStatus = "called" | "playing" | "finished" | "cancelled";
 
 export interface Game {
   readonly id: string;
-  court: 1 | 2 | 3;
+  court: 1 | 2 | 3 | 4;
   slots: Slots;
   readonly source: "fair" | "challenge" | "organizer";
   readonly challengeId?: string;
@@ -247,6 +252,7 @@ export const DEFAULT_COURTS: Court[] = [
   { id: 1, name: "Court 1", where: "Furthest from the seats" },
   { id: 2, name: "Court 2", where: "The middle court" },
   { id: 3, name: "Court 3", where: "Closest to the seats" },
+  { id: 4, name: "Court 4", where: "Next to Court 3" },
 ];
 
 const LEGACY_COURT = /^(beginner|intermediate|expert) court$/i;
@@ -276,8 +282,12 @@ export function tidyClub(club: Club): Club {
     Object.values(club.players).some((p) =>
       LEGACY_PLAYER_FIELDS.some((k) => k in p),
     );
-  if (!legacy) return club;
+  const fourCourts = club.courts.length >= DEFAULT_COURTS.length;
+  if (!legacy && fourCourts) return club;
   const out = structuredClone(club);
+  // The club now has four doubles courts; a club stored with three gets the fourth.
+  for (const c of DEFAULT_COURTS)
+    if (!out.courts.some((x) => x.id === c.id)) out.courts.push({ ...c });
   for (const c of out.courts) {
     if (LEGACY_COURT.test(c.name)) c.name = `Court ${c.id}`;
     for (const k of LEGACY_COURT_FIELDS)
@@ -349,4 +359,14 @@ export function partnerIn(
   const i = g.slots.indexOf(id);
   if (i < 0) return null;
   return g.slots[i ^ 1] ?? null;
+}
+
+const EMAIL = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']{2,}$/;
+
+/** Lower-cased and trimmed, or null when it isn't an email address. */
+export function cleanEmail(raw: unknown): string | null {
+  const e = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  return e.length <= 120 && EMAIL.test(e) ? e : null;
 }

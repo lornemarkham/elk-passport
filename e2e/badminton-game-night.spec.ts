@@ -42,7 +42,12 @@ async function realClub() {
 test.beforeAll(async ({ baseURL }) => {
   org = await pwRequest.newContext({ baseURL });
   const r = await org.post("/api/badminton/me", {
-    data: { action: "register", name: `Organizer ${RUN}`, pin: "8642" },
+    data: {
+      action: "register",
+      name: `Organizer ${RUN}`,
+      email: `org${RUN}@example.test`,
+      pin: "8642",
+    },
   });
   if (r.status() === 503) test.skip(true, "CourtQueue store not configured");
   expect(r.ok(), await r.text()).toBe(true);
