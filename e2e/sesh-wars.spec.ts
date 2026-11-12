@@ -61,3 +61,73 @@ for (const [label, device] of [
     });
   });
 }
+
+test.describe("phone: record, preview and post to the demo", () => {
+  test.use({
+    viewport: devices["Pixel 7"].viewport,
+    userAgent: devices["Pixel 7"].userAgent,
+    isMobile: true,
+    hasTouch: true,
+  });
+
+  test("RECORD VIDEO → preview → Replace → Remove → publish stays local", async ({
+    page,
+  }) => {
+    const uploads: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() !== "GET" && /video|upload|sesh/i.test(r.url()))
+        uploads.push(`${r.method()} ${r.url()}`);
+    });
+    await page.goto("/snow/sesh-wars/demo/post");
+    await expect(
+      page.getByRole("heading", { name: /Post your session/ }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("video-destination")).toContainText(
+      "not uploaded",
+    );
+    await expect(
+      page.getByRole("button", { name: /Record video/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Upload video/i }),
+    ).toBeVisible();
+
+    const clip = (name: string, kb: number) => ({
+      name,
+      mimeType: "video/mp4",
+      buffer: Buffer.alloc(kb * 1024, 1),
+    });
+    await page
+      .getByTestId("video-record-input")
+      .setInputFiles(clip("jump.mp4", 300));
+    await expect(page.getByTestId("video-name")).toHaveText("jump.mp4");
+    await expect(page.getByTestId("video-size")).toHaveText("300 KB");
+    await expect(page.locator("video[controls]")).toBeVisible();
+
+    await page.getByRole("button", { name: "Replace" }).click();
+    await page
+      .getByTestId("video-upload-input")
+      .setInputFiles(clip("second.mp4", 600));
+    await expect(page.getByTestId("video-name")).toHaveText("second.mp4");
+
+    await page.getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByTestId("video-preview")).toHaveCount(0);
+    await page
+      .getByTestId("video-record-input")
+      .setInputFiles(clip("final.mp4", 100));
+
+    await page.getByRole("button", { name: /Starlight Rail/ }).click();
+    await page.getByRole("button", { name: "Snowboard", exact: true }).click();
+    await page.getByRole("button", { name: "Wingman", exact: true }).click();
+    await page.getByRole("button", { name: "Best Trick", exact: true }).click();
+    await page.getByPlaceholder("What did you land?").fill("Backside 180");
+    await page.getByLabel(/I filmed this/).check();
+    await page.getByLabel(/open, resort-built feature/).check();
+    await expect(page.getByTestId("publish-destination")).toContainText(
+      "stays on your phone",
+    );
+    await page.getByRole("button", { name: /Publish/ }).click();
+    await page.waitForURL(/\/demo\/c\//);
+    expect(uploads).toEqual([]);
+  });
+});

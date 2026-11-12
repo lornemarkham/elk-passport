@@ -38,6 +38,7 @@ import {
   type Upload,
 } from "./ctx";
 import { ClipPlayer } from "./parts";
+import { VideoPicker } from "./VideoPicker";
 
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
@@ -233,9 +234,8 @@ export function PostScreen({
     rights &&
     openTerrain;
 
-  async function pick(next: File | null) {
+  function pick(next: File) {
     setReason(null);
-    if (!next) return;
     if (
       !VIDEO_TYPES.includes(next.type) &&
       !/\.(mp4|mov|webm)$/i.test(next.name)
@@ -251,6 +251,12 @@ export function PostScreen({
     }
     setFile(next);
     setPreview(URL.createObjectURL(next));
+  }
+
+  function remove() {
+    setReason(null);
+    setFile(null);
+    setPreview(null);
   }
 
   async function publish() {
@@ -362,28 +368,13 @@ export function PostScreen({
       </Step>
 
       <Step n={3} title="Video">
-        <label className="block">
-          <span className="text-sm">
-            {mode === "demo"
-              ? "Pick a clip from your phone — in the demo it never leaves your phone. Or skip it and we'll draw one."
-              : "From your camera roll or straight from the camera. Under 50 MB."}
-          </span>
-          <input
-            type="file"
-            accept="video/mp4,video/quicktime,video/webm,video/*"
-            onChange={(e) => pick(e.target.files?.[0] ?? null)}
-            className="mt-2 block w-full text-sm"
-          />
-        </label>
-        {preview && (
-          <video
-            src={preview}
-            controls
-            playsInline
-            preload="metadata"
-            className="mt-3 aspect-video w-full rounded-lg bg-black"
-          />
-        )}
+        <VideoPicker
+          file={file}
+          preview={preview}
+          mode={mode}
+          onPick={pick}
+          onRemove={remove}
+        />
       </Step>
 
       <Step n={4} title="Ski or snowboard">
@@ -484,8 +475,15 @@ export function PostScreen({
             ? (stage ?? "Posting…")
             : defender
               ? "⚔️ Throw down"
-              : "Publish"}
+              : mode === "demo"
+                ? "Publish to the demo"
+                : "Publish"}
         </button>
+        <p className="mt-2 text-xs" data-testid="publish-destination">
+          {mode === "demo"
+            ? "Demo only: this stays on your phone and isn't shared or uploaded."
+            : "This uploads your clip and shares it with everyone."}
+        </p>
         {!ready && (
           <p className="mt-2 text-xs">Fill in every step to publish.</p>
         )}
