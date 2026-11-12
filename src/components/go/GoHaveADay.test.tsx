@@ -4,6 +4,7 @@ import { GoHaveADay } from "./GoHaveADay";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import type { DiscoveryCandidate, RainReading } from "@/lib/data/types";
 import { townById } from "@/domain/discovery/towns";
+import { resetPrefsForTest } from "@/lib/location/store";
 
 /**
  * **Talking to the day and touching it are the same conversation.**
@@ -90,7 +91,8 @@ const mount = (say = "three hours near Vernon") =>
 beforeEach(() => {
   // Each test starts a fresh tab: no day shaped here before.
   window.sessionStorage.clear();
-  window.localStorage.removeItem("ghad.last-start");
+  window.localStorage.removeItem("ghad.location.v1");
+  resetPrefsForTest();
   // No forecast in tests: the day is not today, so none is fetched.
   vi.stubGlobal(
     "fetch",
@@ -253,39 +255,47 @@ describe("Go have a day", () => {
     expect(first).toBeTruthy();
   });
 
-  it("asks where the adventure begins instead of building a day from nowhere", () => {
-    mount("Taking my family out this afternoon");
-    expect(screen.getByTestId("go-where")).toBeTruthy();
-    expect(screen.queryAllByTestId("go-stop")).toHaveLength(0);
-    expect(screen.getByTestId("go-where").textContent).toMatch(
-      /Where does the adventure begin/,
+  it("starts from the shared place when the sentence names no town, and says so", () => {
+    window.localStorage.setItem(
+      "ghad.location.v1",
+      JSON.stringify({ exploring: "vernon", recent: [], destinations: {} }),
     );
-    // Said, not lost: the sentence's own words stay on the page.
+    resetPrefsForTest();
+    mount("Taking my family out this afternoon");
+    // No "where does the adventure begin?" gate (ADR 020): the day is built.
+    expect(screen.queryByTestId("go-where")).toBeNull();
+    expect(screen.getAllByTestId("go-stop").length).toBeGreaterThan(0);
+    // Said, not hidden, and one control away from changing.
+    expect(screen.getByTestId("location-name").textContent).toBe("Vernon, BC");
+    expect(screen.getByTestId("location-change")).toBeTruthy();
+    expect(screen.getByTestId("go-working-from").textContent).toMatch(
+      /From Vernon/,
+    );
     expect(screen.getByTestId("go-working-from").textContent).toMatch(
       /family/i,
     );
-    fireEvent.click(screen.getByTestId("go-start-vernon"));
-    expect(screen.queryByTestId("go-where")).toBeNull();
-    expect(screen.getAllByTestId("go-stop").length).toBeGreaterThan(0);
+  });
+
+  it("changes the start from the bar, and a town in the sentence beats the shared place", () => {
+    window.localStorage.setItem(
+      "ghad.location.v1",
+      JSON.stringify({ exploring: "kelowna", recent: [], destinations: {} }),
+    );
+    resetPrefsForTest();
+    mount("A quiet afternoon near Vernon");
     expect(screen.getByTestId("go-working-from").textContent).toMatch(
       /From Vernon/,
     );
-  });
+    // The bar names the town the day is using, not the shared one.
+    expect(screen.getByTestId("location-name").textContent).toBe("Vernon, BC");
 
-  it("remembers the town that was tapped, and offers it next time without applying it", () => {
-    const first = mount("Taking my family out this afternoon");
-    expect(screen.queryByTestId("go-start-last")).toBeNull();
-    fireEvent.click(screen.getByTestId("go-start-vernon"));
-    first.unmount();
-    window.sessionStorage.clear();
-
-    mount("A quiet afternoon, just me");
-    // Still asked: the person may be somewhere else today.
-    expect(screen.getByTestId("go-where")).toBeTruthy();
-    expect(screen.queryAllByTestId("go-stop")).toHaveLength(0);
-    fireEvent.click(screen.getByTestId("go-start-last"));
+    fireEvent.click(screen.getByTestId("location-change"));
+    fireEvent.change(screen.getByTestId("location-search"), {
+      target: { value: "penti" },
+    });
+    fireEvent.click(screen.getByTestId("location-option-penticton"));
     expect(screen.getByTestId("go-working-from").textContent).toMatch(
-      /From Vernon/,
+      /From Penticton/,
     );
   });
 

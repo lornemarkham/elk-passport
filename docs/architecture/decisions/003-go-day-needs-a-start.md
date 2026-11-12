@@ -2,6 +2,8 @@
 
 **Proposed:** 2026-10-11 · **Accepted:** 2026-10-11, by the human-written mission brief for M207 ("Require a known starting town before building a day") · **Scope:** `/go` only
 
+> **Amended 2026-11-10 by [ADR 020](020-one-place-for-every-experience.md):** Go now begins from the shared place, said and changeable, rather than asking first.
+
 ## The problem
 
 M200 typed _"Taking my family out this afternoon"_ into `/go` with no town and

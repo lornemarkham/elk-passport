@@ -66,6 +66,8 @@ vi.mock("@/lib/october/october-repo", () => ({
   wantToDo: async () => {},
 }));
 
+vi.mock("@/lib/location/useLocation", () => import("@/lib/location/testing"));
+
 vi.mock("sonner", () => {
   const toast = () => {};
   toast.error = vi.fn();

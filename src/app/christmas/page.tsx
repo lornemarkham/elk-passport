@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -17,7 +18,8 @@ import { PinCard } from "@/components/christmas/lights/PinCard";
 import { SayIt } from "@/components/christmas/SayIt";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
-import { AtlasDown, Section, TownChips } from "@/components/christmas/parts";
+import { AtlasDown, Section } from "@/components/christmas/parts";
+import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import styles from "@/components/christmas/christmas.module.css";
 import { adventureSession } from "@/lib/adventures/server";
 import { adventuresOf, type AdventureSummary } from "@/lib/adventures/store";
@@ -203,7 +205,14 @@ export default async function ChristmasPage({
                   {townName ? ` near ${townName}` : " near you"}, with the dates
                   to prove it. Let&apos;s make some Christmas memories.
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3">
+                <Suspense fallback={null}>
+                  <ExperienceLocation
+                    scope="christmas"
+                    experience="Christmas"
+                    className="mt-3 text-white"
+                  />
+                </Suspense>
+                <div className="mt-3 flex flex-wrap gap-3">
                   <Link
                     href="#build"
                     className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 text-base font-bold text-[#082319] hover:brightness-105"
@@ -248,12 +257,6 @@ export default async function ChristmasPage({
             </header>
 
             <div className="mx-auto max-w-6xl space-y-14 px-4 pt-8 sm:px-6">
-              <TownChips
-                anywhere={false}
-                selected={ask.at}
-                hrefFor={(id) => `/christmas${id ? `?at=${id}` : ""}`}
-              />
-
               {corpus.outage && <AtlasDown />}
 
               {sections.length > 0 && (

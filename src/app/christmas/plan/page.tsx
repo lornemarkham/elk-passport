@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -170,6 +172,13 @@ export default async function ChristmasPlanPage({
                 around the Christmas things you picked — then your people vote,
                 and you change anything.
               </p>
+              <Suspense fallback={null}>
+                <ExperienceLocation
+                  scope="christmas"
+                  experience="Christmas"
+                  className="mt-2 text-white"
+                />
+              </Suspense>
             </div>
             <div className={styles.lights} aria-hidden />
           </header>

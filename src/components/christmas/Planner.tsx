@@ -90,6 +90,13 @@ export function Planner({
   const shape = shapeById(shapeId);
   const [chosen, setChosen] = useState<string[]>(picks.map((p) => p.id));
   const [townId, setTownId] = useState(initialTown ?? "");
+  // The place bar above changes the address; the town here follows it (the
+  // React-documented adjust-during-render pattern, not an effect).
+  const [seenTown, setSeenTown] = useState(initialTown);
+  if (initialTown !== seenTown) {
+    setSeenTown(initialTown);
+    setTownId(initialTown ?? "");
+  }
   const [first, setFirst] = useState(
     initialFrom && initialFrom >= today ? initialFrom : nextSaturday(today),
   );
@@ -375,8 +382,7 @@ export function Planner({
           {days.length > 1
             ? `${days.length} days: ${days.map((d) => dayLabel(d, true)).join(" · ")}`
             : ""}
-          {!town &&
-            " Passport needs a town to sketch the days — it asks rather than guesses."}
+          {!town && " Pick a town to sketch the days around."}
         </p>
       </section>
 

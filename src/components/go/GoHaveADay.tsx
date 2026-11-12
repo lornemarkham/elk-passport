@@ -41,11 +41,11 @@ import {
   type PlanWeather,
 } from "@/domain/day/build";
 import { OFFLINE_MODES, modeById } from "./modes";
-import { TOWN_GROUPS, townById } from "@/domain/discovery/towns";
-import { ageIn, nearestTown } from "@/domain/day/intent";
+import { townById } from "@/domain/discovery/towns";
+import { ageIn } from "@/domain/day/intent";
 import { needsStart } from "@/domain/day/start";
-import { distanceKm } from "@/lib/environment/geo";
-import { useHere } from "@/lib/location/useHere";
+import { useLocation } from "@/lib/location/useLocation";
+import { LocationBar } from "@/components/location/LocationBar";
 import { AtlasRecovery } from "./AtlasRecovery";
 import { ZONE } from "@/domain/experience/eventTime";
 import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
@@ -60,7 +60,6 @@ import { weekendFrom } from "@/lib/pocket/ideas";
 import { GOOD_DAY } from "@/lib/voice";
 
 import { readKeptDays, withKept, writeKeptDays } from "@/lib/go/keptDays";
-import { readLastStart, writeLastStart } from "@/lib/go/lastStart";
 import type { TravelMode } from "@/lib/routing/journey";
 
 /** "make it a weekend", "two days instead", "overnight" — not "no weekend". */
@@ -295,8 +294,23 @@ function ShapedDay({
   const [draft, setDraft] = useState(saved?.draft ?? seed);
   /** The sentence the day on screen was built from (`draft` is the live box). */
   const [built, setBuilt] = useState(saved?.draft ?? seed);
-  const [brief, setBrief] = useState<DayBrief | null>(() =>
+  const [stated, setBrief] = useState<DayBrief | null>(() =>
     saved ? saved.brief : seed ? readBrief(seed, fallback, context()) : null,
+  );
+  // **Assumed, said, and changeable** (ADR 020, amending ADR 003): a day with
+  // no start of its own begins where the shared place says — saved, already
+  // granted, or an approximate region — and the bar above the box names it.
+  // Chosen places in different parts of the province still get `ApartPanel`,
+  // never one assumed start (ADR 016). Derived, not stored: it is never
+  // mistaken for a start the person gave.
+  const shared = useLocation("go");
+  const assumed = townById(shared.townId);
+  const brief = useMemo(
+    () =>
+      stated && !stated.town && !apart && assumed
+        ? { ...stated, town: assumed }
+        : stated,
+    [stated, apart, assumed],
   );
   const [shaping, setShaping] = useState<Shaping>(saved?.shaping ?? fresh);
   const [swapping, setSwapping] = useState<number | undefined>();
@@ -339,13 +353,6 @@ function ShapedDay({
         : "smooth",
     });
   }, [reveal]);
-  const here = useHere();
-  /** The town they chose last time — offered, never applied (`lastStart`). */
-  const lastStart = useSyncExternalStore(
-    noSubscription,
-    readLastStart,
-    () => undefined,
-  );
   const [fetched, setFetched] = useState<{
     key: string;
     weather: PlanWeather | null;
@@ -585,12 +592,9 @@ function ShapedDay({
   };
 
   /** Starting somewhere: chosen by the person, never inferred. */
-  const startFrom = (townId: string, tapped = true) => {
+  const startFrom = (townId: string) => {
     const town = townById(townId);
     if (!brief || !town) return;
-    // Only a town tapped from the list is remembered — never one worked out
-    // from a position, which is not stored.
-    if (tapped) writeLastStart(town.id);
     setBrief({ ...brief, town });
     setReply([]);
     setReveal((n) => n + 1);
@@ -883,6 +887,13 @@ function ShapedDay({
         </Link>
       </p>
 
+      <LocationBar
+        scope="go"
+        experience="this day"
+        showing={brief?.town?.id ?? shared.townId}
+        onChange={startFrom}
+        className="mt-4 text-[#111]"
+      />
       <form
         className="mt-6 flex flex-col gap-3 sm:flex-row"
         onSubmit={(event) => {
@@ -921,28 +932,6 @@ function ShapedDay({
 
       {brief && apart && atlas !== "unreachable" && (
         <ApartPanel brief={brief} groups={apart} />
-      )}
-
-      {brief && starting && !apart && atlas !== "unreachable" && (
-        <StartPanel
-          brief={brief}
-          near={
-            here.at
-              ? nearestTown(
-                  { latitude: here.at.latitude, longitude: here.at.longitude },
-                  distanceKm,
-                )
-              : undefined
-          }
-          located={Boolean(here.at)}
-          last={townById(lastStart)}
-          picked={keep.flatMap((id) => {
-            const title = pool.find((e) => e.id === id)?.title;
-            return title ? [title] : [];
-          })}
-          onAskLocation={here.ask}
-          onStart={startFrom}
-        />
       )}
 
       {/* The six doors. Each is a sentence, read by the same parser — see
@@ -1329,128 +1318,6 @@ function Who({
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * **Where does the adventure begin?** Asked, because a day built from nowhere
- * spans the province (M200: Vancouver, then 173 km, then 83 km more). Every
- * answer is the person's: a town they tap, or — only if they ask — the town
- * nearest a position the browser gives them. Nothing is guessed, and a
- * position is never stored or sent.
- */
-function StartPanel({
-  brief,
-  near,
-  located,
-  last,
-  picked,
-  onAskLocation,
-  onStart,
-}: {
-  readonly brief: DayBrief;
-  readonly near: ReturnType<typeof nearestTown>;
-  readonly located: boolean;
-  /** The town they chose last time on this device, offered first. */
-  readonly last: ReturnType<typeof townById>;
-  /** What they picked in Discovery, which the day will be built around. */
-  readonly picked: readonly string[];
-  readonly onAskLocation: (() => void) | undefined;
-  readonly onStart: (townId: string, tapped?: boolean) => void;
-}) {
-  return (
-    <section
-      id="go-result"
-      tabIndex={-1}
-      aria-labelledby="go-where-title"
-      data-testid="go-where"
-      className="mt-10 border-t border-black/10 pt-8"
-    >
-      <WorkingFrom brief={brief} />
-      <h2
-        id="go-where-title"
-        className="ghad-display mt-6 text-[28px] leading-tight font-extrabold tracking-[-0.03em] text-[#111]"
-      >
-        Where does the adventure begin?
-      </h2>
-      <p className="mt-2 max-w-[58ch] text-[15px] leading-relaxed text-black/60">
-        I&apos;ve kept what you said. A day needs somewhere to start from, or it
-        could span the whole province, and I won&apos;t pick that for you.
-      </p>
-      {picked.length > 0 && (
-        <p
-          data-testid="go-where-picked"
-          className="mt-2 max-w-[58ch] text-[15px] leading-relaxed text-black/60"
-        >
-          The day will be built around what you picked:{" "}
-          <span className="font-semibold text-[#111]">{picked.join(", ")}</span>
-          .
-        </p>
-      )}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {last && (
-          <button
-            type="button"
-            data-testid="go-start-last"
-            onClick={() => onStart(last.id)}
-            className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
-          >
-            {last.name.replace(/,\s*BC$/, "")} — where you started last time
-          </button>
-        )}
-        {onAskLocation && !located && (
-          <button
-            type="button"
-            data-testid="go-use-location"
-            onClick={onAskLocation}
-            className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
-          >
-            Use my location
-          </button>
-        )}
-        {located && near && (
-          <button
-            type="button"
-            data-testid="go-start-nearest"
-            onClick={() => onStart(near.town.id, false)}
-            className="inline-flex min-h-11 items-center rounded-full bg-[#111] px-5 text-[14px] font-semibold text-white"
-          >
-            Start from {near.town.name.replace(/,\s*BC$/, "")} — nearest to you
-          </button>
-        )}
-        {located && !near && (
-          <p data-testid="go-start-far" className="text-[14px] text-black/60">
-            You&apos;re not near a town Passport covers yet — pick one below.
-          </p>
-        )}
-        <p className="text-[12px] text-black/45">
-          Your position is rounded to about 1 km, then sent only to ask
-          Environment Canada for the nearest forecast. Not stored. A town you
-          tap is remembered on this device, to offer next time.
-        </p>
-      </div>
-      {TOWN_GROUPS.map((group) => (
-        <div key={group.area} className="mt-5">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-black/40 uppercase">
-            {group.area}
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {group.towns.map((town) => (
-              <li key={town.id}>
-                <button
-                  type="button"
-                  data-testid={`go-start-${town.id}`}
-                  onClick={() => onStart(town.id)}
-                  className="inline-flex min-h-10 items-center rounded-full px-4 text-[14px] font-semibold text-black/70 ring-1 ring-black/15 ring-inset hover:ring-black/50"
-                >
-                  {town.name.replace(/,\s*BC$/, "")}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </section>
   );
 }
 

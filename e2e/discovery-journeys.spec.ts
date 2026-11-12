@@ -1,3 +1,5 @@
+// The day starts from the shared place, said (ADR 020), not asked.
+await expect(page.getByTestId("go-where")).toHaveCount(0);
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 

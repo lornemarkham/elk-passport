@@ -562,6 +562,9 @@ and changing conditions.
 **These materially change what is possible.** They are not chips in a filter
 bar; they are the difference between a possibility and a fiction.
 
+_Where I am is one remembered place, not a question each experience asks
+again (decided 2026-11-10, [ADR 020](architecture/decisions/020-one-place-for-every-experience.md))._
+
 ---
 
 ## 8. "Search" is probably the wrong mental model
@@ -881,10 +884,6 @@ something this amendment decides. Badminton Game Night and Sesh Wars are both
 in the Experiences menu (`src/lib/experiences.ts`), at the owner's direction
 in the same brief.
 
----
-
-## 11. Current near-term direction
-
 _Amended 2026-11-12 (owner brief M757, "P0 — BADMINTON: 25-PERSON LIVE LAUNCH
 TOMORROW")._ The further owner call above is answered: the **real** CourtQueue
 night now records final scores and shows wins and losses, games and history
@@ -892,6 +891,9 @@ night now records final scores and shows wins and losses, games and history
 at sign-up. It still never ranks, rates or tiers players; the club table is in
 name order. The earlier "never rates, ranks or compares players" rule is
 narrowed accordingly: scores and win/loss records are now allowed, ladders are not.
+---
+
+## 11. Current near-term direction
 
 Current generic Passport work focuses on making Discovery:
 
@@ -1116,6 +1118,12 @@ certainty. Do not invent an answer here to make the document feel finished.
    (§4)
    _Answered narrowly, for building a day only (ADR 003, 2026-10-11): a day
    needs a starting town, and Passport asks rather than picks one._
+   _Amended 2026-11-10 (ADR 020, owner brief "Universal Location
+   Experience"): a day with no start of its own begins from one remembered
+   place shared by every experience — chosen, already-granted, or an
+   approximate region said as a guess — shown on a bar with one **Change**
+   control. Passport still never hides the assumption; it no longer asks
+   first._
    _Answered narrowly for Discovery's sentence box (ADR 005, 2026-10-16):
    results first, then at most one question beneath them — how much time, how
    far, how old, in that order and only where unknown — and no more than two

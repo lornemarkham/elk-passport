@@ -107,20 +107,22 @@ for (const form of forms) {
         expect(onPaper[i]).toContain(title);
     });
 
-    test("no town: it asks, the town chosen is kept through a new sentence and a new age", async ({
+    test("no town: it starts from the shared place and says so; a chosen place is kept through a new sentence, a new age and a new tab", async ({
       page,
     }) => {
       await open(page);
       await say(page, "A few hours outside with the kids");
-      await expect(page.getByTestId("go-where")).toBeVisible();
-      await expect(stops(page)).toHaveCount(0);
-      // Location is offered, never asked for unprompted.
-      await expect(page.getByTestId("go-start-nearest")).toHaveCount(0);
-      await page.getByTestId("go-start-vernon").click();
+      // No "where does it begin?" gate (ADR 020): the day is built from the
+      // assumed place, which is named and labelled as a guess.
+      await expect(page.getByTestId("go-where")).toHaveCount(0);
       await expect(stops(page).first()).toBeVisible();
+      await expect(page.getByTestId("location-bar")).toContainText(
+        /Around .*approximate/,
+      );
+      // Location is never asked for unprompted.
+      await expect(page.getByTestId("go-start-nearest")).toHaveCount(0);
 
       await say(page, "Three hours, no hiking");
-      await expect(page.getByTestId("go-where")).toHaveCount(0);
       await expect(page.getByTestId("go-working-from")).toContainText(
         "From Vernon",
       );
@@ -142,17 +144,20 @@ for (const form of forms) {
         "From Vernon",
       );
 
-      // A new tab on this device: Vernon is offered — and still not applied.
+      // Choosing a place from the bar is remembered on this device: a new
+      // tab opens on it, and says it is no guess.
+      await page.getByTestId("location-change").click();
+      await page.getByTestId("location-search").fill("kelow");
+      await page.getByTestId("location-option-kelowna").click();
       const next = await page.context().newPage();
       await next.goto("/go");
-      await expect(async () => {
-        await say(next, "Something outside this afternoon");
-        await expect(next.getByTestId("go-where")).toBeVisible({
-          timeout: 1_000,
-        });
-      }).toPass({ timeout: 20_000 });
-      await expect(stops(next)).toHaveCount(0);
-      await expect(next.getByTestId("go-start-last")).toContainText("Vernon");
+      await say(next, "Something outside this afternoon");
+      await expect(next.getByTestId("go-working-from")).toContainText(
+        "From Kelowna",
+      );
+      await expect(next.getByTestId("location-bar")).not.toContainText(
+        "approximate",
+      );
     });
 
     test("shark diving: said first, nothing swapped in, and planning without it is the person's call", async ({

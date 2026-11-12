@@ -36,6 +36,8 @@ const saved = vi.fn(async (_boardId: string, experienceId: string) => ({
 // `DiscoveryListView` now renders the account control, which reads the router
 // to build its "come back here after signing in" link. These suites are about
 // the list, so the router is stubbed rather than mounted.
+vi.mock("@/lib/location/useLocation", () => import("@/lib/location/testing"));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }),
   usePathname: () => "/discovery",

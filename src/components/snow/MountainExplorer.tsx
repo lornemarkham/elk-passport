@@ -11,10 +11,11 @@ import {
 import {
   LIVE_FACTS,
   MOUNTAINS,
-  ORIGINS,
   findMountains,
   type MountainRow,
 } from "@/domain/snow/mountains";
+import { LocationBar } from "@/components/location/LocationBar";
+import { useLocation } from "@/lib/location/useLocation";
 import { distanceKm } from "@/lib/environment/geo";
 import type { AtlasAreas } from "@/app/snow/_server/atlas";
 import { Card, Source, btn, btnOn, field, styles } from "./kit";
@@ -43,8 +44,20 @@ const KM_CHOICES = [
  * you are, if you say so; that position is used in this tab and not kept.
  */
 export function MountainExplorer({ atlas }: { atlas: AtlasAreas }) {
-  const [origin, setOrigin] = useState<Where | null>(null);
-  const [locError, setLocError] = useState<string | null>(null);
+  // The shared place (saved, already granted, or an approximate region), for
+  // this experience: changing it here can be "just for Snow" and leaves home.
+  const place = useLocation("snow").town;
+  const origin = useMemo<Where | null>(
+    () =>
+      place
+        ? {
+            name: place.name.replace(/,\s*BC$/, ""),
+            latitude: place.latitude,
+            longitude: place.longitude,
+          }
+        : null,
+    [place],
+  );
   const [within, setWithin] = useState<number>(0);
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<Ability | null>(null);
@@ -58,27 +71,6 @@ export function MountainExplorer({ atlas }: { atlas: AtlasAreas }) {
       }),
     [origin, within, query],
   );
-
-  function useMyLocation() {
-    setLocError(null);
-    if (!("geolocation" in navigator))
-      return setLocError(
-        "This browser can't share a location. Pick a town instead.",
-      );
-    navigator.geolocation.getCurrentPosition(
-      (p) =>
-        setOrigin({
-          name: "where you are",
-          latitude: p.coords.latitude,
-          longitude: p.coords.longitude,
-        }),
-      () =>
-        setLocError(
-          "No location shared — pick a town instead. Nothing was stored.",
-        ),
-      { maximumAge: 600_000, timeout: 10_000 },
-    );
-  }
 
   const atlasRows = atlas.areas
     .map((a) => ({
@@ -108,28 +100,8 @@ export function MountainExplorer({ atlas }: { atlas: AtlasAreas }) {
       </header>
 
       <Card className="space-y-4" aria-label="Narrow it down">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <label className="space-y-1.5">
-            <span className="text-sm font-semibold">Leaving from</span>
-            <select
-              className={field}
-              value={
-                origin && ORIGINS.some((o) => o.name === origin.name)
-                  ? origin.name
-                  : ""
-              }
-              onChange={(e) =>
-                setOrigin(
-                  ORIGINS.find((o) => o.name === e.target.value) ?? null,
-                )
-              }
-            >
-              <option value="">Pick a town</option>
-              {ORIGINS.map((o) => (
-                <option key={o.id}>{o.name}</option>
-              ))}
-            </select>
-          </label>
+        <LocationBar scope="snow" experience="Snow" />
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1.5">
             <span className="text-sm font-semibold">How far</span>
             <select
@@ -154,22 +126,11 @@ export function MountainExplorer({ atlas }: { atlas: AtlasAreas }) {
             />
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" className={btn} onClick={useMyLocation}>
-            Use my location
-          </button>
-          <span className="text-xs text-[var(--sn-frost)]">
-            Only used in this tab to sort by distance. Not stored or sent.
-          </span>
-          {origin && (
-            <span className="text-sm font-semibold">
-              Distances from {origin.name} (straight line, not a drive)
-            </span>
-          )}
-        </div>
-        {locError && (
-          <p role="status" className="text-sm text-[var(--sn-glow)]">
-            {locError}
+        {origin && (
+          <p className="text-sm font-semibold">
+            Nearest first, from {origin.name} (straight line, not a drive).
+            Widen &ldquo;How far&rdquo; to see worthwhile mountains further
+            away.
           </p>
         )}
 

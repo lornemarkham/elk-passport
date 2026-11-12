@@ -67,6 +67,8 @@ import { areaOf } from "@/domain/discovery/area";
 import { ActivityExplorer, ActivityExplorerButton } from "./ActivityExplorer";
 import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
+import { useLocation } from "@/lib/location/useLocation";
+import { LocationBar } from "@/components/location/LocationBar";
 import { DiscoverySections } from "./DiscoverySections";
 import { FeaturedHosts } from "./FeaturedHosts";
 import { LocalInsiders } from "@/components/insiders/LocalInsiders";
@@ -281,7 +283,12 @@ export function DiscoveryListView({
   const kind = session.kind ?? null;
   const doing = session.doing;
   /** The town they picked, where they picked one. Verified, or absent. */
-  const town = townById(session.at);
+  // **Where they are looking: the URL when it says, otherwise the shared
+  // place** (saved, already-granted, or an approximate region) — so nobody
+  // has to pick a town before Discovery can measure anything.
+  const location = useLocation();
+  const townId = session.at ?? location.townId;
+  const town = townById(townId);
   const childAge = session.age;
   const on = session.on;
   const within = session.within;
@@ -339,8 +346,10 @@ export function DiscoveryListView({
     change({ ...session, everywhere: next || undefined });
   const setWithin = (next: number | undefined) =>
     change({ ...session, within: next });
-  const setTown = (next: string | undefined) =>
+  const setTown = (next: string | undefined) => {
+    if (next) location.choose(next);
     change({ ...session, at: next });
+  };
 
   const setChildAge = (next: number | undefined) =>
     navigate({ ...session, age: next });
@@ -592,11 +601,11 @@ export function DiscoveryListView({
   const home = useMemo(
     () =>
       homeArea(
-        session.at ??
+        townId ??
           (shared ? nearestTown(shared, distanceKm)?.town.id : undefined),
         dominantArea(experiences),
       ),
-    [session.at, shared, experiences],
+    [townId, shared, experiences],
   );
   // The calendar day, derived from the server's instant so a card can say
   // "Last day" instead of printing a stated interval nobody reads.
@@ -1394,6 +1403,14 @@ export function DiscoveryListView({
           its two radial washes are gone; the accent appears only on what is
           live or chosen. */}
       <main className="min-h-screen bg-white">
+        {/* **The assumed place, said, with one control.** No city screen:
+            Discovery has already measured from it. */}
+        <div className="mx-auto max-w-[1760px] px-4 pt-3 sm:px-6 lg:px-10">
+          <LocationBar
+            onChange={(id) => change({ ...session, at: id })}
+            className="text-[#111]"
+          />
+        </div>
         {/* Tighter on a phone. Every pixel here sits between somebody and the
           first thing they could actually do — which was at y=909 at 375px. */}
         {/* **Near full width, not a column.** `max-w-6xl` put a 1,152px
@@ -1457,7 +1474,7 @@ export function DiscoveryListView({
                 onSave={handleSave}
                 originPicker={
                   <OriginPicker
-                    townId={session.at}
+                    townId={townId}
                     onTown={setTown}
                     {...(ask && !shared
                       ? {
@@ -1635,7 +1652,7 @@ export function DiscoveryListView({
                     <select
                       data-testid="ghad-town"
                       aria-label="Measure distances from"
-                      value={session.at ?? ""}
+                      value={townId ?? ""}
                       onChange={(event) =>
                         setTown(event.target.value || undefined)
                       }

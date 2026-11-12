@@ -302,7 +302,9 @@ test("mountains: static and live facts are told apart, and nothing is invented",
   await expect(card).toContainText("Snow conditions");
   await expect(card).toContainText("NOT CONNECTED");
   await expect(card).not.toContainText(/\$\d/);
-  await page.getByLabel("Leaving from").selectOption("Vancouver");
+  await page.getByTestId("location-change").click();
+  await page.getByTestId("location-search").fill("vancouver");
+  await page.getByTestId("location-option-vancouver").click();
   await expect(
     page.getByTestId("mountain-list").getByRole("listitem").first(),
   ).toContainText("Grouse");

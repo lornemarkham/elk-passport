@@ -69,6 +69,8 @@ vi.mock("@/lib/october/october-repo", () => ({
 
 const toastFn = vi.fn();
 const toastError = vi.fn();
+vi.mock("@/lib/location/useLocation", () => import("@/lib/location/testing"));
+
 vi.mock("sonner", () => {
   const toast = (...args: unknown[]) => toastFn(...args);
   toast.error = (...args: unknown[]) => toastError(...args);

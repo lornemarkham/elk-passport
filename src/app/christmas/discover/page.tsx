@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -99,6 +101,13 @@ export default async function ChristmasDiscoverPage({
                     ? "Atlas isn't answering just now."
                     : `${result.total} ${result.total === 1 ? "thing" : "things"} Atlas knows about${result.town ? ` within reach of ${result.town.name.replace(/,\s*BC$/, "")}` : ""}${age !== undefined ? ` · checked for a ${age}-year-old` : ""}.`}
                 </p>
+                <Suspense fallback={null}>
+                  <ExperienceLocation
+                    scope="christmas"
+                    experience="Christmas"
+                    className="mt-2 text-white"
+                  />
+                </Suspense>
               </div>
               <div className={styles.lights} aria-hidden />
             </header>

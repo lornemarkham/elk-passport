@@ -112,14 +112,11 @@ for (const form of forms) {
       await expect(from).not.toContainText("within 30 km");
     });
 
-    test("“Taking my family out this afternoon” asks where, then stays local", async ({
+    test("“Taking my family out this afternoon” starts from the shared place, then stays local", async ({
       page,
     }) => {
       await open(page);
       await say(page, "Taking my family out this afternoon");
-      await expect(page.getByTestId("go-where")).toBeVisible();
-      await expect(stops(page)).toHaveCount(0);
-      await page.getByTestId("go-start-vernon").click();
       await expect(page.getByTestId("go-where")).toHaveCount(0);
       await expect(stops(page).first()).toBeVisible();
       await expect(page.getByTestId("go-working-from")).toContainText(
