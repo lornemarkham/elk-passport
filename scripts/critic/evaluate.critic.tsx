@@ -19,7 +19,7 @@ import { readBrief, reviseBrief, type DayBrief } from "@/domain/day/brief";
 import { buildDay, type DayPlanned } from "@/domain/day/build";
 import { townById } from "@/domain/discovery/towns";
 import { GoHaveADay } from "@/components/go/GoHaveADay";
-import GoPage from "@/app/go/page";
+import { GoDay } from "@/app/go/page";
 import PrintPage from "@/app/go/print/page";
 import { resolvePrintDay } from "@/lib/go/printDay";
 import { dayQueryFor, writeDayQuery } from "@/lib/domains/integration/dayQuery";
@@ -292,14 +292,14 @@ describe.skipIf(!CORPUS)("GO HAVE A DAY critic", () => {
     for (const scenario of COHORT) {
       const query = { say: scenario.says, at: scenario.town };
       atlas.asked.length = 0;
-      const page = await GoPage({ searchParams: Promise.resolve(query) });
+      const page = await GoDay({ searchParams: Promise.resolve(query) });
       const asked = [...atlas.asked];
       if (asked.some((a) => a.on)) pageAsked.on = true;
       if (asked.some((a) => a.childAge !== undefined))
         pageAsked.childAge = true;
 
       const go = findElement(page, GoHaveADay);
-      expect(go, "GoPage no longer renders GoHaveADay").toBeTruthy();
+      expect(go, "GoDay no longer renders GoHaveADay").toBeTruthy();
       const props = go!.props as { pool: readonly Experience[]; today: string };
       const goHtml = renderToStaticMarkup(go!);
       const href = goHtml.match(/href="(\/go\/print\?[^"]+)"/)?.[1];

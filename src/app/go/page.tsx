@@ -1,12 +1,13 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { GoHaveADay } from "@/components/go/GoHaveADay";
-import { dayPool } from "@/lib/go/pool";
+import { GoShell } from "@/components/go/GoShell";
+import { dayPool, forTheBrowser } from "@/lib/go/pool";
 import { groupChosen } from "@/domain/day/places";
 import { readBrief } from "@/domain/day/brief";
 import type { DiscoveryCandidate } from "@/lib/data/types";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { currentUser } from "@/lib/auth/currentUser";
 import { ZONE } from "@/domain/experience/eventTime";
 import {
   scenarioFrom,
@@ -72,7 +73,21 @@ type Props = {
 const one = (v: string | string[] | undefined) =>
   typeof v === "string" ? v : undefined;
 
-export default async function GoPage({ searchParams }: Props) {
+/**
+ * **The page answers at once; the day follows.** A cold corpus read was
+ * 7–12 seconds of blank screen on production (M760). The shell streams first,
+ * `GoDay` replaces it when Atlas has answered.
+ */
+export default function GoPage({ searchParams }: Props) {
+  return (
+    <Suspense fallback={<GoShell />}>
+      <GoDay {...(searchParams ? { searchParams } : {})} />
+    </Suspense>
+  );
+}
+
+/** Everything `/go` reads, and the day it hands to the browser. */
+export async function GoDay({ searchParams }: Props) {
   const query = (await searchParams) ?? {};
   const asked = Number(one(query.age));
   // An age in the URL wins; otherwise one typed in the sentence is asked of
@@ -103,13 +118,12 @@ export default async function GoPage({ searchParams }: Props) {
   // keeps the sentence, and offers the one thing that helps.
   let candidates: DiscoveryCandidate[] = [];
   let atlas: "ok" | "unreachable" = "ok";
-  const [read, user] = await Promise.all([
-    listDiscoveryCandidates(childAge, on).then(
-      (rows) => ({ ok: true as const, rows }),
-      (error: unknown) => ({ ok: false as const, error }),
-    ),
-    currentUser(),
-  ]);
+  // (It also used to ask Supabase who was signed in, on every request, and
+  // never used the answer — a round trip to Auth for each signed-in visit.)
+  const read = await listDiscoveryCandidates(childAge, on).then(
+    (rows) => ({ ok: true as const, rows }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
   if (read.ok) candidates = read.rows;
   else {
     atlas = "unreachable";
@@ -169,7 +183,7 @@ export default async function GoPage({ searchParams }: Props) {
     <ThemeProvider>
       <main className="min-h-screen bg-white">
         <GoHaveADay
-          pool={pool}
+          pool={forTheBrowser(pool)}
           today={today}
           {...(one(query.say) ? { initialSay: one(query.say)! } : {})}
           {...(one(query.mode) ? { initialMode: one(query.mode)! } : {})}

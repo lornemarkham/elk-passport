@@ -30,3 +30,27 @@ export function dayPool(
       : e,
   );
 }
+
+/**
+ * **The pool as `/go` sends it to the browser** — the same places, without the
+ * two things the day never reads there and which were a third of the page:
+ * Atlas's `presentationImage` (the day shows `heroMedia`; the licence, source
+ * and caption of a category picture were 4.3 MB of the 19 MB `/go` sent,
+ * measured on production 2026-11-12) and `geography.evidence`, the records
+ * behind a position that nothing in the product UI reads (1.1 MB). Everything
+ * `buildDay`, the plan and the paper read — coordinates, locality, area,
+ * schedule statements, environment, knowledge — is kept.
+ *
+ * Only for what is serialised. Server-side readers (`/go/print`, proposals)
+ * keep the whole `dayPool`.
+ */
+export function forTheBrowser(pool: readonly Experience[]): Experience[] {
+  return pool.map((e) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { presentationImage, geography, ...rest } = e;
+    if (!geography) return rest;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { evidence, ...place } = geography;
+    return { ...rest, geography: place };
+  });
+}

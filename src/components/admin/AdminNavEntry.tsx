@@ -36,9 +36,23 @@ export function AdminNavEntry() {
         });
     }
 
-    ask();
+    // **Asked once, and only of somebody signed in.** This used to ask on
+    // mount *and* again on `INITIAL_SESSION`, which Supabase fires the moment
+    // anyone subscribes — two server round-trips (each a Supabase auth read)
+    // on every page of every experience, for visitors who have no session to
+    // ask about (M760). `INITIAL_SESSION` carries the session the browser
+    // already holds; a sign-in, sign-out or account change asks again. A
+    // token refresh changes nobody's role.
     const { data: subscription } = supabaseBrowser().auth.onAuthStateChange(
-      () => ask(),
+      (event, session) => {
+        if (event === "INITIAL_SESSION") {
+          if (session) ask();
+        } else if (event === "SIGNED_OUT") {
+          if (!cancelled) setIsAdmin(false);
+        } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+          ask();
+        }
+      },
     );
 
     return () => {
