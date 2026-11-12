@@ -1,4 +1,5 @@
 import { screenText } from "./chat";
+import { allMayPlay, byRestriction, mayPlay } from "./eligibility";
 import { instantOn, localDate, localClock, weekdayLabel } from "./clock";
 import {
   propose,
@@ -751,6 +752,8 @@ function run(
         if (activeGameOf(s, id)) refuse(`${p.name} is already on a court.`);
         if (heldChallengeOf(s, id))
           refuse(`${p.name} is in a challenge — cancel it first.`);
+        if (!mayPlay(club, court, id))
+          refuse(`${p.name} isn't eligible for ${court.name}.`);
       }
       const waitedSince: Record<string, number> = {};
       for (const id of ids) waitedSince[id] = unqueue(s, id) ?? now;
@@ -956,10 +959,27 @@ function step(club: Club, s: Session, now: number): boolean {
     ];
     return true;
   }
-  const free = club.courts.filter(
-    (c) =>
-      !s.closedCourts.includes(c.id) &&
-      !s.games.some((g) => g.court === c.id && isActiveGame(g)),
+  // The organizer tightened a court after a game was called there: nobody
+  // who may not play it is kept on it. The four go back where they were.
+  for (const g of s.games) {
+    if (g.status !== "called") continue;
+    const court = club.courts.find((c) => c.id === g.court);
+    if (!court || allMayPlay(club, court, filled(g.slots))) continue;
+    g.status = "cancelled";
+    g.why = [...g.why, "Court eligibility changed"];
+    const ch = s.challenges.find((c) => c.id === g.challengeId);
+    // A challenge's four stay reserved; anyone else goes back in line.
+    if (ch && ch.status === "on-court") ch.status = "ready";
+    else releaseCall(s, g);
+    return true;
+  }
+  const free = byRestriction(
+    club,
+    club.courts.filter(
+      (c) =>
+        !s.closedCourts.includes(c.id) &&
+        !s.games.some((g) => g.court === c.id && isActiveGame(g)),
+    ),
   );
   for (const court of free) {
     const proposal = propose(club, s, court, now);
@@ -1034,6 +1054,7 @@ export function challengeMayGo(
   court: Court,
   proposal: { slots: Slots } | null,
 ): boolean {
+  if (!allMayPlay(club, court, ch.slots)) return false;
   const t = tonight(s);
   const games = (id: string) => t.get(id)?.games ?? 0;
   const firstTimerWaiting = s.queue.some((q) => games(q.playerId) === 0);
@@ -1113,7 +1134,14 @@ export type ClubCommand =
       done?: string[];
     }
   | { type: "organizer"; playerId: string; on: boolean }
-  | { type: "court"; court: number; patch: Partial<Court> }
+  | {
+      type: "court";
+      court: number;
+      patch: Partial<Court> & { minLevel?: string | null };
+    }
+  | { type: "play-mode"; mode: string }
+  | { type: "courts-count"; count: number }
+  | { type: "place"; playerId: string; level: string | null }
   | { type: "rules"; patch: Partial<Club["rules"]> }
   | { type: "cancel-night"; date: string; cancelled: boolean; reason?: string }
   | { type: "schedule-confirmed" };
@@ -1138,10 +1166,12 @@ export function applyClub(
   actor: Actor,
   cmd: ClubCommand,
   now: number,
+  /** Courts with a game on them in a night still open (for `courts-count`). */
+  inUse: ReadonlySet<number> = new Set(),
 ): Outcome<Club> {
   const c = structuredClone(club);
   try {
-    runClub(c, actor, cmd, now);
+    runClub(c, actor, cmd, now, inUse);
     return { ok: true, value: c };
   } catch (e) {
     if (e instanceof Refused) return fail(e.message);
@@ -1149,7 +1179,13 @@ export function applyClub(
   }
 }
 
-function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
+function runClub(
+  c: Club,
+  actor: Actor,
+  cmd: ClubCommand,
+  now: number,
+  inUse: ReadonlySet<number>,
+) {
   const me = c.players[actor.id];
   switch (cmd.type) {
     case "profile": {
@@ -1212,6 +1248,46 @@ function runClub(c: Club, actor: Actor, cmd: ClubCommand, now: number) {
         court.name = cleanName(patch.name) || court.name;
       if (patch.where !== undefined)
         court.where = cleanName(patch.where) || court.where;
+      if (patch.minLevel !== undefined) {
+        if (patch.minLevel === null) delete court.minLevel;
+        else if (isLevel(patch.minLevel)) court.minLevel = patch.minLevel;
+        else refuse("Pick a level for that court, or anyone.");
+      }
+      return;
+    }
+    case "play-mode": {
+      if (!actor.organizer)
+        refuse("Only the organizer can change how courts are chosen.");
+      if (cmd.mode !== "open" && cmd.mode !== "guided")
+        refuse("Open play or guided play.");
+      c.rules.mode = cmd.mode;
+      return;
+    }
+    case "courts-count": {
+      if (!actor.organizer) refuse("Only the organizer can change the courts.");
+      const n = Math.round(Number(cmd.count));
+      if (!(n >= 1 && n <= 12)) refuse("Between 1 and 12 courts.");
+      if (n < c.courts.length) {
+        const busy = c.courts.filter((x) => x.id > n && inUse.has(x.id));
+        if (busy.length)
+          refuse(
+            `${busy[0]!.name} has a game on it — finish or cancel it first.`,
+          );
+        c.courts = c.courts.filter((x) => x.id <= n);
+      }
+      for (let id = c.courts.length + 1; id <= n; id++)
+        c.courts.push({ id, name: `Court ${id}`, where: "" });
+      c.courtsSet = true;
+      return;
+    }
+    case "place": {
+      if (!actor.organizer) refuse("Only the organizer can place a player.");
+      const p = known(c, cmd.playerId)
+        ? c.players[cmd.playerId]!
+        : refuse("Unknown player.");
+      if (cmd.level === null) delete p.placedAt;
+      else if (isLevel(cmd.level)) p.placedAt = cmd.level;
+      else refuse("Pick one of the three, or clear it.");
       return;
     }
     case "rules": {

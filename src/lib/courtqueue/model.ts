@@ -1,4 +1,4 @@
-import type { Journey } from "./journey";
+import type { Journey, Level } from "./journey";
 import type { Cancellation } from "./schedule";
 
 /**
@@ -65,6 +65,12 @@ export interface Player {
   organizer: boolean;
   photo: boolean;
   /**
+   * Guided mode only: the level the organizer has placed this player at for
+   * court eligibility. Beats the player's own private answer; never sent to
+   * a player's phone.
+   */
+  placedAt?: Level;
+  /**
    * Their own badminton journey (`journey.ts`): optional, private to them,
    * only ever a gentle input to suggestions.
    */
@@ -72,13 +78,27 @@ export interface Player {
 }
 
 export interface Court {
-  readonly id: 1 | 2 | 3 | 4;
+  /** 1…n. The club decides how many courts it has (`courts-count`). */
+  readonly id: number;
   name: string;
   where: string;
+  /**
+   * Guided mode only (`eligibility.ts`): the lowest level that may be put on
+   * this court. Absent = anyone. Ignored entirely in open play.
+   */
+  minLevel?: Level;
 }
+
+/** How courts are chosen: `open` = everyone on every court (the default). */
+export type PlayMode = "open" | "guided";
 
 export interface Rules {
   capacity: number;
+  /**
+   * Owner decision 2026-11-12: court eligibility is optional. Absent = open
+   * play, every player eligible for every court.
+   */
+  mode?: PlayMode;
   /** Minutes a game may run before the organizer is asked about it. */
   longGameMinutes: number;
   /**
@@ -99,6 +119,11 @@ export interface Club {
   players: Record<string, Player>;
   courts: Court[];
   rules: Rules;
+  /**
+   * The organizer has set the number of courts, so `tidyClub` stops topping
+   * a short list up to the original four.
+   */
+  courtsSet?: boolean;
   sessions: SessionMeta[];
   /**
    * Nights the organizer has cancelled (the crossed-out dates on the official
@@ -151,7 +176,7 @@ export type GameStatus = "called" | "playing" | "finished" | "cancelled";
 
 export interface Game {
   readonly id: string;
-  court: 1 | 2 | 3 | 4;
+  court: number;
   slots: Slots;
   readonly source: "fair" | "challenge" | "organizer";
   readonly challengeId?: string;
@@ -282,11 +307,12 @@ export function tidyClub(club: Club): Club {
     Object.values(club.players).some((p) =>
       LEGACY_PLAYER_FIELDS.some((k) => k in p),
     );
-  const fourCourts = club.courts.length >= DEFAULT_COURTS.length;
+  const fourCourts =
+    club.courtsSet || club.courts.length >= DEFAULT_COURTS.length;
   if (!legacy && fourCourts) return club;
   const out = structuredClone(club);
   // The club now has four doubles courts; a club stored with three gets the fourth.
-  for (const c of DEFAULT_COURTS)
+  for (const c of club.courtsSet ? [] : DEFAULT_COURTS)
     if (!out.courts.some((x) => x.id === c.id)) out.courts.push({ ...c });
   for (const c of out.courts) {
     if (LEGACY_COURT.test(c.name)) c.name = `Court ${c.id}`;

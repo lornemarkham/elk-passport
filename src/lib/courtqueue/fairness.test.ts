@@ -126,7 +126,11 @@ describe("the organizer's dashboard", () => {
     s.status = "live";
     // p1 is waiting; p5 has been out on a break and is not in the line.
     s.queue = [{ playerId: "p1", since: T0 + 55 * MINUTE }];
-    const d = dashboard(c, s, T0 + 70 * MINUTE, new Map([["p1", 2]]));
+    const d = dashboard(c, s, T0 + 70 * MINUTE, {
+      next: new Map([["p1", 2]]),
+      line: ["p1"],
+      freeing: [2],
+    });
     const row = (id: string) => d.rows.find((r) => r.playerId === id)!;
     expect(row("p1").need).toBe("red");
     expect(row("p1").next).toBe(2);

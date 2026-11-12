@@ -44,6 +44,11 @@ export function Courts({ view, offset }: { view: LiveView; offset: number }) {
             </span>
           </div>
           <p className="text-sm text-white/60">{c.where}</p>
+          {c.opento && (
+            <p className="text-xs text-white/50" data-testid="court-opento">
+              Open to {c.opento}
+            </p>
+          )}
           {c.game && (
             <>
               <Teams g={c.game} meId={meId} />

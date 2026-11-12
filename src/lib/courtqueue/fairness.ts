@@ -1,3 +1,4 @@
+import { courtList, eligibleCourts, modeOf, unplaced } from "./eligibility";
 import {
   MINUTE,
   filled,
@@ -208,8 +209,12 @@ export interface FairnessRow {
   readonly status: "playing" | "waiting" | "break" | "gone";
   /** Needs court time: derived from court time alone. */
   readonly need: Need;
-  /** The court they should take next, or null ("Wait"). */
+  /** The eligible court they should take next, or null ("Wait"). */
   readonly next: number | null;
+  /** Courts they may be put on; null = all of them (open play, or no limit). */
+  readonly eligible: number[] | null;
+  /** Their place in the line as the engine will serve it (1 = next), or null. */
+  readonly place: number | null;
   readonly note: string | null;
 }
 
@@ -221,6 +226,18 @@ export interface FairnessDashboard {
   readonly longest: string | null;
   /** Plain-words recommendations, most urgent first. */
   readonly recommendations: string[];
+  /** Guided play: players here whom nobody has placed (treated as beginners). */
+  readonly unplaced: string[];
+}
+
+/** What the dashboard needs from the engine beyond the night's games. */
+export interface Plan {
+  /** Prepared games: player → court. */
+  readonly next: ReadonlyMap<string, number>;
+  /** The line in the order it is served. */
+  readonly line: readonly string[];
+  /** Open courts, soonest to be free first. */
+  readonly freeing: readonly number[];
 }
 
 /**
@@ -232,8 +249,9 @@ export function dashboard(
   club: Club,
   s: Session,
   now: number,
-  next: ReadonlyMap<string, number>,
+  plan: Plan,
 ): FairnessDashboard {
+  const guided = modeOf(club) === "guided";
   const led = ledger(s, now);
   const average = averagePlayed(led.values());
   const rows: FairnessRow[] = [];
@@ -249,8 +267,16 @@ export function dashboard(
           : gap >= UNDERSERVED_MINUTES
             ? "orange"
             : null;
-    const court = next.get(r.playerId) ?? null;
+    const mine = eligibleCourts(club, r.playerId);
+    const eligible = guided && mine.length < club.courts.length ? mine : null;
+    const court =
+      plan.next.get(r.playerId) ??
+      plan.freeing.find((c) => mine.includes(c)) ??
+      null;
+    const place = plan.line.indexOf(r.playerId);
     rows.push({
+      eligible,
+      place: place < 0 ? null : place + 1,
       playerId: r.playerId,
       name: p.name,
       played: r.played,
@@ -292,8 +318,12 @@ export function dashboard(
       (r) =>
         `${r.name.toUpperCase()} — NEEDS COURT TIME: played ${r.played} min, session average ${r.average} min, waiting ${r.waiting} min.` +
         (r.next
-          ? ` Prioritize for Court ${r.next}.`
-          : " Next court that opens."),
+          ? ` Prioritize for ${club.courts.find((c) => c.id === r.next)?.name ?? `Court ${r.next}`}.`
+          : r.eligible
+            ? r.eligible.length
+              ? ` Next free court of: ${courtList(club, r.eligible)}.`
+              : " No court is open to them."
+            : " Next court that opens."),
     );
   return {
     average: Math.round(average),
@@ -301,5 +331,6 @@ export function dashboard(
     least: leastPlayed?.name ?? null,
     longest: longest && longest.waiting > 0 ? longest.name : null,
     recommendations,
+    unplaced: unplaced(club, s),
   };
 }

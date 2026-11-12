@@ -42,12 +42,14 @@ import {
   sessionWindow,
   type RegistrationState,
 } from "./schedule";
-import type { Journey } from "./journey";
+import { levelFor, levelLabel, modeOf, unplaced } from "./eligibility";
+import type { Journey, Level } from "./journey";
 import {
   averagePlayed,
   dashboard,
   ledger,
   type FairnessDashboard,
+  type Plan,
 } from "./fairness";
 import { nightBalance } from "./stats";
 
@@ -155,6 +157,8 @@ export interface NightView {
     readonly name: string;
     readonly where: string;
     readonly closed: boolean;
+    /** Guided play only: who the court is open to, in words. */
+    readonly opento: string | null;
     readonly game: GameView | null;
   }[];
   readonly queue: { readonly person: PersonView; readonly since: number }[];
@@ -247,6 +251,19 @@ export interface OrganizerView {
   })[];
   readonly courts: Court[];
   readonly rules: Rules;
+  /** Open play (everyone, every court) or guided (per-court eligibility). */
+  readonly mode: "open" | "guided";
+  /** Guided play: where each player stands for eligibility. */
+  readonly placements: {
+    readonly playerId: string;
+    readonly name: string;
+    readonly level: Level;
+    /** Somebody (the organizer or the player) said it; else the safe default. */
+    readonly known: boolean;
+    /** Placed by the organizer, as opposed to the player's own answer. */
+    readonly placed: boolean;
+  }[];
+  readonly unplacedHere: number;
   readonly audit: {
     readonly at: number;
     readonly by: string;
@@ -532,6 +549,10 @@ export function nightView(
         name: c.name,
         where: c.where,
         closed: s.closedCourts.includes(c.id),
+        opento:
+          modeOf(club) === "guided" && c.minLevel
+            ? `${levelLabel(c.minLevel)} and up`
+            : null,
         game: g ? gameView(club, g) : null,
       };
     }),
@@ -572,11 +593,20 @@ export function nightView(
 }
 
 /** Each player the engine has prepared for a court, and which court. */
-function nextCourts(club: Club, s: Session, now: number) {
-  const out = new Map<string, number>();
-  for (const p of prepared(club, s, now))
-    for (const id of filled(p.slots)) out.set(id, p.court);
-  return out;
+function planFor(club: Club, s: Session, now: number): Plan {
+  const next = new Map<string, number>();
+  const prep = prepared(club, s, now);
+  for (const p of prep) for (const id of filled(p.slots)) next.set(id, p.court);
+  const soon = new Map(prep.map((p) => [p.court, p.at]));
+  const freeing = club.courts
+    .filter((c) => !s.closedCourts.includes(c.id))
+    .map((c) => c.id)
+    .sort((a, b) => (soon.get(a) ?? 0) - (soon.get(b) ?? 0) || a - b);
+  return {
+    next,
+    line: inOrder(club, s, now).map((w) => w.playerId),
+    freeing,
+  };
 }
 
 export function organizerView(
@@ -635,6 +665,20 @@ export function organizerView(
       .sort((a, b) => a.name.localeCompare(b.name)),
     courts: club.courts,
     rules: club.rules,
+    mode: modeOf(club),
+    placements:
+      modeOf(club) === "guided"
+        ? Object.values(club.players)
+            .filter((p) => !p.organizer || p.journey || p.placedAt)
+            .map((p) => ({
+              playerId: p.id,
+              name: p.name,
+              ...levelFor(club, p.id),
+              placed: !!p.placedAt,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    unplacedHere: s ? unplaced(club, s).length : 0,
     audit: s
       ? s.audit
           .slice(-40)
@@ -659,7 +703,7 @@ export function organizerView(
       : null,
     fairness:
       s && s.status === "live"
-        ? dashboard(club, s, now, nextCourts(club, s, now))
+        ? dashboard(club, s, now, planFor(club, s, now))
         : null,
   };
 }

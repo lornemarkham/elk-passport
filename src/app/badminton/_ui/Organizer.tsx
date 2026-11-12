@@ -6,6 +6,7 @@ import type { Court } from "@/lib/courtqueue/model";
 import type { GameView, LiveView } from "@/lib/courtqueue/view";
 import { Btn, Card, Person, Sheet, clock, cx } from "./bits";
 import { post } from "./api";
+import { Eligibility } from "./Eligibility";
 
 type SessionAct = (cmd: object, sessionId?: string) => Promise<boolean>;
 
@@ -204,6 +205,8 @@ export function Organizer({
                   <th className="pr-2">Played</th>
                   <th className="pr-2">Waiting</th>
                   <th className="pr-2">Games</th>
+                  <th className="pr-2">Line</th>
+                  <th className="pr-2">Courts</th>
                   <th>Next</th>
                 </tr>
               </thead>
@@ -227,6 +230,17 @@ export function Organizer({
                             : "on court"}
                       </td>
                       <td className="pr-2">{r.games}</td>
+                      <td className="pr-2">{r.place ?? "—"}</td>
+                      <td
+                        className="pr-2 text-xs text-white/60"
+                        data-testid="eligible-courts"
+                      >
+                        {r.eligible
+                          ? r.eligible.length
+                            ? r.eligible.join(", ")
+                            : "none"
+                          : "all"}
+                      </td>
                       <td>
                         {r.need === "red"
                           ? "🔴 "
@@ -526,6 +540,8 @@ export function Organizer({
           ))}
         </ul>
       </Card>
+
+      <Eligibility view={view} clubAct={clubAct} />
 
       <Rules view={view} clubAct={clubAct} />
 

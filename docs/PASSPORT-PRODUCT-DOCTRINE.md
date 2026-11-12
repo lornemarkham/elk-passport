@@ -891,6 +891,20 @@ night now records final scores and shows wins and losses, games and history
 at sign-up. It still never ranks, rates or tiers players; the club table is in
 name order. The earlier "never rates, ranks or compares players" rule is
 narrowed accordingly: scores and win/loss records are now allowed, ladders are not.
+
+_Amended 2026-11-12 (owner brief M779, "COURTQUEUE: FINISH CONFIGURABLE DROP-IN
+PLAY")._ Lorne's decision, which supersedes the earlier "courts are for
+everyone, never for a level" rule: **court eligibility is optional and the
+organizer's to configure.** The default is _open play_ — every player eligible
+for every court. In _guided play_ the organizer sets a lowest level per court
+(any number of courts; the venue's configured count); a beginner is never
+assigned to an advanced-only court, and an advanced player may play a beginner
+court. CourtQueue remains drop-in, not a tournament: after every game all four
+leave, nobody stays on, the longest-waiting eligible and willing player goes
+first, immediate repeats are avoided while others wait, and a pass never
+blocks a court. Levels are for choosing courts, shown to the organizer only,
+never on a player's card, and never used to balance teams (ADR 017, amendment
+2026-11-12 "court eligibility").
 ---
 
 ## 11. Current near-term direction

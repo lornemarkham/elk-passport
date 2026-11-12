@@ -203,3 +203,49 @@ player statistics. Preserve game history." This is the further owner call the
 - The club organizer's earlier worry (the labels made people feel judged) is
   not answered by this; it is a decision to be watched on the first night.
 - **Join**: the Organize tab shows a QR code and the link `/badminton`.
+
+## Amendment 2026-11-12 — court eligibility is optional, and the organizer's
+
+Owner brief _P0: CourtQueue — finish configurable drop-in play_ (M779), Lorne,
+via the brief: **"Court eligibility is OPTIONAL and configurable by the
+organizer."** and "Open play. Every player is eligible for every court" as the
+default. **This explicitly supersedes** the 2026-11-10 amendment ("courts are
+interchangeable… no court is for a level") **and narrows** the 2026-11-12
+"Play. Learn. Grow." rule that a level is only ever a private guide: in
+guided play a level now decides which courts a player may be put on. It is a
+named owner decision, not drift.
+
+- **Two modes** (`Rules.mode`, absent = open). _Open_: every player, every
+  court — what the club has run so far. _Guided_: each court may carry a
+  `minLevel` (beginner / intermediate / advanced); a player below it is never
+  put on that court — by the fairness engine, an organizer's `assign`, or a
+  challenge. A player above it may play any lower court. Switching mode is one
+  tap and takes effect at once: a called-but-not-started game that is no longer
+  allowed is returned to the line, with places kept.
+- **Whose level counts** (`eligibility.ts`): the organizer's placement
+  (`Player.placedAt`), else the player's own private answer, else
+  **beginner** — a player nobody has placed is never sent to a court asking for
+  more. Levels are shown to the organizer in one card (_How courts are
+  chosen_), in guided play only, and are never in any player's view; a player
+  sees only "Open to Advanced and up" on the court itself.
+- **Selection** (`fair.ts`): the line is filtered to the players a court may
+  take **before** anyone is anchored, so the longest-waiting _eligible_ player
+  goes first, and an ineligible player at the front neither blocks the court
+  nor loses their place for another. The most restricted free court is filled
+  first, so a scarce advanced court is not starved by a beginner court taking
+  its players. If too few eligible players are waiting the court stays empty
+  rather than break the rule.
+- **Any number of courts**: `Court.id` is a number, `courts-count` sets 1–12
+  (removing a court with a game on it is refused), and `Club.courtsSet` stops
+  `tidyClub` topping a shortened list back up to four. A club that never
+  changes it keeps its four courts; a legacy three-court club is still
+  upgraded to four.
+- **Unchanged**: the rotation (all four leave after every game, nobody stays
+  on, longest wait first, a passing player never blocks the court), the
+  fairness ledger from b9cf9b7 (not duplicated; the dashboard now adds each
+  waiting player's place in line, eligible courts and an _eligible_ court to
+  take next), and statistics derived from the games, so a corrected time
+  corrects every figure.
+- **Still true**: no ranking, ladder, or level on a player's card; ability is
+  never used to balance teams. No migration — every new field is optional on
+  the existing JSON documents.

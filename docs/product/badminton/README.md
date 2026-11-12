@@ -332,3 +332,24 @@ a night; the longest wait _rises_ by about 1–2 min (the price of sending the
 under-served ahead of a longer waiter); idle courts do not change; the gap
 between groups is within about 1 min of FIFO's. The simulation is a simplified
 model (game lengths 11–22 min, 18% breaks), not the engine itself.
+
+## Court eligibility — open or guided (2026-11-12, M779)
+
+The organizer chooses, from **Organize → How courts are chosen**:
+
+- **Open play** (default): every player is eligible for every court.
+- **Guided play**: each court can name a lowest level (Anyone / Intermediate
+  and up / Advanced and up). A beginner is never put on an advanced court; an
+  advanced player may play a beginner court. A player nobody has placed counts
+  as a beginner. Levels (the player's own private answer, or one the organizer
+  sets under _Set player levels_) are visible to the organizer only.
+- **Courts**: `−` / `+` sets how many courts the venue has (1–12). The club's
+  four stay four unless changed.
+
+The rotation is the same either way: after every game all four leave, the
+longest-waiting eligible and willing player goes first, same-four repeats are
+avoided, and a pass or break never holds a court. The fairness table shows each
+waiting player's place in line, the courts they may take, and the eligible court
+they should take next. Tests: `eligibility.test.ts` (including a 25-player
+night through the real engine, `eligibility.sim.ts`) and
+`e2e/badminton-eligibility.spec.ts`. ADR 017, amendment 2026-11-12.

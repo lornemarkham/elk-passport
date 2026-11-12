@@ -41,6 +41,7 @@ import {
   tidyClub,
   cleanEmail,
   emptySession,
+  isActiveGame,
   type Club,
   type Player,
   type Session,
@@ -165,6 +166,19 @@ async function changeClub<T>(
     if (await write(store, CLUB, out.value, version)) return out;
   }
   return { ok: false, error: "Busy — try again." };
+}
+
+/** Courts with a game on them in any night not yet over. */
+async function courtsInUse(store: DocStore, club: Club): Promise<Set<number>> {
+  const keys = club.sessions.map((m) => sessionKey(m.id));
+  const docs = keys.length ? await read(store, keys, true) : new Map();
+  const out = new Set<number>();
+  for (const d of docs.values()) {
+    const s = d.value as Session;
+    if (s.status === "ended") continue;
+    for (const g of s.games) if (isActiveGame(g)) out.add(g.court);
+  }
+  return out;
 }
 
 async function changeSession(
@@ -417,8 +431,11 @@ export async function act(
   if (!me) return { ok: false, error: "Sign in first." };
   const actor = actorOf(me);
   if (body.scope === "club") {
+    const cmd = body.cmd as ClubCommand;
+    const inUse =
+      cmd?.type === "courts-count" ? await courtsInUse(store, club) : undefined;
     const out = await changeClub(store, (c) =>
-      applyClub(c, actor, body.cmd as ClubCommand, serverNow()),
+      applyClub(c, actor, cmd, serverNow(), inUse),
     );
     return out.ok ? { ok: true, value: null } : out;
   }

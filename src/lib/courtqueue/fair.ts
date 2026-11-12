@@ -1,3 +1,4 @@
+import { mayPlay } from "./eligibility";
 import { averagePlayed, ledger, order } from "./fairness";
 import { levelRank } from "./journey";
 import {
@@ -24,10 +25,13 @@ import {
  * partners, people they haven't played yet, a warm welcome for someone new,
  * and — only as a gentle tie-break — what each player said sounds fun today.
  *
- * **Nothing here knows how good anyone is** (2026-11-10, "Everyone
- * belongs"). No court is for a level, nobody is held off a court, and
- * teams are never "balanced" by ability. Nobody is skipped for being quiet,
- * and every court takes anybody.
+ * **Who may play where** is the organizer's choice (2026-11-12, `eligibility.ts`).
+ * In open play, the default, every court takes anybody and nothing here knows
+ * how good anyone is. In guided play a court can ask for a lowest level, and
+ * the line is filtered to the players that court may take **before** anyone
+ * is anchored or mixed — so the longest-waiting *eligible* player goes first,
+ * and an ineligible player at the front of the line neither blocks the court
+ * nor is skipped for another court. Teams are never "balanced" by ability.
  */
 
 /** A newcomer: registered in the three weeks before the night. */
@@ -260,12 +264,14 @@ export interface Proposal {
 export function propose(
   club: Club,
   s: Session,
-  _court: Court,
+  court: Court,
   now: number,
   exclude: ReadonlySet<string> = new Set(),
 ): Proposal | null {
   const t = tonight(s);
-  const line = inOrder(club, s, now).filter((w) => !exclude.has(w.playerId));
+  const line = inOrder(club, s, now).filter(
+    (w) => !exclude.has(w.playerId) && mayPlay(club, court, w.playerId),
+  );
   if (line.length < 4) return null;
   // The most deserving player in line anchors the game.
   const anchor = line[0]!;
@@ -308,7 +314,7 @@ function bestAround(
 export function replacement(
   club: Club,
   s: Session,
-  _court: Court,
+  court: Court,
   game: Game,
   now: number = Date.now(),
 ): string | null {
@@ -317,7 +323,9 @@ export function replacement(
   const empty = game.slots.indexOf(null);
   if (empty < 0) return null;
   const others = filled(game.slots);
-  const line = inOrder(club, s, now).filter((w) => !gone.has(w.playerId));
+  const line = inOrder(club, s, now).filter(
+    (w) => !gone.has(w.playerId) && mayPlay(club, court, w.playerId),
+  );
   let best: { id: string; cost: number } | null = null;
   line.slice(0, WINDOW + 1).forEach((w, rank) => {
     const repeat = others.reduce(

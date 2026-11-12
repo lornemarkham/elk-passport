@@ -150,6 +150,9 @@ describe("the source stays free of skill language", () => {
   // (the made-up players' own private guides).
   const journeyFiles = [
     "journey.ts",
+    // Owner decision 2026-11-12: optional court eligibility, organizer-run.
+    "eligibility.ts",
+    "Eligibility.tsx",
     "learn.ts",
     "demo.ts",
     "gamenight.ts",
