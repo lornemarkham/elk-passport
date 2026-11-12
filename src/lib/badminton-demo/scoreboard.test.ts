@@ -8,8 +8,11 @@ import {
   finishMatch,
   newDemo,
   pickFour,
+  playNext,
   queue,
   restore,
+  rotateAll,
+  swapIn,
   toggleRest,
   validScore,
   type Demo,
@@ -157,5 +160,34 @@ describe("Badminton Game Night scoreboard demo", () => {
     expect(clockLabel(0)).toBe("7:00 pm");
     expect(clockLabel(65)).toBe("8:05 pm");
     expect(clockLabel(300)).toBe("12:00 am");
+  });
+
+  it("gives someone an extra game: they go to the front and take the next court", () => {
+    let d = newDemo();
+    const last = queue(d).at(-1)!;
+    d = playNext(d, last.id);
+    expect(queue(d)[0]!.id).toBe(last.id);
+    const out = finishMatch(d, 1, [21, 15]);
+    if (!out.ok) throw new Error(out.error);
+    expect(seated(out.demo)).toContain(last.id);
+  });
+
+  it("overrides an assignment: a waiting player takes a seat, the other joins the line", () => {
+    const d = newDemo();
+    const on = d.courts[0]!.teams[0][0];
+    const off = queue(d)[7]!;
+    const out = swapIn(d, 1, on, off.id);
+    if (!out.ok) throw new Error(out.error);
+    expect(out.demo.courts[0]!.teams[0]).toContain(off.id);
+    expect(out.demo.players.find((p) => p.id === on)!.status).toBe("waiting");
+    expect(new Set(seated(out.demo)).size).toBe(16);
+    expect(swapIn(d, 1, on, d.courts[1]!.teams[0][0]).ok).toBe(false);
+  });
+
+  it("rotates every court at once and nobody is on two", () => {
+    const d = rotateAll(newDemo());
+    expect(d.results).toHaveLength(4);
+    expect(d.courts.every(Boolean)).toBe(true);
+    expect(new Set(seated(d)).size).toBe(16);
   });
 });

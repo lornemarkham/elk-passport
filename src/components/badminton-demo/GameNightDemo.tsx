@@ -9,9 +9,12 @@ import {
   estimatedWaits,
   finishMatch,
   newDemo,
+  playNext,
   playerById,
   queue,
   restore,
+  rotateAll,
+  swapIn,
   toggleRest,
   type Demo,
   type DemoPlayer,
@@ -173,6 +176,12 @@ export function GameNightDemo() {
           <Ctl testId="gn-advance-15" onClick={() => step(15)}>
             +15 min
           </Ctl>
+          <Ctl
+            testId="gn-rotate"
+            onClick={() => setDemo((d) => (d ? rotateAll(d) : d))}
+          >
+            Rotate all courts
+          </Ctl>
           <Ctl testId="gn-reset" onClick={reset} danger>
             Reset Demo
           </Ctl>
@@ -204,6 +213,14 @@ export function GameNightDemo() {
                 setScoring(scoring === i + 1 ? null : i + 1);
               }}
               onFinish={(score) => finish(i + 1, score)}
+              onSwap={(outId, inId) => {
+                const out = swapIn(demo, i + 1, outId, inId);
+                if (!out.ok) setError(out.error);
+                else {
+                  setError(null);
+                  setDemo(out.demo);
+                }
+              }}
             />
           ))}
         </div>
@@ -247,6 +264,24 @@ export function GameNightDemo() {
                 >
                   {minutes(waits.get(p.id) ?? 0)}
                 </span>
+                {i > 0 && (
+                  <button
+                    type="button"
+                    data-testid="gn-extra-game"
+                    onClick={() => setDemo((d) => (d ? playNext(d, p.id) : d))}
+                    className="min-h-9 shrink-0 rounded-full bg-white/10 px-3 text-sm font-bold ring-1 ring-white/15"
+                  >
+                    Play next
+                  </button>
+                )}
+                <button
+                  type="button"
+                  data-testid="gn-break"
+                  onClick={() => setDemo((d) => (d ? toggleRest(d, p.id) : d))}
+                  className="min-h-9 shrink-0 rounded-full bg-white/10 px-3 text-sm font-bold ring-1 ring-white/15"
+                >
+                  Break
+                </button>
               </li>
             ))}
             {line.length === 0 && (
@@ -413,6 +448,7 @@ function CourtCard({
   scoring,
   onScore,
   onFinish,
+  onSwap,
 }: {
   court: number;
   match: Match | null;
@@ -420,9 +456,15 @@ function CourtCard({
   scoring: boolean;
   onScore: () => void;
   onFinish: (score?: readonly [number, number]) => void;
+  onSwap: (outId: string, inId: string) => void;
 }) {
   const [a, setA] = useState("21");
   const [b, setB] = useState("");
+  const [swapping, setSwapping] = useState(false);
+  const [outId, setOutId] = useState("");
+  const [inId, setInId] = useState("");
+  const seated = match ? [...match.teams[0], ...match.teams[1]] : [];
+  const others = demo.players.filter((p) => p.status !== "playing");
   return (
     <article
       data-testid={`gn-court-${court}`}
@@ -497,6 +539,59 @@ function CourtCard({
             >
               Finish · enter score
             </button>
+          )}
+          <button
+            type="button"
+            data-testid={`gn-override-${court}`}
+            aria-expanded={swapping}
+            onClick={() => setSwapping((v) => !v)}
+            className="mt-2 min-h-9 text-sm font-bold text-lime-300 underline"
+          >
+            Override: swap a player
+          </button>
+          {swapping && (
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <select
+                aria-label={`Court ${court}: player to take off`}
+                value={outId}
+                onChange={(e) => setOutId(e.target.value)}
+                className="min-h-11 min-w-0 flex-1 rounded-lg bg-white px-2 text-slate-950"
+              >
+                <option value="">Take off…</option>
+                {seated.map((id) => (
+                  <option key={id} value={id}>
+                    {playerById(demo, id).name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label={`Court ${court}: player to put on`}
+                value={inId}
+                onChange={(e) => setInId(e.target.value)}
+                className="min-h-11 min-w-0 flex-1 rounded-lg bg-white px-2 text-slate-950"
+              >
+                <option value="">Put on…</option>
+                {others.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                data-testid={`gn-swap-${court}`}
+                disabled={!outId || !inId}
+                onClick={() => {
+                  onSwap(outId, inId);
+                  setSwapping(false);
+                  setOutId("");
+                  setInId("");
+                }}
+                className="min-h-11 rounded-full bg-lime-300 px-4 font-bold text-slate-950 disabled:opacity-40"
+              >
+                Swap
+              </button>
+            </div>
           )}
         </>
       ) : (
@@ -585,7 +680,7 @@ function PlayerRow({
             onClick={onRest}
             className="min-h-9 rounded-full bg-white/10 px-3 text-sm font-bold ring-1 ring-white/15"
           >
-            {p.status === "resting" ? "Back in" : "Sit out"}
+            {p.status === "resting" ? "Back in" : "Take a break"}
           </button>
         )}
       </span>

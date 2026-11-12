@@ -61,6 +61,33 @@ export function TestNightLauncher({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/**
+ * The way in for every member (and the empty Courts screen): the separate
+ * fictional scoreboard demo at /badminton/game-night. No sign-in, no server.
+ */
+export function DemoNightCard() {
+  return (
+    <Card className="ring-1 ring-lime-300/50">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-black">See how CourtQueue works</p>
+          <p className="text-sm text-white/60">
+            A demo night: 25 fictional players, 4 courts, scores. No sign-in;
+            nothing real changes.
+          </p>
+        </div>
+        <a
+          href="/badminton/game-night"
+          data-testid="try-demo-night"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-lime-300 px-4 font-black text-slate-950"
+        >
+          🏸 Try Demo Night
+        </a>
+      </div>
+    </Card>
+  );
+}
+
 type Outcome = { ok: true; value: Night } | { ok: false; error: string };
 
 export function GameNight({

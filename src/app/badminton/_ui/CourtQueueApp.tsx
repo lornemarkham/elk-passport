@@ -5,7 +5,12 @@ import type { LiveView } from "@/lib/courtqueue/view";
 import { post, useLive } from "./api";
 import { Btn, Card, cx } from "./bits";
 import { Clubhouse, unreadCount } from "./Clubhouse";
-import { GameNight, TEST_NIGHT_KEY, TestNightLauncher } from "./GameNight";
+import {
+  DemoNightCard,
+  GameNight,
+  TEST_NIGHT_KEY,
+  TestNightLauncher,
+} from "./GameNight";
 import { ChallengeTab, Courts } from "./Courts";
 import { Grow, JourneyIntro } from "./Grow";
 import { Me } from "./Me";
@@ -140,7 +145,7 @@ export function CourtQueueApp() {
       </Shell>
     );
 
-  if (demo && view.me.organizer)
+  if (demo)
     return (
       <GameNight
         courts={view.organizer?.courts}
@@ -148,7 +153,7 @@ export function CourtQueueApp() {
         today={view.now}
         onExit={() => {
           setDemo(false);
-          setTab("organizer");
+          if (view.me?.organizer) setTab("organizer");
         }}
       />
     );
@@ -216,9 +221,14 @@ export function CourtQueueApp() {
             alerts={alerts}
           />
         )}
-        {tab === "tonight" && view.me.organizer && (
+        {tab === "tonight" && (
           <div className="mt-4">
-            <TestNightLauncher onOpen={() => setDemo(true)} />
+            <DemoNightCard />
+            {view.me.organizer && (
+              <div className="mt-4">
+                <TestNightLauncher onOpen={() => setDemo(true)} />
+              </div>
+            )}
           </div>
         )}
         {tab === "clubhouse" && view.clubhouse && (

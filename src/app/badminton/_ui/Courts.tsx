@@ -8,7 +8,23 @@ import { Teams, type Act } from "./Tonight";
 export function Courts({ view, offset }: { view: LiveView; offset: number }) {
   const night = view.night;
   const meId = view.me!.id;
-  if (!night) return <Card>No session tonight.</Card>;
+  if (!night)
+    return (
+      <Card className="space-y-3 text-center ring-1 ring-lime-300/50">
+        <p className="text-xl font-black">No club session tonight.</p>
+        <p className="text-white/70">Want to see how CourtQueue works?</p>
+        <a
+          href="/badminton/game-night"
+          data-testid="start-demo-night"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-lime-300 px-6 text-lg font-black text-slate-950"
+        >
+          START DEMO NIGHT
+        </a>
+        <p className="text-xs text-white/50">
+          25 fictional players, 4 courts. No sign-in; nothing real changes.
+        </p>
+      </Card>
+    );
   return (
     <div className="space-y-3">
       {[...night.courts].reverse().map((c) => (

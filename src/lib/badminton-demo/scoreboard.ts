@@ -116,7 +116,9 @@ export function newDemo(seed = 737): Demo {
     name,
     level,
     status: "waiting",
-    queuedAt: 0,
+    // Arrived in this order before the doors opened, so anyone who finishes
+    // a game before the clock moves joins the back, not the front.
+    queuedAt: i - NAMES.length,
     games: 0,
     wins: 0,
     losses: 0,
@@ -373,6 +375,73 @@ export function toggleRest(d: Demo, id: string): Demo {
         : x,
     ),
   });
+}
+
+/**
+ * **An extra game.** Put someone at the front of the line (bringing them back
+ * from a break if need be), so they take the next free court.
+ */
+export function playNext(d: Demo, id: string): Demo {
+  const p = d.players.find((x) => x.id === id);
+  if (!p || p.status === "playing") return d;
+  const front = Math.min(0, ...queue(d).map((x) => x.queuedAt ?? 0)) - 1;
+  return fillCourts({
+    ...d,
+    players: d.players.map((x) =>
+      x.id === id ? { ...x, status: "waiting", queuedAt: front } : x,
+    ),
+  });
+}
+
+/**
+ * **Override an assignment.** Swap someone waiting (or on a break) onto the
+ * court in place of a player on it, on the same side. The player taken off
+ * takes the other's place in the line.
+ */
+export function swapIn(
+  d: Demo,
+  courtNo: number,
+  outId: string,
+  inId: string,
+): { ok: true; demo: Demo } | { ok: false; error: string } {
+  const m = d.courts[courtNo - 1];
+  const out = d.players.find((p) => p.id === outId);
+  const inn = d.players.find((p) => p.id === inId);
+  if (!m || !out || !inn || ![...m.teams[0], ...m.teams[1]].includes(outId))
+    return {
+      ok: false,
+      error: `${out?.name ?? "That player"} isn't on court ${courtNo}.`,
+    };
+  if (inn.status === "playing")
+    return { ok: false, error: `${inn.name} is already on a court.` };
+  const sub = (t: Team): Team =>
+    t[0] === outId ? [inId, t[1]] : t[1] === outId ? [t[0], inId] : t;
+  const match: Match = { ...m, teams: [sub(m.teams[0]), sub(m.teams[1])] };
+  return {
+    ok: true,
+    demo: {
+      ...d,
+      courts: d.courts.map((c, i) => (i === courtNo - 1 ? match : c)),
+      players: d.players.map((p) =>
+        p.id === outId
+          ? { ...p, status: "waiting", queuedAt: inn.queuedAt ?? d.now }
+          : p.id === inId
+            ? { ...p, status: "playing", queuedAt: null }
+            : p,
+      ),
+    },
+  };
+}
+
+/** **Rotate**: finish every game on court now and call the next four on. */
+export function rotateAll(d: Demo): Demo {
+  let next = d;
+  for (const m of d.courts) {
+    if (!m) continue;
+    const out = finishMatch(next, m.court);
+    if (out.ok) next = out.demo;
+  }
+  return next;
 }
 
 /**
