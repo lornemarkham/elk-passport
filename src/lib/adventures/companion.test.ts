@@ -4,7 +4,11 @@ import {
   preparations,
   countdown,
   daysUntil,
+  mergeMemories,
+  NOTE_LIMIT,
   parseMemories,
+  parseMemoryInput,
+  PHOTO_LIMIT,
   recapLine,
   recapOf,
   shareText,
@@ -176,5 +180,56 @@ describe("calendarFile", () => {
     expect(ics).toContain("DTSTART;VALUE=DATE:20261130");
     expect(ics).toContain("DTEND;VALUE=DATE:20261201");
     expect(ics).toContain("SUMMARY:Lake  day  out");
+  });
+});
+
+describe("memories kept against the account", () => {
+  const id = "0b8f6c1e-3c1a-4f55-9a9e-6d2c1f7a0b11";
+  const jpeg = "data:image/jpeg;base64,/9j/4AAQ";
+
+  it("accepts a note, a photo and a favourite, and trims the words", () => {
+    const note = parseMemoryInput({
+      id,
+      kind: "note",
+      text: "  Best waffle  ",
+    });
+    expect(note).toMatchObject({ ok: true, value: { text: "Best waffle" } });
+    expect(
+      parseMemoryInput({ id, kind: "photo", photo: jpeg, itemId: "abc_1" }),
+    ).toMatchObject({ ok: true, value: { photo: jpeg, itemId: "abc_1" } });
+    expect(parseMemoryInput({ id, kind: "favourite" })).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("believes nothing it is sent", () => {
+    for (const bad of [
+      null,
+      { kind: "note", text: "x" },
+      { id: "not-a-uuid", kind: "note", text: "x" },
+      { id, kind: "diary", text: "x" },
+      { id, kind: "note", text: "   " },
+      { id, kind: "note", text: "x".repeat(NOTE_LIMIT + 1) },
+      { id, kind: "photo", photo: "data:image/png;base64,AAAA" },
+      { id, kind: "photo", photo: `${jpeg}${"A".repeat(PHOTO_LIMIT)}` },
+      { id, kind: "note", text: "x", itemId: "../etc" },
+    ])
+      expect(parseMemoryInput(bad).ok).toBe(false);
+  });
+
+  it("merges the phone's copy and the account's by id, oldest first", () => {
+    const m = (i: string, at: string) => ({
+      id: i,
+      kind: "note" as const,
+      at,
+      itemId: null,
+      text: i,
+      photo: null,
+    });
+    const merged = mergeMemories(
+      [m("a", "2026-11-10T10:00:00Z"), m("c", "2026-11-10T12:00:00Z")],
+      [m("b", "2026-11-10T11:00:00Z"), m("a", "2026-11-10T10:00:00Z")],
+    );
+    expect(merged.map((x) => x.id)).toEqual(["a", "b", "c"]);
   });
 });

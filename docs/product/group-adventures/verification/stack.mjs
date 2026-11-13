@@ -342,6 +342,20 @@ async function services({ fresh }) {
       await sql(together);
       await sql(together);
     }
+    // A person's own memories, private on the account (20261112000000).
+    // ADVENTURES_WITHOUT_MEMORIES=1 leaves them out, to prove the phone keeps
+    // them as it always did and the recap does not fail.
+    if (process.env.ADVENTURES_WITHOUT_MEMORIES !== "1") {
+      const memories = fs.readFileSync(
+        path.join(
+          repo,
+          "supabase/migrations/20261112000000_passport_adventure_memories.sql",
+        ),
+        "utf8",
+      );
+      await sql(memories);
+      await sql(memories);
+    }
   }
 
   pids.rest = launch("rest", path.join(STACK, "bin/postgrest"), [], {

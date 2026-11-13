@@ -1212,7 +1212,10 @@ certainty. Do not invent an answer here to make the document feel finished.
     composition; the general question stays open. _Where shared memories
     live is decided (owner, 2026-11-01, [ADR 014](architecture/decisions/014-adventure-notices-and-shared-moments.md)):_
     memories a person explicitly shares with an adventure are visible to its
-    members and nobody else; personal memories stay private.
+    members and nobody else; personal memories stay private. _Private memories
+    follow their owner (2026-11-10, owner brief "After you choose",
+    `docs/product/adventures/MEMORIES.md`): kept against the account, readable by
+    that person alone, so a memory is not lost with a phone._
     _Informed again 2026-10-24 by Sycle Summit_
     (`docs/products/go-have-a-conference/SUMMIT.md`, ADR 013): during a
     conference Home is a companion that counts down to what's next; a

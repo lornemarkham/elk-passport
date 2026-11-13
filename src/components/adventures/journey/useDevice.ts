@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  mergeMemories,
   parseMemories,
   withMemory,
   withoutMemory,
@@ -11,9 +12,12 @@ import {
 /**
  * **What a person keeps about an adventure on their own phone**: whether they
  * started the day, which stops are done, how far behind they said they were,
- * and their memories. Nothing here is sent anywhere — personal memories stay
- * private unless the person shares one (ADR 014) — and a phone that won't
- * keep it still shows it for the visit.
+ * and their memories. Personal memories stay
+ * private unless the person shares one (ADR 014). Signed in, they are also
+ * kept against the account — readable by that person alone — so they follow
+ * them to another device; where that is not switched on (or the person is
+ * signed out) the phone keeps them exactly as before. A phone that won't keep
+ * one still shows it for the visit.
  *
  * Done marks keep the key `TodayPanel` has always used.
  */
@@ -126,6 +130,67 @@ export function useDevice(adventureId: string, onDay: string | null) {
     [behindKey],
   );
 
+  // The latest list, for the account sync to diff against.
+  const latest = useRef<readonly Memory[]>([]);
+  useEffect(() => {
+    latest.current = memories;
+  }, [memories]);
+  /** Best effort: a phone with no account (or no table yet) just keeps its own. */
+  const account = useRef<"unknown" | "on" | "off">("unknown");
+
+  const send = useCallback(
+    (method: "POST" | "DELETE", memory: Memory) => {
+      if (account.current === "off") return;
+      const url = `/api/adventures/${adventureId}/memories`;
+      void (
+        method === "POST"
+          ? fetch(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(memory),
+            })
+          : fetch(`${url}/${memory.id}`, { method })
+      )
+        .then((res) => {
+          if (res.status === 401 || res.status === 409) account.current = "off";
+        })
+        .catch(() => undefined);
+    },
+    [adventureId],
+  );
+
+  // Bring in what this person kept on another device, and send up what only
+  // this phone has. Both directions are by id, so it is safe to repeat.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/adventures/${adventureId}/memories`);
+        if (!res.ok) {
+          account.current = "off";
+          return;
+        }
+        account.current = "on";
+        const body = (await res.json()) as { memories?: Memory[] };
+        const theirs = parseMemories(JSON.stringify(body.memories ?? []));
+        const here = parseMemories(read(memoriesKey));
+        const merged = mergeMemories(here, theirs);
+        if (cancelled) return;
+        const known = new Set(theirs.map((m) => m.id));
+        for (const m of here) if (!known.has(m.id)) send("POST", m);
+        if (merged.length !== here.length) {
+          write(memoriesKey, JSON.stringify(merged));
+          setMemories(merged);
+        }
+      } catch {
+        account.current = "off";
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adventureId, memoriesKey, send]);
+
   const remember = useCallback(
     (m: Omit<Memory, "id" | "at">) => {
       const memory: Memory = {
@@ -133,24 +198,29 @@ export function useDevice(adventureId: string, onDay: string | null) {
         id: crypto.randomUUID(),
         at: new Date().toISOString(),
       };
-      setMemories((prev) => {
-        const next = withMemory(prev, memory);
-        setSaved(write(memoriesKey, JSON.stringify(next)));
-        return next;
-      });
+      const prev = latest.current;
+      const next = withMemory(prev, memory);
+      latest.current = next;
+      setMemories(next);
+      setSaved(write(memoriesKey, JSON.stringify(next)));
+      // A favourite is a toggle: the one it replaced is let go, not kept twice.
+      for (const gone of prev)
+        if (!next.some((n) => n.id === gone.id)) send("DELETE", gone);
+      if (next.some((n) => n.id === memory.id)) send("POST", memory);
     },
-    [memoriesKey],
+    [memoriesKey, send],
   );
 
   const forget = useCallback(
     (id: string) => {
-      setMemories((prev) => {
-        const next = withoutMemory(prev, id);
-        write(memoriesKey, JSON.stringify(next));
-        return next;
-      });
+      const gone = latest.current.find((m) => m.id === id);
+      const next = withoutMemory(latest.current, id);
+      latest.current = next;
+      setMemories(next);
+      write(memoriesKey, JSON.stringify(next));
+      if (gone) send("DELETE", gone);
     },
-    [memoriesKey],
+    [memoriesKey, send],
   );
 
   return {

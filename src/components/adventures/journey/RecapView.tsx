@@ -177,9 +177,9 @@ export function RecapView({
           data-testid="recap-empty"
           className="rounded-3xl bg-[var(--gh-cream)] p-5 text-base"
         >
-          Nothing kept from this day on this phone yet. If you took the day on
-          another device, its memories are there. You can still write down what
-          happened in the guide.
+          Nothing kept from this day yet. Photos and notes you keep while
+          you&apos;re signed in follow you to your other devices, and stay yours
+          alone. You can still write down what happened in the guide.
         </p>
       )}
 
@@ -323,8 +323,8 @@ export function RecapView({
           </h2>
           <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
             Only what someone chose to share, and only people on this adventure
-            see it. Your own memories above stay on your phone until you share
-            them.
+            see it. Your own memories above are private to you — on your phone
+            and your account — until you share one.
           </p>
           {shared.length === 0 ? (
             <p className="mt-3 text-base">Nothing shared yet.</p>
