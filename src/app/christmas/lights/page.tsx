@@ -18,10 +18,29 @@ import { festiveStops } from "../_server/lightsAtlas";
 
 export const dynamic = "force-dynamic";
 
+const SHARE_TITLE =
+  "The Christmas Lights Map — Vernon, Coldstream & the Okanagan";
+const SHARE_TEXT =
+  "Find the best Christmas lights near Vernon, build a lights tour for the family, and pin a display you love.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://gohaveaday.com"),
   title: "The Christmas Lights Map — Go Have a Christmas",
   description:
     "Decorated homes, public displays, community trees and Christmas markets around Vernon, Coldstream, Lumby, Armstrong and Kelowna — pinned by locals, checked, and ready for your lights tour.",
+  alternates: { canonical: "/christmas/lights" },
+  openGraph: {
+    type: "website",
+    url: "/christmas/lights",
+    siteName: "Go Have a Day",
+    title: SHARE_TITLE,
+    description: SHARE_TEXT,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SHARE_TITLE,
+    description: SHARE_TEXT,
+  },
 };
 
 /**

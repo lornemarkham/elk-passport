@@ -8,6 +8,7 @@ import {
 import { addItem, createAdventure } from "@/lib/adventures/store";
 import { ATLAS_REF } from "@/lib/adventures/rules";
 import { todayIn } from "@/lib/adventures/overview";
+import { measure } from "@/lib/measure";
 import { isSameOrigin, crossSiteRefused } from "@/lib/server/sameOrigin";
 import { lightsFor, viewer } from "../../../_server/lights";
 import { nearestTown } from "@/domain/christmas/lights/actions";
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
         onDay: day,
         startsAt: null,
       });
+    await measure("lights_tour_saved", { stops: items.length, mode });
     const directions = directionsUrl(
       from,
       mode,

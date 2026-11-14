@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { ReviewItem } from "@/components/christmas/lights/ReviewItem";
 import christmas from "@/components/christmas/christmas.module.css";
-import { lightsFor, viewer } from "../../_server/lights";
+import { launchStats } from "@/domain/christmas/lights/stats";
+import { TOWN_LABEL, TOWNS } from "@/domain/christmas/lights/model";
+import { lightsFor, readLights, viewer } from "../../_server/lights";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -17,6 +19,11 @@ export default async function ReviewPage() {
   const { pins, ready } = v.reviewer
     ? await lightsFor(v)
     : { pins: [], ready: true };
+  const stats = v.reviewer
+    ? await readLights()
+        .then((r) => launchStats(r.doc))
+        .catch(() => null)
+    : null;
   const waiting = pins.filter((p) => p.status === "pending");
   const hidden = pins.filter((p) => p.status === "hidden");
   const reported = pins.filter(
@@ -79,6 +86,56 @@ export default async function ReviewPage() {
                   A home is published only once you record its owner&apos;s okay
                   or a public listing.
                 </p>
+                {stats && (
+                  <section className="mt-6" data-testid="launch-stats">
+                    <h2 className="ghad-display text-2xl font-extrabold text-[#082319]">
+                      Launch numbers
+                    </h2>
+                    <p className="mt-1 text-sm text-[#3d4a43]">
+                      Submissions come from the store. Visitors and page views
+                      are in Vercel → Analytics (paths{" "}
+                      <code>/christmas/lights</code>, <code>/tour</code>,{" "}
+                      <code>/bingo</code>, <code>/pin</code>); events{" "}
+                      <code>lights_pin_submitted</code>,{" "}
+                      <code>lights_tour_saved</code>, <code>lights_report</code>
+                      .
+                    </p>
+                    <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {(
+                        [
+                          ["Submitted by families", stats.submissions],
+                          ["Families", stats.families],
+                          ["Waiting", stats.waiting],
+                          ["Published", stats.published],
+                          ["With a photo", stats.withPhoto],
+                          ["Hidden", stats.hidden],
+                          ["Declined", stats.declined],
+                          ["Reports", stats.reports],
+                          ["Reactions", stats.reactions],
+                          ["Researched pins", stats.seeded],
+                        ] as const
+                      ).map(([label, n]) => (
+                        <div
+                          key={label}
+                          className="rounded-2xl bg-white p-3 ring-1 ring-[#0f3b2b]/15"
+                        >
+                          <dt className="text-xs font-bold text-[#3d4a43]">
+                            {label}
+                          </dt>
+                          <dd className="text-2xl font-extrabold text-[#082319]">
+                            {n}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p className="mt-3 text-sm text-[#3d4a43]">
+                      {TOWNS.map(
+                        (t) =>
+                          `${TOWN_LABEL[t]}: ${stats.byTown[t].published} published, ${stats.byTown[t].waiting} waiting`,
+                      ).join(" · ")}
+                    </p>
+                  </section>
+                )}
                 {group("Waiting for review", waiting, "waiting")}
                 {group("Hidden after a privacy report", hidden, "hidden")}
                 {group("Published, with reports", reported, "reported")}

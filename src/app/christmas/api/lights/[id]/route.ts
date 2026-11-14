@@ -19,6 +19,7 @@ import {
   report,
   restore,
 } from "@/domain/christmas/lights/actions";
+import { measure } from "@/lib/measure";
 import {
   canSee,
   viewOf,
@@ -138,6 +139,19 @@ export async function POST(
       }
     });
     if (result === "removed") await putPhoto(id, null).catch(() => undefined);
+    if (
+      action === "approve" ||
+      action === "decline" ||
+      action === "report" ||
+      action === "remove" ||
+      action === "react" ||
+      action === "check"
+    )
+      await measure(`lights_${action}`, {
+        ...(action === "report" && typeof b.reason === "string"
+          ? { reason: b.reason.slice(0, 40) }
+          : {}),
+      });
     const pin = (await readLights()).doc.pins.find((p) => p.id === id);
     return json({ pin: pin && canSee(pin, v) ? viewOf(pin, v, now) : null });
   });
