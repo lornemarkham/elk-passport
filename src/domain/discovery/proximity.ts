@@ -1,5 +1,6 @@
 import type { Experience } from "@/domain/experience/types";
 import { SECTION_PAGES, SECTION_SIZE, type DiscoverySection } from "./compose";
+import { intentOf } from "./intents";
 import { distanceKm } from "@/lib/environment/geo";
 import type { Point } from "./situation";
 
@@ -246,7 +247,12 @@ export function nearSection(
   origin: Point | undefined,
   nearKm: number = NEAR_KM,
 ): DiscoverySection | undefined {
-  const items = nearYou(experiences, origin, nearKm);
+  // **Near is not a reason to offer a bed** (owner brief M817): a motel two
+  // streets away led "Near you" on a page asking what to do today. Asked for
+  // under "Somewhere to stay", never offered here.
+  const items = nearYou(experiences, origin, nearKm).filter(
+    (experience) => intentOf(experience) !== "stay",
+  );
   if (items.length === 0) return undefined;
 
   return {

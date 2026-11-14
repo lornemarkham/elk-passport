@@ -2,6 +2,7 @@ import type { Experience } from "@/domain/experience/types";
 import { statedDay } from "@/domain/experience/eventTime";
 import { INTENTS, intentOf, type IntentKey } from "./intents";
 import { ruledOutOn, weekdayOf } from "./recurrence";
+import { isIllustrative } from "./illustrations";
 
 /**
  * **What Discovery actually shows, as sections rather than as a stream.**
@@ -60,6 +61,13 @@ export interface DiscoverySection {
    * re-deriving it, and so nothing dated is ever quietly rendered as permanent.
    */
   readonly shape: "when" | "intent" | "rest";
+  /**
+   * **Held open for a section that is on its way** — "Near you" while the
+   * place and Atlas's distances are still arriving. Rendered as the shape of
+   * the section with no cards, so its arrival does not push the page down
+   * under the reader (owner brief M817). Never set by `composeDiscovery`.
+   */
+  readonly pending?: true;
 }
 
 /** How many a section shows before asking. Enough to browse, not enough to scroll past. */
@@ -217,10 +225,25 @@ export function pictureFirst(experiences: readonly Experience[]): Experience[] {
     .map((experience, index) => ({ experience, index }))
     .sort(
       (a, b) =>
-        Number(Boolean(b.experience.heroMedia)) -
-          Number(Boolean(a.experience.heroMedia)) || a.index - b.index,
+        Number(hasOwnPicture(b.experience)) -
+          Number(hasOwnPicture(a.experience)) || a.index - b.index,
     )
     .map((entry) => entry.experience);
+}
+
+/**
+ * **A picture of this thing, its venue or its organizer** — never a stand-in
+ * of the kind of thing. Atlas's `presentationImage` (ADR 106) carries 1,134
+ * authentic pictures that `heroMedia` alone missed, so a section ordered by
+ * `heroMedia` put a museum's own photograph behind cards with none.
+ */
+export function hasOwnPicture(experience: Experience): boolean {
+  return Boolean(
+    experience.heroMedia?.src ||
+    experience.contextualMedia?.heroUrl ||
+    (experience.presentationImage &&
+      !isIllustrative(experience.presentationImage)),
+  );
 }
 
 /**
@@ -402,7 +425,10 @@ export function composeDiscovery(
       where ? `More in ${where}` : "More to explore",
       "Everything else we know about around here.",
       "rest",
-      pictureFirst(take(live)),
+      // **A bed is asked for, never offered** — here too. "More to explore"
+      // under a Saturday-morning page was where the hotels the `stay` skip
+      // above kept out ended up anyway (owner brief M817).
+      pictureFirst(take(live.filter((e) => intentOf(e) !== "stay"))),
       size,
     ),
   );

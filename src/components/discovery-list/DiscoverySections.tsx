@@ -5,6 +5,7 @@ import type { Experience } from "@/domain/experience/types";
 import type { DiscoverySection } from "@/domain/discovery/compose";
 import type { Point } from "@/domain/discovery/situation";
 import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
+import { hasOwnPicture, pictureFirst } from "@/domain/discovery/compose";
 import { PossibilityCard } from "./PossibilityCard";
 
 /**
@@ -106,10 +107,33 @@ function Section({
   // How many extra pages of this section the person has asked for. Local to
   // the section, so opening one up leaves the others as they were.
   const [more, setMore] = useState(0);
+  if (section.pending) return <PendingSection section={section} />;
   const shown = withoutRepeatedIllustrations(
-    section.items.slice(0, section.size * (more + 1)),
+    picturesLeadEachPage(
+      section.items.slice(0, section.size * (more + 1)),
+      section.size,
+    ),
   );
   const canReveal = shown.length < section.items.length;
+  // **A spotlight needs a photograph.** A section that opens the page on
+  // words alone ("Write to Santa") is laid out like every other section
+  // rather than blowing a text card up to fill a picture's room.
+  const spotlight =
+    leading && shown[0] !== undefined && hasOwnPicture(shown[0]);
+  // **What the layout folds away, not the data.** A row of four (five in the
+  // spotlight, three on a phone's spotlight) hides the rest of the first page
+  // with CSS; when there is no further page, *Show more* still has to open it,
+  // but only on the screens where something is actually folded.
+  const folded = more === 0 && !canReveal;
+  const foldedOn = spotlight
+    ? shown.length > 5
+      ? "inline-flex"
+      : shown.length > 3
+        ? "inline-flex lg:hidden"
+        : "hidden"
+    : shown.length > 4
+      ? "hidden lg:inline-flex"
+      : "hidden";
 
   return (
     <section data-testid="discovery-section" data-section={section.id}>
@@ -129,19 +153,47 @@ function Section({
         {section.note}
       </p>
 
-      {/* **A shelf, not a grid.** Cards nearly fill a phone with the next one
-          visibly peeking, snap points so a thumb lands square, and the same
-          row scrolls with a trackpad on a desktop. `overscroll-x-contain`
-          keeps a swipe inside the shelf rather than triggering the browser's
-          back gesture. */}
-      <ul className="-mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:gap-6 sm:px-6">
+      {/* **The page opens on a spotlight, not another shelf** (owner brief
+          M817: "too many repetitive horizontal carousels", "make the best
+          nearby activities prominent"). The section a reader lands on leads
+          with one large card — the composer already put its best-pictured
+          possibility first — and two (phone) or four (desktop) beside it.
+
+          **Every other section is a shelf on a phone and a grid on a
+          desktop.** Cards nearly fill a phone with the next one peeking, snap
+          points so a thumb lands square, `overscroll-x-contain` so a swipe
+          stays in the shelf. On a wide screen ten sideways rows were the
+          repetition the owner named: a row of four reads at a glance and
+          *Show more* opens the rest. */}
+      <ul
+        data-layout={spotlight ? "spotlight" : "shelf"}
+        className={
+          spotlight
+            ? `mt-4 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-6 lg:grid-cols-4 ${
+                more === 0
+                  ? "[&>li:nth-child(n+4)]:hidden sm:[&>li:nth-child(n+4)]:flex lg:[&>li:nth-child(n+6)]:hidden"
+                  : ""
+              }`
+            : `-mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:gap-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 ${
+                more === 0 ? "lg:[&>li:nth-child(n+5)]:hidden" : ""
+              }`
+        }
+      >
         {shown.map((experience, index) => (
           <PossibilityCard
-            className="w-[78vw] shrink-0 snap-start sm:w-[360px] lg:w-[400px]"
+            className={
+              spotlight
+                ? index === 0
+                  ? "col-span-2 lg:row-span-2"
+                  : "min-w-0"
+                : "w-[78vw] shrink-0 snap-start sm:w-[360px] lg:w-auto lg:min-w-0"
+            }
+            featured={spotlight && index === 0}
             key={experience.id}
             experience={experience}
-            // Three: what fits across a laptop before the shelf scrolls.
-            priority={leading && index < 3}
+            // What is in view when the page opens: the spotlight and the
+            // cards beside it. Everything else stays lazy.
+            priority={leading && index < 5}
             {...(today ? { today } : {})}
             {...(home ? { home } : {})}
             {...(origin ? { origin } : {})}
@@ -158,19 +210,82 @@ function Section({
           was given. Past that the search box is the honest answer — a feed
           that keeps growing until the browser gives up is the thing this
           replaced. */}
-      {canReveal && (
+      {(canReveal || (folded && foldedOn !== "hidden")) && (
         <button
           type="button"
           data-testid="show-more"
           onClick={() => setMore((n) => n + 1)}
           style={{ color: "var(--ghad-accent)" }}
-          className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4"
+          className={`mt-3 min-h-11 items-center text-sm font-semibold underline underline-offset-4 ${
+            canReveal ? "inline-flex" : foldedOn
+          }`}
         >
           {/* Not `More {title}` — the remainder section is already called
               "More to explore", which produced "More more to explore". */}
           Show more
         </button>
       )}
+    </section>
+  );
+}
+
+/**
+ * **Within each page of a section, the pictured cards go first.**
+ *
+ * The view orders every section nearest-first after the composer ordered it
+ * picture-first, so "Near you" opened on a card with no photograph whenever
+ * the nearest thing had none — and the spotlight is the card a person sees
+ * first. Re-ordered a page at a time, so the same eight stay on the first
+ * page (nearness still decides *which* eight) and *Show more* never moves a
+ * card that is already on screen.
+ */
+function picturesLeadEachPage(
+  items: readonly Experience[],
+  size: number,
+): Experience[] {
+  const out: Experience[] = [];
+  for (let at = 0; at < items.length; at += size) {
+    out.push(...pictureFirst(items.slice(at, at + size)));
+  }
+  return out;
+}
+
+/**
+ * **The room a section will take, before it has cards** — the spotlight's
+ * shape in quiet tints, so the page below it is already where it will stay.
+ */
+function PendingSection({ section }: { readonly section: DiscoverySection }) {
+  return (
+    <section
+      data-testid="discovery-section-pending"
+      data-section={section.id}
+      aria-busy="true"
+    >
+      <h2 className="ghad-display text-[24px] leading-[0.98] font-extrabold tracking-[-0.04em] text-[#111] uppercase sm:text-[40px]">
+        {section.title}
+      </h2>
+      <p role="status" className="mt-1 text-[13px] text-black/45">
+        {section.note}
+      </p>
+      <ul
+        aria-hidden
+        className="mt-4 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-6 lg:grid-cols-4 [&>li:nth-child(n+4)]:hidden sm:[&>li:nth-child(n+4)]:flex lg:[&>li:nth-child(n+6)]:hidden"
+      >
+        {[0, 1, 2, 3, 4].map((index) => (
+          <li
+            key={index}
+            className={`flex flex-col ${index === 0 ? "col-span-2 lg:row-span-2" : "min-w-0"}`}
+          >
+            <span className="aspect-[4/3] w-full animate-pulse bg-black/[0.05]" />
+            <span className="mt-3 h-3 w-2/5 animate-pulse rounded-full bg-black/[0.05]" />
+            <span
+              className={`mt-2 w-4/5 animate-pulse rounded-full bg-black/[0.06] ${index === 0 ? "h-8" : "h-5"}`}
+            />
+            <span className="mt-2 h-3 w-full animate-pulse rounded-full bg-black/[0.04]" />
+            <span className="mt-auto h-11 w-24 animate-pulse rounded-full bg-black/[0.05] pt-4" />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

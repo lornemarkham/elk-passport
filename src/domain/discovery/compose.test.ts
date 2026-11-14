@@ -252,10 +252,10 @@ describe("composing the page", () => {
     const rest = composeDiscovery(pool, { now: NOW }).find(
       (s) => s.id === "rest",
     );
-    // The hotel lands here rather than vanishing: a section nobody leads with
-    // is still a possibility somebody might want.
+    // **A bed is asked for, never offered** (owner brief M817: "separate
+    // hotels from things to do"). The hotel used to land here; it is still in
+    // the pool, still searchable, and still behind "Somewhere to stay".
     expect(rest!.items.map((e) => e.title).sort()).toEqual([
-      "A hotel",
       "Something unclassified",
     ]);
   });

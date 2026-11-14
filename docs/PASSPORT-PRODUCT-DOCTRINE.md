@@ -1032,6 +1032,32 @@ and the product in [`product/insiders/README.md`](product/insiders/README.md):
 - **Discovery lead time** — how many days before it starts we first heard of
   an event — is the network's measure (a shadow of §1's, kept honest by it).
 
+### Real pictures, live possibilities, fast (decided 2026-11-13)
+
+From the owner's _P0 — Go Have a Day: fix Discovery production experience_
+brief (mission 817: _"NO IMAGES. SHITTY. SLOW AS FUCK."_), implemented in
+`src/domain/discovery/hygiene.ts` and `DiscoverySections.tsx`:
+
+- **Never an unrelated stock photo.** Atlas's stand-in pictures of the _kind_
+  of thing (`category`, `representative`, Atlas ADR 106) are not shown on
+  Discovery, even labelled. This reverses the earlier implementation, which
+  showed them with an "illustrative" label; a card with no picture of the
+  thing, its venue or its organizer gets the text treatment instead, and the
+  pictured cards lead each section.
+- **What is over is not sent.** A dated thing whose last day has passed (in
+  Vancouver time) is left out of Discovery's pool altogether, not only out of
+  the sections; so is anything named for Halloween with no date of its own
+  from November to August. The Halloween rule reads a name, not an Atlas fact,
+  and goes when Atlas states seasons (Atlas mission 816).
+- **A bed is asked for, never offered.** Accommodation stays behind
+  "Somewhere to stay" and is kept out of _Near you_ and _More to explore_.
+- **The page opens on a spotlight**: the first section leads with one large
+  pictured card. On a desktop the other sections are rows of four rather than
+  sideways carousels; a phone keeps its swipeable shelves. _Near you_ holds
+  its room from the first paint so its arrival does not move the page.
+
+This answers no question in §15.
+
 ---
 
 ## 13. Inspiration — preserved, fenced off
