@@ -1051,6 +1051,13 @@ brief (mission 817: _"NO IMAGES. SHITTY. SLOW AS FUCK."_), implemented in
   and goes when Atlas states seasons (Atlas mission 816).
 - **A bed is asked for, never offered.** Accommodation stays behind
   "Somewhere to stay" and is kept out of _Near you_ and _More to explore_.
+- **What Atlas places here leads** (owner brief M845, 2026-11-14): every
+  section orders what is in the page's area, then what Atlas has not placed,
+  then what is elsewhere, and a photograph does not lift a card out of that
+  order. A reorder only — silence still removes nothing — so on a page about
+  Vernon an unplaced Ottawa event can still close a short event shelf.
+  Whether unplaced events should be held out of the time-led shelves is the
+  owner's call (`product/go-have-a-day/production-polish-2026-11-14.md`).
 - **The page opens on a spotlight**: the first section leads with one large
   pictured card. On a desktop the other sections are rows of four rather than
   sideways carousels; a phone keeps its swipeable shelves. _Near you_ holds
