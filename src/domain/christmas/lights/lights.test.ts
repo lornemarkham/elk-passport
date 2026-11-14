@@ -420,3 +420,23 @@ describe("A one-night light-up is only toured on its night", () => {
     expect(localDay(new Date("2026-12-05T06:30:00Z"))).toBe("2026-12-04");
   });
 });
+
+describe("launchStats", () => {
+  it("counts families' pins apart from researched ones and names no one", async () => {
+    const { launchStats } = await import("./stats");
+    const { SEED } = await import("./seed");
+    const mine = {
+      ...SEED[0]!,
+      id: "pin-x",
+      source: undefined,
+      status: "pending" as const,
+      submittedBy: "v_a",
+    };
+    const s = launchStats({ pins: [...SEED, mine] });
+    expect(s.submissions).toBe(1);
+    expect(s.waiting).toBe(1);
+    expect(s.families).toBe(1);
+    expect(s.seeded).toBe(SEED.length);
+    expect(JSON.stringify(s)).not.toContain("v_a");
+  });
+});

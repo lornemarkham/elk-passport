@@ -14,6 +14,7 @@ import {
   submit,
 } from "@/domain/christmas/lights/actions";
 import { viewOf } from "@/domain/christmas/lights/model";
+import { measure } from "@/lib/measure";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,11 @@ export async function POST(request: Request) {
         doc: next,
         result: { pin, twins: twins.map((t) => ({ id: t.id, name: t.name })) },
       };
+    });
+    await measure("lights_pin_submitted", {
+      town: result.pin.town,
+      kind: result.pin.kind,
+      photo: !!photo,
     });
     return json(
       {
