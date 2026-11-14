@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { listDiscoveryCandidates } from "@/lib/data/atlas-repo";
 import { forDiscoveryWire } from "@/domain/discovery/wire";
+import { forDiscoveryPool } from "@/domain/discovery/hygiene";
 import { DiscoverySkeleton } from "@/components/discovery-list/DiscoverySkeleton";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
 import { DiscoveryListView } from "@/components/discovery-list/DiscoveryListView";
@@ -118,9 +119,13 @@ async function DiscoveryBody({
   // **What is sent, and what is not** — see `forDiscoveryWire`. The whole
   // pool is serialised to the browser so search can be instant, and most of
   // what the mapper produced is working the page never reads.
-  const experiences = candidates
-    .map(candidateToExperience)
-    .map(forDiscoveryWire);
+  // **And what is not a possibility at all** — over, out of season, or a
+  // stand-in photograph — is left out before any of it is sent
+  // (`forDiscoveryPool`, owner brief M817).
+  const experiences = forDiscoveryPool(
+    candidates.map(candidateToExperience),
+    new Date(now),
+  ).map(forDiscoveryWire);
 
   return (
     <DiscoveryListView

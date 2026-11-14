@@ -89,23 +89,43 @@ for (const form of forms) {
       }
     });
 
-    test("Spookley Meet & Greet, with no picture at all, leads with its name and kind", async ({
+    test("Spirit Square, with no picture at all, leads with its name and kind", async ({
       page,
     }) => {
-      await open(page, "Spookley");
+      // **It used to be Spookley Meet & Greet**, an event that ended on
+      // October 31 and was still answered in November (owner brief M817:
+      // "never show expired events"). A place with no photograph tests the
+      // same treatment without depending on the calendar.
+      await open(page, "Spirit Square");
       const card = page
         .getByTestId("possibility")
-        .filter({ hasText: "Spookley Meet & Greet" })
+        .filter({ hasText: "Spirit Square" })
         .first();
       await card.scrollIntoViewIfNeeded();
       if (SHOTS)
-        await card.screenshot({ path: `${SHOTS}/${form.name}-Spookley.png` });
-      await expect(card.getByRole("heading")).toHaveText(
-        "Spookley Meet & Greet",
-      );
+        await card.screenshot({ path: `${SHOTS}/${form.name}-no-picture.png` });
+      await expect(card.getByRole("heading")).toHaveText("Spirit Square");
       await expect(card.getByTestId("possibility-text-lead")).toContainText(
-        "Meet & Greet",
+        "plaza",
+        { ignoreCase: true },
       );
+    });
+
+    test("an event that is over is not answered, even by name", async ({
+      page,
+    }) => {
+      // Spookley Meet & Greet ran Sep 26 – Oct 31 2026 in the fixture.
+      test.skip(
+        new Date() < new Date("2026-11-01T08:00:00Z"),
+        "Spookley is still on before November",
+      );
+      await page.goto(`/discovery?q=${encodeURIComponent("Spookley")}`);
+      await expect(page.getByTestId("possibility").first()).toBeVisible({
+        timeout: 60_000,
+      });
+      await expect(
+        page.getByTestId("possibility").filter({ hasText: "Spookley" }),
+      ).toHaveCount(0);
     });
 
     test("a label never leaves its picture, and no card scrolls sideways", async ({

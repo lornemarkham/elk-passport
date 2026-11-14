@@ -131,7 +131,60 @@ export function forDiscoveryWire(experience: Experience): Experience {
     };
   }
 
+  // **Required fields at their defaults are not sent** (owner brief M817,
+  // "slow as fuck"): `moods: []`, `petFriendly: false` and twelve more were
+  // repeated on every one of ~5,600 candidates — about a megabyte of the
+  // document. `fromDiscoveryWire` puts them back before anything reads them.
+  for (const [key, value] of DEFAULT_ENTRIES) {
+    if (key in lean && sameValue(lean[key], value)) delete lean[key];
+  }
+
   return withoutUndefined(lean) as unknown as Experience;
+}
+
+/**
+ * **Required `Experience` fields, at the value most candidates hold.** Only
+ * required ones: an optional field left out must stay left out, and putting a
+ * default back where none was would change what a reader sees.
+ */
+const DEFAULTS = {
+  moods: [],
+  activities: [],
+  seasons: [],
+  timeOfDay: [],
+  weather: [],
+  companions: [],
+  regionIds: [],
+  energyLevel: 1,
+  priceLevel: 0,
+  duration: { minMinutes: 0, maxMinutes: 0 },
+  familyFriendly: false,
+  petFriendly: false,
+  requiresReservation: false,
+  isActive: true,
+  detailReady: false,
+} satisfies Partial<Record<keyof Experience, unknown>>;
+
+const DEFAULT_ENTRIES = Object.entries(DEFAULTS);
+
+function sameValue(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * **The inverse of the defaults `forDiscoveryWire` leaves behind**, run once
+ * in the browser before the pool is read. Every value is a fresh copy, so no
+ * two candidates share one array.
+ */
+export function fromDiscoveryWire(experience: Experience): Experience {
+  const missing = DEFAULT_ENTRIES.filter(([key]) => !(key in experience));
+  if (missing.length === 0) return experience;
+  const whole: Record<string, unknown> = { ...experience };
+  for (const [key, value] of missing) {
+    whole[key] =
+      typeof value === "object" ? structuredClone(value) : (value as unknown);
+  }
+  return whole as unknown as Experience;
 }
 
 /**

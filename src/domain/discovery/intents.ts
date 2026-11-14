@@ -201,6 +201,9 @@ export const INTENTS: readonly DiscoveryIntentOption[] = [
       "cottage",
       "vacation rental",
       "glamping",
+      "accommodation",
+      "b&b",
+      "farm inn",
     ]),
   },
 ] as const;

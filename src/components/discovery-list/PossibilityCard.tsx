@@ -61,6 +61,7 @@ export function PossibilityCard({
   className = "",
   carry,
   priority = false,
+  featured = false,
   saved,
   saving,
   onSave,
@@ -110,6 +111,12 @@ export function PossibilityCard({
    * below the fold stays lazy, which is what lazy is for.
    */
   readonly priority?: boolean;
+  /**
+   * **The one card the page leads with** (owner brief M817): the same card,
+   * with a larger title and room for its sentence. Decides nothing about
+   * membership or order.
+   */
+  readonly featured?: boolean;
   readonly saved: boolean;
   readonly saving: boolean;
   readonly onSave: () => void;
@@ -398,7 +405,13 @@ export function PossibilityCard({
 
         {/* Without a picture the heading is in the text lead above. */}
         {hasPicture && (
-          <h3 className="ghad-display mt-1 line-clamp-4 text-[18px] leading-[1.1] font-extrabold tracking-[-0.03em] text-balance [overflow-wrap:anywhere] text-[#111]">
+          <h3
+            className={`ghad-display mt-1 font-extrabold text-balance [overflow-wrap:anywhere] text-[#111] ${
+              featured
+                ? "line-clamp-3 text-[26px] leading-[1.02] tracking-[-0.04em] sm:text-[34px]"
+                : "line-clamp-4 text-[18px] leading-[1.1] tracking-[-0.03em]"
+            }`}
+          >
             {experience.title}
           </h3>
         )}
@@ -423,7 +436,11 @@ export function PossibilityCard({
               {experience.shortDescription}
             </p>
           ) : (
-            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-black/60">
+            <p
+              className={`mt-1.5 leading-relaxed text-black/60 ${
+                featured ? "line-clamp-3 text-sm" : "line-clamp-2 text-xs"
+              }`}
+            >
               {experience.shortDescription}
             </p>
           ))}

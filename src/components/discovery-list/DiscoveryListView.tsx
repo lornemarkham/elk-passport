@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ZONE } from "@/domain/experience/eventTime";
 import { Leaf } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fromDiscoveryWire } from "@/domain/discovery/wire";
 import { toast } from "sonner";
 import {
   scopeExperiences,
@@ -225,7 +226,7 @@ interface DiscoveryListViewProps {
  * this mirrors.
  */
 export function DiscoveryListView({
-  experiences,
+  experiences: wire,
   scope,
   displayName = null,
   now,
@@ -234,6 +235,9 @@ export function DiscoveryListView({
   insiders = [],
 }: DiscoveryListViewProps) {
   const signedIn = displayName !== null;
+  // The pool as the server sent it, with the defaults it left out put back
+  // (`forDiscoveryWire`), once, before anything reads it.
+  const experiences = useMemo(() => wire.map(fromDiscoveryWire), [wire]);
 
   /**
    * **A person's ideas** — the same Atlas boards the Adventure Pocket and My
@@ -1038,8 +1042,37 @@ export function DiscoveryListView({
     }));
     // Inside a radius every card is already near; a "Near you" shelf would
     // repeat the page.
-    const near = radiusActive ? undefined : nearSection(listening, at);
-    const withNear = near ? [near, ...placed] : placed;
+    // **And not before Atlas has measured** (owner brief M817): built from
+    // raw coordinates first and Atlas's reading a moment later, the shelf
+    // appeared, changed and sometimes vanished again, moving the whole page
+    // under the reader's thumb twice. It now arrives once, measured.
+    const near =
+      radiusActive || measuring === "measuring"
+        ? undefined
+        : nearSection(listening, at);
+    // Until the place is known and Atlas has measured from it, the shelf's
+    // room is held: a place always resolves (a guess, or the launch region),
+    // so "Near you" is nearly always coming, and arriving above everything
+    // else it moved the whole first screen.
+    const nearComing =
+      !near && !radiusActive && (!at || measuring === "measuring");
+    const withNear = near
+      ? [near, ...placed]
+      : nearComing
+        ? [
+            {
+              id: "near-you",
+              title: "Near you",
+              note: "Finding what's close…",
+              items: [],
+              size: 0,
+              total: 0,
+              shape: "intent" as const,
+              pending: true as const,
+            },
+            ...placed,
+          ]
+        : placed;
     const withBeyond =
       further && radius !== undefined && beyond.length > 0
         ? [
@@ -1072,6 +1105,7 @@ export function DiscoveryListView({
     preferences,
     radiusActive,
     radiusReady,
+    measuring,
     radius,
     further,
     beyond,
