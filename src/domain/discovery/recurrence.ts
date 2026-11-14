@@ -128,5 +128,10 @@ export function recurrenceLine(experience: Experience): string | undefined {
   if (days && days.length > 0) {
     return `${days.length} dates`;
   }
+  // **A window is not every day in it.** Atlas says it cannot act on the
+  // interval as stated ("unexplained-span", "separate-occurrences": guided
+  // walks held 91 days apart, a gallery's two stated days). The card said
+  // "On until Dec 12" and nothing else, which reads as open daily.
+  if (occurrence && !occurrence.actionable) return "Some days — check dates";
   return undefined;
 }

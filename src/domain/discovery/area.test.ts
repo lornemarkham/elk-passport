@@ -3,6 +3,8 @@ import {
   areaOf,
   countElsewhere,
   elsewhere,
+  homeFirst,
+  namedAreas,
   otherAreas,
   placedAreaOf,
   withoutElsewhere,
@@ -137,5 +139,42 @@ describe("a subject Atlas has placed by coordinates but not by area", () => {
     const mixed = [cenotaph, kalBeach, hope];
     expect(countElsewhere(mixed, "Okanagan")).toBe(1);
     expect(otherAreas(mixed, "Okanagan")).toEqual(["Metro Vancouver"]);
+  });
+});
+
+describe("what leads when Atlas has not placed something (mission 845)", () => {
+  it("puts this area first, then unplaced, then elsewhere, and drops nothing", () => {
+    const ordered = homeFirst(
+      [pool[5]!, pool[2]!, pool[0]!, pool[4]!, pool[1]!],
+      "Okanagan",
+    ).map((e) => e.title);
+    expect(ordered).toEqual([
+      "Ellison Park",
+      "Kalamoir Park",
+      "Jump2it Indoor Playground",
+      "Canyon Frights",
+      "Kitsilano Farmers Market",
+    ]);
+  });
+
+  it("leaves the order alone with no home area", () => {
+    expect(homeFirst(pool, undefined)).toBe(pool);
+  });
+});
+
+describe("naming the other areas in a line", () => {
+  it("names one, two or three in full", () => {
+    expect(namedAreas(["Calgary"])).toBe("Calgary");
+    expect(namedAreas(["Metro Vancouver", "Calgary"])).toBe(
+      "Metro Vancouver and Calgary",
+    );
+    expect(namedAreas(["Metro Vancouver", "Calgary", "Ottawa"])).toBe(
+      "Metro Vancouver, Calgary and Ottawa",
+    );
+  });
+
+  it("counts the rest once there are many", () => {
+    const seventeen = Array.from({ length: 17 }, (_, i) => `Area ${i}`);
+    expect(namedAreas(seventeen)).toBe("Area 0, Area 1 and 15 other areas");
   });
 });

@@ -118,6 +118,17 @@ describe("what a card may say about when it recurs", () => {
     expect(recurrenceLine(PUPPETS)).toBe("3 dates");
   });
 
+  it("says to check the days where Atlas cannot act on the window", () => {
+    expect(
+      recurrenceLine(
+        dated("Guided nature walks", {
+          reading: "unexplained-span",
+          actionable: false,
+        }),
+      ),
+    ).toBe("Some days — check dates");
+  });
+
   it("says nothing where Atlas states no pattern", () => {
     // However much a 161-day interval looks like a season.
     expect(recurrenceLine(PLAIN)).toBeUndefined();

@@ -135,3 +135,54 @@ export function otherAreas(
     .sort((a, b) => b[1] - a[1])
     .map(([name]) => name);
 }
+
+/**
+ * **The other areas, said in a line a phone can hold.**
+ *
+ * Measured on production 2026-11-14 (mission 845): Atlas now names seventeen
+ * areas across Canada, and joining them all with "and" made the offer to look
+ * further four lines of underlined city names under the first screen on a
+ * phone. The two with the most go by name; the rest are counted.
+ */
+export function namedAreas(areas: readonly string[], named = 2): string {
+  if (areas.length <= named + 1) {
+    return areas.length <= 1
+      ? (areas[0] ?? "")
+      : `${areas.slice(0, -1).join(", ")} and ${areas[areas.length - 1]}`;
+  }
+  const rest = areas.length - named;
+  return `${areas.slice(0, named).join(", ")} and ${rest} other areas`;
+}
+
+/**
+ * **What Atlas places here goes before what it has not placed.** A stable
+ * reorder: in the page's area, then unplaced, then placed somewhere else.
+ *
+ * Measured on production 2026-11-14 (mission 845): 559 of 1,062 events carry
+ * no area and no coordinates, and about 96% of those are elsewhere in Canada
+ * by their own titles (Saskatoon Santa Claus Parade, Ottawa Outdoor Film
+ * Festival). Ordered only by date, they filled *Happening today* and *Coming
+ * up* on a page about Vernon, ahead of things in Kelowna. Silence still
+ * removes nothing (doctrine §9, ADR 016): this changes the order, not what is
+ * there.
+ */
+export function homeFirst(
+  experiences: readonly Experience[],
+  home: string | undefined,
+): readonly Experience[] {
+  if (!home) return experiences;
+  return experiences
+    .map((experience, index) => ({
+      experience,
+      index,
+      rank: homeRank(experience, home),
+    }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((row) => row.experience);
+}
+
+/** 0 placed in `home`, 1 not placed, 2 placed elsewhere. */
+export function homeRank(experience: Experience, home: string): number {
+  const area = placedAreaOf(experience);
+  return area === undefined ? 1 : area === home ? 0 : 2;
+}

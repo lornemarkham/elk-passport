@@ -153,9 +153,15 @@ export function matchSignals(
 
 /** "Swimming, Cycling, Pets on leash" -> "swimming, cycling, and pets on leash" — lowercases only the first character of each item (not the whole string, since some real activity names may already contain meaningful capitalization) and joins as a natural list. Deliberately does not attempt idiomatic rewording ("Pets on leash" -> "bringing the dog") — a bespoke phrase table would only ever cover activity names seen so far and could read wrong for anything else Atlas learns later. */
 export function toPhraseList(items: readonly string[]): string {
-  const phrased = items.map((item) =>
-    item.length > 0 ? item[0]!.toLowerCase() + item.slice(1) : item,
-  );
+  // Said once each: Atlas lists "Hiking" and "hiking" as two activities, and
+  // Knox Mountain Park "offers hiking, hiking, and biking" (mission 845).
+  const phrased = [
+    ...new Set(
+      items.map((item) =>
+        item.length > 0 ? item[0]!.toLowerCase() + item.slice(1) : item,
+      ),
+    ),
+  ];
   if (phrased.length === 1) return phrased[0]!;
   if (phrased.length === 2) return `${phrased[0]} and ${phrased[1]}`;
   return `${phrased.slice(0, -1).join(", ")}, and ${phrased[phrased.length - 1]}`;

@@ -24,7 +24,13 @@ import { isOctoberKind } from "@/lib/october/types";
 import { FeelLikeDoing } from "@/components/ghad/FeelLikeDoing";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { excludesAge, ageEvidence } from "@/domain/discovery/suitability";
-import { countElsewhere, elsewhere, otherAreas } from "@/domain/discovery/area";
+import {
+  countElsewhere,
+  elsewhere,
+  homeFirst,
+  namedAreas,
+  otherAreas,
+} from "@/domain/discovery/area";
 import {
   byPreference,
   statedNotOn,
@@ -1034,8 +1040,11 @@ export function DiscoveryListView({
       // names a day other than the one the cards under it are about.
       ...(on ? { on } : {}),
     });
+    // Things Atlas places in this area lead things it has not placed (owner
+    // brief M845: Ottawa and Saskatoon events filled a Vernon page's
+    // *Happening today*). A reorder: nothing is removed.
     const order = (items: readonly Experience[]) =>
-      byPreference(nearestFirst(items, at), preferences);
+      homeFirst(byPreference(nearestFirst(items, at), preferences), home);
     const placed = sections.map((section) => ({
       ...section,
       items: order(section.items),
@@ -1110,6 +1119,7 @@ export function DiscoveryListView({
     further,
     beyond,
     originLabel,
+    home,
   ]);
 
   const kinds = useMemo(
@@ -1947,8 +1957,8 @@ export function DiscoveryListView({
                           ? `Showing ${beyond.length} beyond ${radius} km, at the bottom — hide them`
                           : `Explore beyond ${radius} km — ${beyond.length} more, marked as further`
                         : further
-                          ? `Showing ${elsewhereAreas.join(" and ")} too — back to ${home} only`
-                          : `${elsewhereCount} more in ${elsewhereAreas.join(" and ")} — show them too`}
+                          ? `Showing ${namedAreas(elsewhereAreas)} too — back to ${home} only`
+                          : `${elsewhereCount} more in ${namedAreas(elsewhereAreas)} — show them too`}
                     </button>
                   )}
 

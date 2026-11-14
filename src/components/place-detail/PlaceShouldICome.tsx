@@ -41,7 +41,14 @@ export function PlaceShouldICome({ place }: PlaceSectionProps) {
         "Not the pick for easy, family-friendly amenities close at hand.";
     }
   } else {
-    const activities = place.activities?.filter((a) => a.trim()) ?? [];
+    const activities = [
+      ...new Map(
+        (place.activities ?? [])
+          .map((a) => a.trim())
+          .filter(Boolean)
+          .map((a) => [a.toLowerCase(), a] as const),
+      ).values(),
+    ];
     if (activities.length > 0) {
       goodFit = `${place.name} offers ${toPhraseList(activities.slice(0, 3))}.`;
     }

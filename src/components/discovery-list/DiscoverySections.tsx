@@ -6,6 +6,7 @@ import type { DiscoverySection } from "@/domain/discovery/compose";
 import type { Point } from "@/domain/discovery/situation";
 import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
 import { hasOwnPicture, pictureFirst } from "@/domain/discovery/compose";
+import { homeRank } from "@/domain/discovery/area";
 import { PossibilityCard } from "./PossibilityCard";
 
 /**
@@ -112,6 +113,7 @@ function Section({
     picturesLeadEachPage(
       section.items.slice(0, section.size * (more + 1)),
       section.size,
+      home,
     ),
   );
   const canReveal = shown.length < section.items.length;
@@ -238,14 +240,28 @@ function Section({
  * first. Re-ordered a page at a time, so the same eight stay on the first
  * page (nearness still decides *which* eight) and *Show more* never moves a
  * card that is already on screen.
+ *
+ * **A picture never lifts a card out of its place group** (mission 845): an
+ * unplaced Stanley Park story time with a photograph led *On for a while* on
+ * a page about Vernon, ahead of things in Kelowna. Within a page, what is in
+ * this area leads, then what Atlas has not placed, and pictures lead inside
+ * each of those.
  */
 function picturesLeadEachPage(
   items: readonly Experience[],
   size: number,
+  home: string | undefined,
 ): Experience[] {
   const out: Experience[] = [];
   for (let at = 0; at < items.length; at += size) {
-    out.push(...pictureFirst(items.slice(at, at + size)));
+    const page = items.slice(at, at + size);
+    if (!home) {
+      out.push(...pictureFirst(page));
+      continue;
+    }
+    for (const rank of [0, 1, 2]) {
+      out.push(...pictureFirst(page.filter((e) => homeRank(e, home) === rank)));
+    }
   }
   return out;
 }

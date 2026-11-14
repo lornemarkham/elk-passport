@@ -1,4 +1,5 @@
-import { MapPin } from "lucide-react";
+import { MapPin, Navigation } from "lucide-react";
+import type { Place } from "@/lib/data/types";
 import { SaveButton } from "./SaveButton";
 import { computeFitSignals, deriveMoodLine } from "./content";
 import { heroImage } from "./placeMedia";
@@ -26,12 +27,12 @@ export function PlaceHero({ place, operatedBy, media }: PlaceSectionProps) {
   // and coordinates remain the last resort rather than the second one.
   const operatorAddress = operatedBy?.find((o) => o.address?.trim())?.address;
 
-  const locationSummary =
-    place.address ??
-    operatorAddress ??
-    (place.geometry?.type === "Point"
-      ? `${place.geometry.coordinates[1].toFixed(3)}, ${place.geometry.coordinates[0].toFixed(3)}`
-      : undefined);
+  // **Coordinates are for the map, not for reading** (mission 845): Knox
+  // Mountain Park said "49.915, -119.459" under its name on a phone and had
+  // no way to get there. The coordinates now make the Directions link, and
+  // the line under the name only ever says an address.
+  const locationSummary = place.address ?? operatorAddress;
+  const directions = directionsTo(place.name, locationSummary, place.geometry);
 
   const moodLine = deriveMoodLine(
     computeFitSignals(place.activities, place.facilities),
@@ -74,8 +75,41 @@ export function PlaceHero({ place, operatedBy, media }: PlaceSectionProps) {
             )}
           </div>
         </div>
-        <SaveButton placeId={place.id} />
+        <div className="flex items-center gap-2">
+          {directions && (
+            <a
+              href={directions}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="place-directions"
+              className="border-border hover:bg-muted inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium"
+            >
+              <Navigation className="h-4 w-4" aria-hidden />
+              Directions
+            </a>
+          )}
+          <SaveButton placeId={place.id} />
+        </div>
       </div>
     </div>
   );
+}
+
+/**
+ * A map app's directions to this place: to its stated point where Atlas holds
+ * one, otherwise to its name and address. Neither, and there is no honest
+ * link to make.
+ */
+export function directionsTo(
+  name: string,
+  address: string | undefined,
+  geometry: Place["geometry"],
+): string | undefined {
+  const base = "https://www.google.com/maps/dir/?api=1&destination=";
+  if (geometry?.type === "Point") {
+    const [lng, lat] = geometry.coordinates;
+    return `${base}${lat},${lng}`;
+  }
+  if (address) return `${base}${encodeURIComponent(`${name}, ${address}`)}`;
+  return undefined;
 }

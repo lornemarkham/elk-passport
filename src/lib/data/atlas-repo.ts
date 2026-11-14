@@ -1,4 +1,5 @@
 import "server-only";
+import { cache as reactCache } from "react";
 import {
   ATLAS_BASE_URL,
   atlasAuthHeaders,
@@ -192,14 +193,22 @@ import type {
   SubjectComposition,
 } from "./types";
 
+/**
+ * Every Place, behind the same short memory as the candidates read
+ * (mission 845): a place page on production took 13–14 seconds to its first
+ * byte on every visit, because it re-read the whole of `/places` each time
+ * to give its "Keep exploring" cards their pictures.
+ */
 export async function listPlaces(): Promise<Place[]> {
-  const response = await atlasFetch("/places");
+  return cached("places", async () => {
+    const response = await atlasFetch("/places");
 
-  if (!response.ok) {
-    throw new Error("Failed to load places.");
-  }
+    if (!response.ok) {
+      throw new Error("Failed to load places.");
+    }
 
-  return response.json();
+    return (await response.json()) as Place[];
+  });
 }
 
 export async function getPlace(id: string): Promise<Place> {
@@ -222,7 +231,13 @@ export async function getPlace(id: string): Promise<Place> {
  * page can call Next.js's `notFound()` rather than rendering half a page;
  * any other failure still throws, same as every other function here.
  */
-export async function getPlaceDetail(id: string): Promise<PlaceDetail | null> {
+/**
+ * Read once per request: the page's metadata and its body both ask, and the
+ * second ask was a second full Atlas read.
+ */
+export const getPlaceDetail = reactCache(readPlaceDetail);
+
+async function readPlaceDetail(id: string): Promise<PlaceDetail | null> {
   const response = await atlasFetch(`/places/${id}/detail`);
 
   if (response.status === 404) {
