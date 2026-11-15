@@ -146,7 +146,7 @@ const FREE_SAID =
 const PARTLY_FREE =
   /\b(under|and under|kids?|children|child|infants?|babies|toddlers|seniors?|members?)\b[^.;]{0,20}\bfree\b|\bfree\b[^.;]{0,12}\b(for|on) (kids?|children|infants?|lap|members?)\b/i;
 
-function priceOf(e: Experience): { price?: string; free: boolean } {
+export function priceOf(e: Experience): { price?: string; free: boolean } {
   const band = e.suitability?.statements?.find((s) => s.about === "price-band");
   const practical = e.knowledge?.practical?.find(
     (p) => PRICE_LABEL.test(p.label) || /\$\s?\d/.test(p.value),

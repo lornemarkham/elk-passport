@@ -1,21 +1,14 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Bookmark,
-  CalendarHeart,
-  Compass,
-  MapPin,
-  Sun,
-} from "lucide-react";
+import { Bookmark, CalendarHeart, Compass, MapPin, Sun } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Picture } from "@/components/adventures/Picture";
 import { AdventureCard } from "@/components/adventures/AdventureCard";
 import { Festive } from "@/components/christmas/Festive";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { PinCard } from "@/components/christmas/lights/PinCard";
-import { SayIt } from "@/components/christmas/SayIt";
+import { PlanHero } from "@/components/christmas/PlanHero";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
 import { AtlasDown, Section } from "@/components/christmas/parts";
@@ -187,11 +180,11 @@ export default async function ChristmasPage({
                 <p className="text-sm font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
                   Go Have a Christmas
                 </p>
-                <h1 className="ghad-display mt-3 max-w-3xl text-[3.4rem] leading-[0.9] font-extrabold tracking-[-0.045em] text-balance sm:text-8xl">
-                  Christmas around {townName ?? "you"}.
+                <h1 className="ghad-display mt-3 max-w-3xl text-[3.1rem] leading-[0.9] font-extrabold tracking-[-0.045em] text-balance sm:text-8xl">
+                  Plan your Christmas adventure.
                 </h1>
                 <p
-                  className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-black/35 px-4 py-2 text-lg font-bold backdrop-blur"
+                  className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-black/35 px-4 py-2 text-base font-bold backdrop-blur"
                   data-testid="countdown"
                 >
                   <CalendarHeart
@@ -200,11 +193,9 @@ export default async function ChristmasPage({
                   />
                   {seasonLine(stage)}
                 </p>
-                <p className="mt-4 max-w-xl text-lg text-white/90">
-                  Lights, markets, Santa and the people you love — real things
-                  {townName ? ` near ${townName}` : " near you"}, with the dates
-                  to prove it. Let&apos;s make some Christmas memories.
-                </p>
+                <div className="mt-5 max-w-2xl">
+                  <PlanHero at={ask.at} />
+                </div>
                 <Suspense fallback={null}>
                   <ExperienceLocation
                     scope="christmas"
@@ -213,29 +204,21 @@ export default async function ChristmasPage({
                     className="mt-3 text-white"
                   />
                 </Suspense>
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <Link
-                    href="#build"
-                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 text-base font-bold text-[#082319] hover:brightness-105"
-                    data-testid="cta-plan"
-                  >
-                    Build a Christmas adventure
-                    <ArrowRight className="h-5 w-5" aria-hidden />
-                  </Link>
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm font-bold">
                   <Link
                     href={`/christmas/lights${lightsTown}`}
-                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#b3242f] px-6 text-base font-bold text-white hover:brightness-110"
+                    className="inline-flex min-h-11 items-center gap-1.5 underline-offset-4 hover:underline"
                     data-testid="cta-lights"
                   >
-                    <MapPin className="h-5 w-5" aria-hidden />
+                    <MapPin className="h-4 w-4 text-[#ffd98a]" aria-hidden />
                     The Christmas lights map
                   </Link>
                   <Link
                     href={`/christmas/discover${q}`}
-                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/15 px-6 text-base font-bold backdrop-blur hover:bg-white/25"
+                    className="inline-flex min-h-11 items-center gap-1.5 underline-offset-4 hover:underline"
                     data-testid="cta-discover"
                   >
-                    <Compass className="h-5 w-5" aria-hidden />
+                    <Compass className="h-4 w-4 text-[#ffd98a]" aria-hidden />
                     Find Christmas
                     {townName ? ` near ${townName}` : " near me"}
                   </Link>
@@ -260,6 +243,68 @@ export default async function ChristmasPage({
             <div className="mx-auto max-w-6xl space-y-14 px-4 pt-8 sm:px-6">
               {corpus.outage && <AtlasDown />}
 
+              <Section
+                id="browse"
+                eyebrow="Browse real Christmas"
+                title={`Christmas around ${townName ?? "you"}`}
+                line="Real markets, lights, Santa and shows — by kind, with the dates to prove it."
+              >
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {THEMES.map((theme) => {
+                    const here = live.filter((f) =>
+                      f.reading.themes.includes(theme.id),
+                    );
+                    const cover = here.find(hasPicture);
+                    return (
+                      <li key={theme.id}>
+                        <Link
+                          href={`/christmas/discover?theme=${theme.id}${amp}`}
+                          className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[24px] bg-[#0f3b2b] p-4 text-white shadow-[0_6px_24px_rgba(8,35,25,0.12)] transition hover:-translate-y-0.5 motion-reduce:transition-none"
+                          data-testid={`theme-${theme.id}`}
+                        >
+                          {cover && (
+                            <Picture
+                              experience={cover.experience}
+                              showLabel={false}
+                              fallbackTitle=""
+                              tone="#0f3b2b"
+                              className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
+                            />
+                          )}
+                          <span
+                            className="absolute inset-0 bg-gradient-to-t from-[#082319]/90 via-[#082319]/30 to-transparent"
+                            aria-hidden
+                          />
+                          <span className="relative">
+                            <span className="ghad-display block text-xl leading-tight font-extrabold">
+                              {theme.label}
+                            </span>
+                            <span className="text-sm text-white/85">
+                              {here.length > 0
+                                ? `${here.length} Atlas knows about`
+                                : "None in Atlas yet"}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                  <li>
+                    <Link
+                      href={`/christmas/discover${q}`}
+                      className="flex aspect-[4/5] flex-col justify-end rounded-[24px] bg-[#b3242f] p-4 text-white transition hover:brightness-110 motion-reduce:transition-none"
+                    >
+                      <span className="ghad-display text-xl leading-tight font-extrabold">
+                        Show me everything
+                      </span>
+                      <span className="text-sm text-white/85">
+                        {live.length} to look at
+                      </span>
+                    </Link>
+                  </li>
+                </ul>
+              </Section>
+
               {sections.length > 0 && (
                 <nav
                   aria-label="On this page"
@@ -271,7 +316,7 @@ export default async function ChristmasPage({
                       id: s.id as string,
                       label: SHORT[s.id],
                     })),
-                    { id: "build", label: "Build an adventure" },
+                    { id: "build", label: "A weekend or more" },
                   ].map((j) => (
                     <a
                       key={j.id}
@@ -369,102 +414,36 @@ export default async function ChristmasPage({
                 </p>
               )}
 
-              <section id="build" className="scroll-mt-20">
-                <div id="say-it" className="scroll-mt-20">
-                  <SayIt today={today} {...(ask.at ? { town: ask.at } : {})} />
-                </div>
-                <div className="mt-8">
-                  <Section
-                    eyebrow="Build a Christmas adventure"
-                    title="What are you dreaming of?"
-                    line="Add things to your Christmas day as you scroll — events, markets, light displays — then make it an adventure. Passport sketches around what you chose, from real places; invite your people, change anything."
-                  >
-                    <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-5">
-                      {SHAPES.map((shape) => (
-                        <li
-                          key={shape.id}
-                          className="w-[15rem] shrink-0 snap-start sm:w-auto"
-                        >
-                          <Link
-                            href={`/christmas/plan?shape=${shape.id}${amp}`}
-                            className={`${styles.ticket} flex h-full flex-col gap-2 rounded-[22px] p-5 transition hover:-translate-y-0.5 motion-reduce:transition-none`}
-                            data-testid={`shape-${shape.id}`}
-                          >
-                            <span
-                              className="h-1.5 w-10 rounded-full bg-[#b3242f]"
-                              aria-hidden
-                            />
-                            <span className="ghad-display text-lg leading-tight font-extrabold">
-                              {shape.label}
-                            </span>
-                            <span className="text-sm text-[var(--gh-ink-soft)]">
-                              {shape.line}
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </Section>
-                </div>
-              </section>
-
               <Section
-                eyebrow="Or start with what makes you grin"
-                title="What kind of Christmas?"
+                id="build"
+                eyebrow="More ways to plan"
+                title="A weekend, or a few days?"
+                line="Add things to your Christmas day as you scroll — events, markets, light displays — then make it an adventure for one day or several. Passport sketches around what you chose, from real places; invite your people, change anything."
               >
-                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {THEMES.map((theme) => {
-                    const here = live.filter((f) =>
-                      f.reading.themes.includes(theme.id),
-                    );
-                    const cover = here.find(hasPicture);
-                    return (
-                      <li key={theme.id}>
-                        <Link
-                          href={`/christmas/discover?theme=${theme.id}${amp}`}
-                          className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[24px] bg-[#0f3b2b] p-4 text-white shadow-[0_6px_24px_rgba(8,35,25,0.12)] transition hover:-translate-y-0.5 motion-reduce:transition-none"
-                          data-testid={`theme-${theme.id}`}
-                        >
-                          {cover && (
-                            <Picture
-                              experience={cover.experience}
-                              showLabel={false}
-                              fallbackTitle=""
-                              tone="#0f3b2b"
-                              className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
-                            />
-                          )}
-                          <span
-                            className="absolute inset-0 bg-gradient-to-t from-[#082319]/90 via-[#082319]/30 to-transparent"
-                            aria-hidden
-                          />
-                          <span className="relative">
-                            <span className="ghad-display block text-xl leading-tight font-extrabold">
-                              {theme.label}
-                            </span>
-                            <span className="text-sm text-white/85">
-                              {here.length > 0
-                                ? `${here.length} Atlas knows about`
-                                : "None in Atlas yet"}
-                            </span>
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                  <li>
-                    <Link
-                      href={`/christmas/discover${q}`}
-                      className="flex aspect-[4/5] flex-col justify-end rounded-[24px] bg-[#b3242f] p-4 text-white transition hover:brightness-110 motion-reduce:transition-none"
+                <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-5">
+                  {SHAPES.map((shape) => (
+                    <li
+                      key={shape.id}
+                      className="w-[15rem] shrink-0 snap-start sm:w-auto"
                     >
-                      <span className="ghad-display text-xl leading-tight font-extrabold">
-                        Show me everything
-                      </span>
-                      <span className="text-sm text-white/85">
-                        {live.length} to look at
-                      </span>
-                    </Link>
-                  </li>
+                      <Link
+                        href={`/christmas/plan?shape=${shape.id}${amp}`}
+                        className={`${styles.ticket} flex h-full flex-col gap-2 rounded-[22px] p-5 transition hover:-translate-y-0.5 motion-reduce:transition-none`}
+                        data-testid={`shape-${shape.id}`}
+                      >
+                        <span
+                          className="h-1.5 w-10 rounded-full bg-[#b3242f]"
+                          aria-hidden
+                        />
+                        <span className="ghad-display text-lg leading-tight font-extrabold">
+                          {shape.label}
+                        </span>
+                        <span className="text-sm text-[var(--gh-ink-soft)]">
+                          {shape.line}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </Section>
 

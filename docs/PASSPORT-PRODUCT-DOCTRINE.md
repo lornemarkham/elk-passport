@@ -833,6 +833,14 @@ okay or a public listing — and comes down at once on its owner's word. A
 pin last confirmed in an earlier season is shown as not yet confirmed and
 kept off tours. One composition; it answers no open question below.
 
+_Christmas plans from a sentence 2026-11-14_ (owner brief "Christmas
+Experience 2.0"; `docs/product/christmas/PLANNER.md`): `/christmas` opens on
+_What would you love to do?_ and every part somebody names (dinner, the
+lights, a movie…) becomes a stop that is a real place for that part or is
+shown unresolved with the reason — never filled with something else. The
+only question asked is the day, when none was said. One composition; it
+answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

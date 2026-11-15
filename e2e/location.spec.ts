@@ -146,7 +146,7 @@ for (const [label, viewport] of [
       // region, here), so the address is not rewritten and nothing is read
       // twice (M760).
       await expect(
-        page.getByRole("heading", { level: 1, name: /around Vernon/ }),
+        page.getByRole("heading", { level: 2, name: /around Vernon/ }),
       ).toBeVisible();
       expect(page.url()).not.toMatch(/at=/);
       await change(page, "kelowna", "kelowna");

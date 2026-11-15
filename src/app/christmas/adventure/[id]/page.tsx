@@ -53,6 +53,8 @@ const STARTED: Readonly<Record<string, string>> = {
   "no-town": "Choose where it starts and Passport can sketch it.",
   "no-dates": "Give it dates and Passport can sketch the days.",
   manual: "Your Christmas adventure is ready. Add things, invite your people.",
+  itinerary:
+    "Your Christmas plan is an adventure now — every stop at its time, from real places. Invite your people: they vote in, maybe or out, and add photos and memories on the day.",
 };
 
 function Panel({

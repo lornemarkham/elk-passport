@@ -30,7 +30,7 @@ test("Vernon, then Kelowna: an event and a light display become a shared Christm
   // 1 — Vernon is where Christmas opens, with real upcoming things.
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
+    page.getByRole("heading", { level: 2, name: /Christmas around Vernon/ }),
   ).toBeVisible();
   await expect(page.getByTestId("atlas-down")).toHaveCount(0);
   await expect(
@@ -47,7 +47,7 @@ test("Vernon, then Kelowna: an event and a light display become a shared Christm
     .getByRole("link", { name: "Kelowna", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
+    page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
   const event = page
     .getByTestId("around-soon")

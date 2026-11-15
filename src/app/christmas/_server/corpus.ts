@@ -5,6 +5,7 @@ import {
 } from "@/lib/data/atlas-repo";
 import { isAtlasUnavailable, type AtlasFailure } from "@/lib/data/atlasAuth";
 import { candidateToExperience } from "@/domain/experience/atlasMapper";
+import type { Experience } from "@/domain/experience/types";
 import { townById } from "@/domain/discovery/towns";
 import {
   askedDay,
@@ -25,6 +26,22 @@ export async function christmasFinds(
   ask: Pick<Ask, "at" | "km" | "ages" | "from" | "to">,
   today: string,
 ): Promise<{ readonly finds: Find[]; readonly outage?: AtlasFailure }> {
+  const { experiences, outage } = await christmasPool(ask);
+  return { finds: findsIn(experiences, today), ...(outage ? { outage } : {}) };
+}
+
+/**
+ * **The whole Atlas pool, measured from a town** — the same cached read the
+ * Christmas pages make, before it is narrowed to Christmas finds. The
+ * planner needs the rest of it too: a dinner or a movie is not a Christmas
+ * thing, and is still Atlas's to answer (`planItinerary`).
+ */
+export async function christmasPool(
+  ask: Pick<Ask, "at" | "km" | "ages" | "from" | "to">,
+): Promise<{
+  readonly experiences: Experience[];
+  readonly outage?: AtlasFailure;
+}> {
   const fullAsk = { ...ask, themes: [], budget: "any" as const };
   try {
     const town = townById(ask.at);
@@ -41,13 +58,13 @@ export async function christmasFinds(
       const reading = distances?.distances[c.id];
       return reading ? { ...e, distance: reading } : e;
     });
-    return { finds: findsIn(experiences, today) };
+    return { experiences };
   } catch (error) {
     const outage = isAtlasUnavailable(error) ? error.reason : "unreachable";
     console.error(
       `[atlas] christmas candidates unavailable (${outage}):`,
       error instanceof Error ? error.message : error,
     );
-    return { finds: [], outage };
+    return { experiences: [], outage };
   }
 }
