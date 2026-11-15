@@ -4,6 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import type { Map as MlMap, Marker } from "maplibre-gl";
 import type { LatLng } from "@/domain/christmas/lights/model";
+import { cluster as group } from "@/domain/christmas/lights/cluster";
 
 /**
  * **The Christmas lights map** — a night map with glowing markers. Tiles are
@@ -24,6 +25,12 @@ export interface MapMarker {
   readonly selected?: boolean;
 }
 
+/** Marker look: a lit display glows; the rest are quiet so the map stays readable. */
+const BASE =
+  "width:36px;height:36px;border-radius:999px;border:2px solid #ffd98a;text-align:center;cursor:pointer;padding:0;color:#fff";
+const GLOW =
+  "box-shadow:0 0 0 3px rgba(255,217,138,.22),0 0 10px 2px rgba(255,217,138,.45)";
+
 export function LightsMap({
   markers,
   center,
@@ -33,6 +40,9 @@ export function LightsMap({
   onSelect,
   className = "h-[58svh] min-h-[320px]",
   label,
+  clustered = false,
+  focus = null,
+  controls = true,
 }: {
   readonly markers: readonly MapMarker[];
   readonly center: LatLng;
@@ -45,6 +55,12 @@ export function LightsMap({
   readonly onSelect?: (id: string) => void;
   readonly className?: string;
   readonly label: string;
+  /** Group markers that would overlap into ✨ clusters (browsing). */
+  readonly clustered?: boolean;
+  /** Bring this point into view above the bottom card. */
+  readonly focus?: LatLng | null;
+  /** Zoom buttons. Off where pinch does it and the corner is needed. */
+  readonly controls?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
@@ -72,10 +88,11 @@ export function LightsMap({
         zoom,
         attributionControl: { compact: true },
       });
-      m.addControl(
-        new ml.NavigationControl({ showCompass: false }),
-        "top-right",
-      );
+      if (controls)
+        m.addControl(
+          new ml.NavigationControl({ showCompass: false }),
+          "top-right",
+        );
       map.current = m;
       m.on("click", (e) =>
         onPick.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }),
@@ -83,10 +100,11 @@ export function LightsMap({
       m.on("load", () => {
         ready.current = true;
         box.current?.setAttribute("data-ready", "1");
-        drawMarkers();
+        fitMarkers();
         drawRoute();
         drawPick();
       });
+      m.on("zoomend", () => redraw.current());
     });
     return () => {
       dead = true;
@@ -98,47 +116,93 @@ export function LightsMap({
   }, []);
 
   const markerKey = JSON.stringify(markers);
+  // The map's own events call the latest drawing, with the latest markers.
+  const redraw = useRef(() => {});
+  redraw.current = () => {
+    if (clustered) drawMarkers();
+  };
   const routeKey = JSON.stringify(route ?? []);
   const pickKey = JSON.stringify(pick?.at ?? null);
+
+  function markerEl(p: MapMarker, count?: number) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "xm-marker";
+    el.dataset.testid = count ? "map-cluster" : "map-marker";
+    el.dataset.id = p.id;
+    el.setAttribute(
+      "aria-label",
+      count ? `${count} displays close together — zoom in` : p.label,
+    );
+    el.title = count ? `${count} displays` : p.label;
+    el.textContent = count ? `✨${count}` : p.n ? String(p.n) : p.emoji;
+    el.style.cssText = [
+      BASE,
+      count ? "width:auto;min-width:44px;padding:0 8px" : "",
+      `background:${p.selected ? "#b3242f" : "#0f3b2b"}`,
+      p.n || count
+        ? "font:800 15px/32px system-ui"
+        : "font-size:18px;line-height:32px",
+      p.dim && !count ? "opacity:.55;filter:grayscale(.6)" : GLOW,
+    ].join(";");
+    return el;
+  }
 
   function drawMarkers() {
     const m = map.current;
     const ml = lib.current;
     if (!m || !ml || !ready.current) return;
     for (const p of placed.current) p.remove();
-    placed.current = markers.map((p) => {
-      const el = document.createElement("button");
-      el.type = "button";
-      el.className = "xm-marker";
-      el.dataset.testid = "map-marker";
-      el.dataset.id = p.id;
-      el.setAttribute("aria-label", p.label);
-      el.title = p.label;
-      el.textContent = p.n ? String(p.n) : p.emoji;
-      el.style.cssText = [
-        "width:38px;height:38px;border-radius:999px;border:2px solid #ffd98a",
-        `background:${p.selected ? "#b3242f" : "#0f3b2b"};color:#fff`,
-        p.n
-          ? "font:800 16px/34px system-ui"
-          : "font-size:19px;line-height:34px",
-        "text-align:center;cursor:pointer;padding:0",
-        p.dim
-          ? "opacity:.6;filter:grayscale(.6)"
-          : "box-shadow:0 0 0 4px rgba(255,217,138,.25),0 0 18px 6px rgba(255,217,138,.55)",
-      ].join(";");
+    const groups = clustered
+      ? group(
+          markers.map((p) => {
+            const pt = m.project([p.at.lng, p.at.lat]);
+            return { item: p, x: pt.x, y: pt.y };
+          }),
+          40,
+        )
+      : markers.map((p) => ({ items: [p], x: 0, y: 0 }));
+    placed.current = groups.map((g) => {
+      const one = g.items.length === 1;
+      const first = g.items[0]!;
+      const lead = g.items.find((p) => p.selected) ?? first;
+      const el = markerEl(lead, one ? undefined : g.items.length);
+      const at = one
+        ? first.at
+        : {
+            lat: g.items.reduce((s, p) => s + p.at.lat, 0) / g.items.length,
+            lng: g.items.reduce((s, p) => s + p.at.lng, 0) / g.items.length,
+          };
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        onSel.current?.(p.id);
+        if (one || m.getZoom() >= 16) {
+          onSel.current?.(lead.id);
+          return;
+        }
+        const b = new ml.LngLatBounds();
+        for (const p of g.items) b.extend([p.at.lng, p.at.lat]);
+        m.fitBounds(b, {
+          padding: 80,
+          maxZoom: Math.min(17, m.getZoom() + 3),
+          duration: 400,
+        });
       });
       return new ml.Marker({ element: el })
-        .setLngLat([p.at.lng, p.at.lat])
+        .setLngLat([at.lng, at.lat])
         .addTo(m);
     });
+  }
+
+  function fitMarkers() {
+    const m = map.current;
+    const ml = lib.current;
+    if (!m || !ml || !ready.current) return;
     if (markers.length > 1 && !pick) {
       const b = new ml.LngLatBounds();
       for (const p of markers) b.extend([p.at.lng, p.at.lat]);
       m.fitBounds(b, { padding: 56, maxZoom: 14, duration: 0 });
     }
+    drawMarkers();
   }
 
   function drawRoute() {
@@ -205,12 +269,29 @@ export function LightsMap({
     pickMarker.current = mk;
   }
 
+  // A new set of markers is framed; a change of selection only redraws.
+  const placesKey = JSON.stringify(markers.map((p) => [p.id, p.at]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(fitMarkers, [placesKey]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(drawMarkers, [markerKey]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(drawRoute, [routeKey]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(drawPick, [pickKey]);
+
+  const focusKey = focus ? `${focus.lat},${focus.lng}` : "";
+  useEffect(() => {
+    const m = map.current;
+    if (!focus || !m || !ready.current) return;
+    // Above the bottom card, which covers about the lower third.
+    m.easeTo({
+      center: [focus.lng, focus.lat],
+      offset: [0, -Math.round((box.current?.clientHeight ?? 600) * 0.18)],
+      duration: 350,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKey]);
 
   const centerKey = `${center.lat},${center.lng}`;
   useEffect(() => {

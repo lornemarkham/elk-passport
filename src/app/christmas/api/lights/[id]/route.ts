@@ -9,10 +9,13 @@ import {
   visitorKey,
 } from "../../../_server/lights";
 import {
+  addDetails,
   approve,
   check,
   decline,
   find,
+  parseDetails,
+  rate,
   react,
   Refused,
   remove,
@@ -37,6 +40,8 @@ const str = (v: unknown, max = 300) =>
  * Everything a person can do to one pin, by `action`:
  *
  * - `react` (signed in): toggle one of the five reactions
+ * - `rate` (signed in): "How magical was it?" — 1–5 stars and optional tags, one per season
+ * - `details` (its submitter or a reviewer): music, hours, walk-through… after pinning
  * - `check` (signed in): Lights are on! · Not decorated · Incorrect location · Display updated
  * - `report` (anyone): Something wrong? — a privacy report hides a home at once
  * - `remove` (its submitter or a reviewer)
@@ -57,7 +62,7 @@ export async function POST(
     action === "approve" || action === "decline" || action === "restore";
   // Reviewers work through a queue; their actions share the generous bucket.
   const limit =
-    action === "react" || (reviewing && v.reviewer)
+    action === "react" || action === "rate" || (reviewing && v.reviewer)
       ? "react"
       : action === "report"
         ? "report"
@@ -77,6 +82,16 @@ export async function POST(
         case "react":
           return {
             doc: react(doc, id, by, b.reaction as ReactionId, now),
+            result: null,
+          };
+        case "rate":
+          return {
+            doc: rate(doc, id, by, b.stars, b.tags, now),
+            result: null,
+          };
+        case "details":
+          return {
+            doc: addDetails(doc, id, by, v.reviewer, parseDetails(b), now),
             result: null,
           };
         case "check":
@@ -145,11 +160,16 @@ export async function POST(
       action === "report" ||
       action === "remove" ||
       action === "react" ||
+      action === "rate" ||
+      action === "details" ||
       action === "check"
     )
       await measure(`lights_${action}`, {
         ...(action === "report" && typeof b.reason === "string"
           ? { reason: b.reason.slice(0, 40) }
+          : {}),
+        ...(action === "rate" && typeof b.stars === "number"
+          ? { stars: b.stars }
           : {}),
       });
     const pin = (await readLights()).doc.pins.find((p) => p.id === id);

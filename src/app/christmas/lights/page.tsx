@@ -1,18 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Route, Sparkles } from "lucide-react";
+import { ArrowRight, MapPin, Sparkles } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { Festive } from "@/components/christmas/Festive";
 import { Explorer } from "@/components/christmas/lights/Explorer";
+import { MyLights } from "@/components/christmas/lights/MyLights";
 import { PinCard } from "@/components/christmas/lights/PinCard";
+import { Stars } from "@/components/christmas/lights/Rate";
 import christmas from "@/components/christmas/christmas.module.css";
 import styles from "@/components/christmas/lights/lights.module.css";
 import { todayIn } from "@/lib/adventures/overview";
 import {
-  TOWNS,
-  favourites,
-  type TownId,
+  KIND_EMOJI,
+  KIND_LABEL,
+  TOWN_LABEL,
+  isLightDisplay,
+  type PinView,
 } from "@/domain/christmas/lights/model";
+import {
+  areaById,
+  inAreaOf,
+  placeLabel,
+  type Area,
+} from "@/domain/christmas/lights/areas";
+import {
+  bestOf,
+  isFavourite,
+  isHiddenGem,
+  priorMean,
+} from "@/domain/christmas/lights/rank";
+import { lightUp } from "@/domain/christmas/lights/stats";
 import { lightsFor, viewer } from "../_server/lights";
 import { festiveStops } from "../_server/lightsAtlas";
 
@@ -44,8 +60,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * **The Christmas lights map** — Pin the Magic's front door. Anyone can
- * browse what is published; pinning, reacting and saving need an account.
+ * **The Christmas Lights Map** (Lights Map 2.0, 2026-11-14). The map is the
+ * page: on a phone it fills the screen, shows light displays only, and a
+ * tap opens a compact card. Below it: your own lights, Light Up Vernon, the
+ * community's best, and the other Christmas things — markets, shows, Santa —
+ * that used to crowd the map. Anyone can browse what is published; adding
+ * lights, rating and saving need an account.
  */
 export default async function LightsPage({
   searchParams,
@@ -54,96 +74,282 @@ export default async function LightsPage({
 }) {
   const params = (await searchParams) ?? {};
   const at = typeof params.at === "string" ? params.at : null;
-  const town = (TOWNS as readonly string[]).includes(at ?? "")
-    ? (at as TownId)
-    : null;
+  const area = areaById(at)?.id ?? null;
   const [v, festive] = await Promise.all([
     viewer(),
     festiveStops(todayIn()).catch(() => ({ stops: [], outage: true })),
   ]);
   const { pins, ready } = await lightsFor(v);
-  const { favourites: loved, trending } = favourites(pins, 3);
-  const published = pins.filter((p) => p.status === "approved");
-  const lit = published.filter((p) => p.season === "lit").length;
+  const lights = pins.filter((p) => isLightDisplay(p.kind));
+  const published = lights.filter((p) => p.status === "approved");
+  const others = pins.filter(
+    (p) => !isLightDisplay(p.kind) && p.status === "approved",
+  );
+  const mine = pins.filter((p) => p.yours);
+  const prior = priorMean(published);
+  const fav = (p: PinView) => isFavourite(p, prior);
+  const community = lightUp(published, placeLabel, fav);
+  const within = (id: string) => {
+    const a = areaById(id);
+    return a ? (p: PinView) => inAreaOf(a as Area, p.at) : () => false;
+  };
+  const lists = [
+    { id: "vernon", title: "Best in Vernon", keep: within("vernon") },
+    {
+      id: "coldstream",
+      title: "Best in Coldstream",
+      keep: within("coldstream"),
+    },
+    {
+      id: "east-hill",
+      title: "East Hill favourites",
+      keep: within("east-hill"),
+    },
+    { id: "lumby", title: "Worth the drive to Lumby", keep: within("lumby") },
+    { id: "gems", title: "Hidden gems", keep: isHiddenGem },
+  ].map((l) => ({ ...l, pins: bestOf(published, l.keep, 4, prior) }));
+  const rated = lists.filter((l) => l.pins.length > 0);
 
   return (
     <>
       <ThemeProvider className="block">
         <main
-          className={`${christmas.page} ${styles.scope} ${styles.dark} min-h-screen pb-32`}
+          className={`${christmas.page} ${styles.scope} ${styles.dark} min-h-screen pb-16`}
         >
-          <header className={christmas.night}>
-            <div className="mx-auto max-w-6xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14">
+          <header className="mx-auto flex min-h-[4.5rem] max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+            <div className="min-w-0">
               <Link
                 href="/christmas"
-                className="text-sm font-bold tracking-[0.18em] text-[#ffd98a] uppercase hover:underline"
+                className="text-xs font-bold tracking-[0.16em] text-[#ffd98a] uppercase hover:underline"
               >
                 Go Have a Christmas
               </Link>
-              <h1 className="ghad-display mt-3 max-w-3xl text-5xl leading-[0.92] font-extrabold tracking-[-0.04em] text-balance sm:text-7xl">
+              <h1 className="ghad-display text-xl leading-tight font-extrabold tracking-[-0.02em] sm:text-3xl">
                 The Christmas Lights Map
               </h1>
-              <p className="mt-4 max-w-xl text-lg text-white/90">
-                The best lights around Vernon, Coldstream, Lumby, Armstrong and
-                Kelowna — pinned by families, checked by a person, and{" "}
-                <strong className="text-[#ffd98a]">
-                  {lit} confirmed lit this season
-                </strong>
-                .
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/christmas/lights/tour"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffd98a] px-6 font-extrabold text-[#082319]"
-                  data-testid="cta-tour"
+            </div>
+            <p
+              className="shrink-0 text-right text-sm text-white/85"
+              data-testid="lit-count"
+            >
+              <strong className="text-[#ffd98a]">{community.confirmed}</strong>{" "}
+              lit
+              <br className="sm:hidden" /> this season
+            </p>
+          </header>
+
+          {!ready && (
+            <p
+              className="mx-auto mb-2 max-w-6xl rounded-2xl bg-[#f7e3e1] p-3 text-sm text-[#082319]"
+              role="status"
+              data-testid="not-ready"
+            >
+              Families&apos; pins aren&apos;t loading right now — you&apos;re
+              seeing the public displays we checked ourselves.
+            </p>
+          )}
+
+          <div className="mx-auto max-w-6xl sm:px-6">
+            <Explorer pins={lights} initialArea={area} />
+          </div>
+
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <MyLights pins={mine} />
+
+            <section
+              className="mt-10 rounded-[28px] bg-[#0f3b2b] p-5 ring-1 ring-[#ffd98a]/20"
+              data-testid="light-up-vernon"
+            >
+              <h2 className="ghad-display text-2xl font-extrabold">
+                Help us light up Vernon!
+              </h2>
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-2xl bg-white/10 p-3">
+                  <dt className="text-xs text-white/75">
+                    Confirmed this season
+                  </dt>
+                  <dd
+                    className="text-3xl font-extrabold text-[#ffd98a]"
+                    data-testid="lu-confirmed"
+                  >
+                    {community.confirmed}
+                  </dd>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-3">
+                  <dt className="text-xs text-white/75">
+                    Community favourites
+                  </dt>
+                  <dd className="text-3xl font-extrabold text-[#ffd98a]">
+                    {community.favourites}
+                  </dd>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-3">
+                  <dt className="text-xs text-white/75">Rated by families</dt>
+                  <dd className="text-3xl font-extrabold text-[#ffd98a]">
+                    {community.rated}
+                  </dd>
+                </div>
+              </dl>
+              {community.places.length > 0 ? (
+                <p
+                  className="mt-3 text-sm text-white/85"
+                  data-testid="lu-places"
                 >
-                  <Route className="h-5 w-5" aria-hidden /> Build my lights tour
+                  Lit so far:{" "}
+                  {community.places
+                    .slice(0, 6)
+                    .map((p) => `${p.label} ${p.n}`)
+                    .join(" · ")}
+                </p>
+              ) : (
+                <p
+                  className="mt-3 text-sm text-white/85"
+                  data-testid="lu-places"
+                >
+                  Nothing is confirmed lit yet this season — most displays
+                  switch on in late November. Yours could be the first.
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/christmas/lights/pin"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#b3242f] px-5 font-extrabold text-white"
+                  data-testid="share-your-display"
+                >
+                  <MapPin className="h-5 w-5" aria-hidden /> Share your display
                 </Link>
                 <Link
                   href="/christmas/lights/bingo"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/15 px-6 font-bold backdrop-blur hover:bg-white/25"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/15 px-5 font-bold"
                 >
                   <Sparkles className="h-5 w-5" aria-hidden /> Lights bingo
                 </Link>
               </div>
-              <Festive className="mt-4" />
-            </div>
-            <div className={christmas.lights} aria-hidden />
-          </header>
+            </section>
 
-          <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
-            {!ready && (
-              <p
-                className="mb-4 rounded-2xl bg-[#f7e3e1] p-4 text-[#082319]"
-                role="status"
-                data-testid="not-ready"
-              >
-                Families&apos; pins aren&apos;t loading right now — you&apos;re
-                seeing the public displays we checked ourselves. Try again in a
-                little while.
-              </p>
-            )}
-            <Explorer
-              pins={pins}
-              festive={festive.stops}
-              signedIn={v.signedIn}
-              initialTown={town}
-            />
+            <section className="mt-10" data-testid="best-of">
+              <h2 className="ghad-display text-2xl font-extrabold">
+                The community&apos;s best
+              </h2>
+              {rated.length === 0 ? (
+                <p
+                  className="mt-2 max-w-xl text-white/85"
+                  data-testid="no-ratings"
+                >
+                  No ratings yet this season. Seen a display? Tap it, then
+                  &ldquo;How magical was it?&rdquo; — the best lists start with
+                  you.
+                </p>
+              ) : (
+                <div className="mt-3 grid gap-6 sm:grid-cols-2">
+                  {rated.map((l) => (
+                    <div key={l.id} data-testid={`best-${l.id}`}>
+                      <h3 className="font-extrabold text-[#ffd98a]">
+                        {l.title}
+                      </h3>
+                      <ol className="mt-2 space-y-2">
+                        {l.pins.map((p, i) => (
+                          <li key={p.id}>
+                            <Link
+                              href={`/christmas/lights/${p.id}`}
+                              className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 hover:bg-white/15"
+                            >
+                              <span className="font-extrabold text-white/60">
+                                {i + 1}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate font-bold">
+                                  {p.name}
+                                </span>
+                                <span className="text-sm text-white/70">
+                                  {placeLabel(p)}
+                                </span>
+                              </span>
+                              <Stars rating={p.rating} light />
+                            </Link>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
-            {(trending.length > 0 || loved.length > 0) && (
-              <section className="mt-12" data-testid="favourites">
-                <h2 className="ghad-display text-2xl font-extrabold text-white">
-                  {trending.length > 0
-                    ? "Trending this week"
-                    : "Community favourites"}
-                </h2>
-                <ul className="mt-4 grid gap-4 sm:grid-cols-3">
-                  {(trending.length > 0 ? trending : loved).map((p) => (
+            <section className="mt-10">
+              <h2 className="ghad-display text-2xl font-extrabold">
+                {area
+                  ? `Lights around ${areaById(area)!.label}`
+                  : "Every display on the map"}
+              </h2>
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {published
+                  .filter((p) => !area || inAreaOf(areaById(area)!, p.at))
+                  .map((p) => (
                     <li key={p.id}>
                       <PinCard pin={p} />
                     </li>
                   ))}
+              </ul>
+            </section>
+
+            {(others.length > 0 || festive.stops.length > 0) && (
+              <section className="mt-12" data-testid="other-christmas">
+                <h2 className="ghad-display text-2xl font-extrabold">
+                  Markets, shows &amp; Santa
+                </h2>
+                <p className="text-white/80">
+                  Not light displays, so they&apos;re off the map — but good for
+                  the same night.
+                </p>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {others.map((p) => (
+                    <li key={p.id}>
+                      <Link
+                        href={`/christmas/lights/${p.id}`}
+                        className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 hover:bg-white/15"
+                        data-testid="other-item"
+                      >
+                        <span className="text-2xl" aria-hidden>
+                          {KIND_EMOJI[p.kind]}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-bold">{p.name}</span>
+                          <span className="text-sm text-white/70">
+                            {KIND_LABEL[p.kind]} · {TOWN_LABEL[p.town]}
+                            {p.hours ? ` · ${p.hours}` : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                  {festive.stops.map((f) => (
+                    <li key={f.id}>
+                      <Link
+                        href={f.href}
+                        className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 hover:bg-white/15"
+                        data-testid="other-item"
+                      >
+                        <span className="text-2xl" aria-hidden>
+                          {f.emoji}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-bold">{f.name}</span>
+                          <span className="text-sm text-white/70">
+                            From Atlas{f.line ? ` · ${f.line}` : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
+                <Link
+                  href="/christmas/discover"
+                  className="mt-3 inline-flex items-center gap-1 font-bold text-[#ffd98a] hover:underline"
+                >
+                  Everything Christmas near you{" "}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
               </section>
             )}
 
@@ -153,13 +359,18 @@ export default async function LightsPage({
               </h2>
               <ul className="mt-3 space-y-2 text-white/85">
                 <li>
-                  🏠 A home is only shown with its owner&apos;s okay (or a
-                  public listing). Until then it&apos;s private.
+                  🏠 A home is only shown with its owner&apos;s okay. A
+                  neighbour&apos;s suggestion stays private until then.
                 </li>
                 <li>
-                  💡 Every pin says whether it&apos;s confirmed lit{" "}
+                  💡 Every display says whether it&apos;s confirmed{" "}
                   <em>this</em> season. Last year&apos;s lights wait for someone
                   to say they&apos;re on.
+                </li>
+                <li>
+                  ⭐ Ratings are real families&apos; — one each, per display,
+                  per season. Lists favour many good ratings over one perfect
+                  one.
                 </li>
                 <li>
                   🚩 Something wrong? Every display has a button. A home
@@ -168,14 +379,6 @@ export default async function LightsPage({
               </ul>
             </section>
           </div>
-
-          <Link
-            href="/christmas/lights/pin"
-            className={`${styles.fab} fixed right-4 bottom-5 z-30 inline-flex min-h-14 items-center gap-2 rounded-full bg-[#b3242f] px-6 text-lg font-extrabold text-white sm:right-8 sm:bottom-8`}
-            data-testid="pin-the-magic"
-          >
-            <MapPin className="h-6 w-6" aria-hidden /> PIN THE MAGIC!
-          </Link>
         </main>
       </ThemeProvider>
     </>

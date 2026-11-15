@@ -10,9 +10,9 @@ import { viewer } from "../../_server/lights";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "PIN THE MAGIC! — Christmas Lights Map",
+  title: "Add to the Christmas Map — Christmas Lights Map",
   description:
-    "Seen an amazing Christmas display? Pin it so other families can find it.",
+    "Your lights, or a display you spotted: three steps, under a minute.",
 };
 
 export default async function PinPage({
@@ -41,11 +41,11 @@ export default async function PinPage({
                 ← The lights map
               </Link>
               <h1 className="ghad-display mt-3 text-5xl leading-[0.95] font-extrabold tracking-[-0.03em]">
-                📍 PIN THE MAGIC!
+                📍 Add to the Christmas Map
               </h1>
               <p className="mt-3 text-lg text-white/90">
-                Seen a display that made you gasp? Pin it, and other families
-                can add it to their Christmas tour.
+                Your own lights, or a display that made you gasp — three steps,
+                and families can add it to their tour.
               </p>
             </div>
             <div className={christmas.lights} aria-hidden />
@@ -62,15 +62,15 @@ export default async function PinPage({
                   First, sign in
                 </h2>
                 <p className="mt-2">
-                  Pins come from real people, so every one needs an account. It
-                  takes a minute — then you&apos;re back here with the map
+                  Displays come from real people, so every one needs an account.
+                  It takes a minute — then you&apos;re back here with the map
                   ready.
                 </p>
                 <Link
                   href={`/auth?next=${encodeURIComponent("/christmas/lights/pin")}`}
                   className="mt-4 inline-flex min-h-12 items-center rounded-full bg-[#b3242f] px-6 font-extrabold text-white"
                 >
-                  Sign in to pin the magic
+                  Sign in to add lights
                 </Link>
                 {v.signedIn && (
                   <p className="mt-3 text-sm text-[#5b4a2e]">

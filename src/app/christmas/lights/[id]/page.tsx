@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Reactions } from "@/components/christmas/lights/Reactions";
+import { Rate, Stars } from "@/components/christmas/lights/Rate";
+import { AddDetails, StillOn } from "@/components/christmas/lights/MyLights";
 import { PinCard, SeasonBadge } from "@/components/christmas/lights/PinCard";
 import {
   Checks,
@@ -17,9 +19,11 @@ import {
   FEATURES,
   KIND_EMOJI,
   KIND_LABEL,
+  RATING_TAGS,
   TOWN_LABEL,
   photoSrc,
 } from "@/domain/christmas/lights/model";
+import { placeLabel } from "@/domain/christmas/lights/areas";
 import { lightsFor, viewer } from "../../_server/lights";
 
 export const dynamic = "force-dynamic";
@@ -90,7 +94,7 @@ export default async function PinPage({ params }: Props) {
             </Link>
             <header>
               <p className="text-sm font-bold tracking-[0.12em] text-[#b3242f] uppercase">
-                {KIND_LABEL[pin.kind]} · {TOWN_LABEL[pin.town]}
+                {KIND_LABEL[pin.kind]} · {placeLabel(pin)}
               </p>
               <h1
                 className="ghad-display mt-1 text-4xl leading-tight font-extrabold text-[#082319]"
@@ -98,10 +102,17 @@ export default async function PinPage({ params }: Props) {
               >
                 {pin.name}
               </h1>
-              <div className="mt-2">
+              <div className="mt-2 flex flex-wrap items-center gap-3">
                 <SeasonBadge pin={pin} />
+                <Stars rating={pin.rating} />
               </div>
             </header>
+            {pin.yours && (
+              <div className="space-y-3" data-testid="yours">
+                <StillOn pin={pin} />
+                <AddDetails pin={pin} />
+              </div>
+            )}
             {pin.status === "pending" && (
               <p
                 className="rounded-2xl bg-[#f7e3e1] p-4 text-[#082319]"
@@ -145,10 +156,19 @@ export default async function PinPage({ params }: Props) {
               )}
             </dl>
             {pin.status === "approved" && (
-              <section>
-                <h2 className="ghad-display mb-2 text-xl font-extrabold text-[#082319]">
-                  How magical is it?
-                </h2>
+              <section className="space-y-4 rounded-[24px] bg-white p-5 shadow-[0_6px_24px_rgba(8,35,25,0.08)]">
+                <Rate pin={pin} signedIn={v.signedIn} />
+                {pin.tags.length > 0 && (
+                  <p className="text-sm text-[#3d4a43]" data-testid="pin-tags">
+                    Families say:{" "}
+                    {pin.tags
+                      .map(
+                        (t) =>
+                          `${RATING_TAGS.find((r) => r.id === t.id)?.label} (${t.n})`,
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
                 <Reactions pin={pin} signedIn={v.signedIn} />
               </section>
             )}

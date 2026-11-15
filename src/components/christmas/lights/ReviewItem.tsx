@@ -79,7 +79,7 @@ export function ReviewItem({ pin }: { readonly pin: PinView }) {
             <p className="mt-1 text-sm font-bold">
               {pin.review?.consentClaim
                 ? CLAIM[pin.review.consentClaim]
-                : "Submitter wasn't sure about permission"}
+                : "A neighbour's suggestion — the homeowner hasn't said yes. Publish only once they have."}
               {pin.review?.consentUrl ? ` — ${pin.review.consentUrl}` : ""}
             </p>
           )}

@@ -833,6 +833,14 @@ okay or a public listing — and comes down at once on its owner's word. A
 pin last confirmed in an earlier season is shown as not yet confirmed and
 kept off tours. One composition; it answers no open question below.
 
+_The lights map became map-first 2026-11-14_ (owner brief "Christmas Lights
+Map 2.0"; `docs/product/christmas/LIGHTS-MAP-2.md`): the map draws light
+displays only (markets, shows and Santa are listed beside it), families rate
+displays 1–5 stars, a lights tour is built from three questions and lived a
+stop at a time with the phone's own map app doing the driving, and adding
+lights is three steps. A neighbour's suggestion of a home stays private
+until the homeowner says yes; a reviewer still looks at every pin.
+
 _Christmas plans from a sentence 2026-11-14_ (owner brief "Christmas
 Experience 2.0"; `docs/product/christmas/PLANNER.md`): `/christmas` opens on
 _What would you love to do?_ and every part somebody names (dinner, the
@@ -1157,7 +1165,10 @@ certainty. Do not invent an answer here to make the document feel finished.
    them? (§2.2) _Christmas lights pins carry the owner's five playful
    reactions (2026-11-10, Pin the Magic): a community tally about a display,
    one of each per account, not a taste signal about the person. That leaves
-   this question open for Passport._
+   this question open for Passport._ _The owner's 1–5 star rating
+   (2026-11-14, Lights Map 2.0) is the same kind of thing: a community
+   rating about a display, one per account per season, never a signal about
+   the person rating._
 4. **Planning UI.** What SHAPE actually looks like. (§2.5)
    _Answered narrowly for adventures (ADR 010, 2026-10-21): a day of an
    adventure is shaped in Go Have a Day and saved back; a weekend is shaped

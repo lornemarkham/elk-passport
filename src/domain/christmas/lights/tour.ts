@@ -24,7 +24,32 @@ export interface Stop {
   readonly love?: number;
   /** Minutes to enjoy it, when someone stated it. */
   readonly minutes?: number;
+  /** Community rating, when anyone has rated it. */
+  readonly rating?: { readonly mean: number; readonly count: number } | null;
+  /** People who said it's great for kids, plus FAMILY FAVOURITE! reactions. */
+  readonly kids?: number;
 }
+
+/**
+ * **What kind of tour** — the third of Build My Lights Tour's three
+ * questions. Each only changes which displays lead; none admits a display
+ * that isn't confirmed lit.
+ */
+export const STYLES = [
+  { id: "best", label: "Best rated" },
+  { id: "most", label: "Most displays" },
+  { id: "family", label: "Family favourites" },
+  { id: "gems", label: "Hidden gems" },
+] as const;
+export type TourStyle = (typeof STYLES)[number]["id"];
+
+/** How long — the first question. "All evening" is four hours. */
+export const DURATIONS = [
+  { minutes: 30, label: "30 minutes" },
+  { minutes: 60, label: "1 hour" },
+  { minutes: 120, label: "2 hours" },
+  { minutes: 240, label: "All evening" },
+] as const;
 
 export interface TourAsk {
   readonly from: LatLng;
@@ -36,6 +61,10 @@ export interface TourAsk {
   readonly prefer: readonly FeatureId[];
   /** Include markets and festive Atlas finds alongside the lights. */
   readonly festive: boolean;
+  /** Which displays lead (default: the most loved close by). */
+  readonly style?: TourStyle;
+  /** The map's average rating, for fair ordering (`rank.ts`). */
+  readonly prior?: number;
 }
 
 export interface Leg {
@@ -197,11 +226,39 @@ export function buildTour(ask: TourAsk, candidates: readonly Stop[]): Tour {
       metres(ask.from, c.at) <= reach &&
       (ask.festive || c.kind === "home" || isLights(c)),
   );
+  const prior = ask.prior ?? 3.5;
   const score = (s: Stop) => {
     const km = metres(ask.from, s.at) / 1000;
     const love = Math.log2(1 + (s.love ?? 0));
     const liked = ask.prefer.filter((p) => s.features?.includes(p)).length;
-    return love + liked * 1.5 - km / (ask.mode === "walk" ? 0.5 : 4);
+    const near = km / (ask.mode === "walk" ? 0.5 : 4);
+    const n = s.rating?.count ?? 0;
+    const fair = s.rating ? (4 * prior + s.rating.mean * n) / (4 + n) : prior;
+    switch (ask.style) {
+      case "best":
+        return (fair - prior) * 4 + love * 0.5 + liked - near;
+      case "most":
+        // Close together, quick to see: as many as fit.
+        return liked + love * 0.25 - near * 2;
+      case "family":
+        return (
+          Math.log2(1 + (s.kids ?? 0)) * 2 +
+          (s.features?.includes("family") ? 2 : 0) +
+          (s.features?.includes("walk-through") ? 1 : 0) +
+          (fair - prior) * 2 +
+          liked -
+          near
+        );
+      case "gems": {
+        const quiet = Math.log2(1 + n + (s.love ?? 0));
+        const loved = s.rating && s.rating.mean >= 4.5 ? 2 : 0;
+        return (
+          loved + (s.rating ? s.rating.mean - prior : 0) - quiet + liked - near
+        );
+      }
+      default:
+        return love + liked * 1.5 - near;
+    }
   };
   const ranked = [...inReach].sort((a, b) => score(b) - score(a));
   const picked: Stop[] = [];
