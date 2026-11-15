@@ -43,6 +43,7 @@ export function LightsMap({
   clustered = false,
   focus = null,
   controls = true,
+  creditTop = false,
 }: {
   readonly markers: readonly MapMarker[];
   readonly center: LatLng;
@@ -61,6 +62,8 @@ export function LightsMap({
   readonly focus?: LatLng | null;
   /** Zoom buttons. Off where pinch does it and the corner is needed. */
   readonly controls?: boolean;
+  /** Put the map's credit top-left, clear of buttons laid over the bottom. */
+  readonly creditTop?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
@@ -86,8 +89,22 @@ export function LightsMap({
         style: STYLE,
         center: [center.lng, center.lat],
         zoom,
-        attributionControl: { compact: true },
+        attributionControl: creditTop ? false : { compact: true },
       });
+      if (creditTop) {
+        m.addControl(new ml.AttributionControl({ compact: true }), "top-left");
+        const corner = box.current.querySelector<HTMLElement>(
+          ".maplibregl-ctrl-top-left",
+        );
+        // Under the row of place chips.
+        if (corner) corner.style.marginTop = "52px";
+        // Folded to its ⓘ, as MapLibre's compact credit is meant to be; one tap opens it.
+        m.once("load", () =>
+          box.current
+            ?.querySelector(".maplibregl-compact-show")
+            ?.classList.remove("maplibregl-compact-show"),
+        );
+      }
       if (controls)
         m.addControl(
           new ml.NavigationControl({ showCompass: false }),
@@ -200,7 +217,12 @@ export function LightsMap({
     if (markers.length > 1 && !pick) {
       const b = new ml.LngLatBounds();
       for (const p of markers) b.extend([p.at.lng, p.at.lat]);
-      m.fitBounds(b, { padding: 56, maxZoom: 14, duration: 0 });
+      // On the browse map, clear of the chips above and the buttons below.
+      m.fitBounds(b, {
+        padding: clustered ? { top: 70, bottom: 90, left: 40, right: 40 } : 56,
+        maxZoom: 14,
+        duration: 0,
+      });
     }
     drawMarkers();
   }

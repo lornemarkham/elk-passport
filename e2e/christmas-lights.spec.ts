@@ -95,6 +95,9 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
   ).toContain("google.com/maps/dir/");
   const sheetBox = await sheet.boundingBox();
   expect(sheetBox!.height).toBeLessThan(844 * 0.45);
+  // Its buttons are on screen, not under the fold.
+  const add = await sheet.getByTestId("sheet-add-to-tour").boundingBox();
+  expect(add!.y + add!.height).toBeLessThanOrEqual(844);
   await sheet.getByTestId("sheet-save").click();
   await expect(sheet.getByTestId("sheet-save")).toHaveAttribute(
     "aria-pressed",

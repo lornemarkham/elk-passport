@@ -99,170 +99,175 @@ export function Explorer({
     }`;
 
   return (
-    <div className="relative" data-testid="explorer">
-      <LightsMap
-        markers={markers}
-        center={center}
-        zoom={place ? 13 : 10}
-        onSelect={setSelected}
-        clustered
-        controls={false}
-        focus={pick?.at ?? null}
-        className="h-[68svh] min-h-[400px] rounded-none sm:h-[78svh] sm:rounded-[28px]"
-        label={`Christmas lights map: ${shown.length} light displays${place ? ` in ${place.label}` : ""}`}
-      />
+    <div data-testid="explorer">
+      <div className="relative">
+        <LightsMap
+          markers={markers}
+          center={center}
+          zoom={place ? 13 : 10}
+          onSelect={setSelected}
+          clustered
+          controls={false}
+          creditTop
+          focus={pick?.at ?? null}
+          className="h-[68svh] min-h-[400px] rounded-none sm:h-[78svh] sm:rounded-[28px]"
+          label={`Christmas lights map: ${shown.length} light displays${place ? ` in ${place.label}` : ""}`}
+        />
 
-      <div
-        className="absolute inset-x-0 top-0 z-10 flex [scrollbar-width:none] gap-2 overflow-x-auto px-3 pt-3 pb-2"
-        role="group"
-        aria-label="Where"
-      >
-        <button
-          type="button"
-          className={chip(!area)}
-          onClick={() => {
-            setArea(null);
-            setSelected(null);
-          }}
-          aria-pressed={!area}
+        <div
+          className="absolute inset-x-0 top-0 z-10 flex [scrollbar-width:none] gap-2 overflow-x-auto px-3 pt-3 pb-2"
+          role="group"
+          aria-label="Where"
         >
-          Everywhere
-        </button>
-        {AREAS.filter((a) => a.onMap).map((a) => (
           <button
-            key={a.id}
             type="button"
-            className={chip(area === a.id)}
+            className={chip(!area)}
             onClick={() => {
-              setArea(a.id);
+              setArea(null);
               setSelected(null);
             }}
-            aria-pressed={area === a.id}
-            data-testid={`town-${a.id}`}
+            aria-pressed={!area}
           >
-            {a.label}
+            Everywhere
           </button>
-        ))}
-      </div>
+          {AREAS.filter((a) => a.onMap).map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              className={chip(area === a.id)}
+              onClick={() => {
+                setArea(a.id);
+                setSelected(null);
+              }}
+              aria-pressed={area === a.id}
+              data-testid={`town-${a.id}`}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
 
-      {pick ? (
-        <div
-          className="absolute inset-x-2 bottom-2 z-20 max-h-[44%] overflow-y-auto rounded-[22px] bg-white p-3 text-[#082319] shadow-2xl sm:inset-x-auto sm:right-3 sm:w-[380px]"
-          data-testid="map-sheet"
-        >
-          <button
-            type="button"
-            onClick={() => setSelected(null)}
-            className="absolute top-1.5 right-1.5 rounded-full p-2 text-[#0f3b2b] hover:bg-black/5"
-            aria-label="Close"
+        {pick ? (
+          <div
+            className="absolute inset-x-2 bottom-2 z-20 max-h-[58%] overflow-y-auto rounded-[22px] bg-white p-3 text-[#082319] shadow-2xl sm:inset-x-auto sm:right-3 sm:w-[380px]"
+            data-testid="map-sheet"
           >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
-          <Link
-            href={`/christmas/lights/${pick.id}`}
-            className="flex gap-3 pr-8"
-            data-testid="sheet-open"
-          >
-            {photoSrc(pick) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoSrc(pick)!}
-                alt=""
-                className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover"
-              />
-            ) : (
-              <span
-                className="xm-glow flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl text-3xl"
-                aria-hidden
-              >
-                {KIND_EMOJI[pick.kind]}
-              </span>
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="ghad-display block text-lg leading-tight font-extrabold">
-                {pick.name}
-              </span>
-              <span
-                className="block text-sm text-[#3d4a43]"
-                data-testid="sheet-place"
-              >
-                {placeLabel(pick)}
-              </span>
-              <Stars rating={pick.rating} />
-            </span>
-          </Link>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            <SeasonBadge pin={pick} />
-            {pick.hours && (
-              <span className="text-[#3d4a43]">🕯️ {pick.hours}</span>
-            )}
-          </div>
-          <div className="mt-3 flex gap-2">
             <button
               type="button"
-              onClick={() => toggleStash(pick.id)}
-              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-extrabold ${stash.includes(pick.id) ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a]"}`}
-              data-testid="sheet-add-to-tour"
-              aria-pressed={stash.includes(pick.id)}
+              onClick={() => setSelected(null)}
+              className="absolute top-1.5 right-1.5 rounded-full p-2 text-[#0f3b2b] hover:bg-black/5"
+              aria-label="Close"
             >
-              {stash.includes(pick.id) ? (
-                "✓ On my tour"
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+            <Link
+              href={`/christmas/lights/${pick.id}`}
+              className="flex gap-3 pr-8"
+              data-testid="sheet-open"
+            >
+              {photoSrc(pick) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoSrc(pick)!}
+                  alt=""
+                  className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover"
+                />
               ) : (
-                <>
-                  <Plus className="h-4 w-4" aria-hidden /> Add to Tour
-                </>
+                <span
+                  className="xm-glow flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl text-3xl"
+                  aria-hidden
+                >
+                  {KIND_EMOJI[pick.kind]}
+                </span>
               )}
-            </button>
-            <a
-              href={directionsTo(pick.at)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-[#0f3b2b]/20"
-              data-testid="sheet-directions"
-            >
-              <Navigation className="h-4 w-4" aria-hidden /> Directions
-            </a>
-            <button
-              type="button"
-              onClick={() => toggleSaved(pick.id)}
-              aria-pressed={saved.includes(pick.id)}
-              aria-label={
-                saved.includes(pick.id)
-                  ? "Saved — tap to unsave"
-                  : "Save this display"
-              }
-              className="inline-flex min-h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ring-[#0f3b2b]/20"
-              data-testid="sheet-save"
-            >
-              <Heart
-                className={`h-5 w-5 ${saved.includes(pick.id) ? "fill-[#b3242f] text-[#b3242f]" : ""}`}
-                aria-hidden
-              />
-            </button>
+              <span className="min-w-0 flex-1">
+                <span className="ghad-display block text-lg leading-tight font-extrabold">
+                  {pick.name}
+                </span>
+                <span
+                  className="block text-sm text-[#3d4a43]"
+                  data-testid="sheet-place"
+                >
+                  {placeLabel(pick)}
+                </span>
+                <Stars rating={pick.rating} />
+              </span>
+            </Link>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <SeasonBadge pin={pick} />
+              {pick.hours && (
+                <span className="text-[#3d4a43] [@media(max-height:700px)]:hidden">
+                  🕯️ {pick.hours}
+                </span>
+              )}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => toggleStash(pick.id)}
+                className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-extrabold ${stash.includes(pick.id) ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a]"}`}
+                data-testid="sheet-add-to-tour"
+                aria-pressed={stash.includes(pick.id)}
+              >
+                {stash.includes(pick.id) ? (
+                  "✓ On my tour"
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" aria-hidden /> Add to Tour
+                  </>
+                )}
+              </button>
+              <a
+                href={directionsTo(pick.at)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-[#0f3b2b]/20"
+                data-testid="sheet-directions"
+              >
+                <Navigation className="h-4 w-4" aria-hidden /> Directions
+              </a>
+              <button
+                type="button"
+                onClick={() => toggleSaved(pick.id)}
+                aria-pressed={saved.includes(pick.id)}
+                aria-label={
+                  saved.includes(pick.id)
+                    ? "Saved — tap to unsave"
+                    : "Save this display"
+                }
+                className="inline-flex min-h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ring-[#0f3b2b]/20"
+                data-testid="sheet-save"
+              >
+                <Heart
+                  className={`h-5 w-5 ${saved.includes(pick.id) ? "fill-[#b3242f] text-[#b3242f]" : ""}`}
+                  aria-hidden
+                />
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
-          <Link
-            href={`/christmas/lights/tour${area ? `?area=${area}` : ""}`}
-            className="inline-flex min-h-14 flex-1 items-center justify-center gap-2 rounded-full bg-[#ffd98a] px-5 text-lg font-extrabold text-[#082319] shadow-2xl"
-            data-testid="cta-tour"
-          >
-            <Route className="h-5 w-5" aria-hidden />
-            {stash.length > 0
-              ? `My Lights Tour · ${stash.length}`
-              : "Build My Lights Tour"}
-          </Link>
-          <Link
-            href="/christmas/lights/pin"
-            className="inline-flex min-h-14 shrink-0 items-center gap-1 rounded-full bg-[#b3242f] px-4 font-extrabold text-white shadow-2xl"
-            data-testid="pin-the-magic"
-            aria-label="Add lights to the map"
-          >
-            <MapPin className="h-5 w-5" aria-hidden /> Add
-          </Link>
-        </div>
-      )}
+        ) : (
+          <div className="absolute inset-x-3 bottom-3 z-20 flex items-end gap-2">
+            <Link
+              href={`/christmas/lights/tour${area ? `?area=${area}` : ""}`}
+              className="inline-flex min-h-14 flex-1 items-center justify-center gap-2 rounded-full bg-[#ffd98a] px-4 text-base font-extrabold whitespace-nowrap text-[#082319] shadow-2xl sm:text-lg"
+              data-testid="cta-tour"
+            >
+              <Route className="h-5 w-5" aria-hidden />
+              {stash.length > 0
+                ? `My Lights Tour · ${stash.length}`
+                : "Build My Lights Tour"}
+            </Link>
+            <Link
+              href="/christmas/lights/pin"
+              className="inline-flex min-h-14 shrink-0 items-center gap-1 rounded-full bg-[#b3242f] px-4 font-extrabold text-white shadow-2xl"
+              data-testid="pin-the-magic"
+              aria-label="Add lights to the map"
+            >
+              <MapPin className="h-5 w-5" aria-hidden /> Add
+            </Link>
+          </div>
+        )}
+      </div>
 
       <p
         className="mx-auto mt-2 max-w-6xl px-4 text-sm text-white/75 sm:px-0"
