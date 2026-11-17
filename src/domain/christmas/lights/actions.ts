@@ -2,10 +2,12 @@ import {
   CHECKS,
   FEATURES,
   KINDS,
+  RATING_TAGS,
   REACTION_IDS,
   REPORTS,
   TOWNS,
   TOWN_AT,
+  TOWN_LABEL,
   inArea,
   seasonOf,
   type Authorisation,
@@ -14,6 +16,7 @@ import {
   type Kind,
   type LightsDoc,
   type Pin,
+  type RatingTagId,
   type ReactionId,
   type ReportId,
   type TownId,
@@ -74,8 +77,8 @@ export function nearestTown(at: { lat: number; lng: number }): TownId {
 export function parseSubmission(body: Record<string, unknown>): Submission {
   const kind = KINDS.find((k) => k === body.kind);
   if (!kind) throw new Refused("Say what kind of display it is.");
-  const name = clean(body.name, 80);
-  if (!name || name.length < 3)
+  const named = clean(body.name, 80);
+  if (named && named.length < 3)
     throw new Refused("Give the display a name — three letters at least.");
   const lat = Number(body.lat);
   const lng = Number(body.lng);
@@ -87,6 +90,8 @@ export function parseSubmission(body: Record<string, unknown>): Submission {
       "For now the map covers Vernon, Coldstream, Lumby, Armstrong and Kelowna.",
     );
   const town = TOWNS.find((t) => t === body.town) ?? nearestTown(at);
+  // The name is optional when adding lights: a plain one stands in.
+  const name = named ?? `Christmas lights in ${TOWN_LABEL[town]}`;
   const said: unknown[] = Array.isArray(body.features) ? body.features : [];
   const features = FEATURES.map((f) => f.id).filter((f) => said.includes(f));
   const residential = kind === "home" || body.residential === true;
@@ -427,6 +432,104 @@ export function react(
       reactions: had
         ? p.reactions.filter((r) => !(r.by === by && r.id === reaction))
         : [...p.reactions, { by, id: reaction, at: now.toISOString() }],
+    };
+  });
+}
+
+/**
+ * **"How magical was it?"** One rating per account per display per season;
+ * rating again replaces it. Published displays only, signed in only (the
+ * route says so), so one person cannot be a crowd and a private home cannot
+ * be rated into view. Earlier seasons' ratings are kept.
+ */
+export function rate(
+  doc: LightsDoc,
+  id: string,
+  by: string,
+  stars: unknown,
+  tags: unknown,
+  now: Date,
+) {
+  const n = Number(stars);
+  if (!Number.isInteger(n) || n < 1 || n > 5)
+    throw new Refused("Give it one to five stars.");
+  const said: unknown[] = Array.isArray(tags) ? tags : [];
+  const picked = RATING_TAGS.map((t) => t.id).filter((t) =>
+    said.includes(t),
+  ) as RatingTagId[];
+  const season = seasonOf(now);
+  return edit(doc, id, (p) => {
+    if (p.status !== "approved")
+      throw new Refused("That display isn't published.", 409);
+    if (p.submittedBy === by)
+      throw new Refused("You can't rate your own lights — but thank you!", 409);
+    const others = (p.ratings ?? []).filter(
+      (r) => !(r.by === by && r.season === season),
+    );
+    return {
+      ...p,
+      ratings: [
+        ...others,
+        { by, stars: n, tags: picked, at: now.toISOString(), season },
+      ],
+    };
+  });
+}
+
+/** The optional details someone can add after pinning. Said by people, never inferred. */
+export interface Details {
+  readonly features?: FeatureId[];
+  readonly hours?: string;
+  readonly description?: string;
+  readonly name?: string;
+}
+
+export function parseDetails(body: Record<string, unknown>): Details {
+  const said: unknown[] | null = Array.isArray(body.features)
+    ? body.features
+    : null;
+  const hours = clean(body.hours, 80);
+  const description = clean(body.description, 500);
+  const name = clean(body.name, 80);
+  if (name !== undefined && name.length < 3)
+    throw new Refused("Give the display a name — three letters at least.");
+  return {
+    ...(said
+      ? { features: FEATURES.map((f) => f.id).filter((f) => said.includes(f)) }
+      : {}),
+    ...(hours !== undefined ? { hours } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(name !== undefined ? { name } : {}),
+  };
+}
+
+/**
+ * **Add the details after pinning** — music, hours, walk-through,
+ * family-friendly, what's special. Its submitter or a reviewer. Location and
+ * permission are not details: they can't be changed here.
+ */
+export function addDetails(
+  doc: LightsDoc,
+  id: string,
+  by: string,
+  isReviewer: boolean,
+  d: Details,
+  now: Date,
+) {
+  const at = now.toISOString();
+  return edit(doc, id, (p) => {
+    if (!isReviewer && p.submittedBy !== by)
+      throw new Refused("Only the person who pinned it can add details.", 403);
+    if (p.status === "removed" || p.status === "declined")
+      throw new Refused("That pin isn't on the map.", 409);
+    return {
+      ...p,
+      ...(d.features ? { features: d.features } : {}),
+      ...(d.hours !== undefined ? { hours: d.hours } : {}),
+      ...(d.description !== undefined ? { description: d.description } : {}),
+      ...(d.name !== undefined ? { name: d.name } : {}),
+      trail: [...p.trail, { at, by, kind: "details" as const }],
+      updatedAt: at,
     };
   });
 }

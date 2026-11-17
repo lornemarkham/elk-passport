@@ -16,6 +16,11 @@ Christmas is, what it reuses, and what it does not decide.
 **Christmas Around You (2026-11-10):** the front page is now sections of
 real things around a town — [AROUND-YOU.md](AROUND-YOU.md).
 
+**Christmas Experience 2.0 (2026-11-14):** the front page opens on one
+question — _What would you love to do?_ — and the plan is an itinerary that
+satisfies every part asked for or says which it couldn't: [PLANNER.md](PLANNER.md)
+(`/christmas/itinerary`).
+
 **Pin the Magic (2026-11-10):** the community Christmas lights map, its
 reviewed submissions, reactions and lights tour are in
 [PIN-THE-MAGIC.md](PIN-THE-MAGIC.md) (`/christmas/lights`).

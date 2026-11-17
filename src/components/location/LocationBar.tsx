@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import { townById } from "@/domain/discovery/towns";
 import { shortName } from "@/domain/location/prefs";
 import { useLocation } from "@/lib/location/useLocation";
@@ -23,8 +24,15 @@ export function LocationBar({
   onChange,
   showing,
   anywhere = false,
+  busy,
   className = "",
 }: {
+  /**
+   * What the page is still fetching for the town shown — "Finding what's
+   * close", "Loading Christmas near Kelowna". Said beside the town, so a
+   * change of place is answered the moment it is made (P1 loading brief).
+   */
+  readonly busy?: string;
   /** A town this page is using that may differ from the shared one (a sentence named Kelowna). */
   readonly showing?: string;
   /** The page is deliberately looking everywhere; say so rather than name a town. */
@@ -84,6 +92,21 @@ export function LocationBar({
         ) : (
           <span className="opacity-60">Finding where to start…</span>
         )}
+        <span
+          aria-live="polite"
+          data-testid="location-loading"
+          className="inline-flex items-center gap-1 text-[13px] font-normal opacity-80 empty:hidden"
+        >
+          {busy && (
+            <>
+              <LoaderCircle
+                className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                aria-hidden
+              />
+              {busy}…
+            </>
+          )}
+        </span>
         <span aria-hidden>·</span>
         <button
           type="button"

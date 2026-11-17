@@ -39,6 +39,22 @@ export const KIND_LABEL: Record<Kind, string> = {
   "festive-attraction": "Festive attraction",
 };
 
+/**
+ * **What the lights map shows** (Lights Map 2.0, 2026-11-14): light
+ * displays. Markets and festive attractions stay in the document (their
+ * pins, reactions and history are kept) but are listed beside the map as
+ * other Christmas things to do, never drawn on it or put on a lights tour.
+ */
+export const LIGHT_KINDS = [
+  "home",
+  "public-display",
+  "neighbourhood",
+  "community-tree",
+] as const satisfies readonly Kind[];
+
+export const isLightDisplay = (kind: Kind): boolean =>
+  (LIGHT_KINDS as readonly Kind[]).includes(kind);
+
 export const KIND_EMOJI: Record<Kind, string> = {
   home: "🏠",
   "public-display": "✨",
@@ -125,10 +141,36 @@ export type ReportId = (typeof REPORTS)[number]["id"];
 export const FEATURES = [
   { id: "music", label: "Music" },
   { id: "walk", label: "Good to walk" },
+  { id: "walk-through", label: "Walk-through" },
+  { id: "family", label: "Family-friendly" },
   { id: "free", label: "Free" },
   { id: "stroller", label: "Stroller friendly" },
   { id: "drive-by", label: "See it from the car" },
 ] as const;
+
+/**
+ * **"How magical was it?"** — the owner's 1–5 stars (Lights Map 2.0). A
+ * community rating about a display, like the reactions: one per account per
+ * display per season, changeable, never a taste signal about the person
+ * (§15.3 stays open for Passport).
+ */
+export const RATING_TAGS = [
+  { id: "amazing", label: "Amazing lights" },
+  { id: "kids", label: "Great for kids" },
+  { id: "creative", label: "Creative" },
+  { id: "music", label: "Music" },
+  { id: "worth-drive", label: "Worth the drive" },
+] as const;
+export type RatingTagId = (typeof RATING_TAGS)[number]["id"];
+
+export interface Rating {
+  readonly by: string;
+  /** 1–5. */
+  readonly stars: number;
+  readonly tags: readonly RatingTagId[];
+  readonly at: string;
+  readonly season: number;
+}
 export type FeatureId = (typeof FEATURES)[number]["id"];
 
 /**
@@ -162,6 +204,7 @@ export interface Event {
     | "removed"
     | "restored"
     | "edited"
+    | "details"
     | "report"
     | CheckId;
   readonly text?: string;
@@ -218,6 +261,8 @@ export interface Pin {
   readonly submittedBy: string;
   readonly submittedAt: string;
   readonly reactions: readonly Reaction[];
+  /** Absent on pins written before ratings existed. */
+  readonly ratings?: readonly Rating[];
   readonly trail: readonly Event[];
   readonly updatedAt: string;
 }
@@ -265,7 +310,14 @@ export function seasonState(pin: Pin, now: Date): SeasonState {
   );
   const darkVoices = new Set(darkSince.map((e) => e.by)).size;
   const reviewerSaidDark = darkSince.some((e) => e.by.includes("@"));
-  if (pin.dark.includes(season) && (darkVoices >= 2 || reviewerSaidDark))
+  // A homeowner who pinned their own lights is believed at once about them.
+  const ownerSaidDark =
+    pin.consentClaim === "i-live-here" &&
+    darkSince.some((e) => e.by === pin.submittedBy);
+  if (
+    pin.dark.includes(season) &&
+    (darkVoices >= 2 || reviewerSaidDark || ownerSaidDark)
+  )
     return "dark";
   return pin.confirmed.includes(season) ? "lit" : "unconfirmed";
 }
@@ -356,7 +408,18 @@ export interface PinView {
   readonly mine: readonly ReactionId[];
   readonly trending: number;
   readonly total: number;
+  /** Community rating, every season kept: mean of the stars people gave, and how many. */
+  readonly rating: { readonly mean: number; readonly count: number } | null;
+  /** This viewer's own rating this season, if any. */
+  readonly myRating?: {
+    readonly stars: number;
+    readonly tags: readonly RatingTagId[];
+  };
+  /** Tags people gave, most said first, with counts. */
+  readonly tags: readonly { readonly id: RatingTagId; readonly n: number }[];
   readonly yours: boolean;
+  /** Yours, and you said they're your own lights: the yearly question is yours to answer. */
+  readonly ownLights?: boolean;
   readonly residential: boolean;
   /** Reviewers only. */
   readonly review?: {
@@ -381,6 +444,14 @@ export function viewOf(pin: Pin, viewer: Viewer, now: Date): PinView {
     ? pin.reactions.filter((r) => r.by === viewer.key).map((r) => r.id)
     : [];
   const confirmedYears = [...pin.confirmed].sort((a, b) => a - b);
+  const ratings = pin.ratings ?? [];
+  const season = seasonOf(now);
+  const mineRated = viewer.key
+    ? ratings.find((r) => r.by === viewer.key && r.season === season)
+    : undefined;
+  const tagCounts = new Map<RatingTagId, number>();
+  for (const r of ratings)
+    for (const t of r.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
   return {
     id: pin.id,
     kind: pin.kind,
@@ -404,7 +475,27 @@ export function viewOf(pin: Pin, viewer: Viewer, now: Date): PinView {
     mine,
     trending: pin.reactions.filter((r) => Date.parse(r.at) >= since).length,
     total: pin.reactions.length,
+    rating: ratings.length
+      ? {
+          mean:
+            Math.round(
+              (ratings.reduce((a, r) => a + r.stars, 0) / ratings.length) * 10,
+            ) / 10,
+          count: ratings.length,
+        }
+      : null,
+    ...(mineRated
+      ? { myRating: { stars: mineRated.stars, tags: mineRated.tags } }
+      : {}),
+    tags: [...tagCounts]
+      .map(([id, n]) => ({ id, n }))
+      .sort((a, b) => b.n - a.n),
     yours: viewer.key !== null && pin.submittedBy === viewer.key,
+    ...(viewer.key !== null &&
+    pin.submittedBy === viewer.key &&
+    pin.consentClaim === "i-live-here"
+      ? { ownLights: true }
+      : {}),
     residential: pin.residential,
     ...(viewer.reviewer
       ? {

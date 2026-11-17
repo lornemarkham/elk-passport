@@ -12,6 +12,13 @@ import type { FeatureId, Kind, Pin, TownId } from "./model";
  * or a reviewer says otherwise. Lumby is absent on purpose: its newest
  * sourced light-up is from 2019. A Coldstream light-up (2025) is absent
  * because its venue could not be placed reliably.
+ *
+ * _Added 2026-11-14 (Lights Map 2.0):_ Coldstream's community light-up (last
+ * dated 2025), placed at its venue from OpenStreetMap, and the Carnival of
+ * Lights in Spirit Square (last dated 2022), placed beside City Hall. Both
+ * show as not yet confirmed this year and stay off tours until someone says
+ * they are lit. Lumby's 2026 light-up (Dec 5) is still absent: the only
+ * source is an events aggregator that names no venue, and a pin needs a place.
  */
 
 const READ = "2026-11-10";
@@ -37,6 +44,8 @@ interface Researched {
   features?: FeatureId[];
   url: string;
   says: string;
+  /** When it was read, when not the first research day. */
+  read?: string;
 }
 
 const pin = (r: Researched): Pin => ({
@@ -54,7 +63,7 @@ const pin = (r: Researched): Pin => ({
   status: "approved",
   confirmed: [r.season],
   dark: [],
-  source: { url: r.url, read: READ, says: r.says },
+  source: { url: r.url, read: r.read ?? READ, says: r.says },
   submittedBy: "research",
   submittedAt: `${READ}T00:00:00.000Z`,
   reactions: [],
@@ -323,6 +332,47 @@ const RESEARCHED: readonly Researched[] = [
     features: ["walk"],
     url: TK_LIGHTS,
     says: "Festival of Trees, Nov 23, 2025–Jan 4, 2026",
+  },
+  // Added 2026-11-14 (Lights Map 2.0). Re-read both organisers' pages before
+  // the season: the quotes were relayed by a page reader, not copied by hand.
+  {
+    id: "seed-coldstream-light-up",
+    kind: "community-tree",
+    name: "Coldstream Community Christmas Light Up",
+    town: "coldstream",
+    // OSM node 1387836373, the church building on Kalamalka Road between the
+    // Community Hall (9909) and 9912, opposite the District office.
+    lat: 50.22331,
+    lng: -119.23062,
+    address: "Coldstream Christian Church, 9904 Kalamalka Road, Coldstream",
+    description:
+      "Coldstream's tree-lighting countdown with the Mayor. Last year it was one evening in early December.",
+    hours: "Last year: Sunday, December 7, 6–7:30 pm",
+    season: 2025,
+    dates: { from: "2025-12-07", to: "2025-12-07" },
+    features: ["free"],
+    url: "https://www.coldstream.ca/community-recreation/events-calendar/2025-coldstream-community-christmas-light",
+    says: "6 PM December 7th @ Coldstream Christian Church 9904 Kalamalka Road",
+    read: "2026-11-14",
+  },
+  {
+    id: "seed-spirit-square-carnival-of-lights",
+    kind: "public-display",
+    name: "Carnival of Lights, Spirit Square",
+    town: "vernon",
+    // Spirit Square isn't mapped; this is Vernon City Hall (OSM way 142989313), beside it.
+    lat: 50.26674,
+    lng: -119.2718,
+    address:
+      "Spirit Square and Civic Plaza, beside Vernon City Hall, 3400 30 Street",
+    description:
+      "The Vernon Winter Carnival Society lights Spirit Square and the Civic Plaza for the season. The latest dates we could find are 2022's.",
+    hours: "Last dated: each night Nov 26 – Dec 31, 2022",
+    season: 2022,
+    features: ["walk", "free", "drive-by"],
+    url: "https://infotel.ca/newsitem/vernon-winter-carnival-launch-carnival-of-lights/it94909",
+    says: "Spirit Square and Civic Plaza outside of City Hall ... each night from Nov. 26 until Dec. 31",
+    read: "2026-11-14",
   },
 ];
 

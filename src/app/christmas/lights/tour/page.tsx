@@ -23,7 +23,9 @@ export default async function TourPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const link = readTourQuery((await searchParams) ?? {});
+  const params = (await searchParams) ?? {};
+  const link = readTourQuery(params);
+  const area = typeof params.area === "string" ? params.area : null;
   const [v, festive] = await Promise.all([
     viewer(),
     festiveStops(todayIn()).catch(() => ({ stops: [], outage: true })),
@@ -46,12 +48,12 @@ export default async function TourPage({
               <h1 className="ghad-display mt-3 text-5xl leading-[0.95] font-extrabold tracking-[-0.03em]">
                 {link
                   ? "A Christmas lights tour for you"
-                  : "Build my Christmas lights tour"}
+                  : "Build My Lights Tour"}
               </h1>
               <p className="mt-3 text-lg text-white/90">
                 {link
                   ? "Someone shared this tour. Open the directions and go — or change it to suit your night."
-                  : "Tell us how you're getting about and how long you've got. We'll string the lit displays together."}
+                  : "Three questions, then a route through displays confirmed lit tonight."}
               </p>
             </div>
             <div className={christmas.lights} aria-hidden />
@@ -63,6 +65,7 @@ export default async function TourPage({
               today={localDay(new Date())}
               link={link}
               signedIn={v.signedIn}
+              initialArea={area}
             />
           </div>
         </main>

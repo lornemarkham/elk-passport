@@ -27,8 +27,11 @@ test("the Christmas page opens on the season and leads somewhere real", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Christmas around/,
+      name: "Plan your Christmas adventure.",
     }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: /Christmas around/ }),
   ).toBeVisible();
   await expect(page.getByTestId("countdown")).toBeVisible();
   if (WITH_ATLAS) {
@@ -46,16 +49,22 @@ test("the Christmas page opens on the season and leads somewhere real", async ({
     await expect(page.getByTestId("find-card").first()).toBeVisible();
 });
 
-test("a sentence becomes a plan, kept as said", async ({ page }) => {
+test("a sentence becomes a plan, kept as said — no account, no form", async ({
+  page,
+}) => {
   await page.goto("/christmas");
   await page
-    .getByRole("textbox", { name: /What does your Christmas look like/ })
+    .getByRole("textbox", { name: "What would you love to do?" })
     .fill("We have Saturday afternoon, two kids and $100");
-  await page.getByTestId("say-it-go").click();
-  // Signed out, the planner asks to sign in and carries the sentence through.
-  await expect(page).toHaveURL(/\/christmas\/plan\?shape=family-day/);
-  await expect(page).toHaveURL(/who=family/);
-  await expect(page.getByTestId("plan-sign-in")).toHaveAttribute(
+  await page.getByTestId("plan-go").click();
+  await expect(page).toHaveURL(/\/christmas\/itinerary\?.*say=/);
+  await expect(page.getByTestId("itinerary-title")).toHaveText(
+    /family Christmas adventure/i,
+  );
+  await expect(page.getByTestId("itinerary-who")).toContainText("2 kids");
+  await expect(page.getByTestId("itinerary-budget")).toContainText("$100");
+  // Signed out, planning it *with* people is the one thing that asks.
+  await expect(page.getByTestId("itinerary-sign-in")).toHaveAttribute(
     "href",
     /%2524100/,
   );
@@ -120,10 +129,11 @@ for (const [label, viewport] of [
     await page.goto("/christmas");
     await changePlace(page, "kelowna");
     await expect(page).toHaveURL(/at=kelowna/);
-    await page
-      .getByRole("textbox", { name: /What does your Christmas look like/ })
-      .fill("A Christmas evening for the two of us");
-    await page.getByTestId("say-it-go").click();
+    // The weekend-or-more planner (kept beside the new itinerary) still hands
+    // a visitor on to the Day Builder without an account.
+    await page.goto(
+      "/christmas/plan?shape=evening&at=kelowna&say=A+Christmas+evening+for+the+two+of+us",
+    );
     // plan: the wall offers a way on without an account
     await page.getByTestId("plan-no-account").click();
     await expect(page).toHaveURL(/\/go\?say=/);
@@ -164,7 +174,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
 }) => {
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
+    page.getByRole("heading", { level: 2, name: /Christmas around Vernon/ }),
   ).toBeVisible();
   await expect(page.getByTestId("location-name").first()).toContainText(
     "Vernon",
@@ -190,7 +200,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await changePlace(page, "kelowna");
   await expect(page).toHaveURL(/\/christmas\?at=kelowna/);
   await expect(
-    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
+    page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
   const kelownaLights = page.getByTestId("around-lights-pins");
   await expect(kelownaLights).toContainText(/Kelowna Light Up|Tree of Hope/);
@@ -203,7 +213,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   // /christmas opens on Kelowna now, from the server's first render.
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
+    page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
 });
 

@@ -55,3 +55,52 @@ export function useStash(): string[] {
   }, []);
   return ids;
 }
+
+/**
+ * **Saved displays, on this phone** — the ❤️ on the map. A family's own
+ * list of displays they love, kept apart from tonight's tour: wanting to see
+ * one again is not the same as going tonight (doctrine §2.2).
+ */
+const SAVED = "passport.christmas.lights.saved";
+const SAVED_EVENT = "xm-saved-changed";
+
+export function readSaved(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(SAVED) ?? "[]");
+    return Array.isArray(v)
+      ? v.filter((x): x is string => typeof x === "string").slice(0, 100)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function toggleSaved(id: string): boolean {
+  const now = readSaved();
+  const has = now.includes(id);
+  try {
+    localStorage.setItem(
+      SAVED,
+      JSON.stringify(has ? now.filter((x) => x !== id) : [...now, id]),
+    );
+    window.dispatchEvent(new Event(SAVED_EVENT));
+  } catch {
+    /* private mode */
+  }
+  return !has;
+}
+
+export function useSaved(): string[] {
+  const [ids, setIds] = useState<string[]>([]);
+  useEffect(() => {
+    const sync = () => setIds(readSaved());
+    sync();
+    window.addEventListener(SAVED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(SAVED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return ids;
+}

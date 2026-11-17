@@ -58,7 +58,7 @@ function nextWeekday(today: string, target: number): string {
   return addDays(today, (target - dow(today) + 7) % 7);
 }
 
-function dayIn(text: string, today: string): string | undefined {
+export function dayIn(text: string, today: string): string | undefined {
   if (/\b(?:tonight|today|this (?:evening|afternoon|morning))\b/.test(text))
     return today;
   if (/\btomorrow\b/.test(text)) return addDays(today, 1);
@@ -102,7 +102,7 @@ const NUMBER_WORDS: Readonly<Record<string, number>> = {
   twelve: 12,
 };
 
-function agesIn(text: string): number[] {
+export function agesIn(text: string): number[] {
   const ages: number[] = [];
   for (const m of text.matchAll(/\b(\d{1,2})[ -]?(?:years?|yrs?)[ -]?old\b/g))
     ages.push(Number(m[1]));
@@ -120,7 +120,7 @@ function agesIn(text: string): number[] {
   return [...new Set(ages.filter((n) => n >= 0 && n <= 17))].slice(0, 6);
 }
 
-function townIn(text: string): string | undefined {
+export function townIn(text: string): string | undefined {
   // Longest name first, so "North Vancouver" is not read as "Vancouver".
   const names = DISCOVERY_TOWNS.flatMap((t) => [
     { id: t.id, name: t.name.replace(/,\s*BC$/, "").toLowerCase() },
