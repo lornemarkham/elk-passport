@@ -28,23 +28,23 @@ async function planFor(page: Page, say: string, at = "kelowna") {
   await expect(page.getByTestId("itinerary")).toBeVisible();
 }
 
-test("the front page is one question, five quick starts, and real Christmas below", async ({
+test("the front page keeps the sentence box beside the six ways, and real Christmas below", async ({
   page,
 }) => {
   await page.goto("/christmas");
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Plan your Christmas adventure.",
+      name: "Your Christmas Starts Here",
     }),
   ).toBeVisible();
   await expect(page.getByLabel("What would you love to do?")).toBeVisible();
   await expect(page.getByTestId("plan-go")).toHaveText(
     /Make my Christmas plan/,
   );
-  for (const id of ["romantic", "family", "lights", "markets", "weekend"])
-    await expect(page.getByTestId(`quick-${id}`)).toBeVisible();
-  await expect(page.locator("#browse")).toBeVisible();
+  // The six ways took the quick starts' place (owner brief, 2026-11-17).
+  await expect(page.getByTestId("ways").getByRole("link")).toHaveCount(6);
+  await expect(page.getByTestId("browse")).toBeVisible();
   // Nothing sideways on a phone.
   const scroll = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
@@ -211,8 +211,10 @@ test("3 · friends at the Christmas markets — vote together", async ({
 test("4 · a lights driving tour — several displays, one route, the map's own tour", async ({
   page,
 }) => {
-  await page.goto("/christmas?at=kelowna");
-  await page.getByTestId("quick-lights").click();
+  // The quick start's own sentence (QUICK_STARTS "lights").
+  await page.goto(
+    "/christmas/itinerary?say=A+Christmas+lights+tour+after+dark&at=kelowna",
+  );
   await expect(page.getByTestId("itinerary-question")).toBeVisible();
   // Answer the one question with a date the displays are lit.
   await page.goto(`${page.url()}&day=2026-12-12`);
