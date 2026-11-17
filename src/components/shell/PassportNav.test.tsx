@@ -194,19 +194,25 @@ describe("experiences", () => {
     expect(button).toHaveAttribute("aria-controls", row.id);
     const links = screen
       .getAllByRole("link", {
-        name: /Conference|Hockey Night|October|Christmas|Snow Day|Sesh Wars|Date Night|Badminton/,
+        name: /Christmas|Hockey Night|Snow Day|Sesh Wars|Date Night|Labs|Conference|October|Badminton/,
       })
       .map((a) => [a.textContent?.trim(), a.getAttribute("href")]);
     expect(links).toEqual([
-      ["Conference", "/conferences"],
-      ["Hockey Night", "/hockey"],
-      ["October", "/october"],
       ["Christmas", "/christmas"],
+      ["Hockey Night", "/hockey"],
       ["Snow Day", "/snow"],
       ["Sesh Wars", "/snow/sesh-wars"],
       ["Date Night", "/datenight"],
-      ["Badminton Game Night", "/badminton"],
+      ["🧪Labs", "/labs"],
     ]);
+  });
+
+  it("keeps Conference, October and Badminton out of the menu, behind Labs", () => {
+    at("/discovery");
+    openRow();
+    for (const id of ["conference", "october", "badminton"]) {
+      expect(screen.queryByTestId(`passport-experience-${id}`)).toBeNull();
+    }
   });
 
   it("closes again on a second press, and on Escape", () => {
@@ -233,8 +239,30 @@ describe("experiences", () => {
     expect(screen.getByTestId("passport-experiences")).toBeInTheDocument();
   });
 
+  it("lights Labs, and Experiences, inside a Labs experience or Labs itself", () => {
+    for (const path of [
+      "/conferences/abc-123",
+      "/october",
+      "/badminton/game-night",
+      "/labs",
+      "/labs/conference",
+    ]) {
+      const { unmount } = at(path);
+      expect(screen.getByTestId("passport-nav-experiences")).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      openRow();
+      expect(screen.getByTestId("passport-experience-labs")).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      unmount();
+    }
+  });
+
   it("marks Experiences as where you are when you are inside one", () => {
-    at("/conferences/abc-123");
+    at("/hockey/abc-123");
     expect(screen.getByTestId("passport-nav-experiences")).toHaveAttribute(
       "aria-current",
       "page",
@@ -245,12 +273,16 @@ describe("experiences", () => {
       );
     }
     openRow();
+    expect(screen.getByTestId("passport-experience-hockey")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(
-      screen.getByTestId("passport-experience-conference"),
-    ).toHaveAttribute("aria-current", "page");
-    expect(
-      screen.getByTestId("passport-experience-hockey"),
+      screen.getByTestId("passport-experience-christmas"),
     ).not.toHaveAttribute("aria-current");
+    expect(screen.getByTestId("passport-experience-labs")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("lights Sesh Wars alone inside it, not Snow Day too", () => {

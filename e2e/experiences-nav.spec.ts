@@ -44,10 +44,10 @@ for (const [name, device] of [
       await expect(page.getByTestId("passport-experiences")).toBeVisible();
       await expect(
         page.getByTestId("passport-experiences").getByRole("link"),
-      ).toHaveCount(8);
+      ).toHaveCount(6);
     });
 
-    test("Experiences opens to Conference, Hockey Night, October, Christmas, Snow Day, Sesh Wars, Date Night and Badminton", async ({
+    test("Experiences opens to the five strongest products and Labs", async ({
       page,
     }) => {
       await page.goto("/");
@@ -58,20 +58,23 @@ for (const [name, device] of [
       const row = page.getByTestId("passport-experiences");
       await expect(row).toBeVisible();
       for (const [id, label, href] of [
-        ["conference", "Conference", "/conferences"],
-        ["hockey", "Hockey Night", "/hockey"],
-        ["october", "October", "/october"],
         ["christmas", "Christmas", "/christmas"],
+        ["hockey", "Hockey Night", "/hockey"],
         ["snow", "Snow Day", "/snow"],
         ["sesh-wars", "Sesh Wars", "/snow/sesh-wars"],
         ["date-night", "Date Night", "/datenight"],
-        ["badminton", "Badminton Game Night", "/badminton"],
+        ["labs", "Labs", "/labs"],
       ] as const) {
         const link = page.getByTestId(`passport-experience-${id}`);
         await link.scrollIntoViewIfNeeded();
         await expect(link).toBeVisible();
-        await expect(link).toHaveText(label);
+        await expect(link).toContainText(label);
         await expect(link).toHaveAttribute("href", href);
+      }
+      for (const id of ["conference", "october", "badminton"]) {
+        await expect(page.getByTestId(`passport-experience-${id}`)).toHaveCount(
+          0,
+        );
       }
       await page.keyboard.press("Escape");
       await expect(row).toHaveCount(0);
@@ -86,7 +89,9 @@ for (const [name, device] of [
     test("Conference opens the existing experience", async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("passport-nav-experiences").click();
-      await page.getByTestId("passport-experience-conference").click();
+      await page.getByTestId("passport-experience-labs").click();
+      await expect(page).toHaveURL(/\/labs$/);
+      await page.getByTestId("labs-experience-open-conference").click();
       await expect(page).toHaveURL(/\/conferences$/);
       // Conference decides for itself whether it is open; either answer is
       // the real page, and the bar is still there with Experiences lit.
@@ -116,8 +121,8 @@ for (const [name, device] of [
 
     test("October opens October", async ({ page }) => {
       await page.goto("/");
-      await page.getByTestId("passport-nav-experiences").click();
-      await page.getByTestId("passport-experience-october").click();
+      await page.goto("/labs");
+      await page.getByTestId("labs-experience-open-october").click();
       await expect(page).toHaveURL(/\/october$/);
       // October's own bar, not Passport's: the experience keeps its shell.
       await expect(
@@ -150,8 +155,8 @@ for (const [name, device] of [
       page,
     }) => {
       await page.goto("/");
-      await page.getByTestId("passport-nav-experiences").click();
-      await page.getByTestId("passport-experience-badminton").click();
+      await page.goto("/labs");
+      await page.getByTestId("labs-experience-open-badminton").click();
       await expect(page).toHaveURL(/\/badminton$/);
       await expect(page.getByTestId("global-header")).toHaveCount(1);
       await page.getByTestId("game-night-demo-link").click();

@@ -660,6 +660,20 @@ answering the nav half of roadmap D-1:
 - This answers where the Day Builder is _reached_. It does not answer whether
   `/go` is the home page, nor the Want / Plan / Lived vocabulary (§15.14).
 
+### Five Experiences on the menu, the rest in Labs (decided 2026-11-17)
+
+From the owner's _P1: Experience audit + Labs navigation_ brief (mission 863),
+audit in [`release/GHAD-EXPERIENCES-AUDIT-2026-11-17.md`](release/GHAD-EXPERIENCES-AUDIT-2026-11-17.md):
+
+- **The Experiences menu is Christmas · Hockey Night · Snow Day · Sesh Wars ·
+  Date Night, then one Labs entry.** Conference, October and Badminton Game
+  Night moved into Labs; their routes did not change.
+- **Labs lists each with a name, description, preview, an honest status**
+  (Experimental, Coming Soon, In Development, Archived) **and Open Experience.**
+  Statuses come from `LAB_EXPERIENCES` in `src/lib/experiences.ts`.
+- This supersedes the line above that October "belongs to iamoctober.com, not
+  Labs". It does not answer §10 (what an Experience is).
+
 ### The adventure comes alive (2026-11-07)
 
 From the owner's _Make the adventure come alive_ brief, recorded in
