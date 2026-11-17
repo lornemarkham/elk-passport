@@ -62,6 +62,22 @@ Pixel 7, 4× CPU.
 | Christmas Refine (new age): first feedback | none; page frozen 6.2 s           | **49 ms** ("Finding…"), line at 208 ms                       |
 | Discovery Vernon → Kelowna                 | bar 270–293 ms, results 0.5–1.9 s | unchanged, plus "◌ Finding what's close…" beside the town    |
 
+## On production after the release (b1c80be, live 2026-11-17 11:19)
+
+Same script (`local.mjs`) against https://gohaveaday.com, Pixel 7, 4× CPU.
+
+| Action                                | Before (d147175)        | After (b1c80be)                                                                   |
+| ------------------------------------- | ----------------------- | --------------------------------------------------------------------------------- |
+| Christmas town switch: first feedback | none                    | **75–246 ms**                                                                     |
+| Christmas: bar names the new town     | 1.4–4.4 s               | **107–378 ms**                                                                    |
+| Christmas: results for the new town   | 1.4–4.4 s               | 1.2–3.4 s; one switch 13.6 s (a cold instance's Atlas read, now shown as loading) |
+| Place page: first byte                | 9.2–10.9 s, every visit | **0.28–0.43 s** (skeleton streams)                                                |
+| Place page: content                   | 9.2–10.9 s              | 0.55 s warm; 12.4 s on an instance that had not read it yet                       |
+| Discovery town switch: bar / results  | 0.2–0.35 s / 0.5–1.9 s  | 0.24–0.27 s / 0.53–0.75 s                                                         |
+
+The cold waits are still there, and they're Atlas's (see above). What changed is
+that nobody is left looking at a page that seems to ignore them.
+
 ## Still slow, and whose it is
 
 - **Atlas's corpus read (8–19 s cold) and place detail (9–11 s).** Passport
