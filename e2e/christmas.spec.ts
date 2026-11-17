@@ -20,16 +20,27 @@ async function changePlace(page: Page, id: string) {
   await expect(page.getByTestId("location-picker")).toHaveCount(0);
 }
 
-test("the Christmas page opens on the season and leads somewhere real", async ({
+test("the Christmas page opens on six ways, and one leads somewhere real", async ({
   page,
 }) => {
   await page.goto("/christmas");
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Plan your Christmas adventure.",
+      name: "Your Christmas Starts Here",
     }),
   ).toBeVisible();
+  await expect(
+    page.getByText("Find something wonderful to do together."),
+  ).toBeVisible();
+  await expect(page.getByTestId("ways").getByRole("link")).toHaveText([
+    /Christmas Lights/,
+    /Christmas Date/,
+    /Family Fun/,
+    /Friends & Fun/,
+    /Cozy Christmas/,
+    /Events & Markets/,
+  ]);
   await expect(
     page.getByRole("heading", { level: 2, name: /Christmas around/ }),
   ).toBeVisible();
@@ -39,8 +50,26 @@ test("the Christmas page opens on the season and leads somewhere real", async ({
   } else {
     await expect(page.getByTestId("atlas-down")).toBeVisible();
   }
-  await page.getByTestId("theme-markets").click();
-  await expect(page).toHaveURL(/\/christmas\/discover\?theme=markets/);
+  // Events & Markets: one tap narrows it, and "see all" is the directory.
+  await page.getByTestId("way-events").click();
+  await expect(page).toHaveURL(/\/christmas\/for\/events/);
+  await page.getByTestId("q-kind-markets").click();
+  await expect(page).toHaveURL(/kind=markets/);
+  await expect(page.getByTestId("q-kind-markets")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  if (WITH_ATLAS) {
+    await expect(
+      page.getByTestId("way-finds").getByTestId("find-card").first(),
+    ).toBeVisible();
+    const all = page.getByTestId("see-all");
+    if (await all.count()) await all.click();
+    else await page.goto("/christmas/discover?theme=markets");
+  } else {
+    await page.goto("/christmas/discover?theme=markets");
+  }
+  await expect(page).toHaveURL(/\/christmas\/discover\?.*theme=markets/);
   await expect(page.getByTestId("chip-markets")).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -179,12 +208,14 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await expect(page.getByTestId("location-name").first()).toContainText(
     "Vernon",
   );
-  // Vernon's lights come from the community map's researched displays, and
-  // are named for what they are: local listings, apart from Atlas's finds.
-  const vernonLights = page.getByTestId("around-lights-pins");
-  await expect(vernonLights).toContainText("SilverStar Annual Light Up");
-  await expect(page.getByTestId("around-soon-pins")).toContainText("Frostival");
-  await expect(vernonLights).not.toContainText("Stuart Park");
+  // Vernon's community listings come from the lights map's researched
+  // displays, named for what they are: local listings, apart from Atlas's.
+  const vernonPins = page.getByTestId("near-pins");
+  await expect(vernonPins).toContainText("Frostival");
+  await expect(vernonPins).not.toContainText("Stuart Park");
+  // A few strong ones, not a directory.
+  expect(await page.getByTestId("pin-card").count()).toBeLessThanOrEqual(3);
+  expect(await page.getByTestId("find-card").count()).toBeLessThanOrEqual(4);
   await expect(
     page
       .getByText(/local listings checked by a person, not from Atlas/)
@@ -193,7 +224,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   if (WITH_ATLAS) {
     await expect(page.getByTestId("atlas-down")).toHaveCount(0);
     await expect(
-      page.getByTestId("around-soon").getByTestId("find-card").first(),
+      page.getByTestId("near-finds").getByTestId("find-card").first(),
     ).toBeVisible();
   }
 
@@ -202,12 +233,10 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await expect(
     page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
-  const kelownaLights = page.getByTestId("around-lights-pins");
-  await expect(kelownaLights).toContainText(/Kelowna Light Up|Tree of Hope/);
-  await expect(kelownaLights).not.toContainText("SilverStar");
-  await expect(page.getByTestId("around-soon-pins")).not.toContainText(
-    "Frostival",
-  );
+  const kelownaPins = page.getByTestId("near-pins");
+  await expect(kelownaPins).toContainText(/Kelowna Light Up|Tree of Hope/);
+  await expect(kelownaPins).not.toContainText("SilverStar");
+  await expect(kelownaPins).not.toContainText("Frostival");
 
   // The chosen place is remembered (the shared place's cookie): a bare
   // /christmas opens on Kelowna now, from the server's first render.
@@ -221,16 +250,13 @@ test("an event and a light display go into one Christmas day", async ({
   page,
 }) => {
   await page.goto("/christmas");
-  const pin = page
-    .getByTestId("around-lights-pins")
-    .getByTestId("add-to-tour")
-    .first();
+  const pin = page.getByTestId("near-pins").getByTestId("add-to-tour").first();
   await expect(pin).toHaveText(/Add to my Christmas day/);
   await pin.click();
   let expected = 1;
   if (WITH_ATLAS) {
     await page
-      .getByTestId("around-soon")
+      .getByTestId("near-finds")
       .getByTestId("pick-find")
       .first()
       .click();
@@ -242,4 +268,198 @@ test("an event and a light display go into one Christmas day", async ({
   await page.getByTestId("plan-picks").click();
   await expect(page).toHaveURL(/\/christmas\/plan\?.*lights=(seed|pin)-/);
   if (WITH_ATLAS) await expect(page).toHaveURL(/with=/);
+});
+
+/**
+ * **The six ways** (owner brief "P0 — the experience-first rebuild",
+ * 2026-11-17): every card opens somewhere that helps a person decide, with
+ * a question or two as taps and a handful of things to do.
+ */
+test("Christmas Lights opens the existing map, not a page about it", async ({
+  page,
+}) => {
+  await page.goto("/christmas?at=kelowna");
+  await page.getByTestId("cta-lights").click();
+  await expect(page).toHaveURL(/\/christmas\/lights\?at=kelowna/);
+  await expect(page.getByTestId("cta-tour")).toHaveText(/Build My Lights Tour/);
+  // The way's own address goes to the map too.
+  await page.goto("/christmas/for/lights?at=vernon");
+  await expect(page).toHaveURL(/\/christmas\/lights\?at=vernon/);
+});
+
+test("a Christmas date: tonight, going out, then a real plan", async ({
+  page,
+}) => {
+  await page.goto("/christmas");
+  await page.getByTestId("way-date").click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Christmas Date" }),
+  ).toBeVisible();
+  // Something to do before any question is answered.
+  await expect(page.getByTestId("plan-idea").first()).toBeVisible();
+  await page.getByTestId("q-when-tonight").click();
+  await expect(page).toHaveURL(/when=tonight/);
+  await page.getByTestId("q-stay-out").click();
+  await expect(page).toHaveURL(/when=tonight.*stay=out|stay=out.*when=tonight/);
+  expect(await page.getByTestId("plan-idea").count()).toBeLessThanOrEqual(3);
+  if (WITH_ATLAS)
+    expect(await page.getByTestId("find-card").count()).toBeLessThanOrEqual(4);
+  await page.getByTestId("plan-idea").first().click();
+  await expect(page).toHaveURL(/\/christmas\/itinerary\?.*say=.*tonight/);
+  await expect(page.getByTestId("itinerary-title")).toBeVisible();
+});
+
+test("staying in is ideas, said as ideas — and asks Atlas for nothing", async ({
+  page,
+}) => {
+  await page.goto("/christmas/for/date?stay=in");
+  await expect(page.getByTestId("way-finds")).toHaveCount(0);
+  await expect(page.getByTestId("plans")).toHaveCount(0);
+  const ideas = page.getByTestId("idea-card");
+  expect(await ideas.count()).toBeGreaterThan(1);
+  await expect(ideas.first()).toContainText("An idea, not a listing");
+  await page.goto("/christmas/for/cozy");
+  await page.getByTestId("q-mood-baking").click();
+  await expect(page).toHaveURL(/mood=baking/);
+  await expect(page.getByTestId("idea-card").first()).toContainText(
+    /cookies|gingerbread/i,
+  );
+  // Streaming availability is never claimed.
+  await page.goto("/christmas/for/cozy?mood=movies");
+  await expect(page.getByTestId("ideas")).toContainText(
+    "We don't list what's streaming where yet",
+  );
+});
+
+test("family fun: the youngest's age travels to Atlas and to the directory", async ({
+  page,
+}) => {
+  await page.goto("/christmas/for/family?at=kelowna");
+  await page.getByTestId("q-age-under5").click();
+  await expect(page).toHaveURL(/age=under5/);
+  await expect(page.getByTestId("q-age-under5")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  // Tapping it again clears it.
+  await page.getByTestId("q-age-under5").click();
+  await expect(page).not.toHaveURL(/age=/);
+  await page.getByTestId("q-age-5to9").click();
+  await expect(page.getByTestId("q-age-5to9")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  if (WITH_ATLAS) {
+    await expect(page.getByTestId("way-finds")).toBeVisible();
+    const all = page.getByTestId("see-all");
+    if (await all.count()) {
+      await all.click();
+      await expect(page).toHaveURL(/ages=6/);
+    }
+  }
+});
+
+test("a place with nothing on says so, and offers a way on", async ({
+  page,
+}) => {
+  test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
+  await page.goto("/christmas/for/events?at=delta&when=weekend&kind=festivals");
+  const empty = page.getByTestId("way-empty");
+  await expect(empty).toBeVisible();
+  await expect(empty.getByRole("link", { name: "lights map" })).toBeVisible();
+  await expect(
+    empty.getByRole("link", { name: "full directory" }),
+  ).toBeVisible();
+});
+
+test("Surprise me draws one thing, says what it is, and draws again", async ({
+  page,
+}) => {
+  await page.goto("/christmas");
+  await page.getByTestId("surprise-me").click();
+  await expect(page).toHaveURL(/\/christmas\/surprise\?.*s=\d+/);
+  const card = page.getByTestId("surprise");
+  await expect(card).toBeVisible();
+  const kind = await card.getAttribute("data-kind");
+  if (kind === "idea")
+    await expect(card).toContainText("An idea, not a listing");
+  else await expect(card.getByTestId("find-card")).toBeVisible();
+  const first = page.url();
+  await page.getByTestId("surprise-again").click();
+  await expect(page).not.toHaveURL(first);
+  await expect(page.getByTestId("surprise")).toBeVisible();
+});
+
+for (const width of [360, 390, 768]) {
+  test(`the front page fits a ${width}px screen: two columns, no sideways scroll`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width, height: 800 },
+      hasTouch: width < 600,
+    });
+    const page = await context.newPage();
+    await page.goto("/christmas");
+    const cards = page.getByTestId("ways").getByRole("link");
+    await page.evaluate(() => document.fonts.ready);
+    // Side by side once the page has settled (fonts, the streamed section).
+    await expect
+      .poll(async () => {
+        const [a, b] = await Promise.all([
+          cards.nth(0).boundingBox(),
+          cards.nth(1).boundingBox(),
+        ]);
+        return Math.abs(a!.y - b!.y);
+      })
+      .toBeLessThan(2);
+    const a = (await cards.nth(0).boundingBox())!;
+    const b = (await cards.nth(1).boundingBox())!;
+    for (const box of [a, b]) expect(box.height).toBeGreaterThanOrEqual(44);
+    const { sw, cw, h } = await page.evaluate(() => ({
+      sw: document.documentElement.scrollWidth,
+      cw: document.documentElement.clientWidth,
+      h: document.documentElement.scrollHeight,
+    }));
+    expect(sw).toBeLessThanOrEqual(cw);
+    // The old directory was ~14 phone screens; the front page is a few.
+    expect(h / 800).toBeLessThan(6.5);
+    // All six ways are reachable by keyboard.
+    await cards.nth(0).focus();
+    await expect(cards.nth(0)).toBeFocused();
+    await context.close();
+  });
+}
+
+test("when every picture fails, no broken image or empty frame is left", async ({
+  page,
+}) => {
+  test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
+  // Every image not served by Passport itself fails to load.
+  await page.route(
+    (url) =>
+      !url.host.startsWith("localhost") &&
+      /\.(jpe?g|png|webp|avif|gif)(\?|$)|image/i.test(url.href),
+    (route) => route.abort(),
+  );
+  for (const path of [
+    "/christmas?at=kelowna",
+    "/christmas/for/events?at=kelowna",
+    "/christmas/for/family?at=kelowna",
+  ]) {
+    await page.goto(path);
+    await expect(page.getByTestId("find-card").first()).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const broken = await page.evaluate(
+      () =>
+        [...document.images].filter(
+          (i) => i.complete && i.naturalWidth === 0 && i.offsetParent !== null,
+        ).length,
+    );
+    expect(broken, path).toBe(0);
+    // A find with no picture left wears its name on a warm tile instead.
+    for (const card of await page.getByTestId("find-card").all())
+      await expect(
+        card.locator("img").or(card.getByTestId("picture-tile")).first(),
+      ).toBeVisible();
+  }
 });

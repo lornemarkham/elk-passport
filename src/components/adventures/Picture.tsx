@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Experience } from "@/domain/experience/types";
 import { cardPictures } from "@/lib/media/cardPicture";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,15 @@ export function Picture({
   const picture = experience
     ? cardPictures(experience).find((p) => !broken.has(p.src))
     : undefined;
+  const img = useRef<HTMLImageElement>(null);
+  const src = picture?.src;
+  // A picture that failed before the page hydrated never fires `onError`;
+  // look once it is mounted, so a broken icon never stays on screen.
+  useEffect(() => {
+    const el = img.current;
+    if (src && el && el.complete && el.naturalWidth === 0)
+      setBroken((prev) => new Set(prev).add(src));
+  }, [src]);
 
   if (!picture)
     return (
@@ -56,6 +65,7 @@ export function Picture({
     <div className={cn("relative overflow-hidden bg-black/[0.06]", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element -- Atlas-hosted, outside the Next image pipeline */}
       <img
+        ref={img}
         src={picture.src}
         alt={picture.label ? picture.alt || picture.label : picture.alt}
         title={picture.label}

@@ -11,7 +11,14 @@ import { QUICK_STARTS } from "@/domain/christmas/request";
  * form, so it works on a phone before any JavaScript has arrived, and the
  * plan opens at an address that can be shared as it is.
  */
-export function PlanHero({ at }: { readonly at?: string }) {
+export function PlanHero({
+  at,
+  compact = false,
+}: {
+  readonly at?: string;
+  /** The front page's: the box alone, without the quick starts the six ways replace. */
+  readonly compact?: boolean;
+}) {
   const withAt = (say: string) => {
     const q = new URLSearchParams({ say });
     if (at) q.set("at", at);
@@ -52,24 +59,26 @@ export function PlanHero({ at }: { readonly at?: string }) {
           Make my Christmas plan
         </SubmitButton>
       </Form>
-      <ul
-        className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
-        aria-label="Quick starts"
-        data-testid="quick-starts"
-      >
-        {QUICK_STARTS.map((q) => (
-          <li key={q.id} className="shrink-0">
-            <Link
-              href={withAt(q.say)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-4 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/25"
-              data-testid={`quick-${q.id}`}
-            >
-              <span aria-hidden>{q.emoji}</span>
-              {q.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {!compact && (
+        <ul
+          className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
+          aria-label="Quick starts"
+          data-testid="quick-starts"
+        >
+          {QUICK_STARTS.map((q) => (
+            <li key={q.id} className="shrink-0">
+              <Link
+                href={withAt(q.say)}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-4 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/25"
+                data-testid={`quick-${q.id}`}
+              >
+                <span aria-hidden>{q.emoji}</span>
+                {q.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

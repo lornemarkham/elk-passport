@@ -1,85 +1,39 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bookmark, CalendarHeart, Compass, MapPin, Sun } from "lucide-react";
+import {
+  Bookmark,
+  CalendarHeart,
+  CalendarRange,
+  Compass,
+  Dices,
+  MapPin,
+} from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { Picture } from "@/components/adventures/Picture";
-import { AdventureCard } from "@/components/adventures/AdventureCard";
 import { Festive } from "@/components/christmas/Festive";
 import { RememberTown } from "@/components/christmas/RememberTown";
-import { PinCard } from "@/components/christmas/lights/PinCard";
 import { PlanHero } from "@/components/christmas/PlanHero";
-import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
-import { AtlasDown, Section } from "@/components/christmas/parts";
+import { RowSkeleton, WayCard } from "@/components/christmas/ways";
 import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import { PendingContent, PendingProvider } from "@/components/loading/Pending";
 import styles from "@/components/christmas/christmas.module.css";
-import { adventureSession } from "@/lib/adventures/server";
-import { adventuresOf, type AdventureSummary } from "@/lib/adventures/store";
 import { todayIn } from "@/lib/adventures/overview";
 import { townById } from "@/domain/discovery/towns";
-import { subjectHref } from "@/domain/experience/destination";
-import {
-  answer,
-  readAsk,
-  writeAsk,
-  type Find,
-} from "@/domain/christmas/discover";
-import { THEMES } from "@/domain/christmas/themes";
-import { CHALLENGES } from "@/domain/christmas/challenges";
-import { SHAPES } from "@/domain/christmas/plans";
-import { CONFIDENCE_LABEL, season } from "@/domain/christmas/when";
-import { around, type SectionId } from "@/domain/christmas/around";
+import { readAsk, writeAsk } from "@/domain/christmas/discover";
+import { season } from "@/domain/christmas/when";
+import { WAYS, wayHref } from "@/domain/christmas/ways";
 import { TOWNS } from "@/domain/christmas/lights/model";
-import { christmasFinds } from "./_server/corpus";
-import { lightsFor, viewer } from "./_server/lights";
+import { NearYou, YourAdventures } from "./_parts/near";
 import { whereAreWe } from "./_server/where";
 
 export const metadata: Metadata = {
   title: "Go Have a Christmas — Passport",
   description:
-    "Christmas markets, lights, Santa and the people you love — real things near you this season, planned together and remembered.",
+    "Your Christmas starts here: the lights, a Christmas date, family fun, friends, a cozy night in, and the real events and markets near you.",
 };
 
-const SHORT: Readonly<Record<SectionId, string>> = {
-  soon: "Happening soon",
-  lights: "Lights",
-  markets: "Markets",
-  santa: "Santa & family",
-  festive: "Festive events",
-  drive: "Worth the drive",
-};
-
-const EYEBROW: Readonly<Record<SectionId, string>> = {
-  soon: "On the calendar",
-  lights: "After dark",
-  markets: "Gifts, treats and mulled things",
-  santa: "With the kids",
-  festive: "Shows, festivals and feasts",
-  drive: "Worth getting in the car",
-};
-
-/** Where "more" goes for a section: the Discover page narrowed to its kind. */
-function moreHref(id: SectionId, q: string, lightsTown: string): string {
-  const base = q ? `${q}&` : "?";
-  switch (id) {
-    case "lights":
-      return `/christmas/lights${lightsTown}`;
-    case "markets":
-      return `/christmas/discover${base}theme=markets`;
-    case "santa":
-      return `/christmas/discover${base}theme=santa`;
-    case "festive":
-      return `/christmas/discover${base}theme=festivals`;
-    case "drive":
-      return `/christmas/discover${base}km=250`;
-    default:
-      return `/christmas/discover${q}`;
-  }
-}
-
-/** The page's opening line, by where we are in the season. */
+/** The countdown, by where we are in the season. */
 function seasonLine(stage: ReturnType<typeof season>): string {
   switch (stage.stage) {
     case "coming":
@@ -95,16 +49,23 @@ function seasonLine(stage: ReturnType<typeof season>): string {
   }
 }
 
-const hasPicture = (f: Find) =>
-  Boolean(f.experience.heroMedia || f.experience.contextualMedia);
-
 /**
- * **Go Have a Christmas** — Passport's Christmas, inside Go Have a Day.
+ * **Go Have a Christmas** — "Your Christmas Starts Here" (owner brief "P0 —
+ * the experience-first rebuild", 2026-11-17).
  *
- * Not a directory: the page opens on the season (how long to go, what is
- * coming up), lets somebody say what kind of Christmas they want in one tap,
- * and leads to a plan made with the people they love. Everything named is an
- * Atlas subject with its evidence; the decoration is CSS.
+ * The page asks one thing: what kind of Christmas? Six ways answer it, each
+ * opening a short page with a question or two and a handful of things to do
+ * (`ways.ts`). Below them, the four strongest things happening near here,
+ * a Surprise me, the planner's sentence box, and the way into everything.
+ * The long rows of event cards are gone from here; every one of them is
+ * still on Find Christmas (`/christmas/discover`) and the lights map.
+ *
+ * Only _Happening near you_ waits on Atlas, so on a first visit it streams in
+ * behind the rest: the six ways are on screen while a cold Atlas is still
+ * answering. Changing the place keeps the old answer, dimmed and said to be
+ * loading (`PendingContent`), until the new one replaces it — a keyed
+ * boundary showed a skeleton instead, which React holds for a minimum time,
+ * and made a warm switch six times slower (M865 timings).
  */
 export default async function ChristmasPage({
   searchParams,
@@ -119,40 +80,13 @@ export default async function ChristmasPage({
   const ask = { ...asked, at: where.at };
   const today = todayIn();
   const town = townById(ask.at);
-  const [session, corpus, lights] = await Promise.all([
-    adventureSession(),
-    christmasFinds(ask, today),
-    viewer().then((v) => lightsFor(v)),
-  ]);
-  const mine: AdventureSummary[] = session
-    ? await adventuresOf(session.db, session.user.id)
-        .then((all) => all.filter((a) => a.kind === "christmas"))
-        .catch(() => [])
-    : [];
-
+  const townName = town?.name.replace(/,\s*BC$/, "");
   const stage = season(today);
-  const answered = answer(corpus.finds, ask);
-  const live = answered.shelves
-    .filter((s) => s.id !== "past" && s.id !== "age" && s.id !== "far")
-    .flatMap((s) => s.finds);
-  const sections = around(answered, today, ask.km, lights.pins);
-  const sectionFinds = sections.flatMap((s) => s.finds);
-  const lead =
-    sectionFinds.find(hasPicture) ?? live.find(hasPicture) ?? sectionFinds[0];
-  const lightsTown = (TOWNS as readonly string[]).includes(ask.at)
-    ? `?at=${ask.at}`
-    : "";
-  const christmasCount = corpus.finds.filter((f) => f.reading.christmas).length;
-  const datedCount = corpus.finds.filter(
-    (f) => f.reading.christmas && f.when.confidence === "dated",
-  ).length;
+  const lightsTown = (TOWNS as readonly string[]).includes(ask.at);
+  const lightsHref = `/christmas/lights${lightsTown ? `?at=${ask.at}` : ""}`;
   const here = writeAsk({ at: ask.at });
   const q = here ? `?${here}` : "";
-  const amp = here ? `&${here}` : "";
-  const townName = town?.name.replace(/,\s*BC$/, "");
-  const origin = town
-    ? { latitude: town.latitude, longitude: town.longitude }
-    : undefined;
+  const discoverHref = `/christmas/discover${q}`;
 
   return (
     <>
@@ -161,411 +95,190 @@ export default async function ChristmasPage({
         <PicksProvider planHref={`/christmas/plan${q}`}>
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
-              <header className={styles.night}>
-                {lead && (
-                  <>
-                    <Picture
-                      experience={lead.experience}
-                      priority
-                      showLabel={false}
-                      fallbackTitle=""
-                      tone="#0f3b2b"
-                      className="absolute inset-0 -z-10 h-full w-full"
-                    />
-                    <div
-                      className="absolute inset-0 -z-10 bg-gradient-to-t from-[#082319] via-[#082319]/60 to-[#082319]/20"
-                      aria-hidden
-                    />
-                  </>
-                )}
-                <div className="mx-auto flex min-h-[calc(100svh-5.5rem)] max-w-6xl flex-col justify-end px-4 pt-16 pb-8 sm:min-h-[36rem] sm:px-6 sm:pb-12">
-                  <p className="text-sm font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
+              {/* Above the page below it: the place picker opens out of the header. */}
+              <header
+                className={`${styles.night} z-30`}
+                style={{ overflow: "visible" }}
+              >
+                <div className="mx-auto max-w-6xl px-4 pt-7 pb-6 sm:px-6 sm:pt-12 sm:pb-10">
+                  <p className="text-xs font-bold tracking-[0.18em] text-[#ffd98a] uppercase sm:text-sm">
                     Go Have a Christmas
                   </p>
-                  <h1 className="ghad-display mt-3 max-w-3xl text-[3.1rem] leading-[0.9] font-extrabold tracking-[-0.045em] text-balance sm:text-8xl">
-                    Plan your Christmas adventure.
+                  <h1 className="ghad-display mt-2 max-w-3xl text-[2.6rem] leading-[0.92] font-extrabold tracking-[-0.045em] text-balance sm:text-7xl">
+                    Your Christmas Starts Here
                   </h1>
-                  <p
-                    className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-black/35 px-4 py-2 text-base font-bold backdrop-blur"
-                    data-testid="countdown"
-                  >
-                    <CalendarHeart
-                      className="h-5 w-5 text-[#ffd98a]"
-                      aria-hidden
-                    />
-                    {seasonLine(stage)}
+                  <p className="mt-3 max-w-xl text-lg font-semibold text-white/90 sm:text-xl">
+                    Find something wonderful to do together.
                   </p>
-                  <div className="mt-5 max-w-2xl">
-                    <PlanHero at={ask.at} />
+                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <p
+                      className="inline-flex w-fit items-center gap-2 rounded-full bg-black/30 px-3.5 py-1.5 text-sm font-bold backdrop-blur"
+                      data-testid="countdown"
+                    >
+                      <CalendarHeart
+                        className="h-4 w-4 text-[#ffd98a]"
+                        aria-hidden
+                      />
+                      {seasonLine(stage)}
+                    </p>
+                    <Festive />
                   </div>
                   <Suspense fallback={null}>
                     <ExperienceLocation
                       scope="christmas"
                       experience="Christmas"
                       at={ask.at}
-                      className="mt-3 text-white"
+                      className="mt-2 text-white"
                     />
                   </Suspense>
-                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm font-bold">
-                    <Link
-                      href={`/christmas/lights${lightsTown}`}
-                      className="inline-flex min-h-11 items-center gap-1.5 underline-offset-4 hover:underline"
-                      data-testid="cta-lights"
-                    >
-                      <MapPin className="h-4 w-4 text-[#ffd98a]" aria-hidden />
-                      The Christmas lights map
-                    </Link>
-                    <Link
-                      href={`/christmas/discover${q}`}
-                      className="inline-flex min-h-11 items-center gap-1.5 underline-offset-4 hover:underline"
-                      data-testid="cta-discover"
-                    >
-                      <Compass className="h-4 w-4 text-[#ffd98a]" aria-hidden />
-                      Find Christmas
-                      {townName ? ` near ${townName}` : " near me"}
-                    </Link>
-                  </div>
-                  {lead && (
-                    <Link
-                      href={subjectHref(
-                        lead.experience.kind,
-                        lead.experience.id,
-                      )}
-                      className="mt-5 block w-fit max-w-full text-sm text-white/85 underline-offset-4 hover:underline"
-                      data-testid="lead-find"
-                    >
-                      <span className="font-bold text-[#ffd98a]">
-                        Pictured:
-                      </span>{" "}
-                      {lead.experience.title}
-                      {lead.when.line ? ` · ${lead.when.line}` : ""} ·{" "}
-                      {CONFIDENCE_LABEL[lead.when.confidence]}
-                    </Link>
-                  )}
-                  <Festive className="mt-4" />
                 </div>
                 <div className={styles.lights} aria-hidden />
               </header>
 
-              <PendingContent>
-                <div className="mx-auto max-w-6xl space-y-14 px-4 pt-8 sm:px-6">
-                  {corpus.outage && <AtlasDown />}
-
-                  <Section
-                    id="browse"
-                    eyebrow="Browse real Christmas"
-                    title={`Christmas around ${townName ?? "you"}`}
-                    line="Real markets, lights, Santa and shows — by kind, with the dates to prove it."
+              <div className="mx-auto max-w-6xl space-y-10 px-4 pt-6 sm:space-y-14 sm:px-6 sm:pt-10">
+                <nav aria-labelledby="ways-title" data-testid="ways">
+                  <h2
+                    id="ways-title"
+                    className="ghad-display text-2xl leading-tight font-extrabold tracking-[-0.02em] sm:text-3xl"
                   >
-                    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                      {THEMES.map((theme) => {
-                        const here = live.filter((f) =>
-                          f.reading.themes.includes(theme.id),
-                        );
-                        const cover = here.find(hasPicture);
-                        return (
-                          <li key={theme.id}>
-                            <Link
-                              href={`/christmas/discover?theme=${theme.id}${amp}`}
-                              className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[24px] bg-[#0f3b2b] p-4 text-white shadow-[0_6px_24px_rgba(8,35,25,0.12)] transition hover:-translate-y-0.5 motion-reduce:transition-none"
-                              data-testid={`theme-${theme.id}`}
-                            >
-                              {cover && (
-                                <Picture
-                                  experience={cover.experience}
-                                  showLabel={false}
-                                  fallbackTitle=""
-                                  tone="#0f3b2b"
-                                  className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
-                                />
-                              )}
-                              <span
-                                className="absolute inset-0 bg-gradient-to-t from-[#082319]/90 via-[#082319]/30 to-transparent"
-                                aria-hidden
-                              />
-                              <span className="relative">
-                                <span className="ghad-display block text-xl leading-tight font-extrabold">
-                                  {theme.label}
-                                </span>
-                                <span className="text-sm text-white/85">
-                                  {here.length > 0
-                                    ? `${here.length} Atlas knows about`
-                                    : "None in Atlas yet"}
-                                </span>
-                              </span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                      <li>
-                        <Link
-                          href={`/christmas/discover${q}`}
-                          className="flex aspect-[4/5] flex-col justify-end rounded-[24px] bg-[#b3242f] p-4 text-white transition hover:brightness-110 motion-reduce:transition-none"
-                        >
-                          <span className="ghad-display text-xl leading-tight font-extrabold">
-                            Show me everything
-                          </span>
-                          <span className="text-sm text-white/85">
-                            {live.length} to look at
-                          </span>
-                        </Link>
+                    What kind of Christmas?
+                  </h2>
+                  <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                    {WAYS.map((way) => (
+                      <li key={way.id}>
+                        <WayCard
+                          way={way}
+                          href={wayHref(way.id, ask.at, lightsTown)}
+                          {...(way.id === "lights"
+                            ? { testId: "cta-lights" }
+                            : {})}
+                        />
                       </li>
-                    </ul>
-                  </Section>
+                    ))}
+                  </ul>
+                </nav>
 
-                  {sections.length > 0 && (
-                    <nav
-                      aria-label="On this page"
-                      className="-mx-4 -mt-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
-                      data-testid="around-nav"
-                    >
-                      {[
-                        ...sections.map((s) => ({
-                          id: s.id as string,
-                          label: SHORT[s.id],
-                        })),
-                        { id: "build", label: "A weekend or more" },
-                      ].map((j) => (
-                        <a
-                          key={j.id}
-                          href={`#${j.id}`}
-                          className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-black/10 hover:ring-black/30"
-                        >
-                          {j.label}
-                        </a>
-                      ))}
-                    </nav>
-                  )}
-
-                  {sections.map((s) => (
-                    <Section
-                      key={s.id}
-                      id={s.id}
-                      eyebrow={EYEBROW[s.id]}
-                      title={s.title}
-                      line={s.line}
-                      action={
-                        <Link
-                          href={moreHref(s.id, q, lightsTown)}
-                          className="inline-flex min-h-11 items-center text-base font-semibold underline underline-offset-4"
-                          data-testid={`more-${s.id}`}
-                        >
-                          {s.more > 0 ? `${s.more} more` : "See them all"}
-                        </Link>
-                      }
-                    >
-                      {s.finds.length > 0 && (
-                        <div
-                          className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6"
-                          data-testid={`around-${s.id}`}
-                        >
-                          {s.finds.map((f) => (
-                            <FindCard
-                              key={f.experience.id}
-                              find={f}
-                              origin={origin}
-                              compact
-                            />
-                          ))}
-                        </div>
-                      )}
-                      {s.pins.length > 0 && (
-                        <div className={s.finds.length > 0 ? "mt-5" : ""}>
-                          <p className="mb-2 text-sm font-semibold text-[var(--gh-ink-soft)]">
-                            From the community lights map
-                            <span className="font-normal">
-                              {" "}
-                              — local listings checked by a person, not from
-                              Atlas
-                            </span>
-                          </p>
-                          <ul
-                            className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6"
-                            data-testid={`around-${s.id}-pins`}
-                          >
-                            {s.pins.map((p) => (
-                              <li
-                                key={p.id}
-                                className="w-[17.5rem] shrink-0 snap-start"
-                              >
-                                <PinCard pin={p} day />
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {s.id === "lights" && (
-                        <Link
-                          href={`/christmas/lights${lightsTown}`}
-                          className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#b3242f] px-6 font-extrabold text-white hover:brightness-110"
-                          data-testid="lights-banner"
-                        >
-                          📍 Open the lights map — or pin one we&apos;re missing
-                        </Link>
-                      )}
-                    </Section>
-                  ))}
-
-                  {sections.length === 0 && !corpus.outage && (
-                    <p
-                      className="rounded-[22px] bg-white p-5 text-base ring-1 ring-black/5"
-                      data-testid="around-empty"
-                    >
-                      Atlas has no dated Christmas things near {townName} yet.
-                      Try another town above, or{" "}
-                      <Link
-                        href={`/christmas/discover${q}`}
-                        className="font-semibold underline underline-offset-4"
-                      >
-                        everything Atlas knows
-                      </Link>
-                      .
-                    </p>
-                  )}
-
-                  <Section
-                    id="build"
-                    eyebrow="More ways to plan"
-                    title="A weekend, or a few days?"
-                    line="Add things to your Christmas day as you scroll — events, markets, light displays — then make it an adventure for one day or several. Passport sketches around what you chose, from real places; invite your people, change anything."
+                <PendingContent>
+                  <Suspense
+                    fallback={
+                      <RowSkeleton
+                        label={`Finding what's on around ${townName ?? "you"}…`}
+                      />
+                    }
                   >
-                    <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-5">
-                      {SHAPES.map((shape) => (
-                        <li
-                          key={shape.id}
-                          className="w-[15rem] shrink-0 snap-start sm:w-auto"
-                        >
-                          <Link
-                            href={`/christmas/plan?shape=${shape.id}${amp}`}
-                            className={`${styles.ticket} flex h-full flex-col gap-2 rounded-[22px] p-5 transition hover:-translate-y-0.5 motion-reduce:transition-none`}
-                            data-testid={`shape-${shape.id}`}
-                          >
-                            <span
-                              className="h-1.5 w-10 rounded-full bg-[#b3242f]"
-                              aria-hidden
-                            />
-                            <span className="ghad-display text-lg leading-tight font-extrabold">
-                              {shape.label}
-                            </span>
-                            <span className="text-sm text-[var(--gh-ink-soft)]">
-                              {shape.line}
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </Section>
+                    <NearYou
+                      ask={ask}
+                      today={today}
+                      discoverHref={discoverHref}
+                      lightsHref={lightsHref}
+                    />
+                  </Suspense>
+                </PendingContent>
 
-                  <Section
-                    eyebrow="Christmas challenges"
-                    title="Small dares. Big memories."
-                    line="Every Christmas adventure comes with these. Finish one with a photo or a line and it becomes one of the group's memories."
+                <section
+                  className="grid gap-4 lg:grid-cols-[1fr_1.4fr]"
+                  aria-label="Surprise me, or say it"
+                >
+                  <Link
+                    href={`/christmas/surprise${q}`}
+                    className="group flex items-center gap-4 rounded-[26px] bg-[#b3242f] p-5 text-white shadow-[0_10px_30px_rgba(179,36,47,0.25)] transition hover:brightness-110 motion-reduce:transition-none sm:p-6"
+                    data-testid="surprise-me"
                   >
-                    <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
-                      {CHALLENGES.slice(0, 6).map((c) => (
-                        <li
-                          key={c.id}
-                          className="flex w-[17rem] shrink-0 snap-start gap-3 rounded-[22px] bg-[#0f3b2b] p-5 text-white sm:w-auto"
-                        >
-                          <span
-                            className="mt-1 h-10 w-1.5 shrink-0 rounded-full bg-[#ffd98a]"
-                            aria-hidden
-                          />
-                          <span>
-                            <span className="ghad-display block text-lg leading-tight font-extrabold">
-                              {c.title}
-                            </span>
-                            <span className="mt-1 block text-sm text-white/80">
-                              {c.dare}
-                            </span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </Section>
+                    <Dices
+                      className="h-10 w-10 shrink-0 text-[#ffd98a] transition-transform group-hover:rotate-12 motion-reduce:transition-none"
+                      aria-hidden
+                    />
+                    <span>
+                      <span className="ghad-display block text-2xl leading-tight font-extrabold">
+                        Surprise me
+                      </span>
+                      <span className="text-sm text-white/85">
+                        One thing to do — something real near{" "}
+                        {townName ?? "you"}, or one of our ideas.
+                      </span>
+                    </span>
+                  </Link>
+                  <div className={`${styles.night} rounded-[26px] p-3 sm:p-4`}>
+                    <PlanHero at={ask.at} compact />
+                  </div>
+                </section>
 
-                  {mine.length > 0 && (
-                    <Section eyebrow="Yours" title="Your Christmas adventures">
-                      <ul className="grid gap-4 sm:grid-cols-2">
-                        {mine.map((a) => (
-                          <li key={a.id}>
-                            <AdventureCard adventure={a} today={today} />
-                          </li>
-                        ))}
-                      </ul>
-                    </Section>
-                  )}
-
-                  <section className="rounded-[28px] bg-white p-6 ring-1 ring-black/5 sm:p-8">
-                    <h2 className="ghad-display text-2xl font-extrabold">
-                      How Passport knows
-                    </h2>
-                    <p className="mt-2 max-w-3xl text-base text-[var(--gh-ink-soft)]">
-                      Everything here is something Atlas holds, with the words
-                      that make it Christmas on its card.{" "}
-                      {corpus.outage
-                        ? "Atlas can't be reached right now, so there's nothing to count."
-                        : `Atlas knows ${christmasCount} Christmas things; ${datedCount} have this season's dates.`}{" "}
-                      Passport never invents a time, a price or that something
-                      is open.
-                    </p>
-                    <ul className="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
-                      <li className="rounded-full bg-[#0f3b2b] px-3 py-1 text-white">
-                        {CONFIDENCE_LABEL.dated} — dated, from the listing
-                      </li>
-                      <li className="rounded-full bg-[#ffd98a] px-3 py-1 text-[#082319]">
-                        {CONFIDENCE_LABEL.check} — a window, not the days
-                      </li>
-                      <li className="rounded-full bg-white px-3 py-1 ring-1 ring-black/10">
-                        {CONFIDENCE_LABEL.unconfirmed} — no dates this season
-                      </li>
-                      <li className="rounded-full bg-[#ebe1cd] px-3 py-1">
-                        {CONFIDENCE_LABEL.past} — last year&apos;s, or older
-                      </li>
-                    </ul>
-                  </section>
-
-                  <nav
-                    aria-label="More of Passport"
-                    className="grid gap-3 sm:grid-cols-3"
+                <section aria-labelledby="browse-title" data-testid="browse">
+                  <h2
+                    id="browse-title"
+                    className="ghad-display text-2xl leading-tight font-extrabold sm:text-3xl"
                   >
+                    Browse everything
+                  </h2>
+                  <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
+                    Every Christmas thing Atlas knows, with filters, for anybody
+                    who&apos;d rather look through the lot.
+                  </p>
+                  <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
+                      {
+                        href: discoverHref,
+                        icon: Compass,
+                        title: `Find Christmas near ${townName ?? "me"}`,
+                        line: "Markets, Santa, shows, festivals — the full directory.",
+                        testId: "cta-discover",
+                      },
+                      {
+                        href: lightsHref,
+                        icon: MapPin,
+                        title: "The Christmas lights map",
+                        line: "Every pinned display, and a tour built for you.",
+                        testId: "browse-lights",
+                      },
+                      {
+                        href: `/christmas/plan${q}`,
+                        icon: CalendarRange,
+                        title: "A weekend, or a few days",
+                        line: "An adventure for one day or several, sketched from real places.",
+                        testId: "browse-plan",
+                      },
                       {
                         href: "/saved",
                         icon: Bookmark,
                         title: "Saved",
                         line: "Everything you've kept — Christmas included.",
+                        testId: "browse-saved",
                       },
-                      {
-                        href: "/go",
-                        icon: Sun,
-                        title: "Go Have a Day",
-                        line: "Any day, built from a sentence.",
-                      },
-                      {
-                        href: "/discovery",
-                        icon: Compass,
-                        title: "Discover",
-                        line: "Everything else worth getting excited about.",
-                      },
-                    ].map(({ href, icon: Icon, title, line }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        className="flex items-start gap-3 rounded-[22px] bg-white p-5 ring-1 ring-black/5 hover:ring-black/20"
-                      >
-                        <Icon className="mt-1 h-5 w-5 shrink-0" aria-hidden />
-                        <span>
-                          <span className="block font-bold">{title}</span>
-                          <span className="text-sm text-[var(--gh-ink-soft)]">
-                            {line}
+                    ].map(({ href, icon: Icon, title, line, testId }) => (
+                      <li key={testId}>
+                        <Link
+                          href={href}
+                          className="flex h-full items-start gap-3 rounded-[22px] bg-white p-4 ring-1 ring-black/5 hover:ring-black/20"
+                          data-testid={testId}
+                        >
+                          <Icon
+                            className="mt-0.5 h-5 w-5 shrink-0 text-[#b3242f]"
+                            aria-hidden
+                          />
+                          <span>
+                            <span className="block font-bold">{title}</span>
+                            <span className="text-sm text-[var(--gh-ink-soft)]">
+                              {line}
+                            </span>
                           </span>
-                        </span>
-                      </Link>
+                        </Link>
+                      </li>
                     ))}
-                  </nav>
-                </div>
-              </PendingContent>
+                  </ul>
+                </section>
+
+                <Suspense fallback={null}>
+                  <YourAdventures today={today} />
+                </Suspense>
+
+                <p className="max-w-3xl text-sm text-[var(--gh-ink-soft)]">
+                  Every event, market and place here is one Atlas holds, with
+                  its dates and how sure they are on its card. Lights pinned by
+                  locals are checked by a person. Ideas say they&apos;re ideas.
+                  Passport never invents a time, a price or that something is
+                  open.
+                </p>
+              </div>
             </PendingProvider>
           </main>
         </PicksProvider>
