@@ -25,6 +25,46 @@ for (const [name, device] of [
       hasTouch: device.hasTouch,
     });
 
+    test("Labs keeps Conference, October and Badminton, each honestly labelled", async ({
+      page,
+    }) => {
+      await page.goto("/labs");
+      await expect(page.getByTestId("labs-seasonal-archive")).toContainText(
+        "October",
+      );
+      for (const [id, status, href] of [
+        ["conference", "Experimental", "/conferences"],
+        ["october", "Out of Season", "/october"],
+        ["badminton", "Experimental", "/badminton"],
+      ] as const) {
+        const card = page.getByTestId(`labs-experience-${id}`);
+        await expect(card).toBeVisible();
+        await expect(card.getByRole("heading")).toBeVisible();
+        await expect(
+          page.getByTestId(`labs-experience-status-${id}`),
+        ).toHaveText(status);
+        await expect(card.locator("img")).toBeVisible();
+        const open = page.getByTestId(`labs-experience-open-${id}`);
+        await expect(open).toHaveText(/Open Experience/);
+        await expect(open).toHaveAttribute("href", href);
+      }
+    });
+
+    test("the preview images actually load", async ({ page }) => {
+      await page.goto("/labs");
+      const imgs = page
+        .locator(
+          '[data-testid="labs-experiences"], [data-testid="labs-seasonal-archive"]',
+        )
+        .locator("img");
+      for (const img of await imgs.all()) {
+        await img.scrollIntoViewIfNeeded();
+        await expect
+          .poll(() => img.evaluate((i: HTMLImageElement) => i.naturalWidth))
+          .toBeGreaterThan(0);
+      }
+    });
+
     // **Off the bar, still there** (owner brief 2026-11-08: the bar is
     // Discover | My Stuff | Build a Day | Experiences). The Creative Archive
     // still links here.
@@ -83,11 +123,6 @@ for (const [name, device] of [
       await page.goto("/labs");
       const status = page.getByTestId("labs-status-go-have-a-day");
       await expect(status).toHaveText(WITH_ATLAS ? "Playable" : "Blocked");
-    });
-
-    test("October is not a Labs experiment", async ({ page }) => {
-      await page.goto("/labs");
-      await expect(page.locator("main")).not.toContainText(/october/i);
     });
   });
 }

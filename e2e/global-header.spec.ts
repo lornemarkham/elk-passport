@@ -7,14 +7,18 @@ import { devices, expect, test } from "@playwright/test";
  * *below* it.
  */
 const PAGES = [
-  ["Conference", "/conferences", "conference"],
   ["Hockey Night", "/hockey", "hockey"],
-  ["October", "/october", "october"],
   ["Christmas", "/christmas", "christmas"],
   ["Snow Day", "/snow", "snow"],
   ["Sesh Wars", "/snow/sesh-wars", "sesh-wars"],
   ["Date Night", "/datenight", "date-night"],
-  ["Badminton Game Night", "/badminton", "badminton"],
+] as const;
+
+// Moved to Labs 2026-11-17: same routes, lit as Labs rather than as a menu entry.
+const LABS_PAGES = [
+  ["Conference", "/conferences"],
+  ["October", "/october"],
+  ["Badminton Game Night", "/badminton"],
 ] as const;
 
 for (const [name, device] of [
@@ -51,7 +55,20 @@ for (const [name, device] of [
         ).toHaveAttribute("aria-current", "page");
         await expect(
           page.getByTestId("passport-experiences").getByRole("link"),
-        ).toHaveCount(PAGES.length);
+        ).toHaveCount(PAGES.length + 1);
+      });
+    }
+
+    for (const [label, path] of LABS_PAGES) {
+      test(`${label} wears it, lit as Labs`, async ({ page }) => {
+        await page.goto(path);
+        await expect(page.getByTestId("global-header")).toHaveCount(1);
+        const menu = page.getByTestId("passport-nav-experiences");
+        await expect(menu).toHaveAttribute("aria-current", "page");
+        await menu.click();
+        await expect(
+          page.getByTestId("passport-experience-labs"),
+        ).toHaveAttribute("aria-current", "page");
       });
     }
 
@@ -60,6 +77,9 @@ for (const [name, device] of [
     }) => {
       await page.goto("/snow");
       for (const [, path, id] of PAGES.filter(([, , i]) => i !== "snow")) {
+        // During a route change the outgoing and incoming pages can both be
+        // mounted for a moment; wait for exactly one header before clicking.
+        await expect(page.getByTestId("global-header")).toHaveCount(1);
         await page.getByTestId("passport-nav-experiences").click();
         await page.getByTestId(`passport-experience-${id}`).click();
         // Sesh Wars asks Supabase whether its tables exist first (slow on a placeholder).

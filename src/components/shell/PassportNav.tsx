@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { ThemePicker, ThemeProvider } from "@/components/ghad/theme";
 import { Wordmark } from "@/components/ghad/Wordmark";
-import { EXPERIENCES, currentExperience } from "@/lib/experiences";
+import {
+  EXPERIENCES,
+  LABS_HREF,
+  currentExperience,
+  currentLabsExperience,
+} from "@/lib/experiences";
 
 /**
  * **The bar, in the product's own identity.**
@@ -80,7 +85,9 @@ import { EXPERIENCES, currentExperience } from "@/lib/experiences";
  *   is where saved ideas go. Go Offline (`/detox`) is the same journey's last
  *   step, so it lights this too.
  * - **Labs is off the bar** too: the brief names four things, and Labs is
- *   where unfinished experiments live. `/labs` still answers.
+ *   where unfinished experiments live. `/labs` still answers. Since
+ *   2026-11-17 it is the last entry of the Experiences row, after the five
+ *   strongest products; Conference, October and Badminton moved into it.
  */
 const DESTINATIONS = [
   { href: "/discovery", label: "Discover", testId: "discover" },
@@ -130,7 +137,12 @@ export function PassportNav({
   const header = useRef<HTMLElement>(null);
   const rowId = useId();
   const active = currentExperience(pathname);
-  const inExperience = active !== undefined;
+  // Conference, October and Badminton live in Labs now; being inside any of
+  // them (or Labs itself) lights Labs, and Experiences too, since Labs is a
+  // row of that menu.
+  const inLabs =
+    inside(LABS_HREF) || currentLabsExperience(pathname) !== undefined;
+  const inExperience = active !== undefined || inLabs;
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -300,6 +312,26 @@ export function PassportNav({
                   </li>
                 );
               })}
+              {/* **One Labs entry**, set apart from the five: they are the
+                  products, this is where the experiments are kept. */}
+              <li className="ml-1 shrink-0 border-l border-black/10 pl-1 sm:ml-2 sm:pl-2">
+                <Link
+                  href={LABS_HREF}
+                  aria-current={inLabs ? "page" : undefined}
+                  data-testid="passport-experience-labs"
+                  style={
+                    inLabs ? { borderColor: "var(--ghad-accent)" } : undefined
+                  }
+                  className={`-mb-px inline-flex min-h-11 items-center gap-1 border-b-2 px-1.5 text-[14px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
+                    inLabs
+                      ? "text-[#111]"
+                      : "border-transparent text-black/60 hover:text-black/85"
+                  }`}
+                >
+                  <span aria-hidden>🧪</span>
+                  Labs
+                </Link>
+              </li>
             </ul>
           </nav>
         )}

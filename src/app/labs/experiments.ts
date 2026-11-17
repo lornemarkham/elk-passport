@@ -14,7 +14,8 @@ import { conferenceSetup } from "@/lib/conference/config";
  * Nothing here applies a migration, opens a sign-in flow or flips a flag: it
  * only reads what the experiments' own gates already say.
  *
- * October is deliberately absent. It belongs to iamoctober.com, not Labs.
+ * These are the prototypes. The whole experiences kept in Labs (Conference,
+ * October, Badminton Game Night) are `LAB_EXPERIENCES` in `lib/experiences`.
  */
 export type LabStatus = "playable" | "blocked";
 
