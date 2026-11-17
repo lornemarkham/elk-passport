@@ -401,9 +401,19 @@ for (const width of [360, 390, 768]) {
     const page = await context.newPage();
     await page.goto("/christmas");
     const cards = page.getByTestId("ways").getByRole("link");
+    await page.evaluate(() => document.fonts.ready);
+    // Side by side once the page has settled (fonts, the streamed section).
+    await expect
+      .poll(async () => {
+        const [a, b] = await Promise.all([
+          cards.nth(0).boundingBox(),
+          cards.nth(1).boundingBox(),
+        ]);
+        return Math.abs(a!.y - b!.y);
+      })
+      .toBeLessThan(2);
     const a = (await cards.nth(0).boundingBox())!;
     const b = (await cards.nth(1).boundingBox())!;
-    expect(Math.abs(a.y - b.y)).toBeLessThan(2);
     for (const box of [a, b]) expect(box.height).toBeGreaterThanOrEqual(44);
     const { sw, cw, h } = await page.evaluate(() => ({
       sw: document.documentElement.scrollWidth,

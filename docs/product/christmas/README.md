@@ -21,6 +21,12 @@ question — _What would you love to do?_ — and the plan is an itinerary that
 satisfies every part asked for or says which it couldn't: [PLANNER.md](PLANNER.md)
 (`/christmas/itinerary`).
 
+**Experience-first (2026-11-17, M865):** the front page is _Your Christmas
+Starts Here_ — six ways to have a Christmas (Lights, Date, Family, Friends,
+Cozy, Events & Markets), each a short page at `/christmas/for/<way>`, then a
+few things happening near you, Surprise me, and the way into everything:
+[EXPERIENCE-FIRST.md](EXPERIENCE-FIRST.md).
+
 **Pin the Magic (2026-11-10):** the community Christmas lights map, its
 reviewed submissions, reactions and lights tour are in
 [PIN-THE-MAGIC.md](PIN-THE-MAGIC.md) (`/christmas/lights`).

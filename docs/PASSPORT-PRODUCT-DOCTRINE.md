@@ -877,6 +877,17 @@ shown unresolved with the reason — never filled with something else. The
 only question asked is the day, when none was said. One composition; it
 answers no open question below.
 
+_Christmas opens on six ways 2026-11-17_ (owner brief "P0 — the
+experience-first rebuild"; `docs/product/christmas/EXPERIENCE-FIRST.md`):
+`/christmas` asks _what kind of Christmas?_ before anything else, with six
+ways (Lights, Date, Family, Friends, Cozy, Events & Markets). Each opens a
+short page with optional taps and a few things to do, not a directory. This
+supersedes the paragraph above on what `/christmas` opens on; the sentence
+box stays beside the ways. **An experience need not be a listing**: Passport
+may suggest things to do at home or anywhere, provided each says it is an
+idea and names no venue, time, price or availability. Real events and
+places stay Atlas's. One composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs
