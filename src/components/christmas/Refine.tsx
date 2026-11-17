@@ -1,3 +1,5 @@
+import Form from "next/form";
+import { SubmitButton } from "@/components/loading/SubmitButton";
 import { SlidersHorizontal } from "lucide-react";
 import { TOWN_GROUPS, townById } from "@/domain/discovery/towns";
 import {
@@ -65,8 +67,7 @@ export function Refine({
           Change
         </span>
       </summary>
-      <form
-        method="get"
+      <Form
         action="/christmas/discover"
         className="grid gap-4 border-t border-black/5 p-5 sm:grid-cols-2 lg:grid-cols-3"
       >
@@ -211,14 +212,14 @@ export function Refine({
           donation&rdquo; keeps just what&apos;s stated that way for everybody.
           Unknown is never treated as no.
         </p>
-        <button
-          type="submit"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#0f3b2b] px-6 text-base font-bold text-white hover:brightness-110"
+        <SubmitButton
+          pending="Finding…"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#0f3b2b] px-6 text-base font-bold text-white hover:brightness-110"
           data-testid="refine-submit"
         >
           Show me
-        </button>
-      </form>
+        </SubmitButton>
+      </Form>
     </details>
   );
 }

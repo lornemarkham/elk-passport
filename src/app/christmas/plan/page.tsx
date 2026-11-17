@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { ExperienceLocation } from "@/components/location/ExperienceLocation";
+import { PendingContent, PendingProvider } from "@/components/loading/Pending";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -155,84 +156,88 @@ export default async function ChristmasPlanPage({
     <>
       <ThemeProvider className="block">
         <main className={`${styles.page} min-h-screen pb-16`}>
-          <header className={styles.night}>
-            <div className="mx-auto max-w-4xl px-4 pt-5 pb-8 sm:px-6">
-              <Link
-                href={`/christmas${ask.at ? `?at=${ask.at}` : ""}`}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold hover:bg-white/20"
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-                Christmas
-              </Link>
-              <h1 className="ghad-display mt-4 text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-balance sm:text-6xl">
-                Let&apos;s plan a Christmas worth remembering.
-              </h1>
-              <p className="mt-3 max-w-xl text-lg text-white/85">
-                Five quick answers. Passport sketches it from real places,
-                around the Christmas things you picked — then your people vote,
-                and you change anything.
-              </p>
-              <Suspense fallback={null}>
-                <ExperienceLocation
-                  scope="christmas"
-                  experience="Christmas"
-                  className="mt-2 text-white"
-                />
-              </Suspense>
-            </div>
-            <div className={styles.lights} aria-hidden />
-          </header>
-          <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
-            {!session ? (
-              <div className="rounded-[28px] bg-white px-6 py-12 text-center ring-1 ring-black/5">
-                <p className="text-4xl" aria-hidden>
-                  🎄
-                </p>
-                <p className="ghad-display mt-2 text-2xl font-extrabold">
-                  Sign in to start a Christmas adventure
-                </p>
-                <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
-                  It stays with your account, and you can send it to everyone
-                  coming.
-                </p>
+          <PendingProvider>
+            <header className={styles.night}>
+              <div className="mx-auto max-w-4xl px-4 pt-5 pb-8 sm:px-6">
                 <Link
-                  href={`/auth?next=${encodeURIComponent(here)}`}
-                  className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#b3242f] px-6 font-bold text-white"
-                  data-testid="plan-sign-in"
+                  href={`/christmas${ask.at ? `?at=${ask.at}` : ""}`}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold hover:bg-white/20"
                 >
-                  Sign in
+                  <ArrowLeft className="h-4 w-4" aria-hidden />
+                  Christmas
                 </Link>
-                <p className="mt-6 text-sm text-[var(--gh-ink-soft)]">
-                  Just want a day out of it?
+                <h1 className="ghad-display mt-4 text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-balance sm:text-6xl">
+                  Let&apos;s plan a Christmas worth remembering.
+                </h1>
+                <p className="mt-3 max-w-xl text-lg text-white/85">
+                  Five quick answers. Passport sketches it from real places,
+                  around the Christmas things you picked — then your people
+                  vote, and you change anything.
                 </p>
-                <Link
-                  href={`/go?${goParams.toString()}`}
-                  className="mt-2 inline-flex min-h-12 items-center rounded-full px-6 font-bold text-[#b3242f] ring-2 ring-[#b3242f]"
-                  data-testid="plan-no-account"
-                >
-                  Build it now — no account
-                </Link>
-                <p className="mx-auto mt-2 max-w-md text-xs text-[var(--gh-ink-soft)]">
-                  Change it, keep it on this device, and send it as words or a
-                  printed page. Sign in later to plan it with your people.
-                </p>
+                <Suspense fallback={null}>
+                  <ExperienceLocation
+                    scope="christmas"
+                    experience="Christmas"
+                    className="mt-2 text-white"
+                  />
+                </Suspense>
               </div>
-            ) : (
-              <Planner
-                today={today}
-                initialShape={shape.id}
-                {...(ask.at ? { initialTown: ask.at } : {})}
-                {...(ask.from ? { initialFrom: ask.from } : {})}
-                {...(ask.party ? { initialParty: ask.party } : {})}
-                initialAges={ask.ages}
-                {...(ask.people ? { initialPeople: ask.people } : {})}
-                {...(name ? { initialTitle: name } : {})}
-                {...(say ? { initialExtra: say } : {})}
-                picks={picks}
-                saved={saved}
-              />
-            )}
-          </div>
+              <div className={styles.lights} aria-hidden />
+            </header>
+            <PendingContent>
+              <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
+                {!session ? (
+                  <div className="rounded-[28px] bg-white px-6 py-12 text-center ring-1 ring-black/5">
+                    <p className="text-4xl" aria-hidden>
+                      🎄
+                    </p>
+                    <p className="ghad-display mt-2 text-2xl font-extrabold">
+                      Sign in to start a Christmas adventure
+                    </p>
+                    <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
+                      It stays with your account, and you can send it to
+                      everyone coming.
+                    </p>
+                    <Link
+                      href={`/auth?next=${encodeURIComponent(here)}`}
+                      className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#b3242f] px-6 font-bold text-white"
+                      data-testid="plan-sign-in"
+                    >
+                      Sign in
+                    </Link>
+                    <p className="mt-6 text-sm text-[var(--gh-ink-soft)]">
+                      Just want a day out of it?
+                    </p>
+                    <Link
+                      href={`/go?${goParams.toString()}`}
+                      className="mt-2 inline-flex min-h-12 items-center rounded-full px-6 font-bold text-[#b3242f] ring-2 ring-[#b3242f]"
+                      data-testid="plan-no-account"
+                    >
+                      Build it now — no account
+                    </Link>
+                    <p className="mx-auto mt-2 max-w-md text-xs text-[var(--gh-ink-soft)]">
+                      Change it, keep it on this device, and send it as words or
+                      a printed page. Sign in later to plan it with your people.
+                    </p>
+                  </div>
+                ) : (
+                  <Planner
+                    today={today}
+                    initialShape={shape.id}
+                    {...(ask.at ? { initialTown: ask.at } : {})}
+                    {...(ask.from ? { initialFrom: ask.from } : {})}
+                    {...(ask.party ? { initialParty: ask.party } : {})}
+                    initialAges={ask.ages}
+                    {...(ask.people ? { initialPeople: ask.people } : {})}
+                    {...(name ? { initialTitle: name } : {})}
+                    {...(say ? { initialExtra: say } : {})}
+                    picks={picks}
+                    saved={saved}
+                  />
+                )}
+              </div>
+            </PendingContent>
+          </PendingProvider>
         </main>
       </ThemeProvider>
     </>

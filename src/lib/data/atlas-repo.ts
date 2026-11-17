@@ -234,8 +234,17 @@ export async function getPlace(id: string): Promise<Place> {
 /**
  * Read once per request: the page's metadata and its body both ask, and the
  * second ask was a second full Atlas read.
+ *
+ * **And behind the same short memory as every other detail read** (P1
+ * loading brief, 2026-11-17): measured on production, a place page was
+ * 9–11 s to its first byte on *every* visit, the same place three times in a
+ * row, because `/places/:id/detail` was asked again each time. A 404 is kept
+ * too, as `getSubjectDetail` keeps one; a failure never is.
  */
-export const getPlaceDetail = reactCache(readPlaceDetail);
+export const getPlaceDetail = reactCache(
+  (id: string): Promise<PlaceDetail | null> =>
+    cached(`detail/places/${id}`, () => readPlaceDetail(id)),
+);
 
 async function readPlaceDetail(id: string): Promise<PlaceDetail | null> {
   const response = await atlasFetch(`/places/${id}/detail`);

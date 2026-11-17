@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useHoldWhile } from "@/components/loading/Pending";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Heart, MapPin, Navigation, Plus, Route, X } from "lucide-react";
@@ -66,11 +67,17 @@ export function Explorer({
   const router = useRouter();
   const [area, setAreaState] = useState<AreaId | null>(initialArea);
   // The place is in the address, so the lists below the map follow it and a link keeps it.
+  // The map moves at once; the lists' server read is held in a transition so
+  // the top line runs while it is on its way.
+  const [moving, startMoving] = useTransition();
+  useHoldWhile(moving);
   const setArea = (id: AreaId | null) => {
     setAreaState(id);
-    router.replace(id ? `/christmas/lights?at=${id}` : "/christmas/lights", {
-      scroll: false,
-    });
+    startMoving(() =>
+      router.replace(id ? `/christmas/lights?at=${id}` : "/christmas/lights", {
+        scroll: false,
+      }),
+    );
   };
   const [selected, setSelected] = useState<string | null>(null);
   const stash = useStash();

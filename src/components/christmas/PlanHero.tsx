@@ -1,3 +1,5 @@
+import Form from "next/form";
+import { SubmitButton } from "@/components/loading/SubmitButton";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { QUICK_STARTS } from "@/domain/christmas/request";
@@ -17,9 +19,8 @@ export function PlanHero({ at }: { readonly at?: string }) {
   };
   return (
     <div id="plan" className="scroll-mt-24">
-      <form
+      <Form
         action="/christmas/itinerary"
-        method="get"
         aria-label="Plan your Christmas adventure"
         data-testid="plan-form"
         className="rounded-[28px] bg-[#fffaf2] p-3 text-[#082319] shadow-[0_18px_50px_rgba(0,0,0,0.35)] sm:p-4"
@@ -42,15 +43,15 @@ export function PlanHero({ at }: { readonly at?: string }) {
           data-testid="plan-input"
           enterKeyHint="go"
         />
-        <button
-          type="submit"
+        <SubmitButton
+          pending="Making your plan…"
           className="mt-2 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[#b3242f] px-6 text-lg font-extrabold text-white shadow-lg hover:brightness-110"
           data-testid="plan-go"
         >
           <Sparkles className="h-5 w-5" aria-hidden />
           Make my Christmas plan
-        </button>
-      </form>
+        </SubmitButton>
+      </Form>
       <ul
         className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
         aria-label="Quick starts"

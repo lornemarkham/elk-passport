@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { startLink } from "@/components/loading/progress";
 import {
   AlertTriangle,
   Clock,
@@ -103,6 +105,7 @@ export function StopCard({
   readonly tour?: string;
 }) {
   const [open, setOpen] = useState<null | "replace" | "nearby" | "time">(null);
+  const router = useRouter();
   const [time, setTime] = useState(
     stop.time !== undefined
       ? `${String(Math.floor(stop.time / 60)).padStart(2, "0")}:${String(stop.time % 60).padStart(2, "0")}`
@@ -341,9 +344,14 @@ export function StopCard({
               e.preventDefault();
               const [h, m] = time.split(":").map(Number);
               if (Number.isFinite(h) && Number.isFinite(m))
-                window.location.assign(
-                  hrefFor({ kind: "time", minutes: h! * 60 + m! }),
-                );
+              // A soft navigation, like every other edit here: the page
+              // stays while the new plan loads, and the top line says so.
+              {
+                startLink();
+                router.push(hrefFor({ kind: "time", minutes: h! * 60 + m! }), {
+                  scroll: false,
+                });
+              }
             }}
           >
             <input

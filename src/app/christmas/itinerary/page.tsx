@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { ExperienceLocation } from "@/components/location/ExperienceLocation";
+import { PendingContent, PendingProvider } from "@/components/loading/Pending";
 import { ItineraryView } from "@/components/christmas/itinerary/ItineraryView";
 import { AtlasDown } from "@/components/christmas/parts";
 import styles from "@/components/christmas/christmas.module.css";
@@ -45,34 +46,38 @@ export default async function ChristmasItineraryPage({
   return (
     <ThemeProvider className="block">
       <main className={`${styles.page} min-h-screen pb-32`}>
-        <header className={styles.night}>
-          <div className="mx-auto max-w-2xl px-4 pt-5 pb-6">
-            <Suspense fallback={null}>
-              <ExperienceLocation
-                scope="christmas"
-                experience="Christmas"
-                at={town.id}
-                className="text-white"
-              />
-            </Suspense>
-          </div>
-          <div className={styles.lights} aria-hidden />
-        </header>
-        <div className="mx-auto max-w-2xl px-4">
-          {pool.outage && (
-            <div className="mt-4">
-              <AtlasDown />
+        <PendingProvider>
+          <header className={styles.night}>
+            <div className="mx-auto max-w-2xl px-4 pt-5 pb-6">
+              <Suspense fallback={null}>
+                <ExperienceLocation
+                  scope="christmas"
+                  experience="Christmas"
+                  at={town.id}
+                  className="text-white"
+                />
+              </Suspense>
             </div>
-          )}
-          <ItineraryView
-            itinerary={itinerary}
-            say={say}
-            query={query}
-            signedIn={Boolean(session)}
-            party={request.party ?? null}
-            romantic={request.romantic}
-          />
-        </div>
+            <div className={styles.lights} aria-hidden />
+          </header>
+          <PendingContent>
+            <div className="mx-auto max-w-2xl px-4">
+              {pool.outage && (
+                <div className="mt-4">
+                  <AtlasDown />
+                </div>
+              )}
+              <ItineraryView
+                itinerary={itinerary}
+                say={say}
+                query={query}
+                signedIn={Boolean(session)}
+                party={request.party ?? null}
+                romantic={request.romantic}
+              />
+            </div>
+          </PendingContent>
+        </PendingProvider>
       </main>
     </ThemeProvider>
   );

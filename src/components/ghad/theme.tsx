@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useSyncExternalStore } from "react";
+import { NavigationProgress } from "@/components/loading/NavigationProgress";
 
 /**
  * **GO HAVE A DAY — the accent, and only the accent.**
@@ -125,6 +126,10 @@ export function ThemeProvider({
           } as React.CSSProperties
         }
       >
+        {/* Every Go Have a Day surface wraps itself in this provider, so the
+            navigation line rides along with it (one per page, however many
+            providers nest). */}
+        <NavigationProgress />
         {children}
       </div>
     </ThemeContext.Provider>

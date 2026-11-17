@@ -26,10 +26,14 @@ export function useDistances(
 ): {
   readonly reading?: DistanceReading;
   readonly status: "idle" | "measuring" | "ready" | "failed";
+  /** Ask again after a failure — the page offers it as "Try again". */
+  readonly retry: () => void;
 } {
+  const [attempt, setAttempt] = useState(0);
   const key = origin
-    ? `${origin.latitude.toFixed(2)},${origin.longitude.toFixed(2)},${withinKm}`
+    ? `${origin.latitude.toFixed(2)},${origin.longitude.toFixed(2)},${withinKm}#${attempt}`
     : undefined;
+  const retry = () => setAttempt((n) => n + 1);
   const [result, setResult] = useState<{
     key: string;
     reading?: DistanceReading;
@@ -65,8 +69,8 @@ export function useDistances(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  if (!key) return { status: "idle" };
-  if (result?.key !== key) return { status: "measuring" };
-  if (result.failed || !result.reading) return { status: "failed" };
-  return { reading: result.reading, status: "ready" };
+  if (!key) return { status: "idle", retry };
+  if (result?.key !== key) return { status: "measuring", retry };
+  if (result.failed || !result.reading) return { status: "failed", retry };
+  return { reading: result.reading, status: "ready", retry };
 }

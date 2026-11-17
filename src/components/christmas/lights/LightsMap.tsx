@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map as MlMap, Marker } from "maplibre-gl";
 import type { LatLng } from "@/domain/christmas/lights/model";
 import { cluster as group } from "@/domain/christmas/lights/cluster";
@@ -71,6 +71,12 @@ export function LightsMap({
   const pickMarker = useRef<Marker | null>(null);
   const lib = useRef<typeof import("maplibre-gl") | null>(null);
   const ready = useRef(false);
+  // Said on screen: the library and the first tiles are a second or more on
+  // a phone, and a dark empty box read as broken (P1 loading brief).
+  const [status, setStatus] = useState<"loading" | "ready" | "failed">(
+    "loading",
+  );
+  const [attempt, setAttempt] = useState(0);
   const onPick = useRef(pick?.onPick);
   onPick.current = pick?.onPick;
   const onSel = useRef(onSelect);
@@ -79,50 +85,62 @@ export function LightsMap({
   // The map itself, once.
   useEffect(() => {
     let dead = false;
-    void import("maplibre-gl").then((ml) => {
-      if (dead || !box.current) return;
-      lib.current = ml;
-      // MapLibre 6 can't find its worker inside Next's bundle; serve it ourselves.
-      ml.setWorkerUrl(`/christmas/api/lights/map-worker?v=${ml.getVersion()}`);
-      const m = new ml.Map({
-        container: box.current,
-        style: STYLE,
-        center: [center.lng, center.lat],
-        zoom,
-        attributionControl: creditTop ? false : { compact: true },
+    void import("maplibre-gl")
+      .catch(() => {
+        if (!dead) setStatus("failed");
+        return null;
+      })
+      .then((ml) => {
+        if (!ml) return;
+        if (dead || !box.current) return;
+        lib.current = ml;
+        // MapLibre 6 can't find its worker inside Next's bundle; serve it ourselves.
+        ml.setWorkerUrl(
+          `/christmas/api/lights/map-worker?v=${ml.getVersion()}`,
+        );
+        const m = new ml.Map({
+          container: box.current,
+          style: STYLE,
+          center: [center.lng, center.lat],
+          zoom,
+          attributionControl: creditTop ? false : { compact: true },
+        });
+        if (creditTop) {
+          m.addControl(
+            new ml.AttributionControl({ compact: true }),
+            "top-left",
+          );
+          const corner = box.current.querySelector<HTMLElement>(
+            ".maplibregl-ctrl-top-left",
+          );
+          // Under the row of place chips.
+          if (corner) corner.style.marginTop = "52px";
+          // Folded to its ⓘ, as MapLibre's compact credit is meant to be; one tap opens it.
+          m.once("load", () =>
+            box.current
+              ?.querySelector(".maplibregl-compact-show")
+              ?.classList.remove("maplibregl-compact-show"),
+          );
+        }
+        if (controls)
+          m.addControl(
+            new ml.NavigationControl({ showCompass: false }),
+            "top-right",
+          );
+        map.current = m;
+        m.on("click", (e) =>
+          onPick.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }),
+        );
+        m.on("load", () => {
+          ready.current = true;
+          box.current?.setAttribute("data-ready", "1");
+          setStatus("ready");
+          fitMarkers();
+          drawRoute();
+          drawPick();
+        });
+        m.on("zoomend", () => redraw.current());
       });
-      if (creditTop) {
-        m.addControl(new ml.AttributionControl({ compact: true }), "top-left");
-        const corner = box.current.querySelector<HTMLElement>(
-          ".maplibregl-ctrl-top-left",
-        );
-        // Under the row of place chips.
-        if (corner) corner.style.marginTop = "52px";
-        // Folded to its ⓘ, as MapLibre's compact credit is meant to be; one tap opens it.
-        m.once("load", () =>
-          box.current
-            ?.querySelector(".maplibregl-compact-show")
-            ?.classList.remove("maplibregl-compact-show"),
-        );
-      }
-      if (controls)
-        m.addControl(
-          new ml.NavigationControl({ showCompass: false }),
-          "top-right",
-        );
-      map.current = m;
-      m.on("click", (e) =>
-        onPick.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }),
-      );
-      m.on("load", () => {
-        ready.current = true;
-        box.current?.setAttribute("data-ready", "1");
-        fitMarkers();
-        drawRoute();
-        drawPick();
-      });
-      m.on("zoomend", () => redraw.current());
-    });
     return () => {
       dead = true;
       map.current?.remove();
@@ -130,7 +148,7 @@ export function LightsMap({
       ready.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attempt]);
 
   const markerKey = JSON.stringify(markers);
   // The map's own events call the latest drawing, with the latest markers.
@@ -329,9 +347,42 @@ export function LightsMap({
     <div
       ref={box}
       data-testid="lights-map"
-      className={`w-full overflow-hidden rounded-[28px] bg-[#082319] ring-1 ring-[#ffd98a]/30 ${className}`}
+      className={`relative w-full overflow-hidden rounded-[28px] bg-[#082319] ring-1 ring-[#ffd98a]/30 ${className}`}
       role="application"
       aria-label={label}
-    />
+      aria-busy={status === "loading" || undefined}
+    >
+      {status !== "ready" && (
+        <div
+          className="absolute inset-0 z-10 grid place-items-center text-center text-sm font-semibold text-[#ffd98a]"
+          data-testid="lights-map-status"
+          data-status={status}
+        >
+          {status === "loading" ? (
+            <span role="status" className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 animate-pulse rounded-full bg-[#ffd98a] motion-reduce:animate-none"
+                aria-hidden
+              />
+              Loading the map…
+            </span>
+          ) : (
+            <span role="alert" className="px-6">
+              The map couldn&apos;t load just now.{" "}
+              <button
+                type="button"
+                className="min-h-11 underline underline-offset-4"
+                onClick={() => {
+                  setStatus("loading");
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                Try again
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

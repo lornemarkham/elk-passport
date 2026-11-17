@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ZONE } from "@/domain/experience/eventTime";
 import { Leaf } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { fromDiscoveryWire } from "@/domain/discovery/wire";
 import { toast } from "sonner";
 import {
@@ -76,6 +83,7 @@ import { OriginPicker } from "./OriginPicker";
 import { useHere } from "@/lib/location/useHere";
 import { useLocation } from "@/lib/location/useLocation";
 import { LocationBar } from "@/components/location/LocationBar";
+import { useHoldWhile } from "@/components/loading/Pending";
 import { DiscoverySections } from "./DiscoverySections";
 import { FeaturedHosts } from "./FeaturedHosts";
 import { LocalInsiders } from "@/components/insiders/LocalInsiders";
@@ -335,6 +343,8 @@ export function DiscoveryListView({
    * held interval cover that day. So these are real navigations, and the
    * exploration survives them because the exploration is already in the URL.
    */
+  const [refreshing, startRefresh] = useTransition();
+  useHoldWhile(refreshing);
   const navigate = (next: DiscoverySession) => {
     setSession(next);
     const query = sessionQuery(next);
@@ -348,7 +358,12 @@ export function DiscoveryListView({
       "",
       query ? `?${query}` : window.location.pathname,
     );
-    router.replace(query ? `?${query}` : "/discovery", { scroll: false });
+    // **And say it is coming.** Held in a transition, so the cards already on
+    // screen stay (dimmed, `aria-busy`) instead of going blank, and the top
+    // line runs until Atlas's answer for the new day or age has landed.
+    startRefresh(() =>
+      router.replace(query ? `?${query}` : "/discovery", { scroll: false }),
+    );
   };
   const setOn = (next: string | undefined) =>
     navigate({ ...session, on: next });
@@ -526,7 +541,11 @@ export function DiscoveryListView({
    * 60 km so "near you" means the same thing it always did.
    */
   const radius = at && within !== undefined ? within : undefined;
-  const { reading, status: measuring } = useDistances(at, radius ?? 60);
+  const {
+    reading,
+    status: measuring,
+    retry: measureAgain,
+  } = useDistances(at, radius ?? 60);
   /**
    * **Atlas's drive times from the same origin** (ADR 097), beside the
    * distances. They label a card and nothing else: the radius filter stays
@@ -1452,6 +1471,11 @@ export function DiscoveryListView({
         <div className="mx-auto max-w-[1760px] px-4 pt-3 sm:px-6 lg:px-10">
           <LocationBar
             onChange={(id) => change({ ...session, at: id })}
+            {...(refreshing
+              ? { busy: "Updating" }
+              : at && measuring === "measuring"
+                ? { busy: "Finding what's close" }
+                : {})}
             className="text-[#111]"
           />
         </div>
@@ -1856,7 +1880,9 @@ export function DiscoveryListView({
                 scrolled sideways by 2,440px at 1440 instead. */}
             <div
               id="discovery-results"
-              className="flex min-w-0 scroll-mt-4 flex-col gap-6"
+              aria-busy={refreshing || undefined}
+              data-loading={refreshing ? "true" : undefined}
+              className={`flex min-w-0 scroll-mt-4 flex-col gap-6 transition-opacity duration-200 motion-reduce:transition-none ${refreshing ? "opacity-50" : ""}`}
             >
               <>
                 {/* **The kind they picked, said once, with the one way to
@@ -1961,6 +1987,24 @@ export function DiscoveryListView({
                           : `${elsewhereCount} more in ${namedAreas(elsewhereAreas)} — show them too`}
                     </button>
                   )}
+
+                {!browsing && at && measuring === "failed" && (
+                  <p
+                    role="alert"
+                    data-testid="measuring-failed"
+                    className="text-sm text-black/60"
+                  >
+                    Couldn&apos;t measure distances from {originLabel} just now.{" "}
+                    <button
+                      type="button"
+                      onClick={measureAgain}
+                      className="min-h-11 font-semibold underline underline-offset-4"
+                      data-testid="measuring-retry"
+                    >
+                      Try again
+                    </button>
+                  </p>
+                )}
 
                 {!browsing && radiusActive && !radiusReady && (
                   <p data-testid="measuring" className="text-sm text-black/50">

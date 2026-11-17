@@ -1,5 +1,7 @@
 "use client";
 
+import Form from "next/form";
+import { SubmitButton } from "@/components/loading/SubmitButton";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -263,7 +265,7 @@ export function ItineraryView({
                 {o.label}
               </Link>
             ))}
-            <form
+            <Form
               action="/christmas/itinerary"
               className="inline-flex items-center gap-1"
             >
@@ -279,7 +281,7 @@ export function ItineraryView({
                 className="min-h-11 rounded-full border-2 border-black/10 px-3 text-sm"
                 onChange={(e) => e.currentTarget.form?.requestSubmit()}
               />
-            </form>
+            </Form>
           </div>
         </section>
       )}
@@ -371,7 +373,7 @@ export function ItineraryView({
               </Link>
             ))}
           </div>
-          <form action="/christmas/itinerary" className="mt-4 flex gap-2">
+          <Form action="/christmas/itinerary" className="mt-4 flex gap-2">
             {query.at && <input type="hidden" name="at" value={query.at} />}
             <input
               name="say"
@@ -380,10 +382,13 @@ export function ItineraryView({
               className="min-h-12 w-full rounded-full border-2 border-black/10 px-4"
               maxLength={240}
             />
-            <button className="min-h-12 shrink-0 rounded-full bg-[#0f3b2b] px-4 font-bold text-white">
+            <SubmitButton
+              pending="Re-planning…"
+              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-[#0f3b2b] px-4 font-bold text-white"
+            >
               Re-plan
-            </button>
-          </form>
+            </SubmitButton>
+          </Form>
         </section>
       )}
 
