@@ -1,5 +1,3 @@
-// The day starts from the shared place, said (ADR 020), not asked.
-await expect(page.getByTestId("go-where")).toHaveCount(0);
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
@@ -53,6 +51,24 @@ const ask = async (page: Page, said: string) => {
   await expect(page.getByTestId("ask-answer")).toBeVisible();
 };
 
+/**
+ * Changes the one remembered place (ADR 020) through the location bar. The
+ * origin question inside an answer only appears when no place is known at
+ * all; a visitor with an approximate region never sees it, so it is not how
+ * a journey changes the town.
+ */
+const pickTown = async (page: Page, id: string) => {
+  const query = id
+    .split("-")
+    .map((word) => word[0]!.toUpperCase() + word.slice(1))
+    .join(" ");
+  await page.getByTestId("location-change").first().click();
+  await expect(page.getByTestId("location-picker")).toBeVisible();
+  await page.getByTestId("location-search").fill(query);
+  await page.getByTestId(`location-option-${id}`).click();
+  await expect(page.getByTestId("location-picker")).toHaveCount(0);
+};
+
 test.describe("arriving", () => {
   test("a possibility is on the first screen, not three screens of questions", async ({
     page,
@@ -68,6 +84,7 @@ test.describe("arriving", () => {
     // on the first screen — it was ~1,040px down at 1440×900 and ~950px on a
     // Pixel 7 while a second search box sat above the results.
     const first = page.getByTestId("possibility").first();
+    await expect(first).toBeVisible({ timeout: 30_000 });
     const box = await first.boundingBox();
     expect(box, "no possibility card rendered").not.toBeNull();
     expect(box!.y + (await page.evaluate(() => window.scrollY))).toBeLessThan(
@@ -94,22 +111,22 @@ test.describe("arriving", () => {
 });
 
 test.describe("distance clarity", () => {
-  test("'from where?' is answered in the answer, and the answer then measures", async ({
+  test("the answer says where it is measured from, and changing the place measures again", async ({
     page,
   }, info) => {
     await page.goto("/discovery");
     await ask(page, "What can we do with three hours?");
-    const gap = page.getByTestId("ask-gap-origin");
-    await expect(gap).toBeVisible();
-    await shoot(page, info, "03-from-where");
-    await gap.getByTestId("ask-town").selectOption("vernon");
-    await expect(page.getByTestId("ask-gap-origin")).toHaveCount(0);
+    // The approximate region the visitor is in is named, not asked for.
     await expect(page.getByTestId("ask-understood")).toContainText("Vernon");
+    await expect(page.getByTestId("ask-gap-origin")).toHaveCount(0);
+    await shoot(page, info, "03-from-where");
+    await pickTown(page, "kelowna");
+    await expect(page.getByTestId("ask-understood")).toContainText("Kelowna");
     // Every pick now says how far it is, or the answer says why it cannot.
     await expect(
       page.getByTestId("ask-answer").getByTestId("possibility").first(),
     ).toBeVisible();
-    await shoot(page, info, "04-measured-from-vernon");
+    await shoot(page, info, "04-measured-from-kelowna");
   });
 
   test("a distant destination: worth an hour of driving, nearest first, in a straight line", async ({
@@ -117,10 +134,7 @@ test.describe("distance clarity", () => {
   }, info) => {
     await page.goto("/discovery");
     await ask(page, "What is worth driving an hour for?");
-    await page
-      .getByTestId("ask-gap-origin")
-      .getByTestId("ask-town")
-      .selectOption("kamloops");
+    await pickTown(page, "kamloops");
     await expect(page.getByTestId("ask-heading")).toHaveText(
       /worth an hour of driving/i,
     );
@@ -244,10 +258,7 @@ test.describe("into a day", () => {
   const intoGo = async (page: Page, town = "vernon") => {
     await page.goto("/discovery");
     await ask(page, "What can we do with three hours?");
-    await page
-      .getByTestId("ask-gap-origin")
-      .getByTestId("ask-town")
-      .selectOption(town);
+    await pickTown(page, town);
     await expect(page.getByTestId("ask-make-a-day")).toBeVisible();
     await page.getByTestId("ask-make-a-day").click();
     await expect(page).toHaveURL(/\/go\?/);
@@ -369,13 +380,13 @@ test.describe("into a day", () => {
     await page.goto("/discovery");
     await page.getByTestId("plan-a-day").first().click();
     await expect(page).toHaveURL(/\/go\?.*with=/);
-    // Discovery had no town, so the day asks where it begins (ADR 003) —
-    // naming the pick it will be built around — rather than guessing.
-    if (!/[?&]at=/.test(page.url())) {
-      await expect(page.getByTestId("go-where")).toBeVisible();
-      await expect(page.getByTestId("go-where-picked")).toBeVisible();
-      await page.getByTestId("go-start-vernon").click();
-    }
+    // Discovery has the visitor's approximate place, so the day begins from
+    // it — named and labelled as a guess, never asked first (ADR 020).
+    await expect(page.getByTestId("go-where")).toHaveCount(0);
+    // …and the place it names is the card's own town when the card sets one.
+    await expect(page.getByTestId("location-bar").first()).toContainText(
+      /BC|approximate/,
+    );
     await expect(
       page.getByText(/You picked this in Discovery/i).first(),
     ).toBeVisible();
