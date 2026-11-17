@@ -5,6 +5,8 @@ import {
   EXPERIENCES,
   LABS_HREF,
   LAB_EXPERIENCES,
+  LABS_NOW,
+  SEASONAL_ARCHIVE,
   currentExperience,
   currentLabsExperience,
 } from "./experiences";
@@ -45,10 +47,23 @@ describe("experience registry", () => {
         "Coming Soon",
         "In Development",
         "Archived",
+        "Out of Season",
       ]).toContain(e.status);
       expect(e.description.length).toBeGreaterThan(20);
       expect(existsSync(join(process.cwd(), "public", e.preview))).toBe(true);
     }
+  });
+
+  it("keeps October in the Seasonal Archive, labelled, with a reactivation checklist", () => {
+    expect(SEASONAL_ARCHIVE.map((e) => e.href)).toEqual(["/october"]);
+    for (const e of SEASONAL_ARCHIVE) {
+      expect(e.status).toBe("Out of Season");
+      expect(e.seasonal?.reactivation.length).toBeGreaterThan(0);
+      // Archived is not removed: it is still a Labs experience with a route.
+      expect(LAB_EXPERIENCES).toContain(e);
+      expect(EXPERIENCES.map((m) => m.href)).not.toContain(e.href);
+    }
+    expect(LABS_NOW.map((e) => e.href)).not.toContain("/october");
   });
 
   it("knows which Labs experience a path belongs to", () => {

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { currentUser } from "@/lib/auth/currentUser";
 import {
-  LAB_EXPERIENCES,
+  LABS_NOW,
+  SEASONAL_ARCHIVE,
   type LabStatusLabel,
   type LabsExperience,
 } from "@/lib/experiences";
@@ -29,6 +30,7 @@ const STATUS_STYLE: Record<LabStatusLabel, string> = {
   "Coming Soon": "border-sky-300/50 bg-sky-300/10 text-sky-200",
   "In Development": "border-violet-300/50 bg-violet-300/10 text-violet-200",
   Archived: "border-white/25 bg-white/5 text-white/60",
+  "Out of Season": "border-rose-300/40 bg-rose-300/10 text-rose-200",
 };
 
 /** A whole experience, kept in Labs: real page, real URL, honest status. */
@@ -146,12 +148,34 @@ export default async function LabsIndex() {
             data-testid="labs-experiences"
             className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
-            {LAB_EXPERIENCES.map((e) => (
+            {LABS_NOW.map((e) => (
               <li key={e.testId} className="flex">
                 <ExperienceCard e={e} />
               </li>
             ))}
           </ul>
+
+          {SEASONAL_ARCHIVE.length ? (
+            <>
+              <h2 className="mt-14 text-[12.5px] font-medium tracking-[0.14em] text-white/45 uppercase">
+                Seasonal Archive
+              </h2>
+              <p className="mt-2 max-w-2xl text-[14px] text-white/55">
+                Out of season, never gone. Everything here still opens; it is
+                kept for looking around until its season comes round again.
+              </p>
+              <ul
+                data-testid="labs-seasonal-archive"
+                className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {SEASONAL_ARCHIVE.map((e) => (
+                  <li key={e.testId} className="flex">
+                    <ExperienceCard e={e} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
           <h2 className="mt-14 text-[12.5px] font-medium tracking-[0.14em] text-white/45 uppercase">
             Prototypes

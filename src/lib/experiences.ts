@@ -46,7 +46,26 @@ export const EXPERIENCES: readonly PassportExperience[] = [
 export const LABS_HREF = "/labs";
 
 export type LabStatusLabel =
-  "Experimental" | "Coming Soon" | "In Development" | "Archived";
+  | "Experimental"
+  | "Coming Soon"
+  | "In Development"
+  | "Archived"
+  | "Out of Season";
+
+/**
+ * **Seasonal Archive** (owner addendum, 2026-11-17): a seasonal experience is
+ * never deleted when its season ends. It keeps its routes and content, stays
+ * public, says "Out of Season", and waits here. Bringing it back is a code
+ * change that moves the entry into `EXPERIENCES` — never a date check that
+ * flips it on by itself — and `reactivation` is the list a person must have
+ * confirmed first (a test refuses an entry with an empty list).
+ */
+export interface SeasonalInfo {
+  /** When it is in season, in words ("Late September to early November"). */
+  readonly season: string;
+  /** What must be true before it goes back on the menu. */
+  readonly reactivation: readonly string[];
+}
 
 export interface LabsExperience extends PassportExperience {
   readonly status: LabStatusLabel;
@@ -55,6 +74,8 @@ export interface LabsExperience extends PassportExperience {
   readonly statusNote: string;
   /** A real capture of the live page, under `public/`. */
   readonly preview: string;
+  /** Present only on an experience that belongs to a season. */
+  readonly seasonal?: SeasonalInfo;
 }
 
 /**
@@ -84,12 +105,21 @@ export const LAB_EXPERIENCES: readonly LabsExperience[] = [
     href: "/october",
     label: "October",
     testId: "october",
-    status: "Archived",
+    status: "Out of Season",
     description:
       "The original seasonal discovery experience: what is on tonight and this weekend near you, from Atlas.",
     statusNote:
-      "Still runs on live data, but it is the first experiment and no longer where we are headed.",
+      "Out of Season. Every page still works and runs on live data, so you can look around; it comes back with October.",
     preview: "/labs/previews/october.jpg",
+    seasonal: {
+      season: "October, running up to Halloween",
+      reactivation: [
+        "Dates: the season window and any dated copy name the coming year",
+        "Content: Atlas events for the new October are present, and the Halloween-name rule in Discovery hygiene still matches",
+        "Functionality: the October e2e specs pass against current Atlas data",
+        "Owner has agreed to move it back into the Experiences menu",
+      ],
+    },
   },
   {
     href: "/badminton",
@@ -136,3 +166,12 @@ export function currentLabsExperience(
       .map((href) => ({ e, length: href.length })),
   ).sort((a, b) => b.length - a.length)[0]?.e;
 }
+
+/** Seasonal experiences whose season has ended: public, labelled, never removed. */
+export const SEASONAL_ARCHIVE: readonly LabsExperience[] =
+  LAB_EXPERIENCES.filter((e) => e.status === "Out of Season");
+
+/** Labs experiences that are not in the Seasonal Archive. */
+export const LABS_NOW: readonly LabsExperience[] = LAB_EXPERIENCES.filter(
+  (e) => e.status !== "Out of Season",
+);

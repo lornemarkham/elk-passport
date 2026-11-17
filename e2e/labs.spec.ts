@@ -29,9 +29,12 @@ for (const [name, device] of [
       page,
     }) => {
       await page.goto("/labs");
+      await expect(page.getByTestId("labs-seasonal-archive")).toContainText(
+        "October",
+      );
       for (const [id, status, href] of [
         ["conference", "Experimental", "/conferences"],
-        ["october", "Archived", "/october"],
+        ["october", "Out of Season", "/october"],
         ["badminton", "Experimental", "/badminton"],
       ] as const) {
         const card = page.getByTestId(`labs-experience-${id}`);
@@ -49,7 +52,11 @@ for (const [name, device] of [
 
     test("the preview images actually load", async ({ page }) => {
       await page.goto("/labs");
-      const imgs = page.getByTestId("labs-experiences").locator("img");
+      const imgs = page
+        .locator(
+          '[data-testid="labs-experiences"], [data-testid="labs-seasonal-archive"]',
+        )
+        .locator("img");
       for (const img of await imgs.all()) {
         await img.scrollIntoViewIfNeeded();
         await expect
