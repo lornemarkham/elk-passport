@@ -320,9 +320,7 @@ test("a visitor from Facebook reads, votes and adds an experience", async ({
   await shot(page, "check-08-visitor");
 });
 
-test("the asker adds a correction, kept in a visible history", async ({
-  browser,
-}) => {
+test("the asker adds a correction, kept in a visible history", async () => {
   // Same browser as the asker: the first context.
   const page = await contexts[0]!.newPage();
   await page.goto(checkUrl);
