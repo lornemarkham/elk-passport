@@ -146,6 +146,14 @@ export async function createPulse(
       error: "bot",
       message: "That was quicker than a person types. Give it another go.",
     };
+  // A Pulse Check is only ever made with its investigation (checkService).
+  if (input.kind === "check")
+    return {
+      ok: false,
+      error: "invalid",
+      field: "kind",
+      message: "Check a claim at /check/new.",
+    };
   const checked = checkDraft(input, who.now);
   if (!checked.ok)
     return {
@@ -442,6 +450,8 @@ export async function countEvent(
   try {
     const pulse = await store.get(pulseId);
     if (!pulse || pulse.status !== "live") return false;
+    // Pulse Check counts its own visits and shares (checkStore.count).
+    if (kindOf(pulse) === "check") return false;
     await store.count(event, kindOf(pulse));
     return true;
   } catch (e) {

@@ -31,6 +31,9 @@ export function PulseRoom({
   via,
   fresh,
   ai = false,
+  embedded = false,
+  sharePath,
+  onCircle,
 }: {
   pulse: Pulse;
   ballot: string;
@@ -38,6 +41,15 @@ export function PulseRoom({
   fresh: boolean;
   /** Whether the approved AI service is configured, for the optional summary. */
   ai?: boolean;
+  /**
+   * The poll inside another page (a Pulse Check): no question header, and
+   * sharing and reporting are that page's own.
+   */
+  embedded?: boolean;
+  /** Where this Pulse's share links point; its own page unless embedded. */
+  sharePath?: string;
+  /** Tells the host page this browser's referral code once it is known. */
+  onCircle?: (code: string) => void;
 }) {
   const kind = kindOf(pulse);
   const [reason, setReason] = useState("");
@@ -80,10 +92,13 @@ export function PulseRoom({
     const res = await fetch(`/api/pulse/${pulse.id}${reveal ? "?see=1" : ""}`, {
       cache: "no-store",
     }).catch(() => null);
-    if (res?.ok) setSnap(await res.json());
-    else if (res?.status === 503)
+    if (res?.ok) {
+      const next: Snapshot = await res.json();
+      setSnap(next);
+      onCircle?.(next.me.circle);
+    } else if (res?.status === 503)
       setError("People's Pulse isn't set up here yet.");
-  }, [pulse.id, reveal]);
+  }, [pulse.id, reveal, onCircle]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the first read of an external system (the server) is the subscription itself
@@ -137,66 +152,68 @@ export function PulseRoom({
   const voted = snap?.me.option ?? null;
   const shareUrl =
     origin && snap
-      ? `${origin}/labs/pulse/${pulse.id}?c=${snap.me.circle}`
+      ? `${origin}${sharePath ?? `/labs/pulse/${pulse.id}`}?c=${snap.me.circle}`
       : "";
   const closed = snap ? !snap.open : false;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-      <header className="pt-3">
-        {kind !== "pulse" ? (
-          <p
-            className="mb-1 text-[12px] font-bold tracking-[0.16em] text-[#e5484d] uppercase"
-            data-testid="pulse-kind"
-          >
-            {experience(kind).name}
-          </p>
-        ) : null}
-        <p className="flex flex-wrap gap-x-3 text-[13px] font-medium text-[#5c6370]">
-          <span>{scopeLabel(pulse.scope)}</span>
-          {pulse.expiresAt ? (
-            <span>
-              {closed ? "Closed" : "Closes"}{" "}
-              {new Date(pulse.expiresAt).toLocaleDateString("en-CA", {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-          ) : null}
-          {snap ? (
-            <span>{snap.total.toLocaleString("en-CA")} votes</span>
-          ) : null}
-        </p>
-        <h1
-          className="font-heading mt-2 text-[30px] leading-[1.15] font-bold tracking-tight sm:text-[38px]"
-          data-testid="pulse-question"
-        >
-          {pulse.question}
-        </h1>
-        {pulse.description ? (
-          <p className="mt-3 text-[16px] leading-relaxed text-[#3f4550]">
-            {pulse.description}
-          </p>
-        ) : null}
-        {pulse.sourceUrl ? (
-          <p className="mt-2 text-[14px]">
-            <a
-              href={pulse.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="font-medium text-[#2a78d6] underline underline-offset-2"
+      {embedded ? null : (
+        <header className="pt-3">
+          {kind !== "pulse" ? (
+            <p
+              className="mb-1 text-[12px] font-bold tracking-[0.16em] text-[#e5484d] uppercase"
+              data-testid="pulse-kind"
             >
-              Read the source
-            </a>
+              {experience(kind).name}
+            </p>
+          ) : null}
+          <p className="flex flex-wrap gap-x-3 text-[13px] font-medium text-[#5c6370]">
+            <span>{scopeLabel(pulse.scope)}</span>
+            {pulse.expiresAt ? (
+              <span>
+                {closed ? "Closed" : "Closes"}{" "}
+                {new Date(pulse.expiresAt).toLocaleDateString("en-CA", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            ) : null}
+            {snap ? (
+              <span>{snap.total.toLocaleString("en-CA")} votes</span>
+            ) : null}
           </p>
-        ) : null}
-        <p className="mt-2 text-[12.5px] text-[#8a909a]">
-          Asked by a visitor. People&apos;s Pulse doesn&apos;t check questions
-          or claims.
-        </p>
-      </header>
+          <h1
+            className="font-heading mt-2 text-[30px] leading-[1.15] font-bold tracking-tight sm:text-[38px]"
+            data-testid="pulse-question"
+          >
+            {pulse.question}
+          </h1>
+          {pulse.description ? (
+            <p className="mt-3 text-[16px] leading-relaxed text-[#3f4550]">
+              {pulse.description}
+            </p>
+          ) : null}
+          {pulse.sourceUrl ? (
+            <p className="mt-2 text-[14px]">
+              <a
+                href={pulse.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="font-medium text-[#2a78d6] underline underline-offset-2"
+              >
+                Read the source
+              </a>
+            </p>
+          ) : null}
+          <p className="mt-2 text-[12.5px] text-[#8a909a]">
+            Asked by a visitor. People&apos;s Pulse doesn&apos;t check questions
+            or claims.
+          </p>
+        </header>
+      )}
 
-      {fresh && shareUrl ? (
+      {fresh && shareUrl && !embedded ? (
         <Share
           url={shareUrl}
           question={pulse.question}
@@ -422,7 +439,7 @@ export function PulseRoom({
         />
       ) : null}
 
-      {!fresh && shareUrl ? (
+      {!fresh && shareUrl && !embedded ? (
         <Share
           url={shareUrl}
           question={pulse.question}
@@ -431,7 +448,7 @@ export function PulseRoom({
         />
       ) : null}
       <Disclaimer compact />
-      <Report pulseId={pulse.id} />
+      {embedded ? null : <Report pulseId={pulse.id} />}
     </div>
   );
 }

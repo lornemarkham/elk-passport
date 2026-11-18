@@ -106,8 +106,18 @@ export interface PulseClaim {
  *   - `normal` — Is This Normal?: answers are ordered ranges (never a raw
  *     number), optionally beside one comparison category; small groups hidden.
  *   - `rank`   — Rank These: put three to six things in order.
+ *   - `check`  — Pulse Check: the community poll beneath an investigated
+ *     claim (`check.ts`). Made only through `/api/pulse/check`, never the
+ *     plain create form, so it always has its investigation beside it.
  */
-export const KINDS = ["pulse", "decide", "settle", "normal", "rank"] as const;
+export const KINDS = [
+  "pulse",
+  "decide",
+  "settle",
+  "normal",
+  "rank",
+  "check",
+] as const;
 export type PulseKind = (typeof KINDS)[number];
 export const isKind = (v: unknown): v is PulseKind =>
   typeof v === "string" && (KINDS as readonly string[]).includes(v);
@@ -334,6 +344,7 @@ export function checkDraft(input: CreateInput, now: Date): Checked {
     settle: [MIN_OPTIONS, SETTLE_MAX],
     normal: [NORMAL_MIN, MAX_OPTIONS],
     rank: [RANK_MIN, MAX_OPTIONS],
+    check: [MIN_OPTIONS, MAX_OPTIONS],
   };
   const labels = checkLabels(
     kind === "decide" ? DECIDE_OPTIONS : input.options,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   BRAND,
   isCircleCode,
@@ -77,9 +77,12 @@ export default async function PulsePage({ params, searchParams }: Props) {
       </p>
     );
   if (!pulse) notFound();
+  const c = typeof sp.c === "string" ? sp.c : null;
+  // A Pulse Check's poll lives on its check, beside the evidence.
+  if (kindOf(pulse) === "check")
+    redirect(`/check/${pulse.id}${isCircleCode(c) ? `?c=${c}` : ""}`);
   const key = pulseKey();
   if (!key) notFound();
-  const c = typeof sp.c === "string" ? sp.c : null;
   return (
     <PulseRoom
       pulse={pulse}

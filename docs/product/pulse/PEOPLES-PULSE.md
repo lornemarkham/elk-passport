@@ -3,6 +3,7 @@
 **What do people really think?** · Powered by ELK
 
 V2 (map, shifts, results card, Question of the Day, source check, spread, Ask My Circle): [`PEOPLES-PULSE-V2.md`](PEOPLES-PULSE-V2.md).
+Pulse Check (claims, evidence, sharing back): [`PULSE-CHECK.md`](PULSE-CHECK.md).
 
 Built 2026-11-18 for the owner's brief _P0 — BUILD PEOPLE'S PULSE_ (mission
 906). Lives inside Passport, under Labs, at **`/labs/pulse`**. Status in Labs:

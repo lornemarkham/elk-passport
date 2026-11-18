@@ -8,7 +8,12 @@ import {
   type Shelves,
 } from "@/lib/pulse/service";
 import { NotReady, pulseStore } from "@/lib/pulse/store";
-import { EXPERIENCES, TEMPLATES, experience } from "@/lib/pulse/templates";
+import {
+  CHECK_EXPERIENCE,
+  EXPERIENCES,
+  TEMPLATES,
+  experience,
+} from "@/lib/pulse/templates";
 import { Disclaimer } from "./_ui/Disclaimer";
 
 export const metadata: Metadata = {
@@ -171,6 +176,23 @@ export default async function PeoplesPulse() {
             </Link>
           ))}
         </nav>
+        <Link
+          href="/check"
+          data-testid="labs-pulse-check"
+          className="mt-2.5 flex min-h-[4.5rem] items-center justify-between gap-4 rounded-2xl border-2 border-[#e5484d] bg-white px-5 py-3 transition hover:bg-[#fff5f4] focus-visible:ring-2 focus-visible:ring-[#e5484d] focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+          <span>
+            <span className="block text-[15px] font-bold tracking-[0.08em] text-[#e5484d] uppercase">
+              {CHECK_EXPERIENCE.name}
+            </span>
+            <span className="mt-0.5 block text-[13px] text-[#5c6370]">
+              {CHECK_EXPERIENCE.line}
+            </span>
+          </span>
+          <span aria-hidden className="text-[22px] text-[#e5484d]">
+            →
+          </span>
+        </Link>
       </section>
 
       <section aria-labelledby="labs-experiences" className="mt-10">

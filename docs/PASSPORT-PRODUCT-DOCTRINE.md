@@ -716,6 +716,20 @@ authorise telemetry (this does not extend to Passport); and the brief's
 "Labs homepage" lives at `/labs/pulse`, leaving `/labs` the catalogue
 decided above. The §1 conflict above is unchanged.
 
+**Pulse Check (2026-11-18, mission 928,
+[`product/pulse/PULSE-CHECK.md`](product/pulse/PULSE-CHECK.md), ADR 023
+proposed):** someone brings a public claim they saw (a link, screenshot or
+headline), reads what the sources say through People's Pulse, publishes a
+check at `/check/<slug>` and shares it back into the original conversation.
+The poll is a Pulse of kind `check`. Evidence is only pages the server read,
+quoted word for word; the assessment is the asker's, needs a source of its
+own kind, and is always labelled not independently verified; votes never
+change it. No AI, no automatic search. Conflicts named, not resolved: `/check`
+is a public route outside `/labs` at the brief's request; aggregate visit and
+share counts extend the §5 note above, still not Passport telemetry; the
+brief's "VERIFIED EVIDENCE" heading is said as "Evidence … not independently
+verified". The §1 conflict is unchanged.
+
 ### The adventure comes alive (2026-11-07)
 
 From the owner's _Make the adventure come alive_ brief, recorded in
