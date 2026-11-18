@@ -13,8 +13,10 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+  // A personal night takes no answers from the public API at all; it reads
+  // the same as an unknown slug, so nothing confirms it exists.
   const night = dateNight(slug);
-  if (!night)
+  if (!night || night.personal)
     return NextResponse.json({ error: "no such night" }, { status: 404 });
 
   const text = await request.text();

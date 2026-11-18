@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { dateNight } from "@/domain/date-night/nights";
 import { DateNightInvitation } from "@/components/date-night/DateNightInvitation";
+import { ownsNight } from "@/lib/date-night/store";
 import { invitationData } from "./_server/load";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -9,6 +10,10 @@ type Params = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const night = dateNight((await params).slug);
   if (!night) return {};
+  // A personal night's names stay out of the tab, the link preview and the
+  // HTML of everyone who is not its owner.
+  if (night.personal)
+    return { title: "Date Night", robots: { index: false, follow: false } };
   return {
     title: `${night.headline} — Date Night`,
     description: night.invitation,
@@ -22,11 +27,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  * **A Date Night invitation.** Open to anyone holding the link, no sign-in:
  * the invited person picks what they like, adds their own, and sends it.
  * Only the person who planned the night can read what comes back
- * (`./answers`).
+ * (`./answers`). A personal night (`night.personal`) is the exception: only
+ * its planner, signed in, is served it; everyone else gets a 404.
  */
 export default async function DateNightPage({ params }: Params) {
   const night = dateNight((await params).slug);
   if (!night) notFound();
+  if (night.personal && !(await ownsNight(night.slug))) notFound();
   const data = await invitationData(night);
   return <DateNightInvitation night={night} {...data} />;
 }

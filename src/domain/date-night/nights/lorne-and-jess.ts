@@ -16,6 +16,7 @@ import type { DateNight } from "../types";
 export const LORNE_AND_JESS: DateNight = {
   slug: "lorne-and-jess",
   vanityPath: "/lorne-and-jess",
+  personal: true,
   from: "Lorne",
   to: "Jess",
   headline: "Lorne ❤️ Jess",

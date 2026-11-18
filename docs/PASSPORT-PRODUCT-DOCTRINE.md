@@ -1320,6 +1320,12 @@ certainty. Do not invent an answer here to make the document feel finished.
     `date-night`), with the no-sign-in answers as its own extension. This is
     one composition. Whether invitations in general may be answered without
     an account is still open.
+    _Decided 2026-11-17 (owner brief "P0 — Date Night privacy")_: a
+    **personal** night (Lorne & Jess) is served to its planner, signed in,
+    and to nobody else. Its invitation, answers and answer endpoint give
+    everyone else the same 404 as an unknown night. The public Date Night
+    (`/datenight`) is unchanged. How the second person will open a personal
+    night later is not decided here, and §15's open question stays open.
     _Informed again 2026-11-01 by Lorne & Jess_
     (`docs/product/date-night/LORNE-AND-JESS.md`): the public Date Night
     (`/datenight`, kind `date-night-plan`) makes one real day from five quick

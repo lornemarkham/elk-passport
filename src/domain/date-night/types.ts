@@ -88,6 +88,13 @@ export interface DateNight {
   readonly food: readonly string[];
   /** How the invitation signs off after it is sent. */
   readonly thanks: string;
+  /**
+   * A personal night: its names, plan and place are served to the signed-in
+   * person who planned it and to nobody else — everyone else gets the same
+   * 404 as an unknown slug (`ownsNight` in `src/lib/date-night/store.ts`).
+   * Sharing one is a deliberate act, not the default.
+   */
+  readonly personal?: true;
 }
 
 /** How adventurous the invited person feels, 1 (cozy) to 5 (send it). */

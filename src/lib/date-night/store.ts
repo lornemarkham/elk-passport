@@ -77,6 +77,28 @@ export type OwnerView =
       readonly answers: readonly StoredAnswer[];
     };
 
+/**
+ * Whether the signed-in caller planned this night. Postgres decides: the
+ * night's row is visible only to its owner. Anything else — signed out, not
+ * set up, no database — is `false`, so a personal night fails closed.
+ */
+export async function ownsNight(slug: string): Promise<boolean> {
+  if (!url() || !anon()) return false;
+  try {
+    const db = await createSupabaseServerClient();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return false;
+    const { data, error } = await db
+      .from("passport_date_nights")
+      .select("slug")
+      .eq("slug", slug)
+      .maybeSingle();
+    return !error && data !== null;
+  } catch {
+    return false;
+  }
+}
+
 export async function ownerView(slug: string): Promise<OwnerView> {
   if (!url() || !anon()) throw new NotReady("Supabase is not configured");
   const db = await createSupabaseServerClient();
