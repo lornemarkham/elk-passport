@@ -706,6 +706,16 @@ own small store (ADR 021, proposed).
   it says plainly that voluntary responses are not a representative survey.
 - This answers no question in §15.
 
+**Quick Ideas (2026-11-18, mission 908,
+[`product/pulse/QUICK-IDEAS.md`](product/pulse/QUICK-IDEAS.md), ADR 022
+proposed):** `/labs/pulse` now opens on _What do you want to know?_ and the
+same engine offers Should I Do It?, Settle This, Is This Normal? and Rank
+These as kinds of Pulse, plus templates. Two conflicts named, not resolved:
+aggregate usage counts exist for these Labs experiments although §5 does not
+authorise telemetry (this does not extend to Passport); and the brief's
+"Labs homepage" lives at `/labs/pulse`, leaving `/labs` the catalogue
+decided above. The §1 conflict above is unchanged.
+
 ### The adventure comes alive (2026-11-07)
 
 From the owner's _Make the adventure come alive_ brief, recorded in

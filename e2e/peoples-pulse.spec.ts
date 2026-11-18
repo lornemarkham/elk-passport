@@ -92,7 +92,7 @@ test("Labs lists People's Pulse, and its page says what it is", async ({
   await page.getByTestId("labs-experience-open-pulse").click();
   await expect(page).toHaveURL(/\/labs\/pulse$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "What do people really think?",
+    "What do you want to know?",
   );
   await expect(page.getByTestId("pulse-footer")).toHaveText("Powered by ELK");
   await expect(page.getByTestId("pulse-disclaimer")).toContainText(

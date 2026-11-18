@@ -95,7 +95,7 @@ export const LAB_EXPERIENCES: readonly LabsExperience[] = [
     testId: "pulse",
     status: "Experimental",
     description:
-      "What do people really think? Ask a question, share the link, and compare your circle with everyone — no account needed.",
+      "What do you want to know? Ask everyone, ask your friends, or compare answers — People's Pulse, Should I Do It?, Settle This, Is This Normal? and Rank These. No account needed.",
     statusNote:
       "New. Voluntary responses, not a scientific poll: one vote per browser, places are self-reported, and small groups stay hidden.",
     preview: "/labs/previews/pulse.jpg",

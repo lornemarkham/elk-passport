@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { requireAdminPage } from "@/lib/admin/requireAdmin";
+import { Drafts } from "./Drafts";
 import { Featured } from "./Featured";
 import { Moderation } from "./Moderation";
+import { Usage } from "./Usage";
 
 export const metadata: Metadata = {
   title: "People's Pulse moderation",
@@ -26,6 +28,22 @@ export default async function PulseAdmin() {
         Days end at midnight Pacific. A day with no pick shows nothing.
       </p>
       <Featured />
+      <h2 className="font-heading mt-10 text-[24px] font-bold tracking-tight">
+        Usage
+      </h2>
+      <p className="mt-1 mb-4 text-[14px] text-[#5c6370]">
+        Last 30 days, all People&apos;s Pulse experiences. Aggregate counts
+        only.
+      </p>
+      <Usage />
+      <h2 className="font-heading mt-10 text-[24px] font-bold tracking-tight">
+        Proposed questions
+      </h2>
+      <p className="mt-1 mb-4 text-[14px] text-[#5c6370]">
+        Timely questions proposed by agents, never published on their own. Read
+        each one, check its sources, then publish.
+      </p>
+      <Drafts />
       <h2 className="font-heading mt-10 text-[24px] font-bold tracking-tight">
         Moderation
       </h2>

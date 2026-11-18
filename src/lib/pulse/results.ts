@@ -1,5 +1,12 @@
-import { MIN_GROUP, PROVINCES, provinceName, type Pulse } from "./model";
+import {
+  MIN_GROUP,
+  PROVINCES,
+  kindOf,
+  provinceName,
+  type Pulse,
+} from "./model";
 import { computeInsights, type Insights } from "./insights";
+import { modeResults, type ModeResults } from "./modes";
 import {
   breakdown,
   circleCodes,
@@ -48,6 +55,8 @@ export interface Results {
   readonly claim: ClaimComparison | null;
   /** The map, how answers moved, and how the Pulse spread. */
   readonly insights: Insights;
+  /** What the Pulse's kind adds: reasons, a verdict, a distribution, a ranking. */
+  readonly modes: ModeResults;
   readonly minGroup: number;
 }
 
@@ -127,15 +136,22 @@ export function computeResults(
   votes: readonly VoteRow[],
   myCircle: string | null,
   now: Date,
+  mine: string | null = null,
 ): Results {
-  const sorted = [...votes].sort(
+  const all = [...votes].sort(
     (a, b) => a.at.localeCompare(b.at) || a.circle.localeCompare(b.circle),
   );
+  // Is This Normal? asks about money and time, so even Everyone is released
+  // only in steps of MIN_GROUP: every view below is drawn from that pool.
+  const sorted =
+    kindOf(pulse) === "normal"
+      ? all.slice(0, Math.floor(all.length / MIN_GROUP) * MIN_GROUP)
+      : all;
   const everyone = shares(pulse.options, sorted);
 
   let circle: Results["circle"] = null;
-  if (myCircle) {
-    const codes = circleCodes(sorted, myCircle);
+  const codes = myCircle ? circleCodes(sorted, myCircle) : null;
+  if (myCircle && codes) {
     const members = sorted.filter((v) => codes.has(v.circle));
     circle = {
       ...breakdown(pulse.options, members),
@@ -197,7 +213,7 @@ export function computeResults(
   }
 
   return {
-    total: sorted.length,
+    total: all.length,
     everyone,
     circle,
     provinces: provinces.sort(order),
@@ -207,6 +223,7 @@ export function computeResults(
     timeline: timeline(sorted, pulse.createdAt, now),
     claim,
     insights: computeInsights(pulse, sorted, myCircle),
+    modes: modeResults(pulse, sorted, everyone, codes, mine),
     minGroup: MIN_GROUP,
   };
 }

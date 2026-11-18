@@ -2,7 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { MAX_OPTIONS, PROVINCES } from "@/lib/pulse/model";
+import {
+  DECIDE_OPTIONS,
+  MAX_OPTIONS,
+  PROVINCES,
+  RANK_MIN,
+  SETTLE_MAX,
+} from "@/lib/pulse/model";
+import type { Preset } from "@/lib/pulse/templates";
 import { SourceCheck, type ClaimNotes } from "./SourceCheck";
 
 type Ends = "never" | "1d" | "1w" | "1m";
@@ -20,9 +27,10 @@ const hint = "mt-1 text-[13px] text-[#5c6370]";
 
 /**
  * **Ask a question in under 30 seconds.** A question and Yes/No is enough;
- * everything else is behind "Add details".
+ * everything else is behind "Add details". The preset (a kind or a template)
+ * only changes the starting point and the answers section; it is one form.
  */
-export function CreatePulse() {
+export function CreatePulse({ preset }: { preset: Preset }) {
   const router = useRouter();
   const ids = useId();
   // When the form appeared; a submission sooner than a person types is refused.
@@ -30,14 +38,34 @@ export function CreatePulse() {
   useEffect(() => {
     opened.current = Date.now();
   }, []);
-  const [question, setQuestion] = useState("");
-  const [kind, setKind] = useState<"yesno" | "custom">("yesno");
-  const [answers, setAnswers] = useState(["", ""]);
+  const mode = preset.kind;
+  const firstTopic = preset.topics[0] ?? null;
+  const [question, setQuestion] = useState(
+    mode === "normal" && firstTopic ? firstTopic.question : preset.prefix,
+  );
+  const [kind, setKind] = useState<"yesno" | "custom">(
+    preset.options || mode !== "pulse" ? "custom" : "yesno",
+  );
+  const [answers, setAnswers] = useState<string[]>(
+    preset.options
+      ? [...preset.options]
+      : Array.from(
+          { length: mode === "rank" || mode === "normal" ? RANK_MIN : 2 },
+          () => "",
+        ),
+  );
+  const [topic, setTopic] = useState<string>(firstTopic?.id ?? "own");
+  const [groupLabel, setGroupLabel] = useState("");
+  const [groupOptions, setGroupOptions] = useState(["", ""]);
+  const [reasons, setReasons] = useState(preset.reasons);
+  const [unlisted, setUnlisted] = useState(preset.unlisted);
   const [description, setDescription] = useState("");
-  const [scope, setScope] = useState<"canada" | "province" | "city">("canada");
+  const [scope, setScope] = useState<"canada" | "province" | "city">(
+    preset.scope,
+  );
   const [province, setProvince] = useState("BC");
   const [city, setCity] = useState("");
-  const [ends, setEnds] = useState<Ends>("never");
+  const [ends, setEnds] = useState<Ends>(preset.ends);
   const [claimText, setClaimText] = useState("");
   const [claimPercent, setClaimPercent] = useState("");
   const [claimOption, setClaimOption] = useState("o1");
@@ -56,7 +84,33 @@ export function CreatePulse() {
   } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const options = kind === "yesno" ? ["Yes", "No"] : answers;
+  const chosenTopic = preset.topics.find((t) => t.id === topic) ?? null;
+  const options =
+    mode === "decide"
+      ? [...DECIDE_OPTIONS]
+      : mode === "normal" && chosenTopic
+        ? [...chosenTopic.ranges]
+        : kind === "yesno"
+          ? ["Yes", "No"]
+          : answers;
+  const maxAnswers = mode === "settle" ? SETTLE_MAX : MAX_OPTIONS;
+  const group =
+    mode !== "normal"
+      ? null
+      : chosenTopic
+        ? chosenTopic.group
+        : groupLabel.trim()
+          ? { label: groupLabel, options: groupOptions }
+          : null;
+
+  function pickTopic(id: string) {
+    const was = preset.topics.find((t) => t.id === topic);
+    const next = preset.topics.find((t) => t.id === id);
+    setTopic(id);
+    // Swap the question only if the person hadn't rewritten the last topic's.
+    if (!question.trim() || question === was?.question)
+      setQuestion(next?.question ?? "");
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,6 +122,16 @@ export function CreatePulse() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          kind: mode,
+          template:
+            preset.template ??
+            (mode === "normal" && chosenTopic
+              ? `topic-${chosenTopic.id}`
+              : null),
+          reasons,
+          unlisted,
+          group,
+          unit: chosenTopic?.unit ?? null,
           question,
           options,
           description,
@@ -132,7 +196,7 @@ export function CreatePulse() {
     >
       <div>
         <label htmlFor={`${ids}-q`} className={label}>
-          Your question
+          {preset.ask}
         </label>
         <textarea
           id={`${ids}-q`}
@@ -142,80 +206,179 @@ export function CreatePulse() {
           maxLength={200}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Should Vernon build a second sheet of ice?"
+          placeholder={preset.placeholder}
           className={`${input} mt-2 resize-none text-[18px] leading-snug`}
           aria-invalid={error?.field === "question"}
         />
         {err("question")}
       </div>
 
-      <fieldset>
-        <legend className={label}>Answers</legend>
-        <div
-          className="mt-2 inline-flex rounded-full border border-[#d9d4c8] bg-white p-1"
-          role="group"
-        >
-          {(
-            [
-              ["yesno", "Yes / No"],
-              ["custom", "Your own answers"],
-            ] as const
-          ).map(([value, text]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={kind === value}
-              onClick={() => setKind(value)}
-              className={`min-h-10 rounded-full px-4 text-[14px] font-semibold transition ${
-                kind === value ? "bg-[#14161a] text-white" : "text-[#3f4550]"
-              }`}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
-        {kind === "custom" ? (
-          <div className="mt-3 grid gap-2">
-            {answers.map((a, i) => (
-              <div key={i} className="flex gap-2">
-                <input
-                  aria-label={`Answer ${i + 1}`}
-                  value={a}
-                  maxLength={60}
-                  onChange={(e) =>
-                    setAnswers(
-                      answers.map((x, j) => (j === i ? e.target.value : x)),
-                    )
-                  }
-                  placeholder={`Answer ${i + 1}`}
-                  className={input}
-                />
-                {answers.length > 2 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAnswers(answers.filter((_, j) => j !== i))
-                    }
-                    className="min-h-11 min-w-11 rounded-xl border border-[#d9d4c8] bg-white text-[18px] text-[#5c6370]"
-                    aria-label={`Remove answer ${i + 1}`}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            ))}
-            {answers.length < MAX_OPTIONS ? (
-              <button
-                type="button"
-                onClick={() => setAnswers([...answers, ""])}
-                className="min-h-11 justify-self-start rounded-full px-1 text-[14px] font-semibold text-[#2a78d6]"
+      {mode === "normal" ? (
+        <NormalAnswers
+          topics={preset.topics}
+          topic={topic}
+          onTopic={pickTopic}
+          answers={answers}
+          setAnswers={setAnswers}
+          groupLabel={groupLabel}
+          setGroupLabel={setGroupLabel}
+          groupOptions={groupOptions}
+          setGroupOptions={setGroupOptions}
+          error={err("options") ?? err("group")}
+        />
+      ) : mode === "decide" ? (
+        <div data-testid="pulse-decide-answers">
+          <p className={label}>Answers</p>
+          <p className="mt-2 flex flex-wrap gap-2">
+            {DECIDE_OPTIONS.map((o) => (
+              <span
+                key={o}
+                className="rounded-full border border-[#d9d4c8] bg-white px-4 py-2 text-[15px] font-semibold"
               >
-                + Add an answer
+                {o}
+              </span>
+            ))}
+          </p>
+          <p className={hint}>
+            People can add a short reason. You&apos;ll see the reasons once five
+            people have answered.
+          </p>
+        </div>
+      ) : (
+        <fieldset>
+          <legend className={label}>
+            {mode === "rank"
+              ? "Things to rank"
+              : mode === "settle"
+                ? "The sides"
+                : "Answers"}
+          </legend>
+          {mode === "rank" ? (
+            <p className={hint}>Three to six. People put them in order.</p>
+          ) : mode === "settle" ? (
+            <p className={hint}>Two to four. Everyone picks one.</p>
+          ) : null}
+          <div
+            className={`mt-2 inline-flex rounded-full border border-[#d9d4c8] bg-white p-1 ${mode === "pulse" ? "" : "hidden"}`}
+            role="group"
+          >
+            {(
+              [
+                ["yesno", "Yes / No"],
+                ["custom", "Your own answers"],
+              ] as const
+            ).map(([value, text]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={kind === value}
+                onClick={() => setKind(value)}
+                className={`min-h-10 rounded-full px-4 text-[14px] font-semibold transition ${
+                  kind === value ? "bg-[#14161a] text-white" : "text-[#3f4550]"
+                }`}
+              >
+                {text}
               </button>
-            ) : null}
+            ))}
           </div>
+          {kind === "custom" ? (
+            <div className="mt-3 grid gap-2">
+              {answers.map((a, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    aria-label={
+                      mode === "rank"
+                        ? `Item ${i + 1}`
+                        : mode === "settle"
+                          ? `Side ${i + 1}`
+                          : `Answer ${i + 1}`
+                    }
+                    value={a}
+                    maxLength={60}
+                    onChange={(e) =>
+                      setAnswers(
+                        answers.map((x, j) => (j === i ? e.target.value : x)),
+                      )
+                    }
+                    placeholder={
+                      mode === "settle"
+                        ? (["Yes, it does", "No, never"][i] ?? `Side ${i + 1}`)
+                        : mode === "rank"
+                          ? `Item ${i + 1}`
+                          : `Answer ${i + 1}`
+                    }
+                    className={input}
+                  />
+                  {answers.length > (mode === "rank" ? RANK_MIN : 2) ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAnswers(answers.filter((_, j) => j !== i))
+                      }
+                      className="min-h-11 min-w-11 rounded-xl border border-[#d9d4c8] bg-white text-[18px] text-[#5c6370]"
+                      aria-label={`Remove answer ${i + 1}`}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {answers.length < maxAnswers ? (
+                <button
+                  type="button"
+                  onClick={() => setAnswers([...answers, ""])}
+                  className="min-h-11 justify-self-start rounded-full px-1 text-[14px] font-semibold text-[#2a78d6]"
+                >
+                  {mode === "rank"
+                    ? "+ Add one"
+                    : mode === "settle"
+                      ? "+ Add a side"
+                      : "+ Add an answer"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {err("options")}
+        </fieldset>
+      )}
+
+      <fieldset className="grid gap-2">
+        <legend className={label}>Who&apos;s it for?</legend>
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-[#e7e3da] bg-white p-3 text-[14px]">
+          <input
+            type="checkbox"
+            checked={unlisted}
+            onChange={(e) => setUnlisted(e.target.checked)}
+            className="mt-0.5 h-5 w-5 accent-[#14161a]"
+            data-testid="pulse-unlisted"
+          />
+          <span>
+            <span className="font-semibold">
+              Only people I send the link to
+            </span>
+            <span className="block text-[#5c6370]">
+              Not listed on People&apos;s Pulse. Anyone with the link can still
+              answer.
+            </span>
+          </span>
+        </label>
+        {mode === "pulse" || mode === "settle" ? (
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-[#e7e3da] bg-white p-3 text-[14px]">
+            <input
+              type="checkbox"
+              checked={reasons}
+              onChange={(e) => setReasons(e.target.checked)}
+              className="mt-0.5 h-5 w-5 accent-[#14161a]"
+              data-testid="pulse-reasons-toggle"
+            />
+            <span>
+              <span className="font-semibold">Let people say why</span>
+              <span className="block text-[#5c6370]">
+                An optional sentence with their answer, shown anonymously.
+              </span>
+            </span>
+          </label>
         ) : null}
-        {err("options")}
       </fieldset>
 
       <fieldset>
@@ -277,7 +440,10 @@ export function CreatePulse() {
         {err("scope")}
       </fieldset>
 
-      <details className="group rounded-2xl border border-[#e7e3da] bg-white p-4 open:pb-5">
+      <details
+        className="group rounded-2xl border border-[#e7e3da] bg-white p-4 open:pb-5"
+        open={preset.claim || undefined}
+      >
         <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between text-[15px] font-semibold">
           Add details
           <span className="text-[13px] font-normal text-[#5c6370] group-open:hidden">
@@ -451,5 +617,150 @@ export function CreatePulse() {
         </p>
       </div>
     </form>
+  );
+}
+
+/**
+ * Is This Normal?'s answers: a topic's ranges as they are (so everyone answers
+ * the same buckets), or your own ranges in order, plus an optional category.
+ */
+function NormalAnswers({
+  topics,
+  topic,
+  onTopic,
+  answers,
+  setAnswers,
+  groupLabel,
+  setGroupLabel,
+  groupOptions,
+  setGroupOptions,
+  error,
+}: {
+  topics: Preset["topics"];
+  topic: string;
+  onTopic: (id: string) => void;
+  answers: string[];
+  setAnswers: (a: string[]) => void;
+  groupLabel: string;
+  setGroupLabel: (s: string) => void;
+  groupOptions: string[];
+  setGroupOptions: (a: string[]) => void;
+  error: React.ReactNode;
+}) {
+  const chosen = topics.find((t) => t.id === topic) ?? null;
+  return (
+    <fieldset data-testid="pulse-normal-answers">
+      <legend className={label}>What to compare</legend>
+      <div className="mt-2 flex flex-wrap gap-2" role="group">
+        {[
+          ...topics.map((t) => [t.id, t.name] as const),
+          ["own", "Make your own"] as const,
+        ].map(([id, name]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={topic === id}
+            onClick={() => onTopic(id)}
+            data-testid={`pulse-topic-${id}`}
+            className={`min-h-11 rounded-full border px-4 text-[14px] font-medium ${
+              topic === id
+                ? "border-[#14161a] bg-[#14161a] text-white"
+                : "border-[#d9d4c8] bg-white text-[#3f4550]"
+            }`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      {chosen ? (
+        <div className="mt-3 rounded-xl bg-[#f3f1ec] p-3 text-[14px]">
+          <p className="font-semibold">
+            People pick a range{chosen.unit ? ` (${chosen.unit})` : ""}:
+          </p>
+          <p className="mt-1 text-[#3f4550]">{chosen.ranges.join(" · ")}</p>
+          {chosen.group ? (
+            <p className="mt-2 text-[#3f4550]">
+              Optional comparison: <strong>{chosen.group.label}</strong> (
+              {chosen.group.options.join(", ")})
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          <p className={hint}>
+            Three to six ranges, lowest first. Ranges, not exact numbers, keep
+            answers private.
+          </p>
+          {answers.map((a, i) => (
+            <input
+              key={i}
+              aria-label={`Range ${i + 1}`}
+              value={a}
+              maxLength={60}
+              onChange={(e) =>
+                setAnswers(
+                  answers.map((x, j) => (j === i ? e.target.value : x)),
+                )
+              }
+              placeholder={
+                ["Under $50", "$50–$99", "$100 or more"][i] ?? `Range ${i + 1}`
+              }
+              className={input}
+            />
+          ))}
+          {answers.length < MAX_OPTIONS ? (
+            <button
+              type="button"
+              onClick={() => setAnswers([...answers, ""])}
+              className="min-h-11 justify-self-start rounded-full px-1 text-[14px] font-semibold text-[#2a78d6]"
+            >
+              + Add a range
+            </button>
+          ) : null}
+          <label className={`${label} mt-2`}>
+            Compare by{" "}
+            <span className="font-normal text-[#5c6370]">
+              (optional, e.g. household size)
+            </span>
+            <input
+              value={groupLabel}
+              maxLength={60}
+              onChange={(e) => setGroupLabel(e.target.value)}
+              className={`${input} mt-2`}
+              placeholder="Household size"
+            />
+          </label>
+          {groupLabel.trim()
+            ? groupOptions.map((g, i) => (
+                <input
+                  key={i}
+                  aria-label={`Group ${i + 1}`}
+                  value={g}
+                  maxLength={60}
+                  onChange={(e) =>
+                    setGroupOptions(
+                      groupOptions.map((x, j) =>
+                        j === i ? e.target.value : x,
+                      ),
+                    )
+                  }
+                  placeholder={["1 person", "2 or more"][i] ?? `Group ${i + 1}`}
+                  className={input}
+                />
+              ))
+            : null}
+          {groupLabel.trim() && groupOptions.length < MAX_OPTIONS ? (
+            <button
+              type="button"
+              onClick={() => setGroupOptions([...groupOptions, ""])}
+              className="min-h-11 justify-self-start rounded-full px-1 text-[14px] font-semibold text-[#2a78d6]"
+            >
+              + Add a group
+            </button>
+          ) : null}
+        </div>
+      )}
+      {error}
+    </fieldset>
   );
 }

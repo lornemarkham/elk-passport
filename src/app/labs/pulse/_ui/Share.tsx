@@ -3,6 +3,37 @@
 import { useState } from "react";
 import { Copy, Mail, MessageSquare, Share2, Check } from "lucide-react";
 
+/**
+ * Count a share, results card or opened link for aggregate usage: a number
+ * per day, nothing about who. Fire-and-forget; it never holds up the person.
+ */
+export function countEvent(
+  pulseId: string,
+  event: "share" | "card" | "link-open" | "circle-ask",
+) {
+  try {
+    void fetch(`/api/pulse/${pulseId}/event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* counting never matters more than sharing */
+  }
+}
+
+/** What a shared link says, in the words of its kind. */
+export function shareText(question: string, kind: string = "pulse") {
+  if (kind === "decide")
+    return `Help me decide: ${question} Yes, no or not yet?`;
+  if (kind === "settle") return `Settle this: ${question}`;
+  if (kind === "rank")
+    return `${question} — put them in order and see the group's ranking`;
+  if (kind === "normal") return `${question} — compare anonymously`;
+  return `${question} — add your answer on People's Pulse`;
+}
+
 const btn =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d9d4c8] bg-white px-4 text-[14px] font-semibold text-[#14161a] transition hover:border-[#14161a] focus-visible:ring-2 focus-visible:ring-[#14161a] focus-visible:outline-none";
 
@@ -15,17 +46,25 @@ export function Share({
   url,
   question,
   prominent = false,
+  pulseId,
+  kind = "pulse",
 }: {
   url: string;
   question: string;
   prominent?: boolean;
+  pulseId?: string;
+  kind?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const text = `${question} — add your answer on People's Pulse`;
+  const text = shareText(question, kind);
+  const counted = () => {
+    if (pulseId) countEvent(pulseId, "share");
+  };
   const canShare = typeof navigator !== "undefined" && "share" in navigator;
   const enc = encodeURIComponent;
 
   async function copy() {
+    counted();
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -41,6 +80,7 @@ export function Share({
   }
 
   async function native() {
+    counted();
     try {
       await navigator.share({ title: "People's Pulse", text, url });
     } catch {
@@ -60,7 +100,9 @@ export function Share({
     >
       <h2 id="pulse-share-title" className="text-[15px] font-semibold">
         {prominent
-          ? "Your Pulse is live — send it to people"
+          ? kind === "decide"
+            ? "Your question is live — send it to people who know you"
+            : "Your Pulse is live — send it to people"
           : "Share this Pulse"}
       </h2>
       <p className="mt-1 text-[13px] text-[#5c6370]">
@@ -104,6 +146,7 @@ export function Share({
         <a
           className={btn}
           href={`sms:?&body=${enc(`${text} ${url}`)}`}
+          onClick={counted}
           data-testid="pulse-sms"
         >
           <MessageSquare className="h-4 w-4" aria-hidden /> Text
@@ -111,6 +154,7 @@ export function Share({
         <a
           className={btn}
           href={`mailto:?subject=${enc(question)}&body=${enc(`${text}\n\n${url}`)}`}
+          onClick={counted}
           data-testid="pulse-email"
         >
           <Mail className="h-4 w-4" aria-hidden /> Email
@@ -120,6 +164,7 @@ export function Share({
           target="_blank"
           rel="noopener noreferrer"
           href={`https://wa.me/?text=${enc(`${text} ${url}`)}`}
+          onClick={counted}
         >
           WhatsApp
         </a>
@@ -128,6 +173,7 @@ export function Share({
           target="_blank"
           rel="noopener noreferrer"
           href={`https://www.facebook.com/sharer/sharer.php?u=${enc(url)}`}
+          onClick={counted}
         >
           Facebook
         </a>
@@ -136,6 +182,7 @@ export function Share({
           target="_blank"
           rel="noopener noreferrer"
           href={`https://twitter.com/intent/tweet?text=${enc(text)}&url=${enc(url)}`}
+          onClick={counted}
         >
           X
         </a>

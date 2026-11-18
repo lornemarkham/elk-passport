@@ -7,9 +7,13 @@
  * the tests agree on exactly the same rules.
  */
 
+import { findTemplate, findTopic } from "./templates";
+
 export const BRAND = {
   name: "People's Pulse",
   tagline: "What do people really think?",
+  /** The Quick Ideas landing page (/labs/pulse). */
+  hub: "What do you want to know?",
   footer: "Powered by ELK",
 } as const;
 
@@ -28,6 +32,9 @@ export const LIMITS = {
   url: 500,
   city: 60,
   reportNote: 500,
+  reason: 280,
+  unit: 40,
+  groupLabel: 60,
 } as const;
 
 export const PROVINCES = [
@@ -88,8 +95,48 @@ export interface PulseClaim {
   readonly method?: string | null;
 }
 
+/**
+ * **The interaction mode** — one engine, several ways to ask. Every kind is
+ * still one question, two to six answers and one vote per browser; the kind
+ * only changes what a vote may carry and how results read:
+ *
+ *   - `pulse`  — People's Pulse: pick one answer (V1).
+ *   - `decide` — Should I Do It?: Yes / No / Not yet, with optional reasons.
+ *   - `settle` — Settle This: two to four sides, one winner (or not yet).
+ *   - `normal` — Is This Normal?: answers are ordered ranges (never a raw
+ *     number), optionally beside one comparison category; small groups hidden.
+ *   - `rank`   — Rank These: put three to six things in order.
+ */
+export const KINDS = ["pulse", "decide", "settle", "normal", "rank"] as const;
+export type PulseKind = (typeof KINDS)[number];
+export const isKind = (v: unknown): v is PulseKind =>
+  typeof v === "string" && (KINDS as readonly string[]).includes(v);
+
+export const DECIDE_OPTIONS = ["Yes", "No", "Not yet"] as const;
+export const SETTLE_MAX = 4;
+export const RANK_MIN = 3;
+export const NORMAL_MIN = 3;
+
+/** Is This Normal?'s optional second question ("Household size"), for comparing groups. */
+export interface PulseGroup {
+  readonly label: string;
+  readonly options: readonly PulseOption[];
+}
+
 export interface Pulse {
   readonly id: string;
+  /** Absent on V1 and V2 Pulses, which are all `pulse`. */
+  readonly kind?: PulseKind;
+  /** Voters may add a short written reason, shown anonymously with their answer. */
+  readonly reasons?: boolean;
+  /** The template it was made from, for counting which ones people use. */
+  readonly template?: string | null;
+  /** Shared by link only: never on the public shelves. */
+  readonly unlisted?: boolean;
+  /** Is This Normal? only: the optional comparison category. */
+  readonly group?: PulseGroup | null;
+  /** Is This Normal? only: what the ranges measure ("per month"). */
+  readonly unit?: string | null;
   readonly question: string;
   readonly description: string | null;
   readonly options: readonly PulseOption[];
@@ -100,6 +147,8 @@ export interface Pulse {
   readonly status: PulseStatus;
   readonly createdAt: string;
 }
+
+export const kindOf = (p: Pick<Pulse, "kind">): PulseKind => p.kind ?? "pulse";
 
 export function scopeLabel(scope: PulseScope): string {
   if (scope.kind === "canada") return "Canada";
@@ -209,9 +258,47 @@ export interface CreateInput {
   readonly sourceUrl?: unknown;
   readonly scope?: unknown;
   readonly expiresAt?: unknown;
+  readonly kind?: unknown;
+  readonly reasons?: unknown;
+  readonly template?: unknown;
+  readonly unlisted?: unknown;
+  readonly group?: unknown;
+  readonly unit?: unknown;
 }
 
 export type Draft = Omit<Pulse, "id" | "status" | "createdAt">;
+
+/** Answer labels, cleaned and checked: distinct, short, nothing personal. */
+function checkLabels(
+  raw: unknown,
+  min: number,
+  max: number,
+  field: string,
+): readonly string[] | Checked {
+  const labels = (Array.isArray(raw) ? raw : [])
+    .map((o) => clean(o, LIMITS.option.max + 1))
+    .filter(Boolean);
+  const word = field === "group" ? "groups" : "answers";
+  if (labels.length < min)
+    return fail(
+      field,
+      min === 2
+        ? `Give at least two ${word}.`
+        : `Give at least ${min} ${word}.`,
+    );
+  if (labels.length > max) return fail(field, `${max} ${word} at most.`);
+  if (labels.some((l) => l.length > LIMITS.option.max))
+    return fail(field, "Keep each one under 60 characters.");
+  const seen = new Set<string>();
+  for (const l of labels) {
+    const k = l.toLowerCase();
+    if (seen.has(k)) return fail(field, "Each one must be different.");
+    seen.add(k);
+    const p = textProblem(l);
+    if (p) return fail(field, PROBLEM_MESSAGE[p]);
+  }
+  return labels;
+}
 
 export type Checked =
   | { readonly ok: true; readonly draft: Draft }
@@ -240,24 +327,20 @@ export function checkDraft(input: CreateInput, now: Date): Checked {
   const qp = textProblem(question);
   if (qp) return fail("question", PROBLEM_MESSAGE[qp]);
 
-  const rawOptions = Array.isArray(input.options) ? input.options : [];
-  const labels = rawOptions
-    .map((o) => clean(o, LIMITS.option.max + 1))
-    .filter(Boolean);
-  if (labels.length < MIN_OPTIONS)
-    return fail("options", "Give at least two answers.");
-  if (labels.length > MAX_OPTIONS)
-    return fail("options", `Six answers at most.`);
-  if (labels.some((l) => l.length > LIMITS.option.max))
-    return fail("options", "Keep each answer under 60 characters.");
-  const seen = new Set<string>();
-  for (const l of labels) {
-    const k = l.toLowerCase();
-    if (seen.has(k)) return fail("options", "Each answer must be different.");
-    seen.add(k);
-    const p = textProblem(l);
-    if (p) return fail("options", PROBLEM_MESSAGE[p]);
-  }
+  const kind: PulseKind = isKind(input.kind) ? input.kind : "pulse";
+  const answerRange: Record<PulseKind, [number, number]> = {
+    pulse: [MIN_OPTIONS, MAX_OPTIONS],
+    decide: [3, 3],
+    settle: [MIN_OPTIONS, SETTLE_MAX],
+    normal: [NORMAL_MIN, MAX_OPTIONS],
+    rank: [RANK_MIN, MAX_OPTIONS],
+  };
+  const labels = checkLabels(
+    kind === "decide" ? DECIDE_OPTIONS : input.options,
+    ...answerRange[kind],
+    "options",
+  );
+  if (!Array.isArray(labels)) return labels as Checked;
   const options = labels.map((label, i) => ({ id: `o${i + 1}`, label }));
 
   const description = clean(input.description, LIMITS.description + 1) || null;
@@ -356,6 +439,43 @@ export function checkDraft(input: CreateInput, now: Date): Checked {
     expiresAt = at.toISOString();
   }
 
+  let group: PulseGroup | null = null;
+  let unit: string | null = null;
+  if (kind === "normal") {
+    const g = (input.group ?? null) as Record<string, unknown> | null;
+    const groupLabel =
+      g && typeof g === "object" ? clean(g.label, LIMITS.groupLabel + 1) : "";
+    if (groupLabel) {
+      if (groupLabel.length > LIMITS.groupLabel)
+        return fail("group", "Keep the category name under 60 characters.");
+      if (textProblem(groupLabel))
+        return fail("group", PROBLEM_MESSAGE[textProblem(groupLabel)!]);
+      const gl = checkLabels(g!.options, MIN_OPTIONS, MAX_OPTIONS, "group");
+      if (!Array.isArray(gl)) return gl as Checked;
+      group = {
+        label: groupLabel,
+        options: gl.map((label, i) => ({ id: `g${i + 1}`, label })),
+      };
+    }
+    unit = clean(input.unit, LIMITS.unit) || null;
+    if (unit && textProblem(unit))
+      return fail("unit", PROBLEM_MESSAGE[textProblem(unit)!]);
+  }
+
+  // Only names this file knows, so the usage table can't be written into.
+  const template =
+    typeof input.template === "string" &&
+    (findTemplate(input.template) ||
+      (input.template.startsWith("topic-") &&
+        findTopic(input.template.slice(6))))
+      ? input.template
+      : null;
+  // A personal decision goes to friends by default; anything can opt out of the shelves.
+  const unlisted =
+    input.unlisted === undefined ? kind === "decide" : input.unlisted === true;
+  const reasons =
+    kind === "decide" || (kind !== "rank" && input.reasons === true);
+
   return {
     ok: true,
     draft: {
@@ -366,9 +486,45 @@ export function checkDraft(input: CreateInput, now: Date): Checked {
       sourceUrl,
       scope,
       expiresAt,
+      ...(kind === "pulse" ? {} : { kind }),
+      ...(reasons ? { reasons } : {}),
+      ...(template ? { template } : {}),
+      ...(unlisted ? { unlisted } : {}),
+      ...(group ? { group } : {}),
+      ...(unit ? { unit } : {}),
     },
   };
 }
+
+/**
+ * A ranking from the ballot: every answer exactly once, as answer numbers
+ * ("3142" = o3 first, then o1, o4, o2). Null if it is not a full ranking.
+ */
+export function checkRanking(
+  raw: unknown,
+  options: readonly PulseOption[],
+): string | null {
+  if (!Array.isArray(raw) || raw.length !== options.length) return null;
+  const ids = options.map((o) => o.id);
+  const seen = new Set<string>();
+  let out = "";
+  for (const r of raw) {
+    if (typeof r !== "string" || !ids.includes(r) || seen.has(r)) return null;
+    seen.add(r);
+    out += String(ids.indexOf(r) + 1);
+  }
+  return out;
+}
+
+/** A voter's written reason, cleaned; "problem" if it can't be shown. */
+export function checkReason(raw: unknown): string | null | "problem" {
+  const text = clean(raw, LIMITS.reason);
+  if (!text) return null;
+  return textProblem(text) ? "problem" : text;
+}
+
+export const REASON_PROBLEM =
+  "Your reason can't include personal details, links or attacks — edit it or leave it blank.";
 
 export function checkScope(raw: unknown): PulseScope | null {
   if (!raw || typeof raw !== "object") return { kind: "canada" };

@@ -302,8 +302,11 @@ describe("People's Pulse, end to end on the memory store", () => {
       "at",
       "circle",
       "city",
+      "group",
       "option",
       "province",
+      "ranking",
+      "reason",
       "via",
     ]);
   });

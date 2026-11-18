@@ -4,8 +4,11 @@ import {
   isCircleCode,
   isProvince,
   isPulseId,
+  kindOf,
   provinceName,
 } from "@/lib/pulse/model";
+import type { Ranked } from "@/lib/pulse/modes";
+import { experience } from "@/lib/pulse/templates";
 import { guardRequest } from "@/lib/pulse/http";
 import { computeResults, type Share } from "@/lib/pulse/results";
 import { NotReady, pulseStore } from "@/lib/pulse/store";
@@ -17,12 +20,20 @@ const W = 1080;
 const H = 1350;
 
 /** Answer bars: label and percentage in ink, the bar in its colour. */
-function Bars({ shares, big }: { shares: readonly Share[]; big: boolean }) {
+function Bars({
+  shares,
+  big: wanted,
+}: {
+  shares: readonly Share[];
+  big: boolean;
+}) {
+  // Five or six ranges (Is This Normal?) fit at the smaller size.
+  const big = wanted && shares.length <= 4;
   return (
     <div
       style={{ display: "flex", flexDirection: "column", gap: big ? 26 : 18 }}
     >
-      {shares.slice(0, 4).map((s, i) => (
+      {shares.slice(0, 6).map((s, i) => (
         <div
           key={s.optionId}
           style={{ display: "flex", flexDirection: "column", gap: 8 }}
@@ -66,6 +77,56 @@ function Bars({ shares, big }: { shares: readonly Share[]; big: boolean }) {
   );
 }
 
+/** Rank These: the group's order, numbered, with how often each came first. */
+function RankRows({ items, big }: { items: readonly Ranked[]; big: boolean }) {
+  return (
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: big ? 20 : 14 }}
+    >
+      {items.slice(0, 6).map((r, i) => (
+        <div
+          key={r.optionId}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            fontSize: big ? 44 : 34,
+            fontWeight: 700,
+          }}
+        >
+          <div
+            style={{
+              width: big ? 72 : 56,
+              height: big ? 72 : 56,
+              borderRadius: 72,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: i === 0 ? PULSE_RED : "#efece5",
+              color: i === 0 ? "white" : "#14161a",
+              fontWeight: 800,
+            }}
+          >
+            {String(i + 1)}
+          </div>
+          <div style={{ display: "flex", flex: 1 }}>
+            {r.label.length > 24 ? `${r.label.slice(0, 22)}…` : r.label}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              fontSize: big ? 28 : 24,
+              color: "#5c6370",
+            }}
+          >
+            {`${r.firstPct}% first`}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * **The results card**: a portrait picture of where a Pulse stands, made to
  * be shared from a phone. `?c=<circle code>` adds "My circle vs Everyone",
@@ -99,11 +160,27 @@ export async function GET(
     return new Response("Not found", { status: 404 });
 
   const now = new Date();
+  const kind = kindOf(pulse);
   const r = computeResults(pulse, votes, isCircleCode(c) ? c : null, now);
   const circle = r.circle?.shares ? r.circle : null;
-  const place = isProvince(p)
-    ? r.provinces.find((x) => x.key === p && x.shares)
-    : undefined;
+  // Places stay off rankings and ranges, as on the page.
+  const place =
+    isProvince(p) && kind !== "rank" && kind !== "normal"
+      ? r.provinces.find((x) => x.key === p && x.shares)
+      : undefined;
+  const ranking = r.modes.ranking;
+  const normal = r.modes.normal;
+  const v = r.modes.verdict;
+  const headline =
+    v && v.status !== "early"
+      ? v.status === "tie"
+        ? "Dead even, so far"
+        : v.status === "close"
+          ? `Too close to call — ${v.winner} leads`
+          : `${v.winner} wins, ${v.pct}%`
+      : normal?.everyone.median
+        ? `The middle answer: ${normal.everyone.median}`
+        : null;
   const compare = circle
     ? { name: "My circle", total: circle.counted, shares: circle.shares! }
     : place
@@ -152,7 +229,14 @@ export async function GET(
             />
           </svg>
         </div>
-        <div style={{ fontSize: 38, fontWeight: 800 }}>{BRAND.name}</div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 38, fontWeight: 800 }}>
+            {kind === "pulse" ? BRAND.name : experience(kind).name}
+          </div>
+          {kind === "pulse" ? null : (
+            <div style={{ fontSize: 24, color: "#5c6370" }}>{BRAND.name}</div>
+          )}
+        </div>
       </div>
 
       <div
@@ -168,9 +252,9 @@ export async function GET(
           : pulse.question}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {compare ? (
+      {ranking ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 30 }}>
+          {ranking.circle && isCircleCode(c) ? (
             <div
               style={{
                 display: "flex",
@@ -179,27 +263,73 @@ export async function GET(
                 color: "#5c6370",
               }}
             >
-              {`Everyone · ${r.total.toLocaleString("en-CA")} people`}
+              {"My circle's ranking"}
             </div>
           ) : null}
-          <Bars shares={r.everyone} big={!compare} />
+          <RankRows
+            items={
+              ranking.circle && isCircleCode(c) ? ranking.circle : ranking.items
+            }
+            big={pulse.options.length <= 4}
+          />
         </div>
-        {compare ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      ) : normal && !normal.everyone.shares ? (
+        <div
+          style={{
+            display: "flex",
+            fontSize: 40,
+            fontWeight: 700,
+            color: "#5c6370",
+          }}
+        >
+          {"Results appear once 5 people have answered."}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
+          {headline ? (
             <div
               style={{
                 display: "flex",
-                fontSize: 28,
-                fontWeight: 700,
-                color: "#5c6370",
+                fontSize: 46,
+                fontWeight: 800,
+                color: PULSE_RED,
               }}
             >
-              {`${compare.name} · ${compare.total.toLocaleString("en-CA")} people`}
+              {headline}
             </div>
-            <Bars shares={compare.shares} big={false} />
+          ) : null}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {compare ? (
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: "#5c6370",
+                }}
+              >
+                {`Everyone · ${r.total.toLocaleString("en-CA")} people`}
+              </div>
+            ) : null}
+            <Bars shares={r.everyone} big={!compare} />
           </div>
-        ) : null}
-      </div>
+          {compare ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: "#5c6370",
+                }}
+              >
+                {`${compare.name} · ${compare.total.toLocaleString("en-CA")} people`}
+              </div>
+              <Bars shares={compare.shares} big={false} />
+            </div>
+          ) : null}
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", fontSize: 40, fontWeight: 800 }}>
@@ -213,9 +343,9 @@ export async function GET(
             lineHeight: 1.3,
           }}
         >
-          {
-            "Voluntary responses from whoever chose to answer. Not a scientific poll, and not representative of Canada."
-          }
+          {kind === "normal"
+            ? "Ranges from whoever chose to answer, shown in steps of 5. Not population statistics, and not representative of Canada."
+            : "Voluntary responses from whoever chose to answer. Not a scientific poll, and not representative of Canada."}
         </div>
         <div
           style={{
@@ -227,7 +357,7 @@ export async function GET(
             paddingTop: 20,
           }}
         >
-          <span>What do people really think?</span>
+          <span>{BRAND.hub}</span>
           <span style={{ color: "#5c6370" }}>{BRAND.footer}</span>
         </div>
       </div>

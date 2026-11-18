@@ -10,6 +10,7 @@ import { NotReady, postgresStore } from "./store";
  *   export STACK=~/scratch/m906/pulse-stack
  *   node docs/product/badminton/verification/stack.mjs start
  *   node docs/product/badminton/verification/stack.mjs apply supabase/migrations/20261118000000_passport_pulse.sql
+ *   (then …_featured and …20261119000000_passport_pulse_modes.sql the same way)
  *   set -a; . $STACK/env; set +a
  *   npx vitest run src/lib/pulse/store.stack.test.ts
  */
@@ -114,8 +115,11 @@ describe.skipIf(!live)("People's Pulse Postgres store (local stack)", () => {
       "at",
       "circle",
       "city",
+      "group",
       "option",
       "province",
+      "ranking",
+      "reason",
       "via",
     ]);
   });
@@ -212,6 +216,7 @@ describe.skipIf(!live)("People's Pulse Postgres store (local stack)", () => {
       "passport_pulse_reports",
       "passport_pulse_keys",
       "passport_pulse_featured",
+      "passport_pulse_events",
     ]) {
       const res = await fetch(`${URL}/rest/v1/${table}?select=*`, {
         headers: { apikey: ANON!, Authorization: `Bearer ${ANON}` },
@@ -219,5 +224,65 @@ describe.skipIf(!live)("People's Pulse Postgres store (local stack)", () => {
       const body = await res.json();
       expect(res.ok && Array.isArray(body) && body.length > 0).toBe(false);
     }
+  });
+
+  it("Quick Ideas: reasons, rankings and groups go in and come back, checked by the database", async () => {
+    const p = pulse({
+      kind: "rank",
+      options: [
+        { id: "o1", label: "Dune" },
+        { id: "o2", label: "Up" },
+        { id: "o3", label: "Heat" },
+      ],
+      group: { label: "Age", options: [{ id: "g1", label: "Under 30" }] },
+    });
+    await store.create(p, { creator: rid(), net: rid() }, 10);
+    expect(
+      await store.vote(
+        {
+          ...vote(p.id, "r1", "o2"),
+          ranking: "213",
+          reason: "Pixar",
+          group: "g1",
+        },
+        10,
+      ),
+    ).toBe("ok");
+    // Too short a ranking, or a group the Pulse doesn't have, is refused in SQL too.
+    expect(
+      await store.vote({ ...vote(p.id, "r2", "o2"), ranking: "21" }, 10),
+    ).toBe("bad-option");
+    expect(
+      await store.vote({ ...vote(p.id, "r3", "o2"), group: "g5" }, 10),
+    ).toBe("bad-option");
+    const rows = await store.votes(p.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      ranking: "213",
+      reason: "Pixar",
+      group: "g1",
+    });
+  });
+
+  it("keeps Pulses shared by link only off the shelves", async () => {
+    const hidden = pulse({ unlisted: true, kind: "decide" });
+    const shown = pulse();
+    await store.create(hidden, { creator: rid(), net: rid() }, 10);
+    await store.create(shown, { creator: rid(), net: rid() }, 10);
+    const ids = (await store.list(200)).map((l) => l.pulse.id);
+    expect(ids).toContain(shown.id);
+    expect(ids).not.toContain(hidden.id);
+    expect(await store.get(hidden.id)).toMatchObject({ unlisted: true });
+  });
+
+  it("counts events and reports usage as numbers only", async () => {
+    const before = await store.usage(1);
+    const shares = (u: typeof before) => u.daily[0]?.events.share ?? 0;
+    await store.count("share", "settle");
+    await store.count("share", "settle");
+    const after = await store.usage(1);
+    expect(shares(after) - shares(before)).toBe(2);
+    expect(after.voters).toBeGreaterThan(0);
+    expect(JSON.stringify(after)).not.toMatch(/"r1"|"v1"|net-a/);
   });
 });

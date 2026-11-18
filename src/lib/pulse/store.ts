@@ -39,6 +39,41 @@ export interface NewVote {
   readonly via: string | null;
   readonly province: string | null;
   readonly city: string | null;
+  readonly reason?: string | null;
+  readonly ranking?: string | null;
+  readonly group?: string | null;
+}
+
+/** What visitors do that a vote doesn't record, counted per day, never per person. */
+export const EVENTS = ["share", "card", "link-open", "circle-ask"] as const;
+export type PulseEvent = (typeof EVENTS)[number];
+export const isEvent = (v: unknown): v is PulseEvent =>
+  typeof v === "string" && (EVENTS as readonly string[]).includes(v);
+
+/** Aggregate usage over the last `days` days. Counts only. */
+export interface Usage {
+  readonly days: number;
+  /** Per UTC day, newest first. */
+  readonly daily: readonly {
+    readonly day: string;
+    readonly created: number;
+    readonly votes: number;
+    readonly referredVotes: number;
+    readonly events: Readonly<Partial<Record<PulseEvent, number>>>;
+  }[];
+  /** Pulses made and votes cast in the window, by kind and by template. */
+  readonly byKind: readonly {
+    readonly kind: string;
+    readonly created: number;
+    readonly votes: number;
+  }[];
+  readonly byTemplate: readonly {
+    readonly template: string;
+    readonly created: number;
+  }[];
+  /** Distinct browsers that voted in the window, and those that voted on two or more days. */
+  readonly voters: number;
+  readonly returningVoters: number;
 }
 
 export interface Listed {
@@ -95,6 +130,89 @@ export interface PulseStore {
     fromDay: string,
     limit: number,
   ): Promise<{ day: string; item: Listed }[]>;
+  /** Add one to today's count of `event` for Pulses of this kind. */
+  count(event: PulseEvent, kind: string): Promise<void>;
+  usage(days: number): Promise<Usage>;
+}
+
+const kindKey = (p: Pick<Pulse, "kind">) => p.kind ?? "pulse";
+
+export interface UsageRows {
+  readonly pulses: readonly {
+    day: string;
+    kind: string;
+    template: string | null;
+    n: number;
+  }[];
+  readonly votes: readonly {
+    day: string;
+    kind: string;
+    n: number;
+    referred: number;
+  }[];
+  readonly events: readonly { day: string; event: string; n: number }[];
+  readonly voters: number;
+  readonly returning: number;
+}
+
+/** Shared by both stores: aggregate rows (counts already) into the Usage summary. */
+export function summariseUsage(days: number, rows: UsageRows): Usage {
+  const daily = new Map<
+    string,
+    {
+      created: number;
+      votes: number;
+      referredVotes: number;
+      events: Partial<Record<PulseEvent, number>>;
+    }
+  >();
+  const dayOf = (d: string) => {
+    let row = daily.get(d);
+    if (!row)
+      daily.set(
+        d,
+        (row = { created: 0, votes: 0, referredVotes: 0, events: {} }),
+      );
+    return row;
+  };
+  const kinds = new Map<string, { created: number; votes: number }>();
+  const kindOf = (k: string) => {
+    let row = kinds.get(k);
+    if (!row) kinds.set(k, (row = { created: 0, votes: 0 }));
+    return row;
+  };
+  const templates = new Map<string, number>();
+  for (const p of rows.pulses) {
+    dayOf(p.day).created += p.n;
+    kindOf(p.kind).created += p.n;
+    if (p.template)
+      templates.set(p.template, (templates.get(p.template) ?? 0) + p.n);
+  }
+  for (const v of rows.votes) {
+    const row = dayOf(v.day);
+    row.votes += v.n;
+    row.referredVotes += v.referred;
+    kindOf(v.kind).votes += v.n;
+  }
+  for (const e of rows.events) {
+    if (!isEvent(e.event)) continue;
+    const row = dayOf(e.day);
+    row.events[e.event] = (row.events[e.event] ?? 0) + e.n;
+  }
+  return {
+    days,
+    daily: [...daily]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([day, r]) => ({ day, ...r })),
+    byKind: [...kinds]
+      .map(([kind, r]) => ({ kind, ...r }))
+      .sort((a, b) => b.votes - a.votes || b.created - a.created),
+    byTemplate: [...templates]
+      .map(([template, created]) => ({ template, created }))
+      .sort((a, b) => b.created - a.created),
+    voters: rows.voters,
+    returningVoters: rows.returning,
+  };
 }
 
 // ── Memory ──────────────────────────────────────────────────────────────────
@@ -120,6 +238,7 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
   >();
   const day = (iso: string) => iso.slice(0, 10);
   const featuredDays = new Map<string, string>();
+  const events = new Map<string, number>();
   const count = (id: string) => votes.get(id)?.length ?? 0;
   return {
     kind: "memory",
@@ -143,6 +262,7 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
       if (!p || p.status === "removed") return "missing";
       if (!isOpen(p, now())) return "closed";
       if (!p.options.some((o) => o.id === v.option)) return "bad-option";
+      if (v.ranking && !/^[1-6]{2,6}$/.test(v.ranking)) return "bad-option";
       const list = votes.get(v.pulseId) ?? [];
       if (list.some((x) => x.voter === v.voter)) return "duplicate";
       if (list.filter((x) => x.net === v.net).length >= netCap)
@@ -163,6 +283,9 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
         at: v.at,
         circle: v.circle,
         via: v.via,
+        reason: v.reason ?? null,
+        ranking: v.ranking ?? null,
+        group: v.group ?? null,
       }));
     },
     async list(limit) {
@@ -172,7 +295,9 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
         .map((p) => p.pulse)
         .filter(
           (p) =>
-            p.status === "live" && new Date(p.createdAt).getTime() >= since,
+            p.status === "live" &&
+            !p.unlisted &&
+            new Date(p.createdAt).getTime() >= since,
         )
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit)
@@ -240,6 +365,71 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
           },
         }));
     },
+    async count(event, kind) {
+      const k = `${now().toISOString().slice(0, 10)}|${event}|${kind}`;
+      events.set(k, (events.get(k) ?? 0) + 1);
+    },
+    async usage(days) {
+      const since = new Date(now().getTime() - (days - 1) * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const bump = <T extends { n: number }>(
+        m: Map<string, T>,
+        k: string,
+        make: () => T,
+      ) => {
+        const row = m.get(k) ?? make();
+        row.n += 1;
+        m.set(k, row);
+        return row;
+      };
+      const ps = new Map<
+        string,
+        { day: string; kind: string; template: string | null; n: number }
+      >();
+      const vs = new Map<
+        string,
+        { day: string; kind: string; n: number; referred: number }
+      >();
+      const voterDays = new Map<string, Set<string>>();
+      for (const { pulse } of pulses.values()) {
+        const d = day(pulse.createdAt);
+        const kind = kindKey(pulse);
+        if (d >= since)
+          bump(ps, `${d}|${kind}|${pulse.template ?? ""}`, () => ({
+            day: d,
+            kind,
+            template: pulse.template ?? null,
+            n: 0,
+          }));
+        for (const v of votes.get(pulse.id) ?? []) {
+          const vd = day(v.at);
+          if (vd < since) continue;
+          const row = bump(vs, `${vd}|${kind}`, () => ({
+            day: vd,
+            kind,
+            n: 0,
+            referred: 0,
+          }));
+          if (v.via) row.referred += 1;
+          const set = voterDays.get(v.voter) ?? new Set<string>();
+          set.add(vd);
+          voterDays.set(v.voter, set);
+        }
+      }
+      return summariseUsage(days, {
+        pulses: [...ps.values()],
+        votes: [...vs.values()],
+        events: [...events]
+          .map(([k, n]) => {
+            const [d, event] = k.split("|") as [string, string];
+            return { day: d, event, n };
+          })
+          .filter((e) => e.day >= since),
+        voters: voterDays.size,
+        returning: [...voterDays.values()].filter((x) => x.size >= 2).length,
+      });
+    },
   };
 }
 
@@ -288,6 +478,9 @@ export function postgresStore(
     throw new Error(`pulse ${what}: ${error.code} ${error.message}`);
   };
   let claimed = false;
+  // Quick Ideas' columns and functions (…_modes migration). Until they are
+  // applied, plain votes go through V1's functions so V1 Pulses keep working.
+  let modes: boolean | null = null;
   const rpc = async <T>(fn: string, args: Record<string, unknown>) => {
     if (!claimed) {
       const { error } = await db.rpc("passport_pulse_claim", { p_key: key });
@@ -321,7 +514,7 @@ export function postgresStore(
       return rows?.[0] ? fromRow(rows[0]) : null;
     },
     async vote(v, netCap) {
-      return rpc<VoteOutcome>("vote", {
+      const base = {
         p_pulse: v.pulseId,
         p_voter: v.voter,
         p_net: v.net,
@@ -331,7 +524,23 @@ export function postgresStore(
         p_province: v.province,
         p_city: v.city,
         p_net_cap: netCap,
-      });
+      };
+      const plain = !v.reason && !v.ranking && !v.group;
+      if (modes === false && plain) return rpc<VoteOutcome>("vote", base);
+      try {
+        const out = await rpc<VoteOutcome>("cast", {
+          ...base,
+          p_reason: v.reason ?? null,
+          p_ranking: v.ranking ?? null,
+          p_group: v.group ?? null,
+        });
+        modes = true;
+        return out;
+      } catch (e) {
+        if (!(e instanceof NotReady) || !plain || modes === true) throw e;
+        modes = false;
+        return rpc<VoteOutcome>("vote", base);
+      }
     },
     async mine(pulseId, voter) {
       const rows = await rpc<{ option: string; at: string }[]>("mine", {
@@ -342,7 +551,19 @@ export function postgresStore(
       return r ? { option: r.option, at: new Date(r.at).toISOString() } : null;
     },
     async votes(pulseId) {
-      const rows = await rpc<VoteRow[]>("votes", { p_pulse: pulseId });
+      let rows: VoteRow[] | null;
+      if (modes === false)
+        rows = await rpc<VoteRow[]>("votes", { p_pulse: pulseId });
+      else {
+        try {
+          rows = await rpc<VoteRow[]>("rows", { p_pulse: pulseId });
+          modes = true;
+        } catch (e) {
+          if (!(e instanceof NotReady) || modes === true) throw e;
+          modes = false;
+          rows = await rpc<VoteRow[]>("votes", { p_pulse: pulseId });
+        }
+      }
       return (rows ?? []).map((r) => ({
         ...r,
         at: new Date(r.at).toISOString(),
@@ -352,11 +573,14 @@ export function postgresStore(
       const rows = await rpc<
         (PulseRow & { total: number; last_day: number })[]
       >("list", { p_limit: limit });
-      return (rows ?? []).map((r) => ({
-        pulse: fromRow(r),
-        total: Number(r.total),
-        lastDay: Number(r.last_day),
-      }));
+      // Unlisted Pulses are filtered in SQL too, once the modes migration is in.
+      return (rows ?? [])
+        .map((r) => ({
+          pulse: fromRow(r),
+          total: Number(r.total),
+          lastDay: Number(r.last_day),
+        }))
+        .filter((l) => !l.pulse.unlisted);
     },
     async report(pulseId, reporter, reason, note) {
       return rpc<"ok" | "duplicate" | "missing">("report", {
@@ -403,6 +627,33 @@ export function postgresStore(
           lastDay: Number(r.last_day),
         },
       }));
+    },
+    async count(event, kind) {
+      await rpc<null>("count", { p_event: event, p_kind: kind });
+    },
+    async usage(days) {
+      const u = await rpc<UsageRows | null>("usage", { p_days: days });
+      const d = (t: unknown) => String(t).slice(0, 10);
+      return summariseUsage(days, {
+        pulses: (u?.pulses ?? []).map((r) => ({
+          ...r,
+          day: d(r.day),
+          n: Number(r.n),
+        })),
+        votes: (u?.votes ?? []).map((r) => ({
+          ...r,
+          day: d(r.day),
+          n: Number(r.n),
+          referred: Number(r.referred),
+        })),
+        events: (u?.events ?? []).map((r) => ({
+          ...r,
+          day: d(r.day),
+          n: Number(r.n),
+        })),
+        voters: Number(u?.voters ?? 0),
+        returning: Number(u?.returning ?? 0),
+      });
     },
   };
 }

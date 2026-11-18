@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BRAND, isCircleCode, isPulseId, type Pulse } from "@/lib/pulse/model";
+import {
+  BRAND,
+  isCircleCode,
+  isPulseId,
+  kindOf,
+  type Pulse,
+} from "@/lib/pulse/model";
 import { ballotToken } from "@/lib/pulse/service";
+import { aiConfigured } from "@/lib/pulse/sourceCheck";
+import { experience } from "@/lib/pulse/templates";
 import { NotReady, pulseKey, pulseStore } from "@/lib/pulse/store";
 import { PulseRoom } from "../_ui/PulseRoom";
 
@@ -27,16 +35,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const pulse = await find(id);
   if (!pulse || pulse === "not-ready") return { title: BRAND.name };
+  const kind = kindOf(pulse);
   const description =
     pulse.description ??
-    `${pulse.options.map((o) => o.label).join(" · ")} — add your answer and see what people really think.`;
+    (kind === "decide"
+      ? "Yes, no or not yet? Add your answer and a line of advice — no account needed."
+      : kind === "rank"
+        ? `Put ${pulse.options.map((o) => o.label).join(", ")} in order and see the group's ranking.`
+        : kind === "normal"
+          ? "Pick your range, anonymously, and see where you sit. Small groups stay hidden."
+          : `${pulse.options.map((o) => o.label).join(" · ")} — add your answer and see what people really think.`);
+  const site =
+    kind === "pulse" ? BRAND.name : `${experience(kind).name} · ${BRAND.name}`;
   return {
-    title: { absolute: `${pulse.question} — ${BRAND.name}` },
+    title: { absolute: `${pulse.question} — ${site}` },
     description,
+    // Shared by link only: reachable through the link, never indexed.
+    ...(pulse.unlisted ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title: pulse.question,
       description,
-      siteName: BRAND.name,
+      siteName: site,
       type: "website",
     },
     twitter: {
@@ -67,6 +86,7 @@ export default async function PulsePage({ params, searchParams }: Props) {
       ballot={ballotToken(key, pulse.id, new Date())}
       via={isCircleCode(c) ? c : null}
       fresh={sp.new === "1"}
+      ai={aiConfigured()}
     />
   );
 }

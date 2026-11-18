@@ -1,6 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import {
+  REASON_PROBLEM,
   checkDraft,
+  checkRanking,
+  checkReason,
+  kindOf,
   cleanCity,
   clean,
   isCircleCode,
@@ -11,10 +15,12 @@ import {
   newId,
   type CreateInput,
   type Pulse,
+  type PulseKind,
   type PulseStatus,
 } from "./model";
+import type { QuestionDraft } from "./drafts";
 import { computeResults, type Results } from "./results";
-import type { Listed, PulseStore, VoteOutcome } from "./store";
+import type { Listed, PulseEvent, PulseStore, VoteOutcome } from "./store";
 
 /**
  * **What People's Pulse does**, independent of HTTP: create, vote, read
@@ -234,7 +240,9 @@ export async function snapshot(
     open,
     total: votes.length,
     me: { option: mine?.option ?? null, circle },
-    results: show ? computeResults(pulse, votes, circle, now) : null,
+    results: show
+      ? computeResults(pulse, votes, circle, now, mine?.option ?? null)
+      : null,
   };
 }
 
@@ -246,20 +254,35 @@ export interface VoteInput {
   readonly province?: unknown;
   readonly city?: unknown;
   readonly ballot?: unknown;
+  /** Where the Pulse asks for them: a short written reason. */
+  readonly reason?: unknown;
+  /** Rank These: every answer id, first choice first. */
+  readonly ranking?: unknown;
+  /** Is This Normal?: the comparison category picked. */
+  readonly group?: unknown;
 }
 
 export type VoteResult =
   | { readonly ok: true; readonly outcome: "ok" | "duplicate" }
   | {
       readonly ok: false;
-      readonly outcome: Exclude<VoteOutcome, "ok" | "duplicate"> | "bot";
+      readonly outcome:
+        | Exclude<VoteOutcome, "ok" | "duplicate">
+        | "bot"
+        | "bad-reason"
+        | "bad-ranking";
       readonly message: string;
     };
 
 const VOTE_MESSAGE: Record<
-  Exclude<VoteOutcome, "ok" | "duplicate"> | "bot",
+  | Exclude<VoteOutcome, "ok" | "duplicate">
+  | "bot"
+  | "bad-reason"
+  | "bad-ranking",
   string
 > = {
+  "bad-reason": REASON_PROBLEM,
+  "bad-ranking": "Put every one of them in order, then send.",
   closed: "Voting on this Pulse has closed.",
   missing: "This Pulse isn't here any more.",
   "bad-option": "That isn't one of the answers.",
@@ -280,6 +303,37 @@ export async function castVote(
     console.warn("pulse-ballot-refused", { pulseId, problem });
     return { ok: false, outcome: "bot", message: VOTE_MESSAGE.bot };
   }
+  const pulse = await store.get(pulseId);
+  if (!pulse || pulse.status === "removed")
+    return { ok: false, outcome: "missing", message: VOTE_MESSAGE.missing };
+  const kind = kindOf(pulse);
+  // A reason is kept only where the Pulse asks for reasons.
+  const reason = pulse.reasons ? checkReason(input.reason) : null;
+  if (reason === "problem")
+    return {
+      ok: false,
+      outcome: "bad-reason",
+      message: VOTE_MESSAGE["bad-reason"],
+    };
+  let option = typeof input.option === "string" ? input.option : "";
+  let ranking: string | null = null;
+  if (kind === "rank") {
+    ranking = checkRanking(input.ranking, pulse.options);
+    if (!ranking)
+      return {
+        ok: false,
+        outcome: "bad-ranking",
+        message: VOTE_MESSAGE["bad-ranking"],
+      };
+    // The first choice is the vote's answer, so every V1 view reads "first choice".
+    option = pulse.options[Number(ranking[0]) - 1]!.id;
+  }
+  const group =
+    kind === "normal" &&
+    typeof input.group === "string" &&
+    pulse.group?.options.some((g) => g.id === input.group)
+      ? input.group
+      : null;
   const circle = circleCode(key, pulseId, who.device);
   const via =
     isCircleCode(input.via) && input.via !== circle ? input.via : null;
@@ -290,11 +344,14 @@ export async function castVote(
       pulseId,
       voter: voterHash(key, who.device),
       net: netHash(key, who.ip, who.now),
-      option: typeof input.option === "string" ? input.option : "",
+      option,
       circle,
       via,
       province,
       city,
+      reason,
+      ranking,
+      group,
     },
     NET_CAP_PER_PULSE,
   );
@@ -307,6 +364,7 @@ export async function castVote(
 
 export interface Card {
   readonly id: string;
+  readonly kind: PulseKind;
   readonly question: string;
   readonly scope: Pulse["scope"];
   readonly total: number;
@@ -335,6 +393,7 @@ export function shelves(
 ): Shelves {
   const cards: Card[] = listed.map(({ pulse, total, lastDay }) => ({
     id: pulse.id,
+    kind: kindOf(pulse),
     question: pulse.question,
     scope: pulse.scope,
     total,
@@ -356,6 +415,39 @@ export function shelves(
       .sort((a, b) => b.lastDay - a.lastDay || b.total - a.total)
       .slice(0, size),
   };
+}
+
+/** Newest of each kind, for the Labs page's "try one" row. */
+export function newestByKind(
+  listed: readonly Listed[],
+  now: Date,
+): Partial<Record<PulseKind, Card>> {
+  const out: Partial<Record<PulseKind, Card>> = {};
+  for (const c of shelves(listed, now, listed.length).recent)
+    if (c.open && !out[c.kind]) out[c.kind] = c;
+  return out;
+}
+
+// ── Usage ───────────────────────────────────────────────────────────────────
+
+/**
+ * Count one visitor action for aggregate usage. Counting never gets in the
+ * way: a missing table or a slow database is swallowed and logged.
+ */
+export async function countEvent(
+  store: PulseStore,
+  pulseId: string,
+  event: PulseEvent,
+): Promise<boolean> {
+  try {
+    const pulse = await store.get(pulseId);
+    if (!pulse || pulse.status !== "live") return false;
+    await store.count(event, kindOf(pulse));
+    return true;
+  } catch (e) {
+    console.warn("pulse-count-skipped", { event, because: String(e) });
+    return false;
+  }
 }
 
 // ── Report and moderate ─────────────────────────────────────────────────────
@@ -407,4 +499,65 @@ export async function questionOfTheDay(
   const [hit] = await store.featured(today, 1);
   if (!hit || hit.day !== today) return null;
   return shelves([hit.item], now, 1).recent[0] ?? null;
+}
+
+// ── Proposed questions ──────────────────────────────────────────────────────
+
+/** A draft's Pulse id: fixed per draft, so a second Publish is refused, not duplicated. */
+export function draftPulseId(key: string, draftId: string): string {
+  const bytes = hmac(key, `draft|${draftId}`);
+  let out = "";
+  for (let i = 0; i < 8; i++) out += CODE_ALPHABET[bytes[i]! % 32];
+  return out;
+}
+
+export type PublishResult =
+  | { readonly ok: true; readonly id: string }
+  | {
+      readonly ok: false;
+      readonly error: "missing" | "unconfirmed" | "taken" | "invalid";
+      readonly message: string;
+      readonly id?: string;
+    };
+
+/**
+ * Publish a proposed question, by an administrator only (the route checks).
+ * It goes through the same gate as every visitor's Pulse.
+ */
+export async function publishDraft(
+  store: PulseStore,
+  key: string,
+  draft: QuestionDraft | null,
+  confirmed: boolean,
+  now: Date,
+): Promise<PublishResult> {
+  if (!draft) return { ok: false, error: "missing", message: "No such draft." };
+  if (draft.stakes === "high-stakes" && !confirmed)
+    return {
+      ok: false,
+      error: "unconfirmed",
+      message:
+        "This one is high-stakes: confirm you reviewed its wording and sources.",
+    };
+  const checked = checkDraft(
+    {
+      kind: draft.kind,
+      question: draft.question,
+      options: draft.options,
+      description: draft.description,
+      sourceUrl: draft.sourceUrl,
+    },
+    now,
+  );
+  if (!checked.ok)
+    return { ok: false, error: "invalid", message: checked.message };
+  const id = draftPulseId(key, draft.id);
+  const outcome = await store.create(
+    { ...checked.draft, id, status: "live", createdAt: now.toISOString() },
+    { creator: "admin-drafts", net: "admin-drafts" },
+    1_000,
+  );
+  if (outcome === "taken")
+    return { ok: false, error: "taken", message: "Already published.", id };
+  return { ok: true, id };
 }

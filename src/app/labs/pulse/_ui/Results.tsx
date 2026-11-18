@@ -1,9 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Pulse } from "@/lib/pulse/model";
+import { kindOf, type Pulse } from "@/lib/pulse/model";
 import type { Breakdown, Results as R, Share } from "@/lib/pulse/results";
 import { AskCircle } from "./AskCircle";
+import {
+  NormalView,
+  RankingView,
+  ReasonsView,
+  VerdictBanner,
+} from "./ModeResults";
 import { Bars, Legend, StackRow, n } from "./parts";
 import { PulseMap } from "./PulseMap";
 import { ResultsCard } from "./ResultsCard";
@@ -401,12 +407,18 @@ function Table({ results }: { results: R }) {
   );
 }
 
+/**
+ * **One results page, shaped by the Pulse's kind.** People's Pulse shows
+ * everything V1 and V2 built; the Quick Ideas modes lead with their own view
+ * and keep only the parts that make sense for them.
+ */
 export function Results({
   results,
   mine,
   pulse,
   circle,
   shareUrl,
+  ai = false,
 }: {
   results: R;
   mine: string | null;
@@ -414,48 +426,103 @@ export function Results({
   /** This browser's own referral code, and the link that carries it. */
   circle: string;
   shareUrl: string;
+  ai?: boolean;
 }) {
+  const kind = kindOf(pulse);
+  const m = results.modes;
+  const everyone = (
+    <section
+      aria-labelledby="pulse-everyone"
+      className="rounded-2xl border border-[#e7e3da] bg-white p-4"
+    >
+      <div className="flex items-baseline justify-between">
+        <h2 id="pulse-everyone" className="text-[15px] font-semibold">
+          {kind === "rank" ? "First choices" : "Everyone"}
+        </h2>
+        <p className="flex items-center gap-1.5 text-[13px] text-[#5c6370]">
+          <span aria-hidden className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#e5484d] opacity-60 motion-reduce:hidden" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#e5484d]" />
+          </span>
+          <span data-testid={kind === "rank" ? undefined : "pulse-total"}>
+            {n(results.total)}
+          </span>{" "}
+          votes · live
+        </p>
+      </div>
+      <div className="mt-4">
+        <Bars shares={results.everyone} mine={mine} />
+      </div>
+    </section>
+  );
+  const card = (
+    <ResultsCard
+      pulseId={pulse.id}
+      question={pulse.question}
+      circle={circle}
+      results={results}
+      pulseUrl={shareUrl.split("?")[0] ?? shareUrl}
+      kind={kind}
+    />
+  );
+  const ask = (
+    <AskCircle
+      results={results}
+      url={shareUrl}
+      question={pulse.question}
+      pulseId={pulse.id}
+    />
+  );
+  const reasons = m.reasons ? (
+    <ReasonsView reasons={m.reasons} pulse={pulse} ai={ai} />
+  ) : null;
+
   return (
     <div
       className="grid grid-cols-[minmax(0,1fr)] gap-4"
       data-testid="pulse-results"
+      data-kind={kind}
     >
-      <section
-        aria-labelledby="pulse-everyone"
-        className="rounded-2xl border border-[#e7e3da] bg-white p-4"
-      >
-        <div className="flex items-baseline justify-between">
-          <h2 id="pulse-everyone" className="text-[15px] font-semibold">
-            Everyone
-          </h2>
-          <p className="flex items-center gap-1.5 text-[13px] text-[#5c6370]">
-            <span aria-hidden className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#e5484d] opacity-60 motion-reduce:hidden" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#e5484d]" />
-            </span>
-            <span data-testid="pulse-total">{n(results.total)}</span> votes ·
-            live
-          </p>
-        </div>
-        <div className="mt-4">
-          <Bars shares={results.everyone} mine={mine} />
-        </div>
-      </section>
-      <AskCircle results={results} url={shareUrl} question={pulse.question} />
-      {results.claim ? <Claim c={results.claim} /> : null}
-      <PulseMap results={results} />
-      <Compare results={results} />
-      <Shifts results={results} />
-      {results.total > 0 ? <Timeline t={results.timeline} /> : null}
-      <Spread results={results} />
-      <ResultsCard
-        pulseId={pulse.id}
-        question={pulse.question}
-        circle={circle}
-        results={results}
-        pulseUrl={shareUrl.split("?")[0] ?? shareUrl}
-      />
-      <Table results={results} />
+      {kind === "rank" && m.ranking ? (
+        <>
+          <RankingView ranking={m.ranking} />
+          {card}
+        </>
+      ) : kind === "normal" && m.normal ? (
+        <>
+          <NormalView
+            normal={m.normal}
+            pulse={pulse}
+            mine={mine}
+            total={results.total}
+          />
+          {ask}
+          {card}
+        </>
+      ) : kind === "decide" ? (
+        <>
+          {everyone}
+          {reasons}
+          {ask}
+          {card}
+          {results.total > 0 ? <Timeline t={results.timeline} /> : null}
+        </>
+      ) : (
+        <>
+          {m.verdict ? <VerdictBanner v={m.verdict} /> : null}
+          {everyone}
+          {reasons}
+          {ask}
+          {results.claim ? <Claim c={results.claim} /> : null}
+          <PulseMap results={results} />
+          <Compare results={results} />
+          <Shifts results={results} />
+          {results.total > 0 ? <Timeline t={results.timeline} /> : null}
+          <Spread results={results} />
+          {card}
+          <Table results={results} />
+        </>
+      )}
     </div>
   );
 }

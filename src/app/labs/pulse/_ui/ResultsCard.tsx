@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Download, Share2 } from "lucide-react";
 import type { Results as R } from "@/lib/pulse/results";
+import { countEvent } from "./Share";
 
 /**
  * **Share the result as a picture.** A portrait card made for phones: the
@@ -16,15 +17,24 @@ export function ResultsCard({
   circle,
   results,
   pulseUrl,
+  kind = "pulse",
 }: {
   pulseId: string;
   question: string;
   circle: string;
   results: R;
   pulseUrl: string;
+  kind?: string;
 }) {
-  const circleReady = Boolean(results.circle?.shares);
-  const places = results.provinces.filter((p) => p.shares);
+  const circleReady =
+    kind === "rank"
+      ? Boolean(results.modes.ranking?.circle)
+      : Boolean(results.circle?.shares);
+  // Places on a card are for opinions; a ranking or a range stays national.
+  const places =
+    kind === "rank" || kind === "normal"
+      ? []
+      : results.provinces.filter((p) => p.shares);
   const [withCircle, setWithCircle] = useState(circleReady);
   const [place, setPlace] = useState("");
   const [msg, setMsg] = useState("");
@@ -38,6 +48,7 @@ export function ResultsCard({
 
   async function share() {
     setMsg("");
+    countEvent(pulseId, "card");
     try {
       const blob = await (await fetch(src)).blob();
       const file = new File([blob], "peoples-pulse-results.png", {

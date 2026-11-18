@@ -95,3 +95,47 @@ describe("Question of the Day administration", () => {
     expect((await post({ id: ID, status: "nonsense" })).status).toBe(400);
   });
 });
+
+describe("Proposed questions", () => {
+  it("lists drafts as unpublished, and publishes one only when an administrator asks", async () => {
+    const before = await (await get()).json();
+    const draft = before.drafts.find(
+      (d: { id: string }) => d.id === "know-your-neighbours",
+    );
+    expect(draft.published).toBeNull();
+    expect(before.usage).toMatchObject({ days: 30 });
+
+    gate.admin = false;
+    expect((await post({ draft: "know-your-neighbours" })).status).toBe(403);
+    gate.admin = true;
+
+    const res = await post({ draft: "know-your-neighbours" });
+    expect(res.status).toBe(200);
+    const { id } = await res.json();
+    const after = await (await get()).json();
+    expect(
+      after.drafts.find((d: { id: string }) => d.id === "know-your-neighbours")
+        .published,
+    ).toBe(id);
+    // Publishing twice is refused, not duplicated.
+    expect(
+      await (await post({ draft: "know-your-neighbours" })).json(),
+    ).toMatchObject({
+      error: "taken",
+      id,
+    });
+  });
+
+  it("holds a high-stakes draft until the administrator confirms the review", async () => {
+    const res = await post({ draft: "flu-shot-this-season" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "unconfirmed" });
+    expect(
+      (await post({ draft: "flu-shot-this-season", confirmed: true })).status,
+    ).toBe(200);
+  });
+
+  it("refuses a draft that doesn't exist", async () => {
+    expect((await post({ draft: "made-up" })).status).toBe(404);
+  });
+});

@@ -62,7 +62,7 @@ export async function guarded(
   }
 }
 
-type Limit = "read" | "create" | "vote" | "report" | "check" | "ip";
+type Limit = "read" | "create" | "vote" | "report" | "check" | "event" | "ip";
 
 const g = globalThis as unknown as {
   __pulseLimits?: Record<Limit, ReturnType<typeof rateLimiter>>;
@@ -83,6 +83,13 @@ const limits = () =>
     }),
     vote: rateLimiter({ limits: [{ max: 60, windowMs: 60_000 }] }),
     report: rateLimiter({ limits: [{ max: 10, windowMs: 3_600_000 }] }),
+    // Usage counts: generous for a person, useless for inflating numbers.
+    event: rateLimiter({
+      limits: [
+        { max: 20, windowMs: 60_000 },
+        { max: 200, windowMs: 86_400_000 },
+      ],
+    }),
     // A source check opens a stranger's web page, so it is the dearest call.
     check: rateLimiter({
       limits: [

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Share2 } from "lucide-react";
 import type { Results as R } from "@/lib/pulse/results";
 import { StackRow, n } from "./parts";
+import { countEvent } from "./Share";
 
 /**
  * **Ask My Circle**: send this exact question to people you know and watch
@@ -15,10 +16,12 @@ export function AskCircle({
   results,
   url,
   question,
+  pulseId,
 }: {
   results: R;
   url: string;
   question: string;
+  pulseId?: string;
 }) {
   const [note, setNote] = useState("");
   const c = results.circle;
@@ -26,6 +29,7 @@ export function AskCircle({
 
   async function ask() {
     if (!url) return;
+    if (pulseId) countEvent(pulseId, "circle-ask");
     try {
       if (typeof navigator.share === "function") {
         await navigator.share({ title: "People's Pulse", text, url });

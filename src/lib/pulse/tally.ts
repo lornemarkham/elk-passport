@@ -15,6 +15,12 @@ export interface VoteRow {
   readonly circle: string;
   /** The referral code of the link they arrived through, if any. */
   readonly via: string | null;
+  /** A written reason, where the Pulse asks for them. */
+  readonly reason?: string | null;
+  /** Rank These: answer numbers in the voter's order ("3142"). */
+  readonly ranking?: string | null;
+  /** Is This Normal?: the comparison category they picked ("g2"). */
+  readonly group?: string | null;
 }
 
 export interface Share {
