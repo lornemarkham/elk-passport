@@ -125,10 +125,16 @@ describe("the creative archive manifest", () => {
     for (const page of pages) {
       const route = routeOf(page);
       if (route === "/labs") continue; // the Labs index itself
-      // A `[param]` page belongs to the entry for the route above it.
+      // A `[param]` page belongs to the entry for the route above it, and so
+      // does a page inside an entry's own route (`/labs/pulse/new`).
       const owner = route.replace(/\/\[[^\]]+\].*$/, "");
       expect(
-        archived.some((r) => r === owner || r.startsWith(`${owner}/`)),
+        archived.some(
+          (r) =>
+            r === owner ||
+            r.startsWith(`${owner}/`) ||
+            (r.startsWith("/labs/") && owner.startsWith(`${r}/`)),
+        ),
         `${page} (${route}) has no archive entry`,
       ).toBe(true);
     }

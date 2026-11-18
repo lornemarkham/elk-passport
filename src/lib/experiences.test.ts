@@ -31,6 +31,7 @@ describe("experience registry", () => {
 
   it("moves Conference, October and Badminton to Labs without changing a URL", () => {
     expect(LAB_EXPERIENCES.map((e) => [e.label, e.href])).toEqual([
+      ["People's Pulse", "/labs/pulse"],
       ["Conference", "/conferences"],
       ["October", "/october"],
       ["Badminton Game Night", "/badminton"],
@@ -72,6 +73,9 @@ describe("experience registry", () => {
     );
     expect(currentLabsExperience("/badminton/game-night")?.label).toBe(
       "Badminton Game Night",
+    );
+    expect(currentLabsExperience("/labs/pulse/abcd2345")?.label).toBe(
+      "People's Pulse",
     );
     expect(currentLabsExperience("/christmas")).toBeUndefined();
     expect(LABS_HREF).toBe("/labs");

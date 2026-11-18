@@ -688,6 +688,24 @@ From the owner's _Seasonal Archive_ addendum (mission 864):
   [`release/MVP-READINESS-2026-11-17.md`](release/MVP-READINESS-2026-11-17.md).
   This answers no question in §15.
 
+### People's Pulse is a Labs experiment, outside the day loop (2026-11-18)
+
+From the owner's _P0 — BUILD PEOPLE'S PULSE_ brief (mission 906), recorded in
+[`product/pulse/PEOPLES-PULSE.md`](product/pulse/PEOPLES-PULSE.md):
+**People's Pulse** (`/labs/pulse`, _What do people really think?_, Powered by
+ELK) lets anyone ask a question, share it, and compare their circle with
+everyone, without an account. It lives in Labs as **Experimental**, with its
+own small store (ADR 021, proposed).
+
+- **Named conflict, not resolved:** §1 says Passport exists to help people
+  have real days; a public-opinion tool is not part of that loop. The brief
+  placed it in Passport → Labs on purpose ("Do not create a new standalone
+  application"). Whether it stays in Passport, becomes its own ELK product, or
+  is a Labs experiment only, is the owner's call.
+- It is a **serious** tool: the §16 register does not apply to its copy, and
+  it says plainly that voluntary responses are not a representative survey.
+- This answers no question in §15.
+
 ### The adventure comes alive (2026-11-07)
 
 From the owner's _Make the adventure come alive_ brief, recorded in
