@@ -90,6 +90,17 @@ export interface LabsExperience extends PassportExperience {
  */
 export const LAB_EXPERIENCES: readonly LabsExperience[] = [
   {
+    href: "/labs/pulse",
+    label: "People's Pulse",
+    testId: "pulse",
+    status: "Experimental",
+    description:
+      "What do you want to know? Ask everyone, ask your friends, or compare answers — People's Pulse, Should I Do It?, Settle This, Is This Normal? and Rank These. No account needed.",
+    statusNote:
+      "New. Voluntary responses, not a scientific poll: one vote per browser, places are self-reported, and small groups stay hidden.",
+    preview: "/labs/previews/pulse.jpg",
+  },
+  {
     href: "/conferences",
     label: "Conference",
     testId: "conference",

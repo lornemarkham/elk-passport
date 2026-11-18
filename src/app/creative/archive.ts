@@ -389,6 +389,22 @@ export const CREATIVE_ARCHIVE: readonly CreativeWork[] = [
       "Exists only in git history: 6ae9ab2, on branch sycle-prototype and in the release's history through an ours-merge (ae45111), so every clone can recover it. Not built or served; restoring it means merging that branch's tree on purpose, not copying files in.",
   },
 
+  {
+    id: "peoples-pulse",
+    name: "People's Pulse",
+    description:
+      "What do people really think? Ask a question, share the link, and compare your circle with everyone — voluntary responses, honestly labelled.",
+    category: "Experiences",
+    status: "experimental",
+    originalRoute: "/labs/pulse",
+    sources: [
+      "src/app/labs/pulse/page.tsx",
+      "src/lib/pulse/model.ts",
+      "docs/product/pulse/PEOPLES-PULSE.md",
+    ],
+    notes:
+      "Built 2026-11-18 for the owner's brief P0 — BUILD PEOPLE'S PULSE (M906). Its own small store, like CourtQueue (ADR 021, proposed).",
+  },
   // ─────────────────────────────────────────────────────────── October
   {
     id: "experiment-03-october-passport",
