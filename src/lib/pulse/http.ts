@@ -9,6 +9,8 @@ import {
 import { crossSiteRefused, isSameOrigin } from "@/lib/server/sameOrigin";
 import { isDevice, newDevice } from "./service";
 import { NotReady, pulseKey, pulseStore, type PulseStore } from "./store";
+import { checkStore } from "./checkStore";
+import type { Stores } from "./checkService";
 
 export const DEVICE_COOKIE = "pulse_device";
 export const NO_STORE = { "Cache-Control": "no-store" } as const;
@@ -62,7 +64,16 @@ export async function guarded(
   }
 }
 
-type Limit = "read" | "create" | "vote" | "report" | "check" | "event" | "ip";
+type Limit =
+  | "read"
+  | "create"
+  | "vote"
+  | "report"
+  | "check"
+  | "evidence"
+  | "post"
+  | "event"
+  | "ip";
 
 const g = globalThis as unknown as {
   __pulseLimits?: Record<Limit, ReturnType<typeof rateLimiter>>;
@@ -97,6 +108,20 @@ const limits = () =>
         { max: 20, windowMs: 86_400_000 },
       ],
     }),
+    // Pulse Check opens each page someone offers as evidence: looser than a
+    // source check, because a real investigation reads several.
+    evidence: rateLimiter({
+      limits: [
+        { max: 15, windowMs: 600_000 },
+        { max: 60, windowMs: 86_400_000 },
+      ],
+    }),
+    post: rateLimiter({
+      limits: [
+        { max: 6, windowMs: 300_000 },
+        { max: 40, windowMs: 86_400_000 },
+      ],
+    }),
     ip: rateLimiter({ limits: [{ max: 2_000, windowMs: 60_000 }] }),
   });
 
@@ -108,6 +133,13 @@ export function guardRequest(request: Request, which: Limit): Response | null {
   if (!backstop.ok) return tooManyRequests(backstop.retryAfterSeconds);
   const d = limits()[which].take(ip);
   return d.ok ? null : tooManyRequests(d.retryAfterSeconds);
+}
+
+/** Both stores and the key, for Pulse Check; the same 503 when not set up. */
+export async function checkGuarded(
+  fn: (stores: Stores, key: string) => Promise<Response>,
+): Promise<Response> {
+  return guarded((pulses, key) => fn({ pulses, checks: checkStore() }, key));
 }
 
 /** Tests only. */

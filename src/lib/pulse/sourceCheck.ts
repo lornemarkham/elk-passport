@@ -183,7 +183,7 @@ const decode = (s: string) =>
     return ENTITIES[e.toLowerCase()] ?? m;
   });
 
-const meta = (html: string, names: readonly string[]): string | null => {
+export const meta = (html: string, names: readonly string[]): string | null => {
   for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
     const key = /(?:property|name|itemprop)\s*=\s*["']([^"']+)["']/i.exec(
       tag,
@@ -196,7 +196,7 @@ const meta = (html: string, names: readonly string[]): string | null => {
 };
 
 /** A date the page declares, as YYYY-MM-DD, or null. Never today's date. */
-function declaredDate(html: string, now: Date): string | null {
+export function declaredDate(html: string, now: Date): string | null {
   const candidates = [
     meta(html, [
       "article:published_time",
@@ -233,13 +233,13 @@ function declaredDate(html: string, now: Date): string | null {
 const METHOD =
   /\b(margin of error|sample of|sampled|respondents|surveyed|interviewed|polled|online panel|telephone|conducted (?:between|from|on)|fieldwork|weighted|randomly selected|confidence level|questionnaire)\b/i;
 
-const sentences = (text: string) =>
+export const sentences = (text: string) =>
   text
     .split(/(?<=[.!?])\s+(?=[A-Z“"(])/)
     .map((s) => s.trim())
     .filter((s) => s.length >= 25);
 
-const clip = (s: string) => (s.length > 300 ? `${s.slice(0, 297)}…` : s);
+export const clip = (s: string) => (s.length > 300 ? `${s.slice(0, 297)}…` : s);
 
 /** The sentences that state `percent`: "65%", "65 per cent", "65.0 percent". */
 function statPattern(percent: number): RegExp {
@@ -249,24 +249,68 @@ function statPattern(percent: number): RegExp {
   return new RegExp(`(?<![\\d.])${num}\\s?(?:%|per\\s?cent|percent)`, "i");
 }
 
-export function readSource(
-  html: string,
-  url: URL,
-  percent: number | null,
-  now: Date,
-): SourceCheck {
-  const title =
+/** A page's own title: its share title, else its <title>. */
+export function pageTitle(html: string): string | null {
+  const raw =
     meta(html, ["og:title", "twitter:title"]) ??
     (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1]
       ? decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)![1]!)
           .replace(/\s+/g, " ")
           .trim()
       : null);
+  return raw ? raw.slice(0, 200) : null;
+}
+
+/** Who the page says publishes it, else its host. */
+export const pageSite = (html: string, url: URL) =>
+  meta(html, ["og:site_name", "application-name"]) ??
+  url.hostname.replace(/^www\./, "");
+
+/** The words a reader sees: no scripts, styles or markup. */
+export function pageText(html: string): string {
   const body = html
     .replace(/<(script|style|noscript|svg|head)\b[\s\S]*?<\/\1>/gi, " ")
     .replace(/<[^>]+>/g, " ");
-  const text = decode(body).replace(/\s+/g, " ").trim();
-  const all = sentences(text);
+  return decode(body).replace(/\s+/g, " ").trim();
+}
+
+const BLOCK_END =
+  /<\/(?:p|li|h[1-6]|td|th|tr|dd|dt|blockquote|figcaption|section|article|div|pre)>|<br\s*\/?>/gi;
+
+/**
+ * The page's sentences, read block by block so a menu or a footer never runs
+ * into the text beside it. Navigation, headers, footers, forms and asides are
+ * dropped; what is left is split into sentences of reading length.
+ */
+export function pageSentences(html: string): string[] {
+  const body = html
+    .replace(
+      /<(script|style|noscript|svg|head|nav|header|footer|aside|form|button|select|template)\b[\s\S]*?<\/\1>/gi,
+      " ",
+    )
+    .replace(BLOCK_END, "\n")
+    .replace(/<[^>]+>/g, " ");
+  return decode(body)
+    .split("\n")
+    .map((b) => b.replace(/\s+/g, " ").trim())
+    .filter((b) => b.length >= 25)
+    .flatMap(sentences)
+    .filter(
+      (x) =>
+        x.length <= 600 &&
+        x.split(" ").length >= 5 &&
+        // Markup or data that leaked through, not prose.
+        (x.match(/[{}[\]<>|\\]|":/g) ?? []).length < 3,
+    );
+}
+
+export function readSource(
+  html: string,
+  url: URL,
+  percent: number | null,
+  now: Date,
+): SourceCheck {
+  const all = sentences(pageText(html));
   const statExcerpts =
     percent === null
       ? []
@@ -276,10 +320,8 @@ export function readSource(
           .map(clip);
   return {
     url: url.toString(),
-    title: title ? title.slice(0, 200) : null,
-    site:
-      meta(html, ["og:site_name", "application-name"]) ??
-      url.hostname.replace(/^www\./, ""),
+    title: pageTitle(html),
+    site: pageSite(html, url),
     published: declaredDate(html, now),
     statFound: percent === null ? null : statExcerpts.length > 0,
     statExcerpts,
@@ -290,12 +332,15 @@ export function readSource(
   };
 }
 
-/** Fetch the page at `raw` and read it. Every failure is a plain sentence. */
-export async function checkSource(
-  raw: string,
-  percent: number | null,
-  now: Date,
-): Promise<SourceCheckResult> {
+export type Fetched =
+  | { readonly ok: true; readonly url: URL; readonly html: string }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * Open the public page at `raw`, following up to three redirects, each one
+ * re-checked. Every failure is a plain sentence a person can act on.
+ */
+export async function fetchPage(raw: string): Promise<Fetched> {
   let url = checkableUrl(raw);
   if (!url)
     return {
@@ -329,9 +374,20 @@ export async function checkSource(
           ? "That is a PDF, which can't be read here. Open it and fill the details in yourself."
           : "That page isn't plain text we can read.",
       };
-    return { ok: true, check: readSource(res.body, url, percent, now) };
+    return { ok: true, url, html: res.body };
   }
   return { ok: false, reason: "That link redirects too many times." };
+}
+
+/** Fetch the page at `raw` and read it. Every failure is a plain sentence. */
+export async function checkSource(
+  raw: string,
+  percent: number | null,
+  now: Date,
+): Promise<SourceCheckResult> {
+  const page = await fetchPage(raw);
+  if (!page.ok) return page;
+  return { ok: true, check: readSource(page.html, page.url, percent, now) };
 }
 
 // ── Optional AI help ────────────────────────────────────────────────────────

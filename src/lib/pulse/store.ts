@@ -461,11 +461,13 @@ const fromRow = (r: PulseRow): Pulse => ({
   createdAt: new Date(r.created_at).toISOString(),
 });
 
-export function postgresStore(
-  url: string,
-  anon: string,
-  key: string,
-): PulseStore {
+export type Rpc = <T>(fn: string, args: Record<string, unknown>) => Promise<T>;
+
+/**
+ * Call a `passport_pulse_*` function with the server's key, claiming the key
+ * on first use. Missing functions or tables read as "not ready".
+ */
+export function pulseRpc(url: string, anon: string, key: string): Rpc {
   const db = createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -478,10 +480,7 @@ export function postgresStore(
     throw new Error(`pulse ${what}: ${error.code} ${error.message}`);
   };
   let claimed = false;
-  // Quick Ideas' columns and functions (…_modes migration). Until they are
-  // applied, plain votes go through V1's functions so V1 Pulses keep working.
-  let modes: boolean | null = null;
-  const rpc = async <T>(fn: string, args: Record<string, unknown>) => {
+  return async <T>(fn: string, args: Record<string, unknown>) => {
     if (!claimed) {
       const { error } = await db.rpc("passport_pulse_claim", { p_key: key });
       check(error, "claim");
@@ -494,6 +493,17 @@ export function postgresStore(
     check(error, fn);
     return data as T;
   };
+}
+
+export function postgresStore(
+  url: string,
+  anon: string,
+  key: string,
+): PulseStore {
+  // Quick Ideas' columns and functions (…_modes migration). Until they are
+  // applied, plain votes go through V1's functions so V1 Pulses keep working.
+  let modes: boolean | null = null;
+  const rpc = pulseRpc(url, anon, key);
   return {
     kind: "postgres",
     async create(pulse, by, maxPerDay) {

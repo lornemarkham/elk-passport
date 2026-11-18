@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireAdminPage } from "@/lib/admin/requireAdmin";
+import { Checks } from "./Checks";
 import { Drafts } from "./Drafts";
 import { Featured } from "./Featured";
 import { Moderation } from "./Moderation";
@@ -52,6 +53,15 @@ export default async function PulseAdmin() {
         automatically.
       </p>
       <Moderation />
+      <h2 className="font-heading mt-10 text-[24px] font-bold tracking-tight">
+        Pulse Check
+      </h2>
+      <p className="mt-1 mb-5 text-[14px] text-[#5c6370]">
+        Discussion posts people reported, and the newest checks. Screenshots
+        attached to a check open for administrators at
+        /api/pulse/check/&lt;id&gt;/file.
+      </p>
+      <Checks />
     </>
   );
 }

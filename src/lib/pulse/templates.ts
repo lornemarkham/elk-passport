@@ -63,8 +63,21 @@ export const EXPERIENCES: readonly Experience[] = [
   },
 ];
 
+/**
+ * Pulse Check is a kind of Pulse but not one of the create form's ways to
+ * ask: it starts from a claim at `/check/new`, so it is kept off this list.
+ */
+export const CHECK_EXPERIENCE: Experience = {
+  kind: "check",
+  name: "Pulse Check",
+  line: "Seen a claim? Check what the evidence says, then share it back.",
+  ask: "What does it claim?",
+  placeholder: "Kelowna General Hospital is operating at 147% capacity.",
+  example: "Is the hospital really at 147% capacity?",
+};
+
 export const experience = (kind: PulseKind): Experience =>
-  EXPERIENCES.find((e) => e.kind === kind)!;
+  EXPERIENCES.find((e) => e.kind === kind) ?? CHECK_EXPERIENCE;
 
 /** Is This Normal? topics: ordered ranges (never a raw number) and a category. */
 export interface NormalTopic {
@@ -305,6 +318,7 @@ export const findTopic = (id: unknown): NormalTopic | null =>
 export function usageName(id: string): string {
   return (
     EXPERIENCES.find((e) => e.kind === id)?.name ??
+    (id === "check" ? CHECK_EXPERIENCE.name : null) ??
     TEMPLATES.find((t) => t.id === id)?.name ??
     id
   );

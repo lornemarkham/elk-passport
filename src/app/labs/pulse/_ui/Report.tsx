@@ -4,7 +4,13 @@ import { useState } from "react";
 import { REPORT_REASONS, type ReportReason } from "@/lib/pulse/model";
 
 /** Flag a Pulse for review. Three reports take it off the air until checked. */
-export function Report({ pulseId }: { pulseId: string }) {
+export function Report({
+  pulseId,
+  label = "Report this Pulse",
+}: {
+  pulseId: string;
+  label?: string;
+}) {
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [note, setNote] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">(
@@ -29,7 +35,7 @@ export function Report({ pulseId }: { pulseId: string }) {
       data-testid="pulse-report"
     >
       <summary className="cursor-pointer text-[14px] font-medium text-[#5c6370]">
-        Report this Pulse
+        {label}
       </summary>
       {state === "done" ? (
         <p role="status" className="mt-3 text-[14px] text-[#14161a]">
