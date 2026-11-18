@@ -85,6 +85,16 @@ export interface PulseStore {
   /** Pulses that are reported, under review or removed. */
   reported(): Promise<Reported[]>;
   setStatus(id: string, status: PulseStatus): Promise<boolean>;
+  /**
+   * Make `pulseId` the Question of the Day for `day` (YYYY-MM-DD), replacing
+   * whatever was there; `null` clears the day. False if there is no such Pulse.
+   */
+  feature(day: string, pulseId: string | null): Promise<boolean>;
+  /** Featured days from `fromDay` on, soonest first. */
+  featured(
+    fromDay: string,
+    limit: number,
+  ): Promise<{ day: string; item: Listed }[]>;
 }
 
 // ── Memory ──────────────────────────────────────────────────────────────────
@@ -109,6 +119,7 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
     }[]
   >();
   const day = (iso: string) => iso.slice(0, 10);
+  const featuredDays = new Map<string, string>();
   const count = (id: string) => votes.get(id)?.length ?? 0;
   return {
     kind: "memory",
@@ -200,6 +211,34 @@ export function memoryStore(now: () => Date = () => new Date()): PulseStore {
       if (!entry) return false;
       entry.pulse = { ...entry.pulse, status };
       return true;
+    },
+    async feature(d, pulseId) {
+      if (pulseId === null) {
+        featuredDays.delete(d);
+        return true;
+      }
+      if (!pulses.has(pulseId)) return false;
+      featuredDays.set(d, pulseId);
+      return true;
+    },
+    async featured(fromDay, limit) {
+      const dayAgo = now().getTime() - 86_400_000;
+      return [...featuredDays]
+        .filter(
+          ([d, id]) => d >= fromDay && pulses.get(id)?.pulse.status === "live",
+        )
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(0, limit)
+        .map(([d, id]) => ({
+          day: d,
+          item: {
+            pulse: pulses.get(id)!.pulse,
+            total: count(id),
+            lastDay: (votes.get(id) ?? []).filter(
+              (v) => new Date(v.at).getTime() >= dayAgo,
+            ).length,
+          },
+        }));
     },
   };
 }
@@ -345,6 +384,25 @@ export function postgresStore(
           p_status: status,
         })) === true
       );
+    },
+    async feature(day, pulseId) {
+      return (
+        (await rpc<boolean>("feature", { p_day: day, p_pulse: pulseId })) ===
+        true
+      );
+    },
+    async featured(fromDay, limit) {
+      const rows = await rpc<
+        (PulseRow & { day: string; total: number; last_day: number })[]
+      >("featured", { p_from: fromDay, p_limit: limit });
+      return (rows ?? []).map((r) => ({
+        day: String(r.day).slice(0, 10),
+        item: {
+          pulse: fromRow(r),
+          total: Number(r.total),
+          lastDay: Number(r.last_day),
+        },
+      }));
     },
   };
 }

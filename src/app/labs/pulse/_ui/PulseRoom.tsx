@@ -299,7 +299,13 @@ export function PulseRoom({
       ) : null}
 
       {snap?.results ? (
-        <Results results={snap.results} mine={voted} pulse={pulse} />
+        <Results
+          results={snap.results}
+          mine={voted}
+          pulse={pulse}
+          circle={snap.me.circle}
+          shareUrl={shareUrl}
+        />
       ) : null}
 
       {!fresh && shareUrl ? (

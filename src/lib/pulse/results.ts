@@ -1,10 +1,16 @@
+import { MIN_GROUP, PROVINCES, provinceName, type Pulse } from "./model";
+import { computeInsights, type Insights } from "./insights";
 import {
-  MIN_GROUP,
-  PROVINCES,
-  provinceName,
-  type Pulse,
-  type PulseOption,
-} from "./model";
+  breakdown,
+  circleCodes,
+  shares,
+  type Breakdown,
+  type Share,
+  type VoteRow,
+} from "./tally";
+
+export { breakdown, circleCodes, shares, wholePercents } from "./tally";
+export type { Breakdown, Share, VoteRow } from "./tally";
 
 /**
  * **Turning votes into results without giving anyone away.**
@@ -23,34 +29,6 @@ import {
  * Pure: the same votes give the same results, so the tests can pin it.
  */
 
-export interface VoteRow {
-  readonly option: string;
-  readonly province: string | null;
-  readonly city: string | null;
-  readonly at: string;
-  /** This voter's own referral code on this Pulse. */
-  readonly circle: string;
-  /** The referral code of the link they arrived through, if any. */
-  readonly via: string | null;
-}
-
-export interface Share {
-  readonly optionId: string;
-  readonly label: string;
-  readonly n: number;
-  /** Whole percentages that add up to 100 (or all 0 with no votes). */
-  readonly pct: number;
-}
-
-export interface Breakdown {
-  /** Votes in the group. */
-  readonly total: number;
-  /** How many of them the shares are counted over (a multiple of MIN_GROUP). */
-  readonly counted: number;
-  /** Null while the group is too small to show. */
-  readonly shares: readonly Share[] | null;
-}
-
 export interface Place extends Breakdown {
   readonly key: string;
   readonly name: string;
@@ -68,13 +46,19 @@ export interface Results {
   readonly unplaced: number;
   readonly timeline: Timeline;
   readonly claim: ClaimComparison | null;
+  /** The map, how answers moved, and how the Pulse spread. */
+  readonly insights: Insights;
   readonly minGroup: number;
 }
 
 export interface Timeline {
   readonly bucket: "hour" | "day";
-  /** Cumulative votes at the end of each bucket. */
-  readonly points: readonly { readonly t: string; readonly total: number }[];
+  /** Cumulative votes at the end of each bucket, and how many of them arrived through a shared link. */
+  readonly points: readonly {
+    readonly t: string;
+    readonly total: number;
+    readonly referred: number;
+  }[];
 }
 
 export interface ClaimComparison {
@@ -85,79 +69,10 @@ export interface ClaimComparison {
   readonly source: string;
   readonly url: string;
   readonly text: string;
-}
-
-/** Largest-remainder rounding: whole numbers that sum to exactly 100. */
-export function wholePercents(counts: readonly number[]): number[] {
-  const total = counts.reduce((a, b) => a + b, 0);
-  if (total === 0) return counts.map(() => 0);
-  const raw = counts.map((n) => (n * 100) / total);
-  const floor = raw.map(Math.floor);
-  let left = 100 - floor.reduce((a, b) => a + b, 0);
-  const order = raw
-    .map((r, i) => ({ i, rem: r - Math.floor(r) }))
-    .sort((a, b) => b.rem - a.rem || a.i - b.i);
-  for (const { i } of order) {
-    if (left <= 0) break;
-    floor[i]! += 1;
-    left -= 1;
-  }
-  return floor;
-}
-
-export function shares(
-  options: readonly PulseOption[],
-  votes: readonly Pick<VoteRow, "option">[],
-): Share[] {
-  const counts = options.map(
-    (o) => votes.filter((v) => v.option === o.id).length,
-  );
-  const pct = wholePercents(counts);
-  return options.map((o, i) => ({
-    optionId: o.id,
-    label: o.label,
-    n: counts[i]!,
-    pct: pct[i]!,
-  }));
-}
-
-/** A subset, released in steps of `min` and only once it has `min` votes. */
-export function breakdown(
-  options: readonly PulseOption[],
-  votesOldestFirst: readonly VoteRow[],
-  min = MIN_GROUP,
-): Breakdown {
-  const total = votesOldestFirst.length;
-  if (total < min) return { total, counted: 0, shares: null };
-  const counted = Math.floor(total / min) * min;
-  return {
-    total,
-    counted,
-    shares: shares(options, votesOldestFirst.slice(0, counted)),
-  };
-}
-
-/**
- * Everyone who arrived through `root`'s link, through theirs, and so on —
- * plus `root` itself. A code is a set member, so a loop (A shared with B, B
- * back with A) ends instead of spinning.
- */
-export function circleCodes(
-  votes: readonly VoteRow[],
-  root: string,
-): Set<string> {
-  const codes = new Set([root]);
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const v of votes) {
-      if (v.via && codes.has(v.via) && !codes.has(v.circle)) {
-        codes.add(v.circle);
-        grew = true;
-      }
-    }
-  }
-  return codes;
+  /** What the creator says about the claim; never checked by Pulse. */
+  readonly published: string | null;
+  readonly measures: string | null;
+  readonly method: string | null;
 }
 
 export function timeline(
@@ -173,16 +88,30 @@ export function timeline(
   const last = Math.floor(now.getTime() / size) * size;
   const buckets = Math.min(400, Math.floor((last - first) / size) + 1);
   const counts = new Array<number>(buckets).fill(0);
+  const referred = new Array<number>(buckets).fill(0);
   for (const v of votesOldestFirst) {
-    const i = Math.floor((new Date(v.at).getTime() - first) / size);
-    counts[Math.max(0, Math.min(buckets - 1, i))]! += 1;
+    const i = Math.max(
+      0,
+      Math.min(
+        buckets - 1,
+        Math.floor((new Date(v.at).getTime() - first) / size),
+      ),
+    );
+    counts[i]! += 1;
+    if (v.via) referred[i]! += 1;
   }
   let running = 0;
+  let viaLink = 0;
   return {
     bucket,
     points: counts.map((n, i) => {
       running += n;
-      return { t: new Date(first + i * size).toISOString(), total: running };
+      viaLink += referred[i]!;
+      return {
+        t: new Date(first + i * size).toISOString(),
+        total: running,
+        referred: viaLink,
+      };
     }),
   };
 }
@@ -261,6 +190,9 @@ export function computeResults(
       source: pulse.claim.source,
       url: pulse.claim.url,
       text: pulse.claim.text,
+      published: pulse.claim.published ?? null,
+      measures: pulse.claim.measures ?? null,
+      method: pulse.claim.method ?? null,
     };
   }
 
@@ -274,6 +206,7 @@ export function computeResults(
     unplaced,
     timeline: timeline(sorted, pulse.createdAt, now),
     claim,
+    insights: computeInsights(pulse, sorted, myCircle),
     minGroup: MIN_GROUP,
   };
 }

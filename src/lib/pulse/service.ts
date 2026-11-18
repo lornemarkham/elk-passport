@@ -374,3 +374,37 @@ export async function reportPulse(
 
 export const isModerationStatus = (v: unknown): v is PulseStatus =>
   v === "live" || v === "review" || v === "removed";
+
+// ── Question of the Day ─────────────────────────────────────────────────────
+
+/** A day's date as people in Canada's west keep it, so "today" ends at their midnight. */
+export const PULSE_TZ = "America/Vancouver";
+
+export const pulseDay = (now: Date): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: PULSE_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+
+export const isDay = (v: unknown): v is string =>
+  typeof v === "string" &&
+  /^\d{4}-\d{2}-\d{2}$/.test(v) &&
+  !Number.isNaN(new Date(`${v}T12:00:00Z`).getTime()) &&
+  new Date(`${v}T12:00:00Z`).toISOString().startsWith(v);
+
+/**
+ * The one question featured today, if an administrator chose one. There is
+ * no automatic fallback: a featured question is a person's pick, and an empty
+ * day is shown as empty rather than filled by a ranking.
+ */
+export async function questionOfTheDay(
+  store: PulseStore,
+  now: Date,
+): Promise<Card | null> {
+  const today = pulseDay(now);
+  const [hit] = await store.featured(today, 1);
+  if (!hit || hit.day !== today) return null;
+  return shelves([hit.item], now, 1).recent[0] ?? null;
+}

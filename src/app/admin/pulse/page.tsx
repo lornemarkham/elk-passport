@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireAdminPage } from "@/lib/admin/requireAdmin";
+import { Featured } from "./Featured";
 import { Moderation } from "./Moderation";
 
 export const metadata: Metadata = {
@@ -18,8 +19,16 @@ export default async function PulseAdmin() {
   return (
     <>
       <h1 className="font-heading pt-4 text-[28px] font-bold tracking-tight">
-        Moderation
+        Question of the Day
       </h1>
+      <p className="mt-1 mb-4 text-[14px] text-[#5c6370]">
+        Pick one Pulse to feature at the top of People&apos;s Pulse for a day.
+        Days end at midnight Pacific. A day with no pick shows nothing.
+      </p>
+      <Featured />
+      <h2 className="font-heading mt-10 text-[24px] font-bold tracking-tight">
+        Moderation
+      </h2>
       <p className="mt-1 mb-5 text-[14px] text-[#5c6370]">
         Reported, paused and removed Pulses. Three reports pause a Pulse
         automatically.

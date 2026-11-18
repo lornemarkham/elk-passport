@@ -23,6 +23,8 @@ export const LIMITS = {
   description: 500,
   claimText: 240,
   claimSource: 120,
+  claimNote: 240,
+  claimPublished: 40,
   url: 500,
   city: 60,
   reportNote: 500,
@@ -78,6 +80,12 @@ export interface PulseClaim {
   readonly optionId: string | null;
   readonly source: string;
   readonly url: string;
+  /** When it was published, as the creator wrote it ("March 2024"). */
+  readonly published?: string | null;
+  /** What the figure measures, in the creator's words. */
+  readonly measures?: string | null;
+  /** How it was gathered, in the creator's words. */
+  readonly method?: string | null;
 }
 
 export interface Pulse {
@@ -298,6 +306,24 @@ export function checkDraft(input: CreateInput, now: Date): Checked {
           "claim",
           "Link to where it was published, so people can check it.",
         );
+      const notes: Record<"published" | "measures" | "method", string | null> =
+        {
+          published: null,
+          measures: null,
+          method: null,
+        };
+      for (const k of ["published", "measures", "method"] as const) {
+        const max =
+          k === "published" ? LIMITS.claimPublished : LIMITS.claimNote;
+        const t = clean(c[k], max + 1);
+        if (!t) continue;
+        if (t.length > max)
+          return fail("claim", `Keep "${k}" under ${max} characters.`);
+        const problem = textProblem(t);
+        if (problem && problem !== "link")
+          return fail("claim", PROBLEM_MESSAGE[problem]);
+        notes[k] = t;
+      }
       const optionId =
         percent === null
           ? null
@@ -308,6 +334,9 @@ export function checkDraft(input: CreateInput, now: Date): Checked {
         optionId,
         source,
         url,
+        ...(notes.published ? { published: notes.published } : {}),
+        ...(notes.measures ? { measures: notes.measures } : {}),
+        ...(notes.method ? { method: notes.method } : {}),
       };
     }
   }

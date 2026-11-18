@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { MAX_OPTIONS, PROVINCES } from "@/lib/pulse/model";
+import { SourceCheck, type ClaimNotes } from "./SourceCheck";
 
 type Ends = "never" | "1d" | "1w" | "1m";
 const ENDS: { value: Ends; label: string; ms: number }[] = [
@@ -42,6 +43,11 @@ export function CreatePulse() {
   const [claimOption, setClaimOption] = useState("o1");
   const [claimSource, setClaimSource] = useState("");
   const [claimUrl, setClaimUrl] = useState("");
+  const [claimNotes, setClaimNotes] = useState<ClaimNotes>({
+    published: "",
+    measures: "",
+    method: "",
+  });
   const [sourceUrl, setSourceUrl] = useState("");
   const [website, setWebsite] = useState("");
   const [error, setError] = useState<{
@@ -80,6 +86,7 @@ export function CreatePulse() {
             optionId: claimOption,
             source: claimSource,
             url: claimUrl,
+            ...claimNotes,
           },
           sourceUrl,
           website,
@@ -375,6 +382,14 @@ export function CreatePulse() {
               onChange={(e) => setClaimUrl(e.target.value)}
               placeholder="https://"
               className={input}
+            />
+            <SourceCheck
+              claimText={claimText}
+              percent={claimPercent}
+              url={claimUrl}
+              notes={claimNotes}
+              onNotes={setClaimNotes}
+              onSite={setClaimSource}
             />
             {err("claim")}
           </fieldset>

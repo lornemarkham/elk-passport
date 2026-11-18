@@ -10,6 +10,8 @@ import {
   createPulse,
   forgetCachedVotes,
   newDevice,
+  pulseDay,
+  questionOfTheDay,
   reportPulse,
   shelves,
   snapshot,
@@ -316,5 +318,104 @@ describe("People's Pulse, end to end on the memory store", () => {
     expect(s.recent.map((c) => c.id)).toEqual([busy.id, quiet.id]);
     expect(s.popular.map((c) => c.id)).toEqual([busy.id, quiet.id]);
     expect(s.trending.map((c) => c.id)).toEqual([busy.id]);
+  });
+});
+
+describe("Ask My Circle", () => {
+  it("counts a person once however many links reach them, and keeps the first", async () => {
+    const p = await make();
+    const a = newDevice();
+    const b = newDevice();
+    const carol = newDevice();
+    await vote(p.id, a, "o1");
+    await vote(p.id, b, "o1");
+    const linkA = circleCode(KEY, p.id, a);
+    const linkB = circleCode(KEY, p.id, b);
+    expect((await vote(p.id, carol, "o2", { via: linkA })).ok).toBe(true);
+    // Carol tries again through Bob's link, and with the other answer.
+    const again = await vote(p.id, carol, "o1", { via: linkB });
+    expect(again).toMatchObject({ ok: true, outcome: "duplicate" });
+    const snap = await snapshot(store, KEY, p.id, a, clock, true);
+    expect(snap!.total).toBe(3);
+    expect(snap!.results!.circle!.joinedViaYou).toBe(1);
+    const bobs = await snapshot(store, KEY, p.id, b, clock, true);
+    expect(bobs!.results!.circle!.joinedViaYou).toBe(0);
+  });
+
+  it("keeps one shared vote set: a circle is a view of everyone's votes", async () => {
+    const p = await make();
+    const host = newDevice();
+    await vote(p.id, host, "o1");
+    const link = circleCode(KEY, p.id, host);
+    for (let i = 0; i < 5; i++)
+      await vote(p.id, newDevice(), i < 4 ? "o1" : "o2", { via: link });
+    for (let i = 0; i < 3; i++) await vote(p.id, newDevice(), "o2");
+    const snap = await snapshot(store, KEY, p.id, host, clock, true);
+    const r = snap!.results!;
+    expect(r.total).toBe(9);
+    expect(r.circle!.total).toBe(6);
+    // Released in steps of five: the sixth vote is not counted yet.
+    expect(r.circle!.counted).toBe(5);
+    expect(r.circle!.shares!.find((s) => s.optionId === "o1")!.pct).toBe(100);
+    expect(r.everyone.find((s) => s.optionId === "o1")!.pct).toBe(56);
+    expect(r.insights.spread.networks[0]).toMatchObject({
+      label: "Network 1",
+      mine: true,
+    });
+  });
+});
+
+describe("Question of the Day", () => {
+  it("shows the Pulse an administrator featured for today, and only today", async () => {
+    const p = await make();
+    expect(await questionOfTheDay(store, clock)).toBeNull();
+    const today = pulseDay(clock);
+    expect(await store.feature(today, p.id)).toBe(true);
+    expect((await questionOfTheDay(store, clock))?.id).toBe(p.id);
+    const tomorrow = new Date(clock.getTime() + 86_400_000);
+    expect(await questionOfTheDay(store, tomorrow)).toBeNull();
+  });
+
+  it("replaces a day's pick, clears it, and refuses a Pulse that doesn't exist", async () => {
+    const a = await make();
+    const b = await make({ question: "Is a second sheet of ice worth it?" });
+    const today = pulseDay(clock);
+    await store.feature(today, a.id);
+    await store.feature(today, b.id);
+    expect((await questionOfTheDay(store, clock))?.id).toBe(b.id);
+    expect(await store.feature(today, "nonexist")).toBe(false);
+    await store.feature(today, null);
+    expect(await questionOfTheDay(store, clock)).toBeNull();
+  });
+
+  it("keeps the day on Pacific time", () => {
+    expect(pulseDay(new Date("2026-11-18T06:59:00Z"))).toBe("2026-11-17");
+    expect(pulseDay(new Date("2026-11-18T08:01:00Z"))).toBe("2026-11-18");
+  });
+});
+
+describe("a claim's source notes", () => {
+  it("are kept as the creator's words beside the published figure", async () => {
+    const p = await make({
+      claim: {
+        text: "A survey reports 65% support.",
+        percent: 65,
+        optionId: "o1",
+        source: "Example Research",
+        url: "https://example.ca/a",
+        published: "March 2024",
+        measures: "Support among BC adults",
+        method: "Online survey of 1,204 people",
+      },
+    });
+    expect(p.claim).toMatchObject({
+      published: "March 2024",
+      measures: "Support among BC adults",
+    });
+    const snap = await snapshot(store, KEY, p.id, newDevice(), clock, true);
+    expect(snap!.results!.claim).toMatchObject({
+      published: "March 2024",
+      method: "Online survey of 1,204 people",
+    });
   });
 });

@@ -177,6 +177,32 @@ describe.skipIf(!live)("People's Pulse Postgres store (local stack)", () => {
     expect(await store.report(p.id, "r4", "spam", null)).toBe("missing");
   });
 
+  it("features a Pulse for a day, replaces and clears it, and hides a paused one", async () => {
+    const store = postgresStore(URL!, ANON!, KEY);
+    const a = pulse();
+    const b = pulse({ question: "Is a second sheet of ice worth the cost?" });
+    for (const p of [a, b])
+      expect(await store.create(p, { creator: rid(), net: rid() }, 1000)).toBe(
+        "ok",
+      );
+    const day = "2031-06-01";
+    expect(await store.feature(day, a.id)).toBe(true);
+    expect((await store.featured(day, 1))[0]).toMatchObject({
+      day,
+      item: { pulse: { id: a.id }, total: 0 },
+    });
+    expect(await store.feature(day, b.id)).toBe(true);
+    expect((await store.featured(day, 5)).map((f) => f.item.pulse.id)).toEqual([
+      b.id,
+    ]);
+    expect(await store.feature(day, "nonexist")).toBe(false);
+    expect(await store.setStatus(b.id, "review")).toBe(true);
+    expect(await store.featured(day, 5)).toEqual([]);
+    await store.setStatus(b.id, "live");
+    expect(await store.feature(day, null)).toBe(true);
+    expect(await store.featured(day, 5)).toEqual([]);
+  });
+
   it("refuses a different key, and the anon key reads no table", async () => {
     const intruder = postgresStore(URL!, ANON!, "someone-elses-key-0123456789");
     await expect(intruder.list(10)).rejects.toBeInstanceOf(NotReady);
@@ -185,6 +211,7 @@ describe.skipIf(!live)("People's Pulse Postgres store (local stack)", () => {
       "passport_pulse_votes",
       "passport_pulse_reports",
       "passport_pulse_keys",
+      "passport_pulse_featured",
     ]) {
       const res = await fetch(`${URL}/rest/v1/${table}?select=*`, {
         headers: { apikey: ANON!, Authorization: `Bearer ${ANON}` },

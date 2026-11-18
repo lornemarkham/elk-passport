@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND, scopeLabel } from "@/lib/pulse/model";
-import { shelves, type Card, type Shelves } from "@/lib/pulse/service";
+import {
+  questionOfTheDay,
+  shelves,
+  type Card,
+  type Shelves,
+} from "@/lib/pulse/service";
 import { NotReady, pulseStore } from "@/lib/pulse/store";
 import { Disclaimer } from "./_ui/Disclaimer";
 
@@ -18,9 +23,18 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-async function load(): Promise<Shelves | "not-ready"> {
+async function load(): Promise<
+  (Shelves & { today: Card | null }) | "not-ready"
+> {
   try {
-    return shelves(await pulseStore().list(120), new Date());
+    const store = pulseStore();
+    const now = new Date();
+    const [listed, today] = await Promise.all([
+      store.list(120),
+      // The day's pick needs its own migration; without it the page still works.
+      questionOfTheDay(store, now).catch(() => null),
+    ]);
+    return { ...shelves(listed, now), today };
   } catch (e) {
     if (e instanceof NotReady) return "not-ready";
     throw e;
@@ -122,6 +136,36 @@ export default async function PeoplesPulse() {
         </p>
       ) : (
         <>
+          {data.today ? (
+            <section
+              aria-labelledby="pulse-today"
+              data-testid="pulse-today"
+              className="mt-8"
+            >
+              <h2
+                id="pulse-today"
+                className="text-[13px] font-semibold tracking-[0.14em] text-[#e5484d] uppercase"
+              >
+                Question of the day
+              </h2>
+              <Link
+                href={`/labs/pulse/${data.today.id}`}
+                data-testid="pulse-today-link"
+                className="mt-3 block rounded-3xl bg-[#14161a] p-5 text-white transition hover:bg-black focus-visible:ring-2 focus-visible:ring-[#14161a] focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                <span className="font-heading block text-[26px] leading-[1.15] font-bold">
+                  {data.today.question}
+                </span>
+                <span className="mt-3 flex flex-wrap items-center gap-x-3 text-[14px] text-white/75">
+                  <span>{votes(data.today.total)}</span>
+                  <span>{scopeLabel(data.today.scope)}</span>
+                  <span className="ml-auto rounded-full bg-white px-4 py-2 text-[14px] font-semibold text-[#14161a]">
+                    Answer
+                  </span>
+                </span>
+              </Link>
+            </section>
+          ) : null}
           <Shelf
             id="pulse-trending"
             title="Trending"
