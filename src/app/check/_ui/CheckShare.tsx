@@ -235,7 +235,7 @@ export function CheckShare({
         {url}
       </p>
       <details className="mt-2 text-[13.5px]">
-        <summary className="cursor-pointer py-1 font-medium text-[#5c6370]">
+        <summary className="cursor-pointer py-3 font-medium text-[#5c6370]">
           More ways to send it
         </summary>
         <div className="mt-2 flex flex-wrap gap-2">

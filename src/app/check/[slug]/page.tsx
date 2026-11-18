@@ -327,7 +327,7 @@ export default async function CheckPage({ params, searchParams }: Props) {
           ) : null}
           {mine && check.hasFile ? (
             <details className="rounded-2xl border border-[#e7e3da] bg-white p-4">
-              <summary className="cursor-pointer text-[14px] font-medium">
+              <summary className="-my-3 cursor-pointer py-3 text-[14px] font-medium">
                 Your screenshot — only you can see this
               </summary>
               {/* eslint-disable-next-line @next/next/no-img-element -- a private, per-browser file, never optimised or cached */}

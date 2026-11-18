@@ -168,12 +168,12 @@ export default async function CheckHome({ searchParams }: Props) {
             className="mt-9 flex items-end gap-2"
             data-testid="check-place-filter"
           >
-            <label className="grid flex-1 gap-1 text-[13px] font-medium text-[#5c6370]">
+            <label className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-1 text-[13px] font-medium text-[#5c6370]">
               Questions about
               <select
                 name="p"
                 defaultValue={p ?? ""}
-                className="min-h-12 rounded-xl border border-[#d9d4c8] bg-white px-3 text-[16px] text-[#14161a]"
+                className="min-h-12 w-full min-w-0 rounded-xl border border-[#d9d4c8] bg-white px-3 text-[16px] text-[#14161a]"
               >
                 <option value="">All of Canada</option>
                 {PROVINCES.map((x) => (
