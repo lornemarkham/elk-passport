@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { dateNight } from "@/domain/date-night/nights";
 import { parseAnswer } from "@/domain/date-night/answer";
 import { IDEA_PICKS, ADVENTUROUS_LEVELS } from "@/domain/date-night/types";
-import { ownerView, NotReady, type OwnerView } from "@/lib/date-night/store";
+import {
+  ownerView,
+  ownsNight,
+  NotReady,
+  type OwnerView,
+} from "@/lib/date-night/store";
 import { invitationData } from "../_server/load";
 import styles from "@/components/date-night/date-night.module.css";
 
@@ -14,7 +19,8 @@ type Params = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const night = dateNight((await params).slug);
   return {
-    title: night ? `${night.headline} — answers` : "Date Night",
+    title:
+      night && !night.personal ? `${night.headline} — answers` : "Date Night",
     robots: { index: false, follow: false },
   };
 }
@@ -35,11 +41,13 @@ function when(at: string, timeZone: string): string {
 /**
  * **What came back — for the person who planned the night, and nobody else.**
  * Postgres decides who that is (RLS on the adventure's owner); this page only
- * renders what it was given.
+ * renders what it was given. For a personal night, anyone who is not its
+ * planner — signed out included — gets a 404, so not even the names show.
  */
 export default async function DateNightAnswersPage({ params }: Params) {
   const night = dateNight((await params).slug);
   if (!night) notFound();
+  if (night.personal && !(await ownsNight(night.slug))) notFound();
   const home = night.vanityPath ?? `/date-night/${night.slug}`;
 
   let view: OwnerView | "not-ready";
