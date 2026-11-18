@@ -294,7 +294,7 @@ export function CheckWizard() {
                 disabled={i > step}
                 onClick={() => setStep(i)}
                 aria-current={i === step ? "step" : undefined}
-                className={`w-full border-t-4 pt-1.5 text-left text-[12px] font-semibold ${
+                className={`min-h-11 w-full border-t-4 pt-1.5 text-left text-[12px] font-semibold ${
                   i <= step
                     ? "border-[#e5484d] text-[#14161a]"
                     : "border-[#e7e3da] text-[#8a909a]"

@@ -70,7 +70,7 @@ export function CorrectCheck({
       className="rounded-2xl border border-[#14161a] bg-white p-4"
       data-testid="check-correct"
     >
-      <summary className="cursor-pointer text-[15px] font-semibold">
+      <summary className="-my-3 cursor-pointer py-3 text-[15px] font-semibold">
         You published this. Add a correction
       </summary>
       <div className="mt-4 grid gap-4">

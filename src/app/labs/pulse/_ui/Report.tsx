@@ -34,7 +34,7 @@ export function Report({
       className="rounded-2xl border border-[#e7e3da] bg-white p-4"
       data-testid="pulse-report"
     >
-      <summary className="cursor-pointer text-[14px] font-medium text-[#5c6370]">
+      <summary className="-my-3 cursor-pointer py-3 text-[14px] font-medium text-[#5c6370]">
         {label}
       </summary>
       {state === "done" ? (

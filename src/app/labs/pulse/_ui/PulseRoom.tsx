@@ -345,7 +345,7 @@ export function PulseRoom({
             className="rounded-2xl border border-[#e7e3da] bg-white px-4 py-3"
             open={Boolean(province)}
           >
-            <summary className="flex min-h-8 cursor-pointer items-center text-[14px] font-medium text-[#3f4550]">
+            <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-medium text-[#3f4550]">
               Where are you?{" "}
               <span className="ml-1.5 font-normal text-[#5c6370]">
                 Optional — for comparing places
@@ -408,7 +408,7 @@ export function PulseRoom({
             <button
               type="button"
               onClick={() => setReveal(true)}
-              className="justify-self-center px-3 py-2 text-[13px] font-medium text-[#5c6370] underline underline-offset-2"
+              className="min-h-11 justify-self-center px-3 text-[13px] font-medium text-[#5c6370] underline underline-offset-2"
             >
               Just show me the results
             </button>

@@ -243,7 +243,7 @@ function PostItem({ p }: { p: Post }) {
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
-            className="min-h-8 underline underline-offset-2"
+            className="-my-1.5 min-h-11 px-1 underline underline-offset-2"
           >
             Report
           </button>

@@ -364,7 +364,7 @@ function Table({ results }: { results: R }) {
   ];
   return (
     <details className="rounded-2xl border border-[#e7e3da] bg-white p-4">
-      <summary className="cursor-pointer text-[14px] font-medium text-[#5c6370]">
+      <summary className="-my-3 cursor-pointer py-3 text-[14px] font-medium text-[#5c6370]">
         See results as a table
       </summary>
       <div className="mt-3 overflow-x-auto">

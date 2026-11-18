@@ -444,7 +444,7 @@ export function CreatePulse({ preset }: { preset: Preset }) {
         className="group rounded-2xl border border-[#e7e3da] bg-white p-4 open:pb-5"
         open={preset.claim || undefined}
       >
-        <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between text-[15px] font-semibold">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[15px] font-semibold">
           Add details
           <span className="text-[13px] font-normal text-[#5c6370] group-open:hidden">
             Description, end date, a published claim
