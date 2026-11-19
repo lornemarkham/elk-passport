@@ -1429,6 +1429,14 @@ certainty. Do not invent an answer here to make the document feel finished.
     names. It is a shared capability with an experience-neutral component,
     used by one composition; whether other Experiences show it the same way
     is theirs to decide (§10).
+    _Informed 2026-11-19 by Date Night: Connect & Play_
+    (`docs/product/date-night/CONNECT-AND-PLAY.md`, ADR 024 proposed): two
+    people play questions and games on one phone or two, joined by an
+    unguessable link, with no account and nothing kept past a day. A second
+    answer to "may invitations be answered without an account" for one
+    composition only; the general question stays open. Named, not resolved:
+    whether Most Likely To and Truth or Dare are §6 shared challenges or §14
+    elaborate social games.
     _Informed 2026-11-10 by CourtQueue_ (`docs/product/badminton/README.md`,
     ADR 017): a group that lives one evening at a time on separate phones,
     where the product's job is fairness — fewest games first, the reason for

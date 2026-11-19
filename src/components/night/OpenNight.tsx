@@ -136,6 +136,17 @@ export function OpenNight({
         Private. Only the people you invite can see it.
         {!signedIn && " You'll sign in first."}
       </p>
+      <p className="mt-3 max-w-xs text-sm text-white/80">
+        Just want to talk and play?{" "}
+        <Link
+          href="/datenight/play"
+          className="font-bold underline underline-offset-4"
+          data-testid="connect-and-play-link"
+        >
+          Connect &amp; Play
+        </Link>{" "}
+        needs no sign-in.
+      </p>
       <p className="mt-6 text-[10px] text-white/40">
         Photo: {backdrop.where} · {backdrop.credit}, {backdrop.license}
       </p>
