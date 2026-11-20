@@ -80,7 +80,10 @@ export default async function ChristmasDiscoverPage({
   return (
     <>
       <ThemeProvider className="block">
-        <PicksProvider planHref={`/christmas/plan${carry ? `?${carry}` : ""}`}>
+        <PicksProvider
+          planHref={`/christmas/plan${carry ? `?${carry}` : ""}`}
+          signedIn={Boolean(session)}
+        >
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
               <header className={styles.night}>

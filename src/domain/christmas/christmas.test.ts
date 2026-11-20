@@ -473,3 +473,28 @@ describe("free means free for everybody", () => {
     expect(findsIn([sledding], TODAY)[0]!.free).toBe(true);
   });
 });
+
+describe("a window of months is not a confirmed date", () => {
+  const event = (startTime: string, endTime: string) =>
+    exp({
+      kind: "Event",
+      title: "Xmas DJ Night",
+      startTime,
+      endTime,
+      timePrecision: "day",
+    });
+  it("reads a year-long listing as 'check the days', never 'dated'", () => {
+    const r = readWhen(
+      event("2025-12-25T00:00:00Z", "2026-12-25T00:00:00Z"),
+      "2026-11-19",
+    );
+    expect(r.confidence).toBe("check");
+  });
+  it("still trusts a market's six-week run", () => {
+    const r = readWhen(
+      event("2026-11-13T00:00:00Z", "2027-01-03T00:00:00Z"),
+      "2026-11-19",
+    );
+    expect(r.confidence).toBe("dated");
+  });
+});

@@ -8,11 +8,14 @@ import {
   Compass,
   Dices,
   MapPin,
+  Moon,
+  Sparkles,
 } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Festive } from "@/components/christmas/Festive";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { PlanHero } from "@/components/christmas/PlanHero";
+import { adventureSession } from "@/lib/adventures/server";
 import { PicksProvider } from "@/components/christmas/Picks";
 import { RowSkeleton, WayCard } from "@/components/christmas/ways";
 import { ExperienceLocation } from "@/components/location/ExperienceLocation";
@@ -76,7 +79,10 @@ export default async function ChristmasPage({
   const asked = readAsk(params);
   // Christmas opens somewhere: the town just chosen, the one remembered, or
   // Vernon — never an unplaced list.
-  const where = await whereAreWe(asked.at);
+  const [where, session] = await Promise.all([
+    whereAreWe(asked.at),
+    adventureSession().catch(() => null),
+  ]);
   const ask = { ...asked, at: where.at };
   const today = todayIn();
   const town = townById(ask.at);
@@ -86,13 +92,17 @@ export default async function ChristmasPage({
   const lightsHref = `/christmas/lights${lightsTown ? `?at=${ask.at}` : ""}`;
   const here = writeAsk({ at: ask.at });
   const q = here ? `?${here}` : "";
+  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, from: today, to: today })}`;
   const discoverHref = `/christmas/discover${q}`;
 
   return (
     <>
       {where.chosen && <RememberTown town={ask.at} />}
       <ThemeProvider className="block">
-        <PicksProvider planHref={`/christmas/plan${q}`}>
+        <PicksProvider
+          planHref={`/christmas/plan${q}`}
+          signedIn={Boolean(session)}
+        >
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
               {/* Above the page below it: the place picker opens out of the header. */}
@@ -123,6 +133,54 @@ export default async function ChristmasPage({
                     </p>
                     <Festive />
                   </div>
+                  <nav
+                    aria-label="Start here"
+                    className="mt-5 grid max-w-3xl gap-2 sm:grid-cols-3"
+                    data-testid="entry-points"
+                  >
+                    {[
+                      {
+                        id: "lights",
+                        href: lightsHref,
+                        icon: MapPin,
+                        title: "Explore Christmas lights",
+                        line: "The map, and drives to see them",
+                      },
+                      {
+                        id: "tonight",
+                        href: tonight,
+                        icon: Moon,
+                        title: "What's happening tonight?",
+                        line: "Only what Atlas dates to today",
+                      },
+                      {
+                        id: "plan",
+                        href: "#plan",
+                        icon: Sparkles,
+                        title: "Plan a Christmas adventure",
+                        line: "Say it; get a plan",
+                      },
+                    ].map(({ id, href, icon: Icon, title, line }) => (
+                      <Link
+                        key={id}
+                        href={href}
+                        data-testid={`entry-${id}`}
+                        className="flex min-h-16 items-center gap-3 rounded-[20px] bg-white/95 p-3 text-[#082319] shadow-lg ring-1 ring-white/40 transition hover:bg-white motion-reduce:transition-none"
+                      >
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#b3242f] text-white">
+                          <Icon className="h-5 w-5" aria-hidden />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-base leading-tight font-extrabold">
+                            {title}
+                          </span>
+                          <span className="block text-sm text-[#082319]/70">
+                            {line}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </nav>
                   <Suspense fallback={null}>
                     <ExperienceLocation
                       scope="christmas"
@@ -176,7 +234,8 @@ export default async function ChristmasPage({
                 </PendingContent>
 
                 <section
-                  className="grid gap-4 lg:grid-cols-[1fr_1.4fr]"
+                  id="plan"
+                  className="grid scroll-mt-20 gap-4 lg:grid-cols-[1fr_1.4fr]"
                   aria-label="Surprise me, or say it"
                 >
                   <Link
@@ -268,7 +327,7 @@ export default async function ChristmasPage({
                 </section>
 
                 <Suspense fallback={null}>
-                  <YourAdventures today={today} />
+                  <YourAdventures today={today} session={session} />
                 </Suspense>
 
                 <p className="max-w-3xl text-sm text-[var(--gh-ink-soft)]">
