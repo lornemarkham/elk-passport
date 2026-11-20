@@ -23,6 +23,14 @@ import { formatEventWhen, statedDay } from "@/domain/experience/eventTime";
  * people want things that cannot happen today).
  */
 
+/** Longest run still read as dated days; a Christmas market's six weeks is well inside it. */
+export const MAX_CONFIRMED_SPAN = 75;
+
+const daysBetween = (a: string, b: string) =>
+  Math.round(
+    (Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000,
+  );
+
 export type Confidence = "dated" | "check" | "unconfirmed" | "past";
 
 export interface WhenReading {
@@ -100,6 +108,20 @@ export function readWhen(experience: Experience, today: string): WhenReading {
         // holds states this as a run…"); the card says what it means.
         because:
           "Atlas has the dates it runs between, not which days or hours — check before you go.",
+      };
+    }
+    // A "date range" of months is a listing that was never broken into
+    // nights (a weekly DJ night "Dec 25, 2025 – Dec 25, 2026"). It is a
+    // window, not a date Passport can stand behind: it does not go on the
+    // calendar as a confirmed event.
+    if (from && to && daysBetween(from, to) > MAX_CONFIRMED_SPAN) {
+      return {
+        confidence: "check",
+        from,
+        to,
+        ...(line ? { line } : {}),
+        because:
+          "Atlas lists this across a very long window, not particular days — check the organiser's page for when it's actually on.",
       };
     }
     return {

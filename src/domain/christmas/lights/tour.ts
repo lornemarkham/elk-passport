@@ -1,5 +1,5 @@
 import { metres } from "./actions";
-import type { FeatureId, Kind, LatLng } from "./model";
+import type { FeatureId, Kind, LatLng, PinView } from "./model";
 
 /**
  * **Build My Christmas Lights Tour** — a practical evening through lit
@@ -28,6 +28,21 @@ export interface Stop {
   readonly rating?: { readonly mean: number; readonly count: number } | null;
   /** People who said it's great for kids, plus FAMILY FAVOURITE! reactions. */
   readonly kids?: number;
+}
+
+/** A published pin as a tour stop. */
+export function toStop(p: PinView): Stop {
+  return {
+    id: p.id,
+    name: p.name,
+    at: p.at,
+    kind: p.kind,
+    features: p.features,
+    love: p.total,
+    rating: p.rating,
+    kids:
+      (p.tags.find((t) => t.id === "kids")?.n ?? 0) + (p.reactions.family ?? 0),
+  };
 }
 
 /**

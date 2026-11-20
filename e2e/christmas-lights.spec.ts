@@ -41,7 +41,7 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
 }) => {
   const started = Date.now();
   await page.goto("/christmas");
-  await page.getByTestId("cta-lights").click();
+  await page.getByTestId("entry-lights").click();
   await expect(page).toHaveURL(/\/christmas\/lights(\?at=vernon)?$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "The Christmas Lights Map" }),

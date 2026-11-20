@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PinCard } from "@/components/christmas/lights/PinCard";
 import { AtlasDown } from "@/components/christmas/parts";
-import { AdventureCard } from "@/components/adventures/AdventureCard";
+import { MyAdventures } from "@/components/christmas/MyAdventures";
 import { adventureSession } from "@/lib/adventures/server";
 import { adventuresOf } from "@/lib/adventures/store";
 import { townById } from "@/domain/discovery/towns";
@@ -157,8 +157,13 @@ function unique<T>(list: readonly T[], key: (t: T) => string): T[] {
 }
 
 /** A signed-in visitor's own Christmas adventures; nothing for anybody else. */
-export async function YourAdventures({ today }: { readonly today: string }) {
-  const session = await adventureSession().catch(() => null);
+export async function YourAdventures({
+  today,
+  session,
+}: {
+  readonly today: string;
+  readonly session: Awaited<ReturnType<typeof adventureSession>> | null;
+}) {
   if (!session) return null;
   const mine = await adventuresOf(session.db, session.user.id)
     .then((all) => all.filter((a) => a.kind === "christmas"))
@@ -169,13 +174,9 @@ export async function YourAdventures({ today }: { readonly today: string }) {
       <h2 className="ghad-display text-2xl font-extrabold">
         Your Christmas adventures
       </h2>
-      <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-        {mine.map((a) => (
-          <li key={a.id}>
-            <AdventureCard adventure={a} today={today} />
-          </li>
-        ))}
-      </ul>
+      <div className="mt-3">
+        <MyAdventures adventures={mine} today={today} />
+      </div>
     </section>
   );
 }

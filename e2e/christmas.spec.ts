@@ -456,10 +456,14 @@ test("when every picture fails, no broken image or empty frame is left", async (
         ).length,
     );
     expect(broken, path).toBe(0);
-    // A find with no picture left wears its name on a warm tile instead.
+    // A find with no picture left is a compact text card (M942): its name
+    // once, as a heading — never a title tile, never a stand-in photo.
     for (const card of await page.getByTestId("find-card").all())
       await expect(
-        card.locator("img").or(card.getByTestId("picture-tile")).first(),
+        card
+          .locator("img")
+          .or(card.getByRole("heading", { level: 3 }))
+          .first(),
       ).toBeVisible();
   }
 });

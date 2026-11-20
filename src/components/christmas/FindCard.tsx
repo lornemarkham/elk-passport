@@ -12,12 +12,13 @@ import {
   Tag,
   Users,
 } from "lucide-react";
-import { Picture } from "@/components/adventures/Picture";
+import { CardPhoto } from "./CardPhoto";
 import { subjectHref } from "@/domain/experience/destination";
 import { whereLine } from "@/domain/discovery/compose";
 import { distanceText } from "@/domain/discovery/proximity";
 import { ageBecause, ageLine } from "@/domain/discovery/suitability";
 import type { Find } from "@/domain/christmas/discover";
+import { tidyWhere } from "@/domain/christmas/tidy";
 import { evidenceLine, themeById } from "@/domain/christmas/themes";
 import { CONFIDENCE_LABEL, type Confidence } from "@/domain/christmas/when";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,7 @@ export function FindCard({
   const { picked, togglePick, saved, saving, toggleSave } = usePicks();
   const e = find.experience;
   const theme = find.reading.themes[0];
-  const where = whereLine(e);
+  const where = tidyWhere(whereLine(e) ?? "");
   const far = distanceText(e, origin);
   const age = ageLine(e, youngest);
   const ageWhy = ageBecause(e, youngest);
@@ -68,24 +69,18 @@ export function FindCard({
       data-testid="find-card"
       data-find={e.id}
     >
-      <Link href={href} className="relative block" tabIndex={-1} aria-hidden>
-        <Picture
-          experience={e}
-          fallbackTitle={e.title}
-          tone={find.reading.christmas ? "#b3242f" : "#245c78"}
-          className="aspect-[4/3] w-full"
-        />
-        <span
-          className={cn(
-            "absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-bold",
-            CONFIDENCE_STYLE[find.when.confidence],
-          )}
-        >
-          {CONFIDENCE_LABEL[find.when.confidence]}
-        </span>
-      </Link>
+      <CardPhoto experience={e} className="aspect-[16/9] w-full" />
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="text-sm font-semibold text-[#b3242f]">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-[#b3242f]">
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-xs font-bold",
+              CONFIDENCE_STYLE[find.when.confidence],
+            )}
+            data-testid="find-confidence"
+          >
+            {CONFIDENCE_LABEL[find.when.confidence]}
+          </span>
           {theme ? (
             <>
               <span aria-hidden>{themeById(theme).emoji}</span>{" "}
