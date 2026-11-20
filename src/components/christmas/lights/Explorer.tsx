@@ -256,7 +256,7 @@ export function Explorer({
           <div className="absolute inset-x-3 bottom-3 z-20 flex items-end gap-2">
             <Link
               href={`/christmas/lights/tour${area ? `?area=${area}` : ""}`}
-              className="inline-flex min-h-14 flex-1 items-center justify-center gap-2 rounded-full bg-[#ffd98a] px-4 text-base font-extrabold whitespace-nowrap text-[#082319] shadow-2xl sm:text-lg"
+              className="inline-flex min-h-14 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#ffd98a] px-3 text-center text-sm leading-tight font-extrabold text-[#082319] shadow-2xl min-[360px]:px-4 min-[360px]:text-base sm:text-lg"
               data-testid="cta-tour"
             >
               <Route className="h-5 w-5" aria-hidden />

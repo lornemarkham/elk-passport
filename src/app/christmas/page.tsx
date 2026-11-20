@@ -1,10 +1,18 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bookmark, CalendarHeart, Compass, MapPin, Sun } from "lucide-react";
+import {
+  Bookmark,
+  CalendarHeart,
+  Compass,
+  MapPin,
+  Moon,
+  Sparkles,
+  Sun,
+} from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { Picture } from "@/components/adventures/Picture";
-import { AdventureCard } from "@/components/adventures/AdventureCard";
+import { CardPhoto } from "@/components/christmas/CardPhoto";
+import { MyAdventures } from "@/components/christmas/MyAdventures";
 import { Festive } from "@/components/christmas/Festive";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { PinCard } from "@/components/christmas/lights/PinCard";
@@ -26,6 +34,7 @@ import {
   writeAsk,
   type Find,
 } from "@/domain/christmas/discover";
+import { hasChristmasPicture } from "@/domain/christmas/pictures";
 import { THEMES } from "@/domain/christmas/themes";
 import { CHALLENGES } from "@/domain/christmas/challenges";
 import { SHAPES } from "@/domain/christmas/plans";
@@ -95,8 +104,8 @@ function seasonLine(stage: ReturnType<typeof season>): string {
   }
 }
 
-const hasPicture = (f: Find) =>
-  Boolean(f.experience.heroMedia || f.experience.contextualMedia);
+/** A real picture of the thing — never a stand-in for its kind (see `pictures.ts`). */
+const hasPicture = (f: Find) => hasChristmasPicture(f.experience);
 
 /**
  * **Go Have a Christmas** — Passport's Christmas, inside Go Have a Day.
@@ -137,8 +146,10 @@ export default async function ChristmasPage({
     .flatMap((s) => s.finds);
   const sections = around(answered, today, ask.km, lights.pins);
   const sectionFinds = sections.flatMap((s) => s.finds);
-  const lead =
-    sectionFinds.find(hasPicture) ?? live.find(hasPicture) ?? sectionFinds[0];
+  // The hero is a photograph only when there is an honest one; else the
+  // night-sky CSS alone. "Pictured:" is never said of a find with no picture.
+  const lead = sectionFinds.find(hasPicture) ?? live.find(hasPicture);
+  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, from: today, to: today })}`;
   const lightsTown = (TOWNS as readonly string[]).includes(ask.at)
     ? `?at=${ask.at}`
     : "";
@@ -158,19 +169,21 @@ export default async function ChristmasPage({
     <>
       {where.chosen && <RememberTown town={ask.at} />}
       <ThemeProvider className="block">
-        <PicksProvider planHref={`/christmas/plan${q}`}>
+        <PicksProvider
+          planHref={`/christmas/plan${q}`}
+          signedIn={Boolean(session)}
+        >
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
               <header className={styles.night}>
                 {lead && (
                   <>
-                    <Picture
+                    <CardPhoto
                       experience={lead.experience}
                       priority
                       showLabel={false}
-                      fallbackTitle=""
-                      tone="#0f3b2b"
-                      className="absolute inset-0 -z-10 h-full w-full"
+                      fill
+                      className="-z-10"
                     />
                     <div
                       className="absolute inset-0 -z-10 bg-gradient-to-t from-[#082319] via-[#082319]/60 to-[#082319]/20"
@@ -195,7 +208,55 @@ export default async function ChristmasPage({
                     />
                     {seasonLine(stage)}
                   </p>
-                  <div className="mt-5 max-w-2xl">
+                  <nav
+                    aria-label="Start here"
+                    className="mt-5 grid max-w-3xl gap-2 sm:grid-cols-3"
+                    data-testid="entry-points"
+                  >
+                    {[
+                      {
+                        id: "lights",
+                        href: `/christmas/lights${lightsTown}`,
+                        icon: MapPin,
+                        title: "Explore Christmas lights",
+                        line: "The map, and drives to see them",
+                      },
+                      {
+                        id: "tonight",
+                        href: tonight,
+                        icon: Moon,
+                        title: "What's happening tonight?",
+                        line: "Only what Atlas dates to today",
+                      },
+                      {
+                        id: "plan",
+                        href: "#plan",
+                        icon: Sparkles,
+                        title: "Plan a Christmas adventure",
+                        line: "Say it; get a plan",
+                      },
+                    ].map(({ id, href, icon: Icon, title, line }) => (
+                      <Link
+                        key={id}
+                        href={href}
+                        data-testid={`entry-${id}`}
+                        className="flex min-h-16 items-center gap-3 rounded-[20px] bg-white/95 p-3 text-[#082319] shadow-lg ring-1 ring-white/40 transition hover:bg-white motion-reduce:transition-none"
+                      >
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#b3242f] text-white">
+                          <Icon className="h-5 w-5" aria-hidden />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-base leading-tight font-extrabold">
+                            {title}
+                          </span>
+                          <span className="block text-sm text-[#082319]/70">
+                            {line}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </nav>
+                  <div className="mt-4 max-w-2xl">
                     <PlanHero at={ask.at} />
                   </div>
                   <Suspense fallback={null}>
@@ -206,25 +267,15 @@ export default async function ChristmasPage({
                       className="mt-3 text-white"
                     />
                   </Suspense>
-                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm font-bold">
-                    <Link
-                      href={`/christmas/lights${lightsTown}`}
-                      className="inline-flex min-h-11 items-center gap-1.5 underline-offset-4 hover:underline"
-                      data-testid="cta-lights"
-                    >
-                      <MapPin className="h-4 w-4 text-[#ffd98a]" aria-hidden />
-                      The Christmas lights map
-                    </Link>
-                    <Link
-                      href={`/christmas/discover${q}`}
-                      className="inline-flex min-h-11 items-center gap-1.5 underline-offset-4 hover:underline"
-                      data-testid="cta-discover"
-                    >
-                      <Compass className="h-4 w-4 text-[#ffd98a]" aria-hidden />
-                      Find Christmas
-                      {townName ? ` near ${townName}` : " near me"}
-                    </Link>
-                  </div>
+                  <Link
+                    href={`/christmas/discover${q}`}
+                    className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-bold underline-offset-4 hover:underline"
+                    data-testid="cta-discover"
+                  >
+                    <Compass className="h-4 w-4 text-[#ffd98a]" aria-hidden />
+                    Find Christmas
+                    {townName ? ` near ${townName}` : " near me"}
+                  </Link>
                   {lead && (
                     <Link
                       href={subjectHref(
@@ -271,12 +322,11 @@ export default async function ChristmasPage({
                               data-testid={`theme-${theme.id}`}
                             >
                               {cover && (
-                                <Picture
+                                <CardPhoto
                                   experience={cover.experience}
                                   showLabel={false}
-                                  fallbackTitle=""
-                                  tone="#0f3b2b"
-                                  className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
+                                  fill
+                                  className="transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
                                 />
                               )}
                               <span
@@ -486,13 +536,7 @@ export default async function ChristmasPage({
 
                   {mine.length > 0 && (
                     <Section eyebrow="Yours" title="Your Christmas adventures">
-                      <ul className="grid gap-4 sm:grid-cols-2">
-                        {mine.map((a) => (
-                          <li key={a.id}>
-                            <AdventureCard adventure={a} today={today} />
-                          </li>
-                        ))}
-                      </ul>
+                      <MyAdventures adventures={mine} today={today} />
                     </Section>
                   )}
 

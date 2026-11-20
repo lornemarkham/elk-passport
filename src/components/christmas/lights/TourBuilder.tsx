@@ -36,6 +36,7 @@ import {
   tourQuery,
   type Mode,
   type Stop,
+  toStop,
   type TourLink,
   type TourStyle,
 } from "@/domain/christmas/lights/tour";
@@ -65,20 +66,6 @@ const WHERE = [
 ];
 /** How far round a tapped point a custom area reaches. */
 const CUSTOM_KM = 3;
-
-export function toStop(p: PinView): Stop {
-  return {
-    id: p.id,
-    name: p.name,
-    at: p.at,
-    kind: p.kind,
-    features: p.features,
-    love: p.total,
-    rating: p.rating,
-    kids:
-      (p.tags.find((t) => t.id === "kids")?.n ?? 0) + (p.reactions.family ?? 0),
-  };
-}
 
 type Where =
   | { readonly kind: "nearby"; readonly at: LatLng | null }

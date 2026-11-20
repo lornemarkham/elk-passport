@@ -29,6 +29,8 @@ import {
   priorMean,
 } from "@/domain/christmas/lights/rank";
 import { lightUp } from "@/domain/christmas/lights/stats";
+import { suggestedDrives } from "@/domain/christmas/lights/drives";
+import { whenLabel } from "@/lib/adventures/present";
 import { lightsFor, viewer } from "../_server/lights";
 import { festiveStops } from "../_server/lightsAtlas";
 
@@ -93,6 +95,8 @@ export default async function LightsPage({
     const a = areaById(id);
     return a ? (p: PinView) => inAreaOf(a as Area, p.at) : () => false;
   };
+  const today = todayIn();
+  const drives = suggestedDrives(published, today);
   const lists = [
     { id: "vernon", title: "Best in Vernon", keep: within("vernon") },
     {
@@ -154,6 +158,88 @@ export default async function LightsPage({
           </div>
 
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <section
+              className="mt-8"
+              data-testid="drives"
+              aria-labelledby="drives-h"
+            >
+              <h2
+                id="drives-h"
+                className="ghad-display text-2xl font-extrabold"
+              >
+                Suggested drives
+              </h2>
+              {drives.length > 0 ? (
+                <>
+                  <p className="mt-1 max-w-xl text-sm text-white/80">
+                    Built only from published places confirmed for this season,
+                    on the first night they&apos;re all on. Times are estimates;
+                    Maps does the real route from where you are.
+                  </p>
+                  <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {drives.map((d) => (
+                      <li
+                        key={d.id}
+                        className="flex flex-col rounded-[22px] bg-white/10 p-4"
+                        data-testid={`drive-${d.id}`}
+                      >
+                        <h3 className="ghad-display text-lg leading-tight font-extrabold">
+                          {d.title}
+                        </h3>
+                        <p className="mt-0.5 text-sm text-[#ffd98a]">
+                          {whenLabel(d.night, d.night)} · about {d.minutes} min
+                          · {d.km} km
+                        </p>
+                        <ol className="mt-2 space-y-1 text-sm">
+                          {d.stops.map((s, i) => (
+                            <li key={s.id} className="flex gap-2">
+                              <span className="font-bold text-white/60">
+                                {i + 1}
+                              </span>
+                              <span>
+                                {s.name}
+                                <span className="text-white/65">
+                                  {" "}
+                                  ·{" "}
+                                  {s.kind === "atlas"
+                                    ? "From Atlas"
+                                    : KIND_LABEL[s.kind]}
+                                </span>
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                        <div className="mt-3 flex flex-wrap gap-2 pt-1">
+                          <a
+                            href={d.mapsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex min-h-11 items-center rounded-full bg-[#ffd98a] px-4 text-sm font-extrabold text-[#082319]"
+                            data-testid="drive-directions"
+                          >
+                            Directions
+                          </a>
+                          <Link
+                            href={d.tourHref}
+                            className="inline-flex min-h-11 items-center rounded-full bg-white/15 px-4 text-sm font-bold"
+                          >
+                            Open as a tour
+                          </Link>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="mt-2 max-w-xl text-sm text-white/80">
+                  No drive yet: a drive needs two or more places confirmed for
+                  this season on the same night, and we don&apos;t pad one with
+                  places nobody has confirmed. Build your own below, or add what
+                  you&apos;ve spotted.
+                </p>
+              )}
+            </section>
+
             <MyLights pins={mine} />
 
             <section

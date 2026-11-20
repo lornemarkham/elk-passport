@@ -58,8 +58,14 @@ export function usePicks(): PicksValue {
 export function PicksProvider({
   children,
   planHref,
+  signedIn = true,
 }: {
   readonly children: React.ReactNode;
+  /**
+   * Whether anyone is signed in. A signed-out visitor has no Saved to read,
+   * and asking anyway logs a 401 on every public page view.
+   */
+  readonly signedIn?: boolean;
   /** The planner, with whatever the page already knows (`at`, dates…). */
   readonly planHref: string;
 }) {
@@ -69,6 +75,7 @@ export function PicksProvider({
   const [saving, setSaving] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     (async () => {
       try {
@@ -89,7 +96,7 @@ export function PicksProvider({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [signedIn]);
 
   const togglePick = useCallback(
     (id: string) =>
