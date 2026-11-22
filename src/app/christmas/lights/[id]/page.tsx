@@ -17,7 +17,6 @@ import styles from "@/components/christmas/lights/lights.module.css";
 import { metres } from "@/domain/christmas/lights/actions";
 import {
   FEATURES,
-  KIND_EMOJI,
   KIND_LABEL,
   RATING_TAGS,
   TOWN_LABEL,
@@ -76,12 +75,7 @@ export default async function PinPage({ params }: Props) {
                 data-testid="pin-photo"
               />
             ) : (
-              <div
-                className="xm-glow flex h-56 items-center justify-center text-8xl"
-                aria-hidden
-              >
-                {KIND_EMOJI[pin.kind]}
-              </div>
+              <div className="h-6" aria-hidden />
             )}
             <div className={christmas.lights} aria-hidden />
           </div>

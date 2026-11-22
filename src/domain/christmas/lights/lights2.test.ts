@@ -21,7 +21,7 @@ import { bestOf, fairScore, isFavourite, isHiddenGem, priorMean } from "./rank";
 import { cluster } from "./cluster";
 import { buildTour, timeTour, type Stop, type TourStyle } from "./tour";
 import { lightUp } from "./stats";
-import { AREAS, areaById, inAreaOf, placeLabel } from "./areas";
+import { AREAS, areaById, inAreaOf, pinInArea, placeLabel } from "./areas";
 import { SEED } from "./seed";
 
 /**
@@ -360,5 +360,19 @@ describe("Areas", () => {
         viewOf(doc, "seed-coldstream-light-up").at,
       ),
     ).toBe(true);
+  });
+});
+
+describe("the Coldstream filter agrees with the town a pin is filed under", () => {
+  const lavington = { lat: 50.2332, lng: -119.1077 };
+  it("keeps a Lavington pin, which is Coldstream's but ~10 km from its centre", () => {
+    const coldstream = areaById("coldstream")!;
+    expect(inAreaOf(coldstream, lavington)).toBe(false);
+    expect(pinInArea(coldstream, { at: lavington, town: "coldstream" })).toBe(
+      true,
+    );
+    expect(pinInArea(coldstream, { at: lavington, town: "vernon" })).toBe(
+      false,
+    );
   });
 });

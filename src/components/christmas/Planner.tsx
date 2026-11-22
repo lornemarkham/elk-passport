@@ -208,7 +208,7 @@ export function Planner({
       aria-label="Plan a Christmas adventure"
     >
       <section className="space-y-4">
-        {step(1, "What kind of Christmas?")}
+        {step(1, "What are you in the mood for?")}
         <div
           className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3"
           role="radiogroup"
@@ -296,18 +296,18 @@ export function Planner({
                         {p.fromSaved ? "From your Saved · " : ""}
                         {p.light
                           ? "Light display · from the community map"
-                          : (p.when?.line ?? "No dates from Atlas")}
+                          : (p.when?.line ?? "No dates yet")}
                       </span>
                       {off && (
                         <span className="mt-1 flex items-center gap-1 text-sm font-semibold text-[#8e1d26]">
                           <AlertTriangle className="h-4 w-4" aria-hidden />
-                          Atlas dates this outside your days — it&apos;ll wait
-                          as an idea.
+                          It&apos;s dated outside your days — it&apos;ll wait as
+                          an idea.
                         </span>
                       )}
                       {pinned && (
                         <span className="mt-1 block text-sm font-semibold text-[#0f3b2b]">
-                          Goes on {dayLabel(pinned)} — the day Atlas has it.
+                          Goes on {dayLabel(pinned)} — the day it&apos;s on.
                         </span>
                       )}
                     </span>

@@ -6,6 +6,10 @@ import { devices, expect, test } from "@playwright/test";
  * experience's own layout can replace or hide. The experience keeps its theme
  * *below* it.
  */
+// Christmas is the one exception since 2026-11-21 (owner brief "Christmas public
+// launch QA repair", items 12-15): it keeps the header's wordmark, theme and
+// account but hands the destinations and the Experiences menu to its own bar,
+// whose one way out is "← Go Have a Day". It is still a menu *entry*.
 const PAGES = [
   ["Hockey Night", "/hockey", "hockey"],
   ["Christmas", "/christmas", "christmas"],
@@ -47,6 +51,15 @@ for (const [name, device] of [
         await expect(logo).toHaveAttribute("href", "/");
 
         const menu = page.getByTestId("passport-nav-experiences");
+        if (id === "christmas") {
+          await expect(menu).toHaveCount(0);
+          await expect(page.getByTestId("christmas-nav")).toBeVisible();
+          await expect(page.getByTestId("xmas-nav-back")).toHaveAttribute(
+            "href",
+            "/discovery",
+          );
+          return;
+        }
         await expect(menu).toBeVisible();
         await expect(menu).toHaveAttribute("aria-current", "page");
         await menu.click();
@@ -87,6 +100,8 @@ for (const [name, device] of [
           timeout: 20_000,
         });
         await expect(page.getByTestId("global-header")).toBeVisible();
+        // Christmas has its own bar instead of the menu; carry on from Snow Day.
+        if (id === "christmas") await page.goto("/snow");
       }
       await page
         .getByTestId("global-header")

@@ -37,7 +37,7 @@ export function Section({
   );
 }
 
-/** Atlas didn't answer — said plainly, never rendered as "nothing on". */
+/** The listings didn't answer — said plainly, never rendered as "nothing on". */
 export function AtlasDown() {
   return (
     <p
@@ -45,7 +45,7 @@ export function AtlasDown() {
       data-testid="atlas-down"
       className="rounded-[22px] bg-[#f7e3e1] p-5 text-base font-semibold text-[#8e1d26]"
     >
-      Atlas can&apos;t be reached right now, so Passport can&apos;t show
+      We can&apos;t load the event listings right now, so we can&apos;t show
       what&apos;s on. That isn&apos;t the same as nothing being on — try again
       in a minute.
     </p>

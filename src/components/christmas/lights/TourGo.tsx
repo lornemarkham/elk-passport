@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, Navigation, Star } from "lucide-react";
 import {
-  KIND_EMOJI,
   photoSrc,
   type LatLng,
   type PinView,
@@ -119,12 +118,7 @@ export function TourGo({
             className="h-52 w-full object-cover"
           />
         ) : (
-          <div
-            className="xm-glow flex h-40 items-center justify-center text-7xl"
-            aria-hidden
-          >
-            {here.stop.kind === "atlas" ? "🎁" : KIND_EMOJI[here.stop.kind]}
-          </div>
+          <div className="h-2" aria-hidden />
         )}
         <p
           className="absolute top-3 left-3 rounded-full bg-[#b3242f] px-3 py-1 text-sm font-extrabold tracking-[0.12em] text-white uppercase"

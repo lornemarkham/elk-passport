@@ -156,7 +156,7 @@ export function Refine({
             pattern="^[0-9 ,]*$"
           />
           <span className="block text-xs text-[var(--gh-ink-soft)]">
-            Atlas is asked about the youngest.
+            We check the youngest child&apos;s age.
           </span>
         </label>
         <div className="grid grid-cols-2 gap-3">

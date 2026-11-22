@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Check, MapPin, Plus } from "lucide-react";
 import {
-  KIND_EMOJI,
   KIND_LABEL,
   REACTIONS,
   SEASON_LABEL,
@@ -53,7 +52,7 @@ export function PinCard({
 }: {
   readonly pin: PinView;
   readonly onFocus?: () => void;
-  /** Say "my Christmas day" (the front page) rather than "my tour" (the map). */
+  /** Say "My Christmas List" (the front page) rather than "my tour" (the map). */
   readonly day?: boolean;
 }) {
   const stash = useStash();
@@ -68,30 +67,28 @@ export function PinCard({
       data-id={pin.id}
       className="group flex h-full flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_6px_24px_rgba(8,35,25,0.12)]"
     >
-      <Link
-        href={`/christmas/lights/${pin.id}`}
-        className="relative block aspect-[4/3] overflow-hidden bg-[#0f3b2b]"
-      >
-        {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
+      {src ? (
+        <Link
+          href={`/christmas/lights/${pin.id}`}
+          className="relative block aspect-[4/3] overflow-hidden bg-[#0f3b2b]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={`${pin.name}, photographed by a local`}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
             loading="lazy"
           />
-        ) : (
-          <span
-            className="xm-glow flex h-full w-full items-center justify-center text-6xl"
-            aria-hidden
-          >
-            {KIND_EMOJI[pin.kind]}
+          <span className="absolute top-3 left-3">
+            <SeasonBadge pin={pin} />
           </span>
-        )}
-        <span className="absolute top-3 left-3">
+        </Link>
+      ) : (
+        // No photograph: a compact text card, never a stand-in picture.
+        <div className="px-4 pt-4">
           <SeasonBadge pin={pin} />
-        </span>
-      </Link>
+        </div>
+      )}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <p className="text-xs font-bold tracking-[0.12em] text-[#b3242f] uppercase">
           {KIND_LABEL[pin.kind]} · {TOWN_LABEL[pin.town]}
@@ -129,8 +126,8 @@ export function PinCard({
               )}
               {day
                 ? inTour
-                  ? "In my Christmas day"
-                  : "Add to my Christmas day"
+                  ? "In My Christmas List"
+                  : "Add to My Christmas List"
                 : inTour
                   ? "On my tour"
                   : "Add to my tour"}

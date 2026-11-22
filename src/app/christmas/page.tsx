@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Bookmark,
+  Gift,
   CalendarHeart,
   CalendarRange,
   Compass,
@@ -15,6 +15,7 @@ import { ThemeProvider } from "@/components/ghad/theme";
 import { Festive } from "@/components/christmas/Festive";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { PlanHero } from "@/components/christmas/PlanHero";
+import { DistancePicker } from "@/components/christmas/DistancePicker";
 import { adventureSession } from "@/lib/adventures/server";
 import { PicksProvider } from "@/components/christmas/Picks";
 import { RowSkeleton, WayCard } from "@/components/christmas/ways";
@@ -27,7 +28,7 @@ import { readAsk, writeAsk } from "@/domain/christmas/discover";
 import { season } from "@/domain/christmas/when";
 import { WAYS, wayHref } from "@/domain/christmas/ways";
 import { TOWNS } from "@/domain/christmas/lights/model";
-import { NearYou, YourAdventures } from "./_parts/near";
+import { NearYou } from "./_parts/near";
 import { whereAreWe } from "./_server/where";
 
 export const metadata: Metadata = {
@@ -90,9 +91,11 @@ export default async function ChristmasPage({
   const stage = season(today);
   const lightsTown = (TOWNS as readonly string[]).includes(ask.at);
   const lightsHref = `/christmas/lights${lightsTown ? `?at=${ask.at}` : ""}`;
-  const here = writeAsk({ at: ask.at });
+  // The place and the distance ride along every link, so the next page is
+  // about the same town and radius.
+  const here = writeAsk({ at: ask.at, km: ask.km });
   const q = here ? `?${here}` : "";
-  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, from: today, to: today })}`;
+  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, km: ask.km, from: today, to: today })}`;
   const discoverHref = `/christmas/discover${q}`;
 
   return (
@@ -151,7 +154,7 @@ export default async function ChristmasPage({
                         href: tonight,
                         icon: Moon,
                         title: "What's happening tonight?",
-                        line: "Only what Atlas dates to today",
+                        line: "Only events dated for today",
                       },
                       {
                         id: "plan",
@@ -189,6 +192,11 @@ export default async function ChristmasPage({
                       className="mt-2 text-white"
                     />
                   </Suspense>
+                  <DistancePicker
+                    ask={ask}
+                    path="/christmas"
+                    className="mt-2"
+                  />
                 </div>
                 <div className={styles.lights} aria-hidden />
               </header>
@@ -206,7 +214,7 @@ export default async function ChristmasPage({
                       <li key={way.id}>
                         <WayCard
                           way={way}
-                          href={wayHref(way.id, ask.at, lightsTown)}
+                          href={wayHref(way.id, ask.at, lightsTown, ask.km)}
                           {...(way.id === "lights"
                             ? { testId: "cta-lights" }
                             : {})}
@@ -258,7 +266,7 @@ export default async function ChristmasPage({
                     </span>
                   </Link>
                   <div className={`${styles.night} rounded-[26px] p-3 sm:p-4`}>
-                    <PlanHero at={ask.at} compact />
+                    <PlanHero at={ask.at} km={ask.km} compact />
                   </div>
                 </section>
 
@@ -270,7 +278,7 @@ export default async function ChristmasPage({
                     Browse everything
                   </h2>
                   <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
-                    Every Christmas thing Atlas knows, with filters, for anybody
+                    Every Christmas thing we know of, with filters, for anybody
                     who&apos;d rather look through the lot.
                   </p>
                   <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -297,11 +305,11 @@ export default async function ChristmasPage({
                         testId: "browse-plan",
                       },
                       {
-                        href: "/saved",
-                        icon: Bookmark,
-                        title: "Saved",
-                        line: "Everything you've kept — Christmas included.",
-                        testId: "browse-saved",
+                        href: "/christmas/list",
+                        icon: Gift,
+                        title: "My Christmas List",
+                        line: "What you've added, saved and planned — only you can see it.",
+                        testId: "my-list-link",
                       },
                     ].map(({ href, icon: Icon, title, line, testId }) => (
                       <li key={testId}>
@@ -326,16 +334,12 @@ export default async function ChristmasPage({
                   </ul>
                 </section>
 
-                <Suspense fallback={null}>
-                  <YourAdventures today={today} session={session} />
-                </Suspense>
-
                 <p className="max-w-3xl text-sm text-[var(--gh-ink-soft)]">
-                  Every event, market and place here is one Atlas holds, with
-                  its dates and how sure they are on its card. Lights pinned by
-                  locals are checked by a person. Ideas say they&apos;re ideas.
-                  Passport never invents a time, a price or that something is
-                  open.
+                  Every event, market and place here comes from the event
+                  listings, with its dates and how sure they are on its card.
+                  Lights pinned by locals are checked by a person. Ideas say
+                  they&apos;re ideas. Passport never invents a time, a price or
+                  that something is open.
                 </p>
               </div>
             </PendingProvider>

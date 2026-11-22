@@ -166,10 +166,19 @@ export const isWayId = (s: string | undefined): s is WayId =>
 export const wayById = (id: WayId): Way => WAYS.find((w) => w.id === id)!;
 
 /** Where a way's card goes. The lights are the map itself, not a page about it. */
-export function wayHref(id: WayId, at?: string, lightsTown = false): string {
-  if (id === "lights")
-    return `/christmas/lights${at && lightsTown ? `?at=${at}` : ""}`;
-  return `/christmas/for/${id}${at ? `?at=${at}` : ""}`;
+export function wayHref(
+  id: WayId,
+  at?: string,
+  lightsTown = false,
+  km?: number,
+): string {
+  const q = new URLSearchParams();
+  if (id !== "lights" || (at && lightsTown)) if (at) q.set("at", at);
+  if (km && km !== DEFAULT_KM) q.set("km", String(km));
+  const query = q.size ? `?${q.toString()}` : "";
+  return id === "lights"
+    ? `/christmas/lights${query}`
+    : `/christmas/for/${id}${query}`;
 }
 
 // ------------------------------------------------------------- questions

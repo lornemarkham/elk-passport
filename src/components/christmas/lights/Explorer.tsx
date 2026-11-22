@@ -14,7 +14,7 @@ import {
 import {
   AREAS,
   areaById,
-  inAreaOf,
+  pinInArea,
   placeLabel,
   type AreaId,
 } from "@/domain/christmas/lights/areas";
@@ -60,9 +60,12 @@ export const directionsTo = (at: { lat: number; lng: number }) =>
 export function Explorer({
   pins,
   initialArea,
+  initialSelected = null,
 }: {
   readonly pins: readonly PinView[];
   readonly initialArea: AreaId | null;
+  /** A pin to open at once ("See my pin"). */
+  readonly initialSelected?: string | null;
 }) {
   const router = useRouter();
   const [area, setAreaState] = useState<AreaId | null>(initialArea);
@@ -79,20 +82,32 @@ export function Explorer({
       }),
     );
   };
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialSelected);
   const stash = useStash();
   const saved = useSaved();
 
   const prior = priorMean(pins);
   const place = area ? areaById(area) : null;
+  // Published displays, and the viewer's own still waiting for a reviewer:
+  // the server only sends the second kind to the person who made it.
   const shown = pins.filter(
-    (p) => p.status === "approved" && (!place || inAreaOf(place, p.at)),
+    (p) =>
+      (p.status === "approved" || (p.status === "pending" && p.yours)) &&
+      (!place || pinInArea(place, p)),
   );
+  const published = shown.filter((p) => p.status === "approved").length;
+  const waiting = shown.length - published;
   const markers: MapMarker[] = shown.map((p) => ({
     id: p.id,
     at: p.at,
     ...markerFor(p, saved, prior),
-    label: `${p.name} — ${placeLabel(p)}`,
+    label:
+      p.status === "pending"
+        ? `Your pin: ${p.name} — waiting for a reviewer, only you can see it`
+        : `${p.name} — ${placeLabel(p)}`,
+    ...(p.status === "pending"
+      ? { emoji: "⏳", pending: true, dim: false }
+      : {}),
     selected: p.id === selected,
   }));
   const pick = shown.find((p) => p.id === selected) ?? null;
@@ -116,9 +131,10 @@ export function Explorer({
           clustered
           controls={false}
           creditTop
+          buttons
           focus={pick?.at ?? null}
-          className="h-[68svh] min-h-[400px] rounded-none sm:h-[78svh] sm:rounded-[28px]"
-          label={`Christmas lights map: ${shown.length} light displays${place ? ` in ${place.label}` : ""}`}
+          className="h-[63svh] min-h-[400px] rounded-none sm:h-[78svh] sm:rounded-[28px]"
+          label={`Christmas lights map: ${published} light displays${waiting ? ` and ${waiting} of yours waiting for review` : ""}${place ? ` in ${place.label}` : ""}`}
         />
 
         <div
@@ -153,6 +169,42 @@ export function Explorer({
             </button>
           ))}
         </div>
+
+        {shown.length === 0 && (
+          <div
+            className="absolute inset-x-4 top-[88px] z-10 mx-auto max-w-sm rounded-2xl bg-white/95 p-4 text-center text-[#082319] shadow-xl"
+            data-testid="map-empty"
+            role="status"
+          >
+            <p className="font-extrabold">
+              No lights on the map {place ? `in ${place.label}` : "here"} yet.
+            </p>
+            <p className="mt-1 text-sm">
+              Families add them and a person checks each one first. Seen some?
+            </p>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {place && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArea(null);
+                    setSelected(null);
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold ring-1 ring-[#0f3b2b]/25"
+                  data-testid="map-empty-everywhere"
+                >
+                  Show everywhere
+                </button>
+              )}
+              <Link
+                href="/christmas/lights/pin"
+                className="inline-flex min-h-11 items-center rounded-full bg-[#b3242f] px-4 text-sm font-extrabold text-white"
+              >
+                Add lights
+              </Link>
+            </div>
+          </div>
+        )}
 
         {pick ? (
           <div
@@ -201,7 +253,16 @@ export function Explorer({
               </span>
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <SeasonBadge pin={pick} />
+              {pick.status === "pending" ? (
+                <span
+                  className="rounded-full bg-[#f7e3e1] px-3 py-1 font-bold text-[#b3242f]"
+                  data-testid="sheet-pending"
+                >
+                  ⏳ Waiting for a reviewer — only you can see this
+                </span>
+              ) : (
+                <SeasonBadge pin={pick} />
+              )}
               {pick.hours && (
                 <span className="text-[#3d4a43] [@media(max-height:700px)]:hidden">
                   🕯️ {pick.hours}
@@ -209,21 +270,23 @@ export function Explorer({
               )}
             </div>
             <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => toggleStash(pick.id)}
-                className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-extrabold ${stash.includes(pick.id) ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a]"}`}
-                data-testid="sheet-add-to-tour"
-                aria-pressed={stash.includes(pick.id)}
-              >
-                {stash.includes(pick.id) ? (
-                  "✓ On my tour"
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" aria-hidden /> Add to Tour
-                  </>
-                )}
-              </button>
+              {pick.status === "approved" && (
+                <button
+                  type="button"
+                  onClick={() => toggleStash(pick.id)}
+                  className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-extrabold ${stash.includes(pick.id) ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a]"}`}
+                  data-testid="sheet-add-to-tour"
+                  aria-pressed={stash.includes(pick.id)}
+                >
+                  {stash.includes(pick.id) ? (
+                    "✓ On my tour"
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" aria-hidden /> Add to Tour
+                    </>
+                  )}
+                </button>
+              )}
               <a
                 href={directionsTo(pick.at)}
                 target="_blank"
@@ -233,23 +296,25 @@ export function Explorer({
               >
                 <Navigation className="h-4 w-4" aria-hidden /> Directions
               </a>
-              <button
-                type="button"
-                onClick={() => toggleSaved(pick.id)}
-                aria-pressed={saved.includes(pick.id)}
-                aria-label={
-                  saved.includes(pick.id)
-                    ? "Saved — tap to unsave"
-                    : "Save this display"
-                }
-                className="inline-flex min-h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ring-[#0f3b2b]/20"
-                data-testid="sheet-save"
-              >
-                <Heart
-                  className={`h-5 w-5 ${saved.includes(pick.id) ? "fill-[#b3242f] text-[#b3242f]" : ""}`}
-                  aria-hidden
-                />
-              </button>
+              {pick.status === "approved" && (
+                <button
+                  type="button"
+                  onClick={() => toggleSaved(pick.id)}
+                  aria-pressed={saved.includes(pick.id)}
+                  aria-label={
+                    saved.includes(pick.id)
+                      ? "Saved — tap to unsave"
+                      : "Save this display"
+                  }
+                  className="inline-flex min-h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ring-[#0f3b2b]/20"
+                  data-testid="sheet-save"
+                >
+                  <Heart
+                    className={`h-5 w-5 ${saved.includes(pick.id) ? "fill-[#b3242f] text-[#b3242f]" : ""}`}
+                    aria-hidden
+                  />
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -282,10 +347,11 @@ export function Explorer({
       >
         🎄 Confirmed · ⭐ Community favourite · ❤️ Saved · ✨ Several nearby —
         dim ones aren&apos;t on tonight.{" "}
-        {shown.length === 0 && (
+        {published === 0 && (
           <span data-testid="empty-town">
-            No published displays {place ? `in ${place.label}` : "here"} yet —
-            seen one? Tap <strong>Add</strong>.
+            No published displays {place ? `in ${place.label}` : "here"} yet
+            {waiting ? " — yours is waiting for a reviewer (⏳)" : ""} — seen
+            one? Tap <strong>Add</strong>.
           </span>
         )}
       </p>

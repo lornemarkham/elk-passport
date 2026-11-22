@@ -69,6 +69,7 @@ export function ItineraryView({
   const href = (next: Edits) => {
     const q = new URLSearchParams({ say });
     if (query.at) q.set("at", query.at);
+    if (query.km) q.set("km", query.km);
     for (const [k, v] of Object.entries(writeEdits(next))) q.set(k, v);
     return `/christmas/itinerary?${q.toString()}`;
   };
@@ -284,6 +285,31 @@ export function ItineraryView({
             </Form>
           </div>
         </section>
+      )}
+
+      {!itinerary.question && (
+        <Form
+          action="/christmas/itinerary"
+          className="mt-4 flex flex-wrap items-center gap-2 rounded-[22px] bg-white p-3 ring-1 ring-black/10"
+          data-testid="itinerary-day"
+        >
+          {Object.entries({ ...query, ...writeEdits(edits) })
+            .filter(([k]) => k !== "day")
+            .map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+          <label htmlFor="plan-day" className="text-sm font-bold">
+            Planned for {itinerary.dayLabel}
+          </label>
+          <input
+            id="plan-day"
+            type="date"
+            name="day"
+            defaultValue={itinerary.day}
+            className="min-h-11 rounded-full border-2 border-black/10 px-3 text-sm"
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
+          />
+        </Form>
       )}
 
       <ol className="mt-5 space-y-1" data-testid="itinerary-stops">

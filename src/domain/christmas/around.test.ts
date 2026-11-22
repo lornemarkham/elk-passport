@@ -38,7 +38,7 @@ function sectionsFor(at: string) {
     const km = distanceTo(f.experience, origin);
     return km === undefined ? f : { ...f, km };
   });
-  return around(answer(measured, ask), TODAY, ask.km, pins);
+  return around(answer(measured, ask), TODAY, pins, ask.km);
 }
 
 describe("Christmas Around You on the real corpus", () => {
@@ -83,11 +83,14 @@ describe("Christmas Around You on the real corpus", () => {
         }
       });
 
-      it("keeps local sections local and the drive further out", () => {
+      it("keeps every section inside the chosen distance", () => {
         for (const s of sections) {
+          expect(s.id).not.toBe("drive");
           for (const f of s.finds) {
-            if (s.id === "drive") expect(f.km).toBeGreaterThan(50);
-            else if (f.km !== undefined) expect(f.km).toBeLessThanOrEqual(50);
+            // Placed by Atlas and inside the radius — an unplaced find is
+            // never called "near you".
+            expect(f.km).toBeDefined();
+            expect(f.km!).toBeLessThanOrEqual(30);
           }
         }
       });

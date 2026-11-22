@@ -38,7 +38,7 @@ test("the front page keeps the sentence box beside the six ways, and real Christ
       name: "Your Christmas Starts Here",
     }),
   ).toBeVisible();
-  await expect(page.getByLabel("What would you love to do?")).toBeVisible();
+  await expect(page.getByLabel("Tell us what you'd love to do")).toBeVisible();
   await expect(page.getByTestId("plan-go")).toHaveText(
     /Make my Christmas plan/,
   );
@@ -68,7 +68,7 @@ test("1 · romantic lights, dinner and a movie — each part is a real place, in
   await expect(stops.nth(2)).toContainText("Movie");
   await expect(stops.nth(0).getByTestId("stop-time")).toHaveText("5:30 PM");
   await expect(stops.nth(2).getByTestId("stop-note")).toContainText(
-    "Showtimes aren't in Atlas",
+    "Showtimes aren't listed",
   );
   await expect(stops.nth(0).getByTestId("stop-directions")).toHaveAttribute(
     "href",
@@ -90,7 +90,7 @@ test("6 · what can't be confirmed is said, with the honest ways on", async ({
   const movie = page.locator(
     '[data-testid="stop-unresolved"][data-need="movie"]',
   );
-  await expect(movie).toContainText("no cinema within 25 km of Vernon");
+  await expect(movie).toContainText("no cinema within 30 km of Vernon");
   await expect(movie.getByTestId("stop-take-nearest")).toContainText(
     "Bernie's",
   );

@@ -33,7 +33,7 @@ import {
  *   (Atlas board, `boards-repo`), resolved exactly as `SaveButton` and
  *   Discovery resolve it. Christmas keeps no list of its own.
  * - **Pick for a plan** is a selection for the next step, like ticking cards
- *   on Saved's _Plan with these_. It lives in this tab only and leaves as
+ *   on Saved's _Plan with these_. It lives on this device only (never sent anywhere until it is made into a plan) and leaves as
  *   `?with=` on the way into the planner.
  */
 
@@ -59,6 +59,7 @@ export function PicksProvider({
   children,
   planHref,
   signedIn = true,
+  tray = true,
 }: {
   readonly children: React.ReactNode;
   /**
@@ -68,8 +69,10 @@ export function PicksProvider({
   readonly signedIn?: boolean;
   /** The planner, with whatever the page already knows (`at`, dates…). */
   readonly planHref: string;
+  /** Show the floating tray (the list page says it itself). */
+  readonly tray?: boolean;
 }) {
-  const [picked, setPicked] = useStoredList(PICKS_KEY, "session");
+  const [picked, setPicked] = useStoredList(PICKS_KEY, "local");
   const [boardId, setBoardId] = useState<string | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState<Set<string>>(new Set());
@@ -171,14 +174,14 @@ export function PicksProvider({
   return (
     <Ctx.Provider value={value}>
       {children}
-      <PickTray planHref={planHref} />
+      {tray && <PickTray planHref={planHref} />}
     </Ctx.Provider>
   );
 }
 
 /**
- * **My Christmas day** — what somebody has gathered so far: Atlas finds
- * (picked on a card, this tab) and light displays (added on the lights map or
+ * **My Christmas List** — what somebody has gathered so far: Atlas finds
+ * (picked on a card, this device) and light displays (added on the lights map or
  * a card, this phone). One tray, one button, one adventure.
  */
 function PickTray({ planHref }: { readonly planHref: string }) {
@@ -201,7 +204,7 @@ function PickTray({ planHref }: { readonly planHref: string }) {
       <div className="mx-auto flex max-w-xl items-center gap-2 rounded-full bg-[#0f3b2b] p-2 pl-5 text-white shadow-2xl">
         <Gift className="h-5 w-5 shrink-0 text-[#ffd98a]" aria-hidden />
         <p className="min-w-0 flex-1 truncate text-base font-semibold">
-          {total} in your Christmas day
+          {total} in My Christmas List
         </p>
         <button
           type="button"

@@ -214,11 +214,6 @@ export function StopCard({
             .filter(Boolean)
             .join(" · ")}
         </p>
-        {place.description && (
-          <p className="mt-2 text-[0.95rem] leading-snug">
-            {place.description}
-          </p>
-        )}
         {stop.displays && (
           <ol className="mt-3 space-y-1.5" data-testid="stop-displays">
             {stop.displays.map((d, i) => (

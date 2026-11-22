@@ -92,7 +92,7 @@ function themed(theme: ThemeId, context: PickContext): ChallengePlace[] {
       id: e.id,
       title: e.title,
       ...(away !== undefined ? { km: away } : {}),
-      because: `Dates from Atlas: ${when.line ?? `${when.from} – ${when.to}`}`,
+      because: `Dates confirmed: ${when.line ?? `${when.from} – ${when.to}`}`,
       order: away ?? RADIUS,
     });
   }
@@ -127,7 +127,7 @@ function treats(context: PickContext, warm: boolean): ChallengePlace[] {
       km: away,
       because: close
         ? `A ${s.replace(/_/g, " ")} — open till ${clockWords(close.minutes)} that day, by its own hours`
-        : `A ${s.replace(/_/g, " ")} — Atlas has no menu or hours for it`,
+        : `A ${s.replace(/_/g, " ")} — no menu or hours listed`,
       // Somewhere with stated hours, and with a picture, first.
       order: away - (close ? 5 : 0) - (e.heroMedia?.src ? 2 : 0),
     });
@@ -159,7 +159,7 @@ function ice(context: PickContext): ChallengePlace[] {
       ...(o.km !== undefined ? { km: o.km } : {}),
       because:
         o.onTheDay ??
-        `Atlas lists “${o.listed[0]}” — public-skate times aren't in Atlas, so check first`,
+        `Listed as “${o.listed[0]}” — public-skate times aren't listed, so check first`,
     }));
 }
 
@@ -196,12 +196,12 @@ export function pickChallenges(
           ? "You asked for Christmas lights."
           : "The season's best free show.";
         if (places.length === 0)
-          gap = `Atlas has no light display dated near ${context.town ?? "here"} for these days — this one works on any lit-up street you pass. Passport won't point at anyone's house.`;
+          gap = `We have no light display dated near ${context.town ?? "here"} for these days — this one works on any lit-up street you pass. Passport won't point at anyone's house.`;
         break;
       case "market":
         places = themed("markets", context);
         score = wants.has("market") ? 6 : places.length > 0 ? 3 : -2;
-        why = "A market on your dates, by Atlas.";
+        why = "A market on your dates, from the listings.";
         break;
       case "santa-question":
         places = themed("santa", context);

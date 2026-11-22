@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PicksProvider } from "@/components/christmas/Picks";
+import { DistancePicker } from "@/components/christmas/DistancePicker";
 import { Refine } from "@/components/christmas/Refine";
 import { AtlasDown } from "@/components/christmas/parts";
 import styles from "@/components/christmas/christmas.module.css";
@@ -26,17 +27,21 @@ import { christmasFinds } from "../_server/corpus";
 export const metadata: Metadata = {
   title: "Find Christmas — Passport",
   description:
-    "Christmas markets, lights, Santa and festive food — from Atlas, with the evidence on every card.",
+    "Christmas markets, lights, Santa and festive food — with dates and where each one is on every card.",
 };
 
 /** Cards a shelf shows before "Show all" — a phone is not a database. */
 const SHELF = 12;
 
+/** Shelves kept closed: no confirmed place, or dates from an earlier year. */
+const FOLDED: ReadonlySet<string> = new Set(["area", "unplaced", "past"]);
+
 const REMOVED: Readonly<Record<string, string>> = {
   interests: "aren't what you picked",
-  dates: "Atlas dates outside your days",
+  dates: "are dated outside your days",
   budget: "aren't stated as free",
   time: "usually take longer than you have",
+  distance: "are further away, or in another part of the province",
 };
 
 /**
@@ -103,8 +108,8 @@ export default async function ChristmasDiscoverPage({
                     data-testid="result-count"
                   >
                     {corpus.outage
-                      ? "Atlas isn't answering just now."
-                      : `${result.total} ${result.total === 1 ? "thing" : "things"} Atlas knows about${result.town ? ` within reach of ${result.town.name.replace(/,\s*BC$/, "")}` : ""}${age !== undefined ? ` · checked for a ${age}-year-old` : ""}.`}
+                      ? "The event listings aren't answering just now."
+                      : `${result.total} ${result.total === 1 ? "thing" : "things"} we know about${result.town ? ` within ${ask.km} km of ${result.town.name.replace(/,\s*BC$/, "")}` : ""}${age !== undefined ? ` · checked for a ${age}-year-old` : ""}.`}
                   </p>
                   <Suspense fallback={null}>
                     <ExperienceLocation
@@ -113,6 +118,11 @@ export default async function ChristmasDiscoverPage({
                       className="mt-2 text-white"
                     />
                   </Suspense>
+                  <DistancePicker
+                    ask={ask}
+                    path="/christmas/discover"
+                    className="mt-1"
+                  />
                 </div>
                 <div className={styles.lights} aria-hidden />
               </header>
@@ -167,16 +177,12 @@ export default async function ChristmasDiscoverPage({
                       className="rounded-[28px] bg-white p-8 text-center ring-1 ring-black/5"
                       data-testid="nothing"
                     >
-                      <p className="text-4xl" aria-hidden>
-                        🦌
-                      </p>
                       <p className="ghad-display mt-2 text-2xl font-extrabold">
                         Nothing fits all of that
                       </p>
                       <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
-                        Atlas doesn&apos;t hold anything that matches every
-                        answer. Try further away, other dates, or fewer
-                        interests.
+                        We don&apos;t have anything that matches every answer.
+                        Try further away, other dates, or fewer interests.
                       </p>
                       <Link
                         href={`/christmas/discover${ask.at ? `?at=${ask.at}` : ""}`}
@@ -187,47 +193,76 @@ export default async function ChristmasDiscoverPage({
                     </div>
                   )}
 
-                  {result.shelves.map((shelf) => (
-                    <section
-                      key={shelf.id}
-                      id={`shelf-${shelf.id}`}
-                      className="scroll-mt-4"
-                      data-testid={`shelf-${shelf.id}`}
-                    >
+                  {result.shelves.map((shelf) => {
+                    // What is not placed, or is from an earlier year, waits
+                    // behind a line — present and honest, never in the way.
+                    const folded = FOLDED.has(shelf.id);
+                    const heading = (
                       <h2 className="ghad-display text-2xl font-extrabold tracking-tight sm:text-3xl">
                         {shelf.title}{" "}
                         <span className="text-[var(--gh-ink-soft)]">
                           {shelf.finds.length}
                         </span>
                       </h2>
-                      {shelf.line && (
-                        <p className="mt-1 max-w-2xl text-base text-[var(--gh-ink-soft)]">
-                          {shelf.line}
-                        </p>
-                      )}
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {shelf.finds
-                          .slice(0, all === shelf.id ? 60 : SHELF)
-                          .map((f) => (
-                            <FindCard
-                              key={f.experience.id}
-                              find={f}
-                              origin={origin}
-                              youngest={age}
-                            />
-                          ))}
-                      </div>
-                      {all !== shelf.id && shelf.finds.length > SHELF && (
-                        <Link
-                          href={`/christmas/discover?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(writeAsk(ask))), all: shelf.id }).toString()}#shelf-${shelf.id}`}
-                          className="mt-4 inline-flex min-h-12 items-center rounded-full border-2 border-black/10 bg-white px-5 font-semibold hover:border-black/30"
-                          data-testid={`more-${shelf.id}`}
-                        >
-                          Show all {shelf.finds.length}
-                        </Link>
-                      )}
-                    </section>
-                  ))}
+                    );
+                    const body = (
+                      <>
+                        {shelf.line && (
+                          <p className="mt-1 max-w-2xl text-base text-[var(--gh-ink-soft)]">
+                            {shelf.line}
+                          </p>
+                        )}
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {shelf.finds
+                            .slice(0, all === shelf.id ? 60 : SHELF)
+                            .map((f) => (
+                              <FindCard
+                                key={f.experience.id}
+                                find={f}
+                                origin={origin}
+                                youngest={age}
+                              />
+                            ))}
+                        </div>
+                        {all !== shelf.id && shelf.finds.length > SHELF && (
+                          <Link
+                            href={`/christmas/discover?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(writeAsk(ask))), all: shelf.id }).toString()}#shelf-${shelf.id}`}
+                            className="mt-4 inline-flex min-h-12 items-center rounded-full border-2 border-black/10 bg-white px-5 font-semibold hover:border-black/30"
+                            data-testid={`more-${shelf.id}`}
+                          >
+                            Show all {shelf.finds.length}
+                          </Link>
+                        )}
+                      </>
+                    );
+                    return folded ? (
+                      <details
+                        key={shelf.id}
+                        id={`shelf-${shelf.id}`}
+                        open={all === shelf.id}
+                        className="scroll-mt-4 rounded-[24px] bg-white/60 p-4 ring-1 ring-black/5"
+                        data-testid={`shelf-${shelf.id}`}
+                      >
+                        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                          {heading}
+                          <span className="shrink-0 text-sm font-semibold underline underline-offset-4">
+                            Show
+                          </span>
+                        </summary>
+                        {body}
+                      </details>
+                    ) : (
+                      <section
+                        key={shelf.id}
+                        id={`shelf-${shelf.id}`}
+                        className="scroll-mt-4"
+                        data-testid={`shelf-${shelf.id}`}
+                      >
+                        {heading}
+                        {body}
+                      </section>
+                    );
+                  })}
                 </div>
               </PendingContent>
             </PendingProvider>

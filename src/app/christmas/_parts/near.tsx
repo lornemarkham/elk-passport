@@ -2,9 +2,6 @@ import Link from "next/link";
 import { FindCard } from "@/components/christmas/FindCard";
 import { PinCard } from "@/components/christmas/lights/PinCard";
 import { AtlasDown } from "@/components/christmas/parts";
-import { MyAdventures } from "@/components/christmas/MyAdventures";
-import { adventureSession } from "@/lib/adventures/server";
-import { adventuresOf } from "@/lib/adventures/store";
 import { townById } from "@/domain/discovery/towns";
 import { answer, type Ask } from "@/domain/christmas/discover";
 import { around } from "@/domain/christmas/around";
@@ -48,13 +45,12 @@ export async function NearYou({
   const sections = around(
     answer(corpus.finds, ask),
     today,
-    ask.km,
     lights.pins,
+    ask.km,
   );
-  const local = sections.filter((s) => s.id !== "drive");
   // `around`'s order, except that a year-long "run" doesn't lead (`longRun`).
   const finds = unique(
-    local.flatMap((s) => s.finds),
+    sections.flatMap((s) => s.finds),
     (f) => f.experience.id,
   )
     .map((f, i) => ({ f, i }))
@@ -62,7 +58,7 @@ export async function NearYou({
     .map(({ f }) => f)
     .slice(0, NEAR_FINDS);
   const pins = unique(
-    local.flatMap((s) => s.pins),
+    sections.flatMap((s) => s.pins),
     (p) => p.id,
   ).slice(0, NEAR_PINS);
   const origin = town
@@ -77,7 +73,10 @@ export async function NearYou({
             Happening near you
           </p>
           <h2 className="ghad-display mt-1 text-3xl leading-[1] font-extrabold tracking-[-0.03em] sm:text-4xl">
-            Christmas around {townName ?? "you"}
+            Christmas around {townName ?? "you"}{" "}
+            <span className="text-base font-semibold text-[var(--gh-ink-soft)]">
+              within {ask.km} km
+            </span>
           </h2>
         </div>
         <Link
@@ -105,7 +104,7 @@ export async function NearYou({
             From the community lights map
             <span className="font-normal">
               {" "}
-              — local listings checked by a person, not from Atlas
+              — local listings, each checked by a person
             </span>
           </p>
           <PinRow pins={pins} />
@@ -116,8 +115,9 @@ export async function NearYou({
           className="rounded-[22px] bg-white p-5 text-base ring-1 ring-black/5"
           data-testid="near-empty"
         >
-          Atlas has nothing dated for Christmas near {townName ?? "here"} yet,
-          and nobody has pinned lights close by. Try another place above, the{" "}
+          We have nothing dated for Christmas within {ask.km} km of{" "}
+          {townName ?? "here"} yet, and nobody has pinned lights close by. Try
+          another place above, the{" "}
           <Link
             href={lightsHref}
             className="font-semibold underline underline-offset-4"
@@ -154,29 +154,4 @@ function unique<T>(list: readonly T[], key: (t: T) => string): T[] {
     seen.add(k);
     return true;
   });
-}
-
-/** A signed-in visitor's own Christmas adventures; nothing for anybody else. */
-export async function YourAdventures({
-  today,
-  session,
-}: {
-  readonly today: string;
-  readonly session: Awaited<ReturnType<typeof adventureSession>> | null;
-}) {
-  if (!session) return null;
-  const mine = await adventuresOf(session.db, session.user.id)
-    .then((all) => all.filter((a) => a.kind === "christmas"))
-    .catch(() => []);
-  if (mine.length === 0) return null;
-  return (
-    <section data-testid="your-adventures">
-      <h2 className="ghad-display text-2xl font-extrabold">
-        Your Christmas adventures
-      </h2>
-      <div className="mt-3">
-        <MyAdventures adventures={mine} today={today} />
-      </div>
-    </section>
-  );
 }

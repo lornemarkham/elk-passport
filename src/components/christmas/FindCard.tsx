@@ -20,7 +20,12 @@ import { ageBecause, ageLine } from "@/domain/discovery/suitability";
 import type { Find } from "@/domain/christmas/discover";
 import { tidyWhere } from "@/domain/christmas/tidy";
 import { evidenceLine, themeById } from "@/domain/christmas/themes";
-import { CONFIDENCE_LABEL, type Confidence } from "@/domain/christmas/when";
+import {
+  CONFIDENCE_LABEL,
+  PHASE_LABEL,
+  type Confidence,
+  type WhenReading,
+} from "@/domain/christmas/when";
 import { cn } from "@/lib/utils";
 import { usePicks } from "./Picks";
 
@@ -30,6 +35,16 @@ const CONFIDENCE_STYLE: Readonly<Record<Confidence, string>> = {
   unconfirmed: "bg-white text-[#4a443b] ring-1 ring-black/10",
   past: "bg-[#ebe1cd] text-[#4a443b]",
 };
+
+/**
+ * What the badge says. A confirmed date says whether it is on now or still to
+ * come; every other reading says how unsure it is — never "confirmed".
+ */
+function badge(when: WhenReading): string {
+  return when.confidence === "dated" && when.phase
+    ? `${PHASE_LABEL[when.phase]} · dates confirmed`
+    : CONFIDENCE_LABEL[when.confidence];
+}
 
 /**
  * **A Christmas find, as a family would want to see it** — the picture
@@ -79,7 +94,7 @@ export function FindCard({
             )}
             data-testid="find-confidence"
           >
-            {CONFIDENCE_LABEL[find.when.confidence]}
+            {badge(find.when)}
           </span>
           {theme ? (
             <>
@@ -116,7 +131,7 @@ export function FindCard({
             <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>
               {[where, far].filter(Boolean).join(" · ") ||
-                "Atlas hasn't said where"}
+                "Location not confirmed"}
             </span>
           </li>
           {!compact && find.price && (
@@ -180,7 +195,7 @@ export function FindCard({
             ) : (
               <Plus className="h-4 w-4" aria-hidden />
             )}
-            {isPicked ? "In my Christmas day" : "Add to my Christmas day"}
+            {isPicked ? "In My Christmas List" : "Add to My Christmas List"}
           </button>
         </div>
       </div>

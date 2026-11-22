@@ -126,7 +126,7 @@ describe("1 · romantic night of lights, dinner and a movie", () => {
     const movie = p.stops[2]!;
     expect(isA(movie.place!.ref, "movies")).toBe(true);
     expect(movie.timeIs).toBe("about");
-    expect(movie.notes.join(" ")).toMatch(/Showtimes aren't in Atlas/);
+    expect(movie.notes.join(" ")).toMatch(/Showtimes aren't listed/);
     expect(p.title).toBe("Our romantic Christmas evening");
     expect(p.who).toBe("The two of you");
     expect(p.km).toBeGreaterThan(0);

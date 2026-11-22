@@ -83,7 +83,7 @@ test("a sentence becomes a plan, kept as said — no account, no form", async ({
 }) => {
   await page.goto("/christmas");
   await page
-    .getByRole("textbox", { name: "What would you love to do?" })
+    .getByRole("textbox", { name: "Tell us what you'd love to do" })
     .fill("We have Saturday afternoon, two kids and $100");
   await page.getByTestId("plan-go").click();
   await expect(page).toHaveURL(/\/christmas\/itinerary\?.*say=/);
@@ -217,9 +217,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   expect(await page.getByTestId("pin-card").count()).toBeLessThanOrEqual(3);
   expect(await page.getByTestId("find-card").count()).toBeLessThanOrEqual(4);
   await expect(
-    page
-      .getByText(/local listings checked by a person, not from Atlas/)
-      .first(),
+    page.getByText(/local listings, each checked by a person/).first(),
   ).toBeVisible();
   if (WITH_ATLAS) {
     await expect(page.getByTestId("atlas-down")).toHaveCount(0);
@@ -251,7 +249,7 @@ test("an event and a light display go into one Christmas day", async ({
 }) => {
   await page.goto("/christmas");
   const pin = page.getByTestId("near-pins").getByTestId("add-to-tour").first();
-  await expect(pin).toHaveText(/Add to my Christmas day/);
+  await expect(pin).toHaveText(/Add to My Christmas List/);
   await pin.click();
   let expected = 1;
   if (WITH_ATLAS) {
@@ -263,7 +261,7 @@ test("an event and a light display go into one Christmas day", async ({
     expected = 2;
   }
   await expect(page.getByTestId("pick-tray")).toContainText(
-    `${expected} in your Christmas day`,
+    `${expected} in My Christmas List`,
   );
   await page.getByTestId("plan-picks").click();
   await expect(page).toHaveURL(/\/christmas\/plan\?.*lights=(seed|pin)-/);
@@ -466,4 +464,127 @@ test("when every picture fails, no broken image or empty frame is left", async (
           .first(),
       ).toBeVisible();
   }
+});
+
+/**
+ * **QA repair, 2026-11-21** — the launch findings that can be checked from a
+ * browser: Christmas's own navigation with a way back, the distance choice,
+ * no Snow / Fire buttons (the snow itself stays), plain public words, and a
+ * private list that holds nothing for a visitor.
+ */
+test.describe("launch QA repair", () => {
+  test("Christmas has its own bar, and one intentional way back", async ({
+    page,
+  }) => {
+    await page.goto("/christmas");
+    const nav = page.getByTestId("christmas-nav");
+    for (const name of [
+      "Discover",
+      "Lights Map",
+      "My Christmas List",
+      "Plan My Route",
+    ])
+      await expect(nav.getByRole("link", { name })).toBeVisible();
+    await expect(page.getByTestId("xmas-nav-back")).toHaveAttribute(
+      "href",
+      "/discovery",
+    );
+    await page.getByTestId("xmas-nav-list").click();
+    await expect(page).toHaveURL(/\/christmas\/list/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "My Christmas List" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("list-signed-out")).toBeVisible();
+    await page.getByTestId("xmas-nav-plan").click();
+    await expect(page).toHaveURL(/\/christmas\/plan/);
+    // The planning text box is the first thing on the page, signed in or not.
+    await expect(page.getByTestId("plan-input")).toBeVisible();
+  });
+
+  test("no Snow / Fire buttons, and no Atlas in what the public reads", async ({
+    page,
+  }) => {
+    for (const path of ["/christmas", "/christmas/discover"]) {
+      await page.goto(path);
+      await expect(page.getByTestId("snow-toggle")).toHaveCount(0);
+      await expect(page.getByTestId("sound-toggle")).toHaveCount(0);
+      await expect(page.getByText(/snow on|light the fire/i)).toHaveCount(0);
+      expect(await page.locator("main").innerText(), path).not.toMatch(
+        /\bAtlas\b/,
+      );
+    }
+  });
+
+  test("the distance is 15 / 30 / 60 / 100 km, thirty by default, and it changes the answer", async ({
+    page,
+  }) => {
+    await page.goto("/christmas/discover?at=vernon");
+    const picker = page.getByTestId("distance-picker");
+    await expect(picker.getByRole("link")).toHaveText([
+      "15 km",
+      "30 km",
+      "60 km",
+      "100 km",
+    ]);
+    await expect(page.getByTestId("km-30")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    await expect(page.getByTestId("result-count")).toContainText(
+      "within 30 km",
+    );
+    await page.getByTestId("km-100").click();
+    await expect(page).toHaveURL(/km=100/);
+    await expect(page.getByTestId("result-count")).toContainText(
+      "within 100 km",
+    );
+    // Nothing is offered as "near" from further than was asked.
+    if (WITH_ATLAS) {
+      for (const card of await page
+        .getByTestId("shelf-near")
+        .getByTestId("find-card")
+        .all()) {
+        const text = await card.innerText();
+        const m = text.match(/([\d.]+) km away/);
+        if (m) expect(Number(m[1])).toBeLessThanOrEqual(100);
+      }
+    }
+    // The choice rides to the front page and the plan.
+    await page.goto("/christmas?at=vernon&km=15");
+    await expect(page.getByTestId("km-15")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    await expect(page.getByTestId("near-you")).toContainText("within 15 km");
+  });
+
+  test("the add button says My Christmas List, and the list has its own door", async ({
+    page,
+  }) => {
+    await page.goto("/christmas");
+    await expect(page.getByTestId("show-everything")).toHaveCount(0);
+    await expect(page.getByTestId("my-list-link")).toHaveAttribute(
+      "href",
+      "/christmas/list",
+    );
+    if (WITH_ATLAS) {
+      await expect(
+        page.getByTestId("find-card").first().getByTestId("pick-find"),
+      ).toContainText("Add to My Christmas List");
+    }
+  });
+
+  test("no past event is promoted as upcoming", async ({ page }) => {
+    test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
+    await page.goto("/christmas/discover?at=vernon&km=100");
+    // Anything on a live shelf says it is on now or upcoming, dated or not —
+    // never a past reading; past things sit apart, under their own heading.
+    const live = page.locator(
+      '[data-testid^="shelf-"]:not([data-testid="shelf-past"])',
+    );
+    await expect(live.getByText("Earlier dates")).toHaveCount(0);
+    await expect(
+      page.getByTestId("shelf-past").getByText("Dates confirmed"),
+    ).toHaveCount(0);
+  });
 });

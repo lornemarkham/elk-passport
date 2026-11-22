@@ -14,14 +14,17 @@ import { QUICK_STARTS } from "@/domain/christmas/request";
 export function PlanHero({
   at,
   compact = false,
+  km,
 }: {
   readonly at?: string;
+  readonly km?: number;
   /** The front page's: the box alone, without the quick starts the six ways replace. */
   readonly compact?: boolean;
 }) {
   const withAt = (say: string) => {
     const q = new URLSearchParams({ say });
     if (at) q.set("at", at);
+    if (km) q.set("km", String(km));
     return `/christmas/itinerary?${q.toString()}`;
   };
   return (
@@ -33,11 +36,12 @@ export function PlanHero({
         className="rounded-[28px] bg-[#fffaf2] p-3 text-[#082319] shadow-[0_18px_50px_rgba(0,0,0,0.35)] sm:p-4"
       >
         {at && <input type="hidden" name="at" value={at} />}
+        {km && <input type="hidden" name="km" value={km} />}
         <label
           htmlFor="plan-input"
           className="block px-2 pt-1 text-sm font-extrabold tracking-[0.08em] text-[#b3242f] uppercase"
         >
-          What would you love to do?
+          Tell us what you&apos;d love to do
         </label>
         <input
           id="plan-input"
@@ -45,8 +49,8 @@ export function PlanHero({
           required
           maxLength={240}
           autoComplete="off"
-          placeholder="Romantic night of lights, dinner and a movie."
-          className="mt-1 min-h-12 w-full rounded-2xl bg-transparent px-2 text-lg font-semibold placeholder:text-[#082319]/40 focus:outline-none sm:text-2xl"
+          placeholder="Type it here — e.g. lights, dinner and a movie on Saturday"
+          className="mt-1 min-h-14 w-full rounded-2xl border-2 border-[#082319]/20 bg-white px-4 text-lg font-semibold placeholder:text-[#082319]/50 focus:border-[#b3242f] focus:outline-none sm:text-xl"
           data-testid="plan-input"
           enterKeyHint="go"
         />

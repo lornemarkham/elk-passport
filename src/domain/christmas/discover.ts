@@ -47,8 +47,8 @@ export interface Ask {
   readonly hours?: number;
 }
 
-export const DISTANCES = [10, 25, 50, 100, 250] as const;
-export const DEFAULT_KM = 50;
+export const DISTANCES = [15, 30, 60, 100] as const;
+export const DEFAULT_KM = 30;
 export const HOURS = [1, 2, 4, 8] as const;
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -286,40 +286,47 @@ export function answer(finds: readonly Find[], ask: Ask): Answer {
 
   const shelves: Shelf[] = [];
   if (town) {
+    // **The radius is a rule, not a hint.** What Atlas places inside it is
+    // the answer. What Atlas places outside it is set aside and counted.
+    // What Atlas has not placed at all is never called "near": it waits on its
+    // own shelf only where it names the town's own area, and anything Atlas
+    // places in some other area is set aside too.
     const near = kept.filter((f) => f.km !== undefined && f.km <= ask.km);
-    const far = kept.filter((f) => f.km !== undefined && f.km > ask.km);
     const unplaced = kept.filter((f) => f.km === undefined);
     const sameArea = unplaced.filter(
       (f) => f.experience.geography?.area?.name === town.area,
     );
-    const nowhere = unplaced.filter(
-      (f) => f.experience.geography?.area?.name !== town.area,
-    );
+    const elsewhere = unplaced.filter((f) => {
+      const area = f.experience.geography?.area?.name;
+      return area !== undefined && area !== town.area;
+    });
+    removed.distance =
+      (removed.distance ?? 0) +
+      kept.filter((f) => f.km !== undefined && f.km > ask.km).length +
+      elsewhere.length;
     shelves.push({
       id: "near",
       title: `Within ${ask.km} km of ${town.name.replace(/,\s*BC$/, "")}`,
-      line: "Straight-line distance from the town centre, from where Atlas places each one.",
+      line: "Straight-line distance from the town centre.",
       finds: near.sort(rank),
     });
     if (sameArea.length)
       shelves.push({
         id: "area",
-        title: `Elsewhere in ${town.area}`,
-        line: "Atlas puts these in your area but hasn't placed them exactly.",
+        title: `Location not confirmed — in ${town.area}`,
+        line: "The listing names your area but not an exact spot, so we can't say how far it is. Check the address before you go.",
         finds: sameArea.sort(rank),
       });
+    // Placed nowhere at all: not near, not far, not claimed.
+    const nowhere = unplaced.filter(
+      (f) => f.experience.geography?.area?.name === undefined,
+    );
     if (nowhere.length)
       shelves.push({
         id: "unplaced",
-        title: "Atlas hasn't said where",
-        line: "Real, and maybe close — Passport won't guess. The card says what Atlas knows.",
+        title: "Location not confirmed",
+        line: "The listing doesn't say where this is, so we can't tell if it's near you. Check before you go.",
         finds: nowhere.sort(rank),
-      });
-    if (far.length)
-      shelves.push({
-        id: "far",
-        title: `Further than ${ask.km} km`,
-        finds: far.sort(rank),
       });
   } else {
     const byArea = new Map<string, Find[]>();
@@ -332,7 +339,7 @@ export function answer(finds: readonly Find[], ask: Ask): Answer {
     ))
       shelves.push({
         id: area ? `area-${area}` : "unplaced",
-        title: area || "Atlas hasn't said where",
+        title: area || "Location not confirmed",
         ...(area
           ? {}
           : {
@@ -345,21 +352,25 @@ export function answer(finds: readonly Find[], ask: Ask): Answer {
     shelves.push({
       id: "age",
       title: `Not for a ${age}-year-old`,
-      line: "A rule Atlas holds from the organiser — not a guess.",
+      line: "A rule from the organiser — not a guess.",
       finds: notForAge.sort(rank),
     });
   if (past.length)
     shelves.push({
       id: "past",
-      title: "Not listed for this year yet",
-      line: "Atlas's latest dates have gone. Save one and keep an eye out.",
+      title: "Earlier dates — not confirmed for this year",
+      line: "These ran in other years or have finished. They are not on this year's calendar until an organiser says so.",
       finds: past.sort(rank),
     });
 
+  const shown = shelves.filter((s) => s.finds.length > 0);
   return {
     ...(town ? { town } : {}),
-    shelves: shelves.filter((s) => s.finds.length > 0),
-    total: kept.length,
+    shelves: shown,
+    // What the page offers — not what was read: set-aside finds are not in it.
+    total: shown
+      .filter((s) => s.id !== "age" && s.id !== "past")
+      .reduce((n, s) => n + s.finds.length, 0),
     removed,
   };
 }
