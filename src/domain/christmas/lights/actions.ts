@@ -15,6 +15,7 @@ import {
   type Kind,
   type LightsDoc,
   type Pin,
+  type ProposedChange,
   type RatingTagId,
   type ReactionId,
   type ReportId,
@@ -303,11 +304,12 @@ export function remove(
         "Only the person who pinned it, or a reviewer, can remove it.",
         403,
       );
-    const { photo, address, description, hours, ...rest } = p;
+    const { photo, address, description, hours, proposal, ...rest } = p;
     void photo;
     void address;
     void description;
     void hours;
+    void proposal;
     return {
       ...rest,
       name: "Removed listing",
@@ -371,6 +373,15 @@ export function hide(
  * where it was: published if it had been, otherwise back in the queue — a
  * hidden submission is never published by being restored.
  */
+/**
+ * **Has the public ever seen this display?** Once approved, it stays a
+ * published display in the eyes of the rules below — hidden or not — so an
+ * unreviewed edit can never reach the public by way of a later restore.
+ */
+export function wasPublished(pin: Pick<Pin, "trail">): boolean {
+  return pin.trail.some((e) => e.kind === "approved");
+}
+
 export function restore(
   doc: LightsDoc,
   id: string,
@@ -382,10 +393,10 @@ export function restore(
   return edit(doc, id, (p) => {
     if (p.status !== "hidden")
       throw new Refused("Only a hidden pin can be restored.", 409);
-    const wasPublished = p.trail.some((e) => e.kind === "approved");
+    const published = wasPublished(p);
     return {
       ...p,
-      status: wasPublished ? "approved" : "pending",
+      status: published ? "approved" : "pending",
       trail: [
         ...p.trail,
         {
@@ -622,7 +633,7 @@ export function rate(
 /** The optional details someone can add after pinning. Said by people, never inferred. */
 export interface Details {
   readonly kind?: Kind;
-  readonly features?: FeatureId[];
+  readonly features?: readonly FeatureId[];
   readonly hours?: string;
   readonly description?: string;
   readonly name?: string;
@@ -632,8 +643,13 @@ export function parseDetails(body: Record<string, unknown>): Details {
   const said: unknown[] | null = Array.isArray(body.features)
     ? body.features
     : null;
-  const hours = clean(body.hours, 80);
-  const description = clean(body.description, 500);
+  // A field sent empty means "clear it"; a field not sent is left alone.
+  const hours =
+    typeof body.hours === "string" ? (clean(body.hours, 80) ?? "") : undefined;
+  const description =
+    typeof body.description === "string"
+      ? (clean(body.description, 500) ?? "")
+      : undefined;
   const name = clean(body.name, 80);
   if (name !== undefined && name.length < 3)
     throw new Refused("Give the display a name — three letters at least.");
@@ -649,10 +665,88 @@ export function parseDetails(body: Record<string, unknown>): Details {
   };
 }
 
+/** The public words of a display: what the public sees, and what a change would make them. */
+interface Wanted {
+  readonly name: string;
+  readonly description: string;
+  readonly hours: string;
+  readonly features: readonly FeatureId[];
+}
+
+const sortedFeatures = (f: readonly FeatureId[]) => [...f].sort();
+
+/** The words a submitter has now: what they sent, else what they already had waiting, else what is shown. */
+function wantedWords(shown: Pin, d: Details, waiting?: ProposedChange): Wanted {
+  return {
+    name: d.name ?? waiting?.name ?? shown.name,
+    description:
+      d.description ?? waiting?.description ?? shown.description ?? "",
+    hours: d.hours ?? waiting?.hours ?? shown.hours ?? "",
+    features: d.features ?? waiting?.features ?? shown.features,
+  };
+}
+
+/** Only the fields that differ from what is shown, so a change back to the published words cancels itself. */
+function differing(
+  shown: Pin,
+  want: Wanted,
+  at: string,
+): ProposedChange | undefined {
+  const diff: {
+    name?: string;
+    description?: string;
+    hours?: string;
+    features?: readonly FeatureId[];
+  } = {};
+  if (want.name !== shown.name) diff.name = want.name;
+  if (want.description !== (shown.description ?? ""))
+    diff.description = want.description;
+  if (want.hours !== (shown.hours ?? "")) diff.hours = want.hours;
+  if (
+    JSON.stringify(sortedFeatures(want.features)) !==
+    JSON.stringify(sortedFeatures(shown.features))
+  )
+    diff.features = want.features;
+  return Object.keys(diff).length ? { at, ...diff } : undefined;
+}
+
+/** What is still waiting once a reviewer has changed the shown words underneath it. */
+function stillWaiting(
+  c: ProposedChange | undefined,
+  shown: Pin,
+): ProposedChange | undefined {
+  if (!c) return undefined;
+  return differing(shown, wantedWords(shown, {}, c), c.at);
+}
+
+/** Writes words onto a pin. An empty hours or description clears it. */
+function withWords(p: Pin, d: Details): Pin {
+  return {
+    ...p,
+    ...(d.name !== undefined ? { name: d.name } : {}),
+    ...(d.description !== undefined
+      ? { description: d.description || undefined }
+      : {}),
+    ...(d.hours !== undefined ? { hours: d.hours || undefined } : {}),
+    ...(d.features ? { features: d.features } : {}),
+  };
+}
+
+const fieldsOf = (c: object) =>
+  Object.keys(c)
+    .filter((k) => k !== "at")
+    .join(", ");
+
 /**
- * **Add the details after pinning** — music, hours, walk-through,
+ * **Add the details after pinning** — name, music, hours, walk-through,
  * family-friendly, what's special. Its submitter or a reviewer. Location and
  * permission are not details: they can't be changed here.
+ *
+ * **A display the public has seen never changes on the submitter's word.**
+ * Their words are kept beside it as a proposal (`proposal`) until a reviewer
+ * approves or declines it; the public map keeps the last approved words. A
+ * reviewer's own edit applies at once. A pending submission is not public, so
+ * its details apply at once too.
  */
 export function addDetails(
   doc: LightsDoc,
@@ -668,15 +762,32 @@ export function addDetails(
       throw new Refused("Only the person who pinned it can add details.", 403);
     if (p.status === "removed" || p.status === "declined")
       throw new Refused("That pin isn't on the map.", 409);
+    if (!isReviewer && wasPublished(p)) {
+      const waiting = differing(p, wantedWords(p, d, p.proposal), at);
+      return {
+        ...p,
+        proposal: waiting,
+        trail: [
+          ...p.trail,
+          {
+            at,
+            by,
+            kind: waiting ? ("proposed" as const) : ("details" as const),
+            text: waiting
+              ? `waiting for review: ${fieldsOf(waiting)}`
+              : "same as what the public sees",
+          },
+        ],
+        updatedAt: at,
+      };
+    }
+    const next = withWords(p, d);
     return {
-      ...p,
-      ...(d.features ? { features: d.features } : {}),
-      ...(d.hours !== undefined ? { hours: d.hours } : {}),
-      ...(d.description !== undefined ? { description: d.description } : {}),
-      ...(d.name !== undefined ? { name: d.name } : {}),
+      ...next,
       ...(d.kind && isReviewer
         ? { kind: d.kind, residential: d.kind === "home" }
         : {}),
+      proposal: stillWaiting(p.proposal, next),
       trail: [
         ...p.trail,
         {
@@ -684,6 +795,72 @@ export function addDetails(
           by,
           kind: "details" as const,
           text: `edited: ${Object.keys(d).join(", ")}`,
+        },
+      ],
+      updatedAt: at,
+    };
+  });
+}
+
+/**
+ * **The administrator agrees to a submitter's change** to a published display.
+ * The words it asked for go on the public map now, and the trail says which.
+ */
+export function approveChange(
+  doc: LightsDoc,
+  id: string,
+  reviewer: string,
+  now: Date,
+) {
+  const at = now.toISOString();
+  return edit(doc, id, (p) => {
+    const c = p.proposal;
+    if (!c)
+      throw new Refused("Nothing is waiting for review on that display.", 409);
+    if (p.status === "removed" || p.status === "declined")
+      throw new Refused("That pin isn't on the map.", 409);
+    return {
+      ...withWords(p, c),
+      proposal: undefined,
+      trail: [
+        ...p.trail,
+        {
+          at,
+          by: reviewer,
+          kind: "change-approved" as const,
+          text: `published: ${fieldsOf(c)}`,
+        },
+      ],
+      updatedAt: at,
+    };
+  });
+}
+
+/**
+ * **The administrator turns a submitter's change down.** The public words are
+ * unchanged; the proposal is dropped and the reason kept in the audit record.
+ */
+export function declineChange(
+  doc: LightsDoc,
+  id: string,
+  reviewer: string,
+  now: Date,
+  why?: string,
+) {
+  const at = now.toISOString();
+  return edit(doc, id, (p) => {
+    if (!p.proposal)
+      throw new Refused("Nothing is waiting for review on that display.", 409);
+    return {
+      ...p,
+      proposal: undefined,
+      trail: [
+        ...p.trail,
+        {
+          at,
+          by: reviewer,
+          kind: "change-declined" as const,
+          ...(why ? { text: why.slice(0, 300) } : {}),
         },
       ],
       updatedAt: at,

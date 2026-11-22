@@ -77,6 +77,15 @@ export async function POST(request: Request) {
     let result;
     try {
       result = await changeLights((doc) => {
+        // A retry or double tap from a weak signal in the field: the same
+        // person's still-waiting pin, same name, within 40 m, is this one.
+        const again = nearDuplicates(doc, s.at).find(
+          (p) =>
+            p.status === "pending" &&
+            p.submittedBy === key &&
+            p.name.trim().toLowerCase() === s.name.trim().toLowerCase(),
+        );
+        if (again) return { doc, result: { pin: again, twins: [] } };
         const twins = nearDuplicates(doc, s.at).filter(
           (p) => p.status === "approved",
         );
@@ -92,6 +101,14 @@ export async function POST(request: Request) {
     } catch (error) {
       await putPhoto(id, null).catch(() => undefined);
       throw error;
+    }
+    if (result.pin.id !== id) {
+      // The retry of a submission already waiting: nothing new was stored.
+      await putPhoto(id, null).catch(() => undefined);
+      return json(
+        { pin: null, received: { name: result.pin.name }, alsoHere: [] },
+        201,
+      );
     }
     await measure("lights_pin_submitted", {
       town: result.pin.town,

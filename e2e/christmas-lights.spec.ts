@@ -71,13 +71,16 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
   await expect(page.getByTestId("legend")).toContainText("Community favourite");
   await expect(page.getByTestId("cta-tour")).toHaveText(/Build My Lights Tour/);
   await expect(page.getByTestId("pin-the-magic")).toBeVisible();
-  // Vernon has few published displays yet (Spirit Square, Coldstream's tree); say so honestly.
-  expect(await page.getByTestId("pin-card").count()).toBeGreaterThanOrEqual(1);
-  // Markets and shows moved off the map, into their own list.
-  await expect(page.getByTestId("other-christmas")).toContainText("Market");
-  await expect(page.getByTestId("light-up-vernon")).toContainText(
-    "Help us light up Vernon!",
+  // The page is the map and a short row of actions: the long lists live in Discover.
+  await expect(page.getByTestId("lights-actions")).toBeVisible();
+  await expect(page.getByTestId("to-discover")).toHaveAttribute(
+    "href",
+    "/christmas/discover",
   );
+  await expect(page.getByTestId("admin-link")).toHaveCount(0);
+  await expect(page.getByTestId("pin-card")).toHaveCount(0);
+  await expect(page.getByTestId("other-christmas")).toHaveCount(0);
+  await expect(page.getByTestId("light-up-vernon")).toHaveCount(0);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
@@ -85,10 +88,6 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
   // Kelowna only; tap a light and its compact card opens over the map.
   await page.getByTestId("town-kelowna").click();
   await expect(page).toHaveURL(/at=kelowna/);
-  const cards = page.getByTestId("pin-card");
-  await expect(cards.first()).toContainText(/kelowna/i);
-  for (const text of await cards.allInnerTexts())
-    expect(text).toMatch(/kelowna/i);
   await page.waitForTimeout(400);
   const marker = page.getByTestId("map-marker").first();
   if ((await marker.count()) === 0)

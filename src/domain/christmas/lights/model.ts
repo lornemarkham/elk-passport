@@ -211,6 +211,9 @@ export interface Event {
     | "details"
     | "report"
     | "removal-request"
+    | "proposed"
+    | "change-approved"
+    | "change-declined"
     | CheckId;
   readonly text?: string;
   readonly season?: number;
@@ -220,6 +223,21 @@ export interface Reaction {
   readonly by: string;
   readonly id: ReactionId;
   readonly at: string;
+}
+
+/**
+ * **A submitter's change to a published display, waiting for a reviewer.** It
+ * sits beside the pin and never on it: the public keeps seeing the last
+ * approved words until the administrator approves. Only the fields that
+ * differ from what is published are present; an empty hours or description
+ * means "clear it".
+ */
+export interface ProposedChange {
+  readonly at: string;
+  readonly name?: string;
+  readonly description?: string;
+  readonly hours?: string;
+  readonly features?: readonly FeatureId[];
 }
 
 export interface Pin {
@@ -268,6 +286,8 @@ export interface Pin {
   readonly reactions: readonly Reaction[];
   /** Absent on pins written before ratings existed. */
   readonly ratings?: readonly Rating[];
+  /** A submitter's edit to a published display, waiting for a reviewer. */
+  readonly proposal?: ProposedChange;
   readonly trail: readonly Event[];
   readonly updatedAt: string;
 }
@@ -424,6 +444,10 @@ export interface PinView {
   readonly yours: boolean;
   /** Yours, and you said they're your own lights: the yearly question is yours to answer. */
   readonly ownLights?: boolean;
+  /** Yours or a reviewer's: your edit waiting for review. The public never sees it. */
+  readonly proposed?: ProposedChange;
+  /** Yours or a reviewer's: the Pacific day it was pinned, to tell same-named displays apart. */
+  readonly pinnedOn?: string;
   readonly residential: boolean;
   /** Reviewers only. */
   readonly review?: {
@@ -471,6 +495,7 @@ export function viewOf(pin: Pin, viewer: Viewer, now: Date): PinView {
   const tagCounts = new Map<RatingTagId, number>();
   for (const r of ratings)
     for (const t of r.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+  const yours = viewer.key !== null && pin.submittedBy === viewer.key;
   return {
     id: pin.id,
     kind: pin.kind,
@@ -509,11 +534,13 @@ export function viewOf(pin: Pin, viewer: Viewer, now: Date): PinView {
     tags: [...tagCounts]
       .map(([id, n]) => ({ id, n }))
       .sort((a, b) => b.n - a.n),
-    yours: viewer.key !== null && pin.submittedBy === viewer.key,
-    ...(viewer.key !== null &&
-    pin.submittedBy === viewer.key &&
-    pin.consentClaim === "i-live-here"
-      ? { ownLights: true }
+    yours,
+    ...(yours && pin.consentClaim === "i-live-here" ? { ownLights: true } : {}),
+    ...(pin.proposal && (yours || viewer.reviewer)
+      ? { proposed: pin.proposal }
+      : {}),
+    ...(yours || viewer.reviewer
+      ? { pinnedOn: localDay(new Date(pin.submittedAt)) }
       : {}),
     residential: pin.residential,
     ...(viewer.reviewer

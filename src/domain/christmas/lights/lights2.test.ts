@@ -258,21 +258,28 @@ describe("Three-step submission waits for the administrator", () => {
 
 describe("Details after pinning, never required", () => {
   it("lets the pinner (or a reviewer) add music, hours and the rest — nobody else", () => {
-    const doc = published();
+    // A pending display is not public yet, so its details apply at once.
+    const { doc } = submit(
+      EMPTY,
+      sub({ kind: "public-display", residential: false, name: "Pending one" }),
+      ALICE,
+      "pin-q",
+      NOW,
+    );
     const d = parseDetails({
       features: ["music", "walk-through", "family", "made-up"],
       hours: "Dusk to 10 pm",
       description: "Synced to 99.3 FM",
     });
-    const next = addDetails(doc, "pin-p", ALICE, false, d, NOW);
-    const v = viewOf(next, "pin-p");
+    const next = addDetails(doc, "pin-q", ALICE, false, d, NOW);
+    const v = visible(next, { key: ALICE, reviewer: false }, NOW)[0]!;
     expect(v.features).toEqual(["music", "walk-through", "family"]);
     expect(v.hours).toBe("Dusk to 10 pm");
-    expect(() => addDetails(doc, "pin-p", "v_b", false, d, NOW)).toThrow(
+    expect(() => addDetails(doc, "pin-q", "v_b", false, d, NOW)).toThrow(
       /Only/,
     );
     expect(() =>
-      addDetails(doc, "pin-p", REVIEWER, true, d, NOW),
+      addDetails(doc, "pin-q", REVIEWER, true, d, NOW),
     ).not.toThrow();
   });
 });

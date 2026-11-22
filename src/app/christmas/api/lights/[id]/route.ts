@@ -17,7 +17,9 @@ import {
 import {
   addDetails,
   approve,
+  approveChange,
   check,
+  declineChange,
   hide,
   parseContact,
   requestRemoval,
@@ -51,7 +53,9 @@ const str = (v: unknown, max = 300) =>
  *
  * - `react` (signed in): toggle one of the five reactions
  * - `rate` (signed in): "How magical was it?" — 1–5 stars and optional tags, one per season
- * - `details` (its submitter or a reviewer): music, hours, walk-through… after pinning
+ * - `details` (its submitter or a reviewer): music, hours, walk-through… after pinning.
+ *   On a published display the submitter's words wait for review (`approve-change`)
+ * - `approve-change` · `decline-change` (reviewers): a waiting change to a published display
  * - `check` (signed in): Lights are on! · Not decorated · Incorrect location · Display updated
  * - `report` (anyone): Something wrong? — a privacy report hides a listing at once
  * - `request-removal` (anyone, no account): "Is this your home? Request removal" —
@@ -74,6 +78,8 @@ export async function POST(
   const reviewing =
     action === "approve" ||
     action === "decline" ||
+    action === "approve-change" ||
+    action === "decline-change" ||
     action === "restore" ||
     action === "hide";
   // Reviewers work through a queue; their actions share the generous bucket.
@@ -172,6 +178,18 @@ export async function POST(
             doc: decline(doc, id, reviewerName, now, str(b.why)),
             result: null,
           };
+        case "approve-change":
+          if (!v.reviewer) throw new Refused("Reviewers only.", 403);
+          return {
+            doc: approveChange(doc, id, reviewerName, now),
+            result: null,
+          };
+        case "decline-change":
+          if (!v.reviewer) throw new Refused("Reviewers only.", 403);
+          return {
+            doc: declineChange(doc, id, reviewerName, now, str(b.why)),
+            result: null,
+          };
         case "restore":
           if (!v.reviewer) throw new Refused("Reviewers only.", 403);
           return {
@@ -196,6 +214,8 @@ export async function POST(
     if (
       action === "approve" ||
       action === "decline" ||
+      action === "approve-change" ||
+      action === "decline-change" ||
       action === "report" ||
       action === "request-removal" ||
       action === "hide" ||
