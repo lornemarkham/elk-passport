@@ -3,14 +3,51 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  FEATURES,
   KIND_LABEL,
   KINDS,
   TOWN_LABEL,
   photoSrc,
+  type FeatureId,
   type Kind,
   type PinView,
 } from "@/domain/christmas/lights/model";
 import { send } from "./api";
+
+/**
+ * What a submitter asked to change on a published display, each line beside
+ * what the public sees now. Only the fields they touched are listed.
+ */
+function changesOf(pin: PinView) {
+  const c = pin.proposed;
+  if (!c) return [];
+  const labels = (ids: readonly FeatureId[]) =>
+    ids
+      .map((id) => FEATURES.find((f) => f.id === id)?.label ?? id)
+      .join(", ") || "none";
+  const lines: { label: string; now: string; proposed: string }[] = [];
+  if (c.name !== undefined)
+    lines.push({ label: "Name", now: pin.name, proposed: c.name });
+  if (c.description !== undefined)
+    lines.push({
+      label: "Special features",
+      now: pin.description || "none",
+      proposed: c.description || "cleared",
+    });
+  if (c.hours !== undefined)
+    lines.push({
+      label: "Hours",
+      now: pin.hours || "none",
+      proposed: c.hours || "cleared",
+    });
+  if (c.features)
+    lines.push({
+      label: "Features",
+      now: labels(pin.features),
+      proposed: labels(c.features),
+    });
+  return lines;
+}
 
 /** Why a submission is turned down — said to the audit record, never to the submitter. */
 const REJECT = [
@@ -154,6 +191,46 @@ export function ReviewItem({ pin }: { readonly pin: PinView }) {
           </p>
         )}
       </div>
+
+      {pin.proposed && (
+        <div
+          className="mx-4 mb-4 space-y-2 rounded-2xl bg-[#fbf6ec] p-3 text-sm"
+          data-testid="review-change"
+        >
+          <p className="font-extrabold">
+            Change waiting for review — the public map still shows the words
+            above
+          </p>
+          <ul className="space-y-1">
+            {changesOf(pin).map((line) => (
+              <li key={line.label}>
+                <strong>{line.label}:</strong> {line.now} →{" "}
+                <span className="font-bold">{line.proposed}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void act("approve-change")}
+              className={`${btn} bg-[#0f3b2b] text-white`}
+              data-testid="review-approve-change"
+            >
+              Approve change
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void act("decline-change", { why: note })}
+              className={btn}
+              data-testid="review-decline-change"
+            >
+              Decline change
+            </button>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <form

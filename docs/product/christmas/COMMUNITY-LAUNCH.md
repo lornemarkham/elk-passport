@@ -128,6 +128,52 @@ production). **No new migration, no new table, no new dependency.**
   flood → 429). Screenshots: `screenshots/community-0*.png`.
 - `e2e/christmas-lights.spec.ts` updated to the new flow.
 
+## Field test: "Your lights" (2026-11-22)
+
+The owner tested the live _Your lights_ section (the family's own displays on
+the map page) and asked for eight fixes. Kept as they were: a submitter sees
+their own pending displays; an administrator reviews pending displays; nobody
+else sees them; a submitter can edit their own details.
+
+**The rule this adds:** a display the public has seen never changes on the
+submitter's word. Once a display has been published (or hidden after being
+published, so a restore can't publish unreviewed words), a submitter's edit
+to its name, special features, hours or features is kept **beside** it as a
+proposal. The public keeps the last approved words. The submitter sees their
+change and "Your changes are waiting for a reviewer". The administrator sees
+each change beside the current words (`review-change`) and approves or
+declines it. Approving publishes exactly what was asked; declining keeps the
+public words and records the reason. A pending display is not public, so its
+details still apply at once. An administrator's own edit applies at once and
+retires any waiting words it now matches.
+
+- **Materiality:** the owner asked for review of _material_ changes; the
+  doctrine does not define material. The build treats **every change to what
+  the public sees** as material, so nothing is a minor unreviewed edit. This
+  is a choice to confirm with the owner.
+- **Position:** no edit path moves a pin. The submitter's edit carries no
+  location, and approving a change never alters the place (tested). A wrong
+  location is still a reviewer's job (the "Incorrect location" report, or
+  delete and resubmit). A submitter's own location correction is not built.
+- **Clearing:** an emptied hours or special-features field now clears the
+  published value (once approved). Before this change an empty field was
+  silently ignored, so it could not be cleared.
+- **Name:** the details form now has a Name field, so a display pinned without
+  one can be named, and a mistake corrected.
+
+On the page, the button reads **Edit details** when information already exists
+(**+ Add details (optional)** otherwise). Saving collapses the form and shows
+**Changes saved** briefly; when the change waits for a reviewer the message
+says so. **Your lights** says each display's kind, town, address and the day
+it was pinned, so same-named displays can be told apart.
+
+Verified: `src/domain/christmas/lights/proposals.test.ts` (the rules above, and
+that pending submissions are private from another account) and the full
+vitest, tsc, eslint and prettier gates. The browser spec
+`e2e/christmas-your-lights.spec.ts` is written but **not yet run**: the
+Next.js security check stops `next build` and `next dev` on this machine
+(see the lane report).
+
 ## What is not built, said plainly
 
 - **No automatic photo screening** for faces, plates or private activity.

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Share2 } from "lucide-react";
 import {
   FEATURES,
+  KIND_LABEL,
+  TOWN_LABEL,
   type FeatureId,
   type PinView,
 } from "@/domain/christmas/lights/model";
@@ -120,7 +122,14 @@ export function StillOn({ pin }: { readonly pin: PinView }) {
   );
 }
 
-/** Music, hours, walk-through, family-friendly, what's special — after pinning, never required. */
+/** How long "Changes saved" stays on screen. */
+const SAVED_FOR_MS = 4000;
+
+/**
+ * Music, hours, walk-through, family-friendly, what's special, and the name —
+ * after pinning, never required. On a published display the words wait for a
+ * reviewer (the public map keeps the last checked ones), and the form says so.
+ */
 export function AddDetails({
   pin,
   open: startOpen = false,
@@ -130,33 +139,73 @@ export function AddDetails({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(startOpen);
+  const [name, setName] = useState(pin.name);
   const [features, setFeatures] = useState<FeatureId[]>([...pin.features]);
   const [hours, setHours] = useState(pin.hours ?? "");
   const [special, setSpecial] = useState(pin.description ?? "");
   const [say, setSay] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const hasInfo = Boolean(
+    pin.hours || pin.description || pin.features.length > 0 || pin.proposed,
+  );
+
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(null), SAVED_FOR_MS);
+    return () => clearTimeout(t);
+  }, [saved]);
+
+  /** Open on what the server holds now, including any change still waiting. */
+  function openForm() {
+    setName(pin.proposed?.name ?? pin.name);
+    setFeatures([...(pin.proposed?.features ?? pin.features)]);
+    setHours(pin.proposed?.hours ?? pin.hours ?? "");
+    setSpecial(pin.proposed?.description ?? pin.description ?? "");
+    setSay(null);
+    setSaved(null);
+    setOpen(true);
+  }
+
   if (!open)
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="min-h-11 rounded-full px-4 text-sm font-bold ring-1 ring-[#e3a83b]"
-        data-testid="details-open"
-      >
-        + Add details (optional)
-      </button>
+      <span className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={openForm}
+          className="min-h-11 rounded-full px-4 text-sm font-bold ring-1 ring-[#e3a83b]"
+          data-testid="details-open"
+        >
+          {hasInfo ? "Edit details" : "+ Add details (optional)"}
+        </button>
+        {saved && (
+          <span
+            className="text-sm font-bold"
+            role="status"
+            data-testid="details-saved"
+          >
+            {saved}
+          </span>
+        )}
+      </span>
     );
   async function save() {
     setBusy(true);
     const r = await send(`/christmas/api/lights/${pin.id}`, {
       action: "details",
+      name,
       features,
       hours,
       description: special,
     });
     setBusy(false);
     if (r.ok) {
-      setSay("Saved — thank you!");
+      setOpen(false);
+      setSaved(
+        r.pin?.proposed
+          ? "Changes saved — a reviewer checks them before the public map changes."
+          : "Changes saved.",
+      );
       router.refresh();
     } else setSay(r.error ?? "That didn't save — try again.");
   }
@@ -169,7 +218,26 @@ export function AddDetails({
         void save();
       }}
     >
-      <p className="font-extrabold">A few details (all optional)</p>
+      <p className="font-extrabold">
+        {hasInfo ? "Edit details" : "A few details (all optional)"}
+      </p>
+      {pin.status === "approved" && (
+        <p className="text-sm" data-testid="details-public-note">
+          The public map shows the last checked details. Changes wait for a
+          reviewer before they appear there.
+        </p>
+      )}
+      <label className="block">
+        <span className="text-sm font-bold">Name</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={80}
+          placeholder="Name it so families can tell it from the rest"
+          className="mt-1 w-full rounded-xl border border-[#0f3b2b]/20 p-3 text-base"
+          data-testid="details-name"
+        />
+      </label>
       <div className="flex flex-wrap gap-2">
         {FEATURES.map((f) => {
           const on = features.includes(f.id);
@@ -213,14 +281,23 @@ export function AddDetails({
           className="mt-1 w-full rounded-xl border border-[#0f3b2b]/20 p-3 text-base"
         />
       </label>
-      <button
-        type="submit"
-        disabled={busy}
-        className="min-h-11 rounded-full bg-[#b3242f] px-5 font-extrabold text-white"
-        data-testid="details-save"
-      >
-        {busy ? "Saving…" : "Save details"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="min-h-11 rounded-full bg-[#b3242f] px-5 font-extrabold text-white"
+          data-testid="details-save"
+        >
+          {busy ? "Saving…" : "Save changes"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="min-h-11 rounded-full px-4 text-sm font-bold ring-1 ring-[#082319]/30"
+        >
+          Cancel
+        </button>
+      </div>
       {say && (
         <p className="text-sm font-bold" role="status">
           {say}
@@ -230,7 +307,18 @@ export function AddDetails({
   );
 }
 
-/** The signed-in person's own pins: where each stands, and the one-tap jobs. */
+/** "Pinned 22 Nov 2026" — the day in Pacific time, read from `YYYY-MM-DD`. */
+const pinnedLabel = (day: string) =>
+  new Date(`${day}T12:00:00Z`).toLocaleDateString("en-CA", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  });
+
+/**
+ * The signed-in person's own pins: where each stands, and the one-tap jobs.
+ * Each line says what kind, which town, the address and when it was pinned, so
+ * two displays with the same name can be told apart.
+ */
 export function MyLights({ pins }: { readonly pins: readonly PinView[] }) {
   if (pins.length === 0) return null;
   return (
@@ -257,6 +345,20 @@ export function MyLights({ pins }: { readonly pins: readonly PinView[] }) {
               </Link>
               <SeasonBadge pin={p} />
             </div>
+            <p className="text-sm text-white/80" data-testid="my-pin-where">
+              {KIND_LABEL[p.kind]} · {TOWN_LABEL[p.town]}
+              {p.address ? ` · ${p.address}` : ""}
+              {p.pinnedOn ? ` · pinned ${pinnedLabel(p.pinnedOn)}` : ""}
+            </p>
+            {p.proposed && (
+              <p
+                className="text-sm font-bold text-[#ffd98a]"
+                data-testid="my-pin-waiting"
+              >
+                Your changes are waiting for a reviewer. The map still shows the
+                last checked details.
+              </p>
+            )}
             <StillOn pin={p} />
             <div className="flex flex-wrap items-center gap-2">
               <ShareDisplay pin={p} />
