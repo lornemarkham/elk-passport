@@ -1,5 +1,9 @@
 # Pin the Magic — the Christmas lights map
 
+> **Superseded in part, 2026-11-22:** rules 1–2 below (a home needs its owner's
+> consent; sign-in to submit) were replaced by the owner's community-launch
+> decision. See [COMMUNITY-LAUNCH.md](COMMUNITY-LAUNCH.md).
+
 **Owner brief:** "GO HAVE A DAY — PIN THE MAGIC!" (P0, ship before Christmas,
 2026-11-10). **Lane:** christmas. **Product authority:** the
 [doctrine](../../PASSPORT-PRODUCT-DOCTRINE.md); this page records what was

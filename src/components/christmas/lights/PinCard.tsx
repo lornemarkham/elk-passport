@@ -21,7 +21,7 @@ export function SeasonBadge({ pin }: { readonly pin: PinView }) {
         : "bg-white/85 text-[#5b4a2e] ring-1 ring-[#e3a83b]";
   const text =
     pin.status === "pending"
-      ? "Waiting for a reviewer — only you can see it"
+      ? "Pending review — not on the public map yet"
       : pin.status === "hidden"
         ? "Hidden after a privacy report"
         : pin.status === "declined"

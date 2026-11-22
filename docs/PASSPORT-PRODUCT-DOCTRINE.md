@@ -943,6 +943,20 @@ only (a find placed outside the radius is set aside and counted; one with no
 place waits, labelled, and is never called near) — still the owner's call.
 One composition; it answers no open question below.
 
+_The lights map opened to the community 2026-11-22_ (owner brief "P0 —
+Christmas Lights Map: community launch", OWNER DECISION — FINAL;
+`docs/product/christmas/COMMUNITY-LAUNCH.md`): anyone may submit a display
+with a photo and a place, with no account; every submission waits for the
+administrator; nothing is public before approval; no homeowner submission,
+door-to-door permission or ownership verification is required. A household
+can request removal on any listing without an account, and the listing is
+hidden at once. **This supersedes the 2026-11-10 paragraph above** (a private
+home shown only with its owner's okay); the owner decided it, so it is
+recorded here rather than left as a conflict. Photos showing identifiable
+people, licence plates or private activity are rejected by the administrator;
+there is no automatic image check. One composition; it answers no open
+question below.
+
 _Christmas discovery became WHERE | WHEN | HOW FAR 2026-11-22_ (owner brief
 "P0 — Christmas discovery UX repair", owner approval granted;
 `docs/product/christmas/DISCOVERY-UX-REPAIR.md`): Discover is three controls

@@ -10,7 +10,6 @@ import {
   TOWN_LABEL,
   inArea,
   seasonOf,
-  type Authorisation,
   type CheckId,
   type FeatureId,
   type Kind,
@@ -55,8 +54,6 @@ export interface Submission {
   readonly hours?: string;
   readonly features: FeatureId[];
   readonly residential: boolean;
-  readonly consentClaim?: Pin["consentClaim"];
-  readonly consentUrl?: string;
 }
 
 /** Nearest of the five towns, for a pin dropped without one. */
@@ -95,13 +92,10 @@ export function parseSubmission(body: Record<string, unknown>): Submission {
   const said: unknown[] = Array.isArray(body.features) ? body.features : [];
   const features = FEATURES.map((f) => f.id).filter((f) => said.includes(f));
   const residential = kind === "home" || body.residential === true;
-  const consentClaim = (
-    ["i-live-here", "owner-said-yes", "public-listing"] as const
-  ).find((c) => c === body.consentClaim);
-  const consentUrl = clean(body.consentUrl, 300);
-  if (consentUrl && !/^https:\/\/[^\s]+$/i.test(consentUrl))
-    throw new Refused("A public listing link starts with https://.");
   const description = clean(body.description, 500);
+  // Links are how spam arrives; a display needs words, not a web address.
+  if ([named, description].some((t) => t && /https?:\/\/|www\./i.test(t)))
+    throw new Refused("Leave web links out — just describe the display.");
   const address = clean(body.address, 120);
   const hours = clean(body.hours, 80);
   return {
@@ -114,8 +108,6 @@ export function parseSubmission(body: Record<string, unknown>): Submission {
     ...(description ? { description } : {}),
     ...(address ? { address } : {}),
     ...(hours ? { hours } : {}),
-    ...(consentClaim ? { consentClaim } : {}),
-    ...(consentUrl ? { consentUrl } : {}),
   };
 }
 
@@ -150,6 +142,23 @@ export function nearDuplicates(
   );
 }
 
+/**
+ * **A removed property stays removed.** Where a listing was permanently
+ * removed (a homeowner's request, or a reviewer), a new submission within
+ * 60 m is refused — the tombstone keeps only the place, never the photo,
+ * address, words or anyone's contact.
+ */
+export const REMOVED_RADIUS_M = 60;
+export function removedNear(doc: LightsDoc, at: { lat: number; lng: number }) {
+  return doc.pins.some(
+    (p) => p.status === "removed" && metres(p.at, at) < REMOVED_RADIUS_M,
+  );
+}
+
+/** Most waiting pins the queue will hold before asking people to come back (a flood stopper). */
+export const MAX_WAITING = 150;
+const MAX_PINS_ANONYMOUS_PER_DAY = 5;
+
 export function submit(
   doc: LightsDoc,
   s: Submission,
@@ -162,9 +171,22 @@ export function submit(
   const mineToday = doc.pins.filter(
     (p) => p.submittedBy === by && p.submittedAt.slice(0, 10) === today,
   ).length;
-  if (mineToday >= MAX_PINS_PER_PERSON_PER_DAY)
+  const cap = by.startsWith("anon_")
+    ? MAX_PINS_ANONYMOUS_PER_DAY
+    : MAX_PINS_PER_PERSON_PER_DAY;
+  if (mineToday >= cap)
     throw new Refused(
       "That's a lot of magic for one day — try again tomorrow.",
+      429,
+    );
+  if (removedNear(doc, s.at))
+    throw new Refused(
+      "That property was taken off the map at its household's request, so it can't be added again.",
+      409,
+    );
+  if (doc.pins.filter((p) => p.status === "pending").length >= MAX_WAITING)
+    throw new Refused(
+      "We have a lot waiting for review right now — please try again in a day or two.",
       429,
     );
   const at = now.toISOString();
@@ -198,44 +220,34 @@ export function find(doc: LightsDoc, id: string): Pin {
 }
 
 /**
- * **A reviewer publishes a pin.** A home needs the owner's consent or a
- * public listing recorded, here, by the reviewer — the submitter's claim is
- * what they weigh, not the permission itself. Approving confirms it lit for
- * this season.
+ * **The administrator publishes a pin.** Nothing is public before this.
+ * Approving confirms it lit for this season. (Homes need no owner consent
+ * any more — the owner's decision of 2026-11-22; a homeowner's objection
+ * hides the listing at once instead: `requestRemoval`.)
  */
 export function approve(
   doc: LightsDoc,
   id: string,
   reviewer: string,
   now: Date,
-  authorisation?: { basis: Authorisation["basis"]; url?: string },
 ): LightsDoc {
   const at = now.toISOString();
   const season = seasonOf(now);
   return edit(doc, id, (p) => {
     if (p.status === "removed") throw new Refused("That pin was removed.", 409);
-    let auth = p.authorisation;
-    if (p.residential && !auth) {
-      if (!authorisation)
-        throw new Refused(
-          "A home needs the owner's consent or a public listing before it can be shown.",
-        );
-      if (
-        authorisation.basis === "public-listing" &&
-        !authorisation.url?.startsWith("https://")
-      )
-        throw new Refused("Give the public listing's https:// link.");
-      auth = {
-        basis: authorisation.basis,
-        ...(authorisation.url ? { url: authorisation.url } : {}),
-        by: reviewer,
-        at,
-      };
-    }
+    if (p.status === "hidden")
+      throw new Refused(
+        "That listing is hidden — restore it after reviewing the request.",
+        409,
+      );
+    if (removedNear(doc, p.at))
+      throw new Refused(
+        "A property removed at its household's request is here.",
+        409,
+      );
     return {
       ...p,
       status: "approved",
-      ...(auth ? { authorisation: auth } : {}),
       confirmed: p.confirmed.includes(season)
         ? p.confirmed
         : [...p.confirmed, season],
@@ -269,13 +281,20 @@ export function decline(
   }));
 }
 
-/** Removed for good — by its submitter, or a reviewer. The photo goes too (the server deletes it). */
+/**
+ * **Delete for good** — by its submitter, or the administrator. The photo,
+ * address, name, description and any requester's contact are erased; the
+ * place, the audit trail and the fact of removal stay, so the same property
+ * is not submitted again (`removedNear`) and every decision can be answered
+ * for. The server deletes the photo document.
+ */
 export function remove(
   doc: LightsDoc,
   id: string,
   by: string,
   isReviewer: boolean,
   now: Date,
+  why?: string,
 ) {
   const at = now.toISOString();
   return edit(doc, id, (p) => {
@@ -284,33 +303,158 @@ export function remove(
         "Only the person who pinned it, or a reviewer, can remove it.",
         403,
       );
-    const { photo, address, ...rest } = p;
+    const { photo, address, description, hours, ...rest } = p;
     void photo;
     void address;
+    void description;
+    void hours;
     return {
       ...rest,
+      name: "Removed listing",
+      features: [],
+      reactions: [],
+      ratings: [],
       status: "removed",
-      trail: [...p.trail, { at, by, kind: "removed" }],
+      trail: [
+        ...p.trail.map((e) => {
+          const { contact, ...kept } = e;
+          void contact;
+          return kept;
+        }),
+        {
+          at,
+          by,
+          kind: "removed",
+          ...(why ? { text: why.slice(0, 300) } : {}),
+        },
+      ],
       updatedAt: at,
     };
   });
 }
 
-/** A reviewer puts a hidden pin back (after checking a takedown was not the owner's). */
+/**
+ * **The administrator takes a published display off the map** without
+ * deleting it (it can be restored). Audit-logged.
+ */
+export function hide(
+  doc: LightsDoc,
+  id: string,
+  reviewer: string,
+  now: Date,
+  why?: string,
+) {
+  const at = now.toISOString();
+  return edit(doc, id, (p) => {
+    if (p.status !== "approved")
+      throw new Refused("Only a published display can be hidden.", 409);
+    return {
+      ...p,
+      status: "hidden",
+      trail: [
+        ...p.trail,
+        {
+          at,
+          by: reviewer,
+          kind: "hidden",
+          ...(why ? { text: why.slice(0, 300) } : {}),
+        },
+      ],
+      updatedAt: at,
+    };
+  });
+}
+
+/**
+ * **Put a hidden listing back** after the request or report was looked at
+ * and resolved (a dispute settled in the listing's favour). It returns to
+ * where it was: published if it had been, otherwise back in the queue — a
+ * hidden submission is never published by being restored.
+ */
 export function restore(
   doc: LightsDoc,
   id: string,
   reviewer: string,
   now: Date,
+  why?: string,
 ) {
   const at = now.toISOString();
   return edit(doc, id, (p) => {
     if (p.status !== "hidden")
       throw new Refused("Only a hidden pin can be restored.", 409);
+    const wasPublished = p.trail.some((e) => e.kind === "approved");
     return {
       ...p,
-      status: "approved",
-      trail: [...p.trail, { at, by: reviewer, kind: "restored" }],
+      status: wasPublished ? "approved" : "pending",
+      trail: [
+        ...p.trail,
+        {
+          at,
+          by: reviewer,
+          kind: "restored",
+          ...(why ? { text: why.slice(0, 300) } : {}),
+        },
+      ],
+      updatedAt: at,
+    };
+  });
+}
+
+const MAX_REMOVAL_REQUESTS_PER_PERSON = 2;
+
+/** A contact is optional and private to the administrator; it must look like an email or phone number. */
+export function parseContact(v: unknown): string | undefined {
+  const t = clean(v, 120);
+  if (!t) return undefined;
+  if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) &&
+    !/^[+()\d][\d\s().+-]{6,}$/.test(t)
+  )
+    throw new Refused(
+      "That contact doesn't look like an email or phone number.",
+    );
+  return t;
+}
+
+/**
+ * **"Is this your home? Request removal."** Anyone, no account, no identity
+ * check. A credible objection hides the listing from everybody **at once**;
+ * the administrator is told, and later resolves it (`restore` or `remove`).
+ * Wrongly hiding a display costs families a stop for a day; wrongly leaving
+ * a home up costs its household their peace.
+ */
+export function requestRemoval(
+  doc: LightsDoc,
+  id: string,
+  by: string,
+  text: string | undefined,
+  contact: string | undefined,
+  now: Date,
+) {
+  const at = now.toISOString();
+  return edit(doc, id, (p) => {
+    if (p.status === "removed")
+      throw new Refused("That listing has already been removed.", 409);
+    if (
+      p.trail.filter((e) => e.kind === "removal-request" && e.by === by)
+        .length >= MAX_REMOVAL_REQUESTS_PER_PERSON
+    )
+      throw new Refused("Thanks — we already have your request.", 429);
+    const hide = p.status === "approved" || p.status === "pending";
+    return {
+      ...p,
+      ...(hide ? { status: "hidden" as const } : {}),
+      trail: [
+        ...p.trail,
+        {
+          at,
+          by,
+          kind: "removal-request",
+          ...(text ? { text: text.slice(0, 500) } : {}),
+          ...(contact ? { contact } : {}),
+        },
+        ...(hide ? [{ at, by, kind: "hidden" as const }] : []),
+      ],
       updatedAt: at,
     };
   });
@@ -336,8 +480,7 @@ export function report(
   return edit(doc, id, (p) => {
     if (p.trail.filter((e) => e.kind === "report" && e.by === by).length >= 3)
       throw new Refused("Thanks — we already have your report.", 429);
-    const hide =
-      reason === "privacy" && p.residential && p.status === "approved";
+    const hide = reason === "privacy" && p.status === "approved";
     const note = `${reason}${text ? `: ${text.slice(0, 300)}` : ""}`;
     return {
       ...p,
@@ -478,6 +621,7 @@ export function rate(
 
 /** The optional details someone can add after pinning. Said by people, never inferred. */
 export interface Details {
+  readonly kind?: Kind;
   readonly features?: FeatureId[];
   readonly hours?: string;
   readonly description?: string;
@@ -493,7 +637,9 @@ export function parseDetails(body: Record<string, unknown>): Details {
   const name = clean(body.name, 80);
   if (name !== undefined && name.length < 3)
     throw new Refused("Give the display a name — three letters at least.");
+  const kind = KINDS.find((k) => k === body.kind);
   return {
+    ...(kind ? { kind } : {}),
     ...(said
       ? { features: FEATURES.map((f) => f.id).filter((f) => said.includes(f)) }
       : {}),
@@ -528,7 +674,18 @@ export function addDetails(
       ...(d.hours !== undefined ? { hours: d.hours } : {}),
       ...(d.description !== undefined ? { description: d.description } : {}),
       ...(d.name !== undefined ? { name: d.name } : {}),
-      trail: [...p.trail, { at, by, kind: "details" as const }],
+      ...(d.kind && isReviewer
+        ? { kind: d.kind, residential: d.kind === "home" }
+        : {}),
+      trail: [
+        ...p.trail,
+        {
+          at,
+          by,
+          kind: "details" as const,
+          text: `edited: ${Object.keys(d).join(", ")}`,
+        },
+      ],
       updatedAt: at,
     };
   });

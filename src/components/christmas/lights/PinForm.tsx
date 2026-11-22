@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Camera,
@@ -19,10 +19,9 @@ import {
 } from "@/domain/christmas/lights/model";
 import { shrinkPhoto } from "../photo";
 import { LightsMap } from "./LightsMap";
-import { AddDetails, ShareDisplay } from "./MyLights";
 import { send } from "./api";
 
-type Whose = "mine" | "spotted";
+type What = "home" | "public-display";
 
 interface Found {
   readonly label: string;
@@ -30,16 +29,26 @@ interface Found {
   readonly lng: number;
 }
 
+/** One random token per phone, so a household behind one connection isn't one person. */
+function deviceToken(): string {
+  try {
+    let d = localStorage.getItem("xmas-lights-device");
+    if (!d) {
+      d = crypto.randomUUID().replace(/-/g, "");
+      localStorage.setItem("xmas-lights-device", d);
+    }
+    return d;
+  } catch {
+    return "";
+  }
+}
+
 /**
- * **Add to Christmas Map** (Lights Map 2.0) — three steps where Pin the
- * Magic had six: where it is, a photo, and whose lights they are. Hours,
- * music and the rest can be added afterwards, never required.
- *
- * The privacy rule doesn't get shorter with the form. _These are my lights_
- * is the homeowner offering their own display; _I spotted someone else's_
- * is a private suggestion — nobody else sees it, not even roughly where,
- * until the homeowner's okay is recorded. Either way a reviewer looks before
- * anything is public (rules 1–2 in `model.ts`).
+ * **Add to Christmas Map** — community launch (2026-11-22). Anyone may add a
+ * display: no account, three steps — where it is, a photo (from the street,
+ * no people, no plates), and what it is. Nobody is asked whose home it is or
+ * for anyone's permission: every submission waits for the administrator, and
+ * a household can have its listing taken down at once (`requestRemoval`).
  */
 export function PinForm({ town }: { readonly town: TownId | null }) {
   const [at, setAt] = useState<LatLng | null>(null);
@@ -51,16 +60,21 @@ export function PinForm({ town }: { readonly town: TownId | null }) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoSay, setPhotoSay] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [whose, setWhose] = useState<Whose | null>(null);
-  const [publicPlace, setPublicPlace] = useState(false);
+  const [what, setWhat] = useState<What | null>(null);
+  const [about, setAbout] = useState("");
+  const [photoOk, setPhotoOk] = useState(false);
+  const [trap, setTrap] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const opened = useRef(0);
+  useEffect(() => {
+    opened.current = Date.now();
+  }, []);
   const [done, setDone] = useState<{
-    pin: PinView;
+    name: string;
+    pin: PinView | null;
     alsoHere: { id: string; name: string }[];
   } | null>(null);
-
-  const residential = !(whose === "spotted" && publicPlace);
 
   function place(here: LatLng, say?: string) {
     if (!inArea(here)) {
@@ -137,25 +151,41 @@ export function PinForm({ town }: { readonly town: TownId | null }) {
       setError("Step 1 first: put the pin where the lights are.");
       return;
     }
-    if (!whose) {
-      setError("Step 3: say whose lights they are.");
+    if (!photo) {
+      setError("Step 2: add a photo of the display from the street.");
+      return;
+    }
+    if (!what) {
+      setError("Step 3: say what kind of display it is.");
+      return;
+    }
+    if (!photoOk) {
+      setError(
+        "Please tick the box to confirm the photo has no people, licence plates or private activity.",
+      );
       return;
     }
     setBusy(true);
     const r = await send("/christmas/api/lights/submit", {
-      kind: residential ? "home" : "public-display",
+      kind: what,
       name,
+      description: about,
       lat: at.lat,
       lng: at.lng,
-      residential,
+      residential: what === "home",
       features: [],
-      ...(whose === "mine" ? { consentClaim: "i-live-here" } : {}),
-      ...(photo ? { photo } : {}),
+      photo,
+      photoOk,
+      website: trap,
+      device: deviceToken(),
+      openedFor: Date.now() - opened.current,
     });
     setBusy(false);
-    if (r.ok && r.pin)
+    if (r.ok)
       setDone({
-        pin: r.pin,
+        name:
+          (r.received as { name?: string } | undefined)?.name ?? "Your display",
+        pin: r.pin ?? null,
         alsoHere: (r.alsoHere as { id: string; name: string }[]) ?? [],
       });
     else setError(r.error ?? "That didn't send — try again.");
@@ -170,48 +200,53 @@ export function PinForm({ town }: { readonly town: TownId | null }) {
       >
         <PartyPopper className="mx-auto h-12 w-12 text-[#b3242f]" aria-hidden />
         <h2 className="ghad-display text-3xl font-extrabold">
-          {whose === "mine" ? "Your lights are in!" : "Thanks for the tip!"}
+          Thanks — it&apos;s in!
         </h2>
         <p className="text-lg">
-          <strong>{done.pin.name}</strong> is with a reviewer now.{" "}
-          {whose === "spotted" && residential
-            ? "Because it's someone else's home, it's a private suggestion: nobody else sees it — not even roughly where — unless the homeowner says yes to sharing it."
-            : whose === "mine"
-              ? "Once a person has checked it, families will find it on the map. Nobody sees where it is before then."
-              : "Once they've checked it, families will find it on the map."}
+          <strong>{done.name}</strong> is now waiting for review. We check every
+          display before it appears on the public map, so you won&apos;t see it
+          there yet — and nobody else can until it&apos;s approved.
         </p>
         <p
           className="inline-flex rounded-full bg-[#f7e3e1] px-4 py-2 text-sm font-bold text-[#b3242f]"
           data-testid="pin-status"
         >
-          Status: waiting for a reviewer
+          Status: pending review — not public yet
+        </p>
+        <p className="text-sm text-[#3d4a43]">
+          Your name isn&apos;t shown anywhere. See{" "}
+          <Link
+            className="font-bold underline"
+            href="/christmas/lights/privacy"
+          >
+            how submissions and removal work
+          </Link>
+          .
         </p>
         {done.alsoHere.length > 0 && (
           <p className="text-sm">
-            There&apos;s already a pin right here:{" "}
-            {done.alsoHere.map((a) => a.name).join(", ")}. The reviewer will
-            join them up if they&apos;re the same.
+            There&apos;s already a display right here:{" "}
+            {done.alsoHere.map((a) => a.name).join(", ")}. We&apos;ll join them
+            up if they&apos;re the same.
           </p>
         )}
-        <div className="text-left">
-          <AddDetails pin={done.pin} />
-        </div>
         <div className="flex flex-wrap justify-center gap-3">
+          {done.pin && (
+            <Link
+              href={`/christmas/lights?pin=${done.pin.id}`}
+              className="inline-flex min-h-12 items-center rounded-full bg-[#ffd98a] px-6 font-extrabold"
+              data-testid="see-my-pin"
+            >
+              See my submission
+            </Link>
+          )}
           <Link
-            href={`/christmas/lights?pin=${done.pin.id}`}
-            className="inline-flex min-h-12 items-center rounded-full bg-[#ffd98a] px-6 font-extrabold"
-            data-testid="see-my-pin"
-          >
-            See my pin on the map
-          </Link>
-          <Link
-            href={`/christmas/lights/${done.pin.id}`}
+            href="/christmas/lights"
             className="inline-flex min-h-12 items-center rounded-full px-6 font-bold ring-1 ring-[#0f3b2b]/25"
-            data-testid="see-my-pin-page"
+            data-testid="back-to-map"
           >
-            Open its page
+            Back to the map
           </Link>
-          <ShareDisplay pin={done.pin} />
           <button
             type="button"
             onClick={() => location.reload()}
@@ -326,10 +361,12 @@ export function PinForm({ town }: { readonly town: TownId | null }) {
 
       <section className={step} data-testid="step-photo">
         <h2 className="ghad-display flex items-center text-xl font-extrabold">
-          {n(2, !!photo)}A photo
+          {n(2, !!photo)}A photo (required)
         </h2>
         <p className="mt-1 text-sm text-[#3d4a43]">
-          From the street, please — the lights, not the people.
+          Take it from the street, public side only.{" "}
+          <strong>No people, faces, licence plates or anything private</strong>{" "}
+          — we reject photos that show them.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <label className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-[#ffd98a] px-5 font-extrabold">
@@ -386,61 +423,89 @@ export function PinForm({ town }: { readonly town: TownId | null }) {
 
       <section className={step} data-testid="privacy-step">
         <h2 className="ghad-display flex items-center text-xl font-extrabold">
-          {n(3, !!whose)}Whose lights are they?
+          {n(3, !!what && photoOk)}What is it?
         </h2>
         <div
           className="mt-3 space-y-2"
           role="radiogroup"
-          aria-label="Whose lights"
+          aria-label="What kind of display"
         >
           <button
             type="button"
             role="radio"
-            aria-checked={whose === "mine"}
-            onClick={() => setWhose("mine")}
-            className={choice(whose === "mine")}
-            data-testid="whose-mine"
+            aria-checked={what === "home"}
+            onClick={() => setWhat("home")}
+            className={choice(what === "home")}
+            data-testid="what-home"
           >
-            <span aria-hidden>🏠</span> These are my lights
+            <span aria-hidden>🏠</span> A decorated home
           </button>
           <button
             type="button"
             role="radio"
-            aria-checked={whose === "spotted"}
-            onClick={() => setWhose("spotted")}
-            className={choice(whose === "spotted")}
-            data-testid="whose-spotted"
+            aria-checked={what === "public-display"}
+            onClick={() => setWhat("public-display")}
+            className={choice(what === "public-display")}
+            data-testid="what-public"
           >
-            <span aria-hidden>👀</span> I spotted someone else&apos;s lights
+            <span aria-hidden>✨</span> A park, street, shop or town display
           </button>
         </div>
-        {whose === "mine" && (
-          <p className="mt-2 text-sm text-[#3d4a43]">
-            You&apos;re sharing your own home. A reviewer checks it first; take
-            it down any time.
-          </p>
-        )}
-        {whose === "spotted" && (
-          <>
-            <label className="mt-3 flex min-h-11 items-center gap-2 text-sm font-bold">
-              <input
-                type="checkbox"
-                checked={publicPlace}
-                onChange={(e) => setPublicPlace(e.target.checked)}
-                data-testid="public-place"
-              />
-              It&apos;s not a home — a park, shop or town display
-            </label>
-            <p
-              className="mt-1 text-sm text-[#3d4a43]"
-              data-testid="spotted-note"
-            >
-              {publicPlace
-                ? "A reviewer checks it, then it's on the map."
-                : "Someone's home stays a private suggestion — only you and the reviewers see it — until the homeowner says yes to sharing."}
-            </p>
-          </>
-        )}
+        <label className="mt-3 block">
+          <span className="text-sm font-bold">
+            Tell families about it{" "}
+            <span className="font-normal text-[#5b4a2e]">(optional)</span>
+          </span>
+          <textarea
+            value={about}
+            onChange={(e) => setAbout(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Animated reindeer, music on the weekend, best after dark…"
+            className="mt-1 w-full rounded-xl border border-[#0f3b2b]/20 p-3 text-base"
+            data-testid="pin-about-input"
+          />
+        </label>
+        <label className="mt-3 flex items-start gap-2 text-sm font-bold">
+          <input
+            type="checkbox"
+            checked={photoOk}
+            onChange={(e) => setPhotoOk(e.target.checked)}
+            className="mt-1 h-5 w-5"
+            data-testid="photo-ok"
+          />
+          <span>
+            My photo shows no identifiable people, licence plates or private
+            activity.
+          </span>
+        </label>
+        {/* A field only a script fills in. */}
+        <div
+          aria-hidden
+          className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
+        >
+          <label>
+            Website
+            <input
+              tabIndex={-1}
+              autoComplete="off"
+              value={trap}
+              onChange={(e) => setTrap(e.target.value)}
+              data-testid="pin-trap"
+            />
+          </label>
+        </div>
+        <p className="mt-3 text-sm text-[#3d4a43]" data-testid="spotted-note">
+          Every display is checked before it appears on the public map. Your
+          name is never shown, and a household can ask for its listing to come
+          down at any time.{" "}
+          <Link
+            className="font-bold underline"
+            href="/christmas/lights/privacy"
+          >
+            Privacy notice
+          </Link>
+        </p>
       </section>
 
       {error && (

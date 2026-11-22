@@ -27,6 +27,14 @@ async function as(context: BrowserContext, email: string, baseURL: string) {
   ]);
 }
 
+/** The community form's step 3: what it is, and the photo promise. */
+async function describeAndPromise(page: Page, what: "home" | "public") {
+  await page.getByTestId(`what-${what}`).click();
+  await page.getByTestId("photo-ok").check();
+  // The form refuses a send that comes faster than a person could type it.
+  await page.waitForTimeout(2600);
+}
+
 async function mapReady(page: Page) {
   await expect(page.getByTestId("lights-map").first()).toHaveAttribute(
     "data-ready",
@@ -210,7 +218,9 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
   // Adding lights needs an account.
   await page.goto("/christmas/lights");
   await page.getByTestId("pin-the-magic").click();
-  await expect(page.getByTestId("pin-sign-in")).toBeVisible();
+  // No sign-in wall any more: a visitor gets the form straight away.
+  await expect(page.getByTestId("pin-form")).toBeVisible();
+  await expect(page.getByTestId("pin-sign-in")).toHaveCount(0);
 
   // Bingo: the middle row through the free square.
   await page.goto("/christmas/lights/bingo");
@@ -220,7 +230,7 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
   await expect(page.getByTestId("bingo-win")).toBeVisible();
 });
 
-test("a family pins a home; it stays private until the owner's okay is recorded", async ({
+test("a family adds a home; it is private until the administrator approves it", async ({
   browser,
   baseURL,
 }) => {
@@ -244,25 +254,14 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
     .setInputFiles("docs/product/christmas/verification/test-lights.jpg");
   await expect(page.getByTestId("photo-preview")).toBeVisible();
   await page.getByTestId("pin-name-input").fill(name);
-  await page.getByTestId("whose-spotted").click();
-  await expect(page.getByTestId("spotted-note")).toContainText(
-    "private suggestion",
-  );
+  await describeAndPromise(page, "home");
   await page.getByTestId("pin-submit").click();
   await expect(page.getByTestId("pin-done")).toBeVisible();
   expect(Date.now() - started).toBeLessThan(60_000);
   await expect(page.getByTestId("pin-done")).toContainText(
-    "private suggestion",
+    "check every display before it appears on the public map",
   );
-  // Details afterwards, never required.
-  await page.getByTestId("details-open").click();
-  await page.getByTestId("detail-music").click();
-  await page.getByTestId("details-hours").fill("Dusk to 10 pm");
-  await page.getByTestId("details-save").click();
-  await expect(page.getByTestId("details")).toContainText("Saved");
-  await expect(page.getByTestId("pin-status")).toHaveText(
-    /waiting for a reviewer/,
-  );
+  await expect(page.getByTestId("pin-status")).toHaveText(/pending review/);
   await page.getByTestId("see-my-pin").click();
   await page.waitForURL(/[?&]pin=/);
   const id = new URL(page.url()).searchParams.get("pin")!;
@@ -275,7 +274,9 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
   await mapReady(page);
   await expect(mine).toBeVisible();
   await page.getByTestId("sheet-open").click();
-  await expect(page.getByTestId("pending-note")).toContainText("owner");
+  await expect(page.getByTestId("pending-note")).toContainText(
+    "pending review",
+  );
   await expect(page.getByTestId("pin-photo")).toBeVisible();
 
   // Nobody else sees it, or its photo, or roughly where it is.
@@ -297,7 +298,7 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
     ).text(),
   ).not.toContain(name);
 
-  // The reviewer can't publish a home on the submitter's word alone.
+  // The administrator approves it — no owner consent is asked for.
   const elf = await browser.newContext({
     viewport: { width: 390, height: 844 },
   });
@@ -305,10 +306,7 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
   const review = await elf.newPage();
   await review.goto("/christmas/lights/review");
   const item = review.locator(`[data-testid="review-item"][data-id="${id}"]`);
-  await expect(item).toContainText("neighbour's suggestion");
-  await item.getByTestId("review-approve").click();
-  await expect(item.getByRole("alert")).toContainText("owner's consent");
-  await item.getByTestId("basis-owner").check();
+  await expect(item.getByTestId("review-status")).toHaveText("Pending review");
   await item.getByTestId("review-approve").click();
   await expect(
     review.locator(`[data-testid="review-waiting"] [data-id="${id}"]`),
@@ -347,16 +345,15 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
   // The owner — no account needed — takes it down; it goes at once.
   const owner = await visitor.newPage();
   await owner.goto(`/christmas/lights/${id}`);
-  await owner.getByTestId("report-open").click();
-  await owner.getByLabel("This is my home — please take it down").check();
-  await owner.getByTestId("report-send").click();
-  await expect(owner.getByTestId("report")).toContainText("hidden now");
+  await owner.getByTestId("removal-open").click();
+  await owner.getByTestId("removal-send").click();
+  await expect(owner.getByTestId("removal-done")).toContainText("hidden");
   expect(
     (await visitor.request.get(`${base}/christmas/lights/${id}`)).status(),
   ).toBe(404);
   await review.reload();
   await expect(
-    review.locator(`[data-testid="review-hidden"] [data-id="${id}"]`),
+    review.locator(`[data-testid="review-removals"] [data-id="${id}"]`),
   ).toHaveCount(1);
 
   await Promise.all([
@@ -367,7 +364,7 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
   ]);
 });
 
-test("a homeowner adds their own lights by address in under a minute, on a small phone", async ({
+test("someone adds lights by address in under a minute, on a small phone", async ({
   browser,
   baseURL,
 }) => {
@@ -402,11 +399,9 @@ test("a homeowner adds their own lights by address in under a minute, on a small
     .getByTestId("photo-camera")
     .setInputFiles("docs/product/christmas/verification/test-lights.jpg");
   await expect(page.getByTestId("photo-preview")).toBeVisible();
-  await page.getByTestId("whose-mine").click();
+  await describeAndPromise(page, "home");
   await page.getByTestId("pin-submit").click();
-  await expect(page.getByTestId("pin-done")).toContainText(
-    "Your lights are in!",
-  );
+  await expect(page.getByTestId("pin-done")).toContainText("Thanks — it's in!");
   expect(Date.now() - started).toBeLessThan(60_000);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
@@ -494,7 +489,7 @@ test("desktop: an owner's pending pin is on their map, under Coldstream, and nob
     .setInputFiles("docs/product/christmas/verification/test-lights.jpg");
   await expect(page.getByTestId("photo-preview")).toBeVisible();
   await page.getByTestId("pin-name-input").fill(name);
-  await page.getByTestId("whose-spotted").click();
+  await describeAndPromise(page, "home");
   await page.getByTestId("pin-submit").click();
   await expect(page.getByTestId("pin-done")).toBeVisible();
 

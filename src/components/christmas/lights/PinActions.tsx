@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Flag, Plus, Share2, Trash2 } from "lucide-react";
+import { Check, Flag, Home, Plus, Share2, Trash2 } from "lucide-react";
 import {
   CHECKS,
   REPORTS,
@@ -167,11 +167,7 @@ export function ReportAndRemove({ pin }: { readonly pin: PinView }) {
     });
     if (r.ok) {
       setOpen(false);
-      setSay(
-        reason === "privacy" && pin.residential
-          ? "It's hidden now. A reviewer will check, and it stays down if it's your home."
-          : "Thanks — a reviewer will look at it.",
-      );
+      setSay("Thanks — the administrator will look at it.");
     } else setSay(r.error ?? "That didn't send.");
   }
   async function removeIt() {
@@ -216,7 +212,7 @@ export function ReportAndRemove({ pin }: { readonly pin: PinView }) {
             <legend className="font-bold text-[#082319]">
               What&apos;s wrong?
             </legend>
-            {REPORTS.map((r) => (
+            {REPORTS.filter((r) => r.id !== "privacy").map((r) => (
               <label key={r.id} className="flex min-h-10 items-center gap-2">
                 <input
                   type="radio"
@@ -254,6 +250,136 @@ export function ReportAndRemove({ pin }: { readonly pin: PinView }) {
         <p className="mt-2 font-bold text-[#0f3b2b]" role="status">
           {say}
         </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * **"Is this your home? Request removal."** Prominent on every listing, open
+ * to anyone, no account and no proof asked. Sending it hides the listing
+ * from everybody straight away; the administrator is told, and later removes
+ * it for good or resolves a dispute.
+ */
+export function RequestRemoval({ pin }: { readonly pin: PinView }) {
+  // The map's "Request removal" link lands here with #removal: open at once.
+  const fromLink = useSyncExternalStore(
+    () => () => undefined,
+    () => location.hash === "#removal",
+    () => false,
+  );
+  const [toggled, setToggled] = useState<boolean | null>(null);
+  const open = toggled ?? fromLink;
+  const setOpen = (f: (o: boolean) => boolean) => setToggled(f(open));
+  const [text, setText] = useState("");
+  const [contact, setContact] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function go() {
+    setBusy(true);
+    setError(null);
+    const r = await send(`/christmas/api/lights/${pin.id}`, {
+      action: "request-removal",
+      text,
+      contact,
+    });
+    setBusy(false);
+    if (r.ok) setDone(true);
+    else setError(r.error ?? "That didn't send — try again.");
+  }
+  if (done)
+    return (
+      <section
+        id="removal"
+        className="rounded-[20px] bg-[#e8f3ec] p-4 font-bold text-[#082319]"
+        role="status"
+        data-testid="removal-done"
+      >
+        Done — this listing is hidden from the map now. The administrator has
+        been told and will remove it for good, or contact you if you left a way
+        to reach you. You don&apos;t need to do anything else.
+      </section>
+    );
+  return (
+    <section
+      id="removal"
+      className="rounded-[20px] bg-[#fff1ef] p-4 ring-2 ring-[#b3242f]/40"
+      data-testid="removal"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex min-h-12 w-full items-center gap-2 text-left text-lg font-extrabold text-[#b3242f]"
+        data-testid="removal-open"
+      >
+        <Home className="h-5 w-5 shrink-0" aria-hidden /> Is this your home?
+        Request removal
+      </button>
+      {!open && (
+        <p className="mt-1 text-sm text-[#3d4a43]">
+          No account, no proof needed. It comes off the map immediately.
+        </p>
+      )}
+      {open && (
+        <form
+          className="mt-3 space-y-3 text-sm text-[#082319]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void go();
+          }}
+        >
+          <p>
+            If this is your home, or you have a privacy concern, say so and
+            we&apos;ll <strong>hide it from the map right away</strong>.
+            There&apos;s nothing to prove first — the administrator reviews it
+            afterwards and removes it permanently.
+          </p>
+          <label className="block">
+            <span className="font-bold">
+              Anything we should know? (optional)
+            </span>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              maxLength={500}
+              rows={2}
+              className="mt-1 w-full rounded-xl border border-[#0f3b2b]/20 p-2 text-base"
+              data-testid="removal-text"
+            />
+          </label>
+          <label className="block">
+            <span className="font-bold">
+              Email or phone, if you&apos;d like a reply (optional)
+            </span>
+            <input
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              maxLength={120}
+              autoComplete="email"
+              className="mt-1 w-full rounded-xl border border-[#0f3b2b]/20 p-2 text-base"
+              data-testid="removal-contact"
+            />
+            <span className="text-xs text-[#5b4a2e]">
+              Seen only by the administrator and erased when the listing is
+              deleted.
+            </span>
+          </label>
+          {error && (
+            <p className="font-bold text-[#b3242f]" role="alert">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={busy}
+            className="min-h-12 rounded-full bg-[#b3242f] px-6 font-extrabold text-white disabled:opacity-60"
+            data-testid="removal-send"
+          >
+            {busy ? "Hiding it…" : "Hide this listing now"}
+          </button>
+        </form>
       )}
     </section>
   );

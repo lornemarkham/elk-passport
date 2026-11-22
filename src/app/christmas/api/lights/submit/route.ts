@@ -1,19 +1,25 @@
+import { after } from "next/server";
 import {
+  anonKey,
   changeLights,
   handle,
   json,
   newId,
   putPhoto,
-  signInFirst,
   viewer,
 } from "../../../_server/lights";
+import {
+  dashboardUrl,
+  newSubmissionMail,
+  sendToAdmin,
+} from "../../../_server/notify";
 import {
   nearDuplicates,
   parseSubmission,
   Refused,
   submit,
 } from "@/domain/christmas/lights/actions";
-import { viewOf } from "@/domain/christmas/lights/model";
+import { TOWN_LABEL, viewOf } from "@/domain/christmas/lights/model";
 import { measure } from "@/lib/measure";
 
 export const dynamic = "force-dynamic";
@@ -32,46 +38,83 @@ function photoFrom(value: unknown): string | null {
   return value;
 }
 
+/** A person fills the form in more slowly than this; a script does not. */
+const LEAST_MS_ON_FORM = 2500;
+
 /**
- * **PIN THE MAGIC!** A signed-in person sends a display. It is private to
- * them and the reviewers until a reviewer publishes it.
+ * **Add a display.** Anyone may — no account. It is stored as _pending_,
+ * seen by nobody but the administrator, who is emailed. A signed-in
+ * submitter's own pending pin is also visible to them; everyone else gets
+ * the confirmation page only.
+ *
+ * Abuse prevention, in order: same-origin and per-address rate limits
+ * (`handle`); a hidden field only a script fills; a minimum time on the
+ * form; a photo and the photo promise are required; no web links in the
+ * words; a daily cap per person-and-device, and a cap on how many may wait;
+ * and a property already removed at its household's request is refused.
  */
 export async function POST(request: Request) {
   const v = await viewer();
-  if (!v.key) return signInFirst();
-  const key = v.key;
-  return handle(request, "write", key, async (body) => {
+  return handle(request, "write", v.key, async (body) => {
+    // Pretend success to a bot, store nothing.
+    if (typeof body.website === "string" && body.website.trim() !== "")
+      return json({ pin: null, alsoHere: [] }, 201);
+    const spent = Number(body.openedFor);
+    if (!Number.isFinite(spent) || spent < LEAST_MS_ON_FORM)
+      throw new Refused("That was quick — take a moment, then send it again.");
+    if (body.photoOk !== true)
+      throw new Refused(
+        "Please confirm the photo has no people, licence plates or private activity in it.",
+      );
     const s = parseSubmission(body);
     const photo = photoFrom(body.photo);
+    if (!photo)
+      throw new Refused("Add a photo of the display, taken from the street.");
+    const key = v.key ?? anonKey(request, body.device);
     const id = newId();
     const now = new Date();
-    if (photo) await putPhoto(id, photo);
-    const result = await changeLights((doc) => {
-      const twins = nearDuplicates(doc, s.at).filter(
-        (p) => p.status === "approved",
-      );
-      const { doc: next, pin } = submit(
-        doc,
-        s,
-        key,
-        id,
-        now,
-        photo ? id : undefined,
-      );
-      return {
-        doc: next,
-        result: { pin, twins: twins.map((t) => ({ id: t.id, name: t.name })) },
-      };
-    });
+    await putPhoto(id, photo);
+    let result;
+    try {
+      result = await changeLights((doc) => {
+        const twins = nearDuplicates(doc, s.at).filter(
+          (p) => p.status === "approved",
+        );
+        const { doc: next, pin } = submit(doc, s, key, id, now, id);
+        return {
+          doc: next,
+          result: {
+            pin,
+            twins: twins.map((t) => ({ id: t.id, name: t.name })),
+          },
+        };
+      });
+    } catch (error) {
+      await putPhoto(id, null).catch(() => undefined);
+      throw error;
+    }
     await measure("lights_pin_submitted", {
       town: result.pin.town,
       kind: result.pin.kind,
-      photo: !!photo,
+      photo: true,
     });
+    const link = dashboardUrl(request);
+    after(async () => {
+      await sendToAdmin(
+        newSubmissionMail(
+          result.pin.name,
+          TOWN_LABEL[result.pin.town],
+          true,
+          link,
+        ),
+      );
+    });
+    // The public gets a receipt, not the pin: nothing about it is published.
     return json(
       {
-        pin: viewOf(result.pin, v, now),
-        alsoHere: result.twins,
+        pin: v.key ? viewOf(result.pin, v, now) : null,
+        received: { name: result.pin.name },
+        alsoHere: [],
       },
       201,
     );
