@@ -14,7 +14,7 @@ kept as they were. Only the front door changed, plus one shared fix
 1. **Your Christmas Starts Here** — _Find something wonderful to do
    together._ The countdown, snow and the fire, and the shared location bar
    (ADR 020), unchanged.
-2. **What kind of Christmas?** Six designed cards, two columns on a phone:
+2. **What are you in the mood for?** Six designed cards, two columns on a phone:
 
    | Way              | Opens                                                           | Asks (all optional, taps)                              | Answers with                                                                           |
    | ---------------- | --------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------- |

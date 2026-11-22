@@ -207,7 +207,7 @@ export default async function ChristmasPage({
                     id="ways-title"
                     className="ghad-display text-2xl leading-tight font-extrabold tracking-[-0.02em] sm:text-3xl"
                   >
-                    What kind of Christmas?
+                    What are you in the mood for?
                   </h2>
                   <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                     {WAYS.map((way) => (
