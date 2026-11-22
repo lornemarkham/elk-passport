@@ -133,10 +133,32 @@ export async function viewer(): Promise<LightsViewer> {
   }
   return {
     key,
-    reviewer: a.role === "admin" || a.role === "ambassador",
+    // Moderating public-facing homes is the administrator's alone: an
+    // ambassador looks after local listings, not this queue.
+    reviewer: a.role === "admin",
     signedIn: true,
     email: a.who,
   };
+}
+
+/**
+ * A stable key for someone with no account: their address hashed, plus the
+ * device token the form keeps (when it sent one) so a household behind one
+ * address isn't one person. Never stored in the clear, never shown.
+ */
+export function anonKey(request: Request, device?: unknown): string {
+  const base = storeKey() ?? devSalt;
+  const token =
+    typeof device === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(device)
+      ? device
+      : "";
+  return (
+    "anon_" +
+    createHmac("sha256", base)
+      .update(`${clientKey(request.headers)}|${token}`)
+      .digest("base64url")
+      .slice(0, 16)
+  );
 }
 
 /** A stable key for a signed-out reporter: their address, hashed. */

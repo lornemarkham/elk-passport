@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { DISTANCES, writeAsk, type Ask } from "@/domain/christmas/discover";
 import { cn } from "@/lib/utils";
+import { rememberDistance } from "./RememberDistance";
 
 /**
- * **How far?** — four answers, one tap each: 15, 30, 60 or 100 km. A plain
+ * **How far?** — six answers, one tap each: 2, 5, 10, 20, 30 or 50 km. A plain
  * set of links (the address is the state, so it works before any script and
  * every choice is shareable), keeping everything else already said.
  */
@@ -34,6 +37,7 @@ export function DistancePicker({
           <Link
             key={km}
             href={`${path}?${query.toString()}`}
+            onClick={() => rememberDistance(km)}
             aria-current={on ? "true" : undefined}
             scroll={false}
             data-testid={`km-${km}`}

@@ -27,6 +27,10 @@ Cozy, Events & Markets), each a short page at `/christmas/for/<way>`, then a
 few things happening near you, Surprise me, and the way into everything:
 [EXPERIENCE-FIRST.md](EXPERIENCE-FIRST.md).
 
+**Discovery UX repair (2026-11-22):** `/christmas/discover` is WHERE |
+WHEN | HOW FAR and the results — no questionnaire, one category at a time,
+"tonight" only what is confirmed: [DISCOVERY-UX-REPAIR.md](DISCOVERY-UX-REPAIR.md).
+
 **Pin the Magic (2026-11-10):** the community Christmas lights map, its
 reviewed submissions, reactions and lights tour are in
 [PIN-THE-MAGIC.md](PIN-THE-MAGIC.md) (`/christmas/lights`).

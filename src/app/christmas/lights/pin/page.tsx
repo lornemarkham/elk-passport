@@ -5,14 +5,13 @@ import { PinForm } from "@/components/christmas/lights/PinForm";
 import christmas from "@/components/christmas/christmas.module.css";
 import styles from "@/components/christmas/lights/lights.module.css";
 import { TOWNS, type TownId } from "@/domain/christmas/lights/model";
-import { viewer } from "../../_server/lights";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Add to the Christmas Map — Christmas Lights Map",
   description:
-    "Your lights, or a display you spotted: three steps, under a minute.",
+    "A display that made you gasp: a photo, a pin, under a minute. No account needed.",
 };
 
 export default async function PinPage({
@@ -25,7 +24,6 @@ export default async function PinPage({
   const town = (TOWNS as readonly string[]).includes(at ?? "")
     ? (at as TownId)
     : null;
-  const v = await viewer();
   return (
     <>
       <ThemeProvider className="block">
@@ -44,42 +42,14 @@ export default async function PinPage({
                 📍 Add to the Christmas Map
               </h1>
               <p className="mt-3 text-lg text-white/90">
-                Your own lights, or a display that made you gasp — three steps,
-                and families can add it to their tour.
+                A display that made you gasp — a photo, a pin and a minute. We
+                check every one before it appears on the map. No account needed.
               </p>
             </div>
             <div className={christmas.lights} aria-hidden />
           </header>
           <div className="mx-auto max-w-2xl px-4 pt-6 sm:px-6">
-            {v.key ? (
-              <PinForm town={town} />
-            ) : (
-              <section
-                className="rounded-[28px] bg-white p-6 text-[#082319]"
-                data-testid="pin-sign-in"
-              >
-                <h2 className="ghad-display text-2xl font-extrabold">
-                  First, sign in
-                </h2>
-                <p className="mt-2">
-                  Displays come from real people, so every one needs an account.
-                  It takes a minute — then you&apos;re back here with the map
-                  ready.
-                </p>
-                <Link
-                  href={`/auth?next=${encodeURIComponent("/christmas/lights/pin")}`}
-                  className="mt-4 inline-flex min-h-12 items-center rounded-full bg-[#b3242f] px-6 font-extrabold text-white"
-                >
-                  Sign in to add lights
-                </Link>
-                {v.signedIn && (
-                  <p className="mt-3 text-sm text-[#5b4a2e]">
-                    Your account&apos;s email isn&apos;t confirmed yet — check
-                    your inbox, then come back.
-                  </p>
-                )}
-              </section>
-            )}
+            <PinForm town={town} />
           </div>
         </main>
       </ThemeProvider>

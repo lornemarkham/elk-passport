@@ -236,14 +236,10 @@ describe("Build My Lights Tour — three questions", () => {
   });
 });
 
-describe("Three-step submission keeps the privacy rule", () => {
-  it("a neighbour's suggestion of a home is private and can't be published without the homeowner's okay", () => {
+describe("Three-step submission waits for the administrator", () => {
+  it("a submitted home is invisible to the public until approved, then public without any consent step", () => {
     const { doc } = submit(EMPTY, sub(), "v_neighbour", "pin-n", NOW);
     expect(visible(doc, anyone, NOW)).toHaveLength(0);
-    expect(() => approve(doc, "pin-n", REVIEWER, NOW)).toThrow(
-      /owner's consent/,
-    );
-    // Nor is it counted where a visitor can see.
     expect(
       lightUp(
         visible(doc, anyone, NOW),
@@ -251,15 +247,8 @@ describe("Three-step submission keeps the privacy rule", () => {
         () => false,
       ).confirmed,
     ).toBe(0);
-  });
-
-  it("a homeowner's own lights carry their claim to the reviewer, and still wait for one", () => {
-    const s = sub({ consentClaim: "i-live-here" });
-    const { doc } = submit(EMPTY, s, ALICE, "pin-m", NOW);
-    expect(visible(doc, anyone, NOW)).toHaveLength(0);
-    const mine = visible(doc, { key: ALICE, reviewer: false }, NOW)[0]!;
-    expect(mine.ownLights).toBe(true);
-    expect(mine.status).toBe("pending");
+    const ok = approve(doc, "pin-n", REVIEWER, NOW);
+    expect(visible(ok, anyone, NOW)).toHaveLength(1);
   });
 
   it("names a display plainly when no name is given", () => {
@@ -291,16 +280,8 @@ describe("Details after pinning, never required", () => {
 describe("Every season, the lights are asked about again", () => {
   const lastYear = new Date("2025-12-10T03:00:00Z");
   const old = () => {
-    const { doc } = submit(
-      EMPTY,
-      sub({ consentClaim: "i-live-here" }),
-      ALICE,
-      "pin-o",
-      lastYear,
-    );
-    return approve(doc, "pin-o", REVIEWER, lastYear, {
-      basis: "owner-consent",
-    });
+    const { doc } = submit(EMPTY, sub(), ALICE, "pin-o", lastYear);
+    return approve(doc, "pin-o", REVIEWER, lastYear);
   };
 
   it("keeps last year's display, ratings and all, but not as active", () => {
@@ -312,14 +293,14 @@ describe("Every season, the lights are asked about again", () => {
     expect(v.rating).toEqual({ mean: 5, count: 1 });
   });
 
-  it("is back with one tap from its owner, or off for the year on their word alone", () => {
+  it("is back with one tap, or off for the year once two families say so", () => {
     const on = check(old(), "pin-o", ALICE, "on", NOW);
     expect(seasonState(on.pins[0]!, NOW)).toBe("lit");
-    const off = check(old(), "pin-o", ALICE, "dark", NOW);
-    expect(seasonState(off.pins[0]!, NOW)).toBe("dark");
-    // A single other family still isn't enough to call it dark.
+    // A single family — even the submitter — isn't enough to call it dark.
     const one = check(old(), "pin-o", "v_b", "dark", NOW);
     expect(seasonState(one.pins[0]!, NOW)).toBe("unconfirmed");
+    const two = check(one, "pin-o", "v_c", "dark", NOW);
+    expect(seasonState(two.pins[0]!, NOW)).toBe("dark");
   });
 });
 

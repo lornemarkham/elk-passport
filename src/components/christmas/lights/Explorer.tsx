@@ -103,7 +103,7 @@ export function Explorer({
     ...markerFor(p, saved, prior),
     label:
       p.status === "pending"
-        ? `Your pin: ${p.name} — waiting for a reviewer, only you can see it`
+        ? `Your submission: ${p.name} — pending review, not on the public map yet`
         : `${p.name} — ${placeLabel(p)}`,
     ...(p.status === "pending"
       ? { emoji: "⏳", pending: true, dim: false }
@@ -258,7 +258,8 @@ export function Explorer({
                   className="rounded-full bg-[#f7e3e1] px-3 py-1 font-bold text-[#b3242f]"
                   data-testid="sheet-pending"
                 >
-                  ⏳ Waiting for a reviewer — only you can see this
+                  ⏳ Pending review — we check every display before it joins the
+                  public map
                 </span>
               ) : (
                 <SeasonBadge pin={pick} />
@@ -269,6 +270,15 @@ export function Explorer({
                 </span>
               )}
             </div>
+            {pick.status === "approved" && (
+              <Link
+                href={`/christmas/lights/${pick.id}#removal`}
+                className="mt-2 block text-xs font-bold text-[#b3242f] underline"
+                data-testid="sheet-removal"
+              >
+                Is this your home? Request removal
+              </Link>
+            )}
             <div className="mt-3 flex gap-2">
               {pick.status === "approved" && (
                 <button
@@ -350,8 +360,8 @@ export function Explorer({
         {published === 0 && (
           <span data-testid="empty-town">
             No published displays {place ? `in ${place.label}` : "here"} yet
-            {waiting ? " — yours is waiting for a reviewer (⏳)" : ""} — seen
-            one? Tap <strong>Add</strong>.
+            {waiting ? " — yours is pending review (⏳)" : ""} — seen one? Tap{" "}
+            <strong>Add</strong>.
           </span>
         )}
       </p>

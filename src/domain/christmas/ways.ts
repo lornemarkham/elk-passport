@@ -383,7 +383,8 @@ export function askFor(
 ): Ask {
   return {
     ...(at ? { at } : {}),
-    km: choice.far === "near" ? 25 : choice.far === "drive" ? 100 : DEFAULT_KM,
+    // The distance choices are 2–50 km (owner brief 2026-11-22).
+    km: choice.far === "near" ? 20 : choice.far === "drive" ? 50 : DEFAULT_KM,
     ...datesFor(choice.when, today),
     ...(way.party ? { party: way.party } : {}),
     ages: choice.age ? [AGE_OF[choice.age]] : [],

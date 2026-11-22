@@ -58,7 +58,7 @@ function withHome(): { doc: LightsDoc; pin: Pin } {
   return submit(EMPTY, home(), ALICE, "pin-a", NOW);
 }
 
-describe("Pin the Magic — a home is never shown without permission", () => {
+describe("Community lights — nothing is public before the administrator approves it", () => {
   it("keeps a new pin private to its submitter and reviewers", () => {
     const { doc } = withHome();
     expect(visible(doc, anyone, NOW)).toHaveLength(0);
@@ -69,21 +69,16 @@ describe("Pin the Magic — a home is never shown without permission", () => {
     );
   });
 
-  it("refuses to publish a home without the owner's consent or a public listing", () => {
+  it("publishes a home on approval alone — no owner consent is asked for", () => {
     const { doc } = withHome();
-    expect(() => approve(doc, "pin-a", REVIEWER, NOW)).toThrow(Refused);
-    expect(() =>
-      approve(doc, "pin-a", REVIEWER, NOW, {
-        basis: "public-listing",
-        url: "not a link",
-      }),
-    ).toThrow(/https/);
-    const ok = approve(doc, "pin-a", REVIEWER, NOW, { basis: "owner-consent" });
+    const ok = approve(doc, "pin-a", REVIEWER, NOW);
     const [pub] = visible(ok, anyone, NOW);
     expect(pub?.address).toBe("123 Example Road");
     expect(pub?.season).toBe("lit");
     expect(pub).not.toHaveProperty("review");
+    // Nobody who submitted it is published.
     expect(JSON.stringify(pub)).not.toContain(ALICE);
+    expect(JSON.stringify(pub)).not.toContain("submittedBy");
   });
 
   it("publishes a public display without a consent step", () => {
@@ -99,18 +94,16 @@ describe("Pin the Magic — a home is never shown without permission", () => {
     ).toHaveLength(1);
   });
 
-  it("treats any pin marked residential as a home", () => {
+  it("treats any pin marked residential as a home, still waiting for approval", () => {
     const s = home({ kind: "neighbourhood", residential: true });
     expect(s.residential).toBe(true);
     const { doc } = submit(EMPTY, s, ALICE, "pin-n", NOW);
-    expect(() => approve(doc, "pin-n", REVIEWER, NOW)).toThrow(Refused);
+    expect(visible(doc, anyone, NOW)).toHaveLength(0);
   });
 
   it("hides a published home at once on a privacy report — from anyone, signed in or not", () => {
     const { doc } = withHome();
-    const pub = approve(doc, "pin-a", REVIEWER, NOW, {
-      basis: "owner-consent",
-    });
+    const pub = approve(doc, "pin-a", REVIEWER, NOW);
     const hidden = report(
       pub,
       "pin-a",
@@ -166,8 +159,7 @@ describe("Submissions are read carefully", () => {
 });
 
 describe("Reactions — one of each per account, pressing again takes it back", () => {
-  const pub = () =>
-    approve(withHome().doc, "pin-a", REVIEWER, NOW, { basis: "owner-consent" });
+  const pub = () => approve(withHome().doc, "pin-a", REVIEWER, NOW);
 
   it("toggles", () => {
     let doc = react(pub(), "pin-a", ALICE, "magical", NOW);

@@ -111,7 +111,7 @@ describe("the ask a choice amounts to", () => {
     );
     expect(ask).toMatchObject({
       at: "vernon",
-      km: 25,
+      km: 20,
       ages: [3],
       party: "family",
     });

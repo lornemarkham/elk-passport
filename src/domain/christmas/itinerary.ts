@@ -97,7 +97,7 @@ export interface Sources {
   readonly origin: Origin;
   /** `YYYY-MM-DD`, Pacific. */
   readonly today: string;
-  /** How far somebody said they will drive (the 15/30/60/100 km choice). */
+  /** How far somebody said they will drive (the 2–50 km choice). */
   readonly reachKm?: number;
 }
 

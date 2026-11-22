@@ -8,12 +8,14 @@
  *
  * ## The two rules this file exists to keep
  *
- * 1. **A home is never shown without permission.** A pin at a private
- *    residence stays private — to its submitter and reviewers — until a
- *    reviewer records the owner's consent or an independent public listing
- *    (`authorisation`). Nothing published can lose that: an approved home
- *    always carries one. A privacy takedown hides a home at once, no review
- *    first.
+ * 1. **Nothing is public before the administrator approves it, and a
+ *    homeowner's objection takes a listing down at once.** (Owner decision,
+ *    2026-11-22, "Christmas Lights Map: community launch" — it replaces the
+ *    earlier rule that a home needed its owner's consent or a public listing
+ *    recorded first.) Anyone may submit a display; every submission waits in
+ *    the administrator's queue; a removal request hides the listing at once,
+ *    with no identity check, until the administrator resolves it. Nobody's
+ *    identity — submitter's or homeowner's — is ever published.
  * 2. **Last year's lights are not this year's.** Every pin carries the
  *    seasons someone confirmed it in. A pin last confirmed in an earlier
  *    season is shown as _Not yet confirmed this year_ and is never put on a
@@ -193,6 +195,8 @@ export interface Authorisation {
 }
 
 export interface Event {
+  /** Reviewer-only: how a removal requester may be reached, if they said. */
+  readonly contact?: string;
   readonly at: string;
   /** A viewer key (never an email) or a reviewer's email. */
   readonly by: string;
@@ -206,6 +210,7 @@ export interface Event {
     | "edited"
     | "details"
     | "report"
+    | "removal-request"
     | CheckId;
   readonly text?: string;
   readonly season?: number;
@@ -366,10 +371,9 @@ export function tourable(pin: Pin, now: Date, day = localDay(now)): boolean {
 // ---------------------------------------------------------------------------
 // Privacy
 
-/** Whether the exact location and address may be shown to everybody. */
+/** Whether the exact location and address may be shown to everybody: only once approved. */
 export function exactVisible(pin: Pin): boolean {
-  if (pin.status !== "approved") return false;
-  return !pin.residential || !!pin.authorisation;
+  return pin.status === "approved";
 }
 
 /** May this viewer see the pin at all? */
@@ -428,7 +432,22 @@ export interface PinView {
     readonly authorisation?: Authorisation;
     readonly trail: readonly Event[];
     readonly reports: number;
+    /** A homeowner (or anyone) asked for this to come down and it has not been resolved. */
+    readonly removalOpen: boolean;
+    readonly submittedAt: string;
+    readonly hasPhoto: boolean;
   };
+}
+
+/** A removal request is open until a reviewer restores or removes the listing. */
+export function removalOpen(pin: Pick<Pin, "trail" | "status">): boolean {
+  if (pin.status === "removed") return false;
+  let open = false;
+  for (const e of pin.trail) {
+    if (e.kind === "removal-request") open = true;
+    else if (e.kind === "restored" || e.kind === "approved") open = false;
+  }
+  return open;
 }
 
 const WEEK = 7 * 86_400_000;
@@ -505,6 +524,9 @@ export function viewOf(pin: Pin, viewer: Viewer, now: Date): PinView {
             ...(pin.authorisation ? { authorisation: pin.authorisation } : {}),
             trail: pin.trail,
             reports: pin.trail.filter((e) => e.kind === "report").length,
+            removalOpen: removalOpen(pin),
+            submittedAt: pin.submittedAt,
+            hasPhoto: !!pin.photo,
           },
         }
       : {}),

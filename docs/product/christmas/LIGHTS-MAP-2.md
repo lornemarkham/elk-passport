@@ -1,5 +1,10 @@
 # Christmas Lights Map 2.0 — map-first, rated, toured
 
+> **Superseded in part, 2026-11-22:** the "whose lights" step and the
+> owner-consent rule are gone — anyone submits, the administrator approves,
+> and a household can take a listing down at once. See
+> [COMMUNITY-LAUNCH.md](COMMUNITY-LAUNCH.md).
+
 **Owner brief:** "P0 — Christmas Lights Map 2.0" (2026-11-14). **Lane:**
 christmas. It improves [Pin the Magic](PIN-THE-MAGIC.md); read that first.
 Nothing was rebuilt. The store, privacy rules, review queue, reactions,

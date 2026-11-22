@@ -25,9 +25,18 @@ import {
 export async function christmasFinds(
   ask: Pick<Ask, "at" | "km" | "ages" | "from" | "to">,
   today: string,
-): Promise<{ readonly finds: Find[]; readonly outage?: AtlasFailure }> {
+): Promise<{
+  readonly finds: Find[];
+  /** The whole pool, measured from the town: dinner is not a Christmas find. */
+  readonly experiences: Experience[];
+  readonly outage?: AtlasFailure;
+}> {
   const { experiences, outage } = await christmasPool(ask);
-  return { finds: findsIn(experiences, today), ...(outage ? { outage } : {}) };
+  return {
+    finds: findsIn(experiences, today),
+    experiences,
+    ...(outage ? { outage } : {}),
+  };
 }
 
 /**

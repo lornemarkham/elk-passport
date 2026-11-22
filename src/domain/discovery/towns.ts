@@ -113,6 +113,14 @@ const METRO_VANCOUVER: readonly DiscoveryTown[] = [
     longitude: -122.7932,
     area: "Metro Vancouver",
   },
+  // Wikidata Q776261 (P625), checked 2026-11-22.
+  {
+    id: "port-moody",
+    name: "Port Moody, BC",
+    latitude: 49.2831,
+    longitude: -122.832,
+    area: "Metro Vancouver",
+  },
   {
     id: "new-westminster",
     name: "New Westminster, BC",

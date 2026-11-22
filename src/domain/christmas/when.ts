@@ -242,3 +242,83 @@ export function season(today: string): {
           : "coming";
   return { stage, christmas, daysToGo };
 }
+
+// ------------------------------------------------------------- when, asked
+
+/**
+ * **When, as a person says it** (owner brief "Christmas discovery UX
+ * repair", 2026-11-22). A preset is kept as the word, not as the dates it
+ * meant on the day it was tapped, so a "tonight" link opened tomorrow is
+ * about tomorrow night — and the page can say _Tonight_ rather than a bare
+ * date nobody remembers choosing.
+ */
+export type WhenChoice = "tonight" | "tomorrow" | "weekend";
+
+export const WHEN_CHOICES: readonly {
+  readonly value: WhenChoice;
+  readonly label: string;
+}[] = [
+  { value: "tonight", label: "Tonight" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "weekend", label: "This weekend" },
+];
+
+export const isWhenChoice = (v: unknown): v is WhenChoice =>
+  WHEN_CHOICES.some((c) => c.value === v);
+
+const weekday = (day: string) => new Date(`${day}T12:00:00Z`).getUTCDay();
+
+/** The days a preset means, from today (Vancouver's date). */
+export function presetDates(
+  when: WhenChoice,
+  today: string,
+): { readonly from: string; readonly to: string } {
+  switch (when) {
+    case "tonight":
+      return { from: today, to: today };
+    case "tomorrow":
+      return { from: addDays(today, 1), to: addDays(today, 1) };
+    case "weekend": {
+      // Saturday or Sunday: the rest of this weekend; otherwise the next one.
+      const d = weekday(today);
+      if (d === 6) return { from: today, to: addDays(today, 1) };
+      if (d === 0) return { from: today, to: today };
+      const sat = addDays(today, 6 - d);
+      return { from: sat, to: addDays(sat, 1) };
+    }
+  }
+}
+
+const SHORT = new Intl.DateTimeFormat("en-CA", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+/** "Sat, Nov 28" — a calendar day, no zone (it is one already). */
+export const shortDay = (day: string) =>
+  SHORT.format(new Date(`${day}T12:00:00Z`));
+
+/**
+ * What the WHEN control says: the preset's word, or the days themselves —
+ * a single day that is today is "Tonight" however it was chosen.
+ */
+export function whenLabel(
+  ask: {
+    readonly when?: WhenChoice;
+    readonly from?: string;
+    readonly to?: string;
+  },
+  today: string,
+): string {
+  if (ask.when) return WHEN_CHOICES.find((c) => c.value === ask.when)!.label;
+  if (!ask.from && !ask.to) return "Any date";
+  const from = ask.from ?? ask.to!;
+  const to = ask.to ?? from;
+  if (from === to) {
+    if (from === today) return "Tonight";
+    if (from === addDays(today, 1)) return "Tomorrow";
+    return shortDay(from);
+  }
+  return `${shortDay(from)} – ${shortDay(to)}`;
+}

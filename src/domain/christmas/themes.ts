@@ -37,6 +37,15 @@ export interface ChristmasTheme {
   /** The words, matched case-insensitively on whole words. */
   readonly words: RegExp;
   /**
+   * **What the thing must be called to be one of these** (owner QA,
+   * 2026-11-22: a performing-arts academy was listed under Holiday lights
+   * because a class is called "Twinkle Stars"). A theme whose only evidence
+   * is a mention — in a description or the organiser's facts — counts only
+   * where the title or Atlas's listed type says it too: a hockey game whose
+   * crowd will "light up" the arena is not a lights display.
+   */
+  readonly called: RegExp;
+  /**
    * Christmas itself, or the season around it. A skating rink is a lovely
    * part of a Christmas day and is still not a Christmas thing — the card
    * says "winter fun", never "Christmas".
@@ -50,6 +59,8 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Christmas markets",
     line: "Wooden stalls, makers and something warm to hold.",
     emoji: "🎪",
+    called:
+      /\b(markets?|march[ée]s?|fairs?|bazaars?|craft sales?|artisans?|makers|christkindl\w*)\b/i,
     words:
       /\b(christmas markets?|holiday markets?|winter markets?|christkindl\w*|sugar plum fair|artisans?'? christmas|christmas craft (fair|sale)s?)\b/i,
   },
@@ -58,6 +69,8 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Holiday lights",
     line: "Walk-through lights, light-ups and twinkling trails.",
     emoji: "✨",
+    called:
+      /\b(?!(?:spot|high|de|flash|sun|day|moon|head|stop|traffic|gas)light)\w*lights?\b|\blighting\b|illumin\w*|\blight[- ]?ups?\b|luminar\w*|\bglow\w*|twinkl\w*|bright nights/i,
     words:
       /\b(canyon lights|holiday lights?|christmas lights?|light[- ]?ups?|lights? (festival|display|walk|trail)s?|festival of lights|twinkl\w+|bright nights|illuminations?)\b/i,
   },
@@ -66,6 +79,8 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Santa & the little ones",
     line: "Santa, his workshop, his reindeer and the kids who believe.",
     emoji: "🎅",
+    called:
+      /\b(santa|claus|north pole|reindeer|elf|elves|gingerbread|st\.? nick)\b/i,
     words:
       /\b(santa('s)?|north pole|reindeer|elves|letters to santa|storytime with santa|gingerbread houses?)\b/i,
   },
@@ -74,6 +89,8 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Winter festivals",
     line: "Villages, tree lightings and Christmas Eve celebrations.",
     emoji: "🎄",
+    called:
+      /\b(festivals?|fest|village|celebrations?|tree lighting|carnival|parades?|christmas eve|no[eë]l|swissmas|light[- ]?ups?)\b/i,
     words:
       /\b(christmas eve festival|christmas festival|holiday (celebration|kick-?off|festival)|festive village|tree lighting|winter ?(fest|festival|carnival)|swissmas|christmas (celebration|party))\b/i,
   },
@@ -82,6 +99,8 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Shows & traditions",
     line: "The Nutcracker, carols, a Christmas Carol, a sleigh-ride show.",
     emoji: "🎭",
+    called:
+      /\b(shows?|concerts?|nutcracker|carols?|messiah|choirs?|theatre|theater|ballet|pageant|performances?|symphony|orchestra|singers|musical|panto\w*|tenors|presentation)\b/i,
     words:
       /\b(nutcracker|a christmas carol|carol(l)?ing|carols|messiah|sleigh ride show|winter sleigh ride|rudolph|holiday (concert|show)s?|christmas (concert|show|pageant|crafting|craft)s?|wreath[- ]making)\b/i,
   },
@@ -90,6 +109,8 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Festive food",
     line: "Christmas dinners, egg nog, gingerbread and festive bars.",
     emoji: "🍪",
+    called:
+      /\b(dinners?|brunch|lunch|feast|tea|cookies?|baking|menus?|bar|nog|gingerbread|cider|wine|treats|yule log|tourti\w+|chocolate|caf[ée]s?|coffee|restaurants?|bistro|bakery|bakeries|pub|winery|brewery|eatery|kitchen|dining|tasting)\b/i,
     words:
       /\b(christmas (eve )?(dinner|brunch|lunch|feast|cookies?|baking|menu)s?|christmas dinner to go|holiday (meal|menu|dinner)s?|egg ?nog|gingerbread|mulled (wine|cider)|festive (d[ée]cor|menu|favourites|treats)|winter wonder bar|yule log|tourti[eè]re)\b/i,
   },
@@ -98,6 +119,7 @@ export const THEMES: readonly ChristmasTheme[] = [
     label: "Winter fun",
     line: "Skating, sleigh rides and sledding — the season around it.",
     emoji: "⛸️",
+    called: /\b(skat\w*|rinks?|sleigh\w*|sled\w*|tobogg\w*|snow\w*)\b/i,
     words:
       /\b(ice skating|skating rinks?|ice rinks?|outdoor rinks?|public skat(e|ing)|skating|sleigh rides?|sledding|tobogg\w+)\b/i,
     seasonal: true,
@@ -138,6 +160,17 @@ const STRONG_FIELDS: ReadonlySet<EvidenceField> = new Set([
   "activity",
   "description",
 ]);
+
+/** Where Atlas says what a thing *is*, *is called* or *offers*. */
+const IDENTITY_FIELDS: ReadonlySet<EvidenceField> = new Set([
+  "name",
+  "subtype",
+  "activity",
+]);
+
+/** Not a lights display, whatever it sells or makes (the planner's own rule). */
+export const NOT_A_DISPLAY =
+  /\b(yoga|class|classes|workshop|sale|paint|fundraiser|craft)\b/i;
 
 /** Any Christmas word, after the date-not-thing clauses are gone. */
 const CHRISTMAS = /\b(christmas|xmas|festive|yuletide|santa)\b/i;
@@ -245,16 +278,29 @@ export function readChristmas(experience: Experience): ChristmasReading | null {
         };
     }
   }
-  if (found.size === 0 && !christmasWord) return null;
+  // A theme the thing is only *mentioned* with is not what it is: it
+  // counts where Atlas names, lists or offers it so, or where the title or
+  // listed type is called it too (`called`). A display is never a sale,
+  // a class or a fundraiser that happens to sell or make lights.
+  const calledAs = [
+    experience.title,
+    ...(experience.aliases ?? []),
+    experience.subtype ?? "",
+  ].join(" · ");
+  const themes = THEMES.filter((t) => {
+    const evidence = found.get(t.id);
+    if (!evidence) return false;
+    if (t.id === "lights" && NOT_A_DISPLAY.test(experience.title)) return false;
+    return IDENTITY_FIELDS.has(evidence.field) || t.called.test(calledAs);
+  }).map((t) => t.id);
+  if (themes.length === 0 && !christmasWord) return null;
 
-  const themes = THEMES.filter((t) => found.has(t.id)).map((t) => t.id);
   const christmas =
     Boolean(christmasWord) || themes.some((id) => !themeById(id).seasonal);
+  const kept = themes.map((id) => found.get(id)!);
   const evidence = [
-    ...[...found.values()].sort(
-      (a, b) => FIELD_ORDER[a.field] - FIELD_ORDER[b.field],
-    ),
-    ...(christmasWord && ![...found.values()].length ? [christmasWord] : []),
+    ...kept.sort((a, b) => FIELD_ORDER[a.field] - FIELD_ORDER[b.field]),
+    ...(christmasWord && !kept.length ? [christmasWord] : []),
   ];
   return { themes, christmas, evidence };
 }

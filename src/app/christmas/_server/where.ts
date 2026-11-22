@@ -33,3 +33,12 @@ export async function whereAreWe(
     return { at: remembered, chosen: false };
   return { at: DEFAULT_TOWN, chosen: false };
 }
+
+/** The cookie that remembers how far somebody last chose to look. */
+export const KM_COOKIE = "xm-km";
+
+/** The distance this browser last chose on a Christmas page, if any. */
+export async function rememberedKm(): Promise<number | undefined> {
+  const km = Number((await cookies()).get(KM_COOKIE)?.value);
+  return Number.isFinite(km) && km > 0 ? km : undefined;
+}

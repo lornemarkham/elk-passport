@@ -333,7 +333,7 @@ async function WayFinds({
   readonly lightsHref: string;
 }) {
   const corpus = await christmasFinds(ask, today);
-  const answered = answer(corpus.finds, ask);
+  const answered = answer(corpus.finds, ask, { today, now: new Date() });
   const shown = strongest(
     answered,
     way.id === "events" ? FINDS.events : FINDS.default,

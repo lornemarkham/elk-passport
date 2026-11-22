@@ -10,6 +10,7 @@ import { PinCard, SeasonBadge } from "@/components/christmas/lights/PinCard";
 import {
   Checks,
   ReportAndRemove,
+  RequestRemoval,
   TourAndShare,
 } from "@/components/christmas/lights/PinActions";
 import christmas from "@/components/christmas/christmas.module.css";
@@ -112,12 +113,9 @@ export default async function PinPage({ params }: Props) {
                 className="rounded-2xl bg-[#f7e3e1] p-4 text-[#082319]"
                 data-testid="pending-note"
               >
-                Thanks for pinning the magic! A reviewer checks every pin before
-                families see it
-                {pin.residential
-                  ? " — and a home needs its owner's okay, so its location stays private until then"
-                  : ""}
-                .
+                Thanks for adding this! It&apos;s pending review — we check
+                every display before it appears on the public map, so only you
+                can see this page for now .
               </p>
             )}
             {pin.description && (
@@ -191,7 +189,16 @@ export default async function PinPage({ params }: Props) {
                 organiser before a long drive.
               </p>
             )}
+            {pin.status === "approved" && <RequestRemoval pin={pin} />}
             <ReportAndRemove pin={pin} />
+            <p className="text-sm text-[#3d4a43]">
+              <Link
+                href="/christmas/lights/privacy"
+                className="font-bold underline"
+              >
+                How this map handles privacy
+              </Link>
+            </p>
             {v.reviewer && (
               <Link
                 href="/christmas/lights/review"

@@ -19,7 +19,11 @@ import { distanceText } from "@/domain/discovery/proximity";
 import { ageBecause, ageLine } from "@/domain/discovery/suitability";
 import type { Find } from "@/domain/christmas/discover";
 import { tidyWhere } from "@/domain/christmas/tidy";
-import { evidenceLine, themeById } from "@/domain/christmas/themes";
+import {
+  evidenceLine,
+  themeById,
+  type ThemeId,
+} from "@/domain/christmas/themes";
 import {
   CONFIDENCE_LABEL,
   PHASE_LABEL,
@@ -58,15 +62,21 @@ export function FindCard({
   origin,
   youngest,
   compact = false,
+  theme: browsing,
 }: {
   readonly find: Find;
   readonly origin?: { latitude: number; longitude: number };
   readonly youngest?: number;
   readonly compact?: boolean;
+  /** The category being browsed: the card says that one when it is one. */
+  readonly theme?: ThemeId;
 }) {
   const { picked, togglePick, saved, saving, toggleSave } = usePicks();
   const e = find.experience;
-  const theme = find.reading.themes[0];
+  const theme =
+    browsing && find.reading.themes.includes(browsing)
+      ? browsing
+      : find.reading.themes[0];
   const where = tidyWhere(whereLine(e) ?? "");
   const far = distanceText(e, origin);
   const age = ageLine(e, youngest);
@@ -134,6 +144,12 @@ export function FindCard({
                 "Location not confirmed"}
             </span>
           </li>
+          {find.others ? (
+            <li className="text-sm" data-testid="find-others">
+              Listed {find.others + 1} times — shown once
+              {e.kind === "Event" ? "; it may run on other dates too" : ""}.
+            </li>
+          ) : null}
           {!compact && find.price && (
             <li className="flex gap-2">
               <Tag className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />

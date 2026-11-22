@@ -1,3 +1,9 @@
+import { after } from "next/server";
+import {
+  dashboardUrl,
+  removalMail,
+  sendToAdmin,
+} from "../../../_server/notify";
 import {
   changeLights,
   handle,
@@ -12,6 +18,9 @@ import {
   addDetails,
   approve,
   check,
+  hide,
+  parseContact,
+  requestRemoval,
   decline,
   find,
   parseDetails,
@@ -24,6 +33,7 @@ import {
 } from "@/domain/christmas/lights/actions";
 import { measure } from "@/lib/measure";
 import {
+  TOWN_LABEL,
   canSee,
   viewOf,
   type CheckId,
@@ -43,7 +53,10 @@ const str = (v: unknown, max = 300) =>
  * - `rate` (signed in): "How magical was it?" — 1–5 stars and optional tags, one per season
  * - `details` (its submitter or a reviewer): music, hours, walk-through… after pinning
  * - `check` (signed in): Lights are on! · Not decorated · Incorrect location · Display updated
- * - `report` (anyone): Something wrong? — a privacy report hides a home at once
+ * - `report` (anyone): Something wrong? — a privacy report hides a listing at once
+ * - `request-removal` (anyone, no account): "Is this your home? Request removal" —
+ *   hides the listing at once and emails the administrator
+ * - `hide` (administrator): take a published listing off the map, keeping it
  * - `remove` (its submitter or a reviewer)
  * - `approve` · `decline` · `restore` (reviewers)
  */
@@ -59,16 +72,20 @@ export async function POST(
     .catch(() => ({}) as Record<string, unknown>);
   const action = (body as Record<string, unknown>).action;
   const reviewing =
-    action === "approve" || action === "decline" || action === "restore";
+    action === "approve" ||
+    action === "decline" ||
+    action === "restore" ||
+    action === "hide";
   // Reviewers work through a queue; their actions share the generous bucket.
   const limit =
     action === "react" || action === "rate" || (reviewing && v.reviewer)
       ? "react"
-      : action === "report"
+      : action === "report" || action === "request-removal"
         ? "report"
         : "write";
 
-  if (action !== "report" && !v.key) return signInFirst();
+  const open = action === "report" || action === "request-removal";
+  if (!open && !v.key) return signInFirst();
   const by = v.key ?? visitorKey(request);
   const reviewerName = v.email ?? by;
 
@@ -76,7 +93,7 @@ export async function POST(
     const now = new Date();
     const result = await changeLights((doc) => {
       const pin = find(doc, id);
-      if (!canSee(pin, v) && action !== "report")
+      if (!canSee(pin, v) && !open)
         throw new Refused("That pin isn't on the map.", 404);
       switch (action) {
         case "react":
@@ -117,29 +134,38 @@ export async function POST(
             doc: report(doc, id, by, b.reason as ReportId, str(b.text), now),
             result: null,
           };
-        case "remove":
+        case "request-removal": {
+          if (pin.status === "declined")
+            throw new Refused("That listing isn't on the map.", 404);
           return {
-            doc: remove(doc, id, by, v.reviewer, now),
-            result: "removed" as const,
-          };
-        case "approve": {
-          if (!v.reviewer) throw new Refused("Reviewers only.", 403);
-          const basis =
-            b.basis === "owner-consent" || b.basis === "public-listing"
-              ? b.basis
-              : undefined;
-          const url = str(b.url);
-          return {
-            doc: approve(
+            doc: requestRemoval(
               doc,
               id,
-              reviewerName,
+              by,
+              str(b.text, 500),
+              parseContact(b.contact),
               now,
-              basis ? { basis, ...(url ? { url } : {}) } : undefined,
             ),
-            result: null,
+            result: "removal" as const,
           };
         }
+        case "hide":
+          if (!v.reviewer) throw new Refused("Reviewers only.", 403);
+          return {
+            doc: hide(doc, id, reviewerName, now, str(b.why)),
+            result: null,
+          };
+        case "remove":
+          return {
+            doc: remove(doc, id, by, v.reviewer, now, str(b.why)),
+            result: "removed" as const,
+          };
+        case "approve":
+          if (!v.reviewer) throw new Refused("Reviewers only.", 403);
+          return {
+            doc: approve(doc, id, reviewerName, now),
+            result: null,
+          };
         case "decline":
           if (!v.reviewer) throw new Refused("Reviewers only.", 403);
           return {
@@ -148,16 +174,31 @@ export async function POST(
           };
         case "restore":
           if (!v.reviewer) throw new Refused("Reviewers only.", 403);
-          return { doc: restore(doc, id, reviewerName, now), result: null };
+          return {
+            doc: restore(doc, id, reviewerName, now, str(b.why)),
+            result: null,
+          };
         default:
           throw new Refused("Nothing to do.");
       }
     });
     if (result === "removed") await putPhoto(id, null).catch(() => undefined);
+    if (result === "removal") {
+      const gone = (await readLights()).doc.pins.find((p) => p.id === id);
+      const link = dashboardUrl(request);
+      if (gone)
+        after(async () => {
+          await sendToAdmin(
+            removalMail(gone.name, TOWN_LABEL[gone.town], link),
+          );
+        });
+    }
     if (
       action === "approve" ||
       action === "decline" ||
       action === "report" ||
+      action === "request-removal" ||
+      action === "hide" ||
       action === "remove" ||
       action === "react" ||
       action === "rate" ||
