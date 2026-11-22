@@ -166,6 +166,15 @@ export default async function LightsPage({
                 · change
               </a>
             </div>
+            {v.reviewer && (
+              <Link
+                href="/christmas/lights/review"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#ffd98a] px-4 text-sm font-extrabold text-[#082319]"
+                data-testid="manage-lights-link"
+              >
+                Manage Christmas Lights
+              </Link>
+            )}
             <p
               className="shrink-0 text-right text-sm text-white/85"
               data-testid="lit-count"

@@ -304,6 +304,13 @@ test("a family adds a home; it is private until the administrator approves it", 
   });
   await as(elf, "elf@example.test", base);
   const review = await elf.newPage();
+  // The administrator finds the dashboard from the map; a visitor never sees the link.
+  await review.goto("/christmas/lights");
+  await expect(review.getByTestId("manage-lights-link")).toBeVisible();
+  const stranger = await visitor.newPage();
+  await stranger.goto(`${base}/christmas/lights`);
+  await expect(stranger.getByTestId("manage-lights-link")).toHaveCount(0);
+  await stranger.close();
   await review.goto("/christmas/lights/review");
   const item = review.locator(`[data-testid="review-item"][data-id="${id}"]`);
   await expect(item.getByTestId("review-status")).toHaveText("Pending review");
