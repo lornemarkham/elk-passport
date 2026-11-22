@@ -1,4 +1,4 @@
-# Proposal: hide the generic bar's destinations inside `/christmas`
+# Proposal (APPLIED by `passport` integration, M964): hide the generic bar's destinations inside `/christmas`
 
 **For:** `passport-domain` / `passport` (the shell is a shared contract; this lane
 does not edit it). **From:** Christmas QA repair, 2026-11-21, items 12–15.
@@ -29,3 +29,14 @@ generic tabs and Experiences are absent and the account slot is present.
 
 Until then, a Christmas visitor sees two bars: the generic one, and Christmas's
 own directly beneath it.
+
+## Applied (M964, 2026-11-21)
+
+`PassportNav` now hides the three generic destinations and the Experiences menu
+inside `/christmas` (`inside("/christmas")`), keeping the wordmark, theme picker
+and account slot. Cases added to `PassportNav.test.tsx`; `e2e/global-header.spec.ts`
+now expects Christmas to have no Experiences menu.
+
+**Named conflict, not resolved:** the 2026-11-10 brief ("every experience keeps
+the Go Have a Day header") is narrowed here by the 2026-11-21 QA brief. From
+Christmas the only way to another experience is "← Go Have a Day".

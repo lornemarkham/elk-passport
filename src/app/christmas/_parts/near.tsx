@@ -104,7 +104,7 @@ export async function NearYou({
             From the community lights map
             <span className="font-normal">
               {" "}
-              — local listings checked by a person
+              — local listings, each checked by a person
             </span>
           </p>
           <PinRow pins={pins} />

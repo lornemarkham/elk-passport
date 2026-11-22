@@ -465,3 +465,99 @@ test("the desktop map has + / − / recenter buttons and says so when a town is 
   expect(btn!.y).toBeGreaterThanOrEqual(row!.y + row!.height - 1);
   await context.close();
 });
+
+/**
+ * **M962/M964 acceptance, on a desktop.** A signed-in user's own pending pin
+ * is on their map, found by the Coldstream filter, opens to their photograph,
+ * "See my pin" lands on it, it survives a reload, and the zoom and recenter
+ * buttons work. A different user sees none of it.
+ */
+test("desktop: an owner's pending pin is on their map, under Coldstream, and nobody else's", async ({
+  browser,
+  baseURL,
+}) => {
+  test.skip(!IDENTITY, "needs the memory store and the test identity");
+  const base = baseURL!;
+  const name = `Coldstream Candy Cane ${RUN}`;
+  const owner = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  await as(owner, `owner-${RUN}@example.test`, base);
+  const page = await owner.newPage();
+
+  await page.goto("/christmas/lights/pin?at=coldstream");
+  await mapReady(page);
+  await page.getByTestId("lights-map").click();
+  await expect(page.getByTestId("pick-said")).toContainText("Pinned");
+  await page
+    .getByTestId("photo-input")
+    .setInputFiles("docs/product/christmas/verification/test-lights.jpg");
+  await expect(page.getByTestId("photo-preview")).toBeVisible();
+  await page.getByTestId("pin-name-input").fill(name);
+  await page.getByTestId("whose-spotted").click();
+  await page.getByTestId("pin-submit").click();
+  await expect(page.getByTestId("pin-done")).toBeVisible();
+
+  // See my pin: the map opens on it, selected.
+  await page.getByTestId("see-my-pin").click();
+  await page.waitForURL(/[?&]pin=/);
+  const id = new URL(page.url()).searchParams.get("pin")!;
+  await mapReady(page);
+  const mine = page.locator(`[data-testid="map-marker"][data-id="${id}"]`);
+  await expect(mine).toBeVisible();
+  await expect(page.getByTestId("sheet-pending")).toBeVisible();
+  const map = page.getByTestId("lights-map");
+  expect(Number(await map.getAttribute("data-zoom"))).toBeGreaterThanOrEqual(
+    14.9,
+  );
+
+  // The Coldstream filter finds it, and a reload keeps it there.
+  await page.goto("/christmas/lights?at=coldstream");
+  await mapReady(page);
+  await page.getByTestId("town-coldstream").click();
+  await expect(mine).toBeVisible();
+  await page.reload();
+  await mapReady(page);
+  await page.getByTestId("town-coldstream").click();
+  await expect(mine).toBeVisible();
+
+  // Open it: its own photograph, and the pending note.
+  await mine.click();
+  await page.getByTestId("sheet-open").click();
+  await expect(page.getByTestId("pending-note")).toBeVisible();
+  await expect(page.getByTestId("pin-photo")).toBeVisible();
+
+  // Desktop zoom and recenter.
+  await page.goto(`/christmas/lights?pin=${id}`);
+  await mapReady(page);
+  const zoom = async () => Number(await map.getAttribute("data-zoom"));
+  const start = await zoom();
+  await page.getByTestId("map-zoom-out").click();
+  await expect.poll(zoom).toBeLessThan(start - 0.5);
+  await page.getByTestId("map-zoom-in").click();
+  await page.getByTestId("map-recenter").click();
+  await expect(mine).toBeVisible();
+
+  // A different signed-in user, and a signed-out visitor, see nothing of it.
+  for (const email of [`stranger-${RUN}@example.test`, null]) {
+    const other = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+    if (email) await as(other, email, base);
+    const p = await other.newPage();
+    await p.goto(`/christmas/lights?at=coldstream&pin=${id}`);
+    await mapReady(p);
+    await p.getByTestId("town-coldstream").click();
+    await expect(
+      p.locator(`[data-testid="map-marker"][data-id="${id}"]`),
+    ).toHaveCount(0);
+    expect(await p.content()).not.toContain(name);
+    expect(
+      (
+        await other.request.get(`${base}/christmas/api/lights/${id}/photo`)
+      ).status(),
+    ).toBe(404);
+    await other.close();
+  }
+  await owner.close();
+});
