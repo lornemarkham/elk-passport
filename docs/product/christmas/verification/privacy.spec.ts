@@ -124,7 +124,11 @@ test("a private Christmas adventure is reachable only by its members", async ({
       expect(body, `${name}: ${r.url()}`).not.toContain(`Bring mittens`);
     }
     // Pages: no title, no plan, whatever the status or redirect.
-    for (const path of [`/christmas/adventure/${id}`, `/adventures/${id}`]) {
+    for (const path of [
+      `/christmas/adventure/${id}`,
+      `/adventures/${id}`,
+      "/christmas/list",
+    ]) {
       const page = await (name === "anonymous"
         ? anon.get(path, { maxRedirects: 5 })
         : bob.request.get(path, { maxRedirects: 5 }));
@@ -179,13 +183,21 @@ test("a private Christmas adventure is reachable only by its members", async ({
   const bobAgain = await bob.request.get(`/api/adventures/${id}`);
   expect(bobAgain.status()).toBeGreaterThanOrEqual(400);
 
-  // Alice's adventure is still there for Alice.
+  // Alice's adventure is still there for Alice — and on her own list.
   expect((await alice.request.get(`/api/adventures/${id}`)).status()).toBe(200);
+  expect(await (await alice.request.get("/christmas/list")).text()).toContain(
+    SECRET_TITLE,
+  );
+  // Signed out, the list is a sign-in prompt and holds nothing of anyone's.
+  const signedOutList = await anon.get("/christmas/list");
+  expect(signedOutList.status()).toBe(200);
+  expect(await signedOutList.text()).toContain("Sign in");
 
   // Public Christmas stays public: no sign-in, no Alice.
   for (const path of [
     "/christmas",
     "/christmas/discover",
+    "/christmas/list",
     "/christmas/lights",
     "/christmas/lights/tour",
     "/christmas/itinerary?say=lights",

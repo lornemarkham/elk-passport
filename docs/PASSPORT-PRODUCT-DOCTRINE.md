@@ -930,6 +930,19 @@ may suggest things to do at home or anywhere, provided each says it is an
 idea and names no venue, time, price or availability. Real events and
 places stay Atlas's. One composition; it answers no open question below.
 
+_Christmas was made safe to open to the public 2026-11-21_ (owner brief
+"Christmas public launch QA repair"; `docs/product/christmas/QA-REPAIR.md`):
+where and how far are a rule, not a hint — 15, 30, 60 or 100 km, thirty by
+default, and nothing is "near you" that is not placed inside the radius; a
+date is said to be on now, upcoming, dated for an earlier year or unconfirmed,
+and an earlier year is never shown as this one; Christmas has its own bar
+(Discover · Lights Map · My Christmas List · Plan My Route) and one deliberate
+way back to Go Have a Day; and a person's own list and plans live on one
+private page. It narrows §12's "silence still removes nothing" for Christmas
+only (a find placed outside the radius is set aside and counted; one with no
+place waits, labelled, and is never called near) — still the owner's call.
+One composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

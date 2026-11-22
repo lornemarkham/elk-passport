@@ -146,7 +146,7 @@ export function TourBuilder({
         name: f.name,
         at: f.at,
         kind: "atlas",
-        label: "From Atlas",
+        label: "Event listing",
       });
     return m;
   }, [pins, festive]);
@@ -732,7 +732,7 @@ export function TourBuilder({
                       )}
                     </p>
                     <p className="text-sm text-[#3d4a43]">
-                      {p ? placeLabel(p) : "Festive stop from Atlas"} ·{" "}
+                      {p ? placeLabel(p) : "Festive stop"} ·{" "}
                       {clockText(t.leg.minutes)}{" "}
                       {mode === "walk" ? "walk" : "drive"} · see it ~{t.stay}{" "}
                       min

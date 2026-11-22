@@ -342,3 +342,21 @@ describe("while who is signed in is still being read", () => {
     );
   });
 });
+
+describe("inside Christmas", () => {
+  it("hands the destinations to Christmas's own bar, keeping home and the account", () => {
+    at("/christmas/discover", "Sam");
+    for (const id of ["discover", "my-stuff", "build"])
+      expect(screen.queryByTestId(`passport-nav-${id}`)).toBeNull();
+    expect(screen.queryByTestId("passport-nav-experiences")).toBeNull();
+    expect(screen.getByTestId("passport-account")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /go have a day/i }),
+    ).toHaveAttribute("href", "/");
+  });
+
+  it("is only Christmas: the bar is whole everywhere else", () => {
+    at("/discovery");
+    expect(screen.getByTestId("passport-nav-experiences")).toBeInTheDocument();
+  });
+});

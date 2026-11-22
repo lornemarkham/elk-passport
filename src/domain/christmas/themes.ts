@@ -272,9 +272,9 @@ export function evidenceLine(evidence: Evidence): string {
     case "name":
       return `It's in the name: “${evidence.word}”`;
     case "subtype":
-      return `Atlas lists it as “${evidence.word}”`;
+      return `Listed as “${evidence.word}”`;
     case "activity":
-      return `Atlas lists “${evidence.word}” as something to do here`;
+      return `“${evidence.word}” is listed as something to do here`;
     case "description":
       return `Its description says “${evidence.word}”`;
     case "organiser":

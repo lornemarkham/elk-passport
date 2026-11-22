@@ -125,6 +125,10 @@ export function PassportNav({
   const here = (destination: { href: string; also?: readonly string[] }) =>
     inside(destination.href) || (destination.also ?? []).some(inside);
   const from = encodeURIComponent(pathname || "/discovery");
+  // Christmas has its own bar (`ChristmasNav`, with one way back to Go Have a
+  // Day), so the generic destinations and the Experiences menu step aside
+  // there. The wordmark, the theme picker and the account slot stay.
+  const inChristmas = inside("/christmas");
 
   // **The Experiences row.** Closed until asked; closes again when the page
   // changes, on Escape, or on a press anywhere outside the header — the three
@@ -185,56 +189,59 @@ export function PassportNav({
             <Wordmark href="/" lines={1} />
           </span>
 
-          {DESTINATIONS.map((d) => {
-            const current = here(d);
-            return (
-              <Link
-                key={d.href}
-                href={d.href}
-                aria-current={current ? "page" : undefined}
-                data-testid={`passport-nav-${d.testId}`}
-                style={
-                  current ? { borderColor: "var(--ghad-accent)" } : undefined
-                }
-                className={`order-5 -mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:order-none sm:px-3 sm:text-[14px] ${
-                  current
-                    ? "text-[#111]"
-                    : "border-transparent text-black/60 hover:text-black/85"
-                }`}
-              >
-                {d.label}
-              </Link>
-            );
-          })}
+          {!inChristmas &&
+            DESTINATIONS.map((d) => {
+              const current = here(d);
+              return (
+                <Link
+                  key={d.href}
+                  href={d.href}
+                  aria-current={current ? "page" : undefined}
+                  data-testid={`passport-nav-${d.testId}`}
+                  style={
+                    current ? { borderColor: "var(--ghad-accent)" } : undefined
+                  }
+                  className={`order-5 -mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:order-none sm:px-3 sm:text-[14px] ${
+                    current
+                      ? "text-[#111]"
+                      : "border-transparent text-black/60 hover:text-black/85"
+                  }`}
+                >
+                  {d.label}
+                </Link>
+              );
+            })}
 
           {/* Same type and the same underline as the sections, because from
               here it behaves like one: it lights up when you are inside any
               experience. It is a button, not a link — it opens the row below
               rather than going anywhere itself. */}
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={rowId}
-            aria-current={inExperience ? "page" : undefined}
-            data-testid="passport-nav-experiences"
-            onClick={() => setOpen(!open)}
-            style={
-              inExperience ? { borderColor: "var(--ghad-accent)" } : undefined
-            }
-            className={`order-2 -mb-px inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-0.5 border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:order-none sm:gap-1 sm:px-3 sm:text-[14px] ${
-              inExperience || open
-                ? "text-[#111]"
-                : "border-transparent text-black/60 hover:text-black/85"
-            }`}
-          >
-            Experiences
-            <span
-              aria-hidden
-              className={`text-[10px] transition-transform ${open ? "rotate-180" : ""}`}
+          {!inChristmas && (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={rowId}
+              aria-current={inExperience ? "page" : undefined}
+              data-testid="passport-nav-experiences"
+              onClick={() => setOpen(!open)}
+              style={
+                inExperience ? { borderColor: "var(--ghad-accent)" } : undefined
+              }
+              className={`order-2 -mb-px inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-0.5 border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:order-none sm:gap-1 sm:px-3 sm:text-[14px] ${
+                inExperience || open
+                  ? "text-[#111]"
+                  : "border-transparent text-black/60 hover:text-black/85"
+              }`}
             >
-              ▾
-            </span>
-          </button>
+              Experiences
+              <span
+                aria-hidden
+                className={`text-[10px] transition-transform ${open ? "rotate-180" : ""}`}
+              >
+                ▾
+              </span>
+            </button>
+          )}
 
           <span className="order-2 flex-1 sm:order-none" />
 
@@ -280,7 +287,7 @@ export function PassportNav({
             on the page rather than something hidden on it — and nothing for a
             screen reader to walk past. The links are plain links to the
             existing routes. */}
-        {open && (
+        {open && !inChristmas && (
           <nav
             id={rowId}
             aria-label="Experiences"

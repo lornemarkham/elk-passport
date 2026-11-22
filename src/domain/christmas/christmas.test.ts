@@ -7,6 +7,7 @@ import { place, sayFor, shapeById, daysOf } from "./plans";
 import { recapOf, recapLine, type Moment } from "./recap";
 import { parseMoment, parseNotice } from "./together";
 import { satisfies, challengeById } from "./challenges";
+import { christmasPictures } from "./pictures";
 
 const TODAY = "2026-11-01";
 
@@ -238,18 +239,23 @@ describe("Christmas Discovery", () => {
   it("keeps the URL as the state", () => {
     const ask = readAsk({
       at: "vancouver",
-      km: "25",
+      km: "60",
       theme: "lights,nope",
       ages: "4,9,99",
       budget: "free",
     });
     expect(ask).toMatchObject({
-      km: 25,
+      km: 60,
       themes: ["lights"],
       ages: [4, 9],
       budget: "free",
     });
     expect(readAsk({ at: "atlantis" }).at).toBeUndefined();
+    // The radius is one of four, and thirty when nothing is said.
+    expect(readAsk({}).km).toBe(30);
+    expect(readAsk({ km: "250" }).km).toBe(30);
+    expect(readAsk({ km: "15" }).km).toBe(15);
+    expect(readAsk({ km: "100" }).km).toBe(100);
     expect(writeAsk(ask)).toContain("theme=lights");
   });
 
@@ -496,5 +502,134 @@ describe("a window of months is not a confirmed date", () => {
       "2026-11-19",
     );
     expect(r.confidence).toBe("dated");
+  });
+});
+
+describe("QA repair 2026-11-21 — where, how far, and when", () => {
+  const at = (id: string, lng: number, lat: number, area: string) =>
+    exp({
+      id,
+      kind: "Event",
+      title: `${id} Christmas Market`,
+      startTime: "2026-12-05T00:00:00Z",
+      endTime: "2026-12-06T00:00:00Z",
+      timePrecision: "day",
+      occurrence: { reading: "occurrence", actionable: true },
+      geography: {
+        state: "derived",
+        coordinates: [lng, lat],
+        area: { id: area, name: area },
+      },
+    });
+  // Vancouver centre is roughly (-123.12, 49.28).
+  const close = at("close", -123.1, 49.3, "Metro Vancouver");
+  const middling = at("middling", -122.8, 49.25, "Metro Vancouver"); // ~23 km
+  const faraway = at("faraway", -119.5, 50.7, "Thompson Okanagan");
+  const finds = findsIn([close, middling, faraway], TODAY);
+
+  it("offers 15, 30, 60 or 100 km — thirty by default", () => {
+    expect(readAsk({}).km).toBe(30);
+    for (const km of [15, 30, 60, 100])
+      expect(readAsk({ km: String(km) }).km).toBe(km);
+    expect(readAsk({ km: "7" }).km).toBe(30);
+  });
+
+  it("keeps what is inside the radius and sets aside what is outside", () => {
+    const near = (km: string) => {
+      const a = answer(finds, readAsk({ at: "vancouver", km }));
+      return (
+        a.shelves
+          .find((s) => s.id === "near")
+          ?.finds.map((f) => f.experience.id) ?? []
+      );
+    };
+    expect(near("15")).toEqual(["close"]);
+    expect(near("30").sort()).toEqual(["close", "middling"]);
+    // The far one is never offered, however far — and the page can say it
+    // was set aside.
+    const a = answer(finds, readAsk({ at: "vancouver", km: "100" }));
+    expect(
+      a.shelves.flatMap((s) => s.finds.map((f) => f.experience.id)),
+    ).not.toContain("faraway");
+    expect(a.removed.distance).toBe(1);
+  });
+
+  it("never calls a find with no place 'near' — it waits, labelled", () => {
+    const nowhere = exp({
+      id: "nowhere",
+      kind: "Event",
+      title: "Nowhere Christmas Market",
+      startTime: "2026-12-05T00:00:00Z",
+      endTime: "2026-12-06T00:00:00Z",
+      timePrecision: "day",
+      occurrence: { reading: "occurrence", actionable: true },
+    });
+    const a = answer(findsIn([nowhere], TODAY), readAsk({ at: "vancouver" }));
+    expect(a.shelves.map((s) => s.id)).toEqual(["unplaced"]);
+    expect(a.shelves[0]!.title).toMatch(/not confirmed/i);
+  });
+
+  it("says whether a confirmed date is on now, coming, or over", () => {
+    const run = (start: string, end: string) =>
+      readWhen(
+        exp({
+          kind: "Event",
+          title: "X Christmas Market",
+          startTime: `${start}T00:00:00Z`,
+          endTime: `${end}T00:00:00Z`,
+          timePrecision: "day",
+          occurrence: { reading: "occurrence", actionable: true },
+        }),
+        "2026-11-21",
+      );
+    expect(run("2026-11-10", "2026-12-24")).toMatchObject({
+      confidence: "dated",
+      phase: "now",
+    });
+    expect(run("2026-12-05", "2026-12-06")).toMatchObject({
+      confidence: "dated",
+      phase: "upcoming",
+    });
+    expect(run("2026-11-01", "2026-11-05")).toMatchObject({
+      confidence: "past",
+      phase: "finished",
+    });
+  });
+
+  it("does not present last year's published schedule as this year's", () => {
+    const stale = exp({
+      title: "Old Christmas Market",
+      knowledge: {
+        practical: [{ label: "Dates", value: "Nov 20 – Dec 24, 2024" }],
+      },
+    });
+    expect(readWhen(stale, "2026-11-21").confidence).toBe("past");
+    const fresh = exp({
+      title: "New Christmas Market",
+      knowledge: {
+        practical: [{ label: "Dates", value: "Nov 20 – Dec 24, 2026" }],
+      },
+    });
+    expect(readWhen(fresh, "2026-11-21").confidence).toBe("check");
+  });
+});
+
+describe("pictures on Christmas cards", () => {
+  it("shows a picture of the thing itself, never its venue's", () => {
+    const own = exp({
+      title: "Own",
+      heroMedia: { type: "image", src: "https://x/own.jpg", alt: "the market" },
+    });
+    const venueOnly = exp({
+      title: "Venue only",
+      contextualMedia: {
+        heroUrl: "https://x/ranch.jpg",
+        via: { name: "O'Keefe Ranch" },
+      },
+    } as Partial<Experience>);
+    expect(christmasPictures(own).map((p) => p.src)).toEqual([
+      "https://x/own.jpg",
+    ]);
+    expect(christmasPictures(venueOnly)).toEqual([]);
   });
 });

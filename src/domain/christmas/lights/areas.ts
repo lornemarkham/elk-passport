@@ -88,6 +88,17 @@ export const areaById = (id: string | null | undefined): Area | undefined =>
 export const inAreaOf = (area: Area, at: LatLng): boolean =>
   metres(area.at, at) <= area.km * 1000;
 
+/**
+ * **Is this pin in this place?** Near its centre, or filed under that town
+ * when it was submitted. Lavington is Coldstream's but ~10 km from its
+ * centre, so the circle alone dropped a Coldstream pin from the Coldstream
+ * filter while its own page said "Coldstream".
+ */
+export const pinInArea = (
+  area: Area,
+  pin: Pick<PinView, "at" | "town">,
+): boolean => inAreaOf(area, pin.at) || pin.town === area.id;
+
 /** The neighbourhood a point is about, if it's close to one. */
 export function neighbourhoodOf(at: LatLng): Area | undefined {
   return NEIGHBOURHOODS.filter((n) => inAreaOf(n, at)).sort(

@@ -1,6 +1,7 @@
 import "server-only";
 import { todayIn } from "@/lib/adventures/overview";
 import { townById } from "@/domain/discovery/towns";
+import { readAsk } from "@/domain/christmas/discover";
 import { readRequest, type Request } from "@/domain/christmas/request";
 import {
   planItinerary,
@@ -34,8 +35,12 @@ export async function planFor(params: Params): Promise<{
   const asked = typeof params.at === "string" ? params.at : undefined;
   const where = await whereAreWe(townById(asked)?.id ?? request.at);
   const town = townById(where.at)!;
+  // How far somebody said they will go (15 / 30 / 60 / 100, thirty by
+  // default) is how far the plan reaches, unless the sentence itself says
+  // "within 10 km".
+  const { km } = readAsk(params);
   const [pool, lights] = await Promise.all([
-    christmasPool({ at: town.id, km: 50, ages: [] }),
+    christmasPool({ at: town.id, km, ages: [] }),
     viewer().then((v) => lightsFor(v)),
   ]);
   const name = town.name.replace(/,\s*BC$/, "");
@@ -51,6 +56,7 @@ export async function planFor(params: Params): Promise<{
         longitude: town.longitude,
       },
       today,
+      reachKm: km,
     },
     readEdits(params),
   );

@@ -264,9 +264,19 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
     /waiting for a reviewer/,
   );
   await page.getByTestId("see-my-pin").click();
+  await page.waitForURL(/[?&]pin=/);
+  const id = new URL(page.url()).searchParams.get("pin")!;
+  await mapReady(page);
+  // The map shows it, as the owner's own waiting pin, and survives a reload.
+  const mine = page.locator(`[data-testid="map-marker"][data-id="${id}"]`);
+  await expect(mine).toBeVisible();
+  await expect(page.getByTestId("sheet-pending")).toBeVisible();
+  await page.reload();
+  await mapReady(page);
+  await expect(mine).toBeVisible();
+  await page.getByTestId("sheet-open").click();
   await expect(page.getByTestId("pending-note")).toContainText("owner");
   await expect(page.getByTestId("pin-photo")).toBeVisible();
-  const id = page.url().split("/").pop()!;
 
   // Nobody else sees it, or its photo, or roughly where it is.
   const visitor = await browser.newContext();
@@ -280,6 +290,12 @@ test("a family pins a home; it stays private until the owner's okay is recorded"
   expect(
     (await visitor.request.get(`${base}/christmas/lights/${id}`)).status(),
   ).toBe(404);
+  // …nor on the map page it was found on.
+  expect(
+    await (
+      await visitor.request.get(`${base}/christmas/lights?pin=${id}`)
+    ).text(),
+  ).not.toContain(name);
 
   // The reviewer can't publish a home on the submitter's word alone.
   const elf = await browser.newContext({
@@ -398,6 +414,13 @@ test("a homeowner adds their own lights by address in under a minute, on a small
 
   // Still private until a reviewer looks; named plainly when no name was given.
   await page.getByTestId("see-my-pin").click();
+  await page.waitForURL(/[?&]pin=/);
+  const mapId = new URL(page.url()).searchParams.get("pin")!;
+  await mapReady(page);
+  await expect(
+    page.locator(`[data-testid="map-marker"][data-id="${mapId}"]`),
+  ).toBeVisible();
+  await page.getByTestId("sheet-open").click();
   await expect(page.getByTestId("pin-name")).toHaveText(
     "Christmas lights in Vernon",
   );
@@ -413,4 +436,32 @@ test("a homeowner adds their own lights by address in under a minute, on a small
     "Christmas lights in Vernon",
   );
   await Promise.all([owner.close(), visitor.close()]);
+});
+
+test("the desktop map has + / − / recenter buttons and says so when a town is empty", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  const page = await context.newPage();
+  await page.goto("/christmas/lights");
+  await mapReady(page);
+  const map = page.getByTestId("lights-map");
+  const zoom = async () => Number(await map.getAttribute("data-zoom"));
+  const start = await zoom();
+  await page.getByTestId("map-zoom-in").click();
+  await expect.poll(zoom).toBeGreaterThan(start + 0.5);
+  const zoomed = await zoom();
+  await page.getByTestId("map-zoom-out").click();
+  await expect.poll(zoom).toBeLessThan(zoomed - 0.5);
+  await page.getByTestId("map-zoom-in").click();
+  await page.getByTestId("map-zoom-in").click();
+  await page.getByTestId("map-recenter").click();
+  await expect.poll(zoom).toBeLessThanOrEqual(14.1);
+  // The buttons clear the places row, and a marker is still selectable.
+  const btn = await page.getByTestId("map-buttons").boundingBox();
+  const row = await page.getByRole("group", { name: "Where" }).boundingBox();
+  expect(btn!.y).toBeGreaterThanOrEqual(row!.y + row!.height - 1);
+  await context.close();
 });

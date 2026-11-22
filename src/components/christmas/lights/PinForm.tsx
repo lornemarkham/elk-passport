@@ -198,11 +198,18 @@ export function PinForm({ town }: { readonly town: TownId | null }) {
         </div>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
-            href={`/christmas/lights/${done.pin.id}`}
+            href={`/christmas/lights?pin=${done.pin.id}`}
             className="inline-flex min-h-12 items-center rounded-full bg-[#ffd98a] px-6 font-extrabold"
             data-testid="see-my-pin"
           >
-            See my pin
+            See my pin on the map
+          </Link>
+          <Link
+            href={`/christmas/lights/${done.pin.id}`}
+            className="inline-flex min-h-12 items-center rounded-full px-6 font-bold ring-1 ring-[#0f3b2b]/25"
+            data-testid="see-my-pin-page"
+          >
+            Open its page
           </Link>
           <ShareDisplay pin={done.pin} />
           <button

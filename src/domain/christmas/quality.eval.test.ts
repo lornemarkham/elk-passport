@@ -73,7 +73,7 @@ describe.skipIf(!file)("Christmas data quality in a real corpus", () => {
         themes: [],
         budget: "any",
       });
-      const sections = around(a, today, 100, []);
+      const sections = around(a, today, [], 100);
       const shown = sections.flatMap((s) => s.finds);
       const over = shown.filter((f) => f.when.to && f.when.to < today);
       n(

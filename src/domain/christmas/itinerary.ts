@@ -97,6 +97,8 @@ export interface Sources {
   readonly origin: Origin;
   /** `YYYY-MM-DD`, Pacific. */
   readonly today: string;
+  /** How far somebody said they will drive (the 15/30/60/100 km choice). */
+  readonly reachKm?: number;
 }
 
 export interface Place {
@@ -381,7 +383,7 @@ function pinPlace(p: PinView, origin: Origin): Place {
       ? [{ src: `/christmas/api/lights/${p.id}/photo`, alt: p.name }]
       : [],
     href: `/christmas/lights/${p.id}`,
-    why: "On the community lights map — checked by a person, not from Atlas",
+    why: "On the community lights map — checked by a person",
     ...(p.hours ? { hours: `Viewing: ${p.hours}` } : {}),
     ...(p.description ? { description: firstSentence(p.description)! } : {}),
   };
@@ -394,7 +396,7 @@ const pinOn = (p: PinView, day: string) =>
 function hoursOn(e: Experience, day: string) {
   const close = statedCloseOn(e, day);
   const weekday = dayLabel(day).split(",")[0];
-  if (!close) return { hours: "Hours not in Atlas — check before you go" };
+  if (!close) return { hours: "Hours not listed — check before you go" };
   if (close.closed)
     return {
       closed: true as const,
@@ -440,7 +442,7 @@ function candidatesFor(need: Need, ctx: Context): Pool {
       if (words.length === 0) continue;
       const subtype = (e.subtype ?? "").replace(/[_-]+/g, " ").toLowerCase();
       intent = words.some((w) => w.toLowerCase() === subtype) ? 3 : 2;
-      why = `Atlas lists it as ${words.slice(0, 2).join(", ").toLowerCase()}`;
+      why = `Listed as ${words.slice(0, 2).join(", ").toLowerCase()}`;
     } else if (theme) {
       const reading = ctx.readings.get(e);
       if (!reading || !reading.themes.includes(theme)) continue;
@@ -460,9 +462,7 @@ function candidatesFor(need: Need, ctx: Context): Pool {
           : evidence?.field === "subtype"
             ? 2.5
             : 2;
-      why = evidence
-        ? `Atlas: “${evidence.word}” in its ${evidence.field === "organiser" ? "organiser's facts" : evidence.field}`
-        : "In Atlas's Christmas listings";
+      why = evidence ? `Matches “${evidence.word}”` : "A Christmas listing";
     } else continue;
 
     const km = distanceTo(e, origin);
@@ -494,7 +494,7 @@ function candidatesFor(need: Need, ctx: Context): Pool {
           closes = end;
       }
       if (on === "check")
-        hours = "Atlas has the dates, not the hours — check before you go";
+        hours = "Dates are listed, not the hours — check before you go";
     }
     if (!isEvent) {
       const h = hoursOn(e, day);
@@ -626,9 +626,7 @@ function score(c: Candidate, from: LatLng): number {
   const geo = Math.max(0, 10 - km / 2.5);
   const evidence =
     (c.place.pictures.length ? 1 : 0) +
-    (c.place.hours && !/not in Atlas|check before/.test(c.place.hours)
-      ? 0.5
-      : 0);
+    (c.place.hours && !/not listed|check before/.test(c.place.hours) ? 0.5 : 0);
   return (
     c.intent * 100 +
     c.availability * 20 +
@@ -697,7 +695,7 @@ function noteFor(need: Need, c: Candidate): string[] {
   const notes: string[] = [];
   if (need === "movie")
     notes.push(
-      "Showtimes aren't in Atlas — check the cinema's own listings and book before you go.",
+      "Showtimes aren't listed — check the cinema's own listings and book before you go.",
     );
   if (c.place.price) notes.push(c.place.price);
   return notes;
@@ -712,7 +710,8 @@ export function planItinerary(
   const question =
     edits.day || request.day ? undefined : dayQuestion(sources.today);
   const reach =
-    request.reachKm ?? (request.mode === "walk" ? WALK_REACH : DRIVE_REACH);
+    request.reachKm ??
+    (request.mode === "walk" ? WALK_REACH : (sources.reachKm ?? DRIVE_REACH));
   const readings = new Map<Experience, ChristmasReading | null>();
   for (const e of sources.experiences) readings.set(e, readChristmas(e));
   const ctx: Context = { sources, day, reach, request, readings };
@@ -957,8 +956,8 @@ function budgetLine(budget: number, stops: readonly ItineraryStop[]): string {
   const priced = planned.filter((s) => s.place!.price || s.place!.free);
   const free = planned.filter((s) => s.place!.free);
   if (priced.length === 0)
-    return `Budget $${budget}: Atlas lists no prices for these stops — check each one before you go.`;
-  return `Budget $${budget}: Atlas lists prices for ${priced.length} of ${planned.length} stops${free.length ? ` (${free.length} free)` : ""}; check the rest before you go.`;
+    return `Budget $${budget}: No prices are listed for these stops — check each one before you go.`;
+  return `Budget $${budget}: Prices are listed for ${priced.length} of ${planned.length} stops${free.length ? ` (${free.length} free)` : ""}; check the rest before you go.`;
 }
 
 function nearbyOf(
@@ -1018,8 +1017,8 @@ function unresolved(
     const tryDay = findDay(need, ctx);
     const what =
       need === "lights"
-        ? `Neither Atlas nor the community lights map has a display confirmed lit on ${dayLabel(ctx.day)} within ${ctx.reach} km of ${town}.`
-        : `Atlas has no ${NOUN[need] ?? label} confirmed on ${dayLabel(ctx.day)} within ${ctx.reach} km of ${town}.`;
+        ? `Neither the event listings nor the community lights map has a display confirmed lit on ${dayLabel(ctx.day)} within ${ctx.reach} km of ${town}.`
+        : `No ${NOUN[need] ?? label} confirmed on ${dayLabel(ctx.day)} within ${ctx.reach} km of ${town}.`;
     return {
       reason: `${what}${pool.offDay ? ` ${pool.offDay} ${pool.offDay === 1 ? "is" : "are"} known, on other days.` : ""} Passport won't guess one.`,
       ...(nearest ? { nearest } : {}),
@@ -1028,8 +1027,8 @@ function unresolved(
   }
   const reason =
     pool.closed > 0
-      ? `Every ${label} place Atlas knows within ${ctx.reach} km of ${town} is closed then, by its own hours.`
-      : `Atlas lists no ${need === "movie" ? "cinema" : label + " place"} within ${ctx.reach} km of ${town}.`;
+      ? `Every ${label} place we know of within ${ctx.reach} km of ${town} is closed then, by its own hours.`
+      : `We know of no ${need === "movie" ? "cinema" : label + " place"} within ${ctx.reach} km of ${town}.`;
   return {
     reason: `${reason}${nearest ? ` The nearest it knows is ${where(nearest)}.` : ""} Passport won't substitute something else.`,
     ...(nearest ? { nearest } : {}),

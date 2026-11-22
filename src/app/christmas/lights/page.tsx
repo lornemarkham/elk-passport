@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, MapPin, Sparkles } from "lucide-react";
@@ -8,7 +9,12 @@ import { PinCard } from "@/components/christmas/lights/PinCard";
 import { Stars } from "@/components/christmas/lights/Rate";
 import christmas from "@/components/christmas/christmas.module.css";
 import styles from "@/components/christmas/lights/lights.module.css";
+import { DistancePicker } from "@/components/christmas/DistancePicker";
+import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import { todayIn } from "@/lib/adventures/overview";
+import { townById } from "@/domain/discovery/towns";
+import { readAsk } from "@/domain/christmas/discover";
+import { metres } from "@/domain/christmas/lights/actions";
 import {
   KIND_EMOJI,
   KIND_LABEL,
@@ -18,7 +24,7 @@ import {
 } from "@/domain/christmas/lights/model";
 import {
   areaById,
-  inAreaOf,
+  pinInArea,
   placeLabel,
   type Area,
 } from "@/domain/christmas/lights/areas";
@@ -33,6 +39,7 @@ import { suggestedDrives } from "@/domain/christmas/lights/drives";
 import { whenLabel } from "@/lib/adventures/present";
 import { lightsFor, viewer } from "../_server/lights";
 import { festiveStops } from "../_server/lightsAtlas";
+import { whereAreWe } from "../_server/where";
 
 export const dynamic = "force-dynamic";
 
@@ -77,11 +84,27 @@ export default async function LightsPage({
   const params = (await searchParams) ?? {};
   const at = typeof params.at === "string" ? params.at : null;
   const area = areaById(at)?.id ?? null;
+  // "See my pin" lands here with the pin to show; only the asker's own or a published one is found.
+  const pinParam = typeof params.pin === "string" ? params.pin : null;
   const [v, festive] = await Promise.all([
     viewer(),
     festiveStops(todayIn()).catch(() => ({ stops: [], outage: true })),
   ]);
-  const { pins, ready } = await lightsFor(v);
+  const everything = await lightsFor(v);
+  const { ready } = everything;
+  // **Where and how far apply here too.** The map holds the displays within
+  // the chosen distance of the chosen town; a family's own pins always stay
+  // (they are theirs). Choosing one of the map's own areas is a narrower
+  // choice and stands in place of the radius.
+  const ask = readAsk(params);
+  const where = await whereAreWe(ask.at);
+  const town = townById(where.at)!;
+  const centre = { lat: town.latitude, lng: town.longitude };
+  const near = (p: { at: { lat: number; lng: number } }) =>
+    metres(centre, p.at) / 1000 <= ask.km;
+  const pins = everything.pins.filter((p) => p.yours || area || near(p));
+  const hidden = everything.pins.length - pins.length;
+  festive.stops = festive.stops.filter((f) => area || near(f));
   const lights = pins.filter((p) => isLightDisplay(p.kind));
   const published = lights.filter((p) => p.status === "approved");
   const others = pins.filter(
@@ -93,7 +116,7 @@ export default async function LightsPage({
   const community = lightUp(published, placeLabel, fav);
   const within = (id: string) => {
     const a = areaById(id);
-    return a ? (p: PinView) => inAreaOf(a as Area, p.at) : () => false;
+    return a ? (p: PinView) => pinInArea(a as Area, p) : () => false;
   };
   const today = todayIn();
   const drives = suggestedDrives(published, today);
@@ -131,6 +154,16 @@ export default async function LightsPage({
               <h1 className="ghad-display text-xl leading-tight font-extrabold tracking-[-0.02em] sm:text-3xl">
                 The Christmas Lights Map
               </h1>
+              <a
+                href="#lights-where"
+                className="text-xs font-semibold text-white/85 underline underline-offset-2"
+                data-testid="lights-where-summary"
+              >
+                {area
+                  ? `Around ${areaById(area)!.label}`
+                  : `Within ${ask.km} km of ${town.name.replace(/,\s*BC$/, "")}`}{" "}
+                · change
+              </a>
             </div>
             <p
               className="shrink-0 text-right text-sm text-white/85"
@@ -154,7 +187,36 @@ export default async function LightsPage({
           )}
 
           <div className="mx-auto max-w-6xl sm:px-6">
-            <Explorer pins={lights} initialArea={area} />
+            <Explorer
+              pins={lights}
+              initialArea={area}
+              initialSelected={
+                lights.some((p) => p.id === pinParam) ? pinParam : null
+              }
+            />
+          </div>
+
+          <div
+            className="mx-auto mt-4 max-w-6xl scroll-mt-4 space-y-1 px-4 text-white sm:px-6"
+            id="lights-where"
+            data-testid="lights-where"
+          >
+            <Suspense fallback={null}>
+              <ExperienceLocation
+                scope="christmas"
+                experience="Christmas lights"
+                at={where.at}
+                className="text-white"
+              />
+            </Suspense>
+            {!area && <DistancePicker ask={ask} path="/christmas/lights" />}
+            {!area && hidden > 0 && published.length === 0 && (
+              <p className="text-sm text-white/85" data-testid="lights-none">
+                No lights are listed within {ask.km} km of{" "}
+                {town.name.replace(/,\s*BC$/, "")} yet. This map covers the
+                North Okanagan — try a wider distance or another town.
+              </p>
+            )}
           </div>
 
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -202,7 +264,7 @@ export default async function LightsPage({
                                   {" "}
                                   ·{" "}
                                   {s.kind === "atlas"
-                                    ? "From Atlas"
+                                    ? "From the event listings"
                                     : KIND_LABEL[s.kind]}
                                 </span>
                               </span>
@@ -370,7 +432,7 @@ export default async function LightsPage({
               </h2>
               <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {published
-                  .filter((p) => !area || inAreaOf(areaById(area)!, p.at))
+                  .filter((p) => !area || pinInArea(areaById(area)!, p))
                   .map((p) => (
                     <li key={p.id}>
                       <PinCard pin={p} />
@@ -422,7 +484,7 @@ export default async function LightsPage({
                         <span className="min-w-0">
                           <span className="block font-bold">{f.name}</span>
                           <span className="text-sm text-white/70">
-                            From Atlas{f.line ? ` · ${f.line}` : ""}
+                            Event listing{f.line ? ` · ${f.line}` : ""}
                           </span>
                         </span>
                       </Link>

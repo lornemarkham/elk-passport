@@ -2,6 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
+import { Minus, Plus, LocateFixed } from "lucide-react";
 import type { Map as MlMap, Marker } from "maplibre-gl";
 import type { LatLng } from "@/domain/christmas/lights/model";
 import { cluster as group } from "@/domain/christmas/lights/cluster";
@@ -23,6 +24,8 @@ export interface MapMarker {
   readonly dim?: boolean;
   readonly n?: number;
   readonly selected?: boolean;
+  /** The viewer's own pin, waiting for a reviewer: drawn dashed so it is plainly theirs. */
+  readonly pending?: boolean;
 }
 
 /** Marker look: a lit display glows; the rest are quiet so the map stays readable. */
@@ -44,6 +47,7 @@ export function LightsMap({
   focus = null,
   controls = true,
   creditTop = false,
+  buttons = false,
 }: {
   readonly markers: readonly MapMarker[];
   readonly center: LatLng;
@@ -64,6 +68,8 @@ export function LightsMap({
   readonly controls?: boolean;
   /** Put the map's credit top-left, clear of buttons laid over the bottom. */
   readonly creditTop?: boolean;
+  /** Our own + / − / recenter buttons, clear of the places row and the card. */
+  readonly buttons?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
@@ -79,6 +85,8 @@ export function LightsMap({
   const [attempt, setAttempt] = useState(0);
   const onPick = useRef(pick?.onPick);
   onPick.current = pick?.onPick;
+  const focusAt = useRef(focus);
+  focusAt.current = focus;
   const onSel = useRef(onSelect);
   onSel.current = onSelect;
 
@@ -134,11 +142,17 @@ export function LightsMap({
         m.on("load", () => {
           ready.current = true;
           box.current?.setAttribute("data-ready", "1");
+          said();
           setStatus("ready");
           fitMarkers();
           drawRoute();
           drawPick();
+          // A pin asked for by address ("See my pin") is the view, not the whole set.
+          if (focusAt.current) goTo(focusAt.current, 15, 0);
         });
+        const said = () =>
+          box.current?.setAttribute("data-zoom", m.getZoom().toFixed(2));
+        m.on("zoom", said);
         m.on("zoomend", () => redraw.current());
       });
     return () => {
@@ -174,7 +188,8 @@ export function LightsMap({
     el.style.cssText = [
       BASE,
       count ? "width:auto;min-width:44px;padding:0 8px" : "",
-      `background:${p.selected ? "#b3242f" : "#0f3b2b"}`,
+      `background:${p.selected ? "#b3242f" : p.pending ? "#3a2f6b" : "#0f3b2b"}`,
+      p.pending && !count ? "border-style:dashed;border-color:#fff" : "",
       p.n || count
         ? "font:800 15px/32px system-ui"
         : "font-size:18px;line-height:32px",
@@ -320,18 +335,40 @@ export function LightsMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(drawPick, [pickKey]);
 
+  /** Bring a point into view above the bottom card, which covers about the lower third. */
+  function goTo(at: LatLng, atLeast: number | null, duration = 350) {
+    const m = map.current;
+    if (!m) return;
+    m.easeTo({
+      center: [at.lng, at.lat],
+      ...(atLeast ? { zoom: Math.max(m.getZoom(), atLeast) } : {}),
+      offset: [0, -Math.round((box.current?.clientHeight ?? 600) * 0.18)],
+      duration,
+    });
+  }
+
   const focusKey = focus ? `${focus.lat},${focus.lng}` : "";
   useEffect(() => {
-    const m = map.current;
-    if (!focus || !m || !ready.current) return;
-    // Above the bottom card, which covers about the lower third.
-    m.easeTo({
-      center: [focus.lng, focus.lat],
-      offset: [0, -Math.round((box.current?.clientHeight ?? 600) * 0.18)],
-      duration: 350,
-    });
+    if (!focus || !map.current || !ready.current) return;
+    goTo(focus, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey]);
+
+  /** Back to the whole set of markers, or the map's own centre when there are fewer than two. */
+  function recenter() {
+    const m = map.current;
+    const ml = lib.current;
+    if (!m || !ml || !ready.current) return;
+    if (markers.length > 1) {
+      const b = new ml.LngLatBounds();
+      for (const p of markers) b.extend([p.at.lng, p.at.lat]);
+      m.fitBounds(b, {
+        padding: clustered ? { top: 70, bottom: 90, left: 40, right: 40 } : 56,
+        maxZoom: 14,
+        duration: 400,
+      });
+    } else m.easeTo({ center: [center.lng, center.lat], zoom, duration: 400 });
+  }
 
   const centerKey = `${center.lat},${center.lng}`;
   useEffect(() => {
@@ -352,6 +389,45 @@ export function LightsMap({
       aria-label={label}
       aria-busy={status === "loading" || undefined}
     >
+      {buttons && status === "ready" && (
+        <div
+          className="absolute top-[88px] right-3 z-10 flex flex-col overflow-hidden rounded-2xl bg-[#082319]/90 text-white shadow-lg ring-1 ring-white/20 backdrop-blur"
+          data-testid="map-buttons"
+        >
+          {[
+            {
+              id: "zoom-in",
+              label: "Zoom in",
+              icon: Plus,
+              run: () => map.current?.zoomIn({ duration: 250 }),
+            },
+            {
+              id: "zoom-out",
+              label: "Zoom out",
+              icon: Minus,
+              run: () => map.current?.zoomOut({ duration: 250 }),
+            },
+            {
+              id: "recenter",
+              label: "Show all the lights",
+              icon: LocateFixed,
+              run: recenter,
+            },
+          ].map(({ id, label, icon: Icon, run }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={run}
+              aria-label={label}
+              title={label}
+              data-testid={`map-${id}`}
+              className="inline-flex h-11 w-11 items-center justify-center hover:bg-white/10 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-white/15"
+            >
+              <Icon className="h-5 w-5" aria-hidden />
+            </button>
+          ))}
+        </div>
+      )}
       {status !== "ready" && (
         <div
           className="absolute inset-0 z-10 grid place-items-center text-center text-sm font-semibold text-[#ffd98a]"

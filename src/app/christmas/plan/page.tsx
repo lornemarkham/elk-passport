@@ -3,7 +3,7 @@ import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import { PendingContent, PendingProvider } from "@/components/loading/Pending";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { PlanHero } from "@/components/christmas/PlanHero";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Planner, type PlanPick } from "@/components/christmas/Planner";
 import styles from "@/components/christmas/christmas.module.css";
@@ -85,6 +85,7 @@ export default async function ChristmasPlanPage({
         }),
   });
   if (ask.at) goParams.set("at", ask.at);
+  goParams.set("km", String(ask.km));
   if (withIds.length) goParams.set("with", withIds.join(","));
 
   let picks: PlanPick[] = [];
@@ -159,21 +160,17 @@ export default async function ChristmasPlanPage({
           <PendingProvider>
             <header className={styles.night}>
               <div className="mx-auto max-w-4xl px-4 pt-5 pb-8 sm:px-6">
-                <Link
-                  href={`/christmas${ask.at ? `?at=${ask.at}` : ""}`}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold hover:bg-white/20"
-                >
-                  <ArrowLeft className="h-4 w-4" aria-hidden />
-                  Christmas
-                </Link>
-                <h1 className="ghad-display mt-4 text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-balance sm:text-6xl">
-                  Let&apos;s plan a Christmas worth remembering.
+                <h1 className="ghad-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-balance sm:text-6xl">
+                  Plan my Christmas route
                 </h1>
                 <p className="mt-3 max-w-xl text-lg text-white/85">
-                  Five quick answers. Passport sketches it from real places,
-                  around the Christmas things you picked — then your people
-                  vote, and you change anything.
+                  Say what you&apos;d love to do and get a plan in one tap — no
+                  account needed. Or build a bigger one below, around the things
+                  on My Christmas List.
                 </p>
+                <div className="mt-4 max-w-2xl">
+                  <PlanHero at={ask.at} km={ask.km} />
+                </div>
                 <Suspense fallback={null}>
                   <ExperienceLocation
                     scope="christmas"

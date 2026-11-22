@@ -33,8 +33,16 @@ const daysBetween = (a: string, b: string) =>
 
 export type Confidence = "dated" | "check" | "unconfirmed" | "past";
 
+/**
+ * Where a dated find sits against today: `now` (the run has begun and not
+ * ended), `upcoming` (starts later), `finished` (over). Undated finds have
+ * none — Passport does not say when it does not know.
+ */
+export type Phase = "now" | "upcoming" | "finished";
+
 export interface WhenReading {
   readonly confidence: Confidence;
+  readonly phase?: Phase;
   /** The calendar days Atlas states, `YYYY-MM-DD`, first and last. */
   readonly from?: string;
   readonly to?: string;
@@ -46,11 +54,21 @@ export interface WhenReading {
 
 /** Labels for the confidence chip. Short; the `because` says the rest. */
 export const CONFIDENCE_LABEL: Readonly<Record<Confidence, string>> = {
-  dated: "Dates from Atlas",
+  dated: "Dates confirmed",
   check: "Check the days",
   unconfirmed: "Dates not confirmed",
-  past: "Not listed this year",
+  past: "Earlier dates",
 };
+
+/** What the badge says for a dated find: running now, or coming up. */
+export const PHASE_LABEL: Readonly<Record<Phase, string>> = {
+  now: "On now",
+  upcoming: "Upcoming",
+  finished: "Finished",
+};
+
+const phaseOf = (from: string, to: string, today: string): Phase =>
+  to < today ? "finished" : from > today ? "upcoming" : "now";
 
 /** Organiser facts that read as when it is on — quoted, never parsed. */
 const WHEN_LABEL =
@@ -64,6 +82,16 @@ function publishedWhen(experience: Experience): string | undefined {
       return `${p.label}: ${p.value}`;
   }
   return undefined;
+}
+
+/**
+ * The organiser's words name an earlier year and never this one ("Nov 20 –
+ * Dec 24, 2024"): that is last year's schedule, not this year's.
+ */
+function namesOnlyEarlierYears(text: string, today: string): boolean {
+  const year = Number(today.slice(0, 4));
+  const years = (text.match(/\b(20\d{2})\b/g) ?? []).map(Number);
+  return years.length > 0 && years.every((y) => y < year);
 }
 
 /**
@@ -87,12 +115,13 @@ export function readWhen(experience: Experience, today: string): WhenReading {
     if (to && to < today) {
       return {
         confidence: "past",
+        phase: "finished",
         from,
         to,
         ...(line ? { line } : {}),
         because:
           from.slice(0, 4) < today.slice(0, 4)
-            ? `The latest dates Atlas holds are from ${from.slice(0, 4)}. Nobody has listed it for this year yet.`
+            ? `The latest dates we have are from ${from.slice(0, 4)}. Nobody has listed it for this year yet.`
             : "These dates have already gone this season.",
       };
     }
@@ -101,13 +130,14 @@ export function readWhen(experience: Experience, today: string): WhenReading {
     if (experience.occurrence && !experience.occurrence.actionable) {
       return {
         confidence: "check",
+        ...(from && to ? { phase: phaseOf(from, to, today) } : {}),
         from,
         to,
         ...(line ? { line } : {}),
         // Atlas's own `because` is written for engineers ("nothing Atlas
         // holds states this as a run…"); the card says what it means.
         because:
-          "Atlas has the dates it runs between, not which days or hours — check before you go.",
+          "We have the dates it runs between, not which days or hours — check before you go.",
       };
     }
     // A "date range" of months is a listing that was never broken into
@@ -117,21 +147,30 @@ export function readWhen(experience: Experience, today: string): WhenReading {
     if (from && to && daysBetween(from, to) > MAX_CONFIRMED_SPAN) {
       return {
         confidence: "check",
+        phase: phaseOf(from, to, today),
         from,
         to,
         ...(line ? { line } : {}),
         because:
-          "Atlas lists this across a very long window, not particular days — check the organiser's page for when it's actually on.",
+          "This is listed across a very long window, not particular days — check the organiser's page for when it's actually on.",
       };
     }
     return {
       confidence: "dated",
+      ...(from && to ? { phase: phaseOf(from, to, today) } : {}),
       from,
       to,
       ...(line ? { line } : {}),
-      because: "Atlas holds these dates from the event's own listing.",
+      because: "Dates from the event's own listing.",
     };
   }
+  if (published && namesOnlyEarlierYears(published, today))
+    return {
+      confidence: "past",
+      line: published,
+      because:
+        "The organiser's words name an earlier year only. Nobody has said it's on this year.",
+    };
   if (published)
     return {
       confidence: "check",
@@ -141,7 +180,7 @@ export function readWhen(experience: Experience, today: string): WhenReading {
     };
   return {
     confidence: "unconfirmed",
-    because: "Atlas doesn't hold dates for this season yet.",
+    because: "No dates for this season yet.",
   };
 }
 

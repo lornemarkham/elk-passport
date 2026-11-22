@@ -45,11 +45,11 @@ export const metadata: Metadata = {
 };
 
 const STARTED: Readonly<Record<string, string>> = {
-  ok: "Here's your first sketch, from real places Atlas knows, kept around the Christmas things you chose. Everything Passport added is a suggestion until you keep it — invite your people and let them vote.",
+  ok: "Here's your first sketch, from real places, kept around the Christmas things you chose. Everything Passport added is a suggestion until you keep it — invite your people and let them vote.",
   "nothing-fits":
     "Passport couldn't find enough within reach to sketch these days. Add ideas from Saved, or find more Christmas things.",
   "atlas-unavailable":
-    "Atlas couldn't be reached, so Passport couldn't sketch the days. Your adventure is saved — try again in a moment, or add things by hand.",
+    "The listings couldn't be reached, so we couldn't sketch the days. Your adventure is saved — try again in a moment, or add things by hand.",
   "no-town": "Choose where it starts and Passport can sketch it.",
   "no-dates": "Give it dates and Passport can sketch the days.",
   manual: "Your Christmas adventure is ready. Add things, invite your people.",
@@ -352,7 +352,7 @@ export default async function ChristmasAdventurePage({
               >
                 {STARTED[started]}
                 {offDates > 0 &&
-                  ` ${offDates === 1 ? "One thing you chose is" : `${offDates} things you chose are`} dated by Atlas outside these days, so ${offDates === 1 ? "it's" : "they're"} waiting as ideas.`}
+                  ` ${offDates === 1 ? "One thing you chose is" : `${offDates} things you chose are`} dated outside these days, so ${offDates === 1 ? "it's" : "they're"} waiting as ideas.`}
               </p>
             )}
             <section id="plan" className="scroll-mt-16">
