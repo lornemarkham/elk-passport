@@ -29,7 +29,7 @@ import { season } from "@/domain/christmas/when";
 import { WAYS, wayHref } from "@/domain/christmas/ways";
 import { TOWNS } from "@/domain/christmas/lights/model";
 import { NearYou } from "./_parts/near";
-import { whereAreWe } from "./_server/where";
+import { rememberedKm, whereAreWe } from "./_server/where";
 
 export const metadata: Metadata = {
   title: "Go Have a Christmas — Passport",
@@ -77,7 +77,8 @@ export default async function ChristmasPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = (await searchParams) ?? {};
-  const asked = readAsk(params);
+  const remembered = await rememberedKm();
+  const asked = readAsk(params, remembered ? { km: remembered } : {});
   // Christmas opens somewhere: the town just chosen, the one remembered, or
   // Vernon — never an unplaced list.
   const [where, session] = await Promise.all([
@@ -95,7 +96,9 @@ export default async function ChristmasPage({
   // about the same town and radius.
   const here = writeAsk({ at: ask.at, km: ask.km });
   const q = here ? `?${here}` : "";
-  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, km: ask.km, from: today, to: today })}`;
+  // A word, not today's date: the page says "Tonight", and a saved link
+  // still means tonight on another night.
+  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, km: ask.km, when: "tonight" })}`;
   const discoverHref = `/christmas/discover${q}`;
 
   return (
@@ -154,7 +157,7 @@ export default async function ChristmasPage({
                         href: tonight,
                         icon: Moon,
                         title: "What's happening tonight?",
-                        line: "Only events dated for today",
+                        line: "Only what's confirmed for tonight",
                       },
                       {
                         id: "plan",

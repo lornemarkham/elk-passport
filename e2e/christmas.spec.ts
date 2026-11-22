@@ -71,7 +71,7 @@ test("the Christmas page opens on six ways, and one leads somewhere real", async
   }
   await expect(page).toHaveURL(/\/christmas\/discover\?.*theme=markets/);
   await expect(page.getByTestId("chip-markets")).toHaveAttribute(
-    "aria-pressed",
+    "aria-current",
     "true",
   );
   if (WITH_ATLAS)
@@ -99,14 +99,16 @@ test("a sentence becomes a plan, kept as said — no account, no form", async ({
   );
 });
 
-test("refining is a plain form, and the URL keeps every answer", async ({
+test("more filters is a plain form, closed, and the URL keeps every answer", async ({
   page,
 }) => {
-  await page.goto("/christmas/discover");
-  await page.getByTestId("refine").locator("summary").click();
-  await page.locator('select[name="at"]').selectOption("kelowna");
+  await page.goto("/christmas/discover?at=kelowna");
+  // No questionnaire before results: who and how many are not asked here.
+  await expect(page.locator('select[name="who"]')).toHaveCount(0);
+  await expect(page.locator('input[name="n"]')).toHaveCount(0);
+  await page.getByTestId("more-filters").locator("summary").click();
   await page.locator('input[name="ages"]').fill("5");
-  await page.getByTestId("refine-submit").click();
+  await page.getByTestId("more-submit").click();
   await expect(page).toHaveURL(/at=kelowna/);
   await expect(page).toHaveURL(/ages=5/);
   if (WITH_ATLAS)
@@ -515,28 +517,27 @@ test.describe("launch QA repair", () => {
     }
   });
 
-  test("the distance is 15 / 30 / 60 / 100 km, thirty by default, and it changes the answer", async ({
+  test("how far is 2 to 50 km, thirty by default, remembered, and it changes the answer", async ({
     page,
   }) => {
     await page.goto("/christmas/discover?at=vernon");
-    const picker = page.getByTestId("distance-picker");
-    await expect(picker.getByRole("link")).toHaveText([
-      "15 km",
-      "30 km",
-      "60 km",
-      "100 km",
+    const far = page.getByTestId("km-select");
+    await expect(far.locator("option")).toHaveText([
+      "Within 2 km",
+      "Within 5 km",
+      "Within 10 km",
+      "Within 20 km",
+      "Within 30 km",
+      "Within 50 km",
     ]);
-    await expect(page.getByTestId("km-30")).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
+    await expect(far).toHaveValue("30");
     await expect(page.getByTestId("result-count")).toContainText(
       "within 30 km",
     );
-    await page.getByTestId("km-100").click();
-    await expect(page).toHaveURL(/km=100/);
+    await far.selectOption("50");
+    await expect(page).toHaveURL(/km=50/);
     await expect(page.getByTestId("result-count")).toContainText(
-      "within 100 km",
+      "within 50 km",
     );
     // Nothing is offered as "near" from further than was asked.
     if (WITH_ATLAS) {
@@ -546,16 +547,19 @@ test.describe("launch QA repair", () => {
         .all()) {
         const text = await card.innerText();
         const m = text.match(/([\d.]+) km away/);
-        if (m) expect(Number(m[1])).toBeLessThanOrEqual(100);
+        if (m) expect(Number(m[1])).toBeLessThanOrEqual(50);
       }
     }
-    // The choice rides to the front page and the plan.
-    await page.goto("/christmas?at=vernon&km=15");
-    await expect(page.getByTestId("km-15")).toHaveAttribute(
+    // Remembered: a page with no distance in its address opens on it.
+    await page.goto("/christmas/discover?at=vernon");
+    await expect(page.getByTestId("km-select")).toHaveValue("50");
+    // The choice rides to the front page.
+    await page.goto("/christmas?at=vernon&km=10");
+    await expect(page.getByTestId("km-10")).toHaveAttribute(
       "aria-current",
       "true",
     );
-    await expect(page.getByTestId("near-you")).toContainText("within 15 km");
+    await expect(page.getByTestId("near-you")).toContainText("within 10 km");
   });
 
   test("the add button says My Christmas List, and the list has its own door", async ({
@@ -576,7 +580,7 @@ test.describe("launch QA repair", () => {
 
   test("no past event is promoted as upcoming", async ({ page }) => {
     test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
-    await page.goto("/christmas/discover?at=vernon&km=100");
+    await page.goto("/christmas/discover?at=vernon&km=50");
     // Anything on a live shelf says it is on now or upcoming, dated or not —
     // never a past reading; past things sit apart, under their own heading.
     const live = page.locator(

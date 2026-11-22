@@ -943,6 +943,25 @@ only (a find placed outside the radius is set aside and counted; one with no
 place waits, labelled, and is never called near) — still the owner's call.
 One composition; it answers no open question below.
 
+_Christmas discovery became WHERE | WHEN | HOW FAR 2026-11-22_ (owner brief
+"P0 — Christmas discovery UX repair", owner approval granted;
+`docs/product/christmas/DISCOVERY-UX-REPAIR.md`): Discover is three controls
+and results — no questionnaire; who, how many and budget belong to Plan My
+Route. How far is 2, 5, 10, 20, 30 or 50 km, thirty by default, remembered
+on the browser, and always straight-line: driving time is not offered until
+routing from one place to every listing exists. When is Tonight, Tomorrow,
+This weekend, Any date or chosen days, always shown, one tap to clear; a
+dated search offers as its answer only what is confirmed for those days, and
+_tonight_ offers nothing else at all. One category at a time, more only by an
+explicit choice. Results are _Closest to you_, _Popular nearby_ (only where
+people's ratings exist) and _Worth the drive_ (named Christmas outings with
+confirmed dates beyond the radius), each said to be what it is. A listing
+with no confirmed place is no longer shown by default; it is counted and kept
+on its own shelf for whoever asks — this supersedes the paragraph above on
+unplaced finds for Christmas only. A distance measured to a town centre is
+not counted as within a radius under 10 km. One composition; it answers no
+open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

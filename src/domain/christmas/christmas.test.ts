@@ -117,6 +117,8 @@ describe("what counts as a Christmas find", () => {
   it("keeps a real Christmas Eve dinner the organiser describes", () => {
     const arc = exp({
       title: "Arc",
+      // Atlas's own listing: Arc is a restaurant, and a menu is what one offers.
+      subtype: "restaurant",
       knowledge: {
         practical: [
           {
@@ -239,23 +241,24 @@ describe("Christmas Discovery", () => {
   it("keeps the URL as the state", () => {
     const ask = readAsk({
       at: "vancouver",
-      km: "60",
+      km: "50",
       theme: "lights,nope",
       ages: "4,9,99",
       budget: "free",
     });
     expect(ask).toMatchObject({
-      km: 60,
+      km: 50,
       themes: ["lights"],
       ages: [4, 9],
       budget: "free",
     });
     expect(readAsk({ at: "atlantis" }).at).toBeUndefined();
-    // The radius is one of four, and thirty when nothing is said.
+    // The radius is one of six, and thirty when nothing is said; an old
+    // link's distance opens on the nearest choice.
     expect(readAsk({}).km).toBe(30);
-    expect(readAsk({ km: "250" }).km).toBe(30);
-    expect(readAsk({ km: "15" }).km).toBe(15);
-    expect(readAsk({ km: "100" }).km).toBe(100);
+    expect(readAsk({ km: "250" }).km).toBe(50);
+    expect(readAsk({ km: "15" }).km).toBe(20);
+    expect(readAsk({ km: "100" }).km).toBe(50);
     expect(writeAsk(ask)).toContain("theme=lights");
   });
 
@@ -270,12 +273,19 @@ describe("Christmas Discovery", () => {
     expect(a.total).toBe(2);
   });
 
-  it("a town measures what Atlas placed and keeps the unplaced, labelled", () => {
+  it("a town measures what Atlas placed and holds the unplaced apart", () => {
     const a = answer(finds, readAsk({ at: "north-vancouver", km: "10" }));
     const near = a.shelves.find((s) => s.id === "near");
     expect(near?.finds.map((f) => f.experience.id)).toEqual(["canyon"]);
+    // Not on the page, but counted, and there when asked for.
+    expect(a.shelves.map((s) => s.id)).not.toContain("unplaced");
+    expect(a.unplaced).toBe(1);
+    const all = answer(
+      finds,
+      readAsk({ at: "north-vancouver", km: "10", place: "all" }),
+    );
     expect(
-      a.shelves
+      all.shelves
         .find((s) => s.id === "unplaced")
         ?.finds.map((f) => f.experience.id),
     ).toEqual(["vcm"]);
@@ -286,7 +296,11 @@ describe("Christmas Discovery", () => {
       finds,
       readAsk({ from: "2026-11-17", to: "2026-11-18" }),
     );
-    expect(early.removed.dates).toBe(1);
+    // Canyon Lights is dated in December and last year's market is over;
+    // the market's window covers the days without confirming them, so it
+    // is offered only as "might be on".
+    expect(early.removed.dates).toBe(2);
+    expect(early.shelves.map((s) => s.id)).toEqual(["maybe"]);
     expect(answer(finds, readAsk({ budget: "free" })).removed.budget).toBe(2);
   });
 });
@@ -527,11 +541,14 @@ describe("QA repair 2026-11-21 — where, how far, and when", () => {
   const faraway = at("faraway", -119.5, 50.7, "Thompson Okanagan");
   const finds = findsIn([close, middling, faraway], TODAY);
 
-  it("offers 15, 30, 60 or 100 km — thirty by default", () => {
+  it("offers 2, 5, 10, 20, 30 or 50 km — thirty by default, or the last chosen", () => {
     expect(readAsk({}).km).toBe(30);
-    for (const km of [15, 30, 60, 100])
+    for (const km of [2, 5, 10, 20, 30, 50])
       expect(readAsk({ km: String(km) }).km).toBe(km);
-    expect(readAsk({ km: "7" }).km).toBe(30);
+    expect(readAsk({ km: "7" }).km).toBe(5);
+    expect(readAsk({}, { km: 10 }).km).toBe(10);
+    expect(readAsk({ km: "5" }, { km: 10 }).km).toBe(5);
+    expect(readAsk({}, { km: 13 }).km).toBe(30);
   });
 
   it("keeps what is inside the radius and sets aside what is outside", () => {
@@ -543,18 +560,18 @@ describe("QA repair 2026-11-21 — where, how far, and when", () => {
           ?.finds.map((f) => f.experience.id) ?? []
       );
     };
-    expect(near("15")).toEqual(["close"]);
+    expect(near("20")).toEqual(["close"]);
     expect(near("30").sort()).toEqual(["close", "middling"]);
     // The far one is never offered, however far — and the page can say it
     // was set aside.
-    const a = answer(finds, readAsk({ at: "vancouver", km: "100" }));
+    const a = answer(finds, readAsk({ at: "vancouver", km: "50" }));
     expect(
       a.shelves.flatMap((s) => s.finds.map((f) => f.experience.id)),
     ).not.toContain("faraway");
     expect(a.removed.distance).toBe(1);
   });
 
-  it("never calls a find with no place 'near' — it waits, labelled", () => {
+  it("never calls a find with no place 'near' — it waits apart, labelled", () => {
     const nowhere = exp({
       id: "nowhere",
       kind: "Event",
@@ -564,9 +581,19 @@ describe("QA repair 2026-11-21 — where, how far, and when", () => {
       timePrecision: "day",
       occurrence: { reading: "occurrence", actionable: true },
     });
-    const a = answer(findsIn([nowhere], TODAY), readAsk({ at: "vancouver" }));
+    const shown = answer(
+      findsIn([nowhere], TODAY),
+      readAsk({ at: "vancouver" }),
+    );
+    expect(shown.shelves).toEqual([]);
+    expect(shown.unplaced).toBe(1);
+    const a = answer(
+      findsIn([nowhere], TODAY),
+      readAsk({ at: "vancouver", place: "all" }),
+    );
     expect(a.shelves.map((s) => s.id)).toEqual(["unplaced"]);
     expect(a.shelves[0]!.title).toMatch(/not confirmed/i);
+    expect(a.total).toBe(0);
   });
 
   it("says whether a confirmed date is on now, coming, or over", () => {

@@ -35,7 +35,7 @@ export async function planFor(params: Params): Promise<{
   const asked = typeof params.at === "string" ? params.at : undefined;
   const where = await whereAreWe(townById(asked)?.id ?? request.at);
   const town = townById(where.at)!;
-  // How far somebody said they will go (15 / 30 / 60 / 100, thirty by
+  // How far somebody said they will go (2 / 5 / 10 / 20 / 30 / 50, thirty by
   // default) is how far the plan reaches, unless the sentence itself says
   // "within 10 km".
   const { km } = readAsk(params);

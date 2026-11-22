@@ -39,7 +39,7 @@ import { suggestedDrives } from "@/domain/christmas/lights/drives";
 import { whenLabel } from "@/lib/adventures/present";
 import { lightsFor, viewer } from "../_server/lights";
 import { festiveStops } from "../_server/lightsAtlas";
-import { whereAreWe } from "../_server/where";
+import { rememberedKm, whereAreWe } from "../_server/where";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +96,8 @@ export default async function LightsPage({
   // the chosen distance of the chosen town; a family's own pins always stay
   // (they are theirs). Choosing one of the map's own areas is a narrower
   // choice and stands in place of the radius.
-  const ask = readAsk(params);
+  const remembered = await rememberedKm();
+  const ask = readAsk(params, remembered ? { km: remembered } : {});
   const where = await whereAreWe(ask.at);
   const town = townById(where.at)!;
   const centre = { lat: town.latitude, lng: town.longitude };
