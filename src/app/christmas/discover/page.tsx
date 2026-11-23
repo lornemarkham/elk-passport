@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { christmasFinds } from "../_server/corpus";
 import { lightsFor, viewer } from "../_server/lights";
 import { rememberedKm, whereAreWe } from "../_server/where";
+import { LocalFavouriteStops } from "@/components/featured/LocalFavouriteCard";
+import { favouritesNear } from "@/domain/featured/locals";
 
 export const metadata: Metadata = {
   title: "Find Christmas — Passport",
@@ -488,6 +490,17 @@ export default async function ChristmasDiscoverPage({
                   )}
 
                   {rest.map(renderShelf)}
+
+                  {/* Not a Christmas listing: a warm stop near the lights,
+                      inside the same radius, after everything Christmas. */}
+                  {(!theme || theme === "lights" || theme === "food") && (
+                    <LocalFavouriteStops
+                      experience="christmas"
+                      title="Warm up before or after"
+                      stops={favouritesNear("christmas", origin, ask.km)}
+                      className="pt-2"
+                    />
+                  )}
 
                   {result.unplaced > 0 && !ask.unplaced && (
                     <p

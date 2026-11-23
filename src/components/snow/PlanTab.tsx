@@ -24,6 +24,8 @@ import { ConditionsCard } from "./ConditionsCard";
 import { MountainScene } from "./MountainScene";
 import { DatePicker, ResortFactsCard, dayWords } from "./MountainFacts";
 import { AroundMountain, AtlasGaps } from "./AroundMountain";
+import { LocalFavouriteStops } from "@/components/featured/LocalFavouriteCard";
+import { favouritesOnMountain } from "@/domain/featured/locals";
 import { DayPlan } from "./DayPlan";
 import { mountainOf, useNearby, useTweaks } from "./useMountainDay";
 
@@ -276,6 +278,14 @@ export function PlanTab(p: TabProps) {
               mountainName={mountain?.name ?? "the mountain"}
               only={["apres"]}
             />
+            <LocalFavouriteStops
+              experience="snow"
+              title="Après in the village"
+              stops={favouritesOnMountain(mountain?.id, "snow").map(
+                (favourite) => ({ favourite }),
+              )}
+              className="text-[var(--sn-ice)]"
+            />
             {resortList("dining")}
             {topic("apres")}
           </>
@@ -431,6 +441,14 @@ export function PlanTab(p: TabProps) {
             Around {mountain.name}
           </h2>
           <AroundMountain {...p} nearby={nearby} mountainName={mountain.name} />
+          <LocalFavouriteStops
+            experience="snow"
+            title="A local favourite for après"
+            stops={favouritesOnMountain(mountain.id, "snow").map(
+              (favourite) => ({ favourite }),
+            )}
+            className="text-[var(--sn-ice)]"
+          />
           <AtlasGaps nearby={nearby} mountainName={mountain.name} />
         </section>
       )}

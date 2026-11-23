@@ -44,6 +44,7 @@ import {
 import { isOctoberKind } from "@/lib/october/types";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { formatEventWhen } from "@/domain/experience/eventTime";
+import { favouriteByAtlasId } from "@/domain/featured/locals";
 import {
   loadComposition,
   resolveComposition,
@@ -160,6 +161,12 @@ const KINDS = Object.values(COMPOSED_READS);
 export default async function PassportPage({ params, searchParams }: Props) {
   const { id } = await params;
   const query = await searchParams;
+  // A local favourite has its own destination page with what Atlas does not
+  // hold yet (where it is, how to reach it, photos). `?atlas=1` still shows
+  // Atlas's own record, which that page links to.
+  const favourite = favouriteByAtlasId(id);
+  if (favourite && query.atlas !== "1" && query.curator !== "1")
+    redirect(`/favourites/${favourite.slug}`);
   const on = typeof query.on === "string" ? query.on : undefined;
   // Asked only when requested, so a traveller's page costs no auth round trip.
   const curator = query.curator === "1" && (await adminVerdictForRequest()).ok;

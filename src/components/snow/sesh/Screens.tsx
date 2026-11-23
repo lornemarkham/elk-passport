@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { LocalFavouriteStops } from "@/components/featured/LocalFavouriteCard";
+import { favouritesOnMountain } from "@/domain/featured/locals";
 import { NO_FEATURES_BECAUSE } from "@/domain/snow/sesh/catalogue";
 import { chairliftFeed, trendingRiders } from "@/domain/snow/sesh/feed";
 import {
@@ -484,6 +486,17 @@ export function MountainScreen({ id }: { id: string }) {
           </div>
         </Section>
       )}
+
+      {/* A real pub in the real village, in the demo too: it is a place,
+          not a rider. */}
+      <LocalFavouriteStops
+        experience="sesh-wars"
+        title="After the sesh"
+        stops={favouritesOnMountain(id, "sesh-wars").map((favourite) => ({
+          favourite,
+        }))}
+        className="mt-8"
+      />
     </>
   );
 }

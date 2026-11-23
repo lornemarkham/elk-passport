@@ -1205,6 +1205,29 @@ This is one step on the §2.10 return path (a person tells Passport what the
 world has that Atlas lacks). It answers no question in §15; §15.15 is
 informed, not resolved: a suggestion is facts for a reviewer, not a vote.
 
+### Local favourites are recommendations, not ads (2026-11-22)
+
+From the owner's _Feature two early local supporters_ brief (mission 1007),
+recorded in [`product/local-favourites/README.md`](product/local-favourites/README.md):
+Long John's Pub (SilverStar) and Alexander's Beach Pub (Kal Beach, Vernon) get
+destination pages (`/favourites/<slug>`) and appear where they fit: between
+Discovery's shelves within 30 km, as an optional stop after every Christmas
+shelf inside the search's radius, at après on a SilverStar Snow Day, and after
+a Sesh Wars session at SilverStar.
+
+- **Editorial, and labelled so**: _Local favourite · our pick_. Never
+  partner, official or sponsored without the business's permission. No
+  specials, events, endorsements or unconfirmed hours. Where two sources
+  disagree on hours, the card says so and offers the phone.
+- **The Atlas entity is the record**; Passport keeps only the sourced facts
+  Atlas lacks (location, contact, photos), each quoted with page and date, and
+  asks Atlas for them. The same exception as Snow's published resort facts.
+- **Christmas stays about the lights**: the pubs come after everything
+  Christmas, small, as an optional stop.
+
+Whether the cards should also say the pubs were early supporters is the
+owner's call (record, _Open questions_). This answers no question in §15.
+
 ### Real pictures, live possibilities, fast (decided 2026-11-13)
 
 From the owner's _P0 — Go Have a Day: fix Discovery production experience_

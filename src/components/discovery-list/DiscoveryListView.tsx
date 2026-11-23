@@ -56,6 +56,8 @@ import { TOWN_GROUPS, homeArea, townById } from "@/domain/discovery/towns";
  * readers had already refused and left them nowhere to go.
  */
 const NEEDS_ORIGIN = "Share your location or pick a town first";
+/** How near a local favourite must be to be offered between the shelves. */
+const FAVOURITES_KM = 30;
 import { ruledOutOn } from "@/domain/discovery/recurrence";
 import { TodayPanel } from "./TodayPanel";
 import type { DayWeather, Situation } from "@/domain/discovery/situation";
@@ -86,6 +88,8 @@ import { LocationBar } from "@/components/location/LocationBar";
 import { useHoldWhile } from "@/components/loading/Pending";
 import { DiscoverySections } from "./DiscoverySections";
 import { FeaturedHosts } from "./FeaturedHosts";
+import { LocalFavourites } from "@/components/featured/LocalFavouriteCard";
+import { favouritesNear } from "@/domain/featured/locals";
 import { LocalInsiders } from "@/components/insiders/LocalInsiders";
 import type { PublicListing } from "@/domain/insiders/model";
 import { withoutRepeatedIllustrations } from "@/domain/discovery/illustrations";
@@ -2032,6 +2036,13 @@ export function DiscoveryListView({
                           said={session.ask ?? []}
                         />
                         <FeaturedHosts />
+                        <LocalFavourites
+                          favourites={favouritesNear(
+                            "go-have-a-day",
+                            at,
+                            FAVOURITES_KM,
+                          ).map((x) => x.favourite)}
+                        />
                       </>
                     }
                   />
