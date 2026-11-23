@@ -230,6 +230,36 @@ export function priceOf(e: Experience): { price?: string; free: boolean } {
   return { ...(price ? { price } : {}), free };
 }
 
+const STATED_PLACE = /^(location|venue|where|address|place)$/i;
+
+/**
+ * **Where the organiser says it is**, in their words — "Downtown Vernon, 30th
+ * Avenue between 30th Street and 34th Street" — for a listing Atlas has not
+ * linked to a venue yet. It is said on the card, never measured: a stated
+ * address is not a point, so it moves nothing onto "Closest to you".
+ */
+export function statedPlace(e: Experience): string | undefined {
+  return e.knowledge?.practical?.find((p) => STATED_PLACE.test(p.label.trim()))
+    ?.value;
+}
+
+/**
+ * **Directions**, to Atlas's point where it holds one, else to the venue it
+ * names in its town, else to the organiser's stated address. None of those,
+ * and there is no honest link to make.
+ */
+export function directionsOf(e: Experience): string | undefined {
+  const base = "https://www.google.com/maps/dir/?api=1&destination=";
+  const point = e.geography?.coordinates;
+  if (point && typeof point[0] === "number" && typeof point[1] === "number")
+    return `${base}${point[1]},${point[0]}`;
+  const venue = e.venue?.name;
+  const town = e.venue?.locality ?? e.geography?.locality;
+  if (venue && town) return `${base}${encodeURIComponent(`${venue}, ${town}`)}`;
+  const stated = statedPlace(e);
+  return stated ? `${base}${encodeURIComponent(stated)}` : undefined;
+}
+
 /** Every Christmas find in a corpus, read once. */
 export function findsIn(
   experiences: readonly Experience[],

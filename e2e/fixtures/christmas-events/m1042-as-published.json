@@ -1,0 +1,904 @@
+{
+  "candidates": [
+    {
+      "id": "1c99bcd7-3ff4-45ea-b8f9-e7ed67f177aa",
+      "kind": "Event",
+      "name": "Frostival 2026 Downtown Vernon",
+      "aliases": [],
+      "subtype": "Festival",
+      "description": "The Downtown Vernon Association is kicking off the holiday season, with a free street festival! Experience the magic of the holidays with Frostival. A sparkling street festival that will be jam-packed with free music, vendors, holiday characters, oversized decor, photo-op areas and festive activities for the entire family! Plus, a few extra surprises.",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "startTime": "2026-11-27T23:00:00.000Z",
+      "endTime": "2026-11-28T03:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "80db9cc6-12f0-46b1-aabe-7aea6c805d80",
+      "kind": "Event",
+      "name": "Downtown Vernon Christmas Saturdays",
+      "aliases": [],
+      "subtype": "Holiday event",
+      "description": "Christmas Saturdays -- where there will be free photos with Santa, elves, carolers, FREE parking, music and of course the best shopping in town.",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "weekdays": ["saturday"],
+        "reading": "recurring-in-run",
+        "actionable": true,
+        "because": "14 days, with a weekday pattern stated; no fact states the range itself"
+      },
+      "schedule": {
+        "stated": "stated"
+      },
+      "startTime": "2026-12-05T00:00:00.000Z",
+      "endTime": "2026-12-19T00:00:00.000Z",
+      "timePrecision": "day"
+    },
+    {
+      "id": "28cae397-79fd-4403-a805-1d71c995c0b2",
+      "kind": "Event",
+      "name": "Artsolutely 21st Annual Holiday Artisan Market & Fundraiser",
+      "aliases": [],
+      "subtype": "Market",
+      "description": "Step into Artsolutely and immerse yourself in a holiday market filled with handmade art, local creativity, and one-of-a-kind treasures. Explore the work of 45+ local artists, discover something new each time you visit, and find thoughtful gifts and beautiful pieces you won’t find anywhere else. Discover painting, pottery, fibre arts, glass art, jewelry, and so much more!",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "weekdays": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+        ],
+        "reading": "recurring-in-run",
+        "actionable": true,
+        "because": "a fact states 2026-11-28 to 2026-12-24 as one range, and a weekday pattern recurs inside it"
+      },
+      "schedule": {
+        "stated": "stated"
+      },
+      "startTime": "2026-11-28T00:00:00.000Z",
+      "endTime": "2026-12-24T00:00:00.000Z",
+      "timePrecision": "day"
+    },
+    {
+      "id": "087d19a8-9efb-49b0-a2e4-7f7232d123bd",
+      "kind": "Event",
+      "name": "Stars on Ice - 2026 Holiday Tour",
+      "aliases": [],
+      "subtype": "Sports",
+      "description": "This holiday season, Stars on Ice is giving Canadians the perfect reason to celebrate an unforgettable evening of Olympic magic, world-class skating and seasonal sparkle.",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "startTime": "2026-12-19T02:00:00.000Z",
+      "endTime": "2026-12-19T06:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "5a7d80f9-b3e1-42d9-846b-486f20107cf0",
+      "kind": "Event",
+      "name": "Festive Saturday Science",
+      "aliases": [],
+      "subtype": "Workshop",
+      "description": "Get into the holiday spirit with a little science magic! Join the Okanagan Science Centre for special Christmas-themed workshops filled with creativity, experiments and festive fun. Each 45-minute session features a hands-on activity where kids can create something of their own while discovering the science behind the magic. December 12th - Bubble, Fizz & Be Merry Bath Bombs -Mix, create and experiment as you make your own fizzy Christmas bath bombs. Discover the science behind the bubbles and chemical reactions, and take home a little holiday magic of your own!",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "indoor",
+          "basis": "derived"
+        }
+      },
+      "suitability": {
+        "stated": "stated",
+        "statements": [
+          {
+            "about": "age",
+            "says": "admits",
+            "strength": "advisory",
+            "scope": "subject",
+            "ages": {
+              "min": 5,
+              "max": 10
+            },
+            "text": "Ages: Suitable for ages 5-10.",
+            "basis": "key-fact"
+          },
+          {
+            "about": "audience",
+            "says": "children",
+            "strength": "characterisation",
+            "scope": "subject",
+            "text": "Each 45-minute session features a hands-on activity where kids can create something of their own while discovering the science behind the magic.",
+            "basis": "description"
+          }
+        ]
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "startTime": "2026-12-12T18:00:00.000Z",
+      "endTime": "2026-12-12T18:45:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "3fbf923b-360b-4ebe-9988-7a4c7b3557df",
+      "kind": "Event",
+      "name": "Festive Saturday Science",
+      "aliases": [],
+      "subtype": "Workshop",
+      "description": "Get into the holiday spirit with a little science magic! Join the Okanagan Science Centre for special Christmas-themed workshops filled with creativity, experiments and festive fun. Each 45-minute session features a hands-on activity where kids can create something of their own while discovering the science behind the magic. December 5th - Shake, Sparkle & Snow Globes! - Let's design and build your very own Christmas snow globe. Add a sprinkle of sparkle, a dash of winter magic and discover the science behind swirling snow and floating glitter. Take home your one-of-a-kind creation and enjoy a little Christmas magic wherever you go!",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "indoor",
+          "basis": "derived"
+        }
+      },
+      "suitability": {
+        "stated": "stated",
+        "statements": [
+          {
+            "about": "age",
+            "says": "admits",
+            "strength": "advisory",
+            "scope": "subject",
+            "ages": {
+              "min": 5,
+              "max": 10
+            },
+            "text": "Ages: Suitable for ages 5-10.",
+            "basis": "key-fact"
+          },
+          {
+            "about": "audience",
+            "says": "children",
+            "strength": "characterisation",
+            "scope": "subject",
+            "text": "Each 45-minute session features a hands-on activity where kids can create something of their own while discovering the science behind the magic.",
+            "basis": "description"
+          }
+        ]
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "startTime": "2026-12-05T18:00:00.000Z",
+      "endTime": "2026-12-05T18:45:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "955f6878-ae04-403f-a98e-a8ff30e9a815",
+      "kind": "Event",
+      "name": "Festive Saturday Science",
+      "aliases": [],
+      "subtype": "Workshop",
+      "description": "Get into the holiday spirit with a little science magic! Join the Okanagan Science Centre for special Christmas-themed workshops filled with creativity, experiments and festive fun. Each 45-minute session features a hands-on activity where kids can create something of their own while discovering the science behind the magic. December 19th - Tinsel & Test Tubes -Add a little science to your Christmas decorating! Create your own festive decorations using test tubes, colourful materials, glitter and a little imagination. Mix, layer and design your own miniature Christmas creations to take home and display!",
+      "mediaCount": 0,
+      "containsCount": 0,
+      "regionIds": [],
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "indoor",
+          "basis": "derived"
+        }
+      },
+      "suitability": {
+        "stated": "stated",
+        "statements": [
+          {
+            "about": "age",
+            "says": "admits",
+            "strength": "advisory",
+            "scope": "subject",
+            "ages": {
+              "min": 5,
+              "max": 10
+            },
+            "text": "Ages: Suitable for ages 5-10.",
+            "basis": "key-fact"
+          },
+          {
+            "about": "audience",
+            "says": "children",
+            "strength": "characterisation",
+            "scope": "subject",
+            "text": "Each 45-minute session features a hands-on activity where kids can create something of their own while discovering the science behind the magic.",
+            "basis": "description"
+          }
+        ]
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "startTime": "2026-12-19T18:00:00.000Z",
+      "endTime": "2026-12-19T18:45:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "4ba336eb-f528-4c55-ab04-1ca155f36816",
+      "kind": "Event",
+      "name": "Silver Star Annual Light Up",
+      "aliases": [],
+      "subtype": "Festival",
+      "description": "The Christmas Light Up experience is back again this year on Saturday, December 5th! Join for a fun night to kick off the winter and holiday season with some new experiences in this year’s event schedule! Silver Star Mountain is bringing back fireworks, fire spinners, light displays, roaming entertainers, a Christmas market, and more!",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/09/light-up-2025-2.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/09/light-up-2025-2.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Silver Star Annual Light Up, from silverstarstays.com."
+      },
+      "startTime": "2026-12-05T22:30:00.000Z",
+      "endTime": "2026-12-05T22:30:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "00280a64-e2b7-4c49-b669-ac0efe451bd4",
+      "kind": "Event",
+      "name": "Gingerbread House Making Nights (December 19)",
+      "aliases": [],
+      "subtype": "Workshop",
+      "description": "Join for a cozy, creative evening of gingerbread house crafting! Silver Star will provide all the kits and tools you need – just bring your holiday cheer and creativity! You will have one hour to build your gingerbread house. Recommend groups/families of 4 per house.",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/11/ccn-4.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "indoor",
+          "basis": "derived"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/11/ccn-4.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Gingerbread House Making Nights (December 19), from silverstarstays.com."
+      },
+      "startTime": "2026-12-20T00:30:00.000Z",
+      "endTime": "2026-12-20T02:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "40feccbf-7601-47d3-9b23-9bb343d10874",
+      "kind": "Event",
+      "name": "Gingerbread House Making Nights (December 26)",
+      "aliases": [],
+      "subtype": "Workshop",
+      "description": "Get into the festive spirit and join Silver Star for a cozy, creative evening of gingerbread house crafting! They will provide all the kits and tools you need – just bring your holiday cheer and creativity. You will have one hour to build your gingerbread house. Recommend groups/families of 4 per house. Townhall will be open for food and drinks to purchase!",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/11/ccn-4.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "indoor",
+          "basis": "derived"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/11/ccn-4.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Gingerbread House Making Nights (December 26), from silverstarstays.com."
+      },
+      "startTime": "2026-12-27T00:30:00.000Z",
+      "endTime": "2026-12-27T02:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "b0b4dc04-32c6-4311-9eda-d56cf869eaa2",
+      "kind": "Event",
+      "name": "Comedy Hypnosis Show",
+      "aliases": [],
+      "subtype": "Performance",
+      "description": "Silver Star is excited to welcome The Fun Hypnotist to its stage this winter season. Whether you’re on stage or in the audience be prepared for a fun and memorable night to kick off the holiday season up at Silver Star! With over 30 years of experience and more than 1,400 shows performed worldwide, Gavin Hooper, a world-class comedy hypnotist, brings laughter, amazement, and professionalism to every performance.",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/10/Hooper-1.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/10/Hooper-1.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Comedy Hypnosis Show, from silverstarstays.com."
+      },
+      "startTime": "2026-12-21T01:30:00.000Z",
+      "endTime": "2026-12-21T04:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "bcd6b5b3-4bad-4de2-8516-25c2d33a0288",
+      "kind": "Event",
+      "name": "12 Days of Holidays",
+      "aliases": [],
+      "subtype": "Holiday event",
+      "description": "It’s the most magical time of the year! For 12 days from the 21st of December until New Years Day Silver Star will be surprising guests (both in resort and virtually) with gifts from the Silver Star Elves. Keep an eye out on the slopes and on Silver Star Mountain’s socials, you never know you might just be on the nice list this year!",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/09/12-days-homepage-web_1.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "run",
+        "actionable": true,
+        "because": "a fact states 2026-12-21 to 2027-01-01 as one range"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/09/12-days-homepage-web_1.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of 12 Days of Holidays, from silverstarstays.com."
+      },
+      "startTime": "2026-12-21T00:00:00.000Z",
+      "endTime": "2027-01-01T00:00:00.000Z",
+      "timePrecision": "day"
+    },
+    {
+      "id": "76d6825c-4651-41a0-80fa-fc663a38035e",
+      "kind": "Event",
+      "name": "Vaz Art Paint & Sip",
+      "aliases": [],
+      "subtype": "Workshop",
+      "description": "Join for an evening of creativity, inspiration, and fun hosted by Vaz Art! Vaz Art will lead you in a 2-hour paint class to create your own masterpiece. Art pieces are inspired by the beauty of Silver Star and Okanagan Valley. You will be able to take your creation home with you!",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/10/Vaz_Grant_Gunderson_resize.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "indoor",
+          "basis": "derived"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/10/Vaz_Grant_Gunderson_resize.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Vaz Art Paint & Sip, from silverstarstays.com."
+      },
+      "startTime": "2026-12-22T01:00:00.000Z",
+      "endTime": "2026-12-22T04:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "0f379143-7092-406b-afef-503bbcedbca7",
+      "kind": "Event",
+      "name": "Santa Ski Day",
+      "aliases": [],
+      "subtype": "Holiday event",
+      "description": "Ski With Santa! Ski dressed up as Santa Claus on Christmas Eve, December 24th to receive a full-day lift ticket for only $10.00! We expect the full Santa suit! - not just a hat.",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/11/A7308577-scaled.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/11/A7308577-scaled.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Santa Ski Day, from silverstarstays.com."
+      },
+      "startTime": "2026-12-24T15:00:00.000Z",
+      "endTime": "2026-12-24T23:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "c5d8abf1-573e-4433-88fd-287ce34b58ed",
+      "kind": "Event",
+      "name": "Christmas Eve Carol Service",
+      "aliases": [],
+      "subtype": "Holiday event",
+      "description": "Come for the music, stay for the warmth! Join Heather Boyd and her mum Molly as they embrace the Christmas Spirit with a relaxed, uplifting gathering featuring your favourite traditional carols and readings. This is a secular, community-centered event—perfect for anyone looking to capture the true spirit of the season.",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/11/Blake-Jorgenson-Magic-web.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/11/Blake-Jorgenson-Magic-web.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Christmas Eve Carol Service, from silverstarstays.com."
+      },
+      "startTime": "2026-12-25T02:30:00.000Z",
+      "endTime": "2026-12-25T03:00:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "eb21dc26-0189-42cd-bf65-f2166c4a6f9d",
+      "kind": "Event",
+      "name": "Salomon Rail Jam",
+      "aliases": [],
+      "subtype": "Competition",
+      "description": "Silver Star is keeping the party going throughout the holidays with their annual holiday rail jam presented by Salomon! Silver Star is kicking off the rail jam series for the season with a holiday rail jam! Sign Up to be a part of the action and ride an exclusive set up, or enjoy the event from the crowd while a DJ spins the tracks to keep the vibes high!",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/10/Rail-Jam_BreeT-01-web.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/10/Rail-Jam_BreeT-01-web.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Salomon Rail Jam, from silverstarstays.com."
+      },
+      "startTime": "2026-12-27T21:30:00.000Z",
+      "endTime": "2026-12-28T01:30:00.000Z",
+      "timePrecision": "minute"
+    },
+    {
+      "id": "35f0e55e-6467-4b03-85bb-add99eb667e0",
+      "kind": "Event",
+      "name": "Silver Star New Years Eve Celebration",
+      "aliases": [],
+      "subtype": "Holiday event",
+      "description": "Enjoy a magical evening in your very own snow globe this New Years at Silver Star! Join us for a sparkling NYE with lots of glimmering lights, a few elfish surprises, and of course a magnificent fireworks display! There will be a DJ after-party as well. Full details to come closer to the time.",
+      "mediaCount": 1,
+      "containsCount": 0,
+      "regionIds": [],
+      "heroUrl": "https://silverstarstays.com/wp-content/uploads/2026/09/NYE-torch-5-web_0.webp",
+      "availability": {
+        "basis": "event-interval"
+      },
+      "geography": {
+        "state": "unknown"
+      },
+      "knowledge": {
+        "affordances": [],
+        "features": [],
+        "descriptionAddsKnowledge": true
+      },
+      "environment": {
+        "setting": "unknown",
+        "rain": {
+          "reading": "unknown",
+          "basis": "none"
+        },
+        "exposure": {
+          "value": "unknown",
+          "basis": "unknown"
+        }
+      },
+      "suitability": {
+        "stated": "unknown"
+      },
+      "occurrence": {
+        "reading": "occurrence",
+        "actionable": true,
+        "because": "a single day or night"
+      },
+      "presentationImage": {
+        "url": "https://silverstarstays.com/wp-content/uploads/2026/09/NYE-torch-5-web_0.webp",
+        "relationship": "exact",
+        "confidence": "high",
+        "attribution": "Photo of Silver Star New Years Eve Celebration, from silverstarstays.com."
+      },
+      "startTime": "2026-12-31T22:00:00.000Z",
+      "endTime": "2026-12-31T22:00:00.000Z",
+      "timePrecision": "minute"
+    }
+  ]
+}

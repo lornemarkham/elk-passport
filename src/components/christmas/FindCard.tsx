@@ -6,7 +6,9 @@ import {
   BookmarkCheck,
   CalendarDays,
   Check,
+  ExternalLink,
   MapPin,
+  Navigation,
   Plus,
   Sparkles,
   Tag,
@@ -17,7 +19,11 @@ import { subjectHref } from "@/domain/experience/destination";
 import { whereLine } from "@/domain/discovery/compose";
 import { distanceText } from "@/domain/discovery/proximity";
 import { ageBecause, ageLine } from "@/domain/discovery/suitability";
-import type { Find } from "@/domain/christmas/discover";
+import {
+  directionsOf,
+  statedPlace,
+  type Find,
+} from "@/domain/christmas/discover";
 import { tidyWhere } from "@/domain/christmas/tidy";
 import {
   evidenceLine,
@@ -79,6 +85,8 @@ export function FindCard({
       : find.reading.themes[0];
   const where = tidyWhere(whereLine(e) ?? "");
   const far = distanceText(e, origin);
+  const stated = where ? undefined : statedPlace(e);
+  const directions = directionsOf(e);
   const age = ageLine(e, youngest);
   const ageWhy = ageBecause(e, youngest);
   const isPicked = picked.includes(e.id);
@@ -125,6 +133,14 @@ export function FindCard({
             {e.title}
           </Link>
         </h3>
+        {!compact && e.description && (
+          <p
+            className="line-clamp-2 text-[0.95rem] text-[var(--gh-ink-soft)]"
+            data-testid="find-description"
+          >
+            {e.description}
+          </p>
+        )}
         <ul className="space-y-1.5 text-[0.95rem] text-[var(--gh-ink-soft)]">
           <li className="flex gap-2" title={find.when.because}>
             <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -139,9 +155,11 @@ export function FindCard({
           </li>
           <li className="flex gap-2">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>
+            <span data-testid="find-where">
               {[where, far].filter(Boolean).join(" · ") ||
-                "Location not confirmed"}
+                (stated
+                  ? `The organiser says: ${stated}`
+                  : "Location not confirmed")}
             </span>
           </li>
           {find.others ? (
@@ -173,6 +191,30 @@ export function FindCard({
             </li>
           )}
         </ul>
+        {!compact && (
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
+            {directions && (
+              <a
+                href={directions}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-1.5 text-[#0f3b2b] underline-offset-4 hover:underline"
+                data-testid="find-directions"
+              >
+                <Navigation className="h-4 w-4" aria-hidden />
+                Directions
+              </a>
+            )}
+            <Link
+              href={href}
+              className="inline-flex min-h-11 items-center gap-1.5 text-[#0f3b2b] underline-offset-4 hover:underline"
+              data-testid="find-details"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              Details &amp; source
+            </Link>
+          </p>
+        )}
         <div className="mt-auto flex gap-2 pt-2">
           <button
             type="button"

@@ -48,10 +48,28 @@ export interface DiscoveryTown extends OctoberPlace {
   readonly aliases?: readonly string[];
 }
 
-const OKANAGAN: readonly DiscoveryTown[] = OCTOBER_PLACES.map((place) => ({
-  ...place,
+/**
+ * **Silver Star**, the mountain village above Vernon: not one of October's
+ * sky places, but a place Christmas events are held (the Light Up, Santa Ski
+ * Day, New Year's Eve; Atlas mission 1042), so somebody staying up there can
+ * say so. The point is the village one the Christmas lights map already
+ * measures from (`christmas/lights/model.ts`, checked against the SilverStar
+ * Light Up), and the id is the map's, so one chosen place means the same
+ * thing on both.
+ */
+const SILVER_STAR: DiscoveryTown = {
+  id: "silverstar",
+  name: "Silver Star, BC",
+  latitude: 50.35839,
+  longitude: -119.06441,
   area: "Okanagan",
-}));
+  aliases: ["silver star mountain", "silverstar mountain resort"],
+};
+
+const OKANAGAN: readonly DiscoveryTown[] = OCTOBER_PLACES.flatMap((place) => {
+  const town = { ...place, area: "Okanagan" };
+  return place.id === "lumby" ? [town, SILVER_STAR] : [town];
+});
 
 /**
  * Metro Vancouver's municipalities, as a person would name them.

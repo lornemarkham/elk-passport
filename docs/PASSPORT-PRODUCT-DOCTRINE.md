@@ -976,6 +976,21 @@ unplaced finds for Christmas only. A distance measured to a town centre is
 not counted as within a radius under 10 km. One composition; it answers no
 open question below.
 
+_Christmas reads the holidays, and Silver Star is a place 2026-11-23_ (owner
+brief M1046 "P0 — Christmas event discovery integration";
+`docs/product/christmas/EVENTS-M1046.md`): an event whose own start falls
+between November and Epiphany is a Christmas find when its name or Atlas's
+type says _holiday(s)_ or _New Year's Eve_, or its description says _the
+holiday season_, _the holidays_ and the like — "Stars on Ice Holiday Tour",
+"12 Days of Holidays", a holiday rail jam. Silver Star village is a town
+Passport measures from, everywhere the shared place is chosen. A card adds
+the description, the organiser's stated location where Atlas has no venue,
+Directions where there is somewhere to go, and _Details & source_. The
+unplaced rule above is unchanged: an event Atlas has not placed is still not
+called near. Fallback imagery stays the text card (decided 2026-11-13, "never
+an unrelated stock photo"). One composition; it answers no open question
+below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

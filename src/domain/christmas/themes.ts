@@ -175,6 +175,60 @@ export const NOT_A_DISPLAY =
 /** Any Christmas word, after the date-not-thing clauses are gone. */
 const CHRISTMAS = /\b(christmas|xmas|festive|yuletide|santa)\b/i;
 
+/**
+ * **The holidays, said by an event held in them** (owner brief M1046: the
+ * Vernon and Silver Star events Atlas published in mission 1042). "Stars on
+ * Ice – 2026 Holiday Tour", "12 Days of Holidays", "a holiday rail jam",
+ * "kick off the holiday season", "New Years Eve Celebration" never say
+ * "Christmas", and are Christmas-season outings all the same. Only an event
+ * whose own start falls in the season (`IN_SEASON`) is read this way, so a
+ * summer "holiday camp" or a Holiday Inn is not; the name may say it plainly,
+ * the description only as one of these phrases.
+ */
+const HOLIDAYS_NAMED = /\b(holidays?|new year'?s eve)\b/i;
+const HOLIDAYS_SAID =
+  /\b(the holiday season|the holidays|holiday spirit|holiday cheer|holiday (rail jam|tour|show|concert|party|market|celebration)s?)\b/i;
+const NOT_THE_HOLIDAYS = [
+  /\bholiday (inn|park|rv)\b/gi,
+  /\b(closed|open|hours?)\b[^.;:]{0,30}\b(the )?holidays?\b/gi,
+];
+
+/** November to Epiphany, by the event's own start date. */
+function inSeason(experience: Experience): boolean {
+  if (experience.kind !== "Event" || !experience.startTime) return false;
+  const [, month, day] = experience.startTime
+    .slice(0, 10)
+    .split("-")
+    .map(Number);
+  return month === 11 || month === 12 || (month === 1 && day! <= 6);
+}
+
+function holidaysWord(experience: Experience): Evidence | undefined {
+  if (!inSeason(experience)) return undefined;
+  const plain = (text: string) =>
+    NOT_THE_HOLIDAYS.reduce((t, rule) => t.replace(rule, " "), clean(text));
+  const said: [EvidenceField, string | undefined, RegExp][] = [
+    ["name", experience.title, HOLIDAYS_NAMED],
+    ["subtype", experience.subtype, HOLIDAYS_NAMED],
+    ["description", experience.description, HOLIDAYS_SAID],
+  ];
+  for (const [field, text, words] of said) {
+    if (!text) continue;
+    const match = words.exec(plain(text));
+    if (match)
+      return {
+        field,
+        word: match[0],
+        quote: quoteAround(
+          text,
+          Math.max(0, text.indexOf(match[0])),
+          match[0].length,
+        ),
+      };
+  }
+  return undefined;
+}
+
 export type EvidenceField =
   "name" | "subtype" | "description" | "activity" | "organiser";
 
@@ -278,6 +332,7 @@ export function readChristmas(experience: Experience): ChristmasReading | null {
         };
     }
   }
+  christmasWord ??= holidaysWord(experience);
   // A theme the thing is only *mentioned* with is not what it is: it
   // counts where Atlas names, lists or offers it so, or where the title or
   // listed type is called it too (`called`). A display is never a sale,
