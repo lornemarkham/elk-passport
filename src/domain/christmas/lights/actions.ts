@@ -21,6 +21,13 @@ import {
   type ReportId,
   type TownId,
 } from "./model";
+import {
+  COOLING,
+  MAX_WAITING as CONTRIBUTIONS_MAX_WAITING,
+  TOO_FAST,
+  coolingOff,
+  pace,
+} from "@/domain/contributions/guard";
 
 /**
  * **What can happen to a pin**, each a pure step from one document to the
@@ -42,8 +49,6 @@ const clean = (v: unknown, max: number): string | undefined => {
   const t = v.replace(/\s+/g, " ").trim();
   return t ? t.slice(0, max) : undefined;
 };
-
-const MAX_PINS_PER_PERSON_PER_DAY = 10;
 
 export interface Submission {
   readonly kind: Kind;
@@ -156,9 +161,13 @@ export function removedNear(doc: LightsDoc, at: { lat: number; lng: number }) {
   );
 }
 
-/** Most waiting pins the queue will hold before asking people to come back (a flood stopper). */
-export const MAX_WAITING = 150;
-const MAX_PINS_ANONYMOUS_PER_DAY = 5;
+/**
+ * Most waiting pins the queue will hold before asking people to come back (a
+ * flood stopper). Shared with every other community queue
+ * (`domain/contributions/guard.ts`): high enough that a busy weekend of real
+ * families never meets it.
+ */
+export const MAX_WAITING = CONTRIBUTIONS_MAX_WAITING;
 
 export function submit(
   doc: LightsDoc,
@@ -168,18 +177,31 @@ export function submit(
   now: Date,
   photo?: string,
 ): { doc: LightsDoc; pin: Pin } {
-  const today = now.toISOString().slice(0, 10);
-  const mineToday = doc.pins.filter(
-    (p) => p.submittedBy === by && p.submittedAt.slice(0, 10) === today,
-  ).length;
-  const cap = by.startsWith("anon_")
-    ? MAX_PINS_ANONYMOUS_PER_DAY
-    : MAX_PINS_PER_PERSON_PER_DAY;
-  if (mineToday >= cap)
-    throw new Refused(
-      "That's a lot of magic for one day — try again tomorrow.",
-      429,
-    );
+  // **No daily cap** (owner brief 2026-11-23, P0: the owner added ten real
+  // displays in one evening and was told to "try again tomorrow"). What
+  // tells a script from a person is pace and moderation, the shared rules
+  // in `domain/contributions/guard.ts`: a burst is asked to pause, a
+  // contributor whose recent pins were declined as spam cools off for a day.
+  const mine = doc.pins.filter((p) => p.submittedBy === by);
+  const p = pace(
+    mine.map((x) => x.submittedAt),
+    now,
+  );
+  if (!p.ok) throw new Refused(TOO_FAST, 429);
+  if (
+    coolingOff(
+      mine
+        .filter((x) => x.status === "declined")
+        .map((x) => ({
+          at: x.updatedAt,
+          spam: x.trail.some(
+            (e) => e.kind === "declined" && /^spam/.test(e.text ?? ""),
+          ),
+        })),
+      now,
+    )
+  )
+    throw new Refused(COOLING, 429);
   if (removedNear(doc, s.at))
     throw new Refused(
       "That property was taken off the map at its household's request, so it can't be added again.",

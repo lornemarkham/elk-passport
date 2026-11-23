@@ -9,6 +9,7 @@ import { todayIn } from "@/lib/adventures/overview";
 import { redirect } from "next/navigation";
 import { adventureSession } from "@/lib/adventures/server";
 import { adventuresOf } from "@/lib/adventures/store";
+import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 /** The night this person already has (theirs, or one they joined). */
 async function nightOf(): Promise<string | null> {
@@ -57,6 +58,14 @@ export default async function DateNightPage() {
         signedIn={user !== null}
         backdrop={PHOTOS.dusk}
       />
+      <div className="flex flex-wrap items-center justify-center gap-3 bg-[#0b0a10] px-5 py-4 text-sm text-white/60">
+        <span>Know a spot for two we&apos;re missing?</span>
+        <SuggestSomething
+          experience="datenight"
+          defaultCategory="restaurant"
+          className="text-white ring-white/30"
+        />
+      </div>
     </>
   );
 }

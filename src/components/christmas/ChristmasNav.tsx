@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 /**
  * **Christmas's own bar** — Discover · Lights Map · My Christmas List · Plan
@@ -82,7 +83,17 @@ export function ChristmasNav() {
             </li>
           );
         })}
-        <li className="ml-auto shrink-0">
+        <li className="ml-auto shrink-0 py-1">
+          {/* The universal suggestion sheet (mission 1005), worded for
+              Christmas: markets, pubs, events, displays — anything missing. */}
+          <SuggestSomething
+            experience="christmas"
+            label="+ Suggest a Stop"
+            compact
+            className="min-h-9 bg-[#ffd98a] text-[#082319] ring-0"
+          />
+        </li>
+        <li className="shrink-0">
           <Link
             href="/discovery"
             data-testid="xmas-nav-back"

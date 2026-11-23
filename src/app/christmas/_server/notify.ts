@@ -94,8 +94,28 @@ export async function sendToAdmin(mail: Mail): Promise<MailResult> {
 }
 
 /** The dashboard's own address, from the request's origin so it works on any host. */
-export const dashboardUrl = (request: Request) =>
-  `${new URL(request.url).origin}/christmas/lights/review`;
+export const dashboardUrl = (
+  request: Request,
+  path = "/christmas/lights/review",
+) => `${new URL(request.url).origin}${path}`;
+
+/** A community suggestion, from any experience (mission 1005), is waiting in the shared queue. */
+export const newSuggestionMail = (
+  name: string,
+  category: string,
+  experience: string,
+  link: string,
+): Mail => ({
+  subject: `New suggestion: ${name}`,
+  text: [
+    `Someone suggested something through Passport (${experience}).`,
+    ``,
+    `${name} — ${category}`,
+    ``,
+    `Nothing is public until you approve it. Review it (works on your phone):`,
+    link,
+  ].join("\n"),
+});
 
 export const newSubmissionMail = (
   name: string,

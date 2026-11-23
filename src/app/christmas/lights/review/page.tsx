@@ -93,6 +93,17 @@ export default async function ReviewPage() {
                     right now.
                   </p>
                 )}
+                <p className="mt-2 text-sm">
+                  <Link
+                    href="/contribute/review"
+                    className="font-bold underline"
+                    data-testid="to-suggestions"
+                  >
+                    Community suggestions
+                  </Link>{" "}
+                  — restaurants, markets, events and more, from every
+                  experience, are reviewed in their own queue.
+                </p>
                 <p className="mt-2 text-[#3d4a43]">
                   Nothing is public until you approve it. A removal request
                   hides a listing at once; you then delete it or restore it.

@@ -117,19 +117,23 @@ export async function actor(
 }
 
 /**
- * **Hand a published listing to Atlas**: its organizer's page is queued as an
- * Atlas candidate source (`POST /admin/candidate-sources`, the curator
- * workbench's own seam), with the reason in words. Atlas reads it with its
- * own fetcher and rules — robots, provenance, review — and becomes the source
- * of truth for whatever it learns. Idempotent by URL on Atlas's side.
+ * **Queue a page for Atlas to read**: `POST /admin/candidate-sources`, the
+ * curator workbench's own seam. Atlas reads it with its own fetcher and
+ * rules — robots, provenance, review — and becomes the source of truth for
+ * whatever it learns. Idempotent by URL on Atlas's side. Shared by the Local
+ * Insider Network and the community suggestion queue (mission 1005): one
+ * write seam into Atlas, not one per experience.
  */
-export async function queueInAtlas(
-  listing: Listing,
+export async function queueCandidateSource(
+  input: {
+    readonly url: string;
+    readonly reason: string;
+    readonly entityIds?: readonly string[];
+    readonly sourceType?: string;
+  },
   now = new Date(),
-): Promise<Listing["atlas"]> {
+): Promise<NonNullable<Listing["atlas"]>> {
   const at = now.toISOString();
-  const url = listing.organizerUrl ?? listing.dates?.source;
-  if (!url) return { state: "no-url", at };
   const token = process.env.ADMIN_TOKEN;
   if (!token)
     return {
@@ -145,15 +149,11 @@ export async function queueInAtlas(
         "Content-Type": "application/json",
       }),
       body: JSON.stringify({
-        url,
-        sourceType: "community-listing",
+        url: input.url,
+        sourceType: input.sourceType ?? "community-listing",
         discoveryBasis: "first-party-url",
-        entityIds: listing.atlasEntityId ? [listing.atlasEntityId] : [],
-        reason:
-          `Go Have a Day Local Insider Network: "${listing.title}" (${listing.kind}, ${listing.place.town}) was published after review on ${at.slice(0, 10)}. Interests: ${listing.interests.join(", ")}. Provenance: ${listing.provenance}`.slice(
-            0,
-            1000,
-          ),
+        entityIds: [...(input.entityIds ?? [])],
+        reason: input.reason.slice(0, 1000),
       }),
       signal: AbortSignal.timeout(10_000),
     });
@@ -180,6 +180,27 @@ export async function queueInAtlas(
       detail: `Atlas unreachable: ${(error as Error).message}`,
     };
   }
+}
+
+/**
+ * **Hand a published listing to Atlas**: its organizer's page, queued as a
+ * candidate source with the reason in words.
+ */
+export async function queueInAtlas(
+  listing: Listing,
+  now = new Date(),
+): Promise<Listing["atlas"]> {
+  const at = now.toISOString();
+  const url = listing.organizerUrl ?? listing.dates?.source;
+  if (!url) return { state: "no-url", at };
+  return queueCandidateSource(
+    {
+      url,
+      entityIds: listing.atlasEntityId ? [listing.atlasEntityId] : [],
+      reason: `Go Have a Day Local Insider Network: "${listing.title}" (${listing.kind}, ${listing.place.town}) was published after review on ${at.slice(0, 10)}. Interests: ${listing.interests.join(", ")}. Provenance: ${listing.provenance}`,
+    },
+    now,
+  );
 }
 
 /** After publishing: queue in Atlas and record what happened on the listing. */

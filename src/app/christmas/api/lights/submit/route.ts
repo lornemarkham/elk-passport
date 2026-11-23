@@ -50,8 +50,9 @@ const LEAST_MS_ON_FORM = 2500;
  * Abuse prevention, in order: same-origin and per-address rate limits
  * (`handle`); a hidden field only a script fills; a minimum time on the
  * form; a photo and the photo promise are required; no web links in the
- * words; a daily cap per person-and-device, and a cap on how many may wait;
- * and a property already removed at its household's request is refused.
+ * words; a pace rule per person-and-device (a burst pauses, never a daily
+ * cap), a cooling-off after spam declines, a cap on how many may wait; and a
+ * property already removed at its household's request is refused.
  */
 export async function POST(request: Request) {
   const v = await viewer();

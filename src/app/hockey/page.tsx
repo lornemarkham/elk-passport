@@ -22,6 +22,7 @@ import { LiveRefresh } from "@/components/hockey/site/LiveRefresh";
 import { LocalTime } from "@/components/hockey/site/LocalTime";
 import { ScoreTicker } from "@/components/hockey/site/ScoreTicker";
 import { SiteShell } from "@/components/hockey/site/SiteShell";
+import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 import {
   LeagueDown,
   StandingsTable,
@@ -462,6 +463,16 @@ export default async function HockeyHome() {
             Free. Got an invitation link? Open it — it brings you straight to
             your night. Every night is private to the people invited to it.
           </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-[13.5px] text-white/60">
+            <span>
+              Know a pub, a rink or a spot near the arena we&apos;re missing?
+            </span>
+            <SuggestSomething
+              experience="hockey"
+              defaultCategory="restaurant"
+              className="text-white ring-white/30"
+            />
+          </div>
         </section>
       </main>
     </SiteShell>

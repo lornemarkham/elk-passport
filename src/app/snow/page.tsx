@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MountainScene } from "@/components/snow/MountainScene";
 import { GoButton, SnowPage, SoftLink, Card } from "@/components/snow/kit";
 import { MyDays } from "@/components/snow/MyDays";
+import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 export const metadata: Metadata = {
   title: "Go Have A Snow Day — Passport",
@@ -126,6 +127,20 @@ export default function SnowHome() {
                   the meeting points still open and update with no signal.
                 </p>
               </Card>
+            </section>
+
+            <section
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/[0.05] px-5 py-4 ring-1 ring-white/10"
+              aria-label="Suggest something"
+            >
+              <p className="text-sm text-[var(--sn-ice)]/80">
+                Know a lunch spot, a rental shop or an après place on the
+                mountain we&apos;re missing?
+              </p>
+              <SuggestSomething
+                experience="snow"
+                className="text-white ring-white/30"
+              />
             </section>
           </div>
         </main>

@@ -1,7 +1,15 @@
 import { requireAdminPage } from "@/lib/admin/requireAdmin";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Compass, Layers, MapPin, Search, Split, Waves } from "lucide-react";
+import {
+  Compass,
+  Layers,
+  MapPin,
+  MessageSquarePlus,
+  Search,
+  Split,
+  Waves,
+} from "lucide-react";
 import {
   loadResearchMissions,
   awaitsReview,
@@ -9,6 +17,7 @@ import {
 import { KNOWLEDGE_DOMAINS } from "@/lib/knowledge/knowledgeDomains";
 import { loadRegions } from "@/lib/knowledge/regions";
 import { duplicateGroupCount, runsToday } from "@/lib/knowledge/adminSummary";
+import { pendingSuggestions } from "@/lib/contributions/summary";
 import {
   Code,
   EmptyState,
@@ -66,12 +75,14 @@ export default async function AtlasHomePage() {
   // Every page checks for itself: a layout is not a gate (Next may skip it on a
   // partial render), and middleware does not run in this app.
   await requireAdminPage("/admin");
-  const [missions, regionsResult, runs, duplicates] = await Promise.all([
-    loadResearchMissions(),
-    loadRegions(),
-    runsToday(),
-    duplicateGroupCount(),
-  ]);
+  const [missions, regionsResult, runs, duplicates, suggestions] =
+    await Promise.all([
+      loadResearchMissions(),
+      loadRegions(),
+      runsToday(),
+      duplicateGroupCount(),
+      pendingSuggestions(),
+    ]);
 
   const waiting = missions.filter(awaitsReview);
   const { regions, unassignedIds } = regionsResult;
@@ -199,6 +210,23 @@ export default async function AtlasHomePage() {
       {/* --- Everything that is not one destination ---------------------- */}
       <Section title="Operations">
         <List>
+          <Row
+            href="/contribute/review"
+            icon={<MessageSquarePlus className="h-4 w-4" />}
+            title="Community suggestions"
+            meta={
+              suggestions === null
+                ? "What people say Passport is missing, from every experience"
+                : suggestions === 0
+                  ? "Nothing waiting on you"
+                  : `${suggestions} waiting for review`
+            }
+            trailing={
+              suggestions ? (
+                <Pill tone="attention">{suggestions}</Pill>
+              ) : undefined
+            }
+          />
           <Row
             href="/admin/review"
             icon={<Search className="h-4 w-4" />}

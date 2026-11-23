@@ -100,7 +100,8 @@ export async function getPhoto(id: string): Promise<string | null> {
 
 const devSalt = "passport-christmas-lights-dev";
 
-function keyFor(email: string): string {
+/** The lights map's one-way key for a signed-in person; the suggestion queue reads it to count their approved pins. */
+export function keyFor(email: string): string {
   const base = storeKey() ?? (usesMemory() ? devSalt : null);
   if (!base) throw new NotReady("no server key for Christmas lights");
   return (
@@ -207,10 +208,14 @@ const g = globalThis as unknown as {
 };
 const limits = () =>
   (g.__lightsLimits ??= {
+    // Loose enough for a family adding a street of displays in one evening
+    // (owner brief 2026-11-23: no arbitrary cap; 25 in a session must pass),
+    // tight enough that a loop from one address is stopped. The pure rules
+    // in `domain/contributions/guard.ts` say the same numbers per person.
     write: rateLimiter({
       limits: [
-        { max: 4, windowMs: 60_000 },
-        { max: 20, windowMs: 3_600_000 },
+        { max: 12, windowMs: 60_000 },
+        { max: 60, windowMs: 3_600_000 },
       ],
     }),
     react: rateLimiter({ limits: [{ max: 60, windowMs: 60_000 }] }),

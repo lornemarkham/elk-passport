@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { matchesSaid, type PublicListing } from "@/domain/insiders/model";
 import { InsiderCard } from "./InsiderCard";
-import { ShareButton } from "./ShareButton";
+import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 /**
  * **From the locals**, on Discovery: what the Local Insider Network holds
@@ -41,7 +41,16 @@ export function LocalInsiders({
               : "Nothing from the locals fits that yet. Tell us about the club, race or jam we're missing."}
           </p>
         </div>
-        <ShareButton />
+        {/* One way in for everything missing (mission 1005); the network's
+            fuller form is offered inside the sheet for a poster or a lot
+            of detail. */}
+        <SuggestSomething
+          experience="gohaveaday"
+          label="+ Know something we're missing?"
+          moreHref="/local/share"
+          testId="share-something"
+          className="bg-[var(--gh-sun,#ffd166)] text-[var(--gh-ink,#111)] shadow-sm ring-0"
+        />
       </div>
       {fits.length > 0 && (
         <>

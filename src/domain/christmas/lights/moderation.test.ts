@@ -53,19 +53,69 @@ describe("Anonymous submissions", () => {
     expect(() => sub({ name: "visit http://x.example" })).toThrow(/links/);
   });
 
-  it("are capped at five a day per person-and-device", () => {
+  it("have no daily cap: twenty-five real displays in one evening all go in", () => {
+    // The owner added ten in one evening and was told "try again tomorrow".
     let doc: LightsDoc = EMPTY;
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < 25; i++)
       doc = submit(
         doc,
-        sub({ lat: 50.26 + i * 0.001 }),
+        sub({ lat: 50.26 + i * 0.001, name: `Display ${i}` }),
         "anon_x",
         `p${i}`,
-        NOW,
+        new Date(NOW.getTime() + i * 20_000),
       ).doc;
-    expect(() => submit(doc, sub(), "anon_x", "p9", NOW)).toThrow(/tomorrow/);
-    // Someone else is unaffected.
-    expect(() => submit(doc, sub(), "anon_y", "p10", NOW)).not.toThrow();
+    expect(doc.pins.filter((p) => p.submittedBy === "anon_x")).toHaveLength(25);
+    expect(JSON.stringify(doc)).not.toContain("tomorrow");
+  });
+
+  it("ask a burst to pause — a minute, never a day — and let someone else through", () => {
+    let doc: LightsDoc = EMPTY;
+    for (let i = 0; i < 12; i++)
+      doc = submit(
+        doc,
+        sub({ lat: 50.26 + i * 0.001, name: `Display ${i}` }),
+        "anon_x",
+        `p${i}`,
+        new Date(NOW.getTime() + i * 1000),
+      ).doc;
+    const soon = new Date(NOW.getTime() + 13_000);
+    expect(() => submit(doc, sub(), "anon_x", "p13", soon)).toThrow(/minute/);
+    expect(() => submit(doc, sub(), "anon_y", "p14", soon)).not.toThrow();
+    // Sixty-one seconds on, the oldest has left the window.
+    expect(() =>
+      submit(doc, sub(), "anon_x", "p15", new Date(NOW.getTime() + 61_000)),
+    ).not.toThrow();
+  });
+
+  it("cool off a contributor whose recent pins were declined as spam", () => {
+    let doc: LightsDoc = EMPTY;
+    for (let i = 0; i < 3; i++) {
+      doc = submit(
+        doc,
+        sub({ lat: 50.26 + i * 0.001, name: `Junk ${i}` }),
+        "anon_s",
+        `s${i}`,
+        new Date(NOW.getTime() + i * 30_000),
+      ).doc;
+      doc = decline(doc, `s${i}`, ADMIN, NOW, "spam");
+    }
+    const hourOn = new Date(NOW.getTime() + 3_600_000);
+    expect(() => submit(doc, sub(), "anon_s", "s9", hourOn)).toThrow(/paused/);
+    // A day on, the pause is over.
+    expect(() => submit(doc, sub(), "anon_s", "s9", LATER)).not.toThrow();
+    // A decline for another reason is not a strike.
+    let fair: LightsDoc = EMPTY;
+    for (let i = 0; i < 3; i++) {
+      fair = submit(
+        fair,
+        sub({ lat: 50.26 + i * 0.001, name: `Dark ${i}` }),
+        "anon_f",
+        `f${i}`,
+        new Date(NOW.getTime() + i * 30_000),
+      ).doc;
+      fair = decline(fair, `f${i}`, ADMIN, NOW, "not-lights");
+    }
+    expect(() => submit(fair, sub(), "anon_f", "f9", hourOn)).not.toThrow();
   });
 
   it("stop at a flood: the queue holds only so many", () => {
