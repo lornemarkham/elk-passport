@@ -182,6 +182,13 @@ export function reviewView(doc: SuggestionsDoc, s: Suggestion): ReviewView {
   };
 }
 
+/** The location in one line: the words, and the town when the words don't already say it. */
+export function placeLine(l: Location): string {
+  const town = l.town?.trim();
+  if (!town || l.text.toLowerCase().includes(town.toLowerCase())) return l.text;
+  return `${l.text}, ${town}`;
+}
+
 /**
  * **The block the administrator copies for Atlas**: every fact the
  * contributor gave, labelled, plus the provenance line Atlas's curators
@@ -192,7 +199,7 @@ export function atlasCopy(s: Suggestion): { text: string; json: string } {
   const lines = [
     `Name: ${s.name}`,
     `Category: ${categoryLabel(s.category)}`,
-    `Location: ${s.location.text}${s.location.town ? ` (${s.location.town})` : ""}`,
+    `Location: ${placeLine(s.location)}`,
     ...(s.location.lat !== undefined && s.location.lng !== undefined
       ? [`Coordinates: ${s.location.lat}, ${s.location.lng}`]
       : []),

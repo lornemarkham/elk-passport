@@ -89,7 +89,6 @@ export function ChristmasNav() {
           <SuggestSomething
             experience="christmas"
             label="+ Suggest a Stop"
-            compact
             className="min-h-9 bg-[#ffd98a] text-[#082319] ring-0"
           />
         </li>

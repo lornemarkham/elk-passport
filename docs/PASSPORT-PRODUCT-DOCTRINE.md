@@ -1175,6 +1175,36 @@ and the product in [`product/insiders/README.md`](product/insiders/README.md):
 - **Discovery lead time** — how many days before it starts we first heard of
   an event — is the network's measure (a shadow of §1's, kept honest by it).
 
+### Anyone can suggest something, from any experience (2026-11-23)
+
+From the owner's _Universal Community Contributions_ brief (mission 1005),
+recorded in [`product/contributions/README.md`](product/contributions/README.md)
+with storage and identity **proposed** in
+[ADR 025](architecture/decisions/025-one-suggestion-queue-for-every-experience.md):
+
+- **One "+ Suggest something" on every experience** — Go Have a Day,
+  Christmas (_+ Suggest a Stop_), Hockey Night, Snow Day, Date Night, and any
+  future one by mounting the same component. A name, a kind and a place; the
+  rest optional; no account; the experience it came from is captured, never
+  asked. **Build once, improve everywhere**: no experience builds its own.
+- **Nothing a contributor sends is public.** Every suggestion waits in one
+  administrator queue (`/contribute/review`); approved ones are copied to
+  Atlas by hand, or their website is queued for Atlas to read. Automatic
+  ingestion is deliberately not built yet.
+- **No arbitrary caps on contributing.** The Christmas lights map's daily cap
+  (five anonymous, ten signed in) is gone; a burst is asked to pause for a
+  minute, spam is handled by moderation, and twenty-five real things in one
+  session go in. _Make contributing easier than complaining that something
+  is missing._
+- **Contributors are thanked at once and rewarded on approval**, with five
+  milestones shared across every experience (1 · 5 · 10 · 25 · 50). Pending
+  earns thanks; duplicates and spam earn nothing. An anonymous contributor
+  is recognised on one device only, and the product says so.
+
+This is one step on the §2.10 return path (a person tells Passport what the
+world has that Atlas lacks). It answers no question in §15; §15.15 is
+informed, not resolved: a suggestion is facts for a reviewer, not a vote.
+
 ### Real pictures, live possibilities, fast (decided 2026-11-13)
 
 From the owner's _P0 — Go Have a Day: fix Discovery production experience_

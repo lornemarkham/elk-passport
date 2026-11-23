@@ -6,6 +6,7 @@ import {
   DECLINE_REASONS,
   categoryLabel,
   experienceLabel,
+  placeLine,
   type DeclineReason,
   type ReviewView,
   type Status,
@@ -154,16 +155,17 @@ function Card({
       await navigator.clipboard.writeText(text);
       setSaid("Copied — paste it into Atlas.");
     } catch {
+      // No clipboard here (an older browser, or permission refused): the
+      // block is shown to copy by hand.
       setCopyText(text);
+      setSaid("Copy the block below and paste it into Atlas.");
     }
   }
 
   const maps =
     s.location.lat !== undefined && s.location.lng !== undefined
       ? `https://www.google.com/maps?q=${s.location.lat},${s.location.lng}`
-      : `https://www.google.com/maps/search/${encodeURIComponent(
-          `${s.location.text}${s.location.town ? `, ${s.location.town}` : ""}`,
-        )}`;
+      : `https://www.google.com/maps/search/${encodeURIComponent(placeLine(s.location))}`;
 
   return (
     <li
@@ -213,8 +215,7 @@ function Card({
               rel="noreferrer"
               className="underline"
             >
-              {s.location.text}
-              {s.location.town ? `, ${s.location.town}` : ""}
+              {placeLine(s.location)}
             </a>
             {s.location.lat !== undefined && (
               <span className="text-black/50">

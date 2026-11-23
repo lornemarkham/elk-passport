@@ -90,10 +90,14 @@ queue when restored, never to the map.
 - _Spam, harassment, repeats:_ same-origin check; per-address rate limits
   (4 a minute, 20 an hour); a hidden field only a script fills (looks
   accepted, stores nothing); a minimum time on the form; no web links in the
-  words; a photo and the photo promise are required; 5 submissions a day per
-  address-and-device (10 signed in); at most 150 waiting at once; an
-  already-reported-and-removed place **cannot be submitted again** (within
-  60 m of a deleted listing; the tombstone keeps only the place).
+  words; a photo and the photo promise are required; **no daily cap**
+  (removed 2026-11-23, owner brief _Universal Community Contributions_: the
+  owner was refused their eleventh real display; a burst is now asked to
+  pause for a minute (12 a minute and 60 an hour per person), and three spam declines
+  pause a contributor for a day — `domain/contributions/guard.ts`); at most
+  1000 waiting at once (was 150); an already-reported-and-removed place
+  **cannot be submitted again** (within 60 m of a deleted listing; the
+  tombstone keeps only the place).
 - _Audit:_ every submit, approve, reject (with reason), edit, hide, restore,
   removal request, report and delete is an entry in the pin's `trail`
   (who — a reviewer's email, or a one-way key —, when, why), shown under

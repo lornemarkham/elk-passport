@@ -210,12 +210,14 @@ const limits = () =>
   (g.__lightsLimits ??= {
     // Loose enough for a family adding a street of displays in one evening
     // (owner brief 2026-11-23: no arbitrary cap; 25 in a session must pass),
-    // tight enough that a loop from one address is stopped. The pure rules
-    // in `domain/contributions/guard.ts` say the same numbers per person.
+    // tight enough that a loop from one address is stopped. Looser than the
+    // per-person pace rule in `domain/contributions/guard.ts` (12 a minute,
+    // 60 an hour), so a household behind one address meets the rule about
+    // a person, said in words, first.
     write: rateLimiter({
       limits: [
-        { max: 12, windowMs: 60_000 },
-        { max: 60, windowMs: 3_600_000 },
+        { max: 20, windowMs: 60_000 },
+        { max: 100, windowMs: 3_600_000 },
       ],
     }),
     react: rateLimiter({ limits: [{ max: 60, windowMs: 60_000 }] }),

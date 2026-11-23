@@ -213,16 +213,17 @@ const g = globalThis as unknown as {
   >;
 };
 /**
- * Per address, per server instance: enough to stop one loop, loose enough
- * for a person adding a whole street (the pure pace rule in
- * `domain/contributions/guard.ts` says the same numbers per contributor).
+ * Per address, per server instance: enough to stop one loop, looser than
+ * the per-person pace rule in `domain/contributions/guard.ts` (12 a minute,
+ * 60 an hour) so a household behind one connection meets the rule about a
+ * person, said in words, before the one about an address.
  */
 const limits = () =>
   (g.__contributionLimits ??= {
     write: rateLimiter({
       limits: [
-        { max: 12, windowMs: 60_000 },
-        { max: 60, windowMs: 3_600_000 },
+        { max: 20, windowMs: 60_000 },
+        { max: 100, windowMs: 3_600_000 },
       ],
     }),
     read: rateLimiter({ limits: [{ max: 60, windowMs: 60_000 }] }),

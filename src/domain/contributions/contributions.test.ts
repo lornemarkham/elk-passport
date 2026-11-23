@@ -335,9 +335,16 @@ describe("Review", () => {
     const { text, json } = atlasCopy(waiting().suggestions[0]!);
     expect(text).toContain("Name: Long John's Pub");
     expect(text).toContain("Category: Restaurant or café");
+    // The town is not repeated when the words already say it.
     expect(text).toContain(
-      "Location: SilverStar Mountain Resort, village centre (SilverStar)",
+      "Location: SilverStar Mountain Resort, village centre\n",
     );
+    expect(
+      atlasCopy({
+        ...waiting().suggestions[0]!,
+        location: { text: "The village", town: "SilverStar" },
+      }).text,
+    ).toContain("Location: The village, SilverStar");
     expect(text).toContain("When: Fridays 7–10 pm");
     expect(text).toContain("Website: https://longjohnspub.example/");
     expect(text).toContain(
