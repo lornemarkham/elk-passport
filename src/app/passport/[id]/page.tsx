@@ -45,6 +45,9 @@ import { isOctoberKind } from "@/lib/october/types";
 import { octoberThingsFor } from "@/lib/october/octoberThings";
 import { formatEventWhen } from "@/domain/experience/eventTime";
 import { favouriteByAtlasId } from "@/domain/featured/locals";
+import { PlaceDetailsPage } from "@/components/place-detail/details/PlaceDetailsPage";
+import { placeDetailsFromComposed } from "@/domain/place-details/fromComposed";
+import { nearbyFor } from "@/lib/passport/placeNearby";
 import {
   loadComposition,
   resolveComposition,
@@ -102,6 +105,20 @@ export async function generateMetadata({
     title: named ? `${named} — Go Have A Day` : `Passport — ${id.slice(0, 8)}`,
     robots: { index: false, follow: false },
   };
+}
+
+/** `/day/{id}`, carrying the day, the age and the way back they came with. */
+function dayHrefFor(
+  id: string,
+  on: string | undefined,
+  childAge: number | undefined,
+  back: string | undefined,
+): string {
+  const query = new URLSearchParams();
+  if (on) query.set("on", on);
+  if (childAge !== undefined) query.set("childAge", String(childAge));
+  if (back) query.set("back", back);
+  return `/day/${id}${query.size > 0 ? `?${query}` : ""}`;
 }
 
 /**
@@ -242,6 +259,17 @@ export default async function PassportPage({ params, searchParams }: Props) {
           )
         : null;
       const actions = october ? octoberFoot(view, Boolean(curation)) : null;
+      // **A business is a place to a visitor** (owner brief M1041): a pub, a
+      // sports bar, a winery is drawn on the shared place page, the same one
+      // a Place and a local favourite use. October and curated pages keep
+      // their own arrangements; Events and Experiences keep theirs.
+      const drawn =
+        !october && !curation && composition.root.kind === "Organization"
+          ? placeDetailsFromComposed(view)
+          : null;
+      const place = drawn
+        ? { ...drawn, nearby: await nearbyFor(drawn.point, id) }
+        : null;
       return (
         // The theme sits on the page wrapper, not inside the renderer, so it
         // covers the whole viewport rather than a column floating on the
@@ -279,6 +307,12 @@ export default async function PassportPage({ params, searchParams }: Props) {
             </OctoberShell>
           ) : curation ? (
             <CuratedSubjectPage view={view} curation={curation} />
+          ) : place ? (
+            <PlaceDetailsPage
+              model={place}
+              {...(back ? { back } : {})}
+              dayHref={dayHrefFor(id, on, childAge, back)}
+            />
           ) : (
             <>
               {/* **The step this page did not have.** An entity page answered

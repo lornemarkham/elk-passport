@@ -1228,6 +1228,29 @@ a Sesh Wars session at SilverStar.
 Whether the cards should also say the pubs were early supporters is the
 owner's call (record, _Open questions_). This answers no question in §15.
 
+### One place page, for every place (decided 2026-11-23)
+
+From the owner's _P0 — GoHaveADay shared place details overhaul_ brief
+(mission 1041), recorded in
+[`product/place-details/README.md`](product/place-details/README.md):
+_Atlas provides intelligence; GoHaveADay provides the experience._
+
+- **Every place Go Have a Day shows is drawn on one page** — an Atlas Place,
+  a business Atlas holds as an Organization, a local favourite. Christmas,
+  Hockey Night, Date Night, Snow Day and any other experience link to it and
+  may add to it; they do not build their own place page. This settles place
+  pages only: §10's "shared capability is not shared UI" still holds for an
+  experience's own composition, and §15.1 stays open.
+- **It leads with the place's own photographs and four actions** — Add to My
+  Day, Save, Directions, Call. The business's website is a source, listed
+  quietly; a visitor plans without leaving.
+- **Website text is evidence, not the page.** Facts are sorted under the
+  headings a visitor looks for; a long passage shows only its opening
+  sentences, and sources, read dates and full passages are folded into
+  _Sources & accuracy_.
+- This supersedes the hand-made favourite page of the 2026-11-22 entry
+  above: a local favourite is the shared page with an editor's note.
+
 ### Real pictures, live possibilities, fast (decided 2026-11-13)
 
 From the owner's _P0 — Go Have a Day: fix Discovery production experience_

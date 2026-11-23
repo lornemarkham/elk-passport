@@ -1,0 +1,40 @@
+{
+  "place": {
+    "kind": "Place",
+    "id": "dd65260a-277c-4fc4-b9c8-404c4464f6d6",
+    "name": "Kalamalka Lake",
+    "aliases": [],
+    "placeType": "lake",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-119.33, 50.17361111]
+    },
+    "description": "Known as the 'lake of a thousand colours', it offers a watersports paradise with sparkling cyans to deep turquoise greens, carved by glaciers and located in Coldstream.",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Kalamalka_Lake.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "activities": ["swimming", "paddling", "boating"]
+  },
+  "relationships": [],
+  "sources": [
+    {
+      "id": "w1",
+      "sourceType": "wikipedia",
+      "source": "https://en.wikipedia.org/wiki/Kalamalka_Lake",
+      "retrievedAt": "2026-10-11T00:00:00Z"
+    }
+  ],
+  "relatedPlaces": [],
+  "media": {
+    "hero": {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Kalamalka_Lake.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+      "sourceRecordId": "w1",
+      "evidence": "own-page"
+    },
+    "gallery": [
+      {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Kalamalka_Lake.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+        "sourceRecordId": "w1",
+        "evidence": "own-page"
+      }
+    ]
+  }
+}

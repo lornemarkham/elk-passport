@@ -1,0 +1,30 @@
+{
+  "root": {
+    "id": "f7f3967e-4eaf-4311-982f-572d2f4d1e70",
+    "kind": "Organization",
+    "name": "Alexander’s Beach Pub",
+    "description": "A pub by Kalamalka Lake in Coldstream.",
+    "keyFacts": [],
+    "temporal": {
+      "policyVersion": 1,
+      "claims": [],
+      "asOf": {},
+      "withheld": 0
+    },
+    "when": [],
+    "related": [],
+    "depth": 0,
+    "subtype": "pub"
+  },
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://tourismvernon.com/blog/vernons-top-patios",
+      "sourceType": "tourism",
+      "retrievedAt": "2026-09-08T00:00:00Z",
+      "describesSubject": true
+    }
+  ],
+  "verbs": [],
+  "maxDepth": 1
+}

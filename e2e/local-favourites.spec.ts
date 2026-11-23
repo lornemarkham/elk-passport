@@ -34,37 +34,42 @@ async function fitsTheScreen(page: Page) {
 test("Long John's has a destination page worth stopping for", async ({
   page,
 }) => {
+  // The shared place page since M1041: the same facts, the same honesty.
   await page.goto("/favourites/long-johns-pub");
-  const card = page.getByTestId("favourite-long-johns-pub");
+  const pageEl = page.getByTestId("place-details");
   await expect(
-    card.getByRole("heading", { level: 1, name: "Long John's Pub" }),
+    pageEl.getByRole("heading", { level: 1, name: "Long John's Pub" }),
   ).toBeVisible();
-  await expect(card).toContainText("Local favourite · our pick");
-  await expect(card).toContainText("Main Street, SilverStar village");
-  await expect(card.getByTestId("favourite-directions")).toHaveAttribute(
+  await expect(pageEl.getByTestId("place-badge")).toHaveText(
+    "Local favourite · our pick",
+  );
+  await expect(pageEl).toContainText("Main Street, SilverStar village");
+  await expect(pageEl.getByTestId("place-directions")).toHaveAttribute(
     "href",
     "https://www.google.com/maps/dir/?api=1&destination=50.35934,-119.059306",
   );
-  await expect(card.getByTestId("favourite-call")).toHaveAttribute(
+  await expect(pageEl.getByTestId("place-call")).toHaveAttribute(
     "href",
     "tel:+12505492992",
   );
-  await expect(card.getByTestId("favourite-website")).toHaveAttribute(
+  await expect(pageEl.getByTestId("place-website")).toHaveAttribute(
     "href",
     "https://www.longjohnspub.com/",
   );
-  await expect(card.getByTestId("favourite-hours")).toContainText(
+  await expect(pageEl.getByTestId("place-hours")).toContainText(
     "aren't confirmed",
   );
   // The pub's own photograph, credited, actually drawn.
-  const hero = card.locator("img").first();
+  const hero = pageEl.getByTestId("place-hero").locator("img").first();
   await expect(hero).toHaveAttribute("alt", /Long John's sign/);
   await expect
     .poll(() => hero.evaluate((i: HTMLImageElement) => i.naturalWidth), {
       timeout: 15_000,
     })
     .toBeGreaterThan(0);
-  await expect(card).toContainText("Photo: Long John's Pub");
+  await expect(pageEl.getByTestId("place-hero")).toContainText(
+    "Photo: Long John's Pub",
+  );
 
   await expect(
     page.getByRole("heading", { name: "Make a day of it" }),
@@ -72,7 +77,10 @@ test("Long John's has a destination page worth stopping for", async ({
   await expect(
     page.getByRole("link", { name: /Sesh Wars at SilverStar/ }),
   ).toHaveAttribute("href", "/snow/sesh-wars/m/silverstar");
-  await expect(page.getByText("longjohnspub.com").first()).toBeVisible();
+  await page.getByText("Sources & accuracy").click();
+  await expect(
+    page.getByTestId("place-sources").getByText("longjohnspub.com").first(),
+  ).toBeVisible();
   await expect(page.locator("main")).not.toContainText(
     /partner|sponsored|official/i,
   );
@@ -86,23 +94,24 @@ test("Long John's has a destination page worth stopping for", async ({
 
 test("Alexander's has a page without a borrowed photo", async ({ page }) => {
   await page.goto("/favourites/alexanders-beach-pub");
-  const card = page.getByTestId("favourite-alexanders-beach-pub");
+  const pageEl = page.getByTestId("place-details");
   await expect(
-    card.getByRole("heading", { level: 1, name: "Alexander's Beach Pub" }),
+    pageEl.getByRole("heading", { level: 1, name: "Alexander's Beach Pub" }),
   ).toBeVisible();
-  await expect(card).toContainText("Kal Beach, Kalamalka Lake, Vernon");
-  await expect(card.locator("img")).toHaveCount(0);
-  await expect(card.getByTestId("favourite-directions")).toHaveAttribute(
+  await expect(pageEl).toContainText("Kal Beach, Kalamalka Lake, Vernon");
+  await expect(pageEl.getByTestId("place-hero")).toHaveCount(0);
+  await expect(pageEl.getByTestId("place-hero-drawn")).toBeVisible();
+  await expect(pageEl.getByTestId("place-directions")).toHaveAttribute(
     "href",
     "https://www.google.com/maps/dir/?api=1&destination=50.23019,-119.26374",
   );
-  await expect(card.getByTestId("favourite-call")).toHaveAttribute(
+  await expect(pageEl.getByTestId("place-call")).toHaveAttribute(
     "href",
     "tel:+12505453131",
   );
   // No website exists that we could verify, so none is offered.
-  await expect(card.getByTestId("favourite-website")).toHaveCount(0);
-  await expect(card.getByTestId("favourite-hours")).toContainText("Call ahead");
+  await expect(pageEl.getByTestId("place-website")).toHaveCount(0);
+  await expect(pageEl.getByTestId("place-hours")).toContainText("Call ahead");
   await expect(page.locator("main")).not.toContainText(
     /partner|sponsored|official|trivia|live music/i,
   );

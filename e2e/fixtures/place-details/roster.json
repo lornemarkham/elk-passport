@@ -1,0 +1,85 @@
+{
+  "root": {
+    "id": "e2e-roster-sports-club",
+    "kind": "Organization",
+    "name": "The Roster Sports Club Bar & Grill",
+    "description": "Part award-winning bar and grill, part the North Okanagan's only members' sports club. Big screens for every game, classic pub fare, squash and racquetball courts, leagues and indoor golf simulators, all under one roof in Vernon. Whether you are here to play, to watch or just to eat, there is a seat for you and the kitchen is open late on game nights. Members and guests welcome. Follow us for comedy nights, events and specials.",
+    "keyFacts": [
+      {
+        "label": "Menu",
+        "value": "Classic pub fare done right: burgers, wings, nachos, pizzas and daily features from our kitchen, with a dog menu for your four-legged friends on the patio. Ask your server about this week's specials and our full list of local craft beers on tap.",
+        "sourceRecordId": "r1",
+        "category": "Food & Drink"
+      },
+      {
+        "label": "Drinks",
+        "value": "Local craft beer on tap",
+        "sourceRecordId": "r1",
+        "category": "Food & Drink"
+      },
+      {
+        "label": "Screens",
+        "value": "Big screens for every game",
+        "sourceRecordId": "r1",
+        "category": "Sports"
+      },
+      {
+        "label": "Squash and racquetball",
+        "value": "Courts for members and guests. Book a court at the front desk or online. Leagues run through the fall and winter season and new players are always welcome to join a ladder or drop in for a social night with the club.",
+        "sourceRecordId": "r1",
+        "category": "Sports Club"
+      },
+      {
+        "label": "Indoor golf",
+        "value": "Uneekor simulators",
+        "sourceRecordId": "r1",
+        "category": "Sports Club"
+      },
+      {
+        "label": "Comedy",
+        "value": "Monthly comedy nights",
+        "sourceRecordId": "r1",
+        "category": "Events"
+      },
+      {
+        "label": "Patio",
+        "value": "Dog-friendly patio",
+        "sourceRecordId": "r1",
+        "category": "Amenities"
+      },
+      {
+        "label": "Phone",
+        "value": "+1 250-549-0444",
+        "sourceRecordId": "r1"
+      },
+      {
+        "label": "Website",
+        "value": "https://rostersvernon.com/",
+        "sourceRecordId": "r1"
+      }
+    ],
+    "temporal": {
+      "policyVersion": 1,
+      "claims": [],
+      "asOf": {},
+      "withheld": 0
+    },
+    "when": [],
+    "related": [],
+    "depth": 0,
+    "subtype": "sports bar",
+    "address": "2319 53 Ave, Vernon, BC V1T 8K1",
+    "coordinates": [-119.2766, 50.2794]
+  },
+  "sources": [
+    {
+      "id": "r1",
+      "url": "https://rostersvernon.com/",
+      "sourceType": "official-website",
+      "retrievedAt": "2026-11-23T00:00:00Z",
+      "describesSubject": true
+    }
+  ],
+  "verbs": [],
+  "maxDepth": 1
+}

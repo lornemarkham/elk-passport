@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPlaceDetail, listPlaces } from "@/lib/data/atlas-repo";
 import type { Place } from "@/lib/data/types";
-import { PlaceHero } from "@/components/place-detail/PlaceHero";
 import { PlaceFireBanNotice } from "@/components/place-detail/PlaceFireBanNotice";
 import { PLACE_SECTIONS } from "@/components/place-detail/sections";
-import { LetsDoThis } from "@/components/ghad/LetsDoThis";
+import { heroImage } from "@/components/place-detail/placeMedia";
+import { PlaceDetailsPage } from "@/components/place-detail/details/PlaceDetailsPage";
+import { placeDetailsFromPlace } from "@/domain/place-details/fromPlace";
 import { safeNext } from "@/lib/auth/safeNext";
 
 type PlacePageProps = {
@@ -148,25 +149,35 @@ export default async function PlacePage({
     relatedPlaceDetails,
   };
 
+  // **The shared place page** (owner brief M1041): the same hero, actions,
+  // visitor column and Sources & accuracy as every other place, with this
+  // Place's own Atlas sections in the middle. The frame draws the type, the
+  // address, the map and the sources, so the sections that only repeated
+  // those as a list (Overview, Quick Facts, Map, Trusted Information) are
+  // left to it.
+  const model = placeDetailsFromPlace(detail, heroImage(place, media));
+  const dayQuery = new URLSearchParams();
+  if (on) dayQuery.set("on", on);
+  if (childAge !== undefined) dayQuery.set("childAge", String(childAge));
+  if (back) dayQuery.set("back", back);
+
   return (
-    <>
-      {/* Additive: the Place template keeps its own composition entirely, and
-          the step a decided person needs sits above it. */}
-      <LetsDoThis
-        id={id}
-        {...(on ? { on } : {})}
-        {...(childAge === undefined ? {} : { childAge })}
+    <main className="min-h-screen bg-white">
+      <PlaceDetailsPage
+        model={model}
         {...(back ? { back } : {})}
-      />
-      <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-12">
-        <PlaceHero {...sectionProps} />
+        dayHref={`/day/${id}${dayQuery.size > 0 ? `?${dayQuery}` : ""}`}
+      >
         <PlaceFireBanNotice {...sectionProps} />
-        <div className="flex flex-col">
-          {PLACE_SECTIONS.map(({ key, Component }) => (
+        {PLACE_SECTIONS.filter(({ key }) => !FRAMED.has(key)).map(
+          ({ key, Component }) => (
             <Component key={key} {...sectionProps} />
-          ))}
-        </div>
-      </main>
-    </>
+          ),
+        )}
+      </PlaceDetailsPage>
+    </main>
   );
 }
+
+/** Sections the shared frame already draws, so they are not drawn twice. */
+const FRAMED = new Set(["overview", "quick-facts", "map", "sources"]);
