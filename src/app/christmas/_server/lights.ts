@@ -23,6 +23,7 @@ import {
 } from "@/domain/christmas/lights/model";
 import { Refused } from "@/domain/christmas/lights/actions";
 import { SEED } from "@/domain/christmas/lights/seed";
+import { townOf } from "@/domain/christmas/lights/areas";
 
 /**
  * **Where Pin the Magic keeps itself.** The pins are one versioned document
@@ -49,7 +50,26 @@ export const json = (body: unknown, status = 200) =>
 function withSeed(doc: LightsDoc): LightsDoc {
   const have = new Set(doc.pins.map((p) => p.id));
   const add = SEED.filter((s) => !have.has(s.id));
-  return add.length ? { pins: [...doc.pins, ...add] } : doc;
+  const joined = add.length ? { pins: [...doc.pins, ...add] } : doc;
+  return withTowns(joined);
+}
+
+/**
+ * A pin standing inside Silver Star's or Lake Country's circle is read under
+ * that town, whatever town it was filed under (see `townOf`). Only the
+ * `town` is read differently: the saved record, its coordinates, photo and
+ * status are untouched, and a document with nothing to correct is returned
+ * as it is so a save is not forced.
+ */
+function withTowns(doc: LightsDoc): LightsDoc {
+  if (!doc.pins.some((p) => townOf(p) !== p.town)) return doc;
+  return {
+    ...doc,
+    pins: doc.pins.map((p) => {
+      const town = townOf(p);
+      return town === p.town ? p : { ...p, town };
+    }),
+  };
 }
 
 export async function readLights(): Promise<{

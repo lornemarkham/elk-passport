@@ -149,7 +149,7 @@ const RESEARCHED: readonly Researched[] = [
     id: "seed-silverstar-light-up",
     kind: "community-tree",
     name: "SilverStar Annual Light Up",
-    town: "vernon",
+    town: "silverstar",
     lat: 50.35839,
     lng: -119.06441,
     address: "SilverStar Mountain Resort village",

@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://gohaveaday.com"),
   title: "The Christmas Lights Map — Go Have a Christmas",
   description:
-    "Decorated homes, public displays, community trees and Christmas markets around Vernon, Coldstream, Lumby, Armstrong and Kelowna — pinned by locals, checked, and ready for your lights tour.",
+    "Decorated homes, public displays, community trees and Christmas markets around Vernon, Coldstream, Lumby, Silver Star, Armstrong, Lake Country and Kelowna — pinned by locals, checked, and ready for your lights tour.",
   alternates: { canonical: "/christmas/lights" },
   openGraph: {
     type: "website",
@@ -144,6 +144,29 @@ export default async function LightsPage({
             <Explorer
               pins={lights}
               initialArea={area}
+              nearYou={
+                <>
+                  <Suspense fallback={null}>
+                    <ExperienceLocation
+                      scope="christmas"
+                      experience="Christmas lights"
+                      at={where.at}
+                      className="text-white"
+                    />
+                  </Suspense>
+                  <DistancePicker ask={ask} path="/christmas/lights" />
+                  {hidden > 0 && published.length === 0 && (
+                    <p
+                      className="text-sm text-white/85"
+                      data-testid="lights-none"
+                    >
+                      No lights are listed within {ask.km} km of{" "}
+                      {town.name.replace(/,\s*BC$/, "")} yet. This map covers
+                      the North Okanagan — try a wider distance or another town.
+                    </p>
+                  )}
+                </>
+              }
               initialSelected={
                 lights.some((p) => p.id === pinParam) ? pinParam : null
               }
@@ -184,37 +207,6 @@ export default async function LightsPage({
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <MyLights pins={mine} />
           </div>
-
-          <details
-            className="mx-auto mt-2 max-w-6xl px-4 text-white sm:px-6"
-            id="lights-where"
-            data-testid="lights-where"
-          >
-            <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-white/85">
-              {area
-                ? `Around ${areaById(area)!.label}`
-                : `Within ${ask.km} km of ${town.name.replace(/,\s*BC$/, "")}`}{" "}
-              · change
-            </summary>
-            <div className="space-y-1 pb-3">
-              <Suspense fallback={null}>
-                <ExperienceLocation
-                  scope="christmas"
-                  experience="Christmas lights"
-                  at={where.at}
-                  className="text-white"
-                />
-              </Suspense>
-              {!area && <DistancePicker ask={ask} path="/christmas/lights" />}
-              {!area && hidden > 0 && published.length === 0 && (
-                <p className="text-sm text-white/85" data-testid="lights-none">
-                  No lights are listed within {ask.km} km of{" "}
-                  {town.name.replace(/,\s*BC$/, "")} yet. This map covers the
-                  North Okanagan — try a wider distance or another town.
-                </p>
-              )}
-            </div>
-          </details>
         </main>
       </ThemeProvider>
     </>

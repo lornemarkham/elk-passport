@@ -62,7 +62,7 @@ export interface Submission {
   readonly residential: boolean;
 }
 
-/** Nearest of the five towns, for a pin dropped without one. */
+/** Nearest of the map's towns, for a pin dropped without one. */
 export function nearestTown(at: { lat: number; lng: number }): TownId {
   let best: TownId = "vernon";
   let bestD = Infinity;
@@ -90,7 +90,7 @@ export function parseSubmission(body: Record<string, unknown>): Submission {
   const at = { lat: round(lat), lng: round(lng) };
   if (!inArea(at))
     throw new Refused(
-      "For now the map covers Vernon, Coldstream, Lumby, Armstrong and Kelowna.",
+      "For now the map covers Vernon, Coldstream, Lumby, Silver Star, Armstrong, Lake Country and Kelowna.",
     );
   const town = TOWNS.find((t) => t === body.town) ?? nearestTown(at);
   // The name is optional when adding lights: a plain one stands in.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useHoldWhile } from "@/components/loading/Pending";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -61,11 +61,14 @@ export function Explorer({
   pins,
   initialArea,
   initialSelected = null,
+  nearYou,
 }: {
   readonly pins: readonly PinView[];
   readonly initialArea: AreaId | null;
   /** A pin to open at once ("See my pin"). */
   readonly initialSelected?: string | null;
+  /** "Everywhere" is measured from the remembered town: its distance controls. */
+  readonly nearYou?: ReactNode;
 }) {
   const router = useRouter();
   const [area, setAreaState] = useState<AreaId | null>(initialArea);
@@ -114,33 +117,47 @@ export function Explorer({
   const center = place?.at ?? TOWN_AT.vernon;
 
   const chip = (on: boolean) =>
-    `inline-flex min-h-9 shrink-0 items-center rounded-full px-3.5 text-sm font-bold shadow-lg backdrop-blur transition ${
+    `inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold transition ${
       on
-        ? "bg-[#ffd98a] text-[#082319]"
-        : "bg-[#082319]/80 text-white ring-1 ring-white/15"
+        ? "bg-[#ffd98a] text-[#082319] shadow-lg"
+        : "bg-[#082319]/80 text-white ring-1 ring-white/25 hover:bg-[#0f3b2b]"
     }`;
+  const chosen = place
+    ? place.within
+      ? `${place.label}, ${areaById(place.within)?.label ?? ""}`.replace(
+          /, $/,
+          "",
+        )
+      : place.label
+    : "Everywhere on the map";
 
   return (
     <div data-testid="explorer">
-      <div className="relative">
-        <LightsMap
-          markers={markers}
-          center={center}
-          zoom={place ? 13 : 10}
-          onSelect={setSelected}
-          clustered
-          controls={false}
-          creditTop
-          buttons
-          focus={pick?.at ?? null}
-          className="h-[63svh] min-h-[400px] rounded-none sm:h-[78svh] sm:rounded-[28px]"
-          label={`Christmas lights map: ${published} light displays${waiting ? ` and ${waiting} of yours waiting for review` : ""}${place ? ` in ${place.label}` : ""}`}
-        />
-
+      <section
+        className="mx-auto max-w-6xl px-4 pb-2 sm:px-0"
+        aria-labelledby="lights-where-title"
+        id="lights-where"
+        data-testid="lights-where"
+      >
+        <h2
+          id="lights-where-title"
+          className="ghad-display sr-only leading-tight font-extrabold text-white sm:not-sr-only sm:text-2xl"
+        >
+          Explore Christmas Lights Near You
+        </h2>
+        <p
+          className="mt-0.5 text-sm text-white/85"
+          data-testid="where-selected"
+        >
+          <MapPin className="mr-1 inline h-4 w-4 text-[#ffd98a]" aria-hidden />
+          Showing: <strong className="text-[#ffd98a]">{chosen}</strong> ·{" "}
+          {published} {published === 1 ? "display" : "displays"}
+        </p>
         <div
-          className="absolute inset-x-0 top-0 z-10 flex [scrollbar-width:none] gap-2 overflow-x-auto px-3 pt-3 pb-2"
+          className="-mx-4 mt-1 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&>button]:shrink-0"
           role="group"
           aria-label="Where"
+          data-testid="where-chips"
         >
           <button
             type="button"
@@ -150,6 +167,7 @@ export function Explorer({
               setSelected(null);
             }}
             aria-pressed={!area}
+            data-testid="town-everywhere"
           >
             Everywhere
           </button>
@@ -169,10 +187,26 @@ export function Explorer({
             </button>
           ))}
         </div>
+      </section>
+
+      <div className="relative">
+        <LightsMap
+          markers={markers}
+          center={center}
+          zoom={place ? (place.km > 6 ? 12 : 13) : 10}
+          onSelect={setSelected}
+          clustered
+          controls={false}
+          creditTop
+          buttons
+          focus={pick?.at ?? null}
+          className="h-[63svh] min-h-[400px] rounded-none sm:h-[78svh] sm:rounded-[28px]"
+          label={`Christmas lights map: ${published} light displays${waiting ? ` and ${waiting} of yours waiting for review` : ""}${place ? ` in ${place.label}` : ""}`}
+        />
 
         {shown.length === 0 && (
           <div
-            className="absolute inset-x-4 top-[88px] z-10 mx-auto max-w-sm rounded-2xl bg-white/95 p-4 text-center text-[#082319] shadow-xl"
+            className="absolute inset-x-4 top-3 z-10 mx-auto max-w-sm rounded-2xl bg-white/95 p-4 text-center text-[#082319] shadow-xl"
             data-testid="map-empty"
             role="status"
           >
@@ -365,6 +399,17 @@ export function Explorer({
           </span>
         )}
       </p>
+      {!area && nearYou && (
+        <details
+          className="mx-auto max-w-6xl px-4 text-white sm:px-0"
+          data-testid="lights-distance"
+        >
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-white/85">
+            Distance &amp; my location · change
+          </summary>
+          <div className="space-y-1 pb-2">{nearYou}</div>
+        </details>
+      )}
     </div>
   );
 }

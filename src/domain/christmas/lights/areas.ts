@@ -1,5 +1,11 @@
 import { metres } from "./actions";
-import { TOWN_LABEL, type LatLng, type PinView } from "./model";
+import {
+  TOWN_AT,
+  TOWN_LABEL,
+  type LatLng,
+  type PinView,
+  type TownId,
+} from "./model";
 import { placeById } from "@/domain/environment/places";
 
 /**
@@ -69,16 +75,49 @@ const NEIGHBOURHOODS: readonly Area[] = [
   hood("lavington", "Lavington", 50.23323, -119.10769, "coldstream", 2), // 1387990909
 ];
 
+/**
+ * Silver Star is the mountain village, ~20 km from Vernon and not a Discovery
+ * town, so its centre is the village point the SilverStar Light Up was
+ * checked against (`seed.ts`) rather than a Discovery place.
+ */
+const SILVERSTAR: Area = {
+  id: "silverstar",
+  label: TOWN_LABEL.silverstar,
+  at: TOWN_AT.silverstar,
+  km: 4,
+  onMap: true,
+};
+
 export const AREAS: readonly Area[] = [
   town("vernon", 7),
   town("coldstream", 6),
   ...NEIGHBOURHOODS,
   town("lumby", 5),
+  SILVERSTAR,
   town("armstrong", 5),
   town("enderby", 4, false),
-  town("lake-country", 7, false),
+  town("lake-country", 7),
   town("kelowna", 9),
 ];
+
+/** The towns whose circle is the truth about a pin standing inside it. */
+const BY_COORDINATES: readonly TownId[] = ["silverstar", "lake-country"];
+
+/**
+ * **Which town a stored pin belongs to.** The town a pin was filed under
+ * came from "nearest of the map's towns" when it was dropped, which put a
+ * Silver Star village pin under Lumby (the nearest centre then) and would put
+ * a Lake Country one under Kelowna. A pin whose own coordinates sit inside
+ * Silver Star's or Lake Country's circle belongs to it; every other pin
+ * keeps the town it was filed under. Coordinates are never touched.
+ */
+export function townOf(pin: Pick<PinView, "at" | "town">): TownId {
+  for (const id of BY_COORDINATES) {
+    const area = areaById(id);
+    if (area && inAreaOf(area, pin.at)) return id;
+  }
+  return pin.town;
+}
 
 export type AreaId = string;
 

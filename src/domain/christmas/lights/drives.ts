@@ -79,6 +79,20 @@ const RECIPES: readonly Recipe[] = [
     style: "best",
   },
   {
+    id: "silverstar",
+    title: "Silver Star village lights",
+    area: "silverstar",
+    minutes: 60,
+    style: "best",
+  },
+  {
+    id: "lake-country",
+    title: "Lake Country lights",
+    area: "lake-country",
+    minutes: 75,
+    style: "best",
+  },
+  {
     id: "kelowna",
     title: "Kelowna lights",
     area: "kelowna",

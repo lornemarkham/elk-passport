@@ -47,7 +47,8 @@ export default function Image() {
           The Christmas Lights Map
         </div>
         <div style={{ fontSize: 38, marginTop: 24, color: "#e8f3ec" }}>
-          Vernon · Coldstream · Armstrong · Lumby · Kelowna
+          Vernon · Coldstream · Lumby · Silver Star · Armstrong · Lake Country ·
+          Kelowna
         </div>
       </div>
       <div style={{ display: "flex", fontSize: 34, color: "#ffd98a" }}>

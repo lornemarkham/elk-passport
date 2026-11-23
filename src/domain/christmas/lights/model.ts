@@ -66,12 +66,17 @@ export const KIND_EMOJI: Record<Kind, string> = {
   "festive-attraction": "🎠",
 };
 
-/** The towns the map starts with (the brief's five). Ids are Discovery's. */
+/**
+ * The towns the map covers. Ids are Discovery's, except `silverstar`, which
+ * Discovery has no town for (the mountain village is its own place here).
+ */
 export const TOWNS = [
   "vernon",
   "coldstream",
   "lumby",
+  "silverstar",
   "armstrong",
+  "lake-country",
   "kelowna",
 ] as const;
 export type TownId = (typeof TOWNS)[number];
@@ -80,7 +85,9 @@ export const TOWN_LABEL: Record<TownId, string> = {
   vernon: "Vernon",
   coldstream: "Coldstream",
   lumby: "Lumby",
+  silverstar: "Silver Star",
   armstrong: "Armstrong",
+  "lake-country": "Lake Country",
   kelowna: "Kelowna",
 };
 
@@ -89,11 +96,14 @@ export const TOWN_AT: Record<TownId, LatLng> = {
   vernon: { lat: 50.267, lng: -119.272 },
   coldstream: { lat: 50.22, lng: -119.248 },
   lumby: { lat: 50.25, lng: -118.967 },
+  // The village point the SilverStar Light Up seed was checked against.
+  silverstar: { lat: 50.35839, lng: -119.06441 },
   armstrong: { lat: 50.4483, lng: -119.196 },
+  "lake-country": { lat: 50.0833, lng: -119.414 },
   kelowna: { lat: 49.8801, lng: -119.4436 },
 };
 
-/** The box the map accepts pins in: the five towns, with room around them. */
+/** The box the map accepts pins in: the towns, with room around them. */
 export const AREA = { south: 49.7, north: 50.6, west: -119.75, east: -118.8 };
 
 export interface LatLng {

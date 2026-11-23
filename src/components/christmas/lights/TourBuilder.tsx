@@ -61,7 +61,9 @@ const WHERE = [
   "coldstream",
   "east-hill",
   "lumby",
+  "silverstar",
   "armstrong",
+  "lake-country",
   "kelowna",
 ];
 /** How far round a tapped point a custom area reaches. */
