@@ -2036,13 +2036,18 @@ export function DiscoveryListView({
                           said={session.ask ?? []}
                         />
                         <FeaturedHosts />
-                        <LocalFavourites
-                          favourites={favouritesNear(
-                            "go-have-a-day",
-                            at,
-                            FAVOURITES_KM,
-                          ).map((x) => x.favourite)}
-                        />
+                        {/* Tall cards: only once there are two shelves to
+                            sit between, so a page that is still arriving
+                            (one shelf) never opens on them. */}
+                        {composed.length > 1 && (
+                          <LocalFavourites
+                            favourites={favouritesNear(
+                              "go-have-a-day",
+                              at,
+                              FAVOURITES_KM,
+                            ).map((x) => x.favourite)}
+                          />
+                        )}
                       </>
                     }
                   />
