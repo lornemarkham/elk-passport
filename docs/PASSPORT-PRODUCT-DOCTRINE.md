@@ -991,6 +991,25 @@ called near. Fallback imagery stays the text card (decided 2026-11-13, "never
 an unrelated stock photo"). One composition; it answers no open question
 below.
 
+_Christmas became the holiday season, with an Advent calendar 2026-11-23_
+(owner brief M1053 "P0 — Holiday Season 2026 + Advent Adventure";
+`docs/product/christmas/HOLIDAY-SEASON-ADVENT.md`): Christmas runs to
+January 3. New Year's Eve is a category of its own (New Year's Eve and Day
+events held in the season, never a Lunar new year), said first after All,
+and _New Year's Eve_ and _New Year's Day_ sit beside Tonight, Tomorrow and
+This weekend under When until the day has gone. Fireworks and Boxing Day
+are winter festivals. An event whose own stated end has passed today is
+never offered as on or upcoming, on any search. Big White is its own place
+on the lights map as well as in Discover. **Advent Adventure**
+(`/christmas/advent`) is 25 doors, December 1–25, then a New Year's
+adventure a day to January 3; a door opens only on its day, and behind it
+is a real Atlas event only on a day Christmas Discovery would offer it as
+confirmed and placed within the family's distance — otherwise one of
+Passport's ideas, said to be an idea. Who, ages, distance (15/30/60 km),
+budget, indoors/outdoors and interests are optional taps kept in a cookie;
+what was opened, swapped and done stays on the browser; no account. One
+composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

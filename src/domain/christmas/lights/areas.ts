@@ -98,10 +98,15 @@ export const AREAS: readonly Area[] = [
   town("enderby", 4, false),
   town("lake-country", 7),
   town("kelowna", 9),
+  town("big-white", 4),
 ];
 
 /** The towns whose circle is the truth about a pin standing inside it. */
-const BY_COORDINATES: readonly TownId[] = ["silverstar", "lake-country"];
+const BY_COORDINATES: readonly TownId[] = [
+  "silverstar",
+  "lake-country",
+  "big-white",
+];
 
 /**
  * **Which town a stored pin belongs to.** The town a pin was filed under

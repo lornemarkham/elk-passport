@@ -372,7 +372,7 @@ export function availableFor(
   return "maybe";
 }
 
-/** Over already: its own stated clock end has gone (tonight only). */
+/** Over already: its own stated clock end has gone. */
 function finishedBy(f: Find, now: Date): boolean {
   const e = f.experience;
   if (e.kind !== "Event" || e.timePrecision !== "minute") return false;
@@ -519,15 +519,18 @@ export function answer(
       past.push(f);
       continue;
     }
+    // Over already today, by its own stated end: never offered as on or
+    // upcoming, whatever was asked (owner brief M1053, "never show expired
+    // events as upcoming").
+    if (context.now && finishedBy(f, context.now)) {
+      drop("finished");
+      continue;
+    }
     let unsure = false;
     if (dated) {
       const fits = availableFor(f, from!, to!);
       if (fits === "no") {
         drop("dates");
-        continue;
-      }
-      if (tonight && context.now && finishedBy(f, context.now)) {
-        drop("finished");
         continue;
       }
       if (fits === "maybe") {

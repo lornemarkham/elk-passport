@@ -65,6 +65,7 @@ const WHERE = [
   "armstrong",
   "lake-country",
   "kelowna",
+  "big-white",
 ];
 /** How far round a tapped point a custom area reaches. */
 const CUSTOM_KM = 3;

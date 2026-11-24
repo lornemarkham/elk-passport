@@ -216,12 +216,15 @@ describe("WHEN: tonight means tonight", () => {
     expect(a.removed).toMatchObject({ finished: 1, unconfirmed: 2, dates: 2 });
   });
 
-  it("widens again on Any date", () => {
+  it("widens again on Any date — but never to what is already over", () => {
     const a = answer(finds, readAsk({ at: "vernon" }), {
       today: TODAY,
       now: NOON,
     });
-    expect(a.total).toBe(7);
+    // The 9–10 am brunch is over by noon: it is not "on now" on any search
+    // (owner brief M1053).
+    expect(a.total).toBe(6);
+    expect(a.removed).toMatchObject({ finished: 1 });
   });
 
   it("keeps a preset as the word, so the link means tonight on any night", () => {

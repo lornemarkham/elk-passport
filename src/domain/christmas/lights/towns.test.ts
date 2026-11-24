@@ -44,6 +44,16 @@ describe("the map's towns", () => {
     ).toBe("silverstar");
   });
 
+  it("files a pin dropped at Big White under Big White, not Kelowna (M1053)", () => {
+    expect(TOWNS).toContain("big-white");
+    expect(nearestTown({ lat: 49.7219, lng: -118.929 })).toBe("big-white");
+    const pin = {
+      town: "kelowna" as const,
+      at: { lat: 49.7225, lng: -118.93 },
+    };
+    expect(townOf(pin)).toBe("big-white");
+  });
+
   it("files a pin dropped in Lake Country under Lake Country, not Kelowna", () => {
     expect(nearestTown({ lat: 50.0833, lng: -119.414 })).toBe("lake-country");
     expect(nearestTown({ lat: 50.115, lng: -119.375 })).toBe("lake-country");

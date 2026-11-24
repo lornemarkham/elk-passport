@@ -25,7 +25,7 @@ import {
 } from "@/domain/christmas/discover";
 import { lightsNear, openThisEvening } from "@/domain/christmas/nearby";
 import { THEMES, themeById } from "@/domain/christmas/themes";
-import { whenLabel } from "@/domain/christmas/when";
+import { newYearGone, presetDates, whenLabel } from "@/domain/christmas/when";
 import { cn } from "@/lib/utils";
 import { christmasFinds } from "../_server/corpus";
 import { lightsFor, viewer } from "../_server/lights";
@@ -93,6 +93,23 @@ export default async function ChristmasDiscoverPage({
       .catch(() => ({ pins: [], ready: false })),
   ]);
   const result = answer(corpus.finds, ask, { today, now: new Date() });
+  // The New Year's Eve banner, until the night has gone — and not on the
+  // New Year's page itself.
+  const newYear =
+    !newYearGone(today) &&
+    !(ask.themes.length === 1 && ask.themes[0] === "newyear") &&
+    !corpus.outage
+      ? answer(
+          corpus.finds,
+          {
+            ...ask,
+            themes: ["newyear"],
+            when: "nye",
+            ...presetDates("nye", today),
+          },
+          { today, now: new Date() },
+        )
+      : undefined;
   const all = typeof params.all === "string" ? params.all : undefined;
   const age = youngest(ask);
   const town = result.town!;
@@ -281,7 +298,10 @@ export default async function ChristmasDiscoverPage({
                     >
                       {[
                         { id: undefined, label: "All", emoji: "🎄" },
-                        ...THEMES,
+                        // New Year's Eve is said first after All (owner
+                        // brief M1053: "a prominent category").
+                        ...THEMES.filter((t) => t.id === "newyear"),
+                        ...THEMES.filter((t) => t.id !== "newyear"),
                       ].map((t) => {
                         const on =
                           t.id === undefined
@@ -308,6 +328,35 @@ export default async function ChristmasDiscoverPage({
                       })}
                     </nav>
                   </div>
+
+                  {newYear && (
+                    <Link
+                      href={href({
+                        themes: ["newyear"],
+                        when: "nye",
+                        ...presetDates("nye", today),
+                      })}
+                      className="flex min-h-14 items-center gap-3 rounded-[20px] bg-[#14213d] px-4 py-3 text-white shadow-md"
+                      data-testid="nye-banner"
+                    >
+                      <span className="text-2xl" aria-hidden>
+                        🎆
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-extrabold">
+                          New Year&apos;s Eve near {townName}
+                        </span>
+                        <span className="block text-sm text-white/80">
+                          {newYear.total > 0
+                            ? `${newYear.total} confirmed for December 31 within ${ask.km} km`
+                            : "Countdowns and fireworks, as soon as they're listed near you"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-[#ffd98a]">
+                        See →
+                      </span>
+                    </Link>
+                  )}
 
                   {/* What is narrowing the results, said whenever anything is, each one a tap to clear. */}
                   {(dated || ask.themes.length > 0 || moreOn(ask)) && (
