@@ -12,6 +12,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Gift, X } from "lucide-react";
 import { useStoredList } from "./stored";
+import { rememberName, type AddedName } from "./names";
 import { clearStash, useStash } from "./lights/stash";
 import {
   createBoard,
@@ -39,7 +40,7 @@ import {
 
 interface PicksValue {
   readonly picked: readonly string[];
-  readonly togglePick: (id: string) => void;
+  readonly togglePick: (id: string, name?: AddedName) => void;
   readonly clearPicks: () => void;
   readonly saved: ReadonlySet<string>;
   readonly saving: ReadonlySet<string>;
@@ -102,12 +103,14 @@ export function PicksProvider({
   }, [signedIn]);
 
   const togglePick = useCallback(
-    (id: string) =>
+    (id: string, name?: AddedName) => {
+      if (name && !picked.includes(id)) rememberName(id, name);
       setPicked(
         picked.includes(id)
           ? picked.filter((x) => x !== id)
           : [...picked, id].slice(-12),
-      ),
+      );
+    },
     [picked, setPicked],
   );
 

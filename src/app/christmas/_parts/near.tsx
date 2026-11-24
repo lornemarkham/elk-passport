@@ -3,7 +3,8 @@ import { FindCard } from "@/components/christmas/FindCard";
 import { PinCard } from "@/components/christmas/lights/PinCard";
 import { AtlasDown } from "@/components/christmas/parts";
 import { townById } from "@/domain/discovery/towns";
-import { answer, type Ask } from "@/domain/christmas/discover";
+import { answer, writeAsk, type Ask } from "@/domain/christmas/discover";
+import { seasonsBest } from "@/domain/christmas/best";
 import { around } from "@/domain/christmas/around";
 import { longRun } from "@/domain/christmas/ways";
 import type { PinView } from "@/domain/christmas/lights/model";
@@ -42,12 +43,8 @@ export async function NearYou({
   ]);
   const town = townById(ask.at);
   const townName = town?.name.replace(/,\s*BC$/, "");
-  const sections = around(
-    answer(corpus.finds, ask),
-    today,
-    lights.pins,
-    ask.km,
-  );
+  const answered = answer(corpus.finds, ask);
+  const sections = around(answered, today, lights.pins, ask.km);
   // `around`'s order, except that a year-long "run" doesn't lead (`longRun`).
   const finds = unique(
     sections.flatMap((s) => s.finds),
@@ -61,6 +58,14 @@ export async function NearYou({
     sections.flatMap((s) => s.pins),
     (p) => p.id,
   ).slice(0, NEAR_PINS);
+  const nearPins = unique(
+    sections.flatMap((s) => s.pins),
+    (p) => p.id,
+  );
+  const best = seasonsBest(
+    answered.shelves.find((s) => s.id === "near")?.finds ?? [],
+    nearPins.length,
+  );
   const origin = town
     ? { latitude: town.latitude, longitude: town.longitude }
     : undefined;
@@ -110,6 +115,14 @@ export async function NearYou({
           <PinRow pins={pins} />
         </div>
       )}
+      {!corpus.outage && (
+        <BestRow
+          best={best}
+          ask={ask}
+          townName={townName}
+          lightsHref={lightsHref}
+        />
+      )}
       {finds.length === 0 && pins.length === 0 && !corpus.outage && (
         <p
           className="rounded-[22px] bg-white p-5 text-base ring-1 ring-black/5"
@@ -128,6 +141,73 @@ export async function NearYou({
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * **The season's best, by kind** (owner brief M1064): the big Christmas
+ * things — lights, Santa, markets, live shows, festivals and the Holiday
+ * Train, winter fun, free things — each with how many Atlas lists within the
+ * radius, and the two that need no listing (movies, a night in). A count of
+ * none is said, never hidden: the tile still opens the kind, where _Worth the
+ * drive_ shows what is farther.
+ */
+function BestRow({
+  best,
+  ask,
+  townName,
+  lightsHref,
+}: {
+  readonly best: ReturnType<typeof seasonsBest>;
+  readonly ask: Ask;
+  readonly townName: string | undefined;
+  readonly lightsHref: string;
+}) {
+  const place = { at: ask.at, km: ask.km };
+  const q = writeAsk(place);
+  return (
+    <div className="mt-6" data-testid="seasons-best">
+      <h3 className="ghad-display text-xl leading-tight font-extrabold sm:text-2xl">
+        The season&apos;s best around {townName ?? "you"}
+      </h3>
+      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {best.map((b) => {
+          const href =
+            b.id === "movies"
+              ? `/christmas/movies${q ? `?${q}` : ""}`
+              : b.id === "home"
+                ? `/christmas/for/cozy${q ? `?${q}` : ""}`
+                : b.id === "lights"
+                  ? lightsHref
+                  : b.id === "free"
+                    ? `/christmas/discover?${writeAsk({ ...place, budget: "free" })}`
+                    : `/christmas/discover?${writeAsk({ ...place, themes: [b.id] })}`;
+          return (
+            <li key={b.id}>
+              <Link
+                href={href}
+                className="flex h-full min-h-20 flex-col justify-center rounded-[20px] bg-white p-3 ring-1 ring-black/5 hover:ring-black/25"
+                data-testid={`best-${b.id}`}
+              >
+                <span className="flex items-center gap-2 leading-tight font-extrabold">
+                  <span className="text-xl" aria-hidden>
+                    {b.emoji}
+                  </span>
+                  {b.label}
+                </span>
+                <span className="mt-1 text-sm text-[var(--gh-ink-soft)]">
+                  {b.count === undefined
+                    ? b.line
+                    : b.count === 0
+                      ? `None listed within ${ask.km} km yet`
+                      : `${b.count} within ${ask.km} km`}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

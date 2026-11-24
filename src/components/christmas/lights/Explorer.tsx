@@ -317,7 +317,7 @@ export function Explorer({
               {pick.status === "approved" && (
                 <button
                   type="button"
-                  onClick={() => toggleStash(pick.id)}
+                  onClick={() => toggleStash(pick.id, pick.name)}
                   className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-3 text-sm font-extrabold ${stash.includes(pick.id) ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a]"}`}
                   data-testid="sheet-add-to-tour"
                   aria-pressed={stash.includes(pick.id)}

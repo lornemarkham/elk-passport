@@ -114,7 +114,7 @@ export function PinCard({
           {pin.status === "approved" && (
             <button
               type="button"
-              onClick={() => toggleStash(pin.id)}
+              onClick={() => toggleStash(pin.id, pin.name)}
               aria-pressed={inTour}
               data-testid="add-to-tour"
               className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-bold ${inTour ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a] text-[#082319]"}`}

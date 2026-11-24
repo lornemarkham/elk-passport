@@ -67,16 +67,16 @@ function seasonLine(
   }
 }
 
-/** Where the Advent calendar is, in one line. */
+/** Where the Advent calendar is, in a few words for its pill. */
 function adventLine(today: string): string {
   const stage = stageOf(today);
   if (stage === "before") {
     const n = daysBetween(today, dayOf(1).date);
-    return `The first door opens in ${n} sleep${n === 1 ? "" : "s"}. Set it up now.`;
+    return `door 1 in ${n} sleep${n === 1 ? "" : "s"}`;
   }
-  if (stage === "doors") return "Today's door is ready to open.";
-  if (stage === "after") return "Now: a New Year's adventure every day.";
-  return "See you next December.";
+  if (stage === "doors") return "today's door is ready";
+  if (stage === "after") return "a New Year's adventure a day";
+  return "back next December";
 }
 
 /**
@@ -181,6 +181,9 @@ export default async function ChristmasPage({
                       data-testid="pill-advent"
                     >
                       <span aria-hidden>🎁</span> Advent Adventure
+                      <span className="font-semibold text-white/85">
+                        · {adventLine(today)}
+                      </span>
                     </Link>
                     <Link
                       href={newYearHref}
@@ -256,62 +259,6 @@ export default async function ChristmasPage({
               </header>
 
               <div className="mx-auto max-w-6xl space-y-10 px-4 pt-6 sm:space-y-14 sm:px-6 sm:pt-10">
-                {/* The season's two big days (owner brief M1053): the Advent
-                    calendar, and New Year's Eve beside it. */}
-                <section
-                  aria-label="The holiday season"
-                  className="grid gap-3 sm:grid-cols-2"
-                  data-testid="season-features"
-                >
-                  <Link
-                    href={`/christmas/advent${q}`}
-                    className={`${styles.night} group flex min-h-24 items-center gap-4 rounded-[26px] p-5 shadow-[0_10px_30px_rgba(8,35,25,0.3)]`}
-                    data-testid="feature-advent"
-                  >
-                    <span
-                      className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#b3242f] text-3xl shadow-inner transition-transform group-hover:-rotate-6 motion-reduce:transition-none"
-                      aria-hidden
-                    >
-                      🎁
-                    </span>
-                    <span>
-                      <span className="block text-xs font-bold tracking-[0.16em] text-[#ffd98a] uppercase">
-                        Advent Adventure
-                      </span>
-                      <span className="ghad-display block text-2xl leading-tight font-extrabold">
-                        25 days. 25 surprises.
-                      </span>
-                      <span className="text-sm text-white/85">
-                        {adventLine(today)}
-                      </span>
-                    </span>
-                  </Link>
-                  <Link
-                    href={newYearHref}
-                    className="group flex min-h-24 items-center gap-4 rounded-[26px] bg-[#14213d] p-5 text-white shadow-[0_10px_30px_rgba(20,33,61,0.3)]"
-                    data-testid="feature-new-year"
-                  >
-                    <span
-                      className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#e3a83b] text-3xl transition-transform group-hover:scale-110 motion-reduce:transition-none"
-                      aria-hidden
-                    >
-                      🎆
-                    </span>
-                    <span>
-                      <span className="block text-xs font-bold tracking-[0.16em] text-[#ffd98a] uppercase">
-                        {newYearGone(today) ? "New Year's" : "New Year's Eve"}
-                      </span>
-                      <span className="ghad-display block text-2xl leading-tight font-extrabold">
-                        Ring in 2027
-                      </span>
-                      <span className="text-sm text-white/85">
-                        Countdowns, fireworks and New Year&apos;s Day near{" "}
-                        {townName ?? "you"}.
-                      </span>
-                    </span>
-                  </Link>
-                </section>
-
                 <nav aria-labelledby="ways-title" data-testid="ways">
                   <h2
                     id="ways-title"

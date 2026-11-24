@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { rememberName } from "../names";
 
 /**
  * **My tour, on this phone.** The stops someone added from the map, kept in
@@ -34,9 +35,11 @@ export function clearStash() {
   writeStash([]);
 }
 
-export function toggleStash(id: string): boolean {
+export function toggleStash(id: string, name?: string): boolean {
   const now = readStash();
   const has = now.includes(id);
+  if (name && !has)
+    rememberName(id, { title: name, href: `/christmas/lights/${id}` });
   writeStash(has ? now.filter((x) => x !== id) : [...now, id]);
   return !has;
 }

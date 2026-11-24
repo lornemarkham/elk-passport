@@ -215,6 +215,25 @@ export default async function WayPage({
                       Passport&apos;s ideas — no listing, no booking, nothing to
                       check. They work anywhere.
                     </p>
+                    {(way.id === "cozy" ||
+                      way.id === "family" ||
+                      way.id === "date") && (
+                      <Link
+                        href={`/christmas/movies${at ? `?at=${at}` : ""}`}
+                        className="mt-3 flex min-h-14 items-center gap-3 rounded-[20px] bg-[#0f3b2b] px-4 py-3 font-extrabold text-white hover:brightness-110"
+                        data-testid="way-movies"
+                      >
+                        <span className="text-2xl" aria-hidden>
+                          🎬
+                        </span>
+                        <span>
+                          Christmas movie night
+                          <span className="block text-sm font-normal text-white/85">
+                            Tell us who&apos;s watching — we&apos;ll pick three
+                          </span>
+                        </span>
+                      </Link>
+                    )}
                     <ul
                       className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                       data-testid="ideas"

@@ -97,9 +97,11 @@ export const THEMES: readonly ChristmasTheme[] = [
     line: "Villages, tree lightings, fireworks and Christmas Eve celebrations.",
     emoji: "🎄",
     called:
-      /\b(festivals?|fest|village|celebrations?|tree lighting|carnival|parades?|christmas eve|no[eë]l|swissmas|light[- ]?ups?|fireworks?)\b/i,
+      /\b(festivals?|fest|village|celebrations?|tree lighting|carnival|parades?|christmas eve|no[eë]l|swissmas|light[- ]?ups?|fireworks?|trains?)\b/i,
+    // A lit holiday train stopping in town (the CPKC Holiday Train, owner
+    // brief M1064) is the season's travelling festival.
     words:
-      /\b(christmas eve festival|christmas festival|holiday (celebration|kick-?off|festival)|festive village|tree lighting|winter ?(fest|festival|carnival)|swissmas|christmas (celebration|party)|fireworks?|boxing day)\b/i,
+      /\b(holiday trains?|christmas trains?|christmas eve festival|christmas festival|holiday (celebration|kick-?off|festival)|festive village|tree lighting|winter ?(fest|festival|carnival)|swissmas|christmas (celebration|party)|fireworks?|boxing day)\b/i,
   },
   {
     id: "shows",

@@ -238,7 +238,7 @@ export function FindCard({
           </button>
           <button
             type="button"
-            onClick={() => togglePick(e.id)}
+            onClick={() => togglePick(e.id, { title: e.title, href })}
             aria-pressed={isPicked}
             className={cn(
               "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-colors",

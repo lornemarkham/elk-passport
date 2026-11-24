@@ -1010,6 +1010,20 @@ budget, indoors/outdoors and interests are optional taps kept in a cookie;
 what was opened, swapped and done stays on the browser; no account. One
 composition; it answers no open question below.
 
+_Christmas names the season's best, and has movies 2026-11-24_ (owner brief
+M1064 "P0 — Make GoHaveADay Christmas exceptional";
+`docs/product/christmas/EXCEPTIONAL-M1064.md`): the front page counts, for
+the chosen town and radius, the big kinds — lights, Santa, markets, live
+shows, festivals and the Holiday Train, winter fun, free — from what
+Discovery already places there, and says _none listed_ rather than hiding a
+kind. A holiday or Christmas train is a winter festival. **Christmas movies**
+(`/christmas/movies`) is a hand-made list of well-known films shelved as
+family, comedies, romance, classics and animated, with a Movie Night that
+asks who is watching and offers three; it names no streaming service, since
+Passport has no Canadian availability feed, and a night out goes to the
+planner's cinema stop. Things added to My Christmas List on a phone are named
+there and can be removed. One composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

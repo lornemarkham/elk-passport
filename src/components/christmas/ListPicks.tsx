@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Gift } from "lucide-react";
+import { Gift, X } from "lucide-react";
 import type { SavedFind } from "@/domain/christmas/saved";
-import { useStash } from "./lights/stash";
+import { toggleStash, useStash } from "./lights/stash";
+import { useAddedNames } from "./names";
 import { usePicks } from "./Picks";
 
 /**
@@ -28,8 +29,9 @@ export function ListPicks({
   /** Saved could not be read just now: say so rather than show it empty. */
   readonly readFailed?: boolean;
 }) {
-  const { picked, clearPicks } = usePicks();
+  const { picked, clearPicks, togglePick } = usePicks();
   const lights = useStash();
+  const names = useAddedNames();
   const live = saved.filter((s) => !s.over);
   const over = saved.filter((s) => s.over);
   const savedIds = new Set(saved.map((s) => s.id));
@@ -61,6 +63,33 @@ export function ListPicks({
         <ul className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="list-saved">
           {live.map((s) => (
             <SavedRow key={s.id} find={s} />
+          ))}
+        </ul>
+      )}
+      {deviceOnly.length + lights.length > 0 && (
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="list-added">
+          {deviceOnly.map((id) => (
+            <AddedRow
+              key={id}
+              id={id}
+              emoji="🎄"
+              name={names[id]}
+              onRemove={() => togglePick(id)}
+            />
+          ))}
+          {lights.map((id) => (
+            <AddedRow
+              key={id}
+              id={id}
+              emoji="✨"
+              name={
+                names[id] ?? {
+                  title: "A light display on your tour",
+                  href: `/christmas/lights/${id}`,
+                }
+              }
+              onRemove={() => toggleStash(id)}
+            />
           ))}
         </ul>
       )}
@@ -175,6 +204,67 @@ function SavedRow({ find }: { readonly find: SavedFind }) {
           </span>
         </span>
       </Link>
+    </li>
+  );
+}
+
+/**
+ * A thing added on this phone: its name and page when they were remembered
+ * at the moment of adding; otherwise (added before names were kept) it says
+ * so plainly rather than guess.
+ */
+function AddedRow({
+  id,
+  emoji,
+  name,
+  onRemove,
+}: {
+  readonly id: string;
+  readonly emoji: string;
+  readonly name: { readonly title: string; readonly href: string } | undefined;
+  readonly onRemove: () => void;
+}) {
+  const title = name?.title ?? "Something you added";
+  const body = (
+    <>
+      <span className="text-2xl" aria-hidden>
+        {emoji}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 block font-bold">{title}</span>
+        <span className="block text-sm text-[var(--gh-ink-soft)]">
+          On this phone
+        </span>
+      </span>
+    </>
+  );
+  return (
+    <li
+      data-testid="list-added-item"
+      data-find={id}
+      className="flex items-center gap-2 rounded-2xl bg-white p-3 ring-1 ring-black/10"
+    >
+      {name ? (
+        <Link
+          href={name.href}
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 hover:underline"
+        >
+          {body}
+        </Link>
+      ) : (
+        <span className="flex min-h-12 min-w-0 flex-1 items-center gap-3">
+          {body}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${title} from My Christmas List`}
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--gh-ink-soft)] hover:bg-black/5"
+        data-testid="list-added-remove"
+      >
+        <X className="h-5 w-5" aria-hidden />
+      </button>
     </li>
   );
 }

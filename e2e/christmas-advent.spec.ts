@@ -35,14 +35,17 @@ test("Christmas opens on the Advent calendar and New Year's Eve", async ({
   page,
 }) => {
   await page.goto("/christmas?at=vernon");
-  await expect(page.getByTestId("feature-advent")).toContainText(
-    "25 days. 25 surprises.",
+  // One link each, above the fold on a phone (M1064 folded the duplicate
+  // cards below the header into these pills).
+  await expect(page.getByTestId("pill-advent")).toContainText(
+    "Advent Adventure",
   );
-  await expect(page.getByTestId("feature-new-year")).toContainText(
-    "Ring in 2027",
+  await expect(page.getByTestId("pill-advent")).toBeInViewport();
+  await expect(page.getByTestId("pill-new-year")).toContainText(
+    "New Year's Eve",
   );
   await expect(page.getByTestId("xmas-nav-advent")).toBeVisible();
-  await page.getByTestId("feature-advent").click();
+  await page.getByTestId("pill-advent").click();
   await expect(page).toHaveURL(/\/christmas\/advent/);
   await expect(page.getByTestId("advent-doors").locator("li")).toHaveCount(25);
   // A phone: the board fits, nothing scrolls sideways.

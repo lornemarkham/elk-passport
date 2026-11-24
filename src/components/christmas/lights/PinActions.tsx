@@ -38,7 +38,7 @@ export function TourAndShare({ pin }: { readonly pin: PinView }) {
       {pin.status === "approved" && (
         <button
           type="button"
-          onClick={() => toggleStash(pin.id)}
+          onClick={() => toggleStash(pin.id, pin.name)}
           aria-pressed={on}
           data-testid="detail-add-to-tour"
           className={`inline-flex min-h-12 items-center gap-2 rounded-full px-5 font-extrabold ${on ? "bg-[#0f3b2b] text-white" : "bg-[#ffd98a] text-[#082319]"}`}
