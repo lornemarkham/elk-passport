@@ -77,3 +77,25 @@ describe("which area the page is about", () => {
     expect(homeArea("atlantis", "Okanagan")).toBe("Okanagan");
   });
 });
+
+describe("the Christmas season's own towns (owner brief M1070)", () => {
+  it("lets a reader say every priority town, each in Atlas's Okanagan", () => {
+    for (const id of [
+      "vernon",
+      "coldstream",
+      "kelowna",
+      "lake-country",
+      "silverstar",
+      "big-white",
+      "salmon-arm",
+      "sicamous",
+    ]) {
+      expect(townById(id)?.area, id).toBe("Okanagan");
+    }
+  });
+
+  it("puts Sicamous beside Salmon Arm in the valley's list", () => {
+    const ids = DISCOVERY_TOWNS.map((t) => t.id);
+    expect(ids.indexOf("sicamous")).toBe(ids.indexOf("salmon-arm") - 1);
+  });
+});

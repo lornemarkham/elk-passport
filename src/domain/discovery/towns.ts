@@ -66,9 +66,26 @@ const SILVER_STAR: DiscoveryTown = {
   aliases: ["silver star mountain", "silverstar mountain resort"],
 };
 
+/**
+ * **Sicamous**, at the head of Shuswap Lake past Salmon Arm: not one of
+ * October's sky places either, but a town the Christmas season is asked for
+ * by name (owner brief M1070), and one Atlas already files under `Okanagan`
+ * (its Sicamous subjects carry that area in the production pool). Town
+ * centre, to the same few-hundred-metre standard as the rest.
+ */
+const SICAMOUS: DiscoveryTown = {
+  id: "sicamous",
+  name: "Sicamous, BC",
+  latitude: 50.8378,
+  longitude: -118.98,
+  area: "Okanagan",
+};
+
 const OKANAGAN: readonly DiscoveryTown[] = OCTOBER_PLACES.flatMap((place) => {
   const town = { ...place, area: "Okanagan" };
-  return place.id === "lumby" ? [town, SILVER_STAR] : [town];
+  if (place.id === "lumby") return [town, SILVER_STAR];
+  if (place.id === "salmon-arm") return [SICAMOUS, town];
+  return [town];
 });
 
 /**
