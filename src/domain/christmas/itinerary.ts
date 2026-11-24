@@ -189,6 +189,8 @@ export interface Itinerary {
   readonly who?: string;
   readonly budget?: string;
   readonly homeBy?: string;
+  /** An accessibility need that was said, with what Passport can and can't confirm. */
+  readonly access?: string;
   readonly planned: number;
   readonly unresolved: number;
 }
@@ -674,7 +676,17 @@ function nextWeekday(today: string, target: number): string {
   return addDays(today, (target - dow + 7) % 7);
 }
 
-/** The day to plan when none was said: this Saturday — and the question. */
+/**
+ * The next useful day when none was said: today from Friday to Sunday (the
+ * lights and markets are weekend things), otherwise the coming Friday.
+ * Always asked about, never silent (`dayQuestion`).
+ */
+export function usefulDay(today: string): string {
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay();
+  return dow === 5 || dow === 6 || dow === 0 ? today : nextWeekday(today, 5);
+}
+
+/** The day to plan when none was said: the next useful day — and the question. */
 export function dayQuestion(today: string): Question {
   const tomorrow = addDays(today, 1);
   const weekend = [5, 6, 0].map((d) => nextWeekday(today, d));
@@ -706,7 +718,7 @@ export function planItinerary(
   sources: Sources,
   edits: Edits = {},
 ): Itinerary {
-  const day = edits.day ?? request.day ?? nextWeekday(sources.today, 6);
+  const day = edits.day ?? request.day ?? usefulDay(sources.today);
   const question =
     edits.day || request.day ? undefined : dayQuestion(sources.today);
   const reach =
@@ -929,6 +941,11 @@ export function planItinerary(
         : `Home by ${clockWords(request.homeBy)} — this finishes about ${end !== undefined ? clockWords(end) : "then"}.`
       : undefined;
 
+  const access =
+    request.access !== undefined
+      ? `You mentioned “${request.access}”. Passport can't confirm step-free access, parking or seating for these stops — call each one before you go.`
+      : undefined;
+
   return {
     title: titleFor({ ...request, needs: asked }),
     day,
@@ -946,6 +963,7 @@ export function planItinerary(
     ...(who ? { who } : {}),
     ...(budget ? { budget } : {}),
     ...(homeBy ? { homeBy } : {}),
+    ...(access ? { access } : {}),
     planned: withNearby.filter((s) => s.status === "planned").length,
     unresolved: withNearby.filter((s) => s.status === "unresolved").length,
   };

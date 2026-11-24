@@ -69,6 +69,11 @@ export default async function ChristmasPlanPage({
   const say = typeof params.say === "string" ? params.say.slice(0, 200) : "";
   const name = typeof params.name === "string" ? params.name.slice(0, 120) : "";
   const session = await adventureSession();
+  // Opened for anyone who arrived with something to build on: picks, a
+  // shape, a name or a sentence from the longer planner.
+  const customized = ["with", "lights", "shape", "name", "say", "from"].some(
+    (k) => typeof params[k] === "string" && params[k] !== "",
+  );
   const here = `/christmas/plan${Object.keys(params).length ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : ""}`;
 
   // The person's own sentence when they said one (it already holds the
@@ -163,13 +168,11 @@ export default async function ChristmasPlanPage({
                 <h1 className="ghad-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em] text-balance sm:text-6xl">
                   Plan my Christmas route
                 </h1>
-                <p className="mt-3 max-w-xl text-lg text-white/85">
-                  Say what you&apos;d love to do and get a plan in one tap — no
-                  account needed. Or build a bigger one below, around the things
-                  on My Christmas List.
+                <p className="mt-2 max-w-xl text-base text-white/85">
+                  One sentence, one tap — no account needed.
                 </p>
-                <div className="mt-4 max-w-2xl">
-                  <PlanHero at={ask.at} km={ask.km} />
+                <div className="mt-3 max-w-2xl">
+                  <PlanHero at={ask.at} km={ask.km} simple />
                 </div>
                 <Suspense fallback={null}>
                   <ExperienceLocation
@@ -182,56 +185,82 @@ export default async function ChristmasPlanPage({
               <div className={styles.lights} aria-hidden />
             </header>
             <PendingContent>
-              <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
-                {!session ? (
-                  <div className="rounded-[28px] bg-white px-6 py-12 text-center ring-1 ring-black/5">
-                    <p className="text-4xl" aria-hidden>
-                      🎄
-                    </p>
-                    <p className="ghad-display mt-2 text-2xl font-extrabold">
-                      Sign in to start a Christmas adventure
-                    </p>
-                    <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
-                      It stays with your account, and you can send it to
-                      everyone coming.
-                    </p>
-                    <Link
-                      href={`/auth?next=${encodeURIComponent(here)}`}
-                      className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#b3242f] px-6 font-bold text-white"
-                      data-testid="plan-sign-in"
+              <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6">
+                <details
+                  open={customized}
+                  className="group rounded-[28px] bg-white/60 ring-1 ring-black/5 open:bg-transparent open:ring-0"
+                  data-testid="customize"
+                >
+                  <summary
+                    className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-[28px] bg-white px-5 text-lg font-extrabold ring-1 ring-black/5 marker:hidden [&::-webkit-details-marker]:hidden"
+                    data-testid="customize-toggle"
+                  >
+                    <span>
+                      Customize my plan
+                      <span className="block text-sm font-normal text-[var(--gh-ink-soft)]">
+                        A weekend or longer, the people, the town, the picks
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden
+                      className="text-2xl transition-transform group-open:rotate-45"
                     >
-                      Sign in
-                    </Link>
-                    <p className="mt-6 text-sm text-[var(--gh-ink-soft)]">
-                      Just want a day out of it?
-                    </p>
-                    <Link
-                      href={`/go?${goParams.toString()}`}
-                      className="mt-2 inline-flex min-h-12 items-center rounded-full px-6 font-bold text-[#b3242f] ring-2 ring-[#b3242f]"
-                      data-testid="plan-no-account"
-                    >
-                      Build it now — no account
-                    </Link>
-                    <p className="mx-auto mt-2 max-w-md text-xs text-[var(--gh-ink-soft)]">
-                      Change it, keep it on this device, and send it as words or
-                      a printed page. Sign in later to plan it with your people.
-                    </p>
+                      +
+                    </span>
+                  </summary>
+                  <div className="pt-6">
+                    {!session ? (
+                      <div className="rounded-[28px] bg-white px-6 py-12 text-center ring-1 ring-black/5">
+                        <p className="text-4xl" aria-hidden>
+                          🎄
+                        </p>
+                        <p className="ghad-display mt-2 text-2xl font-extrabold">
+                          Sign in to start a Christmas adventure
+                        </p>
+                        <p className="mx-auto mt-2 max-w-md text-base text-[var(--gh-ink-soft)]">
+                          It stays with your account, and you can send it to
+                          everyone coming.
+                        </p>
+                        <Link
+                          href={`/auth?next=${encodeURIComponent(here)}`}
+                          className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#b3242f] px-6 font-bold text-white"
+                          data-testid="plan-sign-in"
+                        >
+                          Sign in
+                        </Link>
+                        <p className="mt-6 text-sm text-[var(--gh-ink-soft)]">
+                          Just want a day out of it?
+                        </p>
+                        <Link
+                          href={`/go?${goParams.toString()}`}
+                          className="mt-2 inline-flex min-h-12 items-center rounded-full px-6 font-bold text-[#b3242f] ring-2 ring-[#b3242f]"
+                          data-testid="plan-no-account"
+                        >
+                          Build it now — no account
+                        </Link>
+                        <p className="mx-auto mt-2 max-w-md text-xs text-[var(--gh-ink-soft)]">
+                          Change it, keep it on this device, and send it as
+                          words or a printed page. Sign in later to plan it with
+                          your people.
+                        </p>
+                      </div>
+                    ) : (
+                      <Planner
+                        today={today}
+                        initialShape={shape.id}
+                        {...(ask.at ? { initialTown: ask.at } : {})}
+                        {...(ask.from ? { initialFrom: ask.from } : {})}
+                        {...(ask.party ? { initialParty: ask.party } : {})}
+                        initialAges={ask.ages}
+                        {...(ask.people ? { initialPeople: ask.people } : {})}
+                        {...(name ? { initialTitle: name } : {})}
+                        {...(say ? { initialExtra: say } : {})}
+                        picks={picks}
+                        saved={saved}
+                      />
+                    )}
                   </div>
-                ) : (
-                  <Planner
-                    today={today}
-                    initialShape={shape.id}
-                    {...(ask.at ? { initialTown: ask.at } : {})}
-                    {...(ask.from ? { initialFrom: ask.from } : {})}
-                    {...(ask.party ? { initialParty: ask.party } : {})}
-                    initialAges={ask.ages}
-                    {...(ask.people ? { initialPeople: ask.people } : {})}
-                    {...(name ? { initialTitle: name } : {})}
-                    {...(say ? { initialExtra: say } : {})}
-                    picks={picks}
-                    saved={saved}
-                  />
-                )}
+                </details>
               </div>
             </PendingContent>
           </PendingProvider>

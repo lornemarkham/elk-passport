@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readRequest, titleFor } from "./request";
+import { PLAN_STARTS, QUICK_STARTS, readRequest, titleFor } from "./request";
 
 const TODAY = "2026-11-14"; // a Saturday
 
@@ -79,5 +79,54 @@ describe("readRequest — the parts somebody asked for", () => {
       { need: "dinner", said: false },
       { need: "lights", said: false },
     ]);
+  });
+});
+
+describe("the plan page's starts and the wider reader", () => {
+  it("names four starts, each one of the quick-start sentences", () => {
+    expect(PLAN_STARTS.map((s) => s.label)).toEqual([
+      "Date Night",
+      "Family Fun",
+      "Christmas Lights",
+      "Christmas Markets",
+    ]);
+    for (const s of PLAN_STARTS)
+      expect(QUICK_STARTS.some((q) => q.say === s.say)).toBe(true);
+  });
+
+  it("reads an accessibility need, said back and never assumed", () => {
+    expect(
+      readRequest("Lights with grandma in a wheelchair", "2026-11-14").access,
+    ).toBe("wheelchair");
+    expect(
+      readRequest("Markets with a stroller, no stairs", "2026-11-14").access,
+    ).toBe("stroller");
+    expect(
+      readRequest("Lights and dinner", "2026-11-14").access,
+    ).toBeUndefined();
+  });
+
+  it("reads a finish time in more ways than 'home by'", () => {
+    const by = (say: string) => readRequest(say, "2026-11-14").homeBy;
+    expect(by("dinner, home by 9")).toBe(21 * 60);
+    expect(by("dinner, back before 8pm")).toBe(20 * 60);
+    expect(by("lights, finished by 9:30")).toBe(21 * 60 + 30);
+    expect(by("lights, no later than 10")).toBe(22 * 60);
+  });
+
+  it("reads budget, group, distance and time of day from one sentence", () => {
+    const r = readRequest(
+      "Family of 4 with two kids, lights and hot chocolate tomorrow evening, under $80, within 20 minutes",
+      "2026-11-14",
+    );
+    expect(r).toMatchObject({
+      party: "family",
+      people: 4,
+      kids: 2,
+      budget: 80,
+      day: "2026-11-15",
+      time: "evening",
+    });
+    expect(r.reachKm).toBeGreaterThan(0);
   });
 });

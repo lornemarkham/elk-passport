@@ -231,6 +231,14 @@ export function ItineraryView({
             🏠 {itinerary.homeBy}
           </p>
         )}
+        {itinerary.access && (
+          <p
+            className="mt-2 text-sm text-white/85"
+            data-testid="itinerary-access"
+          >
+            ♿ {itinerary.access}
+          </p>
+        )}
         <p className="mt-3 text-sm font-semibold" data-testid="itinerary-count">
           {itinerary.planned} of {itinerary.stops.length} parts planned
           {itinerary.unresolved > 0

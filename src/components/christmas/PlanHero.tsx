@@ -2,7 +2,7 @@ import Form from "next/form";
 import { SubmitButton } from "@/components/loading/SubmitButton";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { QUICK_STARTS } from "@/domain/christmas/request";
+import { PLAN_STARTS, QUICK_STARTS } from "@/domain/christmas/request";
 
 /**
  * **"What would you love to do?"** — screen one of the Christmas planner
@@ -15,12 +15,16 @@ export function PlanHero({
   at,
   compact = false,
   km,
+  simple = false,
 }: {
   readonly at?: string;
   readonly km?: number;
   /** The front page's: the box alone, without the quick starts the six ways replace. */
   readonly compact?: boolean;
+  /** The plan page's: "What sounds fun?", four named starts, one button. */
+  readonly simple?: boolean;
 }) {
+  const starts = simple ? PLAN_STARTS : QUICK_STARTS;
   const withAt = (say: string) => {
     const q = new URLSearchParams({ say });
     if (at) q.set("at", at);
@@ -41,7 +45,7 @@ export function PlanHero({
           htmlFor="plan-input"
           className="block px-2 pt-1 text-sm font-extrabold tracking-[0.08em] text-[#b3242f] uppercase"
         >
-          Tell us what you&apos;d love to do
+          {simple ? "What sounds fun?" : "Tell us what you'd love to do"}
         </label>
         <input
           id="plan-input"
@@ -49,7 +53,11 @@ export function PlanHero({
           required
           maxLength={240}
           autoComplete="off"
-          placeholder="Type it here — e.g. lights, dinner and a movie on Saturday"
+          placeholder={
+            simple
+              ? "e.g. lights and dinner on Saturday, home by 9"
+              : "Type it here — e.g. lights, dinner and a movie on Saturday"
+          }
           className="mt-1 min-h-14 w-full rounded-2xl border-2 border-[#082319]/20 bg-white px-4 text-lg font-semibold placeholder:text-[#082319]/50 focus:border-[#b3242f] focus:outline-none sm:text-xl"
           data-testid="plan-input"
           enterKeyHint="go"
@@ -60,7 +68,7 @@ export function PlanHero({
           data-testid="plan-go"
         >
           <Sparkles className="h-5 w-5" aria-hidden />
-          Make my Christmas plan
+          {simple ? "Make My Christmas Plan" : "Make my Christmas plan"}
         </SubmitButton>
       </Form>
       {!compact && (
@@ -69,7 +77,7 @@ export function PlanHero({
           aria-label="Quick starts"
           data-testid="quick-starts"
         >
-          {QUICK_STARTS.map((q) => (
+          {starts.map((q) => (
             <li key={q.id} className="shrink-0">
               <Link
                 href={withAt(q.say)}

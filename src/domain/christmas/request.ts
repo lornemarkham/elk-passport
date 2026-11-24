@@ -114,6 +114,10 @@ const OVERLAPS: readonly [RegExp, string][] = [
   [/\bfestival of lights\b/g, " lights festival "],
 ];
 
+/** What somebody says when a place has to work for them: said back, never assumed. */
+const ACCESS =
+  /\b(wheelchairs?|step[- ]free|accessible|accessibility|walkers?|canes?|strollers?|prams?|buggy|buggies|mobility|no stairs|can'?t (?:do )?stairs|elevators?|ramps?)\b/;
+
 export type TimeOfDay = "morning" | "afternoon" | "evening";
 
 export interface Request {
@@ -139,6 +143,8 @@ export interface Request {
   /** Dollars, when said. */
   readonly budget?: number;
   readonly mode: "drive" | "walk";
+  /** An accessibility need, as said ("wheelchair", "a stroller", "no stairs"). */
+  readonly access?: string;
   /** "within 20 minutes" / "under 15 km", as km of reach. */
   readonly reachKm?: number;
   readonly romantic: boolean;
@@ -255,7 +261,11 @@ export function readRequest(input: string, today: string): Request {
   const start =
     clockIn(text, /\b(?:at|from|around|start(?:ing)? at|leave at)/) ??
     undefined;
-  const homeBy = clockIn(text, /\b(?:home by|back by|done by|finish by|until)/);
+  const homeBy = clockIn(
+    text,
+    /\b(?:home by|home before|back by|back before|done by|finish by|finished by|finish before|no later than|until)/,
+  );
+  const access = text.match(ACCESS)?.[0];
   const day = dayIn(text, today);
   const at = townIn(text);
 
@@ -325,6 +335,7 @@ export function readRequest(input: string, today: string): Request {
     ages: agesIn(text),
     ...(budget ? { budget } : {}),
     mode,
+    ...(access ? { access } : {}),
     ...(reachKm ? { reachKm } : {}),
     romantic,
     tour,
@@ -372,6 +383,27 @@ export const QUICK_STARTS: readonly {
     say: "This weekend — a Christmas market, lunch and the lights",
   },
 ];
+
+/**
+ * The four starts on the plan page, named the way people say them. Each is
+ * one of the sentences above — the same reader, no second planner.
+ */
+export const PLAN_STARTS: readonly {
+  readonly id: string;
+  readonly label: string;
+  readonly emoji: string;
+  readonly say: string;
+}[] = (
+  [
+    ["romantic", "Date Night"],
+    ["family", "Family Fun"],
+    ["lights", "Christmas Lights"],
+    ["markets", "Christmas Markets"],
+  ] as const
+).map(([id, label]) => {
+  const q = QUICK_STARTS.find((x) => x.id === id)!;
+  return { ...q, label };
+});
 
 /** The itinerary's title, from what was asked. */
 export function titleFor(r: Request): string {

@@ -12,6 +12,7 @@ import { readRequest } from "./request";
 import {
   planItinerary,
   readEdits,
+  usefulDay,
   writeEdits,
   type Itinerary,
 } from "./itinerary";
@@ -299,6 +300,28 @@ describe("6 · missing or unavailable", () => {
     expect(
       plan("Christmas markets on Nov 28", "vernon", NOV).question,
     ).toBeUndefined();
+  });
+
+  it("the default day is the next useful one, and still a question", () => {
+    // 2026-11-14 is a Saturday: today. Mid-week points at the coming Friday.
+    expect(usefulDay("2026-11-14")).toBe("2026-11-14");
+    expect(usefulDay("2026-11-15")).toBe("2026-11-15");
+    expect(usefulDay("2026-11-16")).toBe("2026-11-20");
+    expect(usefulDay("2026-11-19")).toBe("2026-11-20");
+    expect(usefulDay("2026-11-20")).toBe("2026-11-20");
+  });
+
+  it("an accessibility need is said back with what can't be confirmed", () => {
+    const p = plan(
+      "Lights and dinner on Nov 28, grandma uses a walker",
+      "vernon",
+      NOV,
+    );
+    expect(p.access).toMatch(/walker/);
+    expect(p.access).toMatch(/can't confirm/);
+    expect(plan("Lights and dinner on Nov 28", "vernon", NOV).access).toBe(
+      undefined,
+    );
   });
 
   it("with Atlas down, every part is unresolved, none invented", () => {

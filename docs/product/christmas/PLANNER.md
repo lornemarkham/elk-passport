@@ -113,3 +113,17 @@ M845's `/discovery` read; the browser pool carries no opening hours).
 `vitest src/domain/christmas` (request + itinerary scenarios) ·
 `e2e/christmas-planner.spec.ts` (phone, 390 px, signed out, `E2E_ATLAS=1`
 on the critic mock serving the 2026-10-24 stand-in) · `e2e/christmas.spec.ts`.
+
+## P1 — simple plan page (2026-11-24)
+
+`/christmas/plan` is now one box ("What sounds fun?"), one button ("Make My
+Christmas Plan"), four starts (Date Night, Family Fun, Christmas Lights,
+Christmas Markets — `PLAN_STARTS`, the same sentences as `QUICK_STARTS`) and a
+folded **Customize my plan** holding the earlier five-step planner unchanged
+(open when the address carries picks, a shape, a name or a sentence). Same
+reader, same itinerary page; no second planner. Added: an accessibility need
+is read (`Request.access`) and said back with what Passport cannot confirm
+(`Itinerary.access`); more finish-time phrasings; with no day said the plan is
+for the next useful day (today Fri–Sun, else the coming Friday) and still asks.
+Tests: `request.test.ts`, `itinerary.test.ts`, `e2e/christmas-plan-simple.spec.ts`.
+Screenshots: `screenshots/plan-*-phone.png`.
