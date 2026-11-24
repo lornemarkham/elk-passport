@@ -76,17 +76,23 @@ async function shrink(file: File): Promise<string> {
   throw new Error("too-big");
 }
 
-export function CheckWizard() {
+export function CheckWizard({
+  initialLink = "",
+  initialClaim = "",
+}: {
+  initialLink?: string;
+  initialClaim?: string;
+}) {
   const router = useRouter();
   const opened = useRef(0);
   const [step, setStep] = useState(0);
 
   // 1. See it
-  const [link, setLink] = useState("");
+  const [link, setLink] = useState(initialLink);
   const [linkNote, setLinkNote] = useState<string | null>(null);
   const [linkTitle, setLinkTitle] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
-  const [claim, setClaim] = useState("");
+  const [claim, setClaim] = useState(initialClaim);
   const [seenOn, setSeenOn] = useState<SeenOn>("facebook");
   const [file, setFile] = useState<string | null>(null);
   const [fileKind, setFileKind] = useState<"screenshot" | "photo">(

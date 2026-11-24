@@ -386,7 +386,14 @@ export interface Shelves {
   readonly recent: readonly Card[];
   readonly popular: readonly Card[];
   readonly trending: readonly Card[];
+  /** Questions about a city, town or province, newest first. */
+  readonly local: readonly Card[];
+  /** Enough people have answered to be worth passing on. */
+  readonly worthSharing: readonly Card[];
 }
+
+/** Votes a Pulse needs before it is offered as worth sharing. */
+export const MIN_WORTH_SHARING = 5;
 
 /**
  * Three plain shelves, no recommender: newest; most votes; most votes in the
@@ -421,6 +428,15 @@ export function shelves(
     trending: [...cards]
       .filter((c) => c.open && c.lastDay >= MIN_TRENDING)
       .sort((a, b) => b.lastDay - a.lastDay || b.total - a.total)
+      .slice(0, size),
+    local: cards
+      .filter((c) => c.open && c.scope.kind !== "canada")
+      .slice(0, size),
+    worthSharing: [...cards]
+      .filter((c) => c.open && c.total >= MIN_WORTH_SHARING)
+      .sort(
+        (a, b) => b.total - a.total || b.createdAt.localeCompare(a.createdAt),
+      )
       .slice(0, size),
   };
 }

@@ -343,11 +343,32 @@ export interface Preset {
   readonly topics: readonly NormalTopic[];
 }
 
-/** `?t=<template>`, `?kind=<kind>`, `?private=1`, from the create page's address. */
+/**
+ * Questions worth asking, for a landing page that has no live Pulses to show
+ * yet. They are prompts, not Pulses: no votes, no results, nothing implied
+ * about what anyone thinks. Asking one opens the create form with the words
+ * filled in, still the asker's to change.
+ */
+export const STARTERS: readonly string[] = [
+  "Should Christmas decorations go up before December 1?",
+  "Is a hot dog a sandwich?",
+  "Should pineapple be allowed on pizza?",
+  "Is it okay to reply to a text a day later?",
+  "Should school start later in the morning?",
+  "Is a small town better than a city?",
+  "Is winter the best season in Canada?",
+  "Should tipping be built into the price?",
+];
+
+/** The most a `?q=` starter may carry into the form. */
+const STARTER_MAX = 140;
+
+/** `?t=<template>`, `?kind=<kind>`, `?private=1`, `?q=<words>`, from the create page's address. */
 export function presetFrom(params: {
   t?: unknown;
   kind?: unknown;
   private?: unknown;
+  q?: unknown;
 }): Preset {
   const t = findTemplate(params.t);
   const kind: PulseKind =
@@ -369,7 +390,11 @@ export function presetFrom(params: {
     line: t?.line ?? e.line,
     ask: e.ask,
     placeholder: t?.placeholder ?? e.placeholder,
-    prefix: t?.prefix ?? "",
+    prefix:
+      t?.prefix ??
+      (kind === "pulse" && typeof params.q === "string"
+        ? params.q.replace(/\s+/g, " ").trim().slice(0, STARTER_MAX)
+        : ""),
     options: t?.options ?? null,
     reasons: kind === "decide" || t?.reasons === true,
     unlisted: t?.unlisted ?? (kind === "decide" || params.private === "1"),

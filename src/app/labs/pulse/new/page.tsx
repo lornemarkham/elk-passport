@@ -11,7 +11,12 @@ type Props = {
 
 export default async function NewPulse({ searchParams }: Props) {
   const sp = await searchParams;
-  const preset = presetFrom({ t: sp.t, kind: sp.kind, private: sp.private });
+  const preset = presetFrom({
+    t: sp.t,
+    kind: sp.kind,
+    private: sp.private,
+    q: sp.q,
+  });
   return (
     <>
       <p className="pt-4 text-[13px]">
@@ -29,7 +34,10 @@ export default async function NewPulse({ searchParams }: Props) {
         {preset.title}
       </h1>
       <p className="mt-2 mb-6 text-[15px] text-[#5c6370]">{preset.line}</p>
-      <CreatePulse key={`${preset.kind}:${preset.template}`} preset={preset} />
+      <CreatePulse
+        key={`${preset.kind}:${preset.template}:${preset.prefix}`}
+        preset={preset}
+      />
     </>
   );
 }

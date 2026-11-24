@@ -321,6 +321,22 @@ describe("People's Pulse, end to end on the memory store", () => {
     expect(s.recent.map((c) => c.id)).toEqual([busy.id, quiet.id]);
     expect(s.popular.map((c) => c.id)).toEqual([busy.id, quiet.id]);
     expect(s.trending.map((c) => c.id)).toEqual([busy.id]);
+    // five answers is worth passing on; a province is local, Canada is not
+    expect(s.worthSharing).toEqual([]);
+    expect(s.local).toEqual([]);
+  });
+
+  it("offers local questions and ones worth sharing", async () => {
+    const national = await make({ question: "A national question here?" });
+    tick(60_000);
+    const town = await make({
+      question: "A Vernon question here?",
+      scope: { kind: "city", province: "BC", city: "Vernon" },
+    });
+    for (let i = 0; i < 5; i++) await vote(national.id, newDevice(), "o1");
+    const s = shelves(await store.list(50), clock);
+    expect(s.local.map((c) => c.id)).toEqual([town.id]);
+    expect(s.worthSharing.map((c) => c.id)).toEqual([national.id]);
   });
 });
 

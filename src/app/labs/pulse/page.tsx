@@ -11,6 +11,7 @@ import { NotReady, pulseStore } from "@/lib/pulse/store";
 import {
   CHECK_EXPERIENCE,
   EXPERIENCES,
+  STARTERS,
   TEMPLATES,
   experience,
 } from "@/lib/pulse/templates";
@@ -108,15 +109,15 @@ function Shelf({
   title,
   id,
   cards,
-  empty,
   note,
 }: {
   title: string;
   id: string;
   cards: readonly Card[];
-  empty: string;
   note?: (c: Card) => string;
 }) {
+  // A shelf with nothing on it is not shown, rather than apologising.
+  if (cards.length === 0) return null;
   return (
     <section aria-labelledby={id} className="mt-9">
       <h2
@@ -125,15 +126,11 @@ function Shelf({
       >
         {title}
       </h2>
-      {cards.length === 0 ? (
-        <p className="mt-3 text-[14px] text-[#5c6370]">{empty}</p>
-      ) : (
-        <ul className="mt-3 grid gap-3">
-          {cards.map((c) => (
-            <PulseCard key={c.id} c={c} note={note?.(c)} />
-          ))}
-        </ul>
-      )}
+      <ul className="mt-3 grid gap-3">
+        {cards.map((c) => (
+          <PulseCard key={c.id} c={c} note={note?.(c)} />
+        ))}
+      </ul>
     </section>
   );
 }
@@ -195,6 +192,105 @@ export default async function PeoplesPulse() {
         </Link>
       </section>
 
+      {data === "not-ready" ? (
+        <p
+          data-testid="pulse-not-ready"
+          className="mt-8 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-[14px] text-amber-900"
+        >
+          People&apos;s Pulse is still being set up here. Its database
+          isn&apos;t ready yet, so Pulses can&apos;t be created or answered for
+          the moment.
+        </p>
+      ) : (
+        <>
+          {data.today ? (
+            <section
+              aria-labelledby="pulse-today"
+              data-testid="pulse-today"
+              className="mt-8"
+            >
+              <h2
+                id="pulse-today"
+                className="text-[13px] font-semibold tracking-[0.14em] text-[#e5484d] uppercase"
+              >
+                Question of the day
+              </h2>
+              <Link
+                href={`/labs/pulse/${data.today.id}`}
+                data-testid="pulse-today-link"
+                className="mt-3 block rounded-3xl bg-[#14161a] p-5 text-white transition hover:bg-black focus-visible:ring-2 focus-visible:ring-[#14161a] focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                <span className="font-heading block text-[26px] leading-[1.15] font-bold">
+                  {data.today.question}
+                </span>
+                <span className="mt-3 flex flex-wrap items-center gap-x-3 text-[14px] text-white/75">
+                  <span>{votes(data.today.total)}</span>
+                  <span>{scopeLabel(data.today.scope)}</span>
+                  <span className="ml-auto rounded-full bg-white px-4 py-2 text-[14px] font-semibold text-[#14161a]">
+                    Answer
+                  </span>
+                </span>
+              </Link>
+            </section>
+          ) : null}
+          <Shelf
+            id="pulse-trending"
+            title="Trending"
+            cards={data.trending}
+            note={(c) => `${c.lastDay} in the last day`}
+          />
+          <Shelf
+            id="pulse-worth"
+            title="Worth sharing"
+            cards={data.worthSharing.filter(
+              (c) => !data.trending.some((t) => t.id === c.id),
+            )}
+          />
+          <Shelf id="pulse-local" title="Local questions" cards={data.local} />
+          <Shelf
+            id="pulse-recent"
+            title="Recent"
+            cards={data.recent.filter(
+              (c) => !data.trending.some((t) => t.id === c.id),
+            )}
+          />
+          {data.recent.length < 3 ? (
+            <section
+              aria-labelledby="pulse-starters"
+              data-testid="pulse-starters"
+              className="mt-9"
+            >
+              <h2
+                id="pulse-starters"
+                className="text-[13px] font-semibold tracking-[0.14em] text-[#5c6370] uppercase"
+              >
+                Questions worth asking
+              </h2>
+              <p className="mt-2 text-[14px] text-[#5c6370]">
+                Nobody has answered these yet. Tap one, change the words if you
+                like, and send it to your people.
+              </p>
+              <ul className="mt-3 grid gap-2">
+                {STARTERS.map((q) => (
+                  <li key={q}>
+                    <Link
+                      href={`/labs/pulse/new?q=${encodeURIComponent(q)}`}
+                      data-testid="pulse-starter"
+                      className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-[#e7e3da] bg-white px-4 py-3 text-[15px] font-semibold transition hover:border-[#14161a]/40 focus-visible:ring-2 focus-visible:ring-[#14161a] focus-visible:outline-none"
+                    >
+                      <span>{q}</span>
+                      <span aria-hidden className="text-[#5c6370]">
+                        Ask →
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </>
+      )}
+
       <section aria-labelledby="labs-experiences" className="mt-10">
         <h2
           id="labs-experiences"
@@ -247,69 +343,6 @@ export default async function PeoplesPulse() {
           ))}
         </ul>
       </section>
-
-      {data === "not-ready" ? (
-        <p
-          data-testid="pulse-not-ready"
-          className="mt-8 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-[14px] text-amber-900"
-        >
-          People&apos;s Pulse is still being set up here. Its database
-          isn&apos;t ready yet, so Pulses can&apos;t be created or answered for
-          the moment.
-        </p>
-      ) : (
-        <>
-          {data.today ? (
-            <section
-              aria-labelledby="pulse-today"
-              data-testid="pulse-today"
-              className="mt-8"
-            >
-              <h2
-                id="pulse-today"
-                className="text-[13px] font-semibold tracking-[0.14em] text-[#e5484d] uppercase"
-              >
-                Question of the day
-              </h2>
-              <Link
-                href={`/labs/pulse/${data.today.id}`}
-                data-testid="pulse-today-link"
-                className="mt-3 block rounded-3xl bg-[#14161a] p-5 text-white transition hover:bg-black focus-visible:ring-2 focus-visible:ring-[#14161a] focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                <span className="font-heading block text-[26px] leading-[1.15] font-bold">
-                  {data.today.question}
-                </span>
-                <span className="mt-3 flex flex-wrap items-center gap-x-3 text-[14px] text-white/75">
-                  <span>{votes(data.today.total)}</span>
-                  <span>{scopeLabel(data.today.scope)}</span>
-                  <span className="ml-auto rounded-full bg-white px-4 py-2 text-[14px] font-semibold text-[#14161a]">
-                    Answer
-                  </span>
-                </span>
-              </Link>
-            </section>
-          ) : null}
-          <Shelf
-            id="pulse-trending"
-            title="Trending"
-            cards={data.trending}
-            empty="Nothing is moving fast right now."
-            note={(c) => `${c.lastDay} in the last day`}
-          />
-          <Shelf
-            id="pulse-popular"
-            title="Popular"
-            cards={data.popular}
-            empty="No votes yet — be the first to ask."
-          />
-          <Shelf
-            id="pulse-recent"
-            title="Recent"
-            cards={data.recent}
-            empty="Nothing yet. Ask the first one."
-          />
-        </>
-      )}
 
       <section className="mt-12">
         <h2 className="text-[13px] font-semibold tracking-[0.14em] text-[#5c6370] uppercase">

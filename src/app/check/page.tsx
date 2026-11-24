@@ -75,14 +75,14 @@ function Shelf({
   title,
   line,
   items,
-  empty,
 }: {
   id: string;
   title: string;
   line: string;
   items: readonly CheckListed[];
-  empty: string;
 }) {
+  // An empty shelf is not shown; the page says once, below, that none exist.
+  if (!items.length) return null;
   return (
     <section
       aria-labelledby={id}
@@ -96,15 +96,11 @@ function Shelf({
         {title}
       </h2>
       <p className="mt-0.5 text-[12.5px] text-[#8a909a]">{line}</p>
-      {items.length ? (
-        <ul className="mt-3 grid gap-3">
-          {items.map((c) => (
-            <CheckCard key={c.pulseId} c={c} />
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-3 text-[14px] text-[#8a909a]">{empty}</p>
-      )}
+      <ul className="mt-3 grid gap-3">
+        {items.map((c) => (
+          <CheckCard key={c.pulseId} c={c} />
+        ))}
+      </ul>
     </section>
   );
 }
@@ -132,13 +128,34 @@ export default async function CheckHome({ searchParams }: Props) {
         say. Then share the check back into the conversation, where others can
         look at the evidence and have their say.
       </p>
-      <Link
-        href="/check/new"
-        data-testid="check-start"
-        className="mt-5 flex min-h-14 items-center justify-center rounded-full bg-[#14161a] px-6 text-[17px] font-semibold text-white hover:bg-black"
+      <form
+        action="/check/new"
+        method="get"
+        className="mt-5 grid gap-2"
+        data-testid="check-quick"
       >
-        Check a claim
-      </Link>
+        <label
+          htmlFor="check-quick-claim"
+          className="text-[14px] font-semibold text-[#14161a]"
+        >
+          Is this true? Paste the claim or a link.
+        </label>
+        <textarea
+          id="check-quick-claim"
+          name="q"
+          rows={2}
+          maxLength={600}
+          placeholder="“Kelowna General Hospital is at 147% capacity” or https://…"
+          className="w-full rounded-2xl border border-[#d9d4c8] bg-white px-4 py-3 text-[16px]"
+        />
+        <button
+          type="submit"
+          data-testid="check-start"
+          className="flex min-h-14 items-center justify-center rounded-full bg-[#14161a] px-6 text-[17px] font-semibold text-white hover:bg-black"
+        >
+          Check it
+        </button>
+      </form>
       <ol className="mt-5 grid grid-cols-3 gap-2 text-center text-[12.5px] font-semibold text-[#3f4550]">
         {["Submit it", "Investigate it", "Share it back"].map((s, i) => (
           <li
@@ -190,13 +207,21 @@ export default async function CheckHome({ searchParams }: Props) {
               Show
             </button>
           </form>
+          {!shelves.recent.length && !shelves.trending.length ? (
+            <p
+              data-testid="check-none-yet"
+              className="mt-8 rounded-2xl border border-[#e7e3da] bg-white p-4 text-[15px] text-[#3f4550]"
+            >
+              No checks have been published yet. The first one is yours: bring a
+              claim, add the sources you read, and share what you found.
+            </p>
+          ) : null}
           {p ? (
             <Shelf
               id="local"
               title={`About ${provinceName(p)}`}
               line="Checks whose claim is about this province or a town in it. Never where anyone is."
               items={shelves.local}
-              empty="No checks about here yet."
             />
           ) : null}
           <Shelf
@@ -204,28 +229,24 @@ export default async function CheckHome({ searchParams }: Props) {
             title="Trending"
             line="Most votes and posts in the last day."
             items={shelves.trending}
-            empty="Nothing is trending right now."
           />
           <Shelf
             id="recent"
             title="Recent"
             line="Newest first."
             items={shelves.recent}
-            empty="No checks yet. Be the first."
           />
           <Shelf
             id="discussed"
             title="Most discussed"
             line="Most posts."
             items={shelves.discussed}
-            empty="No conversations yet."
           />
           <Shelf
             id="updated"
             title="Recently updated evidence"
             line="Checks corrected since they were published."
             items={shelves.updated}
-            empty="No corrections yet."
           />
         </>
       )}
