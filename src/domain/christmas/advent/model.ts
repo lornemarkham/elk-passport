@@ -226,6 +226,32 @@ export function stageOf(today: string): Stage {
   return "over";
 }
 
+// ---------------------------------------------------------------- preview
+
+/**
+ * **Advent Preview Mode** (owner brief M1074, 2026-11-23): until midnight
+ * Pacific on December 1, 2026 (08:00 UTC — Pacific is UTC-8 in winter) all
+ * 25 doors open so the calendar can be played with. It ends itself: after
+ * that instant `previewActive` is false whatever else is set, and the doors
+ * go back to opening on their own day.
+ *
+ * To turn it off sooner, set `ADVENT_PREVIEW=off` in the server's
+ * environment (or change `PREVIEW_ENABLED`). There is no visitor control.
+ */
+export const PREVIEW_ENABLED = true;
+export const PREVIEW_ENDS = "2026-12-01T08:00:00Z";
+
+export function previewActive(
+  now: Date = new Date(),
+  flag: string | undefined = process.env.ADVENT_PREVIEW,
+): boolean {
+  if (!PREVIEW_ENABLED || flag === "off") return false;
+  return now.getTime() < Date.parse(PREVIEW_ENDS);
+}
+
+/** All 25 doors, ignoring the date. */
+export const previewDays = (): AdventDay[] => ALL_DAYS.filter((d) => d.door);
+
 /** Whole days from `from` to `to`. */
 export const daysBetween = (from: string, to: string) =>
   Math.round(

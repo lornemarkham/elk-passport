@@ -10,6 +10,8 @@ import {
   DEFAULT_PREFS,
   dayOf,
   openDays,
+  previewActive,
+  previewDays,
   readPrefs,
   stageOf,
   writePrefs,
@@ -381,5 +383,47 @@ describe("progress on this browser", () => {
   it("reads the lowest stated price", () => {
     expect(lowestPrice("Tickets: $45 adults, $20 kids")).toBe(20);
     expect(lowestPrice("By donation")).toBeUndefined();
+  });
+});
+
+describe("Advent Preview Mode (M1074)", () => {
+  it("is on now, and ends at midnight Pacific on December 1", () => {
+    expect(previewActive(new Date("2026-11-24T12:00:00Z"), undefined)).toBe(
+      true,
+    );
+    // 11:59 pm PST, November 30
+    expect(previewActive(new Date("2026-12-01T07:59:59Z"), undefined)).toBe(
+      true,
+    );
+    // 12:00 am PST, December 1
+    expect(previewActive(new Date("2026-12-01T08:00:00Z"), undefined)).toBe(
+      false,
+    );
+    expect(previewActive(new Date("2026-12-10T08:00:00Z"), undefined)).toBe(
+      false,
+    );
+  });
+
+  it("can be switched off sooner, never on after the end", () => {
+    expect(previewActive(new Date("2026-11-24T12:00:00Z"), "off")).toBe(false);
+    expect(previewActive(new Date("2026-12-02T12:00:00Z"), "on")).toBe(false);
+  });
+
+  it("opens all 25 doors, each with something behind it, on any day", () => {
+    const days = previewDays();
+    expect(days).toHaveLength(25);
+    const plans = planDays(days, [], DEFAULT_PREFS, {
+      at: "kelowna",
+      townName: "Kelowna",
+      today: "2026-11-24",
+    });
+    expect(plans).toHaveLength(25);
+    for (const p of plans) {
+      expect(p.options.length, `door ${p.n}`).toBeGreaterThan(0);
+      for (let swaps = 0; swaps < p.options.length; swaps++) {
+        const o = optionAt(p, swaps);
+        expect(o?.title, `door ${p.n} option ${swaps}`).toBeTruthy();
+      }
+    }
   });
 });

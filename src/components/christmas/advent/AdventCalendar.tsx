@@ -115,6 +115,7 @@ export function AdventCalendar({
   plans,
   today,
   stage,
+  preview = false,
   prefs,
   said,
   townName,
@@ -125,6 +126,8 @@ export function AdventCalendar({
   readonly plans: readonly DayPlan[];
   readonly today: string;
   readonly stage: Stage;
+  /** Advent Preview Mode: every door is open; Surprise me picks any door. */
+  readonly preview?: boolean;
   readonly prefs: AdventPrefs;
   /** The family has told us something already. */
   readonly said: boolean;
@@ -159,6 +162,14 @@ export function AdventCalendar({
     save(openDay(progress, n));
     setFresh(surprise || !progress.opened.includes(n));
     setShowing(n);
+  };
+
+  // Preview: Surprise me opens a door not yet opened (any, once all have been).
+  const surpriseAny = () => {
+    const unopened = plans.filter((p) => !progress.opened.includes(p.n));
+    const pool = unopened.length ? unopened : plans;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) reveal(pick.n, true);
   };
 
   const knock = (n: number) => {
@@ -205,11 +216,13 @@ export function AdventCalendar({
           <button
             type="button"
             onClick={() =>
-              todayPlan
-                ? reveal(todayPlan.n, true)
-                : setNote(
-                    `The first door opens on ${longDay(firstDoor)}. Come back then!`,
-                  )
+              preview
+                ? surpriseAny()
+                : todayPlan
+                  ? reveal(todayPlan.n, true)
+                  : setNote(
+                      `The first door opens on ${longDay(firstDoor)}. Come back then!`,
+                    )
             }
             className="flex min-h-12 items-center justify-center gap-2 rounded-[18px] bg-[#b3242f] px-3 font-extrabold text-white shadow-[0_8px_20px_rgba(179,36,47,0.3)] hover:brightness-110"
             data-testid="advent-surprise"
@@ -273,8 +286,10 @@ export function AdventCalendar({
           {Array.from({ length: DOORS }, (_, i) => i + 1).map((n) => {
             const plan = byDay.get(n);
             const isToday = dayOf(n).date === today;
-            const opened = progress.opened.includes(n);
-            const did = progress.done[n];
+            // A door still shut (after the preview) shows no trace of having
+            // been opened; its completed mark still counts in the total.
+            const opened = Boolean(plan) && progress.opened.includes(n);
+            const did = plan ? progress.done[n] : undefined;
             const option = plan
               ? optionAt(plan, progress.swaps[n] ?? 0)
               : undefined;

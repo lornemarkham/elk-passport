@@ -1010,6 +1010,12 @@ budget, indoors/outdoors and interests are optional taps kept in a cookie;
 what was opened, swapped and done stays on the browser; no account. One
 composition; it answers no open question below.
 
+_Advent Preview Mode 2026-11-23_ (owner brief M1074, temporary and
+owner-authorised): until midnight Pacific on December 1, 2026 every Advent
+door opens so the calendar can be tried; it ends itself, and the rule above
+(a door opens only on its day) applies again from then
+(`HOLIDAY-SEASON-ADVENT.md`). It answers no open question below.
+
 _Christmas names the season's best, and has movies 2026-11-24_ (owner brief
 M1064 "P0 — Make GoHaveADay Christmas exceptional";
 `docs/product/christmas/EXCEPTIONAL-M1064.md`): the front page counts, for

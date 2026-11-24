@@ -55,7 +55,56 @@ test("Christmas opens on the Advent calendar and New Year's Eve", async ({
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+// Advent Preview Mode (M1074) is on until midnight Pacific on December 1, so
+// the doors-shut specs below need a server started with ADVENT_PREVIEW=off
+// (E2E_ADVENT_PREVIEW=off); the preview spec needs it without.
+const PREVIEW = process.env.E2E_ADVENT_PREVIEW !== "off";
+
+test("Advent Preview Mode: all 25 doors open, each surprise works", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  test.skip(!PREVIEW, "the server has the preview switched off");
+  await page.goto("/christmas/advent?at=vernon");
+  await expect(page.getByTestId("advent-preview")).toContainText(
+    "Advent Preview Mode",
+  );
+  for (let n = 1; n <= 25; n++)
+    await expect(page.getByTestId(`door-${n}`)).toHaveAttribute(
+      "data-state",
+      "ready",
+    );
+  for (let n = 1; n <= 25; n++) {
+    const reveal = await openDoor(page, n);
+    await expect(reveal).toContainText(`Door ${n}`);
+    const first = await page.getByTestId("reveal-title").innerText();
+    expect(first.length, `door ${n}`).toBeGreaterThan(3);
+    await page.getByTestId("advent-swap").click();
+    await expect(page.getByTestId("reveal-title")).not.toBeEmpty();
+    await page.getByTestId("advent-done").click();
+    await expect(page.getByTestId("advent-done")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await close(page);
+    await expect(page.getByTestId(`door-${n}`)).toHaveAttribute(
+      "data-state",
+      "done",
+    );
+  }
+  await expect(page.getByTestId("advent-progress")).toHaveText(
+    "You've completed 25 adventures — a whole Advent!",
+  );
+  // Surprise me opens a door; Make it yours opens the choices.
+  await page.getByTestId("advent-surprise").click();
+  await expect(page.getByTestId("advent-reveal")).toBeVisible();
+  await close(page);
+  await page.getByTestId("advent-prefs-open").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
 test("a door still to come stays shut — no peeking", async ({ page }) => {
+  test.skip(PREVIEW, "Advent Preview Mode has every door open");
   await page.goto("/christmas/advent?at=vernon");
   const shut = DAY ? DAY + 1 : 1;
   await expect(page.getByTestId(`door-${shut}`)).toHaveAttribute(
@@ -71,6 +120,7 @@ test("before December, Surprise me gives a warm-up for today", async ({
   page,
 }) => {
   test.skip(Boolean(TODAY), "the server is pinned to a day of December");
+  test.skip(PREVIEW, "Advent Preview Mode has every door open");
   await page.goto("/christmas/advent?at=vernon");
   await expect(page.getByTestId("advent-stage")).toContainText("December 1");
   await page.getByTestId("advent-surprise").click();

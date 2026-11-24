@@ -111,3 +111,19 @@ banner and behind Advent doors with no Passport change.
   cannot set it) and `E2E_ADVENT_TODAY=2026-12-12`; `E2E_ATLAS=1` with
   `scripts/critic/atlas-mock.mjs` serving the production corpus.
 - Screenshots: `screenshots/advent-*.png`.
+
+## Advent Preview Mode (M1074, 2026-11-23, owner-authorised, temporary)
+
+Owner brief M1074: "I want to PLAY WITH IT" — until **midnight Pacific on
+December 1, 2026** (`PREVIEW_ENDS` = 2026-12-01T08:00:00Z) all 25 doors open
+now. This overrides "a door opens only on its day" above, for that window only.
+
+- `previewActive()` in `advent/model.ts`: true before `PREVIEW_ENDS`, never
+  after it. Off sooner with `ADVENT_PREVIEW=off` in the server environment, or
+  `PREVIEW_ENABLED = false`. No visitor or admin control; no auth change.
+- The page labels it **Advent Preview Mode**. Each door is still planned for
+  its own date (a real event only on a day it is on); Surprise me opens any
+  door not yet opened.
+- After the end: only doors up to today open, future doors are shut and send
+  nothing. Progress is the browser's: completed adventures still count in the
+  total; a door opened in preview that is shut again shows no trace of it.

@@ -19,6 +19,8 @@ import {
   daysBetween,
   hasSaid,
   openDays,
+  previewActive,
+  previewDays,
   readPrefs,
   stageOf,
   type AdventDay,
@@ -60,10 +62,17 @@ export default async function AdventPage({
   const pinned = process.env.ADVENT_TODAY;
   const today =
     pinned && /^\d{4}-\d{2}-\d{2}$/.test(pinned) ? pinned : todayIn();
-  const stage = stageOf(today);
+  // Advent Preview Mode (M1074): every door is open until midnight Pacific on
+  // December 1. `today` stays the real day — each door is still planned for
+  // its own date, so a real event is behind it only on a day it is on.
+  const preview = previewActive();
+  const stage = preview ? "doors" : stageOf(today);
   // Before December: a warm-up adventure for today behind Surprise me.
-  const days: AdventDay[] =
-    stage === "before" ? [{ n: 0, date: today, door: false }] : openDays(today);
+  const days: AdventDay[] = preview
+    ? previewDays()
+    : stage === "before"
+      ? [{ n: 0, date: today, door: false }]
+      : openDays(today);
   const corpus = days.length
     ? await christmasFinds({ at, km: prefs.km, ages: prefs.ages }, today)
     : { finds: [], experiences: [] };
@@ -103,14 +112,25 @@ export default async function AdventPage({
                 className="mt-1.5 max-w-xl text-sm font-semibold text-white/90 sm:mt-2 sm:text-lg"
                 data-testid="advent-stage"
               >
-                {stage === "before"
-                  ? `One holiday adventure behind each door. The first opens in ${toGo} sleep${toGo === 1 ? "" : "s"} — on December 1.`
-                  : stage === "doors"
-                    ? `Door ${days.length} is open. One holiday adventure a day, around ${townName}.`
-                    : stage === "after"
-                      ? "Christmas has been — now a New Year's adventure every day until January 3."
-                      : "That was the season. See you next December!"}
+                {preview
+                  ? `All 25 doors are open to try, around ${townName}. One holiday adventure behind each.`
+                  : stage === "before"
+                    ? `One holiday adventure behind each door. The first opens in ${toGo} sleep${toGo === 1 ? "" : "s"} — on December 1.`
+                    : stage === "doors"
+                      ? `Door ${days.length} is open. One holiday adventure a day, around ${townName}.`
+                      : stage === "after"
+                        ? "Christmas has been — now a New Year's adventure every day until January 3."
+                        : "That was the season. See you next December!"}
               </p>
+              {preview && (
+                <p
+                  className="mt-2 inline-block rounded-full bg-[#ffd98a] px-3 py-1 text-xs font-extrabold text-[#082319]"
+                  data-testid="advent-preview"
+                >
+                  Advent Preview Mode · every door is open until midnight on
+                  December 1 (Pacific), then the doors open one a day
+                </p>
+              )}
               <Suspense fallback={null}>
                 <ExperienceLocation
                   scope="christmas"
@@ -126,6 +146,7 @@ export default async function AdventPage({
               plans={plans}
               today={today}
               stage={stage}
+              preview={preview}
               prefs={prefs}
               said={hasSaid(prefs)}
               townName={townName}
