@@ -30,6 +30,15 @@ Also found:
 - **Pictures:** the front page drew 1 picture across 7 cards; Discover for
   Vernon 8 for its whole list. That is Atlas's media coverage (see the
   2026-10-16 image audit), not a broken image — none failed to load.
+- **A plan can zig-zag the valley.** "christmas market then the lights with
+  the kids saturday" around Vernon (live, 2026-11-23) planned Lake Country's
+  German Christmas Market, then Armstrong's Downtown Light Up: 63.5 km
+  between stops, 99.6 km in all, though Vernon has markets of its own. The
+  planner chooses each stop greedily from the last one (`itinerary.ts`
+  `score`: being dated that day outweighs distance) with no look-ahead to the
+  next part. Not changed here; it is the next fix.
+- Share on a plan works live: the link opens the same plan for a stranger.
+  It holds the sentence, so "saturday" means the next Saturday when opened.
 - The Christmas bar now holds six items and scrolls sideways on a phone;
   _Plan My Route_ starts off-screen.
 - `gohaveaday.com/` (not Christmas) sends an 8 MB HTML page.
