@@ -371,6 +371,21 @@ describe("one card for one thing", () => {
   });
 });
 
+describe("one card for one name spelt two ways (M1059)", () => {
+  it("folds 'Silver Star Annual Light Up' and 'SilverStar Annual Light Up' into one card", () => {
+    const finds = findsIn(
+      [
+        near("vernon", 0, { id: "a", title: "Silver Star Annual Light Up" }),
+        near("vernon", 0, { id: "b", title: "SilverStar Annual Light Up" }),
+      ],
+      TODAY,
+    );
+    expect(oneEach(finds).map((f) => [f.experience.id, f.others ?? 0])).toEqual(
+      [["a", 1]],
+    );
+  });
+});
+
 describe("no nearer than the evidence", () => {
   it("does not count a listing Atlas knows only as 'in Vancouver' as within 5 km of Downtown", () => {
     const ubc = exp({

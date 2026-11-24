@@ -426,8 +426,9 @@ const titleKey = (t: string) =>
   t
     .toLowerCase()
     .replace(/\b20\d\d\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+    // No spaces at all: "Silver Star" and "SilverStar" are one name, and two
+    // records of the same light-up said it each way (M1059).
+    .replace(/[^a-z0-9]+/g, "");
 
 function pointOf(f: Find) {
   const c = f.experience.geography?.coordinates;
