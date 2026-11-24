@@ -9,6 +9,9 @@ import styles from "@/components/christmas/christmas.module.css";
 import { adventureSession } from "@/lib/adventures/server";
 import { adventuresOf } from "@/lib/adventures/store";
 import { todayIn } from "@/lib/adventures/overview";
+import { loadMyStuff } from "@/lib/data/loadMyStuff";
+import { isChristmasPlan } from "@/domain/christmas/mine";
+import { savedChristmas } from "@/domain/christmas/saved";
 
 export const metadata: Metadata = {
   title: "My Christmas List — Passport",
@@ -25,11 +28,18 @@ export const metadata: Metadata = {
 export default async function MyChristmasListPage() {
   const session = await adventureSession();
   const today = todayIn();
-  const mine = session
-    ? await adventuresOf(session.db, session.user.id)
-        .then((all) => all.filter((a) => a.kind === "christmas"))
-        .catch(() => [])
-    : [];
+  // Both reads use the visitor's own session: what comes back is theirs (and
+  // what they were invited to), never anybody else's.
+  const [mine, stuff] = session
+    ? await Promise.all([
+        adventuresOf(session.db, session.user.id)
+          .then((all) => all.filter(isChristmasPlan))
+          .catch(() => []),
+        loadMyStuff(),
+      ])
+    : [[], null];
+  const saved =
+    stuff?.status === "ok" ? savedChristmas(stuff.ideas, today) : [];
   return (
     <ThemeProvider className="block">
       <PicksProvider
@@ -50,7 +60,12 @@ export default async function MyChristmasListPage() {
             <div className={styles.lights} aria-hidden />
           </header>
           <div className="mx-auto max-w-6xl space-y-10 px-4 pt-6 sm:px-6">
-            <ListPicks planHref="/christmas/plan" />
+            <ListPicks
+              planHref="/christmas/plan"
+              saved={saved}
+              signedIn={Boolean(session)}
+              readFailed={stuff?.status === "error"}
+            />
             <Section eyebrow="Private" title="My Christmas plans">
               {session ? (
                 <MyAdventures adventures={mine} today={today} />

@@ -39,11 +39,24 @@ export function SaveAsAdventure({
 }) {
   const router = useRouter();
   const carried = new URLSearchParams(query).get("on");
+  // A day asked for in Christmas's words is a Christmas adventure, so it
+  // lands on My Christmas List's plans and opens on Christmas's own page.
+  const christmas = /christmas/i.test(
+    new URLSearchParams(query).get("say") ?? "",
+  );
+  const home = christmas ? "/christmas/adventure" : "/adventures";
   const [on, setOn] = useState(
     carried && DAY.test(carried) ? carried : todayHere(),
   );
   const [title, setTitle] = useState(
-    firstStop ? `A day at ${firstStop}`.slice(0, 120) : "Our day out",
+    firstStop
+      ? `${christmas ? "Christmas day at" : "A day at"} ${firstStop}`.slice(
+          0,
+          120,
+        )
+      : christmas
+        ? "Our Christmas day"
+        : "Our day out",
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +71,7 @@ export function SaveAsAdventure({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          kind: "day",
+          kind: christmas ? "christmas" : "day",
           title: title.trim(),
           startsOn: on,
           endsOn: null,
@@ -95,10 +108,10 @@ export function SaveAsAdventure({
           `${body.error ?? "The day didn't save."} The adventure is made — you can plan it there.`,
         );
         setBusy(false);
-        router.push(`/adventures/${adventure.id}`);
+        router.push(`${home}/${adventure.id}`);
         return;
       }
-      router.push(`/adventures/${adventure.id}`);
+      router.push(`${home}/${adventure.id}`);
     } catch {
       setError("Couldn't reach Passport. The day is still here.");
       setBusy(false);

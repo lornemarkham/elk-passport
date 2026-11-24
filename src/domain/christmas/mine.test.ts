@@ -81,3 +81,23 @@ describe("christmasPictures", () => {
     expect(christmasPictures(stock)).toEqual([]);
   });
 });
+
+describe("isChristmasPlan / adventureHref", () => {
+  const a = (kind: string, title: string) => ({ kind, title });
+  it("counts Christmas adventures and Christmas-named days built in Go Have a Day", async () => {
+    const { isChristmasPlan } = await import("./mine");
+    expect(isChristmasPlan(a("christmas", "Anything"))).toBe(true);
+    expect(isChristmasPlan(a("day", "Christmas day at Canyon Lights"))).toBe(
+      true,
+    );
+    expect(isChristmasPlan(a("day", "Our day out"))).toBe(false);
+    expect(isChristmasPlan(a("hockey-night", "Christmas game"))).toBe(false);
+  });
+  it("opens a Christmas adventure on its own page, not through a redirect", async () => {
+    const { adventureHref } = await import("./mine");
+    expect(adventureHref({ kind: "christmas", id: "abc" })).toBe(
+      "/christmas/adventure/abc",
+    );
+    expect(adventureHref({ kind: "day", id: "abc" })).toBe("/adventures/abc");
+  });
+});

@@ -12,6 +12,8 @@ import { atlasStopsFor } from "@/lib/adventures/atlas-names";
 import { todayIn } from "@/lib/adventures/overview";
 import { ATLAS_REF } from "@/lib/adventures/rules";
 import { loadSaved } from "@/lib/data/loadSaved";
+import { adventureFor } from "@/lib/adventures/store";
+import { planAgain, type Again } from "@/domain/christmas/again";
 import { readAsk, type Find } from "@/domain/christmas/discover";
 import { sayFor, shapeById } from "@/domain/christmas/plans";
 import { readChristmas, themeById } from "@/domain/christmas/themes";
@@ -24,6 +26,47 @@ export const metadata: Metadata = {
   title: "Plan a Christmas adventure — Passport",
   robots: { index: false },
 };
+
+/** What was kept, swapped and left out of an adventure being done again. */
+function AgainNote({
+  again,
+}: {
+  readonly again: Again & { readonly title: string };
+}) {
+  return (
+    <section
+      className="mb-6 rounded-[22px] bg-[#e3ede5] p-5 text-[#1f4a35]"
+      data-testid="again-note"
+    >
+      <h2 className="text-lg font-extrabold">Doing “{again.title}” again</h2>
+      <p className="mt-1 text-base">
+        Pick the days below. Everything is read against today&apos;s dates —
+        nothing is copied from last time unchecked.
+      </p>
+      <ul className="mt-2 space-y-1 text-base">
+        {again.keep.length > 0 && (
+          <li data-testid="again-kept">
+            <strong>Carried over:</strong>{" "}
+            {again.keep.map((k) => k.title).join(", ")}
+          </li>
+        )}
+        {again.swapped.map((s) => (
+          <li key={s.id} data-testid="again-swapped">
+            <strong>Now listed again:</strong> {s.from} → {s.to}
+          </li>
+        ))}
+        {again.left.map((l) => (
+          <li key={l.title} data-testid="again-left">
+            <strong>Left out:</strong> {l.title} — {l.why}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-sm">
+        The earlier adventure is untouched; this makes a new one.
+      </p>
+    </section>
+  );
+}
 
 const pickOf = (f: Find, fromSaved = false): PlanPick => ({
   id: f.experience.id,
@@ -50,7 +93,7 @@ export default async function ChristmasPlanPage({
     typeof params.shape === "string" ? params.shape : undefined,
   );
   const raw = typeof params.with === "string" ? params.with : "";
-  const withIds = [
+  let withIds = [
     ...new Set(
       raw
         .split(",")
@@ -58,7 +101,7 @@ export default async function ChristmasPlanPage({
         .filter((s) => ATLAS_REF.test(s)),
     ),
   ].slice(0, 12);
-  const lightIds = [
+  let lightIds = [
     ...new Set(
       (typeof params.lights === "string" ? params.lights : "")
         .split(",")
@@ -67,14 +110,81 @@ export default async function ChristmasPlanPage({
     ),
   ].slice(0, 12);
   const say = typeof params.say === "string" ? params.say.slice(0, 200) : "";
-  const name = typeof params.name === "string" ? params.name.slice(0, 120) : "";
+  let name = typeof params.name === "string" ? params.name.slice(0, 120) : "";
+  const againId =
+    typeof params.again === "string" &&
+    /^[0-9a-f]{32}$|^[0-9a-f-]{36}$/i.test(params.again)
+      ? params.again
+      : "";
   const session = await adventureSession();
   // Opened for anyone who arrived with something to build on: picks, a
   // shape, a name or a sentence from the longer planner.
-  const customized = ["with", "lights", "shape", "name", "say", "from"].some(
-    (k) => typeof params[k] === "string" && params[k] !== "",
-  );
+  const customized = [
+    "with",
+    "lights",
+    "shape",
+    "name",
+    "say",
+    "from",
+    "again",
+  ].some((k) => typeof params[k] === "string" && params[k] !== "");
   const here = `/christmas/plan${Object.keys(params).length ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : ""}`;
+
+  // **Do this again** (`?again=<adventure>`): the old adventure's stops, read
+  // against today. Only a member can read it (`adventureFor` runs as them);
+  // anyone else gets the ordinary planner, as if the parameter were absent.
+  let again: (Again & { title: string; at?: string }) | null = null;
+  if (session && againId) {
+    const old = await adventureFor(session.db, againId, session.user.id).catch(
+      () => null,
+    );
+    if (old) {
+      const refs = [
+        ...new Set(old.items.flatMap((i) => (i.atlasRef ? [i.atlasRef] : []))),
+      ];
+      const [stops, now] = await Promise.all([
+        atlasStopsFor(refs).catch(() => null),
+        christmasFinds({ km: 100, ages: [] }, today).catch(() => null),
+      ]);
+      const result = planAgain(
+        refs.map((id) => {
+          const e = stops?.experiences[id];
+          const label = old.items.find((i) => i.atlasRef === id)?.label;
+          return {
+            id,
+            title: stops?.names[id] ?? e?.title ?? label ?? "",
+            ...(e ? { experience: e } : {}),
+          };
+        }),
+        (now?.finds ?? []).map((f) => ({
+          id: f.experience.id,
+          title: f.experience.title,
+          when: f.when,
+        })),
+        today,
+      );
+      again = {
+        ...result,
+        title: old.title.replace(/\s+[—-]\s+again$/i, ""),
+        ...(old.destinationTownId ? { at: old.destinationTownId } : {}),
+      };
+      // Light displays carry over as ids; the planner below shows only those
+      // still published.
+      const oldLights = old.items.flatMap((i) => {
+        const m = /\/christmas\/lights\/((?:seed|pin)-[a-z0-9-]{1,80})/.exec(
+          i.note ?? "",
+        );
+        return m ? [m[1]!] : [];
+      });
+      withIds = [
+        ...new Set([...withIds, ...result.keep.map((k) => k.id)]),
+      ].slice(0, 12);
+      lightIds = [...new Set([...lightIds, ...oldLights])].slice(0, 12);
+      if (!name) name = `${again.title} — again`.slice(0, 120);
+    }
+  }
+  const at = ask.at ?? again?.at;
+  const from = ask.from ?? again?.from;
 
   // The person's own sentence when they said one (it already holds the
   // shape and who is coming); otherwise the sentence the planner would send.
@@ -245,19 +355,22 @@ export default async function ChristmasPlanPage({
                         </p>
                       </div>
                     ) : (
-                      <Planner
-                        today={today}
-                        initialShape={shape.id}
-                        {...(ask.at ? { initialTown: ask.at } : {})}
-                        {...(ask.from ? { initialFrom: ask.from } : {})}
-                        {...(ask.party ? { initialParty: ask.party } : {})}
-                        initialAges={ask.ages}
-                        {...(ask.people ? { initialPeople: ask.people } : {})}
-                        {...(name ? { initialTitle: name } : {})}
-                        {...(say ? { initialExtra: say } : {})}
-                        picks={picks}
-                        saved={saved}
-                      />
+                      <>
+                        {again && <AgainNote again={again} />}
+                        <Planner
+                          today={today}
+                          initialShape={shape.id}
+                          {...(at ? { initialTown: at } : {})}
+                          {...(from ? { initialFrom: from } : {})}
+                          {...(ask.party ? { initialParty: ask.party } : {})}
+                          initialAges={ask.ages}
+                          {...(ask.people ? { initialPeople: ask.people } : {})}
+                          {...(name ? { initialTitle: name } : {})}
+                          {...(say ? { initialExtra: say } : {})}
+                          picks={picks}
+                          saved={saved}
+                        />
+                      </>
                     )}
                   </div>
                 </details>

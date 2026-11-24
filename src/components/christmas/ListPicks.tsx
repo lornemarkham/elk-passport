@@ -2,20 +2,42 @@
 
 import Link from "next/link";
 import { Gift } from "lucide-react";
+import type { SavedFind } from "@/domain/christmas/saved";
 import { useStash } from "./lights/stash";
 import { usePicks } from "./Picks";
 
 /**
- * **What has been added so far** — the things put on My Christmas List with the
- * "Add" button. They live on this device only, so this says how many and
- * carries them into a plan; their names and dates show on the plan page.
+ * **What is on My Christmas List** — one list from two places that used to be
+ * two: the Christmas things the person **saved** (Passport's Saved, read on
+ * the server with their own session, so on every device they sign in on) and
+ * the things **added** with the "Add" button or the lights map (this device
+ * only, until they become a plan). A thing both saved and added counts once.
+ *
+ * Saved things whose dates have gone stay on the list, apart and labelled —
+ * wanting them is still true — but they are not carried into a plan.
  */
-export function ListPicks({ planHref }: { readonly planHref: string }) {
+export function ListPicks({
+  planHref,
+  saved,
+  signedIn,
+  readFailed = false,
+}: {
+  readonly planHref: string;
+  readonly saved: readonly SavedFind[];
+  readonly signedIn: boolean;
+  /** Saved could not be read just now: say so rather than show it empty. */
+  readonly readFailed?: boolean;
+}) {
   const { picked, clearPicks } = usePicks();
   const lights = useStash();
-  const total = picked.length + lights.length;
+  const live = saved.filter((s) => !s.over);
+  const over = saved.filter((s) => s.over);
+  const savedIds = new Set(saved.map((s) => s.id));
+  const deviceOnly = picked.filter((id) => !savedIds.has(id));
+  const withIds = [...live.map((s) => s.id), ...deviceOnly].slice(0, 12);
+  const total = live.length + deviceOnly.length + lights.length;
   const query = [
-    picked.length ? `with=${picked.join(",")}` : "",
+    withIds.length ? `with=${withIds.join(",")}` : "",
     lights.length ? `lights=${lights.join(",")}` : "",
   ]
     .filter(Boolean)
@@ -29,42 +51,130 @@ export function ListPicks({ planHref }: { readonly planHref: string }) {
         <Gift className="h-5 w-5" aria-hidden />
         Added to My Christmas List
       </h2>
-      {total === 0 ? (
-        <p className="mt-2 text-base text-[var(--gh-ink-soft)]">
-          Nothing added yet. Tap <strong>Add to My Christmas List</strong> on
-          any event, market or light display and it waits here.{" "}
-          <Link
-            href="/christmas/discover"
-            className="font-semibold underline underline-offset-4"
-          >
-            Find something
-          </Link>
-          .
+      {readFailed && (
+        <p className="mt-2 text-sm text-[var(--gh-ink-soft)]" role="status">
+          We couldn&apos;t read what you saved just now. Reload in a moment —
+          nothing has been lost.
         </p>
-      ) : (
-        <>
-          <p className="mt-2 text-base" data-testid="list-count">
-            {total} thing{total === 1 ? "" : "s"} added. They&apos;re kept on
-            this device only, until you turn them into a plan.
+      )}
+      {live.length > 0 && (
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="list-saved">
+          {live.map((s) => (
+            <SavedRow key={s.id} find={s} />
+          ))}
+        </ul>
+      )}
+      {total === 0 && over.length === 0 ? (
+        <div className="mt-2" data-testid="list-empty">
+          <p className="text-base text-[var(--gh-ink-soft)]">
+            {signedIn
+              ? "Nothing here yet. Save or add any event, market or light display and it waits here."
+              : "Nothing here yet. Add any event, market or light display and it waits here. Sign in to keep your saved ones on every device."}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
-              href={`${planHref}${planHref.includes("?") ? "&" : "?"}${query}`}
+              href="/christmas/discover"
+              data-testid="list-find"
               className="inline-flex min-h-11 items-center rounded-full bg-[#b3242f] px-5 font-bold text-white"
-              data-testid="list-plan"
             >
-              Plan these
+              Find events &amp; markets
             </Link>
-            <button
-              type="button"
-              onClick={clearPicks}
-              className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold underline underline-offset-4"
+            <Link
+              href="/christmas/lights"
+              className="inline-flex min-h-11 items-center rounded-full px-5 font-semibold ring-1 ring-black/15 hover:ring-black/40"
             >
-              Clear
-            </button>
+              Browse the lights map
+            </Link>
+            {!signedIn && (
+              <Link
+                href="/auth?next=/christmas/list"
+                className="inline-flex min-h-11 items-center rounded-full px-5 font-semibold ring-1 ring-black/15 hover:ring-black/40"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {total > 0 && (
+            <p className="mt-3 text-base" data-testid="list-count">
+              {total} thing{total === 1 ? "" : "s"} on your list.
+              {deviceOnly.length + lights.length > 0 &&
+                ` ${deviceOnly.length + lights.length} ${deviceOnly.length + lights.length === 1 ? "is" : "are"} kept on this device only, until you turn them into a plan.`}
+            </p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {total > 0 && (
+              <Link
+                href={`${planHref}${planHref.includes("?") ? "&" : "?"}${query}`}
+                className="inline-flex min-h-11 items-center rounded-full bg-[#b3242f] px-5 font-bold text-white"
+                data-testid="list-plan"
+              >
+                Plan these
+              </Link>
+            )}
+            <Link
+              href="/christmas/discover"
+              className="inline-flex min-h-11 items-center rounded-full px-5 font-semibold ring-1 ring-black/15 hover:ring-black/40"
+            >
+              Find more
+            </Link>
+            {deviceOnly.length + lights.length > 0 && (
+              <button
+                type="button"
+                onClick={clearPicks}
+                className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold underline underline-offset-4"
+              >
+                Clear what I added here
+              </button>
+            )}
           </div>
         </>
       )}
+      {over.length > 0 && (
+        <details
+          className="mt-4 rounded-2xl bg-[#f6f1e6]"
+          data-testid="list-over"
+        >
+          <summary className="flex min-h-12 cursor-pointer items-center px-4 text-sm font-bold">
+            Saved, but the dates have gone ({over.length})
+          </summary>
+          <ul className="grid gap-2 px-3 pb-3 sm:grid-cols-2">
+            {over.map((s) => (
+              <SavedRow key={s.id} find={s} />
+            ))}
+          </ul>
+          <p className="px-4 pb-3 text-sm text-[var(--gh-ink-soft)]">
+            Still yours, and not put into a new plan as if it were on this year.
+            If it comes back, it&apos;s here.
+          </p>
+        </details>
+      )}
     </div>
+  );
+}
+
+function SavedRow({ find }: { readonly find: SavedFind }) {
+  return (
+    <li data-testid="list-saved-item" data-find={find.id}>
+      <Link
+        href={find.href}
+        className="flex min-h-14 items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-black/10 hover:ring-black/30"
+      >
+        <span className="text-2xl" aria-hidden>
+          {find.emoji}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 block font-bold">{find.title}</span>
+          <span className="block text-sm text-[var(--gh-ink-soft)]">
+            {find.line ??
+              (find.confidence === "unconfirmed"
+                ? "Dates not confirmed"
+                : "Check the days")}
+          </span>
+        </span>
+      </Link>
+    </li>
   );
 }

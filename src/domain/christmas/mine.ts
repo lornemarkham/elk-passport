@@ -13,6 +13,25 @@ export interface Mine {
   readonly hidden: number;
 }
 
+/** Kinds a day built in Go Have a Day is saved as, before it is called Christmas. */
+const PLANNING = new Set(["day", "weekend", "trip"]);
+const CHRISTMAS_NAMED = /\b(christmas|xmas|nutcracker|santa|advent)\b/i;
+
+/**
+ * **Whether an adventure belongs on My Christmas plans.** Every adventure of
+ * kind `christmas`, and a day, weekend or trip the person called Christmas —
+ * Go Have a Day's "Save as an adventure" used to save every day as kind `day`,
+ * so Christmas days built there never reached this list. Which of them are the
+ * person's own is not decided here: the list is read with their own session.
+ */
+export const isChristmasPlan = (a: Pick<AdventureSummary, "kind" | "title">) =>
+  a.kind === "christmas" ||
+  (PLANNING.has(a.kind) && CHRISTMAS_NAMED.test(a.title));
+
+/** Where an adventure opens: its own Experience's page, not a redirect. */
+export const adventureHref = (a: Pick<AdventureSummary, "kind" | "id">) =>
+  `${a.kind === "christmas" ? "/christmas/adventure" : "/adventures"}/${encodeURIComponent(a.id)}`;
+
 const sameness = (a: AdventureSummary) =>
   [
     a.title.trim().toLowerCase().replace(/\s+/g, " "),

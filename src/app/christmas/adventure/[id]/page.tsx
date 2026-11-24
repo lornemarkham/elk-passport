@@ -218,14 +218,8 @@ export default async function ChristmasAdventurePage({
     const label = atlasNames[i.atlasRef!] ?? e?.title;
     return label ? [{ id: i.atlasRef!, label, kind: e?.kind ?? "Place" }] : [];
   });
-  const againHref = `/christmas/plan?${new URLSearchParams({
-    with: ordered
-      .map((i) => i.atlasRef!)
-      .slice(0, 12)
-      .join(","),
-    ...(view.destinationTownId ? { at: view.destinationTownId } : {}),
-    name: `${view.title} — again`,
-  }).toString()}`;
+  // Read against today's dates by the planner, not copied blindly.
+  const againHref = `/christmas/plan?again=${encodeURIComponent(view.id)}`;
   const tabs = [
     ["#plan", "The plan"],
     ["#people", "Who's coming"],
