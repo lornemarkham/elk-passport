@@ -78,6 +78,7 @@ export const TOWNS = [
   "armstrong",
   "lake-country",
   "kelowna",
+  "big-white",
 ] as const;
 export type TownId = (typeof TOWNS)[number];
 
@@ -89,6 +90,7 @@ export const TOWN_LABEL: Record<TownId, string> = {
   armstrong: "Armstrong",
   "lake-country": "Lake Country",
   kelowna: "Kelowna",
+  "big-white": "Big White",
 };
 
 /** Town centres, Discovery's own (`domain/environment/places.ts`). */
@@ -101,6 +103,9 @@ export const TOWN_AT: Record<TownId, LatLng> = {
   armstrong: { lat: 50.4483, lng: -119.196 },
   "lake-country": { lat: 50.0833, lng: -119.414 },
   kelowna: { lat: 49.8801, lng: -119.4436 },
+  // Big White village, Discovery's own point (`environment/places.ts`):
+  // a mountain 50 km from Kelowna is its own place (owner brief M1053).
+  "big-white": { lat: 49.7219, lng: -118.929 },
 };
 
 /** The box the map accepts pins in: the towns, with room around them. */

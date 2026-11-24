@@ -25,7 +25,14 @@ import type { Experience } from "@/domain/experience/types";
  */
 
 export type ThemeId =
-  "markets" | "lights" | "santa" | "festivals" | "shows" | "food" | "winter";
+  | "markets"
+  | "lights"
+  | "santa"
+  | "festivals"
+  | "shows"
+  | "food"
+  | "winter"
+  | "newyear";
 
 export interface ChristmasTheme {
   readonly id: ThemeId;
@@ -87,12 +94,12 @@ export const THEMES: readonly ChristmasTheme[] = [
   {
     id: "festivals",
     label: "Winter festivals",
-    line: "Villages, tree lightings and Christmas Eve celebrations.",
+    line: "Villages, tree lightings, fireworks and Christmas Eve celebrations.",
     emoji: "🎄",
     called:
-      /\b(festivals?|fest|village|celebrations?|tree lighting|carnival|parades?|christmas eve|no[eë]l|swissmas|light[- ]?ups?)\b/i,
+      /\b(festivals?|fest|village|celebrations?|tree lighting|carnival|parades?|christmas eve|no[eë]l|swissmas|light[- ]?ups?|fireworks?)\b/i,
     words:
-      /\b(christmas eve festival|christmas festival|holiday (celebration|kick-?off|festival)|festive village|tree lighting|winter ?(fest|festival|carnival)|swissmas|christmas (celebration|party))\b/i,
+      /\b(christmas eve festival|christmas festival|holiday (celebration|kick-?off|festival)|festive village|tree lighting|winter ?(fest|festival|carnival)|swissmas|christmas (celebration|party)|fireworks?|boxing day)\b/i,
   },
   {
     id: "shows",
@@ -124,7 +131,25 @@ export const THEMES: readonly ChristmasTheme[] = [
       /\b(ice skating|skating rinks?|ice rinks?|outdoor rinks?|public skat(e|ing)|skating|sleigh rides?|sledding|tobogg\w+)\b/i,
     seasonal: true,
   },
+  {
+    // Owner brief M1053 "Holiday Season 2026": New Year's Eve is a
+    // category of its own, and New Year's Day with it. Only an event held
+    // in the season counts (`inSeason`), so a Lunar New Year festival in
+    // February is not; "Happy New Year" on a menu is a greeting, not an event.
+    id: "newyear",
+    label: "New Year's Eve",
+    line: "Countdowns, fireworks, a party — and New Year's Day after.",
+    emoji: "🎆",
+    called:
+      /\b(new year['’]?s?|nye|countdown|ring in|polar bear|hogmanay|first night|levee|lev[ée]e)\b/i,
+    words:
+      /\b(new year['’]?s['’]? (eve|day)|new year['’]?s? (celebration|party|bash|concert|gala|countdown|levee|walk|swim|dip|plunge|skate|dance|dinner)|nye|ring in (the new year|20\d\d)|countdown to (midnight|20\d\d|the new year)|family countdown|noon countdown|first night|hogmanay|polar bear (swim|dip|plunge))\b/i,
+  },
 ];
+
+/** A new year that is not the one on December 31. */
+const OTHER_NEW_YEAR =
+  /\b(lunar|chinese|persian|jewish|rosh|vietnamese|tet|nowruz)\b[^.;]{0,20}new year/i;
 
 /**
  * Christmas the date, not a thing to do — removed from a sentence before it
@@ -185,13 +210,25 @@ const CHRISTMAS = /\b(christmas|xmas|festive|yuletide|santa)\b/i;
  * summer "holiday camp" or a Holiday Inn is not; the name may say it plainly,
  * the description only as one of these phrases.
  */
-const HOLIDAYS_NAMED = /\b(holidays?|new year'?s eve)\b/i;
+const HOLIDAYS_NAMED = /\b(holidays?|new year['’]?s eve)\b/i;
 const HOLIDAYS_SAID =
   /\b(the holiday season|the holidays|holiday spirit|holiday cheer|holiday (rail jam|tour|show|concert|party|market|celebration)s?)\b/i;
 const NOT_THE_HOLIDAYS = [
   /\bholiday (inn|park|rv)\b/gi,
   /\b(closed|open|hours?)\b[^.;:]{0,30}\b(the )?holidays?\b/gi,
 ];
+
+/**
+ * New Year's is the night it is, not a word on a menu: an event counts only
+ * when it is held in the season, anything else only where its own name or
+ * listed type says it — and never a Lunar or other new year.
+ */
+function newYearsOwn(experience: Experience, evidence: Evidence): boolean {
+  if (OTHER_NEW_YEAR.test(`${experience.title} ${evidence.quote}`))
+    return false;
+  if (experience.kind === "Event") return inSeason(experience);
+  return evidence.field === "name" || evidence.field === "subtype";
+}
 
 /** November to Epiphany, by the event's own start date. */
 function inSeason(experience: Experience): boolean {
@@ -346,6 +383,7 @@ export function readChristmas(experience: Experience): ChristmasReading | null {
     const evidence = found.get(t.id);
     if (!evidence) return false;
     if (t.id === "lights" && NOT_A_DISPLAY.test(experience.title)) return false;
+    if (t.id === "newyear" && !newYearsOwn(experience, evidence)) return false;
     return IDENTITY_FIELDS.has(evidence.field) || t.called.test(calledAs);
   }).map((t) => t.id);
   if (themes.length === 0 && !christmasWord) return null;

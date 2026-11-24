@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 /**
- * **Christmas's own bar** — Discover · Lights Map · My Christmas List · Plan
- * My Route, and one deliberate way back to Go Have a Day. It sits under the
+ * **Christmas's own bar** — Discover · Advent · Lights Map · My Christmas
+ * List · Plan My Route, and one deliberate way back to Go Have a Day. It sits under the
  * global header on every Christmas page, so somebody who came for Christmas
  * stays among Christmas things.
  *
@@ -27,6 +27,12 @@ const DESTINATIONS: readonly {
     label: "Discover",
     id: "discover",
     match: (p) => p === "/christmas" || p.startsWith("/christmas/discover"),
+  },
+  {
+    href: "/christmas/advent",
+    label: "Advent",
+    id: "advent",
+    match: (p) => p.startsWith("/christmas/advent"),
   },
   {
     href: "/christmas/lights",

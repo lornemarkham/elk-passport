@@ -5,7 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ExperienceLocation } from "@/components/location/ExperienceLocation";
 import { usePendingRegion } from "@/components/loading/Pending";
 import { DISTANCES } from "@/domain/christmas/discover";
-import { WHEN_CHOICES, type WhenChoice } from "@/domain/christmas/when";
+import {
+  WHEN_CHOICES,
+  whenChoicesFor,
+  type WhenChoice,
+} from "@/domain/christmas/when";
 import { rememberDistance } from "./RememberDistance";
 
 const cell =
@@ -94,7 +98,11 @@ export function DiscoverControls({
             className={select}
             data-testid="when-select"
           >
-            {WHEN_CHOICES.map((c) => (
+            {WHEN_CHOICES.filter(
+              (c) =>
+                c.value === current ||
+                whenChoicesFor(today).some((o) => o.value === c.value),
+            ).map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>

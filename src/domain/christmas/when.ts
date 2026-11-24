@@ -252,7 +252,7 @@ export function season(today: string): {
  * about tomorrow night — and the page can say _Tonight_ rather than a bare
  * date nobody remembers choosing.
  */
-export type WhenChoice = "tonight" | "tomorrow" | "weekend";
+export type WhenChoice = "tonight" | "tomorrow" | "weekend" | "nye" | "nyd";
 
 export const WHEN_CHOICES: readonly {
   readonly value: WhenChoice;
@@ -261,10 +261,45 @@ export const WHEN_CHOICES: readonly {
   { value: "tonight", label: "Tonight" },
   { value: "tomorrow", label: "Tomorrow" },
   { value: "weekend", label: "This weekend" },
+  // Owner brief M1053 "Holiday Season 2026": New Year's Eve is said beside
+  // tonight and the weekend, and New Year's Day with it.
+  { value: "nye", label: "New Year's Eve" },
+  { value: "nyd", label: "New Year's Day" },
 ];
 
 export const isWhenChoice = (v: unknown): v is WhenChoice =>
   WHEN_CHOICES.some((c) => c.value === v);
+
+/**
+ * **The New Year's Eve and Day this season is heading for**: December 31 of
+ * this year, until New Year's Day has been — so in the first days of
+ * January it is the one just gone (`newYearGone`), never next year's.
+ */
+export function newYear(today: string): {
+  readonly eve: string;
+  readonly day: string;
+} {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const eveYear = month === 1 ? year - 1 : year;
+  return { eve: `${eveYear}-12-31`, day: `${eveYear + 1}-01-01` };
+}
+
+/** New Year's Day is over: the presets for it are no longer offered. */
+export const newYearGone = (today: string) => today > newYear(today).day;
+
+/**
+ * The presets worth offering today: New Year's Eve and Day only while they
+ * are still to come (or are today), so nobody picks a night that has gone.
+ */
+export function whenChoicesFor(today: string): typeof WHEN_CHOICES {
+  const { eve, day } = newYear(today);
+  return WHEN_CHOICES.filter(
+    (c) =>
+      (c.value !== "nye" || today <= eve) &&
+      (c.value !== "nyd" || today <= day),
+  );
+}
 
 const weekday = (day: string) => new Date(`${day}T12:00:00Z`).getUTCDay();
 
@@ -285,6 +320,14 @@ export function presetDates(
       if (d === 0) return { from: today, to: today };
       const sat = addDays(today, 6 - d);
       return { from: sat, to: addDays(sat, 1) };
+    }
+    case "nye": {
+      const { eve } = newYear(today);
+      return { from: eve, to: eve };
+    }
+    case "nyd": {
+      const { day } = newYear(today);
+      return { from: day, to: day };
     }
   }
 }
@@ -318,6 +361,8 @@ export function whenLabel(
   if (from === to) {
     if (from === today) return "Tonight";
     if (from === addDays(today, 1)) return "Tomorrow";
+    if (from === newYear(today).eve) return "New Year's Eve";
+    if (from === newYear(today).day) return "New Year's Day";
     return shortDay(from);
   }
   return `${shortDay(from)} – ${shortDay(to)}`;
