@@ -28,14 +28,21 @@ import {
 } from "@/lib/data/activeBoardStorage";
 
 /**
- * **Two things a Christmas card can do, and they are different.**
+ * **One Save on a Christmas card, over two stores that already existed.**
  *
- * - **Save** puts it on the person's Saved — the one collection Passport has
+ * - The **board** is the person's Saved — the one collection Passport has
  *   (Atlas board, `boards-repo`), resolved exactly as `SaveButton` and
  *   Discovery resolve it. Christmas keeps no list of its own.
- * - **Pick for a plan** is a selection for the next step, like ticking cards
- *   on Saved's _Plan with these_. It lives on this device only (never sent anywhere until it is made into a plan) and leaves as
- *   `?with=` on the way into the planner.
+ * - The **pick** is a selection for the next step, like ticking cards on
+ *   Saved's _Plan with these_. It lives on this device only (never sent
+ *   anywhere until it is made into a plan) and leaves as `?with=` on the way
+ *   into the planner.
+ *
+ * Card buttons used to offer them separately (Save, Add to My Christmas
+ * List). `toggleKeep` is the one Save: it writes both, a thing counts as
+ * saved if _either_ holds it (so nothing saved or added before is lost), and
+ * removing takes it out of both. Signed out, it is kept on this device and
+ * says so. `toggleSave` and `togglePick` remain for the list page.
  */
 
 interface PicksValue {
@@ -44,7 +51,11 @@ interface PicksValue {
   readonly clearPicks: () => void;
   readonly saved: ReadonlySet<string>;
   readonly saving: ReadonlySet<string>;
-  readonly toggleSave: (id: string) => Promise<void>;
+  readonly toggleSave: (id: string, onDevice?: boolean) => Promise<void>;
+  /** Held by Saved or by this device's list — the one "Saved" a card shows. */
+  readonly isKept: (id: string) => boolean;
+  /** The one Save: add to both, or remove from both. */
+  readonly toggleKeep: (id: string, name?: AddedName) => Promise<void>;
 }
 
 const Ctx = createContext<PicksValue | null>(null);
@@ -115,7 +126,7 @@ export function PicksProvider({
   );
 
   const toggleSave = useCallback(
-    async (id: string) => {
+    async (id: string, onDevice = false) => {
       setSaving((s) => new Set(s).add(id));
       try {
         let target = boardId;
@@ -135,12 +146,18 @@ export function PicksProvider({
         } else {
           await saveExperienceToBoard(target, id);
           setSaved((s) => new Set(s).add(id));
-          toast.success("Saved — it's waiting on your Saved page.");
+          toast.success(
+            onDevice
+              ? "Saved to My Christmas List."
+              : "Saved — it's waiting on your Saved page.",
+          );
         }
       } catch (error) {
         if (isSignedOut(error)) {
-          toast("Sign in to keep this", {
-            description: "Your saved places wait for you on any device.",
+          toast(onDevice ? "Saved on this phone" : "Sign in to keep this", {
+            description: onDevice
+              ? "Sign in to keep it on every device."
+              : "Your saved places wait for you on any device.",
             action: {
               label: "Sign in",
               onClick: () => {
@@ -162,6 +179,35 @@ export function PicksProvider({
     [boardId, saved],
   );
 
+  const isKept = useCallback(
+    (id: string) => picked.includes(id) || saved.has(id),
+    [picked, saved],
+  );
+
+  const toggleKeep = useCallback(
+    async (id: string, name?: AddedName) => {
+      if (picked.includes(id) || saved.has(id)) {
+        if (picked.includes(id)) togglePick(id);
+        if (saved.has(id)) await toggleSave(id);
+        toast("Removed from My Christmas List.");
+        return;
+      }
+      togglePick(id, name);
+      if (signedIn) await toggleSave(id, true);
+      else
+        toast("Saved on this phone", {
+          description: "Sign in to keep it on every device.",
+          action: {
+            label: "Sign in",
+            onClick: () => {
+              window.location.href = `/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            },
+          },
+        });
+    },
+    [picked, saved, signedIn, togglePick, toggleSave],
+  );
+
   const value = useMemo(
     () => ({
       picked,
@@ -170,8 +216,19 @@ export function PicksProvider({
       saved,
       saving,
       toggleSave,
+      isKept,
+      toggleKeep,
     }),
-    [picked, setPicked, togglePick, saved, saving, toggleSave],
+    [
+      picked,
+      setPicked,
+      togglePick,
+      saved,
+      saving,
+      toggleSave,
+      isKept,
+      toggleKeep,
+    ],
   );
 
   return (

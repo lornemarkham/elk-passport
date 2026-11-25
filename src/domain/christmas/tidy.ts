@@ -21,3 +21,44 @@ export function tidyWhere(line: string): string {
     .filter(Boolean)
     .join(" · ");
 }
+
+/**
+ * **Say each place once.** "Okanagan Park · Vernon" beside a stated address
+ * that already ends "…, Vernon" repeats the town; a card that says it twice
+ * reads as noise. A part is dropped when another part already contains it
+ * (case-insensitive), and a comma segment is dropped when an earlier segment
+ * or part says the same thing. Nothing is added.
+ */
+export function distinctWhere(line: string): string {
+  const seen: string[] = [];
+  const said = (text: string) =>
+    seen.some((s) => s.includes(text.toLowerCase()));
+  const parts = line
+    .split(" · ")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  // A part another, longer part already contains is said twice.
+  const keep = parts.filter(
+    (part, i) =>
+      !parts.some(
+        (other, j) =>
+          j !== i &&
+          other.length > part.length &&
+          other.toLowerCase().includes(part.toLowerCase()),
+      ),
+  );
+  return keep
+    .map((part) =>
+      part
+        .split(/,\s*/)
+        .filter((segment) => {
+          const lower = segment.toLowerCase();
+          if (!lower || said(lower)) return false;
+          seen.push(lower);
+          return true;
+        })
+        .join(", "),
+    )
+    .filter(Boolean)
+    .join(" · ");
+}

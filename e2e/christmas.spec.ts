@@ -257,7 +257,7 @@ test("an event and a light display go into one Christmas day", async ({
   if (WITH_ATLAS) {
     await page
       .getByTestId("near-finds")
-      .getByTestId("pick-find")
+      .getByTestId("save-find")
       .first()
       .click();
     expected = 2;
@@ -562,7 +562,7 @@ test.describe("launch QA repair", () => {
     await expect(page.getByTestId("near-you")).toContainText("within 10 km");
   });
 
-  test("the add button says My Christmas List, and the list has its own door", async ({
+  test("the card says Save, and the list has its own door", async ({
     page,
   }) => {
     await page.goto("/christmas");
@@ -573,8 +573,8 @@ test.describe("launch QA repair", () => {
     );
     if (WITH_ATLAS) {
       await expect(
-        page.getByTestId("find-card").first().getByTestId("pick-find"),
-      ).toContainText("Add to My Christmas List");
+        page.getByTestId("find-card").first().getByTestId("save-find"),
+      ).toContainText("Save");
     }
   });
 

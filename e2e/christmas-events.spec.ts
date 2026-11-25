@@ -66,7 +66,7 @@ test("Vernon: the new events are cards, with when, where, what and how to get th
   );
   await expect(frostival.getByTestId("find-details")).toHaveAttribute(
     "href",
-    "/passport/1c99bcd7-3ff4-45ea-b8f9-e7ed67f177aa",
+    "/christmas/event/1c99bcd7-3ff4-45ea-b8f9-e7ed67f177aa",
   );
   const shown = await cards(page).count();
   test.info().annotations.push({

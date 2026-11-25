@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tidyWhere } from "./tidy";
+import { distinctWhere, tidyWhere } from "./tidy";
 
 describe("tidyWhere", () => {
   it("keeps the organiser's address and drops the geocoder's notes", () => {
@@ -18,5 +18,18 @@ describe("tidyWhere", () => {
     expect(tidyWhere("12 Main St (bc-address-geocoder: score 90)")).toBe(
       "12 Main St",
     );
+  });
+});
+
+describe("distinctWhere", () => {
+  it("says a town once", () => {
+    expect(distinctWhere("Okanagan Park · Vernon · 2901 35 Ave, Vernon")).toBe(
+      "Okanagan Park · 2901 35 Ave, Vernon",
+    );
+    expect(distinctWhere("SilverStar Village · Vernon")).toBe(
+      "SilverStar Village · Vernon",
+    );
+    expect(distinctWhere("Vernon · Vernon")).toBe("Vernon");
+    expect(distinctWhere("")).toBe("");
   });
 });

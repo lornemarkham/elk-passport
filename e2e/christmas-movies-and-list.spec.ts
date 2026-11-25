@@ -64,9 +64,9 @@ test("My Christmas List names what was added on this phone, and lets it go", asy
 }) => {
   test.skip(!WITH_ATLAS, "needs the Atlas stand-in");
   await page.goto("/christmas?at=vernon");
-  const card = page.locator("article:has([data-testid=pick-find])").first();
+  const card = page.locator("article:has([data-testid=save-find])").first();
   const title = (await card.locator("h3").innerText()).trim();
-  await card.getByTestId("pick-find").click();
+  await card.getByTestId("save-find").click();
   await page.goto("/christmas/list");
   const added = page.getByTestId("list-added-item");
   await expect(added).toHaveCount(1);
