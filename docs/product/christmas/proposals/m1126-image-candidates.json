@@ -1,0 +1,82 @@
+{
+  "for": "Atlas curate-media (M1118 route): attach only after the page is a held source for the event; licence/credit per ADR 126 once accepted",
+  "researched": "2026-11-25, M1126; every URL fetched 200 and decoded the same day",
+  "candidates": [
+    {
+      "atlasId": "1c99bcd7",
+      "event": "Frostival 2026 Downtown Vernon",
+      "image": "https://www.tourismvernon.com/sites/default/files/2026-10/Frostival%202025%20Image%202.jpg",
+      "page": "https://www.tourismvernon.com/get-inspired/whats-on-in-november",
+      "form": "photograph",
+      "size": "1024x655",
+      "depicts": "Frostival 2025 on 30th Ave, Vernon (captioned by Tourism Vernon for Frostival 2026)",
+      "credit": "Tourism Vernon (no photographer stated)",
+      "terms": "none stated",
+      "confidence": "high"
+    },
+    {
+      "atlasId": "feda1667",
+      "event": "Christmas Market at Swan Lake Market",
+      "image": "https://swanlakemarket.com/wp-content/uploads/2026/10/Screenshot-2026-10-21-at-2.35.10-PM.png",
+      "page": "https://swanlakemarket.com/event/santa-photos-people-pets-welcome",
+      "form": "photograph collage with logo",
+      "size": "2014x984",
+      "depicts": "Santa, elf and fire pit at Swan Lake Market (past market, unlabelled)",
+      "credit": "Swan Lake Market",
+      "terms": "none stated",
+      "confidence": "medium"
+    },
+    {
+      "atlasId": "7ffb145c",
+      "event": "A 1940s Radio Christmas Carol",
+      "image": "https://www.ticketseller.ca/uploads/banners/_large/26-11-19-Radio-Christmas-Carol-Banner.jpg",
+      "page": "https://www.ticketseller.ca/tickets/event/a-1940s-radio-christmas-carol",
+      "form": "poster (ADR 074: does not lead)",
+      "size": "960x540",
+      "credit": "Powerhouse Theatre",
+      "terms": "none stated",
+      "confidence": "medium"
+    },
+    {
+      "atlasId": "d71b16fe",
+      "event": "The Celtic Tenors: A Celtic Christmas",
+      "image": "https://www.ticketseller.ca/uploads/banners/_large/26-11-28-Celtic-Tenors-Banner_260827_101232.jpg",
+      "page": "https://www.ticketseller.ca/tickets/event/the-celtic-tenors-vernon-2026",
+      "form": "poster with performer photo",
+      "size": "960x540",
+      "credit": "VPAC SPOTLIGHT / tour art",
+      "terms": "none stated",
+      "confidence": "medium"
+    },
+    {
+      "atlasId": "087d19a8",
+      "event": "Stars on Ice – 2026 Holiday Tour (Vernon)",
+      "image": "https://www.ticketseller.ca/uploads/banners/_large/26-12-18-Stars-On-Ice-Banner.jpg",
+      "page": "https://www.ticketseller.ca/tickets/event/stars-on-ice",
+      "form": "poster with skater photo",
+      "size": "960x540",
+      "credit": "Stars on Ice tour art",
+      "terms": "none stated",
+      "confidence": "medium"
+    },
+    {
+      "atlasId": "dc4d9825",
+      "event": "A Coast to Coast Cowboy Christmas 2",
+      "image": "https://www.ticketseller.ca/uploads/banners/_large/26-12-19-Cowboy-Christmas-Banner.jpg",
+      "page": "https://www.ticketseller.ca/tickets/event/cowboy-christmas-vernon-2026",
+      "form": "poster with artist photos",
+      "size": "960x540",
+      "credit": "Invictus / Children Believe / VPAC",
+      "terms": "none stated",
+      "confidence": "medium"
+    }
+  ],
+  "noneFound": {
+    "17f6cc23 Sleigh All Day": "Tourism Vernon default image only; organiser Polson Artisan Market has only Facebook",
+    "daac75c0 Métis Crafters Holiday Pop-Up Market": "no listing found; vernonmetis.ca 403",
+    "0d2e52bb Coldstream Community Christmas Light-Up": "coldstream.ca has only the 2025 page, logo only",
+    "3fbf923b Festive Saturday Science": "okscience.ca 403/429 to every request",
+    "22dadaa4 Shoparama Holiday Gift Sale": "organiser has no website",
+    "5fc1735b A Golden Celebration (VCMS gala)": "text-only graphic on ticketseller.ca"
+  }
+}
