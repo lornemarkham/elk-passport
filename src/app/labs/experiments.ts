@@ -1,5 +1,6 @@
 import { arrivalsEnabled } from "@/lib/conference-arrivals/enabled";
 import { conferenceSetup } from "@/lib/conference/config";
+import { dreamEnabled } from "@/lib/dream/flag";
 
 /**
  * **What Labs may honestly offer, decided from the environment it is running in.**
@@ -44,6 +45,7 @@ export function labExperiments(
     "Needs Atlas, which is not configured in this environment.";
 
   const conference = conferenceSetup(env, isDev);
+  const dream = atlas && dreamEnabled(env, isDev);
   const arrivals = arrivalsEnabled(env, isDev);
 
   return [
@@ -68,6 +70,20 @@ export function labExperiments(
       note: atlas
         ? "Pick Vancouver under “from where”. Distances and stated drive limits are Atlas's to check."
         : needsAtlas,
+    },
+    {
+      id: "dream",
+      emoji: "🌌",
+      kicker: "Dream",
+      title:
+        "Discover when you know. Dream when you don't. Go when you're ready.",
+      status: dream ? "playable" : "blocked",
+      href: dream ? "/labs/dream" : undefined,
+      note: dream
+        ? "Say it, speak it, or tap photographs of real places. Every answer is Atlas's; the reading is rules, not a model, so it costs nothing."
+        : atlas
+          ? "Closed here on purpose: GHAD_DREAM is not on in this environment."
+          : needsAtlas,
     },
     {
       id: "hockey-night",
