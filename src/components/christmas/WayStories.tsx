@@ -131,7 +131,7 @@ export function WayStories({
               </span>
               {photo && (
                 <span
-                  className="absolute top-2 right-3 text-[10px] text-white/55 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]"
+                  className="absolute top-2 right-3 max-w-[70%] truncate text-[10px] text-white/55 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]"
                   data-testid="photo-credit"
                 >
                   Photo: {photo.author}

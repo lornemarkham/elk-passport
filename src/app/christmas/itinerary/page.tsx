@@ -48,7 +48,7 @@ export default async function ChristmasItineraryPage({
       <main className={`${styles.page} min-h-screen pb-32`}>
         <PendingProvider>
           <header className={styles.night}>
-            <div className="mx-auto max-w-2xl px-4 pt-5 pb-6">
+            <div className="mx-auto max-w-2xl px-4 pt-5 pb-6 lg:max-w-6xl lg:px-6">
               <Suspense fallback={null}>
                 <ExperienceLocation
                   scope="christmas"
@@ -61,7 +61,7 @@ export default async function ChristmasItineraryPage({
             <div className={styles.lights} aria-hidden />
           </header>
           <PendingContent>
-            <div className="mx-auto max-w-2xl px-4">
+            <div className="mx-auto max-w-2xl px-4 lg:max-w-6xl lg:px-6">
               {pool.outage && (
                 <div className="mt-4">
                   <AtlasDown />

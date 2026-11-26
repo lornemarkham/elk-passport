@@ -572,6 +572,20 @@ function candidatesFor(need: Need, ctx: Context): Pool {
       /\b(breakfast|brunch|bakery|cafe|café|coffee)\b/i.test(name)
     )
       quality -= 1;
+    // Its own description says what it is for (M1128: "a spot for a
+    // leisurely breakfast" planned as a romantic dinner). A place that says
+    // breakfast, brunch or lunch and never dinner is a weak dinner, and no
+    // date's.
+    if (
+      need === "dinner" &&
+      /\b(breakfast|brunch|lunch|bakery|deli|café|cafe|coffee)\b/i.test(
+        e.description ?? "",
+      ) &&
+      !/\b(dinner|supper|evening)\b/i.test(e.description ?? "")
+    ) {
+      quality -= 2;
+      if (request.romantic || request.party === "couple") intent -= 1;
+    }
     const { free } = priceOf(e);
     if (request.budget !== undefined && free) quality += 1;
     if (

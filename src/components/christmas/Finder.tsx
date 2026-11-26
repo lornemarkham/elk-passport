@@ -325,9 +325,7 @@ export function Finder({
           kicker="This weekend"
           title="Something wonderful this weekend"
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {view.weekend.map(card)}
-          </div>
+          <Row cols="lg:grid-cols-4">{view.weekend.map(card)}</Row>
         </Section>
       )}
 
@@ -364,9 +362,7 @@ export function Finder({
           title="Seasonal favourites"
           line="Rinks, hills and places that are part of the season. Their days aren't listed, so check before you go."
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {view.seasonal.slice(0, FIRST).map(card)}
-          </div>
+          <Row>{view.seasonal.slice(0, FIRST).map(card)}</Row>
         </Section>
       )}
 
@@ -377,9 +373,7 @@ export function Finder({
           title="A little further afield"
           line={`Big Christmas outings beyond ${ask.km} km of ${townName}.`}
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {view.drive.map(card)}
-          </div>
+          <Row>{view.drive.map(card)}</Row>
         </Section>
       )}
 
@@ -431,6 +425,32 @@ export function Finder({
       {showLights && warm}
 
       <HowWeChose data={data} ask={ask} townName={townName} />
+    </div>
+  );
+}
+
+/**
+ * A shelf: a swipeable row on a phone (one card and the edge of the next,
+ * so it reads as more to see), a grid on anything wider.
+ */
+function Row({
+  children,
+  cols = "lg:grid-cols-3",
+  testId,
+}: {
+  readonly children: ReactNode;
+  readonly cols?: string;
+  readonly testId?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "-mx-4 flex snap-x snap-mandatory [scrollbar-width:none] gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:w-[84%] [&>*]:shrink-0 [&>*]:snap-start sm:[&>*]:w-auto",
+        cols,
+      )}
+      {...(testId ? { "data-testid": testId } : {})}
+    >
+      {children}
     </div>
   );
 }

@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { StopCard, TravelLine, type StopChange } from "./StopCard";
 import { LiveDay } from "./LiveDay";
 import { Moments } from "./Moments";
+import { PlanMap } from "./PlanMap";
 
 /**
  * **Screen two: your Christmas plan.** A clean, phone-first itinerary —
@@ -173,266 +174,279 @@ export function ItineraryView({
     );
 
   return (
-    <div data-testid="itinerary">
-      <section className="-mt-2 rounded-[28px] bg-[#082319] p-5 text-white shadow-xl">
-        <p className="text-xs font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
-          Your Christmas plan
-        </p>
-        <h1
-          className="ghad-display mt-2 text-[2.2rem] leading-[0.95] font-extrabold tracking-[-0.03em] text-balance uppercase"
-          data-testid="itinerary-title"
-        >
-          {itinerary.title}
-        </h1>
-        <p className="mt-2 text-sm text-white/75">“{say}”</p>
-        <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          <Fact
-            icon={<CalendarDays className="h-4 w-4" />}
-            label="Date"
-            value={itinerary.dayLabel}
-            testid="itinerary-date"
-          />
-          <Fact
-            icon={<Clock className="h-4 w-4" />}
-            label="Time"
-            value={
-              itinerary.start !== undefined && itinerary.end !== undefined
-                ? `${clockText(itinerary.start)} – ${clockText(itinerary.end)} · ${durationText(itinerary.totalMinutes)}`
-                : "—"
-            }
-            testid="itinerary-duration"
-          />
-          <Fact
-            icon={<Car className="h-4 w-4" />}
-            label={itinerary.mode === "walk" ? "Walking" : "Driving"}
-            value={`${planned.length ? `${itinerary.km} km` : "—"} from ${itinerary.from.name}${itinerary.leaveAt !== undefined ? ` · leave ${clockText(itinerary.leaveAt)}` : ""}`}
-            testid="itinerary-distance"
-          />
-          <Fact
-            icon={<Users className="h-4 w-4" />}
-            label="Who"
-            value={itinerary.who ?? "Say who's coming in your words"}
-            testid="itinerary-who"
-          />
-        </dl>
-        {itinerary.budget && (
-          <p
-            className="mt-3 text-sm text-white/85"
-            data-testid="itinerary-budget"
+    <div
+      data-testid="itinerary"
+      className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:items-start lg:gap-8"
+    >
+      {/* Desktop: the timeline, with the map and the moments beside it
+          (owner brief M1128). A phone reads the same in one column. */}
+      <div className="min-w-0">
+        <section className="-mt-2 rounded-[28px] bg-[#082319] p-5 text-white shadow-xl">
+          <p className="text-xs font-bold tracking-[0.18em] text-[#ffd98a] uppercase">
+            Your Christmas plan
+          </p>
+          <h1
+            className="ghad-display mt-2 text-[2.2rem] leading-[0.95] font-extrabold tracking-[-0.03em] text-balance uppercase"
+            data-testid="itinerary-title"
           >
-            💰 {itinerary.budget}
-          </p>
-        )}
-        {itinerary.homeBy && (
-          <p
-            className="mt-2 text-sm text-[#ffd98a]"
-            data-testid="itinerary-home-by"
-          >
-            🏠 {itinerary.homeBy}
-          </p>
-        )}
-        {itinerary.access && (
-          <p
-            className="mt-2 text-sm text-white/85"
-            data-testid="itinerary-access"
-          >
-            ♿ {itinerary.access}
-          </p>
-        )}
-        <p className="mt-3 text-sm font-semibold" data-testid="itinerary-count">
-          {itinerary.unresolved > 0
-            ? `${itinerary.unresolved === 1 ? "One part" : `${itinerary.unresolved} parts`} without a real place yet — just below`
-            : "Everything you asked for, planned"}
-        </p>
-      </section>
-
-      {itinerary.question && (
-        <section
-          className="mt-4 rounded-[22px] bg-white p-4 ring-2 ring-[#ffd98a]"
-          data-testid="itinerary-question"
-        >
-          <p className="font-extrabold">
-            {itinerary.question.ask}{" "}
-            <span className="font-normal text-[var(--gh-ink-soft)]">
-              Planned for {itinerary.dayLabel} until you say.
-            </span>
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {itinerary.question.options.map((o) => (
-              <Link
-                key={o.day}
-                href={href({ ...edits, day: o.day })}
-                className={cn(
-                  "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold ring-1",
-                  o.day === itinerary.day
-                    ? "bg-[#0f3b2b] text-white ring-[#0f3b2b]"
-                    : "bg-white ring-black/15",
-                )}
-                data-testid="question-day"
-              >
-                {o.label}
-              </Link>
-            ))}
-            <Form
-              action="/christmas/itinerary"
-              className="inline-flex items-center gap-1"
+            {itinerary.title}
+          </h1>
+          <p className="mt-2 text-sm text-white/75">“{say}”</p>
+          <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+            <Fact
+              icon={<CalendarDays className="h-4 w-4" />}
+              label="Date"
+              value={itinerary.dayLabel}
+              testid="itinerary-date"
+            />
+            <Fact
+              icon={<Clock className="h-4 w-4" />}
+              label="Time"
+              value={
+                itinerary.start !== undefined && itinerary.end !== undefined
+                  ? `${clockText(itinerary.start)} – ${clockText(itinerary.end)} · ${durationText(itinerary.totalMinutes)}`
+                  : "—"
+              }
+              testid="itinerary-duration"
+            />
+            <Fact
+              icon={<Car className="h-4 w-4" />}
+              label={itinerary.mode === "walk" ? "Walking" : "Driving"}
+              value={`${planned.length ? `${itinerary.km} km` : "—"} from ${itinerary.from.name}${itinerary.leaveAt !== undefined ? ` · leave ${clockText(itinerary.leaveAt)}` : ""}`}
+              testid="itinerary-distance"
+            />
+            <Fact
+              icon={<Users className="h-4 w-4" />}
+              label="Who"
+              value={itinerary.who ?? "Say who's coming in your words"}
+              testid="itinerary-who"
+            />
+          </dl>
+          {itinerary.budget && (
+            <p
+              className="mt-3 text-sm text-white/85"
+              data-testid="itinerary-budget"
             >
-              {Object.entries({ ...query, ...writeEdits(edits) })
-                .filter(([k]) => k !== "day")
-                .map(([k, v]) => (
-                  <input key={k} type="hidden" name={k} value={v} />
-                ))}
-              <input
-                type="date"
-                name="day"
-                aria-label="Pick a date"
-                className="min-h-11 rounded-full border-2 border-black/10 px-3 text-sm"
-                onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              />
-            </Form>
-          </div>
+              💰 {itinerary.budget}
+            </p>
+          )}
+          {itinerary.homeBy && (
+            <p
+              className="mt-2 text-sm text-[#ffd98a]"
+              data-testid="itinerary-home-by"
+            >
+              🏠 {itinerary.homeBy}
+            </p>
+          )}
+          {itinerary.access && (
+            <p
+              className="mt-2 text-sm text-white/85"
+              data-testid="itinerary-access"
+            >
+              ♿ {itinerary.access}
+            </p>
+          )}
+          <p
+            className="mt-3 text-sm font-semibold"
+            data-testid="itinerary-count"
+          >
+            {itinerary.unresolved > 0
+              ? `${itinerary.unresolved === 1 ? "One part" : `${itinerary.unresolved} parts`} without a real place yet — just below`
+              : "Everything you asked for, planned"}
+          </p>
         </section>
-      )}
 
-      {!itinerary.question && (
-        <Form
-          action="/christmas/itinerary"
-          className="mt-4 flex flex-wrap items-center gap-2 rounded-[22px] bg-white p-3 ring-1 ring-black/10"
-          data-testid="itinerary-day"
-        >
-          {Object.entries({ ...query, ...writeEdits(edits) })
-            .filter(([k]) => k !== "day")
-            .map(([k, v]) => (
-              <input key={k} type="hidden" name={k} value={v} />
-            ))}
-          <label htmlFor="plan-day" className="text-sm font-bold">
-            Planned for {itinerary.dayLabel}
-          </label>
-          <input
-            id="plan-day"
-            type="date"
-            name="day"
-            defaultValue={itinerary.day}
-            className="min-h-11 rounded-full border-2 border-black/10 px-3 text-sm"
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-          />
-        </Form>
-      )}
-
-      <ol className="mt-5 space-y-1" data-testid="itinerary-stops">
-        {said.map((stop, i) => (
-          <li key={stop.need}>
-            {stop.travel && i > 0 && (
-              <TravelLine
-                minutes={stop.travel.minutes}
-                km={stop.travel.km}
-                mode={itinerary.mode}
-              />
-            )}
-            <div className="flex items-baseline gap-3 pt-2 pb-2">
-              <span
-                className="ghad-display min-w-[5.2rem] text-lg font-extrabold text-[#b3242f]"
-                data-testid="stop-time"
+        {itinerary.question && (
+          <section
+            className="mt-4 rounded-[22px] bg-white p-4 ring-2 ring-[#ffd98a]"
+            data-testid="itinerary-question"
+          >
+            <p className="font-extrabold">
+              {itinerary.question.ask}{" "}
+              <span className="font-normal text-[var(--gh-ink-soft)]">
+                Planned for {itinerary.dayLabel} until you say.
+              </span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {itinerary.question.options.map((o) => (
+                <Link
+                  key={o.day}
+                  href={href({ ...edits, day: o.day })}
+                  className={cn(
+                    "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold ring-1",
+                    o.day === itinerary.day
+                      ? "bg-[#0f3b2b] text-white ring-[#0f3b2b]"
+                      : "bg-white ring-black/15",
+                  )}
+                  data-testid="question-day"
+                >
+                  {o.label}
+                </Link>
+              ))}
+              <Form
+                action="/christmas/itinerary"
+                className="inline-flex items-center gap-1"
               >
-                {stop.time !== undefined
-                  ? `${stop.timeIs === "about" ? "~" : ""}${clockText(stop.time)}`
-                  : "—"}
-              </span>
-              <span className="text-base font-extrabold tracking-wide uppercase">
-                {stop.label}
-              </span>
+                {Object.entries({ ...query, ...writeEdits(edits) })
+                  .filter(([k]) => k !== "day")
+                  .map(([k, v]) => (
+                    <input key={k} type="hidden" name={k} value={v} />
+                  ))}
+                <input
+                  type="date"
+                  name="day"
+                  aria-label="Pick a date"
+                  className="min-h-11 rounded-full border-2 border-black/10 px-3 text-sm"
+                  onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                />
+              </Form>
             </div>
-            <StopCard
-              stop={stop}
-              editing={editing}
-              hrefFor={hrefFor(stop.need)}
-              {...(stop.need === "lights" && stopTour(itinerary, stop)
-                ? { tour: stopTour(itinerary, stop)! }
-                : {})}
-            />
-          </li>
-        ))}
-      </ol>
+          </section>
+        )}
 
-      {quiet.length > 0 && (
-        <p
-          className="mt-4 rounded-[18px] bg-white/70 p-3 text-sm text-[var(--gh-ink-soft)]"
-          data-testid="itinerary-also"
-        >
-          Passport also looked for{" "}
-          {quiet.map((s, i) => (
-            <span key={s.need}>
-              {i > 0 ? (i === quiet.length - 1 ? " and " : ", ") : ""}
-              <strong>{s.label.toLowerCase()}</strong>
-              {s.tryDay ? (
-                <>
-                  {" "}
-                  (nothing confirmed that day —{" "}
-                  <Link
-                    href={hrefFor(s.need)({ kind: "day", day: s.tryDay.day })}
-                    className="underline"
-                  >
-                    try {s.tryDay.label}
-                  </Link>
-                  )
-                </>
-              ) : (
-                " (nothing confirmed near you)"
-              )}
-            </span>
-          ))}
-          .
-        </p>
-      )}
-
-      {(editing || planned.length === 0) && (
-        <section
-          className="mt-6 rounded-[22px] bg-white p-4 ring-1 ring-black/5"
-          data-testid="add-stop"
-        >
-          <p className="flex items-center gap-2 font-extrabold">
-            <Plus className="h-4 w-4" aria-hidden /> Add a stop
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {canAdd.map((need) => (
-              <Link
-                key={need}
-                href={addHref(need)}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#f6f1e7] px-4 text-sm font-bold hover:bg-[#ebe1cd]"
-                data-testid={`add-${need}`}
-              >
-                <span aria-hidden>{NEED_EMOJI[need]}</span>
-                {NEED_LABEL[need]}
-              </Link>
-            ))}
-          </div>
-          <Form action="/christmas/itinerary" className="mt-4 flex gap-2">
-            {query.at && <input type="hidden" name="at" value={query.at} />}
+        {!itinerary.question && (
+          <Form
+            action="/christmas/itinerary"
+            className="mt-4 flex flex-wrap items-center gap-2 rounded-[22px] bg-white p-3 ring-1 ring-black/10"
+            data-testid="itinerary-day"
+          >
+            {Object.entries({ ...query, ...writeEdits(edits) })
+              .filter(([k]) => k !== "day")
+              .map(([k, v]) => (
+                <input key={k} type="hidden" name={k} value={v} />
+              ))}
+            <label htmlFor="plan-day" className="text-sm font-bold">
+              Planned for {itinerary.dayLabel}
+            </label>
             <input
-              name="say"
-              defaultValue={say}
-              aria-label="Change what you asked for"
-              className="min-h-12 w-full rounded-full border-2 border-black/10 px-4"
-              maxLength={240}
+              id="plan-day"
+              type="date"
+              name="day"
+              defaultValue={itinerary.day}
+              className="min-h-11 rounded-full border-2 border-black/10 px-3 text-sm"
+              onChange={(e) => e.currentTarget.form?.requestSubmit()}
             />
-            <SubmitButton
-              pending="Re-planning…"
-              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-[#0f3b2b] px-4 font-bold text-white"
-            >
-              Re-plan
-            </SubmitButton>
           </Form>
-        </section>
-      )}
+        )}
 
-      <Moments
-        party={party}
-        romantic={romantic}
-        needs={planned.map((s) => s.need)}
-        displays={
-          lightsStop?.displays ?? (lightsStop?.place ? [lightsStop.place] : [])
-        }
-      />
+        <ol className="mt-5 space-y-1" data-testid="itinerary-stops">
+          {said.map((stop, i) => (
+            <li key={stop.need}>
+              {stop.travel && i > 0 && (
+                <TravelLine
+                  minutes={stop.travel.minutes}
+                  km={stop.travel.km}
+                  mode={itinerary.mode}
+                />
+              )}
+              <div className="flex items-baseline gap-3 pt-2 pb-2">
+                <span
+                  className="ghad-display min-w-[5.2rem] text-lg font-extrabold text-[#b3242f]"
+                  data-testid="stop-time"
+                >
+                  {stop.time !== undefined
+                    ? `${stop.timeIs === "about" ? "~" : ""}${clockText(stop.time)}`
+                    : "—"}
+                </span>
+                <span className="text-base font-extrabold tracking-wide uppercase">
+                  {stop.label}
+                </span>
+              </div>
+              <StopCard
+                stop={stop}
+                editing={editing}
+                hrefFor={hrefFor(stop.need)}
+                {...(stop.need === "lights" && stopTour(itinerary, stop)
+                  ? { tour: stopTour(itinerary, stop)! }
+                  : {})}
+              />
+            </li>
+          ))}
+        </ol>
+
+        {quiet.length > 0 && (
+          <p
+            className="mt-4 rounded-[18px] bg-white/70 p-3 text-sm text-[var(--gh-ink-soft)]"
+            data-testid="itinerary-also"
+          >
+            Passport also looked for{" "}
+            {quiet.map((s, i) => (
+              <span key={s.need}>
+                {i > 0 ? (i === quiet.length - 1 ? " and " : ", ") : ""}
+                <strong>{s.label.toLowerCase()}</strong>
+                {s.tryDay ? (
+                  <>
+                    {" "}
+                    (nothing confirmed that day —{" "}
+                    <Link
+                      href={hrefFor(s.need)({ kind: "day", day: s.tryDay.day })}
+                      className="underline"
+                    >
+                      try {s.tryDay.label}
+                    </Link>
+                    )
+                  </>
+                ) : (
+                  " (nothing confirmed near you)"
+                )}
+              </span>
+            ))}
+            .
+          </p>
+        )}
+
+        {(editing || planned.length === 0) && (
+          <section
+            className="mt-6 rounded-[22px] bg-white p-4 ring-1 ring-black/5"
+            data-testid="add-stop"
+          >
+            <p className="flex items-center gap-2 font-extrabold">
+              <Plus className="h-4 w-4" aria-hidden /> Add a stop
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {canAdd.map((need) => (
+                <Link
+                  key={need}
+                  href={addHref(need)}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#f6f1e7] px-4 text-sm font-bold hover:bg-[#ebe1cd]"
+                  data-testid={`add-${need}`}
+                >
+                  <span aria-hidden>{NEED_EMOJI[need]}</span>
+                  {NEED_LABEL[need]}
+                </Link>
+              ))}
+            </div>
+            <Form action="/christmas/itinerary" className="mt-4 flex gap-2">
+              {query.at && <input type="hidden" name="at" value={query.at} />}
+              <input
+                name="say"
+                defaultValue={say}
+                aria-label="Change what you asked for"
+                className="min-h-12 w-full rounded-full border-2 border-black/10 px-4"
+                maxLength={240}
+              />
+              <SubmitButton
+                pending="Re-planning…"
+                className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-[#0f3b2b] px-4 font-bold text-white"
+              >
+                Re-plan
+              </SubmitButton>
+            </Form>
+          </section>
+        )}
+      </div>
+      <aside className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:-mt-2">
+        <PlanMap itinerary={itinerary} />
+        <Moments
+          party={party}
+          romantic={romantic}
+          needs={planned.map((s) => s.need)}
+          displays={
+            lightsStop?.displays ??
+            (lightsStop?.place ? [lightsStop.place] : [])
+          }
+        />
+      </aside>
 
       {note && (
         <p
