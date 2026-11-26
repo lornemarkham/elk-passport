@@ -279,3 +279,31 @@ export function around(
 /** Whether a town is one Passport can place (so "near you" means something). */
 export const knownTown = (id: string | undefined) =>
   Boolean(id && townById(id));
+
+/**
+ * **The front page's few strongest finds** (`NearYou`): `around`'s order,
+ * each find once, except that a year-long run does not lead (`longRun`) and,
+ * since mission 1126, a find Christmas can show a picture of comes before one
+ * it cannot — the same "pictured" step Christmas's own recommendation order
+ * takes (`byStrength`). Only the order changes: nothing here is near unless
+ * `around` placed it, and with too few pictured finds the rest are text cards.
+ */
+export function strongest(
+  sections: readonly AroundSection[],
+  n: number,
+  longRun: (f: Find) => boolean,
+): Find[] {
+  const seen = new Set<string>();
+  return sections
+    .flatMap((s) => s.finds)
+    .filter((f) => !seen.has(f.experience.id) && seen.add(f.experience.id))
+    .map((f, i) => ({ f, i }))
+    .sort(
+      (a, b) =>
+        Number(longRun(a.f)) - Number(longRun(b.f)) ||
+        Number(hasPicture(b.f)) - Number(hasPicture(a.f)) ||
+        a.i - b.i,
+    )
+    .map(({ f }) => f)
+    .slice(0, n);
+}

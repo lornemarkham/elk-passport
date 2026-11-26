@@ -444,3 +444,67 @@ describe("no nearer than the evidence", () => {
     ).toEqual(["market"]);
   });
 });
+
+describe("one card, the thing's own picture (M1126)", () => {
+  const photo = {
+    type: "image" as const,
+    src: "https://example.org/caravan.jpg",
+  };
+  it("borrows the twin listing's own photograph when the leading one has none", () => {
+    const finds = findsIn(
+      [
+        near("vernon", 0, {
+          id: "a",
+          title: "Caravan Farm Theatre Christmas Show",
+        }),
+        near("vernon", 1, {
+          id: "b",
+          title: "Caravan Farm Theatre Christmas Show",
+          heroMedia: photo,
+        }),
+      ],
+      TODAY,
+    );
+    const [card] = oneEach(finds);
+    expect(card!.experience.id).toBe("a");
+    expect(card!.experience.heroMedia?.src).toBe(photo.src);
+  });
+
+  it("never borrows a venue's photograph from the twin", () => {
+    const finds = findsIn(
+      [
+        near("vernon", 0, {
+          id: "a",
+          title: "Caravan Farm Theatre Christmas Show",
+        }),
+        near("vernon", 1, {
+          id: "b",
+          title: "Caravan Farm Theatre Christmas Show",
+          contextualMedia: {
+            heroUrl: "https://example.org/venue.jpg",
+            via: { id: "v", name: "A venue", relation: "venue" },
+          } as never,
+        }),
+      ],
+      TODAY,
+    );
+    expect(oneEach(finds)[0]!.experience.heroMedia).toBeUndefined();
+  });
+
+  it("does not take a picture from a same-named listing somewhere else", () => {
+    const finds = findsIn(
+      [
+        near("armstrong", 0, { id: "a", title: "Christmas Parade" }),
+        near("vancouver", 0, {
+          id: "c",
+          title: "Christmas Parade",
+          heroMedia: photo,
+        }),
+      ],
+      TODAY,
+    );
+    expect(
+      oneEach(finds).find((f) => f.experience.id === "a")!.experience.heroMedia,
+    ).toBeUndefined();
+  });
+});

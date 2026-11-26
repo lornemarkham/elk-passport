@@ -58,6 +58,7 @@ export function CardPhoto({
         alt={picture.label ? picture.alt || picture.label : picture.alt}
         title={picture.label}
         loading={priority ? "eager" : "lazy"}
+        decoding="async"
         onError={() => setBroken((prev) => new Set(prev).add(picture.src))}
         className="h-full w-full object-cover"
       />

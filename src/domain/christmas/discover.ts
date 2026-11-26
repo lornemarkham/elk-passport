@@ -1,4 +1,5 @@
 import type { Experience } from "@/domain/experience/types";
+import { christmasPictures, hasChristmasPicture } from "./pictures";
 import { townById, type DiscoveryTown } from "@/domain/discovery/towns";
 import { distanceTo } from "@/domain/discovery/proximity";
 import { excludesAge } from "@/domain/discovery/suitability";
@@ -463,9 +464,33 @@ export function oneEach(sorted: readonly Find[]): Find[] {
       return !at && !there;
     });
     if (i < 0) kept.push(f);
-    else kept[i] = { ...kept[i]!, others: (kept[i]!.others ?? 0) + 1 };
+    else
+      kept[i] = borrowPicture(
+        { ...kept[i]!, others: (kept[i]!.others ?? 0) + 1 },
+        f,
+      );
   }
   return kept;
+}
+
+/**
+ * **The card shows the thing's picture, whichever listing holds it**
+ * (mission 1126). Atlas keeps one Caravan Farm Theatre three times, and the
+ * listing that leads the shelf can be the one without a photograph while its
+ * twin has one. They are one thing by `oneEach`'s own rule, so the twin's own
+ * picture — never a venue's or a stand-in — is a picture of this thing.
+ */
+function borrowPicture(card: Find, twin: Find): Find {
+  if (hasChristmasPicture(card.experience)) return card;
+  const picture = christmasPictures(twin.experience)[0];
+  if (!picture) return card;
+  return {
+    ...card,
+    experience: {
+      ...card.experience,
+      heroMedia: { type: "image", src: picture.src, alt: picture.alt },
+    },
+  };
 }
 
 /**

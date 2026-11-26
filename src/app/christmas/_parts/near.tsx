@@ -5,7 +5,7 @@ import { AtlasDown } from "@/components/christmas/parts";
 import { townById } from "@/domain/discovery/towns";
 import { answer, writeAsk, type Ask } from "@/domain/christmas/discover";
 import { seasonsBest } from "@/domain/christmas/best";
-import { around } from "@/domain/christmas/around";
+import { around, strongest } from "@/domain/christmas/around";
 import { longRun } from "@/domain/christmas/ways";
 import type { PinView } from "@/domain/christmas/lights/model";
 import { christmasFinds } from "../_server/corpus";
@@ -45,15 +45,8 @@ export async function NearYou({
   const townName = town?.name.replace(/,\s*BC$/, "");
   const answered = answer(corpus.finds, ask);
   const sections = around(answered, today, lights.pins, ask.km);
-  // `around`'s order, except that a year-long "run" doesn't lead (`longRun`).
-  const finds = unique(
-    sections.flatMap((s) => s.finds),
-    (f) => f.experience.id,
-  )
-    .map((f, i) => ({ f, i }))
-    .sort((a, b) => Number(longRun(a.f)) - Number(longRun(b.f)) || a.i - b.i)
-    .map(({ f }) => f)
-    .slice(0, NEAR_FINDS);
+  // `around`'s order; a year-long "run" doesn't lead, a pictured find does.
+  const finds = strongest(sections, NEAR_FINDS, longRun);
   const pins = unique(
     sections.flatMap((s) => s.pins),
     (p) => p.id,
