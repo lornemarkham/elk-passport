@@ -196,6 +196,7 @@ export default async function ChristmasPage({
                         km={ask.km}
                         today={today}
                         label={whenLabel(ask, today)}
+                        {...(ask.at ? { at: ask.at } : {})}
                       />
                     </Suspense>
                   </div>

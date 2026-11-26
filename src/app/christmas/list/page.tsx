@@ -14,7 +14,7 @@ import { isChristmasPlan } from "@/domain/christmas/mine";
 import { savedChristmas } from "@/domain/christmas/saved";
 
 export const metadata: Metadata = {
-  title: "My Christmas List — Passport",
+  title: "My Christmas — Passport",
   description: "Your own Christmas list and plans. Only you can see it.",
   robots: { index: false, follow: false },
 };
@@ -51,11 +51,18 @@ export default async function MyChristmasListPage() {
           <header className={styles.night}>
             <div className="mx-auto max-w-6xl px-4 pt-6 pb-8 sm:px-6">
               <h1 className="ghad-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em] sm:text-6xl">
-                My Christmas List
+                My Christmas
               </h1>
               <p className="mt-2 text-lg text-white/85">
-                Only you can see this page.
+                What you&apos;ve kept and planned. Only you can see this page.
               </p>
+              <Link
+                href="/christmas/plan"
+                className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[#ffd98a] px-5 font-bold text-[#082319] hover:brightness-105"
+                data-testid="list-plan"
+              >
+                Plan a Christmas day or evening
+              </Link>
             </div>
             <div className={styles.lights} aria-hidden />
           </header>

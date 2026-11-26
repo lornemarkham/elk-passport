@@ -334,8 +334,8 @@ export function Finder({
       {view.around.length > 0 && (
         <Section
           id="near"
-          kicker={dated ? when : "Coming up"}
-          title={`Christmas around ${townName}`}
+          kicker={`Around ${townName}`}
+          title={dated ? `What's on ${said(when)}` : "Coming up"}
           count={view.around.length}
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

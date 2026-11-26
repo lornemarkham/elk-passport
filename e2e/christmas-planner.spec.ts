@@ -44,7 +44,8 @@ test("the front page keeps the sentence box beside the six ways, and real Christ
   );
   // The six ways took the quick starts' place (owner brief, 2026-11-17).
   await expect(page.getByTestId("ways").getByRole("link")).toHaveCount(6);
-  await expect(page.getByTestId("browse")).toBeVisible();
+  // Real Christmas is below them, on the same page (owner brief M1128).
+  await expect(page.getByTestId("discover")).toBeVisible();
   // Nothing sideways on a phone.
   const scroll = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
@@ -95,7 +96,7 @@ test("6 · what can't be confirmed is said, with the honest ways on", async ({
     "Bernie's",
   );
   await expect(page.getByTestId("itinerary-count")).toContainText(
-    "couldn't be confirmed",
+    "without a real place yet",
   );
   // Taking the nearest real option is a choice, said as further away.
   await movie.getByTestId("stop-take-nearest").click();

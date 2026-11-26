@@ -35,6 +35,7 @@ export function DiscoverControls({
   km,
   today,
   label: shown,
+  at,
 }: {
   readonly when?: WhenChoice;
   readonly from?: string;
@@ -43,6 +44,8 @@ export function DiscoverControls({
   readonly today: string;
   /** What the server says the days are: "Tonight", "Sat, Dec 5 – Sun, Dec 6". */
   readonly label: string;
+  /** The town the server rendered for, so the address is not rewritten (M760). */
+  readonly at?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -86,6 +89,7 @@ export function DiscoverControls({
           <ExperienceLocation
             scope="christmas"
             experience="Christmas"
+            {...(at ? { at } : {})}
             className="text-white"
           />
         </div>

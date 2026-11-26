@@ -26,17 +26,15 @@ test("the hero asks nothing, and the choices wait below it", async ({
   await expect(hearth.getByRole("link")).toHaveCount(0);
   await expect(hearth.locator("input, select, textarea")).toHaveCount(0);
   await expect(hearth.getByRole("button")).toHaveCount(2);
-  // Everything that used to be up here is kept, just below.
-  const ready = page.getByTestId("ready");
-  for (const id of [
-    "pill-advent",
-    "pill-new-year",
-    "entry-lights",
-    "entry-tonight",
-    "entry-plan",
-  ])
-    await expect(ready.getByTestId(id)).toBeAttached();
-  await expect(ready.getByTestId("location-change").first()).toBeAttached();
+  // What comes after the welcome (owner brief M1128): the ways in, then
+  // discovery with the one place, days and distance control; Advent and the
+  // lights are on the bar.
+  await expect(page.getByTestId("way-stories")).toBeAttached();
+  await expect(
+    page.getByTestId("discover").getByTestId("location-change").first(),
+  ).toBeAttached();
+  await expect(page.getByTestId("xmas-nav-advent")).toBeVisible();
+  await expect(page.getByTestId("xmas-nav-lights")).toBeVisible();
   // The sound is off until somebody asks for it.
   await expect(page.getByTestId("hearth-sound")).toHaveAttribute(
     "aria-pressed",

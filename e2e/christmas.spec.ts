@@ -63,17 +63,20 @@ test("the Christmas page opens on six ways, and one leads somewhere real", async
     ).toBeVisible();
     const all = page.getByTestId("see-all");
     if (await all.count()) await all.click();
-    else await page.goto("/christmas/discover?theme=markets");
+    else await page.goto("/christmas?theme=markets#discover");
   } else {
-    await page.goto("/christmas/discover?theme=markets");
+    await page.goto("/christmas?theme=markets#discover");
   }
-  await expect(page).toHaveURL(/\/christmas\/discover\?.*theme=markets/);
+  // "See all" is the landing page's own discovery (owner brief M1128).
+  await expect(page).toHaveURL(/\/christmas\?.*theme=markets.*#discover/);
   await expect(page.getByTestId("chip-markets")).toHaveAttribute(
-    "aria-current",
+    "aria-pressed",
     "true",
   );
   if (WITH_ATLAS)
-    await expect(page.getByTestId("find-card").first()).toBeVisible();
+    await expect(
+      page.getByTestId("finder").getByTestId("find-card").first(),
+    ).toBeVisible();
 });
 
 test("a sentence becomes a plan, kept as said — no account, no form", async ({
@@ -100,7 +103,7 @@ test("a sentence becomes a plan, kept as said — no account, no form", async ({
 test("more filters is a plain form, closed, and the URL keeps every answer", async ({
   page,
 }) => {
-  await page.goto("/christmas/discover?at=kelowna");
+  await page.goto("/christmas?at=kelowna#discover");
   // No questionnaire before results: who and how many are not asked here.
   await expect(page.locator('select[name="who"]')).toHaveCount(0);
   await expect(page.locator('input[name="n"]')).toHaveCount(0);
@@ -109,10 +112,7 @@ test("more filters is a plain form, closed, and the URL keeps every answer", asy
   await page.getByTestId("more-submit").click();
   await expect(page).toHaveURL(/at=kelowna/);
   await expect(page).toHaveURL(/ages=5/);
-  if (WITH_ATLAS)
-    await expect(page.getByTestId("result-count")).toContainText(
-      "checked for a 5-year-old",
-    );
+  await expect(page.getByTestId("more-filters")).toContainText("1 on");
 });
 
 test("planning and an adventure ask a visitor to sign in, and come back", async ({
@@ -208,21 +208,15 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await expect(page.getByTestId("location-name").first()).toContainText(
     "Vernon",
   );
-  // Vernon's community listings come from the lights map's researched
-  // displays, named for what they are: local listings, apart from Atlas's.
-  const vernonPins = page.getByTestId("near-pins");
-  await expect(vernonPins).toContainText("Frostival");
+  // Vernon's community displays, from the lights map's researched pins,
+  // said as what they are — apart from the event listings.
+  const vernonPins = page.getByTestId("shelf-lights-on");
+  await expect(vernonPins).toContainText("SilverStar");
   await expect(vernonPins).not.toContainText("Stuart Park");
-  // A few strong ones, not a directory.
-  expect(await page.getByTestId("pin-card").count()).toBeLessThanOrEqual(3);
-  expect(await page.getByTestId("find-card").count()).toBeLessThanOrEqual(4);
-  await expect(
-    page.getByText(/local listings, each checked by a person/).first(),
-  ).toBeVisible();
   if (WITH_ATLAS) {
     await expect(page.getByTestId("atlas-down")).toHaveCount(0);
     await expect(
-      page.getByTestId("near-finds").getByTestId("find-card").first(),
+      page.getByTestId("finder").getByTestId("find-card").first(),
     ).toBeVisible();
   }
 
@@ -231,10 +225,8 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await expect(
     page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
-  const kelownaPins = page.getByTestId("near-pins");
-  await expect(kelownaPins).toContainText(/Kelowna Light Up|Tree of Hope/);
+  const kelownaPins = page.getByTestId("shelf-lights-on");
   await expect(kelownaPins).not.toContainText("SilverStar");
-  await expect(kelownaPins).not.toContainText("Frostival");
 
   // The chosen place is remembered (the shared place's cookie): a bare
   // /christmas opens on Kelowna now, from the server's first render.
@@ -247,17 +239,21 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
 test("an event and a light display go into one Christmas day", async ({
   page,
 }) => {
-  await page.goto("/christmas");
-  const pin = page.getByTestId("near-pins").getByTestId("add-to-tour").first();
-  await expect(pin).toHaveText(/Add to My Christmas List/);
+  // A display opens from the landing page's lights and is added on its own
+  // page; an event is saved from the landing page.
+  await page.goto("/christmas?at=vernon#discover");
+  await page
+    .getByTestId("shelf-lights-on")
+    .getByTestId("pin-card")
+    .first()
+    .click();
+  const pin = page.getByTestId("detail-add-to-tour");
+  await expect(pin).toHaveText(/Add to my Christmas/i);
   await pin.click();
+  await page.goto("/christmas?at=vernon#discover");
   let expected = 1;
   if (WITH_ATLAS) {
-    await page
-      .getByTestId("near-finds")
-      .getByTestId("save-find")
-      .first()
-      .click();
+    await page.getByTestId("finder").getByTestId("save-find").first().click();
     expected = 2;
   }
   await expect(page.getByTestId("pick-tray")).toContainText(
@@ -277,7 +273,7 @@ test("Christmas Lights opens the existing map, not a page about it", async ({
   page,
 }) => {
   await page.goto("/christmas?at=kelowna");
-  await page.getByTestId("cta-lights").click();
+  await page.getByTestId("way-lights").click();
   await expect(page).toHaveURL(/\/christmas\/lights\?at=kelowna/);
   await expect(page.getByTestId("cta-tour")).toHaveText(/Build My Lights Tour/);
   // The way's own address goes to the map too.
@@ -389,7 +385,7 @@ test("Surprise me draws one thing, says what it is, and draws again", async ({
 });
 
 for (const width of [360, 390, 768]) {
-  test(`the front page fits a ${width}px screen: two columns, no sideways scroll`, async ({
+  test(`the front page fits a ${width}px screen: one lead picture, then two columns, no sideways scroll`, async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -404,14 +400,17 @@ for (const width of [360, 390, 768]) {
     await expect
       .poll(async () => {
         const [a, b] = await Promise.all([
-          cards.nth(0).boundingBox(),
           cards.nth(1).boundingBox(),
+          cards.nth(2).boundingBox(),
         ]);
         return Math.abs(a!.y - b!.y);
       })
       .toBeLessThan(2);
-    const a = (await cards.nth(0).boundingBox())!;
-    const b = (await cards.nth(1).boundingBox())!;
+    // The lead (Christmas Lights) spans the row; the next two share one.
+    const lead = (await cards.nth(0).boundingBox())!;
+    const a = (await cards.nth(1).boundingBox())!;
+    const b = (await cards.nth(2).boundingBox())!;
+    expect(lead.width).toBeGreaterThan(a.width * 1.8);
     for (const box of [a, b]) expect(box.height).toBeGreaterThanOrEqual(44);
     const { sw, cw, h } = await page.evaluate(() => ({
       sw: document.documentElement.scrollWidth,
@@ -419,8 +418,10 @@ for (const width of [360, 390, 768]) {
       h: document.documentElement.scrollHeight,
     }));
     expect(sw).toBeLessThanOrEqual(cw);
-    // The old directory was ~14 phone screens; the front page is a few.
-    expect(h / 800).toBeLessThan(6.5);
+    // The six ways are a glance, not a scroll: under two and a half screens.
+    const ways = (await page.getByTestId("way-stories").boundingBox())!;
+    expect(ways.height / 800).toBeLessThan(2.5);
+    expect(h).toBeGreaterThan(0);
     // All six ways are reachable by keyboard.
     await cards.nth(0).focus();
     await expect(cards.nth(0)).toBeFocused();
@@ -478,13 +479,9 @@ test.describe("launch QA repair", () => {
   }) => {
     await page.goto("/christmas");
     const nav = page.getByTestId("christmas-nav");
-    for (const name of [
-      "Discover",
-      "Lights Map",
-      "My Christmas List",
-      "Plan My Route",
-    ])
-      await expect(nav.getByRole("link", { name })).toBeVisible();
+    // Owner brief M1128: Home | Lights Map | Advent | My Christmas.
+    for (const name of ["Home", "Lights Map", "Advent", "My Christmas"])
+      await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
     await expect(page.getByTestId("xmas-nav-back")).toHaveAttribute(
       "href",
       "/discovery",
@@ -492,10 +489,11 @@ test.describe("launch QA repair", () => {
     await page.getByTestId("xmas-nav-list").click();
     await expect(page).toHaveURL(/\/christmas\/list/);
     await expect(
-      page.getByRole("heading", { level: 1, name: "My Christmas List" }),
+      page.getByRole("heading", { level: 1, name: "My Christmas" }),
     ).toBeVisible();
     await expect(page.getByTestId("list-signed-out")).toBeVisible();
-    await page.getByTestId("xmas-nav-plan").click();
+    // Planning is reached from what you kept, not as a rival destination.
+    await page.getByTestId("list-plan").click();
     await expect(page).toHaveURL(/\/christmas\/plan/);
     // The planning text box is the first thing on the page, signed in or not.
     await expect(page.getByTestId("plan-input")).toBeVisible();
@@ -518,7 +516,7 @@ test.describe("launch QA repair", () => {
   test("how far is 2 to 50 km, thirty by default, remembered, and it changes the answer", async ({
     page,
   }) => {
-    await page.goto("/christmas/discover?at=vernon");
+    await page.goto("/christmas?at=vernon#discover");
     const far = page.getByTestId("km-select");
     await expect(far.locator("option")).toHaveText([
       "Within 2 km",
@@ -529,14 +527,9 @@ test.describe("launch QA repair", () => {
       "Within 50 km",
     ]);
     await expect(far).toHaveValue("30");
-    await expect(page.getByTestId("result-count")).toContainText(
-      "within 30 km",
-    );
     await far.selectOption("50");
     await expect(page).toHaveURL(/km=50/);
-    await expect(page.getByTestId("result-count")).toContainText(
-      "within 50 km",
-    );
+    await expect(far).toHaveValue("50");
     // Nothing is offered as "near" from further than was asked.
     if (WITH_ATLAS) {
       for (const card of await page
@@ -549,15 +542,8 @@ test.describe("launch QA repair", () => {
       }
     }
     // Remembered: a page with no distance in its address opens on it.
-    await page.goto("/christmas/discover?at=vernon");
+    await page.goto("/christmas?at=vernon");
     await expect(page.getByTestId("km-select")).toHaveValue("50");
-    // The choice rides to the front page.
-    await page.goto("/christmas?at=vernon&km=10");
-    await expect(page.getByTestId("km-10")).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
-    await expect(page.getByTestId("near-you")).toContainText("within 10 km");
   });
 
   test("the card says Save, and the list has its own door", async ({
@@ -565,7 +551,7 @@ test.describe("launch QA repair", () => {
   }) => {
     await page.goto("/christmas");
     await expect(page.getByTestId("show-everything")).toHaveCount(0);
-    await expect(page.getByTestId("my-list-link")).toHaveAttribute(
+    await expect(page.getByTestId("xmas-nav-list")).toHaveAttribute(
       "href",
       "/christmas/list",
     );

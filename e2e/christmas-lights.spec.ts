@@ -49,7 +49,7 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
 }) => {
   const started = Date.now();
   await page.goto("/christmas");
-  await page.getByTestId("entry-lights").click();
+  await page.getByTestId("xmas-nav-lights").click();
   await expect(page).toHaveURL(/\/christmas\/lights(\?at=vernon)?$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "The Christmas Lights Map" }),
@@ -75,7 +75,7 @@ test("a visitor finds the lights, builds a tour, starts it, shares it and plays 
   await expect(page.getByTestId("lights-actions")).toBeVisible();
   await expect(page.getByTestId("to-discover")).toHaveAttribute(
     "href",
-    "/christmas/discover",
+    "/christmas#discover",
   );
   await expect(page.getByTestId("admin-link")).toHaveCount(0);
   await expect(page.getByTestId("pin-card")).toHaveCount(0);

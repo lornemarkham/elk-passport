@@ -151,10 +151,14 @@ for (const [label, viewport] of [
       expect(page.url()).not.toMatch(/at=/);
       await change(page, "kelowna", "kelowna");
       await expect(page).toHaveURL(/at=kelowna/);
-      await expect(page.getByTestId("cta-discover")).toContainText("Kelowna");
+      await expect(page.getByTestId("discover")).toContainText(
+        "Christmas around Kelowna",
+      );
       await change(page, "vancouver", "vancouver");
       await expect(page).toHaveURL(/at=vancouver/);
-      await expect(page.getByTestId("cta-discover")).toContainText("Vancouver");
+      await expect(page.getByTestId("discover")).toContainText(
+        "Christmas around Vancouver",
+      );
       // "Explore another destination" is only for Christmas.
       await page.getByTestId("location-change").first().click();
       await page.getByTestId("location-only-here").check();

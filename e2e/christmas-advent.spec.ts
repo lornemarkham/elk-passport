@@ -31,24 +31,14 @@ async function close(page: Page) {
   await expect(page.getByTestId("advent-reveal")).toHaveCount(0);
 }
 
-test("Christmas opens on the Advent calendar and New Year's Eve", async ({
+test("Advent is on Christmas's own bar, one tap from anywhere", async ({
   page,
 }) => {
+  // Owner brief M1128: Home | Lights Map | Advent | My Christmas. The hero
+  // asks nothing (M1127), and Advent no longer competes with it as a pill.
   await page.goto("/christmas?at=vernon");
-  // One link each, in the band just below the hero: the hero itself asks
-  // nothing (M1127, "Stay Awhile"; M1064 folded the duplicate cards into
-  // these pills).
-  await expect(page.getByTestId("pill-advent")).toContainText(
-    "Advent Adventure",
-  );
-  await expect(page.getByTestId("pill-advent")).not.toBeInViewport();
-  await page.getByTestId("pill-advent").scrollIntoViewIfNeeded();
-  await expect(page.getByTestId("pill-advent")).toBeInViewport();
-  await expect(page.getByTestId("pill-new-year")).toContainText(
-    "New Year's Eve",
-  );
-  await expect(page.getByTestId("xmas-nav-advent")).toBeVisible();
-  await page.getByTestId("pill-advent").click();
+  await expect(page.getByTestId("pill-advent")).toHaveCount(0);
+  await page.getByTestId("xmas-nav-advent").click();
   await expect(page).toHaveURL(/\/christmas\/advent/);
   await expect(page.getByTestId("advent-doors").locator("li")).toHaveCount(25);
   // A phone: the board fits, nothing scrolls sideways.
@@ -283,40 +273,35 @@ test.describe("on a day of December", () => {
 });
 
 test.describe("New Year's", () => {
-  test("New Year's Eve is a category of its own, said first", async ({
+  test("New Year's Eve is said when it is near, and never hidden from who asks", async ({
     page,
   }) => {
-    await page.goto("/christmas/discover?at=kelowna");
-    const chips = page.getByTestId("categories").getByRole("link");
-    await expect(chips.nth(1)).toHaveAttribute("data-testid", "chip-newyear");
-    await page.getByTestId("nye-banner").click();
-    await expect(page).toHaveURL(/theme=newyear/);
+    // Owner brief M1128: part of the holiday season, not a rival on every
+    // screen. In November its chip and banner are not on discovery…
+    await page.goto("/christmas?at=kelowna#discover");
+    await expect(page.getByTestId("nye-banner")).toHaveCount(0);
+    await expect(page.getByTestId("chip-newyear")).toHaveCount(0);
+    // …choosing its night under When brings it in.
+    await page.getByTestId("when-select").selectOption("nye");
     await expect(page).toHaveURL(/when=nye/);
     await expect(page.getByTestId("when-select")).toHaveValue("nye");
-    await expect(page.getByTestId("result-count")).toContainText(
-      "New Year's Eve",
-    );
-    if (WITH_ATLAS) {
-      const cards = page.getByTestId("shelf-near").getByTestId("find-card");
-      await expect(cards.first()).toBeVisible();
-      for (const card of await cards.all())
-        await expect(card).toContainText(/New Year|NYE|Ring in/i);
-    }
+    // In view now: offered with what it holds, or said to have none yet.
+    await expect(page.getByTestId("finder")).toContainText("New Year's Eve");
   });
 
   test("New Year's Day is one tap under When", async ({ page }) => {
-    await page.goto("/christmas/discover?at=kelowna");
+    await page.goto("/christmas?at=kelowna#discover");
     await page.getByTestId("when-select").selectOption("nyd");
     await expect(page).toHaveURL(/when=nyd/);
-    await expect(page.getByTestId("result-count")).toContainText(
-      "New Year's Day",
-    );
+    await expect(page.getByTestId("when-select")).toHaveValue("nyd");
   });
 });
 
 test("Big White is its own place, not Kelowna", async ({ page }) => {
-  await page.goto("/christmas/discover?at=big-white");
-  await expect(page.getByTestId("result-count")).toContainText("of Big White");
+  await page.goto("/christmas?at=big-white#discover");
+  await expect(page.getByTestId("discover")).toContainText(
+    "Christmas around Big White",
+  );
   await page.goto("/christmas/lights?at=big-white");
   await expect(page.locator("main")).toContainText("Big White");
 });

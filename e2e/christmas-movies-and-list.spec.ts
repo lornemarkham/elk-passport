@@ -45,17 +45,21 @@ test("movie night: who's watching, three picks, tonight's plan, a shareable link
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("Christmas names the season's best and reaches movies and Advent from the front", async ({
+test("Christmas says what each kind holds near here, and reaches movies from a way in", async ({
   page,
 }) => {
   test.skip(!WITH_ATLAS, "needs the Atlas stand-in");
-  await page.goto("/christmas?at=vernon");
-  await expect(page.getByTestId("pill-advent")).toBeAttached();
-  const best = page.getByTestId("seasons-best");
-  await expect(best).toBeVisible();
-  for (const id of ["lights", "santa", "markets", "shows", "festivals", "free"])
-    await expect(best.getByTestId(`best-${id}`)).toContainText(/within \d+ km/);
-  await best.getByTestId("best-movies").click();
+  // Owner brief M1128: the season's kinds are the discovery chips, each
+  // with how many there are; a kind with none is said, never hidden.
+  await page.goto("/christmas?at=vernon#discover");
+  const chips = page.getByTestId("categories");
+  await expect(chips.getByTestId("chip-all")).toContainText(/\d+/);
+  const said = await page.getByTestId("finder").innerText();
+  for (const label of ["Christmas markets", "Holiday lights", "Santa"])
+    expect(said).toContain(label);
+  await page.getByTestId("way-cozy").click();
+  await expect(page).toHaveURL(/\/christmas\/for\/cozy/);
+  await page.locator('a[href*="/christmas/movies"]').first().click();
   await expect(page).toHaveURL(/\/christmas\/movies/);
 });
 
