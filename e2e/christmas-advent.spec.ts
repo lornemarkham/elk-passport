@@ -35,11 +35,14 @@ test("Christmas opens on the Advent calendar and New Year's Eve", async ({
   page,
 }) => {
   await page.goto("/christmas?at=vernon");
-  // One link each, above the fold on a phone (M1064 folded the duplicate
-  // cards below the header into these pills).
+  // One link each, in the band just below the hero: the hero itself asks
+  // nothing (M1127, "Stay Awhile"; M1064 folded the duplicate cards into
+  // these pills).
   await expect(page.getByTestId("pill-advent")).toContainText(
     "Advent Adventure",
   );
+  await expect(page.getByTestId("pill-advent")).not.toBeInViewport();
+  await page.getByTestId("pill-advent").scrollIntoViewIfNeeded();
   await expect(page.getByTestId("pill-advent")).toBeInViewport();
   await expect(page.getByTestId("pill-new-year")).toContainText(
     "New Year's Eve",

@@ -1030,6 +1030,20 @@ Passport has no Canadian availability feed, and a night out goes to the
 planner's cinema stop. Things added to My Christmas List on a phone are named
 there and can be removed. One composition; it answers no open question below.
 
+_Christmas opens by the fire 2026-11-25_ (owner brief M1127 "GoHaveADay
+Christmas — Stay Awhile"; `docs/product/christmas/STAY-AWHILE.md`): the
+first screen of `/christmas` asks nothing. It is a room at night — snow, the
+Star of Bethlehem, a drawn fire in a hearth beside a lit tree — with _Your
+Christmas Starts Here_, one verse at a time (our own welcome, then a line of
+a public-domain carol, named), and the countdown. Its only controls are the
+fire's sound, off until asked, and a pause. Advent, New Year's Eve, the three
+ways in, the place and the distance are unchanged, in the band directly
+below. Emotion first, discovery second, decisions third. This narrows the
+2026-11-17 paragraph above: the six ways are still the page's first question,
+asked after the hero rather than in it. It is an Experience's presentation,
+not the fenced Inspiration product (§13): it personalises and recommends
+nothing. One composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

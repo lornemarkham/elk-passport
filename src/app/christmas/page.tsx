@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Gift,
-  CalendarHeart,
   CalendarRange,
   Compass,
   Dices,
@@ -12,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
-import { Festive } from "@/components/christmas/Festive";
+import { Hearth } from "@/components/christmas/hearth/Hearth";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { PlanHero } from "@/components/christmas/PlanHero";
 import { DistancePicker } from "@/components/christmas/DistancePicker";
@@ -83,7 +82,12 @@ function adventLine(today: string): string {
  * **Go Have a Christmas** — "Your Christmas Starts Here" (owner brief "P0 —
  * the experience-first rebuild", 2026-11-17).
  *
- * The page asks one thing: what kind of Christmas? Six ways answer it, each
+ * It opens on a hero that asks nothing — a fire, a tree, the Star of
+ * Bethlehem, a verse at a time (`Hearth`, owner brief M1127 "Stay Awhile").
+ * Advent, New Year's Eve, the three ways in, the place and the distance wait
+ * in the band just below it, unchanged, for when the visitor is ready.
+ *
+ * Then the page asks one thing: what kind of Christmas? Six ways answer it, each
  * opening a short page with a question or two and a handful of things to do
  * (`ways.ts`). Below them, the four strongest things happening near here,
  * a Surprise me, the planner's sentence box, and the way into everything.
@@ -143,36 +147,22 @@ export default async function ChristmasPage({
         >
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
-              {/* Above the page below it: the place picker opens out of the header. */}
-              <header
+              {/* The hero asks nothing (M1127, "Stay Awhile"). */}
+              <Hearth countdown={seasonLine({ ...stage, today })} />
+
+              {/* Everything the hero used to ask, kept, for when the visitor
+                  is ready. Above the page below it: the place picker opens
+                  out of this band. */}
+              <section
+                aria-label="When you're ready"
                 className={`${styles.night} z-30`}
                 style={{ overflow: "visible" }}
+                data-testid="ready"
               >
-                <div className="mx-auto max-w-6xl px-4 pt-7 pb-6 sm:px-6 sm:pt-12 sm:pb-10">
-                  <p className="text-xs font-bold tracking-[0.18em] text-[#ffd98a] uppercase sm:text-sm">
-                    Go Have a Christmas
-                  </p>
-                  <h1 className="ghad-display mt-2 max-w-3xl text-[2.6rem] leading-[0.92] font-extrabold tracking-[-0.045em] text-balance sm:text-7xl">
-                    Your Christmas Starts Here
-                  </h1>
-                  <p className="mt-3 max-w-xl text-lg font-semibold text-white/90 sm:text-xl">
-                    Find something wonderful to do together.
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p
-                      className="inline-flex w-fit items-center gap-2 rounded-full bg-black/30 px-3.5 py-1.5 text-sm font-bold backdrop-blur"
-                      data-testid="countdown"
-                    >
-                      <CalendarHeart
-                        className="h-4 w-4 text-[#ffd98a]"
-                        aria-hidden
-                      />
-                      {seasonLine({ ...stage, today })}
-                    </p>
-                    <Festive />
-                  </div>
+                <div className={styles.lights} aria-hidden />
+                <div className="mx-auto max-w-6xl px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8">
                   <div
-                    className="mt-3 flex flex-wrap gap-2"
+                    className="flex flex-wrap gap-2"
                     data-testid="season-pills"
                   >
                     <Link
@@ -255,8 +245,7 @@ export default async function ChristmasPage({
                     className="mt-2"
                   />
                 </div>
-                <div className={styles.lights} aria-hidden />
-              </header>
+              </section>
 
               <div className="mx-auto max-w-6xl space-y-10 px-4 pt-6 sm:space-y-14 sm:px-6 sm:pt-10">
                 <nav aria-labelledby="ways-title" data-testid="ways">

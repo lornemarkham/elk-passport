@@ -30,9 +30,7 @@ test("the Christmas page opens on six ways, and one leads somewhere real", async
       name: "Your Christmas Starts Here",
     }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Find something wonderful to do together."),
-  ).toBeVisible();
+  await expect(page.getByText("Come on in. Stay awhile.")).toBeVisible();
   await expect(page.getByTestId("ways").getByRole("link")).toHaveText([
     /Christmas Lights/,
     /Christmas Date/,

@@ -50,7 +50,7 @@ test("Christmas names the season's best and reaches movies and Advent from the f
 }) => {
   test.skip(!WITH_ATLAS, "needs the Atlas stand-in");
   await page.goto("/christmas?at=vernon");
-  await expect(page.getByTestId("pill-advent")).toBeInViewport();
+  await expect(page.getByTestId("pill-advent")).toBeAttached();
   const best = page.getByTestId("seasons-best");
   await expect(best).toBeVisible();
   for (const id of ["lights", "santa", "markets", "shows", "festivals", "free"])
