@@ -107,7 +107,10 @@ export function Hearth({ countdown }: { countdown: string }) {
       <div className={styles.words}>
         <p className={styles.eyebrow}>Go Have a Christmas</p>
         <h1 className={`ghad-display ${styles.title}`}>
-          Your Christmas Starts Here
+          {/* Three lines in any font, so the web font arriving moves nothing. */}
+          <span>Your </span>
+          <span>Christmas </span>
+          <span>Starts Here</span>
         </h1>
         <div className={styles.verses} data-testid="verse">
           {VERSES.map((v, i) => (
