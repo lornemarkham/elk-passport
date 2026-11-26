@@ -60,7 +60,7 @@ export function EveningCard({ open }: { readonly open: OpenEvening }) {
       <span className="text-sm text-[var(--gh-ink-soft)]">{open.hours}</span>
       <span className="flex items-center gap-1.5 text-sm text-[var(--gh-ink-soft)]">
         <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-        {km(open.km)}, straight-line
+        {km(open.km)}
       </span>
     </Link>
   );

@@ -254,7 +254,7 @@ export function Planner({
             Nothing picked yet — that&apos;s fine. Passport will sketch from
             real places, or{" "}
             <Link
-              href="/christmas/discover"
+              href="/christmas#discover"
               className="font-semibold underline underline-offset-4"
             >
               pick some Christmas things first

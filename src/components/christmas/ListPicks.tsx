@@ -102,7 +102,7 @@ export function ListPicks({
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
-              href="/christmas/discover"
+              href="/christmas#discover"
               data-testid="list-find"
               className="inline-flex min-h-11 items-center rounded-full bg-[#b3242f] px-5 font-bold text-white"
             >
@@ -144,7 +144,7 @@ export function ListPicks({
               </Link>
             )}
             <Link
-              href="/christmas/discover"
+              href="/christmas#discover"
               className="inline-flex min-h-11 items-center rounded-full px-5 font-semibold ring-1 ring-black/15 hover:ring-black/40"
             >
               Find more

@@ -610,7 +610,7 @@ function Reveal({
                   <span>
                     {option.where}
                     {option.km !== undefined &&
-                      ` · about ${option.km} km from ${townName}, straight-line`}
+                      ` · about ${option.km} km from ${townName}`}
                   </span>
                 </li>
               )}

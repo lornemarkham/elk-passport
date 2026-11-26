@@ -19,7 +19,12 @@ import { PendingContent, PendingProvider } from "@/components/loading/Pending";
 import styles from "@/components/christmas/christmas.module.css";
 import { todayIn } from "@/lib/adventures/overview";
 import { townById } from "@/domain/discovery/towns";
-import { answer, writeAsk, type Ask } from "@/domain/christmas/discover";
+import {
+  answer,
+  discoverHref,
+  writeAsk,
+  type Ask,
+} from "@/domain/christmas/discover";
 import { TOWNS } from "@/domain/christmas/lights/model";
 import {
   WAYS,
@@ -363,7 +368,7 @@ async function WayFinds({
     ? { latitude: town.latitude, longitude: town.longitude }
     : undefined;
   const youngest = ask.ages[0];
-  const seeAll = `/christmas/discover?${writeAsk(ask)}`;
+  const seeAll = discoverHref(ask);
   const when = choice.when && choice.when !== "any";
 
   return (
@@ -375,7 +380,7 @@ async function WayFinds({
             {townName}
           </h2>
           <p className="mt-1 text-sm text-[var(--gh-ink-soft)]">
-            From Atlas, with the dates and how sure they are on each card.
+            Real events and places nearby, each with its own dates.
           </p>
         </div>
         {total > shown.length && (
@@ -415,8 +420,8 @@ async function WayFinds({
             data-testid="way-empty"
           >
             {when
-              ? `Atlas has nothing for then near ${townName} yet. Try "Any time", or another place above.`
-              : `Atlas has nothing of this kind near ${townName} yet.`}{" "}
+              ? `Nothing listed for then near ${townName} yet. Try "Any time", or another place above.`
+              : `Nothing of this kind listed near ${townName} yet.`}{" "}
             The{" "}
             <Link
               href={lightsHref}

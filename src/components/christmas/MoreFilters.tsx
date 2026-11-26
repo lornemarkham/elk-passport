@@ -2,7 +2,6 @@ import Form from "next/form";
 import { SlidersHorizontal } from "lucide-react";
 import { SubmitButton } from "@/components/loading/SubmitButton";
 import { DEFAULT_KM, HOURS, type Ask } from "@/domain/christmas/discover";
-import { THEMES } from "@/domain/christmas/themes";
 
 const field =
   "min-h-12 w-full rounded-2xl border-2 border-black/10 bg-white px-3 text-base focus:border-[#0f3b2b] focus:outline-none";
@@ -14,7 +13,6 @@ export function moreCount(ask: Ask): number {
     (ask.ages.length ? 1 : 0) +
     (ask.budget === "free" ? 1 : 0) +
     (ask.hours ? 1 : 0) +
-    (ask.themes.length > 1 ? 1 : 0) +
     (ask.unplaced ? 1 : 0)
   );
 }
@@ -23,32 +21,29 @@ export function moreCount(ask: Ask): number {
  * **More filters** — closed, optional and never asked first (owner brief
  * 2026-11-22: no questionnaire between a family and results). Who is coming
  * and how many belong to Plan My Route, so they are not here. A plain GET
- * form: where, when and how far ride along unchanged.
+ * form to the landing page's discovery: where, when, how far and the
+ * categories ride along unchanged. Categories themselves are the chips
+ * (owner brief M1128), so they are no longer ticked here.
  */
 export function MoreFilters({ ask }: { readonly ask: Ask }) {
   const on = moreCount(ask);
   return (
-    <details
-      className="group rounded-[24px] bg-white ring-1 ring-black/5"
-      data-testid="more-filters"
-    >
-      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-5 py-2 [&::-webkit-details-marker]:hidden">
-        <SlidersHorizontal className="h-5 w-5 shrink-0" aria-hidden />
-        <span className="flex-1 font-bold">
-          More filters
+    <details className="group" data-testid="more-filters">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-[var(--gh-ink-soft)] [&::-webkit-details-marker]:hidden">
+        <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="underline underline-offset-4">
+          Ages, free, time
           {on > 0 && (
             <span className="ml-2 rounded-full bg-[#b3242f] px-2 py-0.5 text-xs text-white">
               {on} on
             </span>
           )}
         </span>
-        <span className="text-sm font-semibold underline underline-offset-4 group-open:hidden">
-          Show
-        </span>
       </summary>
       <Form
-        action="/christmas/discover"
-        className="grid gap-4 border-t border-black/5 p-5 sm:grid-cols-2 lg:grid-cols-3"
+        action="/christmas"
+        scroll={false}
+        className="mt-2 grid gap-4 rounded-[24px] bg-white p-5 ring-1 ring-black/5 sm:grid-cols-2 lg:grid-cols-3"
       >
         {ask.at && <input type="hidden" name="at" value={ask.at} />}
         {ask.km !== DEFAULT_KM && (
@@ -104,31 +99,10 @@ export function MoreFilters({ ask }: { readonly ask: Ask }) {
             ))}
           </select>
         </label>
-        <fieldset className="sm:col-span-2 lg:col-span-3">
-          <legend className={label}>
-            Combine categories{" "}
-            <span className="font-normal">
-              — tick more than one to see them together
-            </span>
-          </legend>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {THEMES.map((t) => (
-              <label
-                key={t.id}
-                className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-2 border-black/10 px-4 text-sm font-semibold has-[:checked]:border-[#b3242f] has-[:checked]:bg-[#b3242f] has-[:checked]:text-white"
-              >
-                <input
-                  type="checkbox"
-                  name="theme"
-                  value={t.id}
-                  defaultChecked={ask.themes.includes(t.id)}
-                  className="h-4 w-4 accent-white"
-                />
-                <span aria-hidden>{t.emoji}</span> {t.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {/* The categories chosen above ride along; they are chosen there. */}
+        {ask.themes.length > 0 && (
+          <input type="hidden" name="theme" value={ask.themes.join(",")} />
+        )}
         <label className="flex items-start gap-3 sm:col-span-2">
           <input
             type="checkbox"

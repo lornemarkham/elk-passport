@@ -172,6 +172,16 @@ export function writeAsk(ask: Partial<Ask>): string {
   return q.toString();
 }
 
+/**
+ * **Where Christmas discovery lives** (owner brief M1128, "One Beautiful
+ * Experience"): the landing page itself, at its discovery section. The old
+ * `/christmas/discover` address redirects here with its query intact.
+ */
+export function discoverHref(ask: Partial<Ask> = {}): string {
+  const q = writeAsk(ask);
+  return `/christmas${q ? `?${q}` : ""}#discover`;
+}
+
 export const youngest = (ask: Ask): number | undefined =>
   ask.ages.length ? Math.min(...ask.ages) : undefined;
 
@@ -319,13 +329,13 @@ export interface Answer {
 export const TOWN_SPREAD_KM = 10;
 
 /** The big outings a longer drive is for — not a class, a party or a sale. */
-const DRIVE_THEMES: ReadonlySet<ThemeId> = new Set([
+export const DRIVE_THEMES: ReadonlySet<ThemeId> = new Set([
   "markets",
   "lights",
   "festivals",
   "shows",
 ]);
-const NOT_AN_OUTING =
+export const NOT_AN_OUTING =
   /\b(fundraiser|party|class|classes|workshop|photos?|story ?time|sale|meeting|bingo|lunch|luncheon)\b/i;
 
 /** How far "worth the drive" reaches: at least this, or twice the radius. */
@@ -333,7 +343,7 @@ export const DRIVE_REACH_KM = 100;
 /** Cards on the "worth the drive" shelf. A few, not a second directory. */
 const DRIVE_SHELF = 6;
 
-const IDENTITY: ReadonlySet<string> = new Set(["name", "subtype"]);
+export const IDENTITY: ReadonlySet<string> = new Set(["name", "subtype"]);
 const FIELD_RANK = {
   name: 0,
   subtype: 0,
@@ -381,7 +391,7 @@ function finishedBy(f: Find, now: Date): boolean {
   return end !== undefined && Date.parse(end) < now.getTime();
 }
 
-const hasPicture = (f: Find) =>
+export const hasPicture = (f: Find) =>
   Boolean(
     f.experience.heroMedia ||
     (f.experience as { presentationImage?: { relationship?: string } })
@@ -423,7 +433,7 @@ function ranker(ask: Ask) {
     a.experience.title.localeCompare(b.experience.title);
 }
 
-const titleKey = (t: string) =>
+export const titleKey = (t: string) =>
   t
     .toLowerCase()
     .replace(/\b20\d\d\b/g, " ")
@@ -659,7 +669,17 @@ export function answer(
       const area = f.experience.geography?.area?.name;
       return area !== undefined && area !== town.area;
     });
-    const unknown = notPlaced.filter((f) => !elsewhere.includes(f));
+    // An unplaced listing whose placed twin is already here is that twin,
+    // not a second thing somewhere unknown (M1128: Silver Star Light Up).
+    const placedKeys = new Set(
+      kept
+        .filter((f) => f.km !== undefined)
+        .map((f) => titleKey(f.experience.title)),
+    );
+    const unknown = notPlaced.filter(
+      (f) =>
+        !elsewhere.includes(f) && !placedKeys.has(titleKey(f.experience.title)),
+    );
     removed.distance = (removed.distance ?? 0) + placedOut + elsewhere.length;
 
     shelves.push({

@@ -12,7 +12,7 @@ import { isIllustrative } from "@/domain/discovery/illustrations";
 import { statedCloseOn, clockWords } from "@/domain/occasion/hours";
 import { wallMinutes, zonedInstant } from "@/domain/date-night/conditions";
 import { usefulFacts } from "@/domain/occasion/ideas";
-import { priceOf } from "./discover";
+import { priceOf, titleKey } from "./discover";
 import { readChristmas, type ChristmasReading, type ThemeId } from "./themes";
 import { addDays, readWhen, type WhenReading } from "./when";
 import { dayLabel } from "./plans";
@@ -284,11 +284,39 @@ function haversine(a: LatLng, b: LatLng): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * A plan's pictures: the thing's own, or one Atlas is sure of. An offered
+ * picture that is neither exact nor high-confidence is left out (M1128: an
+ * organisation's summer-patio photograph, "not verified to show", stood for a
+ * Christmas dinner) — the stop is text rather than a misleading picture.
+ */
 const realPictures = (e: Experience): CardPicture[] =>
   cardPictures(e).filter((p) => {
     const offered = e.presentationImage;
-    return !(offered && p.src === offered.url && isIllustrative(offered));
+    if (!offered || p.src !== offered.url) return true;
+    if (isIllustrative(offered)) return false;
+    return offered.relationship === "exact" || offered.confidence === "high";
   });
+
+/**
+ * **One place, listed twice** (M1128: three RANGE Restaurant records a few
+ * metres apart). Names where one is the other with more words, within half a
+ * kilometre, are one alternative, not two.
+ */
+function samePlace(a: Place, b: Place): boolean {
+  const ka = titleKey(a.title);
+  const kb = titleKey(b.title);
+  if (!ka || !kb || !(ka.startsWith(kb) || kb.startsWith(ka))) return false;
+  return a.at && b.at ? haversine(a.at, b.at) <= 0.5 : false;
+}
+
+function distinctPlaces(list: readonly Place[], besides: Place): Place[] {
+  const out: Place[] = [];
+  for (const p of list)
+    if (!samePlace(p, besides) && !out.some((o) => samePlace(o, p)))
+      out.push(p);
+  return out;
+}
 
 /** An event's stated clock time, on the Okanagan's wall (BC's legal offset). */
 function eventMinutes(at: string | undefined): number | undefined {
@@ -371,6 +399,11 @@ function atlasPlace(
   };
 }
 
+/**
+ * A community pin as a stop. A home's photograph stays on the lights map,
+ * where it is labelled as a neighbour's display; on a plan it never stands
+ * as the picture of an evening out (M1128: a driveway led a romantic tour).
+ */
 function pinPlace(p: PinView, origin: Origin): Place {
   const km = haversine({ lat: origin.latitude, lng: origin.longitude }, p.at);
   return {
@@ -381,9 +414,10 @@ function pinPlace(p: PinView, origin: Origin): Place {
     ...(p.address ? { where: p.address } : {}),
     km: Math.round(km * 10) / 10,
     at: p.at,
-    pictures: p.hasPhoto
-      ? [{ src: `/christmas/api/lights/${p.id}/photo`, alt: p.name }]
-      : [],
+    pictures:
+      p.hasPhoto && p.kind !== "home"
+        ? [{ src: `/christmas/api/lights/${p.id}/photo`, alt: p.name }]
+        : [],
     href: `/christmas/lights/${p.id}`,
     why: "On the community lights map — checked by a person",
     ...(p.hours ? { hours: `Viewing: ${p.hours}` } : {}),
@@ -454,7 +488,9 @@ function candidatesFor(need: Need, ctx: Context): Pool {
       if (
         need === "lights" &&
         (!LIGHTS_NAME.test(`${e.title} ${e.subtype ?? ""}`) ||
-          NOT_A_DISPLAY.test(e.title))
+          NOT_A_DISPLAY.test(e.title) ||
+          // A winery's "Holiday Light-Up" tasting is a tasting (M1128).
+          /\b(tastings?|wine|winery|vineyards?)\b/i.test(e.title))
       )
         continue;
       const evidence = reading.evidence[0];
@@ -595,7 +631,12 @@ function candidatesFor(need: Need, ctx: Context): Pool {
         place,
         intent: 2.5,
         availability: p.dates ? 3 : 2,
-        quality: Math.min(1, p.total / 5),
+        // A public display leads a date's lights; a private home may follow.
+        quality:
+          Math.min(1, p.total / 5) -
+          (p.kind === "home" && (request.romantic || request.party === "couple")
+            ? 1
+            : 0),
         ...(need === "lights"
           ? {
               light: {
@@ -907,10 +948,12 @@ export function planItinerary(
               ...notes,
             ]
           : notes,
-      alternatives: ranked
-        .filter((c) => c !== best && !displays.includes(c))
-        .slice(0, 4)
-        .map((c) => c.place),
+      alternatives: distinctPlaces(
+        ranked
+          .filter((c) => c !== best && !displays.includes(c))
+          .map((c) => c.place),
+        best.place,
+      ).slice(0, 4),
       nearby: [],
     });
   }

@@ -1,15 +1,25 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HOME_KEY } from "./home";
 import { cn } from "@/lib/utils";
 import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 /**
- * **Christmas's own bar** — Discover · Advent · Lights Map · My Christmas
- * List · Plan My Route, and one deliberate way back to Go Have a Day. It sits under the
- * global header on every Christmas page, so somebody who came for Christmas
- * stays among Christmas things.
+ * **Christmas's own bar** — Home · Lights Map · Advent · My Christmas (owner
+ * brief M1128, "One Beautiful Experience"), and one deliberate way back to
+ * Go Have a Day. It sits under the global header on every Christmas page, so
+ * somebody who came for Christmas always knows where they are and how to get
+ * home.
+ *
+ * - **Home** is the one Christmas landing page — welcome, the ways and
+ *   discovery together — and comes back to the visitor's own last place,
+ *   days, distance and categories (`HOME_KEY`, this tab only).
+ * - **My Christmas** is everything the visitor kept: their list, their saved
+ *   plans and adventures. Planning is reached from there and from the
+ *   experiences themselves, not as a rival destination.
  *
  * The global bar's generic Discover / My Stuff / Build a Day still sits above
  * it: hiding those inside `/christmas` is a change to the shell's shared
@@ -23,10 +33,25 @@ const DESTINATIONS: readonly {
   readonly match: (pathname: string) => boolean;
 }[] = [
   {
-    href: "/christmas/discover",
-    label: "Discover",
-    id: "discover",
-    match: (p) => p === "/christmas" || p.startsWith("/christmas/discover"),
+    href: "/christmas",
+    label: "Home",
+    id: "home",
+    match: (p) =>
+      p === "/christmas" ||
+      [
+        "/christmas/discover",
+        "/christmas/for/",
+        "/christmas/event/",
+        "/christmas/surprise",
+        "/christmas/movies",
+      ].some((x) => p.startsWith(x)),
+  },
+  {
+    href: "/christmas/lights",
+    label: "Lights Map",
+    id: "lights",
+    match: (p) =>
+      p === "/christmas/lights" || p.startsWith("/christmas/lights/"),
   },
   {
     href: "/christmas/advent",
@@ -35,33 +60,33 @@ const DESTINATIONS: readonly {
     match: (p) => p.startsWith("/christmas/advent"),
   },
   {
-    href: "/christmas/lights",
-    label: "Lights Map",
-    id: "lights",
-    match: (p) =>
-      (p === "/christmas/lights" || p.startsWith("/christmas/lights/")) &&
-      !p.startsWith("/christmas/lights/tour"),
-  },
-  {
     href: "/christmas/list",
-    label: "My Christmas List",
+    label: "My Christmas",
     id: "list",
     match: (p) =>
-      p.startsWith("/christmas/list") || p.startsWith("/christmas/adventure"),
-  },
-  {
-    href: "/christmas/plan",
-    label: "Plan My Route",
-    id: "plan",
-    match: (p) =>
+      p.startsWith("/christmas/list") ||
+      p.startsWith("/christmas/adventure") ||
       p.startsWith("/christmas/plan") ||
-      p.startsWith("/christmas/itinerary") ||
-      p.startsWith("/christmas/lights/tour"),
+      p.startsWith("/christmas/itinerary"),
   },
 ];
 
+const noSubscription = () => () => {};
+function readHome(): string {
+  try {
+    return sessionStorage.getItem(HOME_KEY) ?? "";
+  } catch {
+    return ""; // private mode: Home is the plain landing page
+  }
+}
+
 export function ChristmasNav() {
   const pathname = usePathname() ?? "";
+  // Home goes back to this tab's last discovery — its place, days, distance
+  // and categories. Read on every render (the bar re-renders as the path
+  // changes); the server's link is the plain landing page.
+  const saved = useSyncExternalStore(noSubscription, readHome, () => "");
+  const home = `/christmas${saved}`;
   return (
     <nav
       aria-label="Christmas"
@@ -74,7 +99,7 @@ export function ChristmasNav() {
           return (
             <li key={d.id} className="shrink-0">
               <Link
-                href={d.href}
+                href={d.id === "home" ? home : d.href}
                 aria-current={current ? "page" : undefined}
                 data-testid={`xmas-nav-${d.id}`}
                 className={cn(
@@ -94,7 +119,7 @@ export function ChristmasNav() {
               Christmas: markets, pubs, events, displays — anything missing. */}
           <SuggestSomething
             experience="christmas"
-            label="+ Suggest a Stop"
+            label="+ Suggest"
             className="min-h-9 bg-[#ffd98a] text-[#082319] ring-0"
           />
         </li>

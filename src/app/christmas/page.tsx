@@ -1,39 +1,38 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  Gift,
-  CalendarRange,
-  Compass,
-  Dices,
-  MapPin,
-  Moon,
-  Sparkles,
-} from "lucide-react";
+import { Dices } from "lucide-react";
 import { ThemeProvider } from "@/components/ghad/theme";
 import { Hearth } from "@/components/christmas/hearth/Hearth";
 import { RememberTown } from "@/components/christmas/RememberTown";
+import { RememberDistance } from "@/components/christmas/RememberDistance";
 import { PlanHero } from "@/components/christmas/PlanHero";
-import { DistancePicker } from "@/components/christmas/DistancePicker";
+import { DiscoverControls } from "@/components/christmas/DiscoverControls";
 import { adventureSession } from "@/lib/adventures/server";
 import { PicksProvider } from "@/components/christmas/Picks";
-import { RowSkeleton, WayCard } from "@/components/christmas/ways";
-import { ExperienceLocation } from "@/components/location/ExperienceLocation";
+import { RowSkeleton } from "@/components/christmas/ways";
+import { PhotoCredits, WayStories } from "@/components/christmas/WayStories";
 import { PendingContent, PendingProvider } from "@/components/loading/Pending";
 import styles from "@/components/christmas/christmas.module.css";
 import { todayIn } from "@/lib/adventures/overview";
 import { townById } from "@/domain/discovery/towns";
-import { readAsk, writeAsk } from "@/domain/christmas/discover";
+import {
+  discoverHref,
+  readAsk,
+  writeAsk,
+  type Ask,
+} from "@/domain/christmas/discover";
+import { newYearInView } from "@/domain/christmas/finder";
 import {
   daysUntil,
   newYear,
-  newYearGone,
+  presetDates,
   season,
+  whenLabel,
 } from "@/domain/christmas/when";
-import { dayOf, daysBetween, stageOf } from "@/domain/christmas/advent/model";
 import { WAYS, wayHref } from "@/domain/christmas/ways";
 import { TOWNS } from "@/domain/christmas/lights/model";
-import { NearYou } from "./_parts/near";
+import { Discovery } from "./_parts/discovery";
 import { rememberedKm, whereAreWe } from "./_server/where";
 
 export const metadata: Metadata = {
@@ -66,40 +65,29 @@ function seasonLine(
   }
 }
 
-/** Where the Advent calendar is, in a few words for its pill. */
-function adventLine(today: string): string {
-  const stage = stageOf(today);
-  if (stage === "before") {
-    const n = daysBetween(today, dayOf(1).date);
-    return `door 1 in ${n} sleep${n === 1 ? "" : "s"}`;
-  }
-  if (stage === "doors") return "today's door is ready";
-  if (stage === "after") return "a New Year's adventure a day";
-  return "back next December";
-}
-
 /**
- * **Go Have a Christmas** — "Your Christmas Starts Here" (owner brief "P0 —
- * the experience-first rebuild", 2026-11-17).
+ * **Go Have a Christmas — one page** (owner brief M1128, "One Beautiful
+ * Experience": _Christmas Home and Discover are the same experience_).
  *
- * It opens on a hero that asks nothing — a fire, a tree, the Star of
- * Bethlehem, a verse at a time (`Hearth`, owner brief M1127 "Stay Awhile").
- * Advent, New Year's Eve, the three ways in, the place and the distance wait
- * in the band just below it, unchanged, for when the visitor is ready.
+ * The visitor's day reads top to bottom, with nothing to navigate away to:
  *
- * Then the page asks one thing: what kind of Christmas? Six ways answer it, each
- * opening a short page with a question or two and a handful of things to do
- * (`ways.ts`). Below them, the four strongest things happening near here,
- * a Surprise me, the planner's sentence box, and the way into everything.
- * The long rows of event cards are gone from here; every one of them is
- * still on Find Christmas (`/christmas/discover`) and the lights map.
+ * 1. **Welcome.** The room by the fire (`Hearth`, M1127 "Stay Awhile"),
+ *    unchanged: it asks nothing.
+ * 2. **Inspiration.** Six ways to have a Christmas, as photographs of the
+ *    feeling (`WayStories`); each opens its own short page.
+ * 3. **Discovery.** Where, when and how far — one shared control, said once —
+ *    then what is on, in a host's order, filtered by as many categories as
+ *    the visitor likes without a trip to the server (`Discovery`, `Finder`).
+ * 4. **Optional planning.** Surprise me, or say it and get a plan.
  *
- * Only _Happening near you_ waits on Atlas, so on a first visit it streams in
- * behind the rest: the six ways are on screen while a cold Atlas is still
- * answering. Changing the place keeps the old answer, dimmed and said to be
- * loading (`PendingContent`), until the new one replaces it — a keyed
- * boundary showed a skeleton instead, which React holds for a minimum time,
- * and made a warm switch six times slower (M865 timings).
+ * The old `/christmas/discover` address redirects here, query and all, so
+ * every shared link still opens on what it showed. New Year's Eve is said
+ * when it is near (`newYearInView`), not on every screen.
+ *
+ * Only discovery waits on Atlas, so it streams in behind the welcome and the
+ * ways. Changing the place, the days or the distance keeps the old answer,
+ * dimmed and said to be loading, until the new one replaces it
+ * (`PendingContent`).
  */
 export default async function ChristmasPage({
   searchParams,
@@ -107,39 +95,33 @@ export default async function ChristmasPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = (await searchParams) ?? {};
+  const today = todayIn();
   const remembered = await rememberedKm();
-  const asked = readAsk(params, remembered ? { km: remembered } : {});
+  const asked = readAsk(params, {
+    today,
+    ...(remembered ? { km: remembered } : {}),
+  });
   // Christmas opens somewhere: the town just chosen, the one remembered, or
   // Vernon — never an unplaced list.
   const [where, session] = await Promise.all([
     whereAreWe(asked.at),
     adventureSession().catch(() => null),
   ]);
-  const ask = { ...asked, at: where.at };
-  const today = todayIn();
+  const ask: Ask = { ...asked, at: where.at };
   const town = townById(ask.at);
-  const townName = town?.name.replace(/,\s*BC$/, "");
+  const townName = town?.name.replace(/,\s*BC$/, "") ?? "you";
   const stage = season(today);
-  const lightsTown = (TOWNS as readonly string[]).includes(ask.at);
-  const lightsHref = `/christmas/lights${lightsTown ? `?at=${ask.at}` : ""}`;
-  // The place and the distance ride along every link, so the next page is
-  // about the same town and radius.
-  const here = writeAsk({ at: ask.at, km: ask.km });
-  const q = here ? `?${here}` : "";
-  // A word, not today's date: the page says "Tonight", and a saved link
-  // still means tonight on another night.
-  const tonight = `/christmas/discover?${writeAsk({ at: ask.at, km: ask.km, when: "tonight" })}`;
-  const discoverHref = `/christmas/discover${q}`;
-  const newYearHref = `/christmas/discover?${writeAsk({
-    at: ask.at,
-    km: ask.km,
-    themes: ["newyear"],
-    ...(newYearGone(today) ? {} : { when: "nye" as const }),
-  })}`;
+  const lightsTown = (TOWNS as readonly string[]).includes(ask.at!);
+  // The plan carries where and how far — never the browsing date, which is
+  // a preference, not the date of somebody's plan.
+  const place = writeAsk({ at: ask.at, km: ask.km });
+  const q = place ? `?${place}` : "";
+  const newYearNear = newYearInView({ themes: [] }, today);
 
   return (
     <>
-      {where.chosen && <RememberTown town={ask.at} />}
+      {where.chosen && <RememberTown town={ask.at!} />}
+      {typeof params.km === "string" && <RememberDistance km={ask.km} />}
       <ThemeProvider className="block">
         <PicksProvider
           planHref={`/christmas/plan${q}`}
@@ -147,146 +129,90 @@ export default async function ChristmasPage({
         >
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
-              {/* The hero asks nothing (M1127, "Stay Awhile"). */}
+              {/* 1. Welcome — the hero asks nothing (M1127, "Stay Awhile"). */}
               <Hearth countdown={seasonLine({ ...stage, today })} />
 
-              {/* Everything the hero used to ask, kept, for when the visitor
-                  is ready. Above the page below it: the place picker opens
-                  out of this band. */}
-              <section
-                aria-label="When you're ready"
-                className={`${styles.night} z-30`}
-                style={{ overflow: "visible" }}
-                data-testid="ready"
-              >
-                <div className={styles.lights} aria-hidden />
-                <div className="mx-auto max-w-6xl px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8">
-                  <div
-                    className="flex flex-wrap gap-2"
-                    data-testid="season-pills"
-                  >
-                    <Link
-                      href={`/christmas/advent${q}`}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#b3242f] px-4 text-sm font-extrabold text-white shadow-md hover:brightness-110"
-                      data-testid="pill-advent"
-                    >
-                      <span aria-hidden>🎁</span> Advent Adventure
-                      <span className="font-semibold text-white/85">
-                        · {adventLine(today)}
-                      </span>
-                    </Link>
-                    <Link
-                      href={newYearHref}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#ffd98a] px-4 text-sm font-extrabold text-[#082319] shadow-md hover:brightness-105"
-                      data-testid="pill-new-year"
-                    >
-                      <span aria-hidden>🎆</span> New Year&apos;s Eve
-                    </Link>
-                  </div>
-                  <nav
-                    aria-label="Start here"
-                    className="mt-5 grid max-w-3xl gap-2 sm:grid-cols-3"
-                    data-testid="entry-points"
-                  >
-                    {[
-                      {
-                        id: "lights",
-                        href: lightsHref,
-                        icon: MapPin,
-                        title: "Explore Christmas lights",
-                        line: "The map, and drives to see them",
-                      },
-                      {
-                        id: "tonight",
-                        href: tonight,
-                        icon: Moon,
-                        title: "What's happening tonight?",
-                        line: "Only what's confirmed for tonight",
-                      },
-                      {
-                        id: "plan",
-                        href: "#plan",
-                        icon: Sparkles,
-                        title: "Plan a Christmas adventure",
-                        line: "Say it; get a plan",
-                      },
-                    ].map(({ id, href, icon: Icon, title, line }) => (
-                      <Link
-                        key={id}
-                        href={href}
-                        data-testid={`entry-${id}`}
-                        className="flex min-h-16 items-center gap-3 rounded-[20px] bg-white/95 p-3 text-[#082319] shadow-lg ring-1 ring-white/40 transition hover:bg-white motion-reduce:transition-none"
-                      >
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#b3242f] text-white">
-                          <Icon className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-base leading-tight font-extrabold">
-                            {title}
-                          </span>
-                          <span className="block text-sm text-[#082319]/70">
-                            {line}
-                          </span>
-                        </span>
-                      </Link>
-                    ))}
-                  </nav>
-                  <Suspense fallback={null}>
-                    <ExperienceLocation
-                      scope="christmas"
-                      experience="Christmas"
-                      at={ask.at}
-                      className="mt-2 text-white"
-                    />
-                  </Suspense>
-                  <DistancePicker
-                    ask={ask}
-                    path="/christmas"
-                    className="mt-2"
-                  />
-                </div>
-              </section>
-
-              <div className="mx-auto max-w-6xl space-y-10 px-4 pt-6 sm:space-y-14 sm:px-6 sm:pt-10">
-                <nav aria-labelledby="ways-title" data-testid="ways">
+              <div className="mx-auto max-w-7xl space-y-12 px-4 pt-8 sm:space-y-16 sm:px-6 sm:pt-12">
+                {/* 2. Inspiration. */}
+                <section aria-labelledby="ways-title" data-testid="ways">
                   <h2
                     id="ways-title"
-                    className="ghad-display text-2xl leading-tight font-extrabold tracking-[-0.02em] sm:text-3xl"
+                    className="ghad-display text-[1.75rem] leading-tight font-extrabold tracking-[-0.02em] sm:text-4xl"
                   >
-                    What are you in the mood for?
+                    What kind of Christmas?
                   </h2>
-                  <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                    {WAYS.map((way) => (
-                      <li key={way.id}>
-                        <WayCard
-                          way={way}
-                          href={wayHref(way.id, ask.at, lightsTown, ask.km)}
-                          {...(way.id === "lights"
-                            ? { testId: "cta-lights" }
-                            : {})}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-
-                <PendingContent>
-                  <Suspense
-                    fallback={
-                      <RowSkeleton
-                        label={`Finding what's on around ${townName ?? "you"}…`}
-                      />
-                    }
-                  >
-                    <NearYou
-                      ask={ask}
-                      today={today}
-                      discoverHref={discoverHref}
-                      lightsHref={lightsHref}
+                  {newYearNear && (
+                    <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
+                      And New Year&apos;s Eve is nearly here —{" "}
+                      <Link
+                        href={discoverHref({
+                          at: ask.at,
+                          km: ask.km,
+                          ...presetDates("nye", today),
+                        })}
+                        className="font-semibold underline underline-offset-4"
+                        data-testid="new-year-link"
+                      >
+                        see what&apos;s on
+                      </Link>
+                      .
+                    </p>
+                  )}
+                  <div className="mt-4">
+                    <WayStories
+                      ways={WAYS}
+                      hrefFor={(way) =>
+                        wayHref(way.id, ask.at, lightsTown, ask.km)
+                      }
                     />
-                  </Suspense>
-                </PendingContent>
+                  </div>
+                </section>
 
+                {/* 3. Discovery — where, when and how far, said once. */}
+                <section
+                  id="discover"
+                  aria-labelledby="discover-title"
+                  className="scroll-mt-4"
+                  data-testid="discover"
+                >
+                  <div
+                    className={`${styles.night} relative z-30 rounded-[28px] px-4 pt-5 pb-4 sm:px-7 sm:pt-7 sm:pb-6`}
+                    style={{ overflow: "visible" }}
+                  >
+                    <p className="text-sm font-bold tracking-[0.14em] text-[#ffd98a] uppercase">
+                      Happening near you
+                    </p>
+                    <h2
+                      id="discover-title"
+                      className="ghad-display mt-1 text-[1.75rem] leading-[1] font-extrabold tracking-[-0.03em] sm:text-4xl"
+                    >
+                      Christmas around {townName}
+                    </h2>
+                    <Suspense fallback={null}>
+                      <DiscoverControls
+                        {...(ask.when ? { when: ask.when } : {})}
+                        {...(ask.from ? { from: ask.from } : {})}
+                        {...(ask.to ? { to: ask.to } : {})}
+                        km={ask.km}
+                        today={today}
+                        label={whenLabel(ask, today)}
+                      />
+                    </Suspense>
+                  </div>
+                  <PendingContent className="mt-5">
+                    <Suspense
+                      fallback={
+                        <RowSkeleton
+                          label={`Finding what's on around ${townName}…`}
+                        />
+                      }
+                    >
+                      <Discovery ask={ask} today={today} />
+                    </Suspense>
+                  </PendingContent>
+                </section>
+
+                {/* 4. Optional planning. */}
                 <section
                   id="plan"
                   className="grid scroll-mt-20 gap-4 lg:grid-cols-[1fr_1.4fr]"
@@ -306,8 +232,8 @@ export default async function ChristmasPage({
                         Surprise me
                       </span>
                       <span className="text-sm text-white/85">
-                        One thing to do — something real near{" "}
-                        {townName ?? "you"}, or one of our ideas.
+                        One thing to do — something real near {townName}, or one
+                        of our ideas.
                       </span>
                     </span>
                   </Link>
@@ -316,77 +242,15 @@ export default async function ChristmasPage({
                   </div>
                 </section>
 
-                <section aria-labelledby="browse-title" data-testid="browse">
-                  <h2
-                    id="browse-title"
-                    className="ghad-display text-2xl leading-tight font-extrabold sm:text-3xl"
-                  >
-                    Browse everything
-                  </h2>
-                  <p className="mt-1 text-base text-[var(--gh-ink-soft)]">
-                    Every Christmas thing we know of, with filters, for anybody
-                    who&apos;d rather look through the lot.
+                <div className="space-y-2">
+                  <PhotoCredits />
+                  <p className="max-w-3xl text-sm text-[var(--gh-ink-soft)]">
+                    Every event, market and place here comes from local
+                    listings, with its own dates. Lights pinned by locals are
+                    checked by a person. Ideas say they&apos;re ideas. We never
+                    invent a time, a price or that something is open.
                   </p>
-                  <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                      {
-                        href: discoverHref,
-                        icon: Compass,
-                        title: `Find Christmas near ${townName ?? "me"}`,
-                        line: "Markets, Santa, shows, festivals — the full directory.",
-                        testId: "cta-discover",
-                      },
-                      {
-                        href: lightsHref,
-                        icon: MapPin,
-                        title: "The Christmas lights map",
-                        line: "Every pinned display, and a tour built for you.",
-                        testId: "browse-lights",
-                      },
-                      {
-                        href: `/christmas/plan${q}`,
-                        icon: CalendarRange,
-                        title: "A weekend, or a few days",
-                        line: "An adventure for one day or several, sketched from real places.",
-                        testId: "browse-plan",
-                      },
-                      {
-                        href: "/christmas/list",
-                        icon: Gift,
-                        title: "My Christmas List",
-                        line: "What you've added, saved and planned — only you can see it.",
-                        testId: "my-list-link",
-                      },
-                    ].map(({ href, icon: Icon, title, line, testId }) => (
-                      <li key={testId}>
-                        <Link
-                          href={href}
-                          className="flex h-full items-start gap-3 rounded-[22px] bg-white p-4 ring-1 ring-black/5 hover:ring-black/20"
-                          data-testid={testId}
-                        >
-                          <Icon
-                            className="mt-0.5 h-5 w-5 shrink-0 text-[#b3242f]"
-                            aria-hidden
-                          />
-                          <span>
-                            <span className="block font-bold">{title}</span>
-                            <span className="text-sm text-[var(--gh-ink-soft)]">
-                              {line}
-                            </span>
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-
-                <p className="max-w-3xl text-sm text-[var(--gh-ink-soft)]">
-                  Every event, market and place here comes from the event
-                  listings, with its dates and how sure they are on its card.
-                  Lights pinned by locals are checked by a person. Ideas say
-                  they&apos;re ideas. Passport never invents a time, a price or
-                  that something is open.
-                </p>
+                </div>
               </div>
             </PendingProvider>
           </main>

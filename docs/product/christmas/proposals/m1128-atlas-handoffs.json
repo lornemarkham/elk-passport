@@ -1,0 +1,215 @@
+[
+  {
+    "id": "m1128-silverstar-event-twins",
+    "title": "Merge the two Silver Star Light Up and the two Silver Star New Year's Eve event records",
+    "records": [
+      "d1cfd91a-16bc-485f-aa7c-ec29e7cabc30",
+      "4ba336eb-f528-4c55-ab04-1ca155f36816",
+      "6e8ac250-a3e9-4494-a0d1-735a14ccc04d",
+      "35f0e55e-6467-4b03-85bb-add99eb667e0"
+    ],
+    "problem": "Each night is held twice, from two sources (skisilverstar.com and silverstarstays.com). One copy is placed at Vernon's town centre and the other is unplaced. Passport shows the same Light Up twice on /christmas/discover?at=vernon&place=all. The New Year's Eve copy with no photo is the one placed and shown.",
+    "evidence": "d1cfd91a 'SilverStar Annual Light Up' 2026-12-05T23:30Z, venue 'SilverStar Village', locality Vernon, hero https://www.skisilverstar.com/images/sites/default/files/2026-11/light_up_desktop_hero.jpg answers 404. 4ba336eb 'Silver Star Annual Light Up' 2026-12-05T22:30Z, happens_at d3116035, geography conflicting, hero https://silverstarstays.com/wp-content/uploads/2026/09/light-up-2025-2.webp (viewed: Light Up crowd and fire spinners, loads). 6e8ac250 'New Years Eve' 2026-12-31T21:00Z SilverStar Village, no media; 35f0e55e 'Silver Star New Years Eve Celebration' 2026-12-31T22:00Z at d3116035, hero NYE-torch-5-web_0.webp. Both descriptions describe the same snow-globe NYE with fireworks and a DJ after-party.",
+    "ask": "Merge each pair into one event that keeps both sources. Keep the fuller schedule text (d1cfd91a, 6e8ac250), link happens_at to the resort Place, and keep the photo that loads (silverstarstays) as the lead. Drop or demote the 404 hero.",
+    "acceptance": "/discovery/candidates returns exactly one Event for the 2026-12-05 Silver Star Light Up and one for the 2026-12-31 Silver Star NYE. Each has a lead image that answers 200 image/*, and each has a placed geography (see m1128-silverstar-village-locality)."
+  },
+  {
+    "id": "m1128-silverstar-resort-merge",
+    "title": "Collapse the Silver Star Mountain Resort records (2 Places, 3 Organizations) into one Place and one Organization",
+    "records": [
+      "d3116035-b5ce-4c70-acf4-27b601182c8e",
+      "714b0061-db25-422f-af9f-f02b545443de",
+      "231c7ff6-9489-4353-bb52-ccde7e56ff5a",
+      "3ed75c47-1e4f-43f3-bb67-40ed909ca4bb",
+      "77aa8cc5-a583-49f9-8b28-f4629c7c8c4a",
+      "251f42b7-0c01-46be-9f55-c74ff57efaee"
+    ],
+    "problem": "One resort is held as Places 'Silver Star Mountain Resort' and 'Silver Star Resort' (about 1 km apart) and Organizations 'Silver Star Mountain Resort', 'SilverStar Mountain Resort' and 'SilverStar Ski Resort'. 3ed75c47 has subtype 'bike resort' but carries every winter affordance (skiing, skating, tubing, snowshoeing). It has no point and is measured from Vernon's town centre (0 km), so Passport shows it as an undated winter-fun card 'in Vernon'.",
+    "evidence": "d3116035 Place ski resort (-119.0581, 50.3597); 714b0061 Place resort (-119.0489, 50.3688); 231c7ff6 Org Ski Resort, derived point = d3116035; 3ed75c47 Org 'bike resort', locality Vernon, distance basis town km 0, affordances snowshoeing, tubing, Skiing, cross-country skiing, Skating, ice skating, downhill skiing, Snowboarding; 77aa8cc5 Org, geography unknown. 251f42b7 'Silver Star Mountain Resorts Ltd.' is the operating company: a legitimately separate record.",
+    "ask": "Keep one Place (d3116035) and one Organization. Merge 714b0061, 3ed75c47 and 77aa8cc5 into them (the bike park is a part or affordance of the resort, not a separate resort). Link 251f42b7 as operator. Give the Organization the village coordinates, not Vernon's centre.",
+    "acceptance": "A name search for 'silver ?star.*resort' in /discovery/candidates returns at most one Place and one Organization for the resort (plus the operator company). None of them has distance basis 'town' from Vernon."
+  },
+  {
+    "id": "m1128-silverstar-village-locality",
+    "title": "SilverStar Village is not Vernon: stop measuring village events from Vernon's town centre",
+    "records": [
+      "d1cfd91a-16bc-485f-aa7c-ec29e7cabc30",
+      "6e8ac250-a3e9-4494-a0d1-735a14ccc04d",
+      "3ed75c47-1e4f-43f3-bb67-40ed909ca4bb",
+      "00280a64-e2b7-4c49-b669-ac0efe451bd4",
+      "40feccbf-7601-47d3-9b23-9bb343d10874",
+      "0f379143-7092-406b-afef-503bbcedbca7",
+      "bcd6b5b3-4bad-4de2-8516-25c2d33a0288"
+    ],
+    "problem": "Events whose stated venue is 'SilverStar Village' get locality Vernon (from the postal address) and a town-basis distance of 0 km from Vernon (18 km from the Silver Star town origin). Events linked to the resort Place are 'conflicting' (locality 'Silver Star Mountain' vs area Okanagan) and stay unplaced. The same mountain is therefore either 'in Vernon' or nowhere.",
+    "evidence": "d1cfd91a and 6e8ac250: geography observed, locality Vernon, no coordinates, distance {basis: town, town: Vernon, km: 0}. With origin Silver Star (50.35839, -119.06441) they read 18 km. 00280a64, 40feccbf, 0f379143, bcd6b5b3 and the others: geography conflicting, 'this subject's own evidence places it in Silver Star Mountain; its venue Silver Star Mountain Resort in Okanagan' (same rule M1059 reported).",
+    "ask": "Map the venue strings 'SilverStar Village' / 'Silver Star Village' / 'Silver Star Mountain Resort' to the resort Place d3116035 (village point about 50.3584, -119.0644). Treat locality 'Silver Star Mountain' within area Okanagan as agreement, not conflict. Give these events coordinate-basis distances.",
+    "acceptance": "With origin Vernon (50.267, -119.272), every Silver Star village event has distance basis 'coordinates' and km of about 18. With origin Silver Star they read under 2 km. None is 'conflicting'."
+  },
+  {
+    "id": "m1128-silverstar-brewery-twins",
+    "title": "Merge the two SilverStar Brewing records",
+    "records": [
+      "9eab8cb1-96f2-434c-8c56-12b9f053e215",
+      "d1008cb9-4cb4-40e1-a35a-53ba23a38727"
+    ],
+    "problem": "One Vernon brewery is held twice under two spellings. One is placed; the other has no geography.",
+    "evidence": "9eab8cb1 'Silverstar Brewing Co.' brewery (-119.2706, 50.2639) locality Vernon; d1008cb9 'SilverStar Brewing Company' brewing company, geography unknown.",
+    "ask": "Merge into the placed record and keep both names as aliases.",
+    "acceptance": "One brewery record named SilverStar Brewing in /discovery/candidates."
+  },
+  {
+    "id": "m1128-predator-ridge-restaurant-twins",
+    "title": "Merge RANGE (3 records) and Pallino's (2 records) at Predator Ridge",
+    "records": [
+      "2c1ec539-5ddf-4410-b36a-5da03d237435",
+      "531fc394-fa3f-4bae-9e7b-9c4b26bd83e9",
+      "3ef023a6-0f27-4356-aca9-ea049870b011",
+      "b67aab15-31fe-4c8e-b024-2bebd8c1aeec",
+      "0d78b45f-b391-4a58-a630-0a8e64aa2b39"
+    ],
+    "problem": "The Christmas planner lists 'Pallino's Italian Bistro', 'Pallino's' and 'RANGE Restaurant, bar + patio' together as dinner alternatives (Lake Country, 'A romantic Christmas evening — dinner and the lights'). A customer saw two 'RANGE Restaurant' listings.",
+    "evidence": "2c1ec539 'RANGE Restaurant, bar + patio' (alias 'RANGE Restaurant, Bar & Patio') and 531fc394 'RANGE Restaurant': both at exactly (-119.3876076, 50.1891336), which is also Predator Ridge Resort Org 0139448c's point, and both carry the same predatorridge.com patio image. 3ef023a6 'Range Lounge & Grill' (-119.38785, 50.18904), 15 m away, described as 'near Predator Ridge'. Pallino's: b67aab15 (-119.3912, 50.1875) and 0d78b45f (-119.3881, 50.1885), 270 m apart.",
+    "ask": "Confirm with the publisher (predatorridge.com dining page) that RANGE and 'Range Lounge & Grill' are one restaurant (a probable rename). Merge into one Organization with aliases, and the same for Pallino's. Give each restaurant its own observed point rather than the resort's.",
+    "acceptance": "One RANGE Organization and one Pallino's Organization in /discovery/candidates, each with an observed point of its own."
+  },
+  {
+    "id": "m1128-unverified-organization-images",
+    "title": "Stop serving 'representative, not verified' organization photos as a place's presentationImage (RANGE's summer patio)",
+    "records": [
+      "2c1ec539-5ddf-4410-b36a-5da03d237435",
+      "531fc394-fa3f-4bae-9e7b-9c4b26bd83e9"
+    ],
+    "problem": "121 candidates carry presentationImage relationship 'organization' with confidence 'medium' and an attribution saying 'representative, not verified to show X'. For RANGE this is a summer patio marketing photo, which the Christmas planner showed for a Christmas date dinner.",
+    "evidence": "https://www.predatorridge.com/wp-content/uploads/FMA_Dining-on-Patio-1928x1078-1.jpg (viewed: a couple in short sleeves eating dessert with rosé on an outdoor patio at dusk, green summer golf-course hills behind). Atlas's attribution: 'representative, not verified to show RANGE Restaurant, bar + patio'. The Roster Sports Club 77b892b2's image (racquetball / daily-specials slider) is the same class. Count from the 2026-11-25 pool: organization+medium+'not verified' = 121; venue+medium+'not verified' = 49.",
+    "ask": "Either relabel these as relationship 'representative' (so consumers treat them as stand-ins), or withhold them until subject evidence verifies them. Prefer a picture from the place's own page that the page captions as the place.",
+    "acceptance": "No presentationImage on the Discovery wire combines relationship 'organization' or 'venue' with an attribution containing 'not verified'. RANGE has no presentationImage, or one verified to show RANGE."
+  },
+  {
+    "id": "m1128-page-banner-as-exact",
+    "title": "City site header banners are not subject photos (Centennial Outdoor Rink shows a spring hike)",
+    "records": [
+      "575e8e59-93a6-44ae-970d-156e70035efd",
+      "235ca44a-0ec8-4eff-929d-94d0b32e15d3",
+      "4da4a4c8-8179-4178-a0d6-f12dd3de570f"
+    ],
+    "problem": "The Place 'Centennial Outdoor Rink' has presentationImage relationship exact / confidence high pointing at vernon.ca's page banner for Kal Park in spring. Its twin Organization holds a real rink photo. Christmas's planner shows the spring banner on the family 'skating' stop.",
+    "evidence": "575e8e59 image https://www.vernon.ca/sites/default/files/styles/banner_image/public/images/banner/hb-spring-kal-park_1920x928.jpg (viewed: yellow arrowleaf balsamroot in the foreground, a person carrying a child up a summer trail above Kalamalka Lake). 235ca44a (same rink, 90 m away) image https://www.vernon.ca/sites/default/files/styles/medium/public/2026-01/Centennial%20Outdoo... Kal Tire Place 4da4a4c8 uses the same /styles/banner_image/.../banner/ path.",
+    "ask": "Treat vernon.ca '/styles/banner_image/' and '/images/banner/' URLs as page chrome: not exact, ideally not attached at all. Merge 575e8e59 with 235ca44a (one rink) and keep the 2026-01 rink photo.",
+    "acceptance": "No candidate's presentationImage or heroUrl matches '/styles/banner_image/' with relationship exact. One Centennial Outdoor Rink record, whose lead image is the rink."
+  },
+  {
+    "id": "m1128-image-season-metadata",
+    "title": "Record the season a photo shows, so winter surfaces can avoid summer scenes",
+    "records": [
+      "2c1ec539-5ddf-4410-b36a-5da03d237435",
+      "575e8e59-93a6-44ae-970d-156e70035efd"
+    ],
+    "problem": "Atlas images have no season. Christmas cannot tell a summer patio or a spring trail from a winter scene, and Passport must not guess from pixels.",
+    "evidence": "See m1128-unverified-organization-images and m1128-page-banner-as-exact. The URL names already say it in places ('hb-spring-kal-park').",
+    "ask": "Add an optional presentationImage.season ('winter' | 'spring' | 'summer' | 'autumn' | 'any'), with its basis (caption, filename, EXIF date, curator). Fill it where evidence exists.",
+    "acceptance": "presentationImage.season appears on the wire for at least the Okanagan restaurants and rinks, with its basis. A Discovery contract test covers the field."
+  },
+  {
+    "id": "m1128-vernon-event-pictures",
+    "title": "Pictures for the 10 most important Christmas events within 30 km of Vernon (Nov 25 – Jan 3) that have none",
+    "records": [
+      "1c99bcd7-3ff4-45ea-b8f9-e7ed67f177aa",
+      "0d2e52bb-5814-4602-9272-fc157c72aab2",
+      "6e8ac250-a3e9-4494-a0d1-735a14ccc04d",
+      "80db9cc6-12f0-46b1-aabe-7aea6c805d80",
+      "087d19a8-9efb-49b0-a2e4-7f7232d123bd",
+      "feda1667-ac03-4129-9507-c0d00f9c4a4c",
+      "7ffb145c-5ac3-48ec-9712-069bd6f50fb2",
+      "d71b16fe-def6-4494-bb8a-5891387832d1",
+      "dc4d9825-8474-44a9-b12c-f541284bc1f3",
+      "859dca51-6243-4076-b1c7-20b8c0978831"
+    ],
+    "problem": "These are Vernon's own headline Christmas events and they show as text cards. Passport will not substitute a venue or stock photo.",
+    "evidence": "All have mediaCount 0 and no heroUrl. 087d19a8 has only a venue photo (Kal Tire Place). 6e8ac250's twin 35f0e55e has a photo (fixed by m1128-silverstar-event-twins). Researched candidates are already in Passport docs/product/christmas/proposals/m1126-image-candidates.json, including Frostival (a Tourism Vernon 1024x655 photo of Frostival 2025 on 30th Avenue, high confidence), Swan Lake Market's collage, and organiser posters for the 1940s Radio Christmas Carol, the Celtic Tenors, Stars on Ice and Cowboy Christmas 2. Next in line: 28cae397, 17f6cc23, 5fc1735b, be7d6201, daac75c0, 60a6e596, 22dadaa4, 7d407439.",
+    "ask": "Attach the researched Frostival and Swan Lake photos through curate-media. For the posters, get the owner's ADR 074 decision on whether a poster may lead. Ask the organisers (Downtown Vernon Association, District of Coldstream, Armstrong Spallumcheen Chamber) for event photos. Rank the event-pictures continuation by this list.",
+    "acceptance": "At least 1c99bcd7, feda1667 and 6e8ac250 (via the merge) serve a lead image of the event itself (exact) that answers 200 image/*. The others are documented as 'no source found' or 'awaiting organiser'."
+  },
+  {
+    "id": "m1128-caravan-winter-show-event",
+    "title": "Add Caravan Farm Theatre's 2026 winter sleigh-ride show as a dated Event and merge the three Caravan records",
+    "records": [
+      "f54d6acc-91f7-4558-a2ad-6565f318f978",
+      "cbb3a339-b906-40d0-abfb-ddb17e37b3a1",
+      "75b3fd8e-2706-426f-ae0d-fd4cbbe9195d"
+    ],
+    "problem": "Atlas holds the venue three times but not this season's show. Christmas therefore shows an undated 'Caravan Farm Theatre' card (from its 'Winter Sleigh Ride Show' affordance) next to dated events. One of the three records has a point about 5 km off.",
+    "evidence": "f54d6acc and cbb3a339: Places at (-119.2170, 50.4523), Armstrong. 75b3fd8e: Organization at (-119.2601, 50.4964). f54d6acc's image is relationship venue 'not verified'. Passport's lights-map seed cites https://caravanfarmtheatre.com/show/the-hockey-sweater/ for the 2026 winter show. No Event named 'Hockey Sweater' exists in the pool.",
+    "ask": "Create the 2026–27 winter show Event (dates and times from caravanfarmtheatre.com) with happens_at the merged venue. Merge the three venue records into one Place and one Organization, using the observed farm point.",
+    "acceptance": "/discovery/candidates has a dated Event for the Caravan winter show 2026 with occurrence actionable or a stated run, plus one Caravan Place and at most one Organization, all at the farm point."
+  },
+  {
+    "id": "m1128-outdoor-rink-season",
+    "title": "Season and opening state for outdoor rinks and the ski resort",
+    "records": [
+      "575e8e59-93a6-44ae-970d-156e70035efd",
+      "50d828b9-c547-4dde-937b-bcfbb598a33c",
+      "3504202a-7a72-48d4-a04d-afcb241cfe31",
+      "1526821e-7eb8-44ce-9e68-e6d9b524440a",
+      "a8f012f0-9216-404c-915d-e4a5df11fc6f",
+      "d3116035-b5ce-4c70-acf4-27b601182c8e"
+    ],
+    "problem": "Winter places reach Christmas with availability 'unstated', so they read as 'Dates not confirmed' next to dated events. An outdoor rink or a ski hill has a real season that publishers state.",
+    "evidence": "All six have availability basis 'unstated' and no schedule onDate. Vernon publishes Centennial Outdoor Rink's season and the resort publishes its opening day.",
+    "ask": "Read stated seasons and opening dates into availability (ADR for candidate-availability). Leave it unknown where nothing is stated.",
+    "acceptance": "Where a publisher states a season, the record has availability basis 'stated' with the season window, and schedule.onDate reads on or not-on for a December day."
+  },
+  {
+    "id": "m1128-westside-winery-lightups",
+    "title": "West Kelowna winery 'Holiday Light-Up' events are wine tastings, not light displays, and their tree photo is not theirs",
+    "records": [
+      "a392c1ac-72c1-45bc-8e3b-266923cf143f",
+      "b14f871a-b635-4e84-9c29-93b4aad70b8d",
+      "508caaa2-9913-4404-9fa2-e5cb8333d594",
+      "52a90790-77c2-4bfc-a87c-62d474156b06"
+    ],
+    "problem": "Tourism Kelowna lists a winery campaign as 'Holiday Light-Up \"<theme>\"' events, each typed 'Holiday event'. Their descriptions are tastings, offers and food-bank drives. Three carry Tourism Kelowna's stock photo of the Downtown Kelowna Christmas tree as an exact picture. Christmas therefore offers them as 'Holiday lights' with someone else's tree.",
+    "evidence": "a392c1ac at Black Swift Vineyards, 2345 Boucherie Rd ('library wine tastings… hot cocoa'); b14f871a 3225 Boucherie Rd ('Black Friday wine offers, mulled wine'); 508caaa2 Crown & Thieves, 3887 Brown Rd ('tastings, festive cocktails… games'); 52a90790 2306 Hayman Rd ('Christmas light-up! Free charcuterie & pastries'). Image (viewed): a couple under the lit tree at Stuart Park, Kelowna waterfront, with string lights and the rink behind. URLs differ only by Simpleview upload id (Couple-in-front-of-Christmas-Tree-Downtown-1-1-_<id>) and the bytes are identical (md5 c240861c1de03f56f54bc1cc76ad5d00).",
+    "ask": "Give these a subtype that says what they are (winery tasting / holiday promotion). Mark the shared tree photo as relationship 'category' (or remove it) on every record whose venue is not Stuart Park.",
+    "acceptance": "None of the four has relationship exact on the Couple-in-front-of-Christmas-Tree image, and their subtype is not 'Holiday event' or 'lights'."
+  },
+  {
+    "id": "m1128-kelowna-market-lightup-twins",
+    "title": "Merge the two Downtown Kelowna Winter Street Market & Light Up records",
+    "records": [
+      "4c415f0e-8003-468e-a1ba-f6b48c86dbc5",
+      "312c8668-6912-48c0-b292-1807db574f72"
+    ],
+    "problem": "One event on 2026-11-28 at Stuart Park is held twice, with different titles, so Passport's titleKey cannot fold them.",
+    "evidence": "4c415f0e 'Downtown Kelowna Winter Street Market & Light Up' at Stuart Park (-119.49713, 49.88881), 2026-11-28 (day precision), photo of the Stuart Park tree. 312c8668 'Winter Street Market & Light Up' at 1430 Water St (-119.49712, 49.88838), 2026-11-28T19:00Z to 2026-11-29T01:00Z, no photo. 48 m apart.",
+    "ask": "Merge into one Event with the minute times from 312c8668 and the photo from 4c415f0e.",
+    "acceptance": "One Event for the 2026-11-28 Kelowna Winter Street Market & Light Up, with minute times and a loading photo."
+  },
+  {
+    "id": "m1128-shared-upload-not-exact",
+    "title": "An image used by events at different venues cannot be 'exact' for each",
+    "records": [
+      "b14f871a-b635-4e84-9c29-93b4aad70b8d",
+      "508caaa2-9913-4404-9fa2-e5cb8333d594",
+      "52a90790-77c2-4bfc-a87c-62d474156b06",
+      "4c415f0e-8003-468e-a1ba-f6b48c86dbc5",
+      "dc9597a9-1570-48a8-a8fd-4310ad6637af"
+    ],
+    "problem": "Listing CDNs (Simpleview / Tourism Kelowna) re-upload one stock image per listing under a new id. Atlas sees distinct URLs and marks each one exact.",
+    "evidence": "Four Simpleview URLs share the basename 'Couple-in-front-of-Christmas-Tree-Downtown-1-1-' and the same bytes. dc9597a9 'Bee Merry & Bright Holiday Light Up' leads with a generic star-and-bokeh image ('5-1-_….png', 960x1200, 1.4 MB), and its description is only '$8e'.",
+    "ask": "Normalise Simpleview basenames (strip '_<HEX-ID>_<uuid>') or hash image bytes. When one image is attached to subjects at different venues, downgrade it to 'category' on all but the subject it was captioned for. Re-read dc9597a9's listing; the description is truncated.",
+    "acceptance": "A check over served images finds no image hash (or normalised basename) with relationship exact on two subjects at different venues."
+  },
+  {
+    "id": "m1128-vernon-lights-displays",
+    "title": "Vernon has no Christmas lights display you can visit in Atlas",
+    "records": [
+      "d1cfd91a-16bc-485f-aa7c-ec29e7cabc30",
+      "0d2e52bb-5814-4602-9272-fc157c72aab2"
+    ],
+    "problem": "Within 30 km of Vernon, Atlas's only lights-theme finds are two one-night light-up ceremonies. Christmas's lights row, Lights way and planner lights stop have nothing to recommend on other nights, apart from community pins.",
+    "evidence": "Lights-theme Christmas finds with distance under 30 km from Vernon (2026-11-25 pool): d1cfd91a (Dec 5) and 0d2e52bb (Nov 29) only. Passport's own seed has one Vernon public display (Carnival of Lights, Spirit Square, last dated 2022).",
+    "ask": "Research and publish multi-night public displays in Vernon, Coldstream, Armstrong and Lumby for 2026 (municipal tree and park lighting, Polson Park, the Allan Brooks Nature Centre Yuletide, Sparkling Hill), each with stated nights, a point and an exact photo.",
+    "acceptance": "At least 3 Places or Events within 30 km of Vernon that read as lights (name or subtype), with a stated 2026 run of more than one night and a point."
+  }
+]

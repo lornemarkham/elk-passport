@@ -189,7 +189,7 @@ export default async function LightsPage({
               </Link>
             )}
             <Link
-              href="/christmas/discover"
+              href="/christmas#discover"
               className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white/15 px-4 text-sm font-bold"
               data-testid="to-discover"
             >

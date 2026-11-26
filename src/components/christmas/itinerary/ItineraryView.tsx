@@ -240,10 +240,9 @@ export function ItineraryView({
           </p>
         )}
         <p className="mt-3 text-sm font-semibold" data-testid="itinerary-count">
-          {itinerary.planned} of {itinerary.stops.length} parts planned
           {itinerary.unresolved > 0
-            ? ` · ${itinerary.unresolved} couldn't be confirmed — said below`
-            : " · everything you asked for"}
+            ? `${itinerary.unresolved === 1 ? "One part" : `${itinerary.unresolved} parts`} without a real place yet — just below`
+            : "Everything you asked for, planned"}
         </p>
       </section>
 

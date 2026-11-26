@@ -293,7 +293,7 @@ export default async function ChristmasAdventurePage({
                       : "Printable guide"}
                   </Link>
                   <Link
-                    href={`/christmas/discover${view.destinationTownId ? `?at=${view.destinationTownId}` : ""}`}
+                    href={`/christmas${view.destinationTownId ? `?at=${view.destinationTownId}` : ""}#discover`}
                     className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-4 text-sm font-semibold hover:bg-white/25"
                   >
                     <Compass className="h-4 w-4" aria-hidden />

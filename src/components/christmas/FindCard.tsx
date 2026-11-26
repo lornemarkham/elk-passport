@@ -41,11 +41,13 @@ const CONFIDENCE_STYLE: Readonly<Record<Confidence, string>> = {
 
 /**
  * What the badge says. A confirmed date says whether it is on now or still to
- * come; every other reading says how unsure it is — never "confirmed".
+ * come — "On now", "Upcoming" — and only an unsure one says how unsure it is
+ * (owner brief M1128: no verification terms on every card; the reading's
+ * own sentence is the badge's title, for whoever asks).
  */
 function badge(when: WhenReading): string {
   return when.confidence === "dated" && when.phase
-    ? `${PHASE_LABEL[when.phase]} · dates confirmed`
+    ? PHASE_LABEL[when.phase]
     : CONFIDENCE_LABEL[when.confidence];
 }
 
@@ -65,12 +67,15 @@ export function FindCard({
   origin,
   youngest,
   compact = false,
+  feature = false,
   theme: browsing,
 }: {
   readonly find: Find;
   readonly origin?: { latitude: number; longitude: number };
   readonly youngest?: number;
   readonly compact?: boolean;
+  /** The one find a section leads with: a wide picture, the name large. */
+  readonly feature?: boolean;
   /** The category being browsed: the card says that one when it is one. */
   readonly theme?: ThemeId;
 }) {
@@ -101,18 +106,33 @@ export function FindCard({
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_6px_22px_rgba(8,35,25,0.08)] ring-1 ring-black/5 transition-shadow hover:shadow-[0_10px_30px_rgba(8,35,25,0.14)]",
         compact ? "w-[17.5rem] shrink-0 snap-start" : "",
+        feature &&
+          "rounded-[28px] md:grid md:min-h-[24rem] md:has-[img]:grid-cols-[1.45fr_1fr]",
       )}
-      data-testid="find-card"
+      data-testid={feature ? "find-feature" : "find-card"}
       data-find={e.id}
     >
-      <CardPhoto experience={e} className="aspect-[16/9] w-full" />
-      <div className="flex flex-1 flex-col gap-1.5 p-3.5">
+      <CardPhoto
+        experience={e}
+        className={cn(
+          "aspect-[16/9] w-full",
+          feature && "aspect-[4/3] sm:aspect-[16/9] md:aspect-auto md:h-full",
+        )}
+        {...(feature ? { priority: true } : {})}
+      />
+      <div
+        className={cn(
+          "flex flex-1 flex-col gap-1.5 p-3.5",
+          feature && "gap-2 p-5 sm:p-7 md:justify-center",
+        )}
+      >
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-[#b3242f]">
           <span
             className={cn(
               "rounded-full px-2.5 py-0.5 text-xs font-bold",
               CONFIDENCE_STYLE[find.when.confidence],
             )}
+            title={find.when.because}
             data-testid="find-confidence"
           >
             {badge(find.when)}
@@ -128,7 +148,12 @@ export function FindCard({
             </span>
           )}
         </p>
-        <h3 className="ghad-display text-xl leading-tight font-extrabold tracking-tight text-balance">
+        <h3
+          className={cn(
+            "ghad-display text-xl leading-tight font-extrabold tracking-tight text-balance",
+            feature && "text-[1.75rem] leading-[1.02] sm:text-4xl",
+          )}
+        >
           <Link
             href={href}
             className="after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
@@ -139,7 +164,10 @@ export function FindCard({
         </h3>
         {!compact && e.description && (
           <p
-            className="line-clamp-2 text-sm text-[var(--gh-ink-soft)]"
+            className={cn(
+              "line-clamp-2 text-sm text-[var(--gh-ink-soft)]",
+              feature && "line-clamp-3 text-base",
+            )}
             data-testid="find-description"
           >
             {e.description}
@@ -167,10 +195,11 @@ export function FindCard({
             </span>
           </li>
           {find.others ? (
-            <li className="text-xs" data-testid="find-others">
-              Listed {find.others + 1} times — shown once
-              {e.kind === "Event" ? "; it may run on other dates too" : ""}.
-            </li>
+            e.kind === "Event" ? (
+              <li className="text-xs" data-testid="find-others">
+                May run on other dates too
+              </li>
+            ) : null
           ) : null}
           {!compact && find.price && (
             <li className="flex gap-2">

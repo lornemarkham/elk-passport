@@ -204,7 +204,7 @@ export default async function ChristmasEventPage({ params }: Props) {
         <main className={`${styles.page} min-h-screen pb-28`}>
           <div className="mx-auto max-w-3xl px-4 pt-4 sm:px-6 sm:pt-6">
             <Link
-              href={`/christmas/discover?at=${ask.at}`}
+              href={`/christmas?at=${ask.at}#discover`}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/80 px-4 text-sm font-semibold ring-1 ring-black/10 hover:bg-white"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -445,11 +445,11 @@ export default async function ChristmasEventPage({ params }: Props) {
                       ))}
                     </ul>
                   ) : (
-                    <p>Atlas has no source page for this one.</p>
+                    <p>No source page is listed for this one.</p>
                   )}
                   <p>
-                    Details come from Atlas and the organiser. Confirm times and
-                    prices with the organiser before you go.{" "}
+                    Details come from the organiser&apos;s listing. Confirm
+                    times and prices with the organiser before you go.{" "}
                     <Link
                       href={`/passport/${id}`}
                       className="font-semibold underline underline-offset-2"
