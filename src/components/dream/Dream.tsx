@@ -320,11 +320,7 @@ export function Dream({
         className={styles.input}
         rows={docked ? 1 : 2}
         value={speech.listening ? speech.heard : draft}
-        placeholder={
-          docked
-            ? "Change anything — “make it free”, “closer”, “no hotel”…"
-            : PROMPTS[prompt]
-        }
+        placeholder={docked ? "Change anything…" : PROMPTS[prompt]}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {

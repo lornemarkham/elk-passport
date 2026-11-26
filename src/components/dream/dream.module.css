@@ -906,7 +906,7 @@
   animation: rise 600ms var(--ease) both;
 }
 .dock {
-  background: rgba(22, 24, 29, 0.82);
+  background: rgba(22, 24, 29, 0.96);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   animation: none;
 }
@@ -928,7 +928,7 @@
 .next button {
   flex: none;
   border: 1px solid var(--line);
-  background: rgba(22, 24, 29, 0.85);
+  background: rgba(22, 24, 29, 0.96);
   backdrop-filter: blur(10px);
   color: var(--paper);
   border-radius: 999px;

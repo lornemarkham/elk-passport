@@ -211,3 +211,10 @@ Unset `GHAD_DREAM` (production default: off). To remove it entirely, delete
 `src/app/labs/experiments.ts` and the `dream` entry in
 `src/app/creative/archive.ts`. No migration, no store, no shared contract
 changed.
+
+## Screens
+
+`screens/` holds phone (390×844) and desktop (1440×900) captures of the
+opening, each of the five intentions (scenes, then the day) and the
+figure-it-out flow. They were taken on the 3131 preview against the production
+corpus snapshot of 2026-11-25. The stand-in is Atlas's data, not live Atlas.
