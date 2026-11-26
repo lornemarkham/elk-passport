@@ -479,16 +479,39 @@ export function oneEach(sorted: readonly Find[]): Find[] {
  * listing that leads the shelf can be the one without a photograph while its
  * twin has one. They are one thing by `oneEach`'s own rule, so the twin's own
  * picture — never a venue's or a stand-in — is a picture of this thing.
+ *
+ * With a picture of its own the card keeps it, and the twin's becomes the one
+ * `CardPhoto` falls back to if it fails to load (the two Silver Star Light Up
+ * listings: one picture answers 404, the other loads).
  */
 function borrowPicture(card: Find, twin: Find): Find {
-  if (hasChristmasPicture(card.experience)) return card;
-  const picture = christmasPictures(twin.experience)[0];
-  if (!picture) return card;
+  const theirs = christmasPictures(twin.experience)[0];
+  if (!theirs) return card;
+  const e = card.experience;
+  const ours = christmasPictures(e);
+  if (ours.some((p) => p.src === theirs.src)) return card;
+  if (ours.length === 0)
+    return {
+      ...card,
+      experience: {
+        ...e,
+        heroMedia: { type: "image", src: theirs.src, alt: theirs.alt },
+      },
+    };
+  // The second slot `cardPictures` reads; only when it holds nothing else.
+  if (e.presentationImage && e.presentationImage.url !== e.heroMedia?.src)
+    return card;
   return {
     ...card,
     experience: {
-      ...card.experience,
-      heroMedia: { type: "image", src: picture.src, alt: picture.alt },
+      ...e,
+      presentationImage: {
+        url: theirs.src,
+        relationship: "exact",
+        depictsEntity: true,
+        confidence: "high",
+        attribution: theirs.alt,
+      },
     },
   };
 }

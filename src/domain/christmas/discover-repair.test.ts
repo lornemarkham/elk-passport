@@ -4,6 +4,7 @@ import { townById } from "@/domain/discovery/towns";
 import { readChristmas } from "./themes";
 import { presetDates, whenLabel } from "./when";
 import { answer, findsIn, oneEach, readAsk, writeAsk } from "./discover";
+import { christmasPictures } from "./pictures";
 
 /**
  * **Christmas discovery UX repair** (owner brief, 2026-11-22): WHERE, WHEN
@@ -468,6 +469,27 @@ describe("one card, the thing's own picture (M1126)", () => {
     const [card] = oneEach(finds);
     expect(card!.experience.id).toBe("a");
     expect(card!.experience.heroMedia?.src).toBe(photo.src);
+  });
+
+  it("keeps its own photograph and falls back to the twin's", () => {
+    const finds = findsIn(
+      [
+        near("vernon", 0, {
+          id: "a",
+          title: "Silver Star Annual Light Up",
+          heroMedia: { type: "image", src: "https://example.org/404.jpg" },
+        }),
+        near("vernon", 0, {
+          id: "b",
+          title: "SilverStar Annual Light Up",
+          heroMedia: photo,
+        }),
+      ],
+      TODAY,
+    );
+    expect(
+      christmasPictures(oneEach(finds)[0]!.experience).map((p) => p.src),
+    ).toEqual(["https://example.org/404.jpg", photo.src]);
   });
 
   it("never borrows a venue's photograph from the twin", () => {
