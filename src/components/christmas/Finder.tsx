@@ -89,6 +89,13 @@ export function Finder({
     [params],
   );
   const [shown, setShown] = useState(FIRST);
+  // Shelves far down the page are drawn once the page is in the hand, so a
+  // phone's first answer is the spotlight and what's near, not every row.
+  const [later, setLater] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setLater(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const dated = Boolean(ask.from || ask.to);
   const days = { from: ask.from, to: ask.to };
 
@@ -364,7 +371,7 @@ export function Finder({
       {showEvening && evening}
       {showLights && lights}
 
-      {view.seasonal.length > 0 && (
+      {later && view.seasonal.length > 0 && (
         <Section
           id="seasonal"
           kicker="Any day this season"
@@ -375,7 +382,7 @@ export function Finder({
         </Section>
       )}
 
-      {view.drive.length > 0 && (
+      {later && view.drive.length > 0 && (
         <Section
           id="drive"
           kicker="Worth the drive"
@@ -386,7 +393,7 @@ export function Finder({
         </Section>
       )}
 
-      {view.maybe.length > 0 && (
+      {later && view.maybe.length > 0 && (
         <details
           className="rounded-[24px] bg-white/60 p-4 ring-1 ring-black/5"
           data-testid="shelf-maybe"

@@ -1044,6 +1044,41 @@ asked after the hero rather than in it. It is an Experience's presentation,
 not the fenced Inspiration product (§13): it personalises and recommends
 nothing. One composition; it answers no open question below.
 
+_Christmas is one page 2026-11-26_ (owner brief M1128 "GoHaveADay
+Christmas — One Beautiful Experience", stated as a product decision;
+`docs/product/christmas/ONE-EXPERIENCE-M1128.md`, ADR 026 proposed):
+**Christmas Home and Discover are the same experience.** `/christmas` reads
+welcome (the fire, unchanged) → six ways as photographs → discovery → an
+optional plan, and `/christmas/discover` redirects to it with its query, so
+no shared link breaks. Where, when and how far are one control, said once;
+the browsing date is a preference and never the date of a saved plan.
+Categories are **several at a time, OR between them**, each offered only
+with something in it for this place, these days and this distance, said with
+how many; a category with none is said apart with the next day it is
+confirmed, never offered as a choice. When nothing matches, the page
+suggests — the next confirmed days, other things that day, the same thing a
+little further — and moves neither date nor distance itself. The order is a
+host's, not nearest-first: confirmed, then a named Christmas outing of a big
+kind, then soon, then pictured, then nearer. Seasonal places whose days are
+not listed sit on their own shelf, apart from confirmed events. How the list
+was made (the radius and how it is measured, what was set aside) is one tap
+away, not on every card; cards say _On now_ / _Upcoming_ rather than
+"dates confirmed". The bar is **Home · Lights Map · Advent · My Christmas**,
+on screen throughout; planning is reached from My Christmas and from the
+experiences. New Year's Eve is part of the season: in view when the days
+asked touch it, from Boxing Day, or when asked for by name — no banner on
+every screen. **This supersedes**, for Christmas: the 2026-11-22 paragraph's
+"one category at a time" and the 2026-11-21 bar (Discover · Lights Map · My
+Christmas List · Plan My Route); 2026-11-23's New Year's Eve "said first
+after All"; 2026-11-24's season's-best tiles (the chips now count each kind,
+and a kind with none is said); and 2026-11-25's band of pills and three ways
+in below the hero (Advent is on the bar; the place and distance are the one
+control). **Inspirational photographs** (openly licensed, credited, said to
+be inspiration) may illustrate the six _ways_ — never a find, a place or an
+event, which keep their own picture or none, as decided 2026-11-13. The
+owner ordered both; it is recorded here rather than left as a conflict. One
+composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

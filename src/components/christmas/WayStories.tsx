@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { Way, WayId } from "@/domain/christmas/ways";
 import { WAY_PHOTOS } from "./photos";
+import { WayPhoto } from "./WayPhoto";
 import { cn } from "@/lib/utils";
 
 /**
@@ -77,18 +77,16 @@ export function WayStories({
               {...(way.id === "lights" ? { "data-cta": "lights" } : {})}
             >
               {photo && (
-                <Image
-                  src={photo.image}
+                <WayPhoto
+                  image={photo.image}
                   alt={photo.alt}
-                  fill
-                  placeholder="blur"
                   sizes={
                     i === 0
                       ? "(min-width: 1024px) 66vw, 100vw"
                       : "(min-width: 1024px) 33vw, 50vw"
                   }
+                  focus={photo.focus}
                   className="object-cover transition-transform duration-[1600ms] ease-out group-hover:scale-[1.045] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                  style={{ objectPosition: photo.focus }}
                 />
               )}
               <span

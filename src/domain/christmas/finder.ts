@@ -61,14 +61,39 @@ export interface FinderData {
   readonly newYear: boolean;
 }
 
+/**
+ * **What a card needs, and no more** — finds go to the visitor's phone to be
+ * filtered there, so the parts only the server reads (its evidence about the
+ * environment, a second copy of the description) stay behind, and a long
+ * description is cut to what a card can show. Measured on the 2026-11-25
+ * corpus: 2.4 kB a find before.
+ */
+const CARD_WORDS = 240;
+export function slim(f: Find): Find {
+  const e = f.experience;
+  const description =
+    e.description && e.description.length > CARD_WORDS
+      ? `${e.description.slice(0, CARD_WORDS).replace(/\s+\S*$/, "")}…`
+      : e.description;
+  return {
+    ...f,
+    experience: {
+      ...e,
+      shortDescription: "",
+      ...(description !== undefined ? { description } : {}),
+      environment: undefined,
+    },
+  };
+}
+
 /** How far "a little further" reaches for a dated ask. */
 export const FURTHER_KM = 60;
 /** Most finds a view carries; a phone is not a database. */
-export const NEAR_CAP = 90;
-const PER_THEME = 8;
+export const NEAR_CAP = 48;
+const PER_THEME = 6;
 const LATER_PER_THEME = 3;
 const FURTHER_CAP = 12;
-const MAYBE_CAP = 24;
+const MAYBE_CAP = 12;
 
 /**
  * **New Year's Eve is part of the season, not a rival to it** (owner brief
@@ -200,15 +225,17 @@ export function finderData(
   }
 
   return {
-    near: capped(near, NEAR_CAP),
-    maybe: shelf("maybe").slice(0, MAYBE_CAP),
-    drive: shelf("drive"),
-    further,
-    later,
+    near: capped(near, NEAR_CAP).map(slim),
+    maybe: shelf("maybe").slice(0, MAYBE_CAP).map(slim),
+    drive: shelf("drive").map(slim),
+    further: further.map(slim),
+    later: later.map(slim),
     counts,
     total: near.length,
     unplaced: base.unplaced,
-    unplacedFinds: ask.unplaced ? shelf("unplaced").slice(0, MAYBE_CAP) : [],
+    unplacedFinds: ask.unplaced
+      ? shelf("unplaced").slice(0, MAYBE_CAP).map(slim)
+      : [],
     past: shelf("past").length,
     removed: base.removed,
     newYear,
