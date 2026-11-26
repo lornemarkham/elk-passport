@@ -119,23 +119,30 @@ export function Finder({
     choose(themes.includes(t) ? themes.filter((x) => x !== t) : [...themes, t]);
 
   const { open, closed } = availability(data, pinsOn ? { lights: pinsOn } : {});
+  const showLights = themes.length === 0 || themes.includes("lights");
   const view = viewOf(data, themes, days, today);
-  const host = view.empty ? hostFor(data, themes, days, today) : undefined;
+  // Community lights count as Holiday lights, so they are something too.
+  const empty = view.empty && !(showLights && lights);
+  const host = empty ? hostFor(data, themes, days, today) : undefined;
   const asked = themes.length
     ? themes.map((t) => themeById(t).label).join(" or ")
     : "Christmas events";
-  const showLights = themes.length === 0 || themes.includes("lights");
   const showEvening = themes.length === 0 || themes.includes("food");
-  const one = themes.length === 1 ? themes[0] : undefined;
-  const card = (f: Find) => (
-    <FindCard
-      key={f.experience.id}
-      find={f}
-      origin={origin}
-      {...(youngest !== undefined ? { youngest } : {})}
-      {...(one ? { theme: one } : {})}
-    />
-  );
+  // A card says the chosen category it belongs to, when there is one.
+  const chosenOf = (f: Find) =>
+    themes.find((t) => f.reading.themes.includes(t));
+  const card = (f: Find) => {
+    const chosen = chosenOf(f);
+    return (
+      <FindCard
+        key={f.experience.id}
+        find={f}
+        origin={origin}
+        {...(youngest !== undefined ? { youngest } : {})}
+        {...(chosen ? { theme: chosen } : {})}
+      />
+    );
+  };
   const linkFor = (next: Partial<Ask>) =>
     discoverHref({ ...ask, themes, ...next });
 
@@ -200,7 +207,7 @@ export function Finder({
       {outage && <AtlasDown />}
 
       {/* -------------------------------------------- nothing for this ask */}
-      {view.empty && !outage && host && (
+      {empty && !outage && host && (
         <section
           className="rounded-[28px] bg-white p-5 shadow-[0_10px_34px_rgba(8,35,25,0.08)] ring-1 ring-black/5 sm:p-8"
           data-testid="nothing"
@@ -314,7 +321,9 @@ export function Finder({
             origin={origin}
             feature
             {...(youngest !== undefined ? { youngest } : {})}
-            {...(one ? { theme: one } : {})}
+            {...(chosenOf(view.spotlight)
+              ? { theme: chosenOf(view.spotlight)! }
+              : {})}
           />
         </section>
       )}

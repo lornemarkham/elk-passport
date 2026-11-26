@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/ghad/theme";
 import { Hearth } from "@/components/christmas/hearth/Hearth";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { RememberDistance } from "@/components/christmas/RememberDistance";
+import { KeepScroll } from "@/components/christmas/KeepScroll";
 import { PlanHero } from "@/components/christmas/PlanHero";
 import { DiscoverControls } from "@/components/christmas/DiscoverControls";
 import { adventureSession } from "@/lib/adventures/server";
@@ -122,6 +123,7 @@ export default async function ChristmasPage({
     <>
       {where.chosen && <RememberTown town={ask.at!} />}
       {typeof params.km === "string" && <RememberDistance km={ask.km} />}
+      <KeepScroll />
       <ThemeProvider className="block">
         <PicksProvider
           planHref={`/christmas/plan${q}`}
@@ -172,7 +174,7 @@ export default async function ChristmasPage({
                 <section
                   id="discover"
                   aria-labelledby="discover-title"
-                  className="scroll-mt-4"
+                  className="scroll-mt-16"
                   data-testid="discover"
                 >
                   <div

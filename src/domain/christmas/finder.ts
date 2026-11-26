@@ -337,7 +337,11 @@ export interface View {
   readonly drive: readonly Find[];
   /** How many confirmed things the view holds. */
   readonly count: number;
-  /** Nothing confirmed for these categories, days and distance. */
+  /**
+   * Nothing for these categories, days and distance — confirmed or
+   * seasonal. The same things a chip counts, so a chip that says 2 never
+   * opens on "nothing".
+   */
   readonly empty: boolean;
 }
 
@@ -378,7 +382,7 @@ export function viewOf(
     maybe: data.maybe.filter(keep),
     drive: data.drive.filter(keep),
     count: confirmed.length,
-    empty: confirmed.length === 0,
+    empty: confirmed.length === 0 && seasonal.length === 0,
   };
 }
 

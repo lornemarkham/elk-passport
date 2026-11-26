@@ -1,6 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { POP_KEY } from "./KeepScroll";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HOME_KEY } from "./home";
@@ -20,6 +21,11 @@ import { SuggestSomething } from "@/components/contributions/SuggestSomething";
  * - **My Christmas** is everything the visitor kept: their list, their saved
  *   plans and adventures. Planning is reached from there and from the
  *   experiences themselves, not as a rival destination.
+ *
+ * It stays at the top of the screen (owner brief M1128: "difficult to
+ * understand where you are and how to return home"), so Home is one tap
+ * from anywhere on a long page — and leaving does not first mean scrolling
+ * back up, which is also what lets Back return to the same spot.
  *
  * The global bar's generic Discover / My Stuff / Build a Day still sits above
  * it: hiding those inside `/christmas` is a change to the shell's shared
@@ -87,11 +93,20 @@ export function ChristmasNav() {
   // changes); the server's link is the plain landing page.
   const saved = useSyncExternalStore(noSubscription, readHome, () => "");
   const home = `/christmas${saved}`;
+  // Back and Forward are marked, so a page can put the visitor back where
+  // they were (`KeepScroll`).
+  useEffect(() => {
+    const mark = () => {
+      (window as unknown as Record<string, number>)[POP_KEY] = Date.now();
+    };
+    window.addEventListener("popstate", mark);
+    return () => window.removeEventListener("popstate", mark);
+  }, []);
   return (
     <nav
       aria-label="Christmas"
       data-testid="christmas-nav"
-      className="border-b border-black/10 bg-[#082319] text-white"
+      className="sticky top-0 z-40 border-b border-black/10 bg-[#082319] text-white"
     >
       <ul className="mx-auto flex max-w-6xl items-center gap-x-1 overflow-x-auto px-3 sm:px-6">
         {DESTINATIONS.map((d) => {

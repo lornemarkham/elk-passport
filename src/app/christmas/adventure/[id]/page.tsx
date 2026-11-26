@@ -314,7 +314,7 @@ export default async function ChristmasAdventurePage({
 
           <nav
             aria-label="This adventure"
-            className="sticky top-0 z-20 border-b border-black/5 bg-[#fbf6ec]/95 backdrop-blur"
+            className="sticky top-12 z-20 border-b border-black/5 bg-[#fbf6ec]/95 backdrop-blur"
           >
             <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 sm:px-5">
               {tabs.map(([href, label]) => (

@@ -120,7 +120,7 @@ export default async function ReviewPage() {
                 </p>
                 <nav
                   aria-label="Queues"
-                  className="sticky top-0 z-10 -mx-4 mt-4 flex gap-2 overflow-x-auto bg-[#fbf6ec]/95 px-4 py-2 backdrop-blur"
+                  className="sticky top-12 z-10 -mx-4 mt-4 flex gap-2 overflow-x-auto bg-[#fbf6ec]/95 px-4 py-2 backdrop-blur"
                 >
                   {(
                     [

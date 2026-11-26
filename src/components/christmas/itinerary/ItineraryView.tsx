@@ -435,7 +435,7 @@ export function ItineraryView({
           </section>
         )}
       </div>
-      <aside className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:-mt-2">
+      <aside className="min-w-0 space-y-4 lg:sticky lg:top-16 lg:-mt-2">
         <PlanMap itinerary={itinerary} />
         <Moments
           party={party}
