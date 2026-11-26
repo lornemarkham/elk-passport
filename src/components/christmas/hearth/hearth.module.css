@@ -270,6 +270,8 @@
 
 .eyebrow {
   font-size: 0.75rem;
+  /* In rem, so the web font arriving does not change the line. */
+  line-height: 1rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -278,13 +280,16 @@
 
 .title {
   margin-top: 0.5rem;
-  max-width: 11ch;
-  font-size: clamp(2.5rem, 11vw, 5.25rem);
+  font-size: clamp(2.3rem, 11vw, 5.25rem);
   line-height: 0.92;
   font-weight: 800;
   letter-spacing: -0.045em;
-  text-wrap: balance;
   text-shadow: 0 2px 24px rgb(4 20 14 / 0.6);
+}
+
+.title span {
+  display: block;
+  white-space: nowrap;
 }
 
 /* One verse at a time, all in the same cell, so the page never moves. */
@@ -343,6 +348,7 @@
 .countdown {
   margin-top: 1.25rem;
   font-size: 0.95rem;
+  line-height: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #ffd98a;

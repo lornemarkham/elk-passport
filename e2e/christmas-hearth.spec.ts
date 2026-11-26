@@ -87,8 +87,8 @@ test("the verses fade one to the next without moving the page, and pause", async
 });
 
 test.describe("reduced motion", () => {
-  test.use({ reducedMotion: "reduce" });
   test("a still room: one verse, no pause needed", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/christmas?at=vernon");
     await expect(page.getByTestId("hearth")).toHaveAttribute("data-still", "");
     await expect(page.getByTestId("hearth-pause")).toHaveCount(0);

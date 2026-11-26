@@ -22,8 +22,8 @@ A room at night, filling the first screen under the bars:
 - the countdown (_29 sleeps till Christmas_), now a quiet gold line.
 
 Two small round buttons sit in the corner: **Hear the fire** (off by default,
-every visit, never remembered) and **Pause** (holds the fire and the verses, stops the
-snow and the twinkle).
+every visit, never remembered) and **Pause** (holds the fire, the verses and the twinkle, and stops
+the snow).
 
 ## Where the decisions went
 
@@ -72,4 +72,4 @@ changed.
 
 `e2e/christmas-hearth.spec.ts` (no links or fields in the hero, two buttons,
 sound off, the choices below, verse rotation without layout shift, pause,
-reduced motion). Screenshots in the M1127 report.
+reduced motion). Screenshots: `stay-awhile/desktop.png`, `stay-awhile/phone.png`.
