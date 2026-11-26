@@ -1,7 +1,7 @@
 import { townById } from "@/domain/discovery/towns";
 import { addDays, type Confidence } from "./when";
 import { hasChristmasPicture } from "./pictures";
-import type { Answer, Find } from "./discover";
+import { TOWN_SPREAD_KM, type Answer, type Find } from "./discover";
 import type { ThemeId } from "./themes";
 import { metres } from "./lights/actions";
 import type { Kind, PinView } from "./lights/model";
@@ -285,9 +285,14 @@ export const knownTown = (id: string | undefined) =>
  * each find once, except that a year-long run does not lead (`longRun`) and,
  * since mission 1126, a find Christmas can show a picture of comes before one
  * it cannot — the same "pictured" step Christmas's own recommendation order
- * takes (`byStrength`). Only the order changes: nothing here is near unless
- * `around` placed it, and with too few pictured finds the rest are text cards.
+ * takes (`byStrength`) — **within the town first, then beyond it**. A
+ * photograph never lifts a market 25 km away over the town's own Friday
+ * night (doctrine §12, "a photograph does not lift a card out of that
+ * order"); it only decides which of the town's own finds lead. Nothing here
+ * is near unless `around` placed it.
  */
+const inTown = (f: Find) => f.km === undefined || f.km <= TOWN_SPREAD_KM;
+
 export function strongest(
   sections: readonly AroundSection[],
   n: number,
@@ -301,6 +306,7 @@ export function strongest(
     .sort(
       (a, b) =>
         Number(longRun(a.f)) - Number(longRun(b.f)) ||
+        Number(!inTown(a.f)) - Number(!inTown(b.f)) ||
         Number(hasPicture(b.f)) - Number(hasPicture(a.f)) ||
         a.i - b.i,
     )
