@@ -13,6 +13,13 @@ Christmas is, what it reuses, and what it does not decide.
                               challenges, memories, recap, go have another
 ```
 
+**One Beautiful Experience (2026-11-26, M1128):** `/christmas` is one page —
+the fire, six ways as photographs, then discovery with one where/when/how-far
+control and several categories at once, filtered in the hand; dead ends
+become suggestions; `/christmas/discover` redirects there; the bar is Home ·
+Lights Map · Advent · My Christmas: [ONE-EXPERIENCE-M1128.md](ONE-EXPERIENCE-M1128.md),
+data audit [ATLAS-QUALITY-M1128.md](ATLAS-QUALITY-M1128.md).
+
 **Christmas Around You (2026-11-10):** the front page is now sections of
 real things around a town — [AROUND-YOU.md](AROUND-YOU.md).
 

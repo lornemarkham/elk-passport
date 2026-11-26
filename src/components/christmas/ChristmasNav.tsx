@@ -118,7 +118,7 @@ export function ChristmasNav() {
                 aria-current={current ? "page" : undefined}
                 data-testid={`xmas-nav-${d.id}`}
                 className={cn(
-                  "inline-flex min-h-11 items-center border-b-2 px-2 text-[13px] font-semibold whitespace-nowrap sm:px-3 sm:text-sm",
+                  "inline-flex min-h-11 items-center border-b-2 px-1.5 text-[13px] font-semibold whitespace-nowrap min-[380px]:px-2 sm:px-3 sm:text-sm",
                   current
                     ? "border-[#ffd98a] text-white"
                     : "border-transparent text-white/70 hover:text-white",
@@ -135,16 +135,18 @@ export function ChristmasNav() {
           <SuggestSomething
             experience="christmas"
             label="+ Suggest"
-            className="min-h-9 bg-[#ffd98a] text-[#082319] ring-0"
+            compact
+            className="min-h-9 bg-[#ffd98a] px-2.5 text-[#082319] ring-0 sm:px-4"
           />
         </li>
         <li className="shrink-0">
           <Link
             href="/discovery"
             data-testid="xmas-nav-back"
+            aria-label="Back to Go Have a Day"
             className="inline-flex min-h-11 items-center px-2 text-[13px] font-semibold whitespace-nowrap text-[#ffd98a] hover:underline sm:text-sm"
           >
-            ← Go Have a Day
+            ←<span className="hidden sm:inline">&nbsp;Go Have a Day</span>
           </Link>
         </li>
       </ul>

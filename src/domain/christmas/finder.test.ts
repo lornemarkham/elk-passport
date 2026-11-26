@@ -167,9 +167,11 @@ describe("a dead end becomes a host's suggestions", () => {
     expect(tomorrow.km).toBe(30);
   });
   it("offers the next confirmed market days", () => {
-    expect(host.next.map((n) => [n.day, n.find.experience.id])).toEqual([
-      ["2026-11-29", "market"],
-      ["2026-12-06", "market-dec"],
+    expect(
+      host.next.map((n) => [n.day, n.finds.map((f) => f.experience.id)]),
+    ).toEqual([
+      ["2026-11-29", ["market"]],
+      ["2026-12-06", ["market-dec"]],
     ]);
   });
   it("offers what else is on that day, nearby", () => {

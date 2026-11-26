@@ -570,6 +570,14 @@ export function strongest(answered: Answer, n: number): readonly Find[] {
     : answered.shelves
         .filter((s) => s.id.startsWith("area-"))
         .flatMap((s) => s.finds);
+  const sure = here
+    .filter(
+      (f) => f.when.confidence === "dated" || f.when.confidence === "check",
+    )
+    .sort(byStrength);
+  // An undated Christmas listing only fills a page that has almost nothing
+  // dated (M1128: unconfirmed beside confirmed read as equally sure).
+  if (sure.length >= Math.min(n, 2)) return sure.slice(0, n);
   return here
     .filter(
       (f) =>

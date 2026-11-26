@@ -240,8 +240,8 @@ export function Finder({
                 The next confirmed days
               </h3>
               <ul className="mt-2 grid gap-2 sm:grid-cols-3">
-                {host.next.map(({ day, find }) => (
-                  <li key={find.experience.id}>
+                {host.next.map(({ day, finds }) => (
+                  <li key={day}>
                     <Link
                       href={linkFor({ when: undefined, from: day, to: day })}
                       scroll={false}
@@ -251,9 +251,14 @@ export function Finder({
                       <span className="text-sm font-extrabold text-[#0f3b2b]">
                         {shortDay(day)}
                       </span>
-                      <span className="mt-0.5 leading-tight font-bold">
-                        {find.experience.title}
-                      </span>
+                      {finds.map((f) => (
+                        <span
+                          key={f.experience.id}
+                          className="mt-0.5 leading-tight font-bold"
+                        >
+                          {f.experience.title}
+                        </span>
+                      ))}
                       <span className="mt-auto pt-2 text-sm font-semibold text-[#8e1d26]">
                         Show {shortDay(day)} →
                       </span>

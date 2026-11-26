@@ -416,8 +416,11 @@ export function viewOf(
 // ---------------------------------------------------------------- the host
 
 export interface Host {
-  /** The next confirmed days for what was asked, in the radius. */
-  readonly next: readonly { readonly day: string; readonly find: Find }[];
+  /** The next confirmed days for what was asked, in the radius — each day once. */
+  readonly next: readonly {
+    readonly day: string;
+    readonly finds: readonly Find[];
+  }[];
   /** Other things confirmed for the same days, in the radius. */
   readonly sameDay: readonly Find[];
   /** What was asked, confirmed for the same days, a little further out. */
@@ -439,16 +442,16 @@ export function hostFor(
 ): Host {
   const keep = (f: Find) => inThemes(f, themes, data.newYear);
   const end = ask.to ?? ask.from;
-  const next = end
-    ? data.later
-        .filter(keep)
-        .flatMap((find) => {
-          const day = nextDay(find, end);
-          return day ? [{ day, find }] : [];
-        })
-        .sort((a, b) => a.day.localeCompare(b.day))
-        .slice(0, HOST_CARDS)
-    : [];
+  const byDay = new Map<string, Find[]>();
+  if (end)
+    for (const find of data.later.filter(keep)) {
+      const day = nextDay(find, end);
+      if (day) byDay.set(day, [...(byDay.get(day) ?? []), find]);
+    }
+  const next = [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(0, HOST_CARDS)
+    .map(([day, finds]) => ({ day, finds: finds.slice(0, 3) }));
   const sameDay =
     themes.length > 0
       ? data.near
