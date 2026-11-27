@@ -468,3 +468,68 @@ export function hostFor(
 
 /** Why a listing is beyond the radius: within reach for a longer drive. */
 export const reachOf = (km: number) => Math.max(DRIVE_REACH_KM, km * 2);
+
+// ------------------------------------------------------------- coming up
+
+/** Cards each Coming up row shows — a glance, not the list. */
+export const COMING_ROW = 4;
+
+export interface ComingUp {
+  /** Atlas's own events confirmed for today (beside the featured ones). */
+  readonly today: readonly Find[];
+  readonly tomorrow: readonly Find[];
+  /** This weekend, minus what tomorrow already said. */
+  readonly weekend: readonly Find[];
+  /** Starting within a fortnight, after the weekend's. */
+  readonly soon: readonly Find[];
+}
+
+/**
+ * **What is coming up, by when** (owner brief M1154: "tomorrow, this
+ * weekend and upcoming events — prioritize relevance and timing, not just
+ * distance"). Only an undated look around has it; a visitor who chose days
+ * gets those days in Explore. Each row is confirmed events in a host's order
+ * (`hostOrder`), long runs left to Explore so a market open all month does
+ * not fill every row, and no find appears in two rows — `shownIn` gives the
+ * page what to keep out of Explore so nothing is said twice.
+ */
+export function comingUp(data: FinderData, today: string): ComingUp {
+  const pool = data.near
+    .filter(
+      (f) =>
+        inThemes(f, [], data.newYear) &&
+        f.when.confidence === "dated" &&
+        !longRun(f),
+    )
+    .sort(hostOrder(today));
+  const seen = new Set<string>();
+  const take = (keep: (f: Find) => boolean): Find[] => {
+    const row = pool
+      .filter((f) => !seen.has(f.experience.id) && keep(f))
+      .slice(0, COMING_ROW);
+    for (const f of row) seen.add(f.experience.id);
+    return row;
+  };
+  const on = (from: string, to: string) => (f: Find) =>
+    availableFor(f, from, to) === "yes";
+  const tomorrowDay = addDays(today, 1);
+  const weekend = presetDates("weekend", today);
+  const fortnight = addDays(today, SOON_DAYS);
+  return {
+    today: take(on(today, today)),
+    tomorrow: take(on(tomorrowDay, tomorrowDay)),
+    weekend: take(on(weekend.from, weekend.to)),
+    soon: take(
+      (f) =>
+        f.when.from !== undefined &&
+        f.when.from > today &&
+        f.when.from <= fortnight,
+    ),
+  };
+}
+
+/** Every find a `ComingUp` shows, so Explore can leave them out. */
+export const shownIn = (c: ComingUp): readonly string[] =>
+  [...c.today, ...c.tomorrow, ...c.weekend, ...c.soon].map(
+    (f) => f.experience.id,
+  );

@@ -4,11 +4,13 @@ import { townById } from "@/domain/discovery/towns";
 import { discoverHref, findsIn, readAsk, type Ask } from "./discover";
 import {
   availability,
+  comingUp,
   finderData,
   hostFor,
   inThemes,
   newYearInView,
   nextDay,
+  shownIn,
   standout,
   viewOf,
 } from "./finder";
@@ -235,5 +237,26 @@ describe("helpers", () => {
     expect(discoverHref({ at: "vernon", themes: ["markets"] })).toBe(
       "/christmas?at=vernon&theme=markets#discover",
     );
+  });
+});
+
+describe("coming up says each find once, by when (M1154)", () => {
+  const data = finderData(finds, ask({}), { today: TODAY, now: NOW });
+  const c = comingUp(data, TODAY);
+  const idsOf = (l: readonly { experience: { id: string } }[]) =>
+    l.map((f) => f.experience.id);
+
+  it("puts today, tomorrow, the weekend and the fortnight in their own rows", () => {
+    expect(idsOf(c.today)).toEqual(["cookies"]);
+    expect(idsOf(c.tomorrow)).toEqual(["festival"]);
+    expect(idsOf(c.weekend)).toEqual(["market"]);
+    expect(idsOf(c.soon)).toEqual(["market-dec"]);
+  });
+
+  it("never repeats a find, and Explore leaves out what it showed", () => {
+    const all = shownIn(c);
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).not.toContain("far-market");
+    expect(all).not.toContain("nye");
   });
 });

@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 import { SuggestSomething } from "@/components/contributions/SuggestSomething";
 
 /**
- * **Christmas's own bar** — Home · Lights Map · Advent · My Christmas (owner
- * brief M1128, "One Beautiful Experience"), and one deliberate way back to
+ * **Christmas's own bar** — Discover · Advent · Lights Map · My Christmas
+ * (owner brief M1154; M1128 named the first "Home"), and one deliberate way back to
  * Go Have a Day. It sits under the global header on every Christmas page, so
  * somebody who came for Christmas always knows where they are and how to get
  * home.
  *
- * - **Home** is the one Christmas landing page — welcome, the ways and
- *   discovery together — and comes back to the visitor's own last place,
+ * - **Discover** is the one Christmas landing page — today, what's coming,
+ *   the moods and every listing together — and comes back to the visitor's own last place,
  *   days, distance and categories (`HOME_KEY`, this tab only).
  * - **My Christmas** is everything the visitor kept: their list, their saved
  *   plans and adventures. Planning is reached from there and from the
@@ -40,7 +40,7 @@ const DESTINATIONS: readonly {
 }[] = [
   {
     href: "/christmas",
-    label: "Home",
+    label: "Discover",
     id: "home",
     match: (p) =>
       p === "/christmas" ||
@@ -53,17 +53,17 @@ const DESTINATIONS: readonly {
       ].some((x) => p.startsWith(x)),
   },
   {
+    href: "/christmas/advent",
+    label: "Advent",
+    id: "advent",
+    match: (p) => p.startsWith("/christmas/advent"),
+  },
+  {
     href: "/christmas/lights",
     label: "Lights Map",
     id: "lights",
     match: (p) =>
       p === "/christmas/lights" || p.startsWith("/christmas/lights/"),
-  },
-  {
-    href: "/christmas/advent",
-    label: "Advent",
-    id: "advent",
-    match: (p) => p.startsWith("/christmas/advent"),
   },
   {
     href: "/christmas/list",

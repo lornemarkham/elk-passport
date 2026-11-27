@@ -18,7 +18,7 @@ export function BethlehemStar({ now }: { readonly now: Date }) {
   const { star } = featuredAt(now);
   if (!star?.image) return null;
   return (
-    <section
+    <article
       aria-labelledby="star-title"
       data-testid="bethlehem-star"
       className="relative overflow-hidden rounded-[32px] bg-[#071a3d] text-white shadow-[0_18px_50px_rgba(7,26,61,0.45)]"
@@ -44,12 +44,12 @@ export function BethlehemStar({ now }: { readonly now: Date }) {
           <p className="text-sm font-bold tracking-[0.14em] text-[#ffd98a] uppercase">
             ✦ A journey to first-century Bethlehem · Free
           </p>
-          <h2
+          <h3
             id="star-title"
             className="ghad-display mt-1 text-[2rem] leading-[1] font-extrabold tracking-[-0.03em] sm:text-5xl"
           >
             Bethlehem Star
-          </h2>
+          </h3>
           <p className="mt-1 text-lg text-[#ffd98a]">
             at Emmanuel Baptist Church, Vernon
           </p>
@@ -96,6 +96,6 @@ export function BethlehemStar({ now }: { readonly now: Date }) {
           </div>
         </div>
       </div>
-    </section>
+    </article>
   );
 }

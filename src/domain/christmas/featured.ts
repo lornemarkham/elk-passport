@@ -151,6 +151,11 @@ export const SILVERSTAR_LIGHT_UP: FeaturedEvent = {
     href: "https://silverstarstays.com/event/silverstar-annual-light-up-2",
   },
   match: ["silverstar annual light up", "silver star annual light up"],
+  image: {
+    src: "https://silverstarstays.com/wp-content/uploads/2026/09/light-up-2025-2.webp",
+    alt: "Fire spinners in the snow before a crowd at SilverStar's 2025 Light Up",
+    credit: "SilverStar Stays",
+  },
 };
 
 export const NONA_LIGHTS: FeaturedEvent = {

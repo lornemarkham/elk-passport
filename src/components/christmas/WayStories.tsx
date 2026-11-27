@@ -44,28 +44,45 @@ const PLACE: Readonly<Record<WayId, string>> = {
 export function WayStories({
   ways,
   hrefFor,
+  compact = false,
+  cta = "Explore",
 }: {
   readonly ways: readonly Way[];
   readonly hrefFor: (way: Way) => string;
+  /**
+   * Six equal tiles in one band (owner brief M1154: the moods are secondary
+   * to the featured events) rather than one lead picture and five beside it.
+   */
+  readonly compact?: boolean;
+  /** What a tile says it does ("Explore", "Show me"). */
+  readonly cta?: string;
 }) {
   return (
     <ul
-      className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:auto-rows-[15rem] lg:grid-cols-6"
+      className={
+        compact
+          ? "grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-6"
+          : "grid grid-cols-2 gap-2.5 sm:gap-4 lg:auto-rows-[15rem] lg:grid-cols-6"
+      }
       data-testid="way-stories"
     >
-      {ways.map((way, i) => {
+      {ways.map((way, n) => {
         const photo = WAY_PHOTOS[way.id];
+        // A compact band has no lead picture.
+        const i = compact ? n + 1 : n;
         return (
           <li
             key={way.id}
             className={cn(
-              "relative aspect-[3/4] sm:aspect-[4/3] lg:aspect-auto",
-              PLACE[way.id],
+              compact
+                ? "relative aspect-[4/5] sm:aspect-[4/3] lg:aspect-[4/5]"
+                : "relative aspect-[3/4] sm:aspect-[4/3] lg:aspect-auto",
+              !compact && PLACE[way.id],
             )}
           >
             <Link
               href={hrefFor(way)}
-              className="group absolute inset-0 flex flex-col justify-end overflow-hidden rounded-[22px] text-white shadow-[0_12px_34px_rgba(8,35,25,0.18)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#ffd98a] sm:rounded-[28px]"
+              className="group absolute inset-0 flex flex-col justify-end overflow-hidden rounded-[18px] text-white shadow-[0_12px_34px_rgba(8,35,25,0.18)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#ffd98a] sm:rounded-[28px]"
               style={
                 photo
                   ? { background: "#0b1d16" }
@@ -96,10 +113,16 @@ export function WayStories({
               <span
                 className={cn(
                   "relative p-3.5 sm:p-5",
+                  compact && "p-2.5 sm:p-4",
                   i === 0 && "sm:p-7 lg:p-9",
                 )}
               >
-                <span className="block text-[11px] font-bold tracking-[0.16em] text-[#ffd98a] uppercase sm:text-xs">
+                <span
+                  className={cn(
+                    "block text-[11px] font-bold tracking-[0.16em] text-[#ffd98a] uppercase sm:text-xs",
+                    compact && "hidden sm:block",
+                  )}
+                >
                   {way.label}
                 </span>
                 <span
@@ -107,7 +130,9 @@ export function WayStories({
                     "ghad-display mt-1 block leading-[1.02] font-extrabold tracking-[-0.02em] text-balance",
                     i === 0
                       ? "text-[1.7rem] sm:text-4xl lg:text-5xl"
-                      : "text-[1.15rem] sm:text-2xl",
+                      : compact
+                        ? "text-[0.95rem] sm:text-xl"
+                        : "text-[1.15rem] sm:text-2xl",
                   )}
                 >
                   {STORY[way.id]}
@@ -123,13 +148,17 @@ export function WayStories({
                     i !== 0 && "hidden sm:inline-flex",
                   )}
                 >
-                  {way.id === "lights" ? "Open the lights" : "Explore"}
+                  {way.id === "lights" && !compact ? "Open the lights" : cta}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </span>
               </span>
               {photo && (
                 <span
-                  className="absolute top-2 right-3 max-w-[70%] truncate text-[10px] text-white/55 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]"
+                  className={cn(
+                    "absolute top-2 right-3 max-w-[70%] truncate text-[10px] text-white/55 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]",
+                    // Small tiles: the credits are in full below the page.
+                    compact && "hidden sm:block",
+                  )}
                   data-testid="photo-credit"
                 >
                   Photo: {photo.author}

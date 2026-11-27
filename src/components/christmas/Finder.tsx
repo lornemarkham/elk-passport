@@ -63,6 +63,7 @@ export function Finder({
   lights,
   evening,
   warm,
+  exclude,
 }: {
   readonly data: FinderData;
   readonly ask: Ask;
@@ -81,6 +82,12 @@ export function Finder({
   readonly evening?: ReactNode;
   /** A warm stop near the lights, rendered by the server. */
   readonly warm?: ReactNode;
+  /**
+   * Finds the page already showed above under Coming up (M1154): left out
+   * of the unfiltered list so nothing is said twice, and back the moment
+   * somebody chooses a category.
+   */
+  readonly exclude?: readonly string[];
 }) {
   const params = useSearchParams();
   const pathname = usePathname();
@@ -127,9 +134,24 @@ export function Finder({
 
   const { open, closed } = availability(data, pinsOn ? { lights: pinsOn } : {});
   const showLights = themes.length === 0 || themes.includes("lights");
-  const view = viewOf(data, themes, days, today);
+  const leftOut =
+    exclude && exclude.length > 0 && themes.length === 0
+      ? new Set(exclude)
+      : undefined;
+  const view = viewOf(
+    leftOut
+      ? {
+          ...data,
+          near: data.near.filter((f) => !leftOut.has(f.experience.id)),
+        }
+      : data,
+    themes,
+    days,
+    today,
+  );
   // Community lights count as Holiday lights, so they are something too.
-  const empty = view.empty && !(showLights && lights);
+  const empty =
+    view.empty && !(leftOut && data.near.length) && !(showLights && pinsOn > 0);
   const host = empty ? hostFor(data, themes, days, today) : undefined;
   const asked = themes.length
     ? themes.map((t) => themeById(t).label).join(" or ")
@@ -326,7 +348,7 @@ export function Finder({
             id="spotlight-title"
             className="mb-3 text-sm font-bold tracking-[0.14em] text-[#b3242f] uppercase"
           >
-            {dated ? `Don't miss ${said(when)}` : "Don't miss"}
+            {dated ? `Top pick for ${said(when)}` : "Top pick"}
           </h2>
           <FindCard
             find={view.spotlight}
@@ -340,7 +362,7 @@ export function Finder({
         </section>
       )}
 
-      {view.weekend.length > 0 && (
+      {view.weekend.length > 0 && !leftOut && (
         <Section
           id="weekend"
           kicker="This weekend"
@@ -354,7 +376,9 @@ export function Finder({
         <Section
           id="near"
           kicker={`Around ${townName}`}
-          title={dated ? `What's on ${said(when)}` : "Coming up"}
+          title={
+            dated ? `What's on ${said(when)}` : "More Christmas around you"
+          }
           count={view.around.length}
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -454,7 +478,7 @@ export function Finder({
  * A shelf: a swipeable row on a phone (one card and the edge of the next,
  * so it reads as more to see), a grid on anything wider.
  */
-function Row({
+export function Row({
   children,
   cols = "lg:grid-cols-3",
   testId,
