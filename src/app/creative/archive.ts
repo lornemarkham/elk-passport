@@ -405,24 +405,6 @@ export const CREATIVE_ARCHIVE: readonly CreativeWork[] = [
     notes:
       "Built 2026-11-18 for the owner's brief P0 — BUILD PEOPLE'S PULSE (M906). Its own small store, like CourtQueue (ADR 021, proposed).",
   },
-  {
-    id: "dream",
-    name: "Dream",
-    description:
-      "Discover when you know. Dream when you don't. Go when you're ready. One sentence — typed, spoken, or made by tapping photographs of real places — answered from Atlas as scenes, then joined into a day that opens in Go Have a Day.",
-    category: "Experiences",
-    status: "experimental",
-    originalRoute: "/labs/dream",
-    sources: [
-      "src/app/labs/dream/page.tsx",
-      "src/components/dream/",
-      "src/domain/dream/",
-      "docs/product/dream/README.md",
-    ],
-    labId: "dream",
-    notes:
-      "Built 2026-11-26 for the owner's brief GoHaveADay — Dream Experience (M1130). Behind GHAD_DREAM (off in production). Deterministic: no model call.",
-  },
   // ─────────────────────────────────────────────────────────── October
   {
     id: "experiment-03-october-passport",
