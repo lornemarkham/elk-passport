@@ -7,6 +7,11 @@ import { Hearth } from "@/components/christmas/hearth/Hearth";
 import { RememberTown } from "@/components/christmas/RememberTown";
 import { RememberDistance } from "@/components/christmas/RememberDistance";
 import { KeepScroll } from "@/components/christmas/KeepScroll";
+import {
+  FeaturedToday,
+  TonightBanner,
+} from "@/components/christmas/FeaturedToday";
+import { BethlehemStar } from "@/components/christmas/BethlehemStar";
 import { PlanHero } from "@/components/christmas/PlanHero";
 import { DiscoverControls } from "@/components/christmas/DiscoverControls";
 import { adventureSession } from "@/lib/adventures/server";
@@ -23,6 +28,7 @@ import {
   writeAsk,
   type Ask,
 } from "@/domain/christmas/discover";
+import { inNorthOkanagan } from "@/domain/christmas/featured";
 import { newYearInView } from "@/domain/christmas/finder";
 import {
   daysUntil,
@@ -117,6 +123,8 @@ export default async function ChristmasPage({
   // a preference, not the date of somebody's plan.
   const place = writeAsk({ at: ask.at, km: ask.km });
   const q = place ? `?${place}` : "";
+  const now = new Date();
+  const northOkanagan = inNorthOkanagan(ask.at);
   const newYearNear = newYearInView({ themes: [] }, today);
 
   return (
@@ -132,9 +140,20 @@ export default async function ChristmasPage({
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
               {/* 1. Welcome — the hero asks nothing (M1127, "Stay Awhile"). */}
+              {northOkanagan && <TonightBanner now={now} />}
               <Hearth countdown={seasonLine({ ...stage, today })} />
 
               <div className="mx-auto max-w-7xl space-y-12 px-4 pt-8 sm:space-y-16 sm:px-6 sm:pt-12">
+                {/* Today's events and the Bethlehem Star (M1152): decided by the
+                    clock, so an evening that is over is gone on its own. Shown
+                    to anyone looking around the North Okanagan. */}
+                {northOkanagan && (
+                  <>
+                    <FeaturedToday now={now} />
+                    <BethlehemStar now={now} />
+                  </>
+                )}
+
                 {/* 2. Inspiration. */}
                 <section aria-labelledby="ways-title" data-testid="ways">
                   <h2

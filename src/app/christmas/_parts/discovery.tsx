@@ -6,6 +6,7 @@ import { favouritesNear } from "@/domain/featured/locals";
 import { youngest, type Ask } from "@/domain/christmas/discover";
 import { finderData } from "@/domain/christmas/finder";
 import { lightsNear, openThisEvening } from "@/domain/christmas/nearby";
+import { inNorthOkanagan, matchesFeatured } from "@/domain/christmas/featured";
 import { whenLabel } from "@/domain/christmas/when";
 import { christmasFinds } from "../_server/corpus";
 import { lightsFor, viewer } from "../_server/lights";
@@ -34,7 +35,12 @@ export async function Discovery({
       .then((v) => lightsFor(v))
       .catch(() => ({ pins: [], ready: false })),
   ]);
-  const data = finderData(corpus.finds, ask, { today, now: new Date() });
+  // The featured events are said once, above; the feed keeps its own copy of
+  // them out so nobody sees a card twice.
+  const finds = inNorthOkanagan(ask.at)
+    ? corpus.finds.filter((f) => !matchesFeatured(f.experience.title))
+    : corpus.finds;
+  const data = finderData(finds, ask, { today, now: new Date() });
   const dated = Boolean(ask.from || ask.to);
   const days = dated
     ? { from: ask.from ?? ask.to!, to: ask.to ?? ask.from! }
