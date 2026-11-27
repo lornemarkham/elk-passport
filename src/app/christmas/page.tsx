@@ -17,6 +17,12 @@ import { RememberTown } from "@/components/christmas/RememberTown";
 import { PlanHero } from "@/components/christmas/PlanHero";
 import { DistancePicker } from "@/components/christmas/DistancePicker";
 import { adventureSession } from "@/lib/adventures/server";
+import {
+  FeaturedToday,
+  TonightBanner,
+} from "@/components/christmas/FeaturedToday";
+import { BethlehemStar } from "@/components/christmas/BethlehemStar";
+import { inNorthOkanagan } from "@/domain/christmas/featured";
 import { PicksProvider } from "@/components/christmas/Picks";
 import { RowSkeleton, WayCard } from "@/components/christmas/ways";
 import { ExperienceLocation } from "@/components/location/ExperienceLocation";
@@ -113,6 +119,8 @@ export default async function ChristmasPage({
   ]);
   const ask = { ...asked, at: where.at };
   const today = todayIn();
+  const now = new Date();
+  const northOkanagan = inNorthOkanagan(ask.at);
   const town = townById(ask.at);
   const townName = town?.name.replace(/,\s*BC$/, "");
   const stage = season(today);
@@ -143,6 +151,7 @@ export default async function ChristmasPage({
         >
           <main className={`${styles.page} min-h-screen pb-28`}>
             <PendingProvider>
+              {northOkanagan && <TonightBanner now={now} />}
               {/* Above the page below it: the place picker opens out of the header. */}
               <header
                 className={`${styles.night} z-30`}
@@ -259,6 +268,15 @@ export default async function ChristmasPage({
               </header>
 
               <div className="mx-auto max-w-6xl space-y-10 px-4 pt-6 sm:space-y-14 sm:px-6 sm:pt-10">
+                {/* Today's events and the Bethlehem Star (M1152): decided by the
+                    clock, so an evening that is over is gone on its own. */}
+                {northOkanagan && (
+                  <>
+                    <FeaturedToday now={now} />
+                    <BethlehemStar now={now} />
+                  </>
+                )}
+
                 <nav aria-labelledby="ways-title" data-testid="ways">
                   <h2
                     id="ways-title"

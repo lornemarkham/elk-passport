@@ -8,6 +8,7 @@ import { seasonsBest } from "@/domain/christmas/best";
 import { around } from "@/domain/christmas/around";
 import { longRun } from "@/domain/christmas/ways";
 import type { PinView } from "@/domain/christmas/lights/model";
+import { inNorthOkanagan, matchesFeatured } from "@/domain/christmas/featured";
 import { christmasFinds } from "../_server/corpus";
 import { lightsFor, viewer } from "../_server/lights";
 
@@ -43,7 +44,11 @@ export async function NearYou({
   ]);
   const town = townById(ask.at);
   const townName = town?.name.replace(/,\s*BC$/, "");
-  const answered = answer(corpus.finds, ask);
+  // The featured events are said once, above; the feed keeps its own copy out.
+  const finds0 = inNorthOkanagan(ask.at)
+    ? corpus.finds.filter((f) => !matchesFeatured(f.experience.title))
+    : corpus.finds;
+  const answered = answer(finds0, ask);
   const sections = around(answered, today, lights.pins, ask.km);
   // `around`'s order, except that a year-long "run" doesn't lead (`longRun`).
   const finds = unique(
