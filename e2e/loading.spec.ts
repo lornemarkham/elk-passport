@@ -49,12 +49,12 @@ test("Christmas: a new town is named and said to be loading the moment it is pic
   const content = page.getByTestId("pending-content");
   await expect(content).toHaveAttribute("aria-busy", "true");
   await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around Vernon/ }),
+    page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
   ).toBeVisible();
 
   // Then the answer for Kelowna replaces them, and the waiting stops.
   await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
+    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(content).not.toHaveAttribute("aria-busy", "true");
   await expect(page.getByTestId("location-loading").first()).toHaveText("");
@@ -70,7 +70,7 @@ test("Christmas: a new town is named and said to be loading the moment it is pic
     timeout: 1_000,
   });
   await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around Vernon/ }),
+    page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
   ).toBeVisible({ timeout: 30_000 });
 });
 
