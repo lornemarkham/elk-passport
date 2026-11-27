@@ -33,17 +33,16 @@ test("the front page keeps the sentence box beside the six ways, and real Christ
 }) => {
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Your Christmas Starts Here",
-    }),
+    page.getByRole("heading", { level: 1, name: /Christmas around/ }),
   ).toBeVisible();
   await expect(page.getByLabel("Tell us what you'd love to do")).toBeVisible();
   await expect(page.getByTestId("plan-go")).toHaveText(
     /Make my Christmas plan/,
   );
   // The six ways took the quick starts' place (owner brief, 2026-11-17).
-  await expect(page.getByTestId("ways").getByRole("link")).toHaveCount(6);
+  await expect(page.getByTestId("way-stories").getByRole("link")).toHaveCount(
+    6,
+  );
   // Real Christmas is below them, on the same page (owner brief M1128).
   await expect(page.getByTestId("discover")).toBeVisible();
   // Nothing sideways on a phone.

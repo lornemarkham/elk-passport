@@ -22,11 +22,15 @@ test("A — a first-time visitor is welcomed, finds something nearby, opens it a
   page,
 }) => {
   await page.goto("/christmas?at=vernon");
-  await expect(page.getByTestId("hearth")).toBeVisible();
-  await expect(page.getByTestId("way-stories")).toBeAttached();
-  // No account, no questions, before anything is found.
   await expect(
-    page.locator("main input, main select").first(),
+    page.getByRole("heading", { level: 1, name: /Christmas around/ }),
+  ).toBeVisible();
+  await expect(page.getByTestId("way-stories")).toBeAttached();
+  // No account and no questions — only where, when and how far, already
+  // answered, on the first screen (owner brief M1154 put them there).
+  await expect(page.getByTestId("discover-controls")).toBeInViewport();
+  await expect(
+    page.locator("main input:not([type=hidden])").first(),
   ).not.toBeInViewport();
   await expect(page).not.toHaveURL(/\/auth/);
   if (!WITH_ATLAS) return;
@@ -39,7 +43,9 @@ test("A — a first-time visitor is welcomed, finds something nearby, opens it a
   await expect(page).toHaveURL(/\/christmas\/event\//);
   await page.getByTestId("xmas-nav-home").click();
   await expect(page).toHaveURL(/\/christmas(\?|$)/);
-  await expect(page.getByTestId("hearth")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Christmas around/ }),
+  ).toBeVisible();
 });
 
 test("B — markets on a chosen day: only available kinds are offered, and an empty day gets suggestions", async ({
@@ -104,7 +110,7 @@ test("D — a romantic Christmas evening: dinner and the lights, replaced, start
 }) => {
   test.skip(!WITH_ATLAS, "needs the Atlas stand-in (E2E_ATLAS=1)");
   await page.goto("/christmas?at=vernon");
-  await page.getByTestId("way-date").click();
+  await page.getByTestId("way-page-date").click();
   await expect(page).toHaveURL(/\/christmas\/for\/date/);
   await page.getByTestId("plan-idea").first().click();
   await expect(page).toHaveURL(/\/christmas\/itinerary\?/);
@@ -134,10 +140,11 @@ test("D — a romantic Christmas evening: dinner and the lights, replaced, start
   await expect(page.getByTestId("after-day")).toBeVisible();
 });
 
-test("E — Home, Lights Map, Advent and My Christmas, with Back and Forward keeping place and scroll", async ({
+test("E — Discover, Lights Map, Advent and My Christmas, with Back and Forward keeping place and scroll", async ({
   page,
 }) => {
-  await page.goto("/christmas?at=vernon&km=20#discover");
+  // Explore sits well down the page (M1154), so its scroll is worth keeping.
+  await page.goto("/christmas?at=vernon&km=20#explore");
   await page.waitForLoadState("load");
   const y = await page.evaluate(() => window.scrollY);
   expect(y).toBeGreaterThan(300);
@@ -178,7 +185,9 @@ test.describe("F — a phone, from a business card's QR code", () => {
   }) => {
     const t0 = Date.now();
     await page.goto("/christmas?utm_source=card");
-    await expect(page.getByTestId("hearth")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /Christmas around/ }),
+    ).toBeVisible();
     expect(Date.now() - t0).toBeLessThan(8000);
     await expect(page.getByTestId("christmas-nav")).toBeVisible();
     await expect(page.getByTestId("xmas-nav-home")).toHaveAttribute(

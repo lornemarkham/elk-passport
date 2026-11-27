@@ -33,7 +33,9 @@ test("the old Discover address opens the landing page's discovery, query and all
   await expect(page).toHaveURL(
     /\/christmas\?at=vernon&theme=markets#discover$/,
   );
-  await expect(page.getByTestId("hearth")).toBeAttached();
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Christmas around/ }),
+  ).toBeAttached();
   await expect(page.getByTestId("chip-markets")).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -198,7 +200,7 @@ test.describe("G — on a phone", () => {
   });
 });
 
-test("H — Home, My Christmas and the Lights Map are one tap apart", async ({
+test("H — Discover, My Christmas and the Lights Map are one tap apart", async ({
   page,
 }) => {
   await page.goto("/christmas/list");
@@ -210,5 +212,7 @@ test("H — Home, My Christmas and the Lights Map are one tap apart", async ({
   await expect(page.getByTestId("christmas-nav")).toBeVisible();
   await page.getByTestId("xmas-nav-home").click();
   await expect(page).toHaveURL(/\/christmas(\?|$)/);
-  await expect(page.getByTestId("hearth")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Christmas around/ }),
+  ).toBeVisible();
 });

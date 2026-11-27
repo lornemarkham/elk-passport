@@ -20,18 +20,15 @@ async function changePlace(page: Page, id: string) {
   await expect(page.getByTestId("location-picker")).toHaveCount(0);
 }
 
-test("the Christmas page opens on six ways, and one leads somewhere real", async ({
+test("the Christmas page opens on what's around, keeps six moods, and one leads somewhere real", async ({
   page,
 }) => {
   await page.goto("/christmas");
+  // Owner brief M1154: a compact header, not a hero — the place first.
   await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Your Christmas Starts Here",
-    }),
+    page.getByRole("heading", { level: 1, name: /Christmas around/ }),
   ).toBeVisible();
-  await expect(page.getByText("Come on in. Stay awhile.")).toBeVisible();
-  await expect(page.getByTestId("ways").getByRole("link")).toHaveText([
+  await expect(page.getByTestId("way-stories").getByRole("link")).toHaveText([
     /Christmas Lights/,
     /Christmas Date/,
     /Family Fun/,
@@ -39,17 +36,14 @@ test("the Christmas page opens on six ways, and one leads somewhere real", async
     /Cozy Christmas/,
     /Events & Markets/,
   ]);
-  await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around/ }),
-  ).toBeVisible();
   await expect(page.getByTestId("countdown")).toBeVisible();
   if (WITH_ATLAS) {
     await expect(page.getByTestId("atlas-down")).toHaveCount(0);
   } else {
     await expect(page.getByTestId("atlas-down")).toBeVisible();
   }
-  // Events & Markets: one tap narrows it, and "see all" is the directory.
-  await page.getByTestId("way-events").click();
+  // Events & Markets: its page narrows it, and "see all" is the directory.
+  await page.getByTestId("way-page-events").click();
   await expect(page).toHaveURL(/\/christmas\/for\/events/);
   await page.getByTestId("q-kind-markets").click();
   await expect(page).toHaveURL(/kind=markets/);
@@ -203,7 +197,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
 }) => {
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around Vernon/ }),
+    page.getByRole("heading", { level: 1, name: /Christmas around Vernon/ }),
   ).toBeVisible();
   await expect(page.getByTestId("location-name").first()).toContainText(
     "Vernon",
@@ -223,7 +217,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   await changePlace(page, "kelowna");
   await expect(page).toHaveURL(/\/christmas\?at=kelowna/);
   await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
+    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
   const kelownaPins = page.getByTestId("shelf-lights-on");
   await expect(kelownaPins).not.toContainText("SilverStar");
@@ -232,7 +226,7 @@ test("Christmas opens on Vernon, shows real things, and follows a move to Kelown
   // /christmas opens on Kelowna now, from the server's first render.
   await page.goto("/christmas");
   await expect(
-    page.getByRole("heading", { level: 2, name: /Christmas around Kelowna/ }),
+    page.getByRole("heading", { level: 1, name: /Christmas around Kelowna/ }),
   ).toBeVisible();
 });
 
@@ -273,7 +267,9 @@ test("Christmas Lights opens the existing map, not a page about it", async ({
   page,
 }) => {
   await page.goto("/christmas?at=kelowna");
-  await page.getByTestId("way-lights").click();
+  // The lights mood filters Explore (M1154); the map is the lights band's
+  // and the way's own link.
+  await page.getByTestId("way-page-lights").click();
   await expect(page).toHaveURL(/\/christmas\/lights\?at=kelowna/);
   await expect(page.getByTestId("cta-tour")).toHaveText(/Build My Lights Tour/);
   // The way's own address goes to the map too.
@@ -285,7 +281,7 @@ test("a Christmas date: tonight, going out, then a real plan", async ({
   page,
 }) => {
   await page.goto("/christmas");
-  await page.getByTestId("way-date").click();
+  await page.getByTestId("way-page-date").click();
   await expect(
     page.getByRole("heading", { level: 1, name: "Christmas Date" }),
   ).toBeVisible();
@@ -385,7 +381,7 @@ test("Surprise me draws one thing, says what it is, and draws again", async ({
 });
 
 for (const width of [360, 390, 768]) {
-  test(`the front page fits a ${width}px screen: one lead picture, then two columns, no sideways scroll`, async ({
+  test(`the front page fits a ${width}px screen: six equal moods, no sideways scroll`, async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -394,7 +390,7 @@ for (const width of [360, 390, 768]) {
     });
     const page = await context.newPage();
     await page.goto("/christmas");
-    const cards = page.getByTestId("ways").getByRole("link");
+    const cards = page.getByTestId("way-stories").getByRole("link");
     await page.evaluate(() => document.fonts.ready);
     // Side by side once the page has settled (fonts, the streamed section).
     await expect
@@ -406,11 +402,11 @@ for (const width of [360, 390, 768]) {
         return Math.abs(a!.y - b!.y);
       })
       .toBeLessThan(2);
-    // The lead (Christmas Lights) spans the row; the next two share one.
+    // Six equal tiles (M1154: the moods are secondary to the events).
     const lead = (await cards.nth(0).boundingBox())!;
     const a = (await cards.nth(1).boundingBox())!;
     const b = (await cards.nth(2).boundingBox())!;
-    expect(lead.width).toBeGreaterThan(a.width * 1.8);
+    expect(Math.abs(lead.width - a.width)).toBeLessThan(2);
     for (const box of [a, b]) expect(box.height).toBeGreaterThanOrEqual(44);
     const { sw, cw, h } = await page.evaluate(() => ({
       sw: document.documentElement.scrollWidth,
@@ -418,9 +414,9 @@ for (const width of [360, 390, 768]) {
       h: document.documentElement.scrollHeight,
     }));
     expect(sw).toBeLessThanOrEqual(cw);
-    // The six ways are a glance, not a scroll: under two and a half screens.
+    // The six moods are a glance, not a scroll: under one screen.
     const ways = (await page.getByTestId("way-stories").boundingBox())!;
-    expect(ways.height / 800).toBeLessThan(2.5);
+    expect(ways.height / 800).toBeLessThan(1);
     expect(h).toBeGreaterThan(0);
     // All six ways are reachable by keyboard.
     await cards.nth(0).focus();
@@ -479,9 +475,16 @@ test.describe("launch QA repair", () => {
   }) => {
     await page.goto("/christmas");
     const nav = page.getByTestId("christmas-nav");
-    // Owner brief M1128: Home | Lights Map | Advent | My Christmas.
-    for (const name of ["Home", "Lights Map", "Advent", "My Christmas"])
+    // Owner brief M1154: Discover | Advent | Lights Map | My Christmas.
+    for (const name of ["Discover", "Advent", "Lights Map", "My Christmas"])
       await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+    await expect(nav.getByRole("link")).toHaveText([
+      "Discover",
+      "Advent",
+      "Lights Map",
+      "My Christmas",
+      /Go Have a Day|←/,
+    ]);
     await expect(page.getByTestId("xmas-nav-back")).toHaveAttribute(
       "href",
       "/discovery",
