@@ -1079,6 +1079,28 @@ event, which keep their own picture or none, as decided 2026-11-13. The
 owner ordered both; it is recorded here rather than left as a conflict. One
 composition; it answers no open question below.
 
+_Christmas is one discovery experience 2026-11-27_ (owner brief M1154 "P0 —
+Christmas: one unified discovery experience", owner-approved design
+direction; `docs/product/christmas/ONE-DISCOVERY-M1154.md`): `/christmas`
+answers _what is happening around me this Christmas?_ in one order —
+**Christmas around {town}** (a compact header with where, when and how far;
+no full-screen hero) → **Happening today** (the day's headline event large
+with its own photograph, then what else is on today, featured and Atlas's)
+→ **Don't miss this Christmas** (the Bethlehem Star's own showcase, then the
+season's other big local dates) → **Coming up** (tomorrow, this weekend, the
+next fortnight) → **What are you in the mood for?** (the six ways, smaller,
+each setting Explore's categories; a night in, with nothing to filter, opens
+its page, and every way's own page stays one link away) → **Explore
+Christmas** (the listings and filters of 2026-11-26, show more on demand) →
+**Christmas lights** (the map, ready-made drives, locals' displays) → **Make
+Christmas your own** (Surprise me, a plan from a sentence). No card is said
+twice: featured events leave the feed, and what Coming up shows leaves
+Explore's unfiltered list. The bar is **Discover · Advent · Lights Map · My
+Christmas**. **This supersedes**, for Christmas: 2026-11-25's first screen by
+the fire (the hero is retired from the page; its components remain), and
+from 2026-11-26 the order (welcome → ways → discovery → plan) and the bar's
+"Home". One composition; it answers no open question below.
+
 _Snow Day joined the menu 2026-11-02_ (release "Powder Day — integrate,
 verify, release"; `docs/product/snow/SHARING.md`): five — Conference, Hockey
 Night, October, Christmas, Snow Day. `/snow` is public; a one-phone day needs

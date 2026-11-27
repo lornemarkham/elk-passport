@@ -13,6 +13,12 @@ Christmas is, what it reuses, and what it does not decide.
                               challenges, memories, recap, go have another
 ```
 
+**One discovery experience (2026-11-27, M1154):** `/christmas` reads
+Christmas around {town} → Happening today → Don't miss (the Bethlehem Star) →
+Coming up → moods that set Explore's filters → Explore → Christmas lights →
+Make it your own, nothing said twice; the bar is Discover · Advent · Lights
+Map · My Christmas: [ONE-DISCOVERY-M1154.md](ONE-DISCOVERY-M1154.md).
+
 **One Beautiful Experience (2026-11-26, M1128):** `/christmas` is one page —
 the fire, six ways as photographs, then discovery with one where/when/how-far
 control and several categories at once, filtered in the hand; dead ends
